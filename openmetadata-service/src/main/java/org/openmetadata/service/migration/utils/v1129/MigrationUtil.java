@@ -22,12 +22,14 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Migration utility for 1.12.9 — backfills domains on tasks so that domain-scoped users can see
@@ -53,10 +55,13 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class MigrationUtil {
 
   private static final int BATCH_SIZE = 500;
+
   private static final int RELATION_MENTIONED_IN = Relationship.MENTIONED_IN.ordinal();
+
   private static final int RELATION_HAS = Relationship.HAS.ordinal();
 
   private final Handle handle;
+
   private final ConnectionType connectionType;
 
   public MigrationUtil(Handle handle, ConnectionType connectionType) {
@@ -85,18 +90,15 @@ public class MigrationUtil {
   // they drop out of the WHERE clause (JSON_EXTRACT/-> IS NULL), so the batch
   // naturally advances without any offset tracking. Using a growing OFFSET would skip rows.
   // ---------------------------------------------------------------------------
-
   private int migrateThreadEntityTaskDomains() {
     if (!tableExists("thread_entity")) {
       LOG.info("No thread_entity table found, skipping thread task domain migration");
       return 0;
     }
-
     Map<String, List<UUID>> domainCache = new HashMap<>();
     int withDomains = 0;
     int markedDone = 0;
     int markedDoneOnError = 0;
-
     while (true) {
       List<String[]> batch = readThreadTaskBatch(BATCH_SIZE);
       if (batch.isEmpty()) break;
@@ -121,7 +123,6 @@ public class MigrationUtil {
         break;
       }
     }
-
     int total = withDomains + markedDone + markedDoneOnError;
     LOG.info(
         "Migrated {} thread tasks in thread_entity (withDomains={}, markedDone={}, markedDoneOnError={})",
@@ -219,13 +220,10 @@ public class MigrationUtil {
       JsonNode node = JsonUtils.readTree(json);
       JsonNode aboutNode = node.get("about");
       if (aboutNode == null || aboutNode.isNull()) return Collections.emptyList();
-
       String about = aboutNode.asText(null);
       if (nullOrEmpty(about)) return Collections.emptyList();
-
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(about);
       String cacheKey = entityLink.getEntityType() + "::" + entityLink.getEntityFQN();
-
       if (cache.containsKey(cacheKey)) return cache.get(cacheKey);
       List<UUID> ids = fetchDomainIds(entityLink);
       cache.put(cacheKey, ids);
@@ -238,22 +236,26 @@ public class MigrationUtil {
 
   private List<UUID> fetchDomainIds(MessageParser.EntityLink entityLink) {
     try {
-      EntityRepository<?> repo = Entity.getEntityRepository(entityLink.getEntityType());
+      EntityPolicy<?> repo = Entity.getEntityRepository(entityLink.getEntityType());
       if (!repo.isSupportsDomains()) return Collections.emptyList();
-
       EntityReference ref =
           Entity.getEntityReferenceByName(
               entityLink.getEntityType(), entityLink.getEntityFQN(), Include.ALL);
       if (ref == null || ref.getId() == null) return Collections.emptyList();
-
-      Object entity = repo.get(null, ref.getId(), repo.getFields(Entity.FIELD_DOMAINS));
+      Object entity =
+          repo.reads()
+              .byId(
+                  ref.getId(),
+                  new EntityReadService.Query(
+                      null,
+                      repo.fieldPolicy().parse(Entity.FIELD_DOMAINS),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       if (!(entity instanceof EntityInterface ei)) {
         return Collections.emptyList();
       }
-
       List<EntityReference> domains = ei.getDomains();
       if (nullOrEmpty(domains)) return Collections.emptyList();
-
       List<UUID> ids = new ArrayList<>(domains.size());
       for (EntityReference d : domains) {
         if (d.getId() != null) ids.add(d.getId());
@@ -330,13 +332,11 @@ public class MigrationUtil {
   // After each batch the NOT EXISTS eliminates already-inserted rows, so
   // the loop naturally terminates when no new rows can be inserted.
   // ---------------------------------------------------------------------------
-
   private int migrateTaskEntityDomains() {
     if (!tableExists("task_entity")) {
       LOG.info("No task_entity table found, skipping task entity domain migration");
       return 0;
     }
-
     int totalInserted = 0;
     while (true) {
       int inserted = insertTaskDomainsBatch();
@@ -344,7 +344,6 @@ public class MigrationUtil {
       LOG.debug("Task domain migration progress: {} relationships inserted so far", totalInserted);
       if (inserted < BATCH_SIZE) break;
     }
-
     LOG.info("Inserted {} domain relationships for task entities in task_entity", totalInserted);
     return totalInserted;
   }
@@ -429,7 +428,6 @@ public class MigrationUtil {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-
   private String buildUuidJsonArray(List<UUID> ids) {
     StringBuilder sb = new StringBuilder("[");
     for (int i = 0; i < ids.size(); i++) {
@@ -461,7 +459,6 @@ public class MigrationUtil {
   // ---------------------------------------------------------------------------
   // Policy migrations (static, callable without a Handle)
   // ---------------------------------------------------------------------------
-
   /**
    * Retrofits seeded bot policies that grant broad {@code EditAll} on {@code ["All"]} resources
    * with the {@code Trigger} operation. Pre-fix these identities could trigger pipelines because
@@ -500,7 +497,7 @@ public class MigrationUtil {
   public static void addTriggerRuleToDataStewardPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy policy = repository.findByName("DataStewardPolicy", Include.NON_DELETED);
+      Policy policy = repository.lookup().byName("DataStewardPolicy", Include.NON_DELETED);
       boolean hasTriggerRule =
           policy.getRules().stream()
               .anyMatch(

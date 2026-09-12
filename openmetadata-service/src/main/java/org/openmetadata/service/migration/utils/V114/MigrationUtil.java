@@ -1,6 +1,8 @@
 package org.openmetadata.service.migration.utils.V114;
 
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.getTestSuite;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.groupTestCasesByTable;
 
@@ -16,6 +18,8 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -45,8 +49,9 @@ public class MigrationUtil {
     TestSuiteRepository testSuiteRepository =
         (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
     List<TestSuite> testSuites =
-        testSuiteRepository.listAll(
-            new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+        testSuiteRepository
+            .collections()
+            .all(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {
       if (suite.getExecutableEntityReference() != null
           && (!suite.getExecutable() || !suite.getFullyQualifiedName().contains("testSuite"))) {
@@ -72,8 +77,11 @@ public class MigrationUtil {
         for (TestCase testCase : testCases) {
           // we are setting mustHaveRelationship to "false" to not throw any error.
           List<CollectionDAO.EntityRelationshipRecord> existingRelations =
-              testSuiteRepository.findFromRecords(
-                  testCase.getId(), TEST_CASE, Relationship.CONTAINS, TEST_SUITE);
+              testSuiteRepository
+                  .relationships()
+                  .fromRecords(
+                      new EntityRelationshipReader.Selection(
+                          testCase.getId(), TEST_CASE, Relationship.CONTAINS, TEST_SUITE));
           boolean relationWithExecutableTestSuiteExists = false;
           if (existingRelations != null) {
             for (CollectionDAO.EntityRelationshipRecord existingTestSuiteRel : existingRelations) {
@@ -88,45 +96,59 @@ public class MigrationUtil {
               } catch (EntityNotFoundException ex) {
                 // if testsuite cannot be retrieved but the relation exists, then this is orphaned
                 // relation, we will delete the relation
-                testSuiteRepository.deleteRelationship(
-                    existingTestSuiteRel.getId(),
-                    TEST_SUITE,
-                    testCase.getId(),
-                    TEST_CASE,
-                    Relationship.CONTAINS);
+                testSuiteRepository
+                    .relationshipWrites()
+                    .delete(
+                        new EntityRelationshipWriter.Edge(
+                            existingTestSuiteRel.getId(),
+                            testCase.getId(),
+                            TEST_SUITE,
+                            TEST_CASE,
+                            Relationship.CONTAINS));
               }
             }
           }
           // if we can't find any executable testSuite relationship add one
           if (!relationWithExecutableTestSuiteExists) {
-            testSuiteRepository.addRelationship(
-                executableTestSuite.getId(),
-                testCase.getId(),
-                TEST_SUITE,
-                TEST_CASE,
-                Relationship.CONTAINS);
+            testSuiteRepository
+                .relationshipWrites()
+                .add(
+                    new EntityRelationshipWriter.Edge(
+                        executableTestSuite.getId(),
+                        testCase.getId(),
+                        TEST_SUITE,
+                        TEST_CASE,
+                        Relationship.CONTAINS),
+                    EntityRelationshipWriter.Value.EMPTY,
+                    false);
           }
         }
 
         // check from table -> nativeTestSuite there should only one relation
         List<CollectionDAO.EntityRelationshipRecord> testSuiteRels =
-            testSuiteRepository.findToRecords(
-                executableTestSuite.getExecutableEntityReference().getId(),
-                TABLE,
-                Relationship.CONTAINS,
-                TEST_SUITE);
+            testSuiteRepository
+                .relationships()
+                .toRecords(
+                    new EntityRelationshipReader.Selection(
+                        executableTestSuite.getExecutableEntityReference().getId(),
+                        TABLE,
+                        Relationship.CONTAINS,
+                        TEST_SUITE));
         for (CollectionDAO.EntityRelationshipRecord testSuiteRel : testSuiteRels) {
           try {
             testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
           } catch (EntityNotFoundException ex) {
             // if testsuite cannot be retrieved but the relation exists, then this is orphaned
             // relation, we will delete the relation
-            testSuiteRepository.deleteRelationship(
-                executableTestSuite.getExecutableEntityReference().getId(),
-                TABLE,
-                testSuiteRel.getId(),
-                TEST_SUITE,
-                Relationship.CONTAINS);
+            testSuiteRepository
+                .relationshipWrites()
+                .delete(
+                    new EntityRelationshipWriter.Edge(
+                        executableTestSuite.getExecutableEntityReference().getId(),
+                        testSuiteRel.getId(),
+                        TABLE,
+                        TEST_SUITE,
+                        Relationship.CONTAINS));
           }
         }
       } catch (Exception exc) {
@@ -162,28 +184,38 @@ public class MigrationUtil {
                   "ingestion-bot")
               .withExecutable(true)
               .withFullyQualifiedName(executableTestSuiteFQN);
-      testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
+      testSuiteRepository.preparation().prepare(newExecutableTestSuite, false);
       testSuiteRepository
           .getDao()
           .insert(
               "fqnHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
       // add relationship between executable TestSuite with Table
-      testSuiteRepository.addRelationship(
-          newExecutableTestSuite.getExecutableEntityReference().getId(),
-          newExecutableTestSuite.getId(),
-          Entity.TABLE,
-          TEST_SUITE,
-          Relationship.CONTAINS);
+      testSuiteRepository
+          .relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  newExecutableTestSuite.getExecutableEntityReference().getId(),
+                  newExecutableTestSuite.getId(),
+                  Entity.TABLE,
+                  TEST_SUITE,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
 
       // add relationship between all the testCases that are created against a table with native
       // test suite.
       for (TestCase testCase : testCases) {
-        testSuiteRepository.addRelationship(
-            newExecutableTestSuite.getId(),
-            testCase.getId(),
-            TEST_SUITE,
-            TEST_CASE,
-            Relationship.CONTAINS);
+        testSuiteRepository
+            .relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    newExecutableTestSuite.getId(),
+                    testCase.getId(),
+                    TEST_SUITE,
+                    TEST_CASE,
+                    Relationship.CONTAINS),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
       return newExecutableTestSuite;
     }

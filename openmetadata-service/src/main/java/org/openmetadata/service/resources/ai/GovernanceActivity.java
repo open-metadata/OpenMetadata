@@ -29,12 +29,16 @@ import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.AICompliance;
 import org.openmetadata.schema.type.AIComplianceRecord;
 import org.openmetadata.schema.type.AIDetection;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Curated AI governance activity feed. Synthesizes timeline events from the
@@ -49,6 +53,7 @@ final class GovernanceActivity {
 
   private static final Set<String> SUPPORTED_TYPES =
       Set.of(Entity.AI_APPLICATION, Entity.LLM_MODEL, Entity.MCP_SERVER);
+
   private static final int PAGE_SIZE = 500;
 
   private GovernanceActivity() {}
@@ -68,14 +73,12 @@ final class GovernanceActivity {
       collect(Entity.MCP_SERVER, assets);
       collect(Entity.LLM_MODEL, assets);
     }
-
     List<AIGovernanceActivityEvent> events = new ArrayList<>();
     for (EntityInterface entity : assets) {
       events.addAll(eventsFor(entity, singleEntity));
     }
     events.sort(Comparator.comparing(AIGovernanceActivityEvent::getAt).reversed());
     int effective = Math.min(limit > 0 ? limit : 50, events.size());
-
     return new AIGovernanceActivityResponse().withEvents(events.subList(0, effective));
   }
 
@@ -83,8 +86,16 @@ final class GovernanceActivity {
     EntityInterface result = null;
     if (SUPPORTED_TYPES.contains(entityType)) {
       try {
-        EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
-        result = repo.get(null, UUID.fromString(entityId), repo.getFields(fieldList(entityType)));
+        EntityPolicy<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+        result =
+            repo.reads()
+                .byId(
+                    UUID.fromString(entityId),
+                    new EntityReadService.Query(
+                        null,
+                        repo.fieldPolicy().parse(fieldList(entityType)),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
       } catch (Exception error) {
         LOG.warn("Activity feed: failed to load {}:{}", entityType, entityId, error);
       }
@@ -94,13 +105,14 @@ final class GovernanceActivity {
 
   private static void collect(String entityType, List<EntityInterface> out) {
     try {
-      EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
-      Fields fields = repo.getFields(fieldList(entityType));
+      EntityPolicy<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+      Fields fields = repo.fieldPolicy().parse(fieldList(entityType));
       ListFilter filter = new ListFilter();
       String after = null;
       do {
         ResultList<? extends EntityInterface> page =
-            repo.listAfter(null, fields, filter, PAGE_SIZE, after);
+            repo.pages()
+                .after(new EntityPageReader.Projection(null, fields, filter), PAGE_SIZE, after);
         out.addAll(page.getData());
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
       } while (after != null);
@@ -131,7 +143,6 @@ final class GovernanceActivity {
     String entityType =
         entity.getEntityReference() == null ? null : entity.getEntityReference().getType();
     ActivityGovernance governance = governance(entity, reconstructHistory);
-
     if (!governance.isEmpty()) {
       AIDetection detection = governance.detection();
       if (detection != null && detection.getDetectedAt() != null) {
@@ -146,7 +157,6 @@ final class GovernanceActivity {
                 detection.getDetectedAt(),
                 governance.registeredBy()));
       }
-
       Long registeredAt = governance.registeredAt();
       if (registeredAt != null) {
         events.add(
@@ -158,7 +168,6 @@ final class GovernanceActivity {
                 registeredAt,
                 governance.registeredBy()));
       }
-
       Long approvedAt = governance.approvedAt();
       if (approvedAt != null) {
         events.add(
@@ -170,7 +179,6 @@ final class GovernanceActivity {
                 approvedAt,
                 governance.approvedBy()));
       }
-
       AICompliance aiCompliance = governance.aiCompliance();
       if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
         for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
@@ -321,9 +329,9 @@ final class GovernanceActivity {
       return result;
     }
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityPolicy<? extends EntityInterface> repository =
           Entity.getEntityRepository(Entity.LLM_MODEL);
-      List<Object> versions = repository.listVersions(llm.getId()).getVersions();
+      List<Object> versions = repository.versions().listVersions(llm.getId()).getVersions();
       if (versions == null) {
         return result;
       }
@@ -366,6 +374,7 @@ final class GovernanceActivity {
       String approvedBy,
       Long approvedAt,
       AICompliance aiCompliance) {
+
     private static final ActivityGovernance EMPTY =
         new ActivityGovernance(null, null, null, null, null, null);
 
@@ -378,6 +387,7 @@ final class GovernanceActivity {
   }
 
   private record LlmSubmission(String registeredBy, Long registeredAt) {
+
     private static final LlmSubmission EMPTY = new LlmSubmission(null, null);
   }
 }

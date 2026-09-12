@@ -63,7 +63,8 @@ import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -93,7 +94,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // ABSTRACT METHODS - Must be implemented by subclasses
   // ===================================================================
-
   /**
    * Create a minimal valid create request for this entity.
    * This should include all required fields but minimal optional fields.
@@ -162,43 +162,70 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // FEATURE FLAGS - Control which tests run for this entity
   // ===================================================================
-
   protected boolean supportsFollowers = true;
+
   protected boolean supportsOwners = true;
+
   protected boolean supportsTags = true;
+
   protected boolean supportsDomains = true;
-  protected boolean supportsPatchDomains = true; // Can domains be changed via PATCH after creation?
+
+  // Can domains be changed via PATCH after creation?
+  protected boolean supportsPatchDomains = true;
+
   protected boolean supportsDataProducts = true;
+
   protected boolean supportsDataProductAssetsSearch = true;
+
   protected boolean supportsDataContract = false;
+
   protected boolean supportsSoftDelete = true;
+
   protected boolean supportsCustomExtension = true;
+
   protected boolean supportsFieldsQueryParam = true;
+
   protected boolean supportsPatch = true;
+
   protected boolean supportsEmptyDescription = true;
+
   protected boolean supportsNameLengthValidation = true;
-  protected boolean supportsBulkAPI = false; // Override in subclasses that support bulk API
-  protected boolean supportsSearchIndex = true; // Override in subclasses that don't support search
+
+  // Override in subclasses that support bulk API
+  protected boolean supportsBulkAPI = false;
+
+  // Override in subclasses that don't support search
+  protected boolean supportsSearchIndex = true;
+
   // Set true in subclasses whose list endpoint accepts `?sortBy=updatedAt&sortOrder=desc` and
   // routes to EntityRepository.listFromSearchWithOffset. Used by the follower-regression test
   // below — see Fixes #28473.
   protected boolean supportsSearchBackedSortedList = false;
-  protected boolean supportsVersionHistory =
-      true; // Override in subclasses that don't support version history
-  protected boolean supportsGetByVersion =
-      true; // Override if get specific version is not supported
-  protected boolean supportsIncludeDeleted =
-      true; // Override if include=deleted query param not supported
-  protected boolean supportsImportExport =
-      false; // Override in subclasses that support CSV import/export
+
+  protected boolean
+      supportsVersionHistory = // Override in subclasses that don't support version history
+      true;
+
+  protected boolean supportsGetByVersion = // Override if get specific version is not supported
+      true;
+
+  protected boolean
+      supportsIncludeDeleted = // Override if include=deleted query param not supported
+      true;
+
+  protected boolean supportsImportExport = // Override in subclasses that support CSV import/export
+      false;
+
   protected boolean supportsCsvImportSessionConsolidationRegression = false;
-  protected boolean supportsListHistoryByTimestamp =
-      false; // Override in subclasses that support listing all versions by timestamp
+
+  protected boolean
+      supportsListHistoryByTimestamp = // Override in subclasses that support listing all versions
+          // by timestamp
+          false;
 
   // ===================================================================
   // CHANGE TYPE - Controls how version changes are validated
   // ===================================================================
-
   /**
    * Get the default change type for updates in session.
    * Most entities use MINOR_UPDATE, but some may need CHANGE_CONSOLIDATED
@@ -215,7 +242,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SHARED ENTITY ACCESSORS - Session-scoped entities for cross-test use
   // ===================================================================
-
   /**
    * Access to session-scoped shared entities.
    * These entities are created ONCE at session start and shared across all tests.
@@ -225,82 +251,114 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return SharedEntities.get();
   }
 
-  /** Convenience accessor for shared USER1 */
+  /**
+   * Convenience accessor for shared USER1
+   */
   protected org.openmetadata.schema.entity.teams.User testUser1() {
     return shared().USER1;
   }
 
-  /** Convenience accessor for shared USER2 */
+  /**
+   * Convenience accessor for shared USER2
+   */
   protected org.openmetadata.schema.entity.teams.User testUser2() {
     return shared().USER2;
   }
 
-  /** Convenience accessor for shared USER3 */
+  /**
+   * Convenience accessor for shared USER3
+   */
   protected org.openmetadata.schema.entity.teams.User testUser3() {
     return shared().USER3;
   }
 
-  /** Convenience accessor for shared USER1 EntityReference */
+  /**
+   * Convenience accessor for shared USER1 EntityReference
+   */
   protected org.openmetadata.schema.type.EntityReference testUser1Ref() {
     return shared().USER1_REF;
   }
 
-  /** Convenience accessor for shared USER2 EntityReference */
+  /**
+   * Convenience accessor for shared USER2 EntityReference
+   */
   protected org.openmetadata.schema.type.EntityReference testUser2Ref() {
     return shared().USER2_REF;
   }
 
-  /** Convenience accessor for shared TEAM1 */
+  /**
+   * Convenience accessor for shared TEAM1
+   */
   protected org.openmetadata.schema.entity.teams.Team testTeam1() {
     return shared().TEAM1;
   }
 
-  /** Convenience accessor for shared TEAM2 */
+  /**
+   * Convenience accessor for shared TEAM2
+   */
   protected org.openmetadata.schema.entity.teams.Team testTeam2() {
     return shared().TEAM2;
   }
 
-  /** Convenience accessor for shared TEAM11 (Group type - can own entities) */
+  /**
+   * Convenience accessor for shared TEAM11 (Group type - can own entities)
+   */
   protected org.openmetadata.schema.entity.teams.Team testGroupTeam() {
     return shared().TEAM11;
   }
 
-  /** Convenience accessor for shared DOMAIN */
+  /**
+   * Convenience accessor for shared DOMAIN
+   */
   protected org.openmetadata.schema.entity.domains.Domain testDomain() {
     return shared().DOMAIN;
   }
 
-  /** Convenience accessor for shared SUB_DOMAIN */
+  /**
+   * Convenience accessor for shared SUB_DOMAIN
+   */
   protected org.openmetadata.schema.entity.domains.Domain testSubDomain() {
     return shared().SUB_DOMAIN;
   }
 
-  /** Convenience accessor for shared DATA_STEWARD_ROLE */
+  /**
+   * Convenience accessor for shared DATA_STEWARD_ROLE
+   */
   protected org.openmetadata.schema.entity.teams.Role dataStewardRole() {
     return shared().DATA_STEWARD_ROLE;
   }
 
-  /** Convenience accessor for shared DATA_CONSUMER_ROLE */
+  /**
+   * Convenience accessor for shared DATA_CONSUMER_ROLE
+   */
   protected org.openmetadata.schema.entity.teams.Role dataConsumerRole() {
     return shared().DATA_CONSUMER_ROLE;
   }
 
-  /** Convenience accessor for shared PERSONAL_DATA_TAG_LABEL */
+  /**
+   * Convenience accessor for shared PERSONAL_DATA_TAG_LABEL
+   */
   protected TagLabel personalDataTagLabel() {
     return shared().PERSONAL_DATA_TAG_LABEL;
   }
 
-  /** Convenience accessor for shared PII_SENSITIVE_TAG_LABEL */
+  /**
+   * Convenience accessor for shared PII_SENSITIVE_TAG_LABEL
+   */
   protected TagLabel piiSensitiveTagLabel() {
     return shared().PII_SENSITIVE_TAG_LABEL;
   }
 
-  /** Convenience accessor for shared GLOSSARY1_TERM1_LABEL */
+  /**
+   * Convenience accessor for shared GLOSSARY1_TERM1_LABEL
+   */
   protected TagLabel glossaryTermLabel() {
     return shared().GLOSSARY1_TERM1_LABEL;
   }
 
-  /** Convenience accessor for shared MYSQL_SERVICE reference */
+  /**
+   * Convenience accessor for shared MYSQL_SERVICE reference
+   */
   protected org.openmetadata.schema.type.EntityReference mysqlServiceRef() {
     return shared().MYSQL_REFERENCE;
   }
@@ -308,7 +366,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // VALIDATION HELPER METHODS
   // ===================================================================
-
   /**
    * Helper method to patch entity and validate version, ChangeDescription.
    * Similar to patchEntityAndCheck in EntityResourceTest.
@@ -322,50 +379,39 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       T entity, UpdateType updateType, ChangeDescription expectedChange) {
     // Capture version before update
     Double previousVersion = entity.getVersion();
-
     // Perform the update
     T updated = patchEntity(entity.getId().toString(), entity);
-
     // Validate version changed correctly
     EntityValidation.validateVersion(updated, updateType, previousVersion);
-
     // Validate ChangeDescription
     EntityValidation.validateChangeDescription(updated, updateType, expectedChange);
-
     // Verify changes persisted by getting entity again
     T fetched = getEntity(updated.getId().toString());
     assertEquals(updated.getVersion(), fetched.getVersion(), "Version mismatch after fetch");
-
     return updated;
   }
 
   // ===================================================================
   // COMMON CRUD TESTS (Phase 1 - 10 tests)
   // ===================================================================
-
   /**
    * Test: Create entity with minimal required fields
    * Equivalent to: post_entityCreate_200_OK in EntityResourceTest
    */
   @Test
   void post_entityCreate_200_OK(TestNamespace ns) {
-
     // Create entity with minimal fields
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Common validations
     assertNotNull(entity.getId(), "Entity ID should not be null");
     assertNotNull(entity.getFullyQualifiedName(), "Entity FQN should not be null");
     assertNotNull(entity.getName(), "Entity name should not be null");
-
     // Validate version and ChangeDescription for newly created entity
     EntityValidation.validateVersion(entity, UpdateType.CREATED, null);
     EntityValidation.validateChangeDescription(entity, UpdateType.CREATED, null);
-
     // Entity-specific validations
     validateCreatedEntity(entity, createRequest);
-
     // Verify entity can be retrieved
     T fetched = getEntity(entity.getId().toString());
     assertEquals(entity.getId(), fetched.getId());
@@ -379,7 +425,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void post_entityCreateWithInvalidName_400(TestNamespace ns) {
-
     // Test invalid name patterns that OpenMetadata actually rejects
     // Empty name
     K emptyNameRequest = createRequest("", ns);
@@ -387,14 +432,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         InvalidRequestException.class,
         () -> createEntity(emptyNameRequest),
         "Expected InvalidRequestException for empty name");
-
     // Name with newline character
     K newlineNameRequest = createRequest("name with\nnewline", ns);
     assertThrows(
         InvalidRequestException.class,
         () -> createEntity(newlineNameRequest),
         "Expected InvalidRequestException for name with newline");
-
     // Name too long (>256 chars typically) - only if entity supports this validation
     if (supportsNameLengthValidation) {
       K longNameRequest = createRequest("a".repeat(300), ns);
@@ -411,16 +454,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void post_duplicateEntity_409(TestNamespace ns) {
-
     // Create first entity with a specific request
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     assertNotNull(entity.getId());
-
     // Attempt to create duplicate using the SAME create request
     // This ensures we're truly creating a duplicate (same name, same parent service)
-    assertThrows(
-        Exception.class, // May be ConflictException or similar
+    assertThrows( // May be ConflictException or similar
+        Exception.class,
         () -> createEntity(createRequest),
         "Creating duplicate entity should fail");
   }
@@ -431,14 +472,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void get_entity_200_OK(TestNamespace ns) {
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Get entity by ID
     T fetched = getEntity(created.getId().toString());
-
     assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertEquals(created.getName(), fetched.getName());
@@ -451,14 +489,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void get_entityByName_200_OK(TestNamespace ns) {
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Get entity by FQN
     T fetched = getEntityByName(created.getFullyQualifiedName());
-
     assertNotNull(fetched);
     assertEquals(created.getId(), fetched.getId());
     assertEquals(created.getFullyQualifiedName(), fetched.getFullyQualifiedName());
@@ -476,7 +511,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(
         service != null, getEntityType() + " has no SDK service wired via getEntityService()");
     T created = createEntity(createMinimalRequest(ns));
-
     String byId = service.getContext(created.getId().toString());
     assertTrue(
         byId.startsWith("---"),
@@ -484,7 +518,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             + getEntityType());
     assertTrue(
         byId.contains("type:"), "AI context frontmatter must carry a type for " + getEntityType());
-
     String byName = service.getContextByName(created.getFullyQualifiedName());
     assertTrue(
         byName.startsWith("---"),
@@ -497,12 +530,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void get_entityNotFound_404(TestNamespace ns) {
-
     // Try to get non-existent entity by ID
     String fakeId = "00000000-0000-0000-0000-000000000000";
     assertThrows(
         Exception.class, () -> getEntity(fakeId), "Getting non-existent entity should fail");
-
     // Try to get non-existent entity by name
     String fakeName = ns.prefix("nonExistent");
     assertThrows(
@@ -518,31 +549,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityDescription_200_OK(TestNamespace ns) {
     if (!supportsPatch) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Validate initial version
     assertEquals(0.1, created.getVersion(), 0.001, "Initial version should be 0.1");
-
     // Update description
     String oldDescription = created.getDescription();
     String newDescription = "Updated description via integration test";
     created.setDescription(newDescription);
-
     // Create expected ChangeDescription
     ChangeDescription expectedChange =
         EntityValidation.getChangeDescription(created, UpdateType.MINOR_UPDATE);
     EntityValidation.fieldUpdated(expectedChange, "description", oldDescription, newDescription);
-
     // Perform update with validation
     T updated = patchEntityAndCheck(created, UpdateType.MINOR_UPDATE, expectedChange);
-
     // Validate description was updated
     assertEquals(newDescription, updated.getDescription());
     assertEquals(0.2, updated.getVersion(), 0.001, "Version should increment to 0.2");
-
     // Verify ChangeDescription is present and correct
     assertNotNull(updated.getChangeDescription(), "ChangeDescription should be present");
     assertEquals(
@@ -559,15 +583,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_entity_soft_200(TestNamespace ns) {
     if (!supportsSoftDelete) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     String entityId = created.getId().toString();
-
     // Soft delete
     deleteEntity(entityId);
-
     // Entity should not be retrievable by default
     assertThrows(
         Exception.class, () -> getEntity(entityId), "Deleted entity should not be retrievable");
@@ -576,7 +597,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // AUTHORIZATION TESTS (Phase 1 - JWT-based)
   // ===================================================================
-
   /**
    * Test: Non-admin user cannot create entity
    * Equivalent to: post_entity_as_non_admin_401 in EntityResourceTest
@@ -587,24 +607,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // These tests require using different clients (admin vs non-admin)
   // which conflicts with the static default client approach.
   // Subclasses can implement entity-specific authorization tests if needed.
-
   //  @Test
   //  void post_entity_as_non_admin_401(TestNamespace ns) { ... }
   //  @Test
   //  void delete_entity_as_non_admin_401(TestNamespace ns) { ... }
-
   /**
    * Test: Creating duplicate entity should fail with conflict
    * Equivalent to: post_entityAlreadyExists_409_conflict in EntityResourceTest
    */
   @Test
   public void post_entityAlreadyExists_409_conflict(TestNamespace ns) {
-
     // Create first entity
     K createRequest = createRequest(ns.prefix("duplicate"), ns);
     T created = createEntity(createRequest);
     assertNotNull(created.getId());
-
     // Attempt to create duplicate - should fail
     assertThrows(
         Exception.class,
@@ -618,16 +634,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void post_entityWithDots_200(TestNamespace ns) {
-
     // Create entity with dots in name
     String nameWithDots = ns.prefix("foo.bar");
     K createRequest = createRequest(nameWithDots, ns);
     T created = createEntity(createRequest);
-
     // Verify entity created
     assertNotNull(created.getId());
     assertEquals(nameWithDots, created.getName());
-
     // FQN should contain quotes if hierarchical, or exact name if not
     String fqn = created.getFullyQualifiedName();
     boolean isHierarchical = !fqn.equals(created.getName());
@@ -639,18 +652,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PUT (UPSERT) TESTS
   // ===================================================================
-
   /**
    * Test: PUT can create new entity (upsert)
    * Equivalent to: put_entityCreate_200 in EntityResourceTest
    */
   @Test
   void put_entityCreate_200(TestNamespace ns) {
-
     // Create entity using PUT (upsert with no existing entity)
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Verify entity was created
     assertNotNull(created.getId());
     assertEquals(0.1, created.getVersion(), 0.001);
@@ -664,15 +674,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_entityUpdateWithNoChange_200(TestNamespace ns) {
     if (!supportsPatch) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     Double originalVersion = created.getVersion();
-
     // Update with same data (no change)
     T updated = patchEntity(created.getId().toString(), created);
-
     // Version should NOT change when there's no actual change
     assertEquals(
         originalVersion, updated.getVersion(), 0.001, "Version should not change for no-op update");
@@ -681,7 +688,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DELETE RESTORE TESTS
   // ===================================================================
-
   /**
    * Test: Soft deleted entity can be restored
    * Equivalent to: delete_restore_entity_200 in EntityResourceTest
@@ -693,21 +699,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_restore_entity_200(TestNamespace ns) {
     if (!supportsSoftDelete) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     String entityId = created.getId().toString();
-
     // Soft delete entity
     deleteEntity(entityId);
-
     // Verify entity is deleted (should not be retrievable by default)
     assertThrows(
         Exception.class,
         () -> getEntity(entityId),
         "Deleted entity should not be retrievable without include=deleted");
-
     // TODO: Add restore functionality once SDK supports it
     // For now, this test verifies soft delete works correctly
   }
@@ -715,7 +717,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // OWNER VALIDATION TESTS
   // ===================================================================
-
   /**
    * Test: PATCH entity with non-existent owner should fail
    * Equivalent to: post_entityWithNonExistentOwner_4xx in EntityResourceTest
@@ -723,20 +724,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityWithNonExistentOwner_4xx(TestNamespace ns) {
     if (!supportsOwners) return;
-
     // Create entity without owner
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Try to set a non-existent owner
     org.openmetadata.schema.type.EntityReference nonExistentOwner =
         new org.openmetadata.schema.type.EntityReference()
             .withId(java.util.UUID.randomUUID())
             .withType("user")
             .withName("nonexistent@example.com");
-
     created.setOwners(List.of(nonExistentOwner));
-
     String entityId = created.getId().toString();
     assertThrows(
         Exception.class,
@@ -751,17 +748,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityUpdateOwner_200(TestNamespace ns) {
     if (!supportsOwners || !supportsPatch) return;
-
     // Create entity without owner
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Verify no owner initially
     T fetched = getEntityWithFields(created.getId().toString(), "owners");
     assertTrue(
         fetched.getOwners() == null || fetched.getOwners().isEmpty(),
         "Entity should not have owner initially");
-
     // Get ingestion-bot user to use as owner (bots are auto-created)
     org.openmetadata.schema.entity.teams.User botUser = Users.getByName("ingestion-bot");
     org.openmetadata.schema.type.EntityReference ownerRef =
@@ -770,11 +764,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withType("user")
             .withName(botUser.getName())
             .withFullyQualifiedName(botUser.getFullyQualifiedName());
-
     // Set owner via PATCH
     fetched.setOwners(List.of(ownerRef));
     T updated = patchEntity(fetched.getId().toString(), fetched);
-
     // Verify owner was set
     T updatedFetched = getEntityWithFields(updated.getId().toString(), "owners");
     assertNotNull(updatedFetched.getOwners(), "Entity should have owners");
@@ -792,11 +784,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityChangeOwner_200(TestNamespace ns) {
     if (!supportsOwners || !supportsPatch) return;
-
     // Create entity and set initial owner
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Set ingestion-bot as owner
     org.openmetadata.schema.entity.teams.User botUser = Users.getByName("ingestion-bot");
     org.openmetadata.schema.type.EntityReference botRef =
@@ -804,20 +794,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withId(botUser.getId())
             .withType("user")
             .withName(botUser.getName());
-
     created.setOwners(List.of(botRef));
     T withOwner = patchEntity(created.getId().toString(), created);
-
     // Verify owner was set
     T fetchedWithOwner = getEntityWithFields(withOwner.getId().toString(), "owners");
     assertNotNull(fetchedWithOwner.getOwners());
     assertEquals(1, fetchedWithOwner.getOwners().size());
     assertEquals(botUser.getId(), fetchedWithOwner.getOwners().get(0).getId());
-
     // Clear the owner by setting empty list
     fetchedWithOwner.setOwners(new ArrayList<>());
     T withoutOwner = patchEntity(fetchedWithOwner.getId().toString(), fetchedWithOwner);
-
     // Verify owner was removed
     T finalFetch = getEntityWithFields(withoutOwner.getId().toString(), "owners");
     assertTrue(
@@ -828,7 +814,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // VERSION-BASED CONCURRENCY TESTS (Using entity version for optimistic locking)
   // ===================================================================
-
   /**
    * Test: Concurrent updates - version acts as optimistic lock
    * Equivalent to: patch_concurrent_updates_with_etag in EntityResourceTest
@@ -839,30 +824,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_concurrentUpdates_optimisticLock(TestNamespace ns) {
     if (!supportsPatch) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     Double originalVersion = created.getVersion();
-
     // First update - change description to unique value
     String firstDesc = "Concurrent update 1 - " + System.currentTimeMillis();
     created.setDescription(firstDesc);
     T afterFirst = patchEntity(created.getId().toString(), created);
-
     // Version should have changed
     assertTrue(
         afterFirst.getVersion() > originalVersion,
         "Version should increment after update, was: " + afterFirst.getVersion());
-
     // Get fresh copy for second update
     T fresh = getEntity(afterFirst.getId().toString());
-
     // Second update with different description
     String secondDesc = "Concurrent update 2 - " + System.currentTimeMillis();
     fresh.setDescription(secondDesc);
     T afterSecond = patchEntity(fresh.getId().toString(), fresh);
-
     // Version should increment or stay same (depending on consolidation window)
     assertTrue(
         afterSecond.getVersion() >= afterFirst.getVersion(),
@@ -881,26 +860,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_versionTracking_200(TestNamespace ns) {
     if (!supportsPatch) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     assertEquals(0.1, created.getVersion(), 0.001, "Initial version should be 0.1");
-
     // Update 1: Change description
     created.setDescription("Version tracking update 1 - " + System.currentTimeMillis());
     T updated1 = patchEntity(created.getId().toString(), created);
     assertEquals(0.2, updated1.getVersion(), 0.001, "Version should be 0.2 after first update");
-
     // Update 2: Change description to a DIFFERENT value
     updated1.setDescription("Version tracking update 2 - " + System.currentTimeMillis());
     T updated2 = patchEntity(updated1.getId().toString(), updated1);
-
     // Version should increment (will be 0.3 if it's a new change, or same if consolidated)
     assertTrue(
         updated2.getVersion() >= 0.2,
         "Version should be at least 0.2, got: " + updated2.getVersion());
-
     // Fetch entity and verify version persisted
     T fetched = getEntity(updated2.getId().toString());
     assertEquals(
@@ -913,28 +887,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PHASE 2: Advanced GET Operations
   // ===================================================================
-
   @Test
   void get_entityWithDifferentFields_200_OK(TestNamespace ns) {
     if (!supportsOwners && !supportsTags) {
-      return; // Skip if entity doesn't support fields testing
+      // Skip if entity doesn't support fields testing
+      return;
     }
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // GET with no fields - should return basic fields only
     T entityWithoutFields = getEntity(entity.getId().toString());
     assertNotNull(entityWithoutFields);
     assertNotNull(entityWithoutFields.getId());
-
     // GET with specific fields - owners, tags (if supported)
     String fields = buildFieldsParam();
     if (fields != null && !fields.isEmpty()) {
       T entityWithFields = getEntityWithFields(entity.getId().toString(), fields);
       assertNotNull(entityWithFields);
       assertNotNull(entityWithFields.getId());
-
       // Validate by name as well
       T entityByName = getEntityByNameWithFields(entity.getFullyQualifiedName(), fields);
       assertNotNull(entityByName);
@@ -946,20 +916,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void get_entityIncludeDeleted_200(TestNamespace ns) {
     Assumptions.assumeTrue(supportsSoftDelete, "Entity does not support soft delete");
     Assumptions.assumeTrue(supportsIncludeDeleted, "Entity does not support include=deleted");
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     String entityId = entity.getId().toString();
-
     // Soft delete the entity
     deleteEntity(entityId);
-
     // GET without include=deleted should throw exception
     assertThrows(
         Exception.class,
         () -> getEntity(entityId),
         "Getting deleted entity without include=deleted should fail");
-
     // GET with include=deleted should succeed
     T deletedEntity = getEntityIncludeDeleted(entityId);
     assertNotNull(deletedEntity);
@@ -970,7 +936,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // HELPER METHODS FOR PHASE 2
   // ===================================================================
-
   /**
    * Build fields parameter based on entity capabilities.
    */
@@ -1012,7 +977,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PHASE 3: Pagination & List Operations
   // ===================================================================
-
   /**
    * Pagination test is disabled in BaseEntityIT to avoid conflicts with parallel tests.
    * Comprehensive pagination testing is done in PaginationIT which runs in isolation.
@@ -1025,7 +989,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       K createRequest = createRequest(ns.prefix("list" + i), ns);
       createEntity(createRequest);
     }
-
     Awaitility.await("Wait for entities to be listable")
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
@@ -1036,7 +999,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                   new org.openmetadata.sdk.models.ListParams();
               params.setLimit(10);
               org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
-
               assertNotNull(response, "List response should not be null");
               assertNotNull(response.getData(), "List data should not be null");
               assertTrue(response.getData().size() > 0, "Should have entities in list");
@@ -1045,14 +1007,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityListWithInvalidLimit_4xx(TestNamespace ns) {
-
     // Test with invalid limit (negative)
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(-1);
-
     assertThrows(
         Exception.class, () -> listEntities(params), "Listing with negative limit should fail");
-
     // Test with limit > max allowed (usually 1000000)
     params.setLimit(2000000);
     assertThrows(
@@ -1061,22 +1020,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityListWithInvalidPaginationCursors_4xx(TestNamespace ns) {
-
     // Test with invalid after cursor
     org.openmetadata.sdk.models.ListParams paramsAfter =
         new org.openmetadata.sdk.models.ListParams();
     paramsAfter.setAfter("invalid-cursor-string");
-
     assertThrows(
         Exception.class,
         () -> listEntities(paramsAfter),
         "Listing with invalid after cursor should fail");
-
     // Test with invalid before cursor
     org.openmetadata.sdk.models.ListParams paramsBefore =
         new org.openmetadata.sdk.models.ListParams();
     paramsBefore.setBefore("invalid-cursor-string");
-
     assertThrows(
         Exception.class,
         () -> listEntities(paramsBefore),
@@ -1086,17 +1041,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_entityWithInvalidFields_4xx(TestNamespace ns) {
     if (!supportsFieldsQueryParam) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Test GET by ID with invalid field
     String invalidField = "invalidFieldName123";
     assertThrows(
         Exception.class,
         () -> getEntityWithFields(entity.getId().toString(), invalidField),
         "GET with invalid field should fail");
-
     // Test GET by name with invalid field
     assertThrows(
         Exception.class,
@@ -1107,7 +1059,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // HELPER METHODS FOR PHASE 3
   // ===================================================================
-
   /**
    * List entities using the SDK. Subclasses must implement this.
    */
@@ -1117,17 +1068,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PHASE 3: TAGS OPERATIONS
   // ===================================================================
-
   @Test
   void test_entityWithInvalidTag(TestNamespace ns) {
     if (!supportsTags) {
       return;
     }
-
     // Create an entity first
     K validCreate = createRequest(ns.prefix("valid_entity"), ns);
     T entity = createEntity(validCreate);
-
     // Try to patch with invalid tag - this should fail
     TagLabel invalidTag = new TagLabel().withTagFQN("invalidTag");
     entity.setTags(List.of(invalidTag));
@@ -1149,14 +1097,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     if (!supportsTags || !supportsPatch) {
       return;
     }
-
     T entity = createEntity(createMinimalRequest(ns));
     TagLabel classificationTag = personalDataTagLabel();
     TagLabel glossaryTerm = glossaryTermLabel();
     entity.setTags(List.of(classificationTag, glossaryTerm));
-
     T patched = patchEntity(entity.getId().toString(), entity);
-
     T fetched = getEntityWithFields(patched.getId().toString(), "tags");
     assertNotNull(fetched.getTags(), "tags should not be null after PATCH");
     assertTagsContain(fetched.getTags(), List.of(classificationTag, glossaryTerm));
@@ -1167,11 +1112,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     if (!supportsTags) {
       return;
     }
-
     // Create test-specific classification and tags to avoid deadlocks with parallel tests
     OpenMetadataClient client = SdkClients.adminClient();
     String classificationName = ns.prefix("TagPutClassification");
-
     org.openmetadata.schema.api.classification.CreateClassification createClassification =
         new org.openmetadata.schema.api.classification.CreateClassification()
             .withName(classificationName)
@@ -1183,12 +1126,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             "/v1/classifications",
             createClassification,
             org.openmetadata.schema.entity.classification.Classification.class);
-
     // Create test-specific tags
     String tag1Name = "PutTag1";
     String tag2Name = "PutTag2";
     String tag3Name = "PutTag3";
-
     for (String tagName : List.of(tag1Name, tag2Name, tag3Name)) {
       org.openmetadata.schema.api.classification.CreateTag createTag =
           new org.openmetadata.schema.api.classification.CreateTag()
@@ -1203,28 +1144,22 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               createTag,
               org.openmetadata.schema.entity.classification.Tag.class);
     }
-
     TagLabel tag1 = new TagLabel().withTagFQN(classificationName + "." + tag1Name);
     TagLabel tag2 = new TagLabel().withTagFQN(classificationName + "." + tag2Name);
-
     // Create entity first without tags, then patch to add tags
     K create = createRequest(ns.prefix("tag_put_test"), ns);
     T entity = createEntity(create);
-
     // Add tags via PATCH
     entity.setTags(List.of(tag1, tag2));
     T tagged = patchEntity(entity.getId().toString(), entity);
-
     // Verify initial tags
     T fetched = getEntityWithFields(tagged.getId().toString(), "tags");
     assertEquals(2, fetched.getTags().size());
     assertTagsContain(fetched.getTags(), List.of(tag1, tag2));
-
     // PATCH with one new tag - SDK PATCH merges tags, not replaces
     TagLabel tag3 = new TagLabel().withTagFQN(classificationName + "." + tag3Name);
     fetched.setTags(List.of(tag1, tag2, tag3));
     T updated = patchEntity(fetched.getId().toString(), fetched);
-
     // Verify all three tags are present (PATCH merges tags)
     T updatedFetched = getEntityWithFields(updated.getId().toString(), "tags");
     assertNotNull(updatedFetched.getTags());
@@ -1237,11 +1172,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     if (!supportsTags) {
       return;
     }
-
     // Create test-specific classification and tags to avoid deadlocks with parallel tests
     OpenMetadataClient client = SdkClients.adminClient();
     String classificationName = ns.prefix("TagPatchClassification");
-
     org.openmetadata.schema.api.classification.CreateClassification createClassification =
         new org.openmetadata.schema.api.classification.CreateClassification()
             .withName(classificationName)
@@ -1253,13 +1186,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             "/v1/classifications",
             createClassification,
             org.openmetadata.schema.entity.classification.Classification.class);
-
     // Create test-specific tags
     String tag1Name = "Tag1";
     String tag2Name = "Tag2";
     String tag3Name = "Tag3";
     String tag4Name = "Tag4";
-
     for (String tagName : List.of(tag1Name, tag2Name, tag3Name, tag4Name)) {
       org.openmetadata.schema.api.classification.CreateTag createTag =
           new org.openmetadata.schema.api.classification.CreateTag()
@@ -1274,29 +1205,22 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               createTag,
               org.openmetadata.schema.entity.classification.Tag.class);
     }
-
     TagLabel tag1 = new TagLabel().withTagFQN(classificationName + "." + tag1Name);
     TagLabel tag2 = new TagLabel().withTagFQN(classificationName + "." + tag2Name);
-
     // Create entity first without tags
     K create = createRequest(ns.prefix("tag_patch_test"), ns);
     T entity = createEntity(create);
-
     // Add initial tags via PATCH
     entity.setTags(List.of(tag1, tag2));
     T tagged = patchEntity(entity.getId().toString(), entity);
-
     T fetched = getEntityWithFields(tagged.getId().toString(), "tags");
     assertEquals(2, fetched.getTags().size());
     assertTagsContain(fetched.getTags(), List.of(tag1, tag2));
-
     // PATCH with different tags - SDK PATCH merges, so we need all 4 tags
     TagLabel tag3 = new TagLabel().withTagFQN(classificationName + "." + tag3Name);
     TagLabel tag4 = new TagLabel().withTagFQN(classificationName + "." + tag4Name);
-
     fetched.setTags(List.of(tag1, tag2, tag3, tag4));
     T patched = patchEntity(fetched.getId().toString(), fetched);
-
     // Verify all four tags are present (PATCH merges tags)
     T patchedFetched = getEntityWithFields(patched.getId().toString(), "tags");
     assertEquals(4, patchedFetched.getTags().size());
@@ -1308,11 +1232,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     if (!supportsTags) {
       return;
     }
-
     // Create test-specific classification and tags to avoid deadlocks with parallel tests
     OpenMetadataClient client = SdkClients.adminClient();
     String classificationName = ns.prefix("TagLargeClassification");
-
     org.openmetadata.schema.api.classification.CreateClassification createClassification =
         new org.openmetadata.schema.api.classification.CreateClassification()
             .withName(classificationName)
@@ -1324,13 +1246,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             "/v1/classifications",
             createClassification,
             org.openmetadata.schema.entity.classification.Classification.class);
-
     // Create test-specific tags
     String tag1Name = "LargeTag1";
     String tag2Name = "LargeTag2";
     String tag3Name = "LargeTag3";
     String tag4Name = "LargeTag4";
-
     for (String tagName : List.of(tag1Name, tag2Name, tag3Name, tag4Name)) {
       org.openmetadata.schema.api.classification.CreateTag createTag =
           new org.openmetadata.schema.api.classification.CreateTag()
@@ -1345,11 +1265,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               createTag,
               org.openmetadata.schema.entity.classification.Tag.class);
     }
-
     // Create entity first without tags
     K create = createRequest(ns.prefix("tag_large_test"), ns);
     T entity = createEntity(create);
-
     // Add initial tags via PATCH
     List<TagLabel> initialTags = new ArrayList<>();
     initialTags.add(
@@ -1362,14 +1280,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withTagFQN(classificationName + "." + tag2Name)
             .withLabelType(TagLabel.LabelType.MANUAL)
             .withState(TagLabel.State.CONFIRMED));
-
     entity.setTags(initialTags);
     T tagged = patchEntity(entity.getId().toString(), entity);
-
     // Verify we have 2 unique tags
     T fetched = getEntityWithFields(tagged.getId().toString(), "tags");
     assertEquals(2, fetched.getTags().size());
-
     // Add more unique tags via PATCH
     List<TagLabel> additionalTags = new ArrayList<>();
     additionalTags.add(
@@ -1382,13 +1297,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withTagFQN(classificationName + "." + tag4Name)
             .withLabelType(TagLabel.LabelType.MANUAL)
             .withState(TagLabel.State.CONFIRMED));
-
     List<TagLabel> allTags = new ArrayList<>(initialTags);
     allTags.addAll(additionalTags);
-
     fetched.setTags(allTags);
     T updated = patchEntity(fetched.getId().toString(), fetched);
-
     T updatedFetched = getEntityWithFields(updated.getId().toString(), "tags");
     assertEquals(4, updatedFetched.getTags().size());
     assertTagsContain(updatedFetched.getTags(), initialTags);
@@ -1414,23 +1326,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // VERSION HISTORY TESTS
   // ===================================================================
-
   @Test
   void get_entityVersionHistory_200(TestNamespace ns) {
     if (!supportsVersionHistory || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     assertEquals(0.1, created.getVersion(), 0.001);
-
     created.setDescription("Version 1 update - " + System.currentTimeMillis());
     T v2 = patchEntity(created.getId().toString(), created);
     assertEquals(0.2, v2.getVersion(), 0.001);
-
     v2.setDescription("Version 2 update - " + System.currentTimeMillis());
     T v3 = patchEntity(v2.getId().toString(), v2);
     assertTrue(v3.getVersion() >= 0.2, "Version should be at least 0.2");
-
     org.openmetadata.schema.type.EntityHistory history = getVersionHistory(created.getId());
     assertNotNull(history, "Version history should not be null");
     assertNotNull(history.getVersions(), "Versions list should not be null");
@@ -1440,14 +1347,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_specificVersion_200(TestNamespace ns) {
     if (!supportsVersionHistory || !supportsGetByVersion || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     String originalDesc = created.getDescription();
-
     created.setDescription("Updated description for version test");
     T updated = patchEntity(created.getId().toString(), created);
-
     T version01 = getVersion(created.getId(), 0.1);
     assertNotNull(version01, "Version 0.1 should be retrievable");
     assertEquals(0.1, version01.getVersion(), 0.001);
@@ -1468,16 +1372,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // ADMIN DELETE TESTS
   // ===================================================================
-
   @Test
   void delete_entityAsAdmin_hardDelete_200(TestNamespace ns) {
-
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     String entityId = created.getId().toString();
-
     hardDeleteEntity(entityId);
-
     // Poll the GET — on the Redis-cache profile the by-id / by-name / reference
     // hash deletes published by cleanup() can land milliseconds after the DELETE
     // response returns. Polling matches the same pattern FolderResourceIT uses
@@ -1491,7 +1391,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                     Exception.class,
                     () -> getEntity(entityId),
                     "Hard deleted entity should not be retrievable"));
-
     if (supportsSoftDelete) {
       Awaitility.await("Hard deleted entity should not be retrievable with include=deleted")
           .atMost(Duration.ofSeconds(15))
@@ -1508,17 +1407,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DESCRIPTION VALIDATION TESTS
   // ===================================================================
-
   @Test
   void put_entityEmptyDescriptionUpdate_200(TestNamespace ns) {
     if (!supportsEmptyDescription || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     created.setDescription("");
     T updated = patchEntity(created.getId().toString(), created);
-
     assertEquals("", updated.getDescription(), "Description should be empty string");
   }
 
@@ -1529,9 +1424,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void post_entityWithMissingDescription_400(TestNamespace ns) {
     if (supportsEmptyDescription) {
-      return; // Skip if entity allows empty/null description
+      // Skip if entity allows empty/null description
+      return;
     }
-
     // Try to create entity with null description - should fail
     K createRequest = createRequest(ns.prefix("noDesc"), ns);
     // Note: Implementation depends on how createRequest handles description
@@ -1549,16 +1444,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_entityNullDescriptionUpdate_200(TestNamespace ns) {
     if (!supportsEmptyDescription || !supportsPatch) return;
-
     // Create entity with null description
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Update to a new description
     String newDesc = "Updated description from null";
     entity.setDescription(newDesc);
     T updated = patchEntity(entity.getId().toString(), entity);
-
     assertEquals(newDesc, updated.getDescription(), "Description should be updated");
   }
 
@@ -1569,28 +1461,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_entityNonEmptyDescriptionUpdate_200(TestNamespace ns) {
     if (!supportsPatch) return;
-
     // Create entity with initial description
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Set initial description if needed
     String initialDesc = "Initial description";
     entity.setDescription(initialDesc);
     T withDesc = patchEntity(entity.getId().toString(), entity);
-
     // Update to a different description
     String updatedDesc = "Updated description";
     withDesc.setDescription(updatedDesc);
     T updated = patchEntity(withDesc.getId().toString(), withDesc);
-
     assertEquals(updatedDesc, updated.getDescription(), "Description should be updated");
   }
 
   // ===================================================================
   // OWNER VALIDATION TESTS (Additional)
   // ===================================================================
-
   /**
    * Test: Creating entity with invalid owner type (no type specified)
    * Equivalent to: post_entityWithInvalidOwnerType_4xx in EntityResourceTest
@@ -1598,19 +1485,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void post_entityWithInvalidOwnerType_4xx(TestNamespace ns) {
     if (!supportsOwners) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Try to set owner with no type specified - should fail
     org.openmetadata.schema.type.EntityReference invalidOwner =
         new org.openmetadata.schema.type.EntityReference().withId(testUser1().getId());
     // Type is not set
-
     entity.setOwners(List.of(invalidOwner));
     String entityId = entity.getId().toString();
-
     assertThrows(
         Exception.class,
         () -> patchEntity(entityId, entity),
@@ -1624,20 +1507,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void post_entityWithNonExistentOwner_4xx(TestNamespace ns) {
     if (!supportsOwners) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Try to set non-existent owner
     org.openmetadata.schema.type.EntityReference nonExistentOwner =
         new org.openmetadata.schema.type.EntityReference()
             .withId(UUID.randomUUID())
             .withType("user");
-
     entity.setOwners(List.of(nonExistentOwner));
     String entityId = entity.getId().toString();
-
     assertThrows(
         Exception.class,
         () -> patchEntity(entityId, entity),
@@ -1651,33 +1530,27 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityUpdateOwnerFromNull_200(TestNamespace ns) {
     if (!supportsOwners || !supportsPatch) return;
-
     // Create entity without owner
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Verify no owner initially
     T fetched = getEntityWithFields(entity.getId().toString(), "owners");
     assertTrue(
         fetched.getOwners() == null || fetched.getOwners().isEmpty(),
         "Entity should not have owner initially");
-
     // Set multiple owners
     org.openmetadata.schema.type.EntityReference owner1 =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser1().getId())
             .withType("user")
             .withName(testUser1().getName());
-
     org.openmetadata.schema.type.EntityReference owner2 =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser2().getId())
             .withType("user")
             .withName(testUser2().getName());
-
     fetched.setOwners(List.of(owner1, owner2));
     T updated = patchEntity(fetched.getId().toString(), fetched);
-
     // Verify owners were set
     T verify = getEntityWithFields(updated.getId().toString(), "owners");
     assertNotNull(verify.getOwners(), "Entity should have owners");
@@ -1687,29 +1560,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // FOLLOWER TESTS
   // ===================================================================
-
   @Test
   void put_addDeleteFollower_200(TestNamespace ns) {
     if (!supportsFollowers || !hasFollowerMethods()) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     addFollower(entity.getId(), testUser1().getId());
-
     T fetched = getEntityWithFields(entity.getId().toString(), "followers");
     assertNotNull(fetched.getFollowers(), "Entity should have followers");
     assertTrue(
         fetched.getFollowers().stream().anyMatch(f -> f.getId().equals(testUser1().getId())),
         "testUser1 should be a follower");
-
     addFollower(entity.getId(), testUser2().getId());
-
     T fetched2 = getEntityWithFields(entity.getId().toString(), "followers");
     assertEquals(2, fetched2.getFollowers().size(), "Entity should have 2 followers");
-
     deleteFollower(entity.getId(), testUser1().getId());
-
     T fetched3 = getEntityWithFields(entity.getId().toString(), "followers");
     assertEquals(1, fetched3.getFollowers().size(), "Entity should have 1 follower");
     assertFalse(
@@ -1720,18 +1585,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_addFollowerDeleteEntity_200(TestNamespace ns) {
     if (!supportsFollowers || !supportsSoftDelete || !hasFollowerMethods()) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     addFollower(entity.getId(), testUser1().getId());
-
     T fetched = getEntityWithFields(entity.getId().toString(), "followers");
     assertNotNull(fetched.getFollowers());
     assertEquals(1, fetched.getFollowers().size());
-
     deleteEntity(entity.getId().toString());
-
     T deletedEntity = getEntityIncludeDeleted(entity.getId().toString());
     assertNotNull(deletedEntity);
     assertTrue(deletedEntity.getDeleted());
@@ -1740,13 +1600,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_addDeleteInvalidFollower_4xx(TestNamespace ns) {
     if (!supportsFollowers || !hasFollowerMethods()) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     UUID nonExistentUserId = UUID.randomUUID();
     UUID entityId = entity.getId();
-
     assertThrows(
         Exception.class,
         () -> addFollower(entityId, nonExistentUserId),
@@ -1765,16 +1622,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void list_searchBackedSortedWithFollowers_200(TestNamespace ns) {
     if (!supportsFollowers || !hasFollowerMethods() || !supportsSearchBackedSortedList) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     addFollower(entity.getId(), testUser1().getId());
-
     awaitEntityIndexed(entity.getId());
-
     String path = getResourcePath() + "?sortBy=updatedAt&sortOrder=desc&limit=1000";
     OpenMetadataClient client = SdkClients.adminClient();
-
     Awaitility.await("Sorted list call surfaces the followed entity")
         .pollInterval(Duration.ofMillis(250))
         .atMost(Duration.ofSeconds(30))
@@ -1817,12 +1670,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // FOLLOWER HELPER METHODS
   // ===================================================================
-
   /**
    * Check if follower methods are implemented. Subclasses should override and return true.
    */
   protected boolean hasFollowerMethods() {
-    return false; // Default to false, subclasses enable when they implement
+    // Default to false, subclasses enable when they implement
+    return false;
     // addFollower/deleteFollower
   }
 
@@ -1844,7 +1697,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DELETE TESTS (Additional)
   // ===================================================================
-
   /**
    * Test: Delete entity by name
    * Equivalent to: post_delete_as_name_entity_as_admin_200 in EntityResourceTest
@@ -1852,14 +1704,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_entityByName_200(TestNamespace ns) {
     if (!supportsDeleteByName()) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Delete by name
     deleteEntityByName(entity.getFullyQualifiedName());
-
     // Verify entity is deleted
     String entityId = entity.getId().toString();
     assertThrows(
@@ -1870,7 +1719,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * Check if delete by name is supported. Subclasses can override.
    */
   protected boolean supportsDeleteByName() {
-    return false; // Default to false, subclasses enable
+    // Default to false, subclasses enable
+    return false;
   }
 
   /**
@@ -1887,10 +1737,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void delete_nonExistentEntity_404(TestNamespace ns) {
-
     // Try to delete non-existent entity
     String nonExistentId = UUID.randomUUID().toString();
-
     assertThrows(
         Exception.class,
         () -> deleteEntity(nonExistentId),
@@ -1900,7 +1748,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PATCH ATTRIBUTE TESTS (Additional)
   // ===================================================================
-
   /**
    * Test: Cannot undelete via PATCH (deleted attribute is disallowed)
    * Equivalent to: patch_deleted_attribute_disallowed_400 in EntityResourceTest
@@ -1908,16 +1755,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_deleted_attribute_disallowed_400(TestNamespace ns) {
     if (!supportsSoftDelete || !supportsPatch) return;
-
     // Create and soft delete entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     deleteEntity(entity.getId().toString());
-
     // Try to undelete via PATCH by setting deleted=false
     T deletedEntity = getEntityIncludeDeleted(entity.getId().toString());
     deletedEntity.setDeleted(false);
-
     String entityId = deletedEntity.getId().toString();
     // This should either fail or the deleted flag should remain true
     // depending on implementation
@@ -1933,7 +1777,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PLACEHOLDER FOR REMAINING COMMON TESTS (Phase 4-5)
   // ===================================================================
-
   // Phase 4: ETag/Concurrency Tests
   // TODO: patch_etag_in_get_response
   // TODO: patch_with_valid_etag
@@ -1941,33 +1784,26 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // TODO: patch_concurrent_updates_with_etag
   // TODO: patch_concurrentUpdates_dataLossTest
   // TODO: patch_entityUpdatesOutsideASession
-
   // Phase 5: DataProducts/Domain Tests
   // TODO: patch_dataProducts_multipleOperations_200
   // Note: patchWrongDataProducts is covered by patch_invalidDataProducts_4xx
   // Note: patchWrongDomainId is covered by patch_entityWithInvalidDomain_4xx
-
   // ===================================================================
   // DOMAIN TESTS
   // ===================================================================
-
   @Test
   void patch_entityDomain_200(TestNamespace ns) {
     if (!supportsDomains || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     org.openmetadata.schema.type.EntityReference domainRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testDomain().getId())
             .withType("domain")
             .withName(testDomain().getName())
             .withFullyQualifiedName(testDomain().getFullyQualifiedName());
-
     entity.setDomains(List.of(domainRef));
     T updated = patchEntity(entity.getId().toString(), entity);
-
     T fetched = getEntityWithFields(updated.getId().toString(), "domains");
     assertNotNull(fetched.getDomains(), "Entity should have domains");
     assertEquals(1, fetched.getDomains().size(), "Entity should have 1 domain");
@@ -1976,18 +1812,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityWithInvalidDomain_4xx(TestNamespace ns) {
     if (!supportsDomains || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     org.openmetadata.schema.type.EntityReference invalidDomainRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(UUID.randomUUID())
             .withType("domain");
-
     entity.setDomains(List.of(invalidDomainRef));
     String entityId = entity.getId().toString();
-
     assertThrows(
         Exception.class,
         () -> patchEntity(entityId, entity),
@@ -1997,14 +1829,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DATA CONTRACT TESTS
   // ===================================================================
-
   @Test
   void get_entityDataContract_200(TestNamespace ns) {
     if (!supportsDataContract) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     org.openmetadata.schema.api.data.CreateDataContract contractRequest =
         new org.openmetadata.schema.api.data.CreateDataContract()
             .withName(ns.prefix("contract"))
@@ -2012,7 +1841,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withDescription("Data contract for test entity");
     org.openmetadata.schema.entity.data.DataContract contract =
         SdkClients.adminClient().dataContracts().create(contractRequest);
-
     T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
     assertNotNull(fetched.getDataContract(), "Entity should have a dataContract");
     assertEquals(
@@ -2024,10 +1852,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_entityWithoutDataContract_200(TestNamespace ns) {
     if (!supportsDataContract) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     T fetched = getEntityWithFields(entity.getId().toString(), "dataContract");
     assertNull(
         fetched.getDataContract(), "Entity without a contract should have null dataContract");
@@ -2036,15 +1862,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // ADMIN DELETE TESTS
   // ===================================================================
-
   @Test
   void delete_entityAsAdmin_200(TestNamespace ns) {
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     deleteEntity(entity.getId().toString());
-
     String entityId = entity.getId().toString();
     assertThrows(Exception.class, () -> getEntity(entityId), "Deleted entity should not be found");
   }
@@ -2052,21 +1874,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_entityWithOwner_200(TestNamespace ns) {
     if (!supportsOwners || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     org.openmetadata.schema.type.EntityReference ownerRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser1().getId())
             .withType("user")
             .withName(testUser1().getName());
-
     entity.setOwners(List.of(ownerRef));
     T updated = patchEntity(entity.getId().toString(), entity);
-
     deleteEntity(updated.getId().toString());
-
     String entityId = updated.getId().toString();
     assertThrows(Exception.class, () -> getEntity(entityId), "Deleted entity should not be found");
   }
@@ -2074,81 +1891,63 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DISPLAYNAME TESTS
   // ===================================================================
-
   @Test
   void patch_entityDisplayName_200(TestNamespace ns) {
     if (!supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     String newDisplayName = "Updated Display Name - " + System.currentTimeMillis();
     entity.setDisplayName(newDisplayName);
     T updated = patchEntity(entity.getId().toString(), entity);
-
     assertEquals(newDisplayName, updated.getDisplayName(), "DisplayName should be updated");
   }
 
   // ===================================================================
   // ATTRIBUTES PATCH TEST
   // ===================================================================
-
   @Test
   void patch_entityAttributes_200(TestNamespace ns) {
     if (!supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     Double initialVersion = entity.getVersion();
-
     String newDescription = "Updated description - " + System.currentTimeMillis();
     entity.setDescription(newDescription);
     T updated = patchEntity(entity.getId().toString(), entity);
-
     assertTrue(updated.getVersion() > initialVersion, "Version should increment after update");
     assertEquals(newDescription, updated.getDescription(), "Description should be updated");
-
     String newDisplayName = "Updated DisplayName - " + System.currentTimeMillis();
     updated.setDisplayName(newDisplayName);
     T updated2 = patchEntity(updated.getId().toString(), updated);
-
     assertEquals(newDisplayName, updated2.getDisplayName(), "DisplayName should be updated");
   }
 
   // ===================================================================
   // VALID OWNER TESTS
   // ===================================================================
-
   @Test
   void patch_validEntityOwner_200(TestNamespace ns) {
     if (!supportsOwners || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     org.openmetadata.schema.type.EntityReference userOwner =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser1().getId())
             .withType("user")
             .withName(testUser1().getName());
-
     entity.setOwners(List.of(userOwner));
     T withUserOwner = patchEntity(entity.getId().toString(), entity);
-
     T fetched = getEntityWithFields(withUserOwner.getId().toString(), "owners");
     assertNotNull(fetched.getOwners(), "Entity should have owners");
     assertEquals(1, fetched.getOwners().size(), "Entity should have 1 owner");
     assertEquals("user", fetched.getOwners().get(0).getType(), "Owner should be a user");
-
     org.openmetadata.schema.type.EntityReference teamOwner =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testGroupTeam().getId())
             .withType("team")
             .withName(testGroupTeam().getName());
-
     fetched.setOwners(List.of(teamOwner));
     T withTeamOwner = patchEntity(fetched.getId().toString(), fetched);
-
     T fetched2 = getEntityWithFields(withTeamOwner.getId().toString(), "owners");
     assertNotNull(fetched2.getOwners(), "Entity should have owners");
     assertEquals(1, fetched2.getOwners().size(), "Entity should have 1 owner");
@@ -2158,23 +1957,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DELETED VERSION TESTS
   // ===================================================================
-
   @Test
   void get_deletedEntityVersion_200(TestNamespace ns) {
     if (!supportsSoftDelete || !supportsPatch || !supportsGetByVersion) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     Double createdVersion = entity.getVersion();
-
     entity.setDescription("Updated before delete");
     T updated = patchEntity(entity.getId().toString(), entity);
-
     deleteEntity(updated.getId().toString());
-
     T deletedEntity = getEntityIncludeDeleted(updated.getId().toString());
     assertTrue(deletedEntity.getDeleted(), "Entity should be marked as deleted");
-
     T version01 = getVersion(entity.getId(), createdVersion);
     assertNotNull(version01, "Historical version should still be accessible");
     assertEquals(createdVersion, version01.getVersion(), 0.001);
@@ -2183,30 +1976,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SESSION CONSOLIDATION TESTS
   // ===================================================================
-
   @Test
   void patch_multipleUpdatesInSession_consolidation(TestNamespace ns) {
     if (!supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     entity.setDescription("First update");
     T update1 = patchEntity(entity.getId().toString(), entity);
-
     update1.setDescription("Second update");
     T update2 = patchEntity(update1.getId().toString(), update1);
-
     update2.setDescription("Third update");
     T update3 = patchEntity(update2.getId().toString(), update2);
-
     assertTrue(update3.getVersion() >= 0.1, "Version should be at least 0.1");
   }
 
   // ===================================================================
   // SYSTEM ENTITY TESTS
   // ===================================================================
-
   protected boolean isSystemEntity(T entity) {
     return false;
   }
@@ -2214,7 +2000,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SEARCH TESTS (Elasticsearch) - TODO: Add when search index access is stable
   // ===================================================================
-
   protected String getSearchIndexName() {
     // Convert camelCase to snake_case for search index name
     String entityType = getEntityType();
@@ -2254,7 +2039,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PUT OWNER UPDATE TESTS
   // ===================================================================
-
   protected boolean hasPutMethod() {
     return false;
   }
@@ -2262,19 +2046,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_entityUpdateOwner_200(TestNamespace ns) {
     if (!supportsOwners || !hasPutMethod()) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     org.openmetadata.schema.type.EntityReference ownerRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser1().getId())
             .withType("user")
             .withName(testUser1().getName());
-
     entity.setOwners(List.of(ownerRef));
     T updated = putEntity(entity);
-
     assertNotNull(updated.getOwners(), "Entity should have owners");
     assertEquals(1, updated.getOwners().size(), "Entity should have 1 owner");
   }
@@ -2286,14 +2066,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // RELATIONSHIP FIELD CONSOLIDATION TESTS
   // ===================================================================
-
   @Test
   void patch_relationshipFields_consolidation_200(TestNamespace ns) {
     if (!supportsPatch || !supportsOwners) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     if (supportsDomains) {
       org.openmetadata.schema.type.EntityReference domainRef =
           new org.openmetadata.schema.type.EntityReference()
@@ -2301,24 +2078,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               .withType("domain")
               .withName(testDomain().getName())
               .withFullyQualifiedName(testDomain().getFullyQualifiedName());
-
       entity.setDomains(List.of(domainRef));
       T updated = patchEntity(entity.getId().toString(), entity);
-
       T fetched = getEntityWithFields(updated.getId().toString(), "domains");
       assertNotNull(fetched.getDomains(), "Entity should have domains after first patch");
     }
-
     org.openmetadata.schema.type.EntityReference ownerRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser1().getId())
             .withType("user")
             .withName(testUser1().getName());
-
     T current = getEntity(entity.getId().toString());
     current.setOwners(List.of(ownerRef));
     T updated2 = patchEntity(current.getId().toString(), current);
-
     T fetched2 = getEntityWithFields(updated2.getId().toString(), "owners");
     assertNotNull(fetched2.getOwners(), "Entity should have owners after second patch");
   }
@@ -2326,7 +2098,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DATAPRODUCT TESTS
   // ===================================================================
-
   @Test
   void patch_dataProducts_200(TestNamespace ns) throws Exception {
     if (!supportsDataProducts
@@ -2336,7 +2107,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         || !supportsSearchIndex) {
       return;
     }
-
     DataProduct dataProduct =
         ns.trackRoot(
             Entity.DATA_PRODUCT,
@@ -2348,7 +2118,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                         .withDescription("Data product for minimal reference PATCH test")
                         .withDomains(List.of(testDomain().getFullyQualifiedName()))));
     T entity = createEntity(createMinimalRequest(ns));
-
     EntityReference domainReference =
         new EntityReference()
             .withId(testDomain().getId())
@@ -2357,14 +2126,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withFullyQualifiedName(testDomain().getFullyQualifiedName());
     entity.setDomains(List.of(domainReference));
     T entityWithDomain = patchEntity(entity.getId().toString(), entity);
-
     EntityReference minimalDataProductReference =
         new EntityReference()
             .withId(dataProduct.getId())
             .withType(dataProduct.getEntityReference().getType());
     entityWithDomain.setDataProducts(List.of(minimalDataProductReference));
     T updated = patchEntity(entityWithDomain.getId().toString(), entityWithDomain);
-
     OpenMetadataClient client = SdkClients.adminClient();
     String entityJson =
         client
@@ -2378,7 +2145,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertEquals(
         dataProduct.getFullyQualifiedName(),
         apiDataProducts.path(0).path("fullyQualifiedName").asText());
-
     Awaitility.await("Wait for minimal data product PATCH to update search-backed assets")
         .atMost(Duration.ofSeconds(60))
         .pollDelay(Duration.ofMillis(500))
@@ -2401,7 +2167,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               assertEquals(
                   dataProduct.getFullyQualifiedName(),
                   indexedDataProducts.path(0).path("fullyQualifiedName").asText());
-
               if (supportsDataProductAssetsSearch) {
                 String assetsJson =
                     client
@@ -2421,16 +2186,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_invalidDataProducts_4xx(TestNamespace ns) {
     if (!supportsDataProducts || !supportsPatch) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     org.openmetadata.schema.type.EntityReference invalidDataProductRef =
         new org.openmetadata.schema.type.EntityReference().withId(UUID.randomUUID());
-
     entity.setDataProducts(List.of(invalidDataProductRef));
     String entityId = entity.getId().toString();
-
     assertThrows(
         Exception.class,
         () -> patchEntity(entityId, entity),
@@ -2440,12 +2201,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // PLACEHOLDER FOR REMAINING TESTS
   // ===================================================================
-
   // ===================================================================
   // AUTHORIZATION TESTS
   // ===================================================================
-
   protected boolean supportsLifeCycle = false;
+
   protected boolean supportsCertification = false;
 
   /**
@@ -2455,26 +2215,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_entityCreate_as_owner_200(TestNamespace ns) {
     if (!supportsOwners || !hasPutMethod()) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Set testUser1 as owner
     org.openmetadata.schema.type.EntityReference ownerRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser1().getId())
             .withType("user")
             .withName(testUser1().getName());
-
     entity.setOwners(List.of(ownerRef));
     T withOwner = patchEntity(entity.getId().toString(), entity);
-
     // Verify owner was set
     T fetched = getEntityWithFields(withOwner.getId().toString(), "owners");
     assertNotNull(fetched.getOwners(), "Entity should have owners");
     assertEquals(1, fetched.getOwners().size(), "Entity should have 1 owner");
-
     // TODO: Owner-based authorization tests need rework for fluent API pattern
     // The actual owner update test is skipped - would need entity-specific client usage
   }
@@ -2483,11 +2238,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // Test: Non-owner cannot update entity they don't own
   // Equivalent to: put_entityUpdate_as_non_owner_4xx in EntityResourceTest
   // Commented out until authorization test pattern is redesigned
-
   // ===================================================================
   // LIFECYCLE TESTS
   // ===================================================================
-
   /**
    * Test: Add and update lifecycle information on entity
    * Equivalent to: postPutPatch_entityLifeCycle in EntityResourceTest
@@ -2495,37 +2248,29 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void postPutPatch_entityLifeCycle(TestNamespace ns) {
     if (!supportsLifeCycle || !supportsPatch) return;
-
     // Create entity without lifecycle
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Add lifecycle using PATCH
     org.openmetadata.schema.type.AccessDetails accessed =
         new org.openmetadata.schema.type.AccessDetails()
             .withTimestamp(System.currentTimeMillis() / 1000)
             .withAccessedBy(testUser2Ref());
-
     org.openmetadata.schema.type.LifeCycle lifeCycle =
         new org.openmetadata.schema.type.LifeCycle().withAccessed(accessed);
-
     entity.setLifeCycle(lifeCycle);
     T updated = patchEntity(entity.getId().toString(), entity);
-
     // Verify lifecycle was set
     T fetched = getEntityWithFields(updated.getId().toString(), "lifeCycle");
     assertNotNull(fetched.getLifeCycle(), "Entity should have lifecycle");
     assertNotNull(fetched.getLifeCycle().getAccessed(), "Lifecycle should have accessed info");
-
     // Update lifecycle with created info
     org.openmetadata.schema.type.AccessDetails created =
         new org.openmetadata.schema.type.AccessDetails()
             .withTimestamp(System.currentTimeMillis() / 1000 - 1000)
             .withAccessedBy(testUser1Ref());
-
     fetched.getLifeCycle().setCreated(created);
     T updated2 = patchEntity(fetched.getId().toString(), fetched);
-
     T fetched2 = getEntityWithFields(updated2.getId().toString(), "lifeCycle");
     assertNotNull(fetched2.getLifeCycle().getCreated(), "Lifecycle should have created info");
   }
@@ -2544,31 +2289,25 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityLifeCycle_noVersionPollution(TestNamespace ns) {
     if (!supportsLifeCycle || !supportsPatch) return;
-
     // Create entity without lifecycle
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     Double initialVersion = entity.getVersion();
-
     // Add initial lifecycle with accessed timestamp
     org.openmetadata.schema.type.AccessDetails accessed =
         new org.openmetadata.schema.type.AccessDetails()
             .withTimestamp(1695059900L)
             .withAccessedBy(testUser2Ref());
-
     org.openmetadata.schema.type.LifeCycle lifeCycle =
         new org.openmetadata.schema.type.LifeCycle().withAccessed(accessed);
-
     entity.setLifeCycle(lifeCycle);
     T updated = patchEntity(entity.getId().toString(), entity);
     Double versionAfterFirstLifeCycleUpdate = updated.getVersion();
-
     // Verify lifecycle was set but version did not change
     assertEquals(
         initialVersion,
         versionAfterFirstLifeCycleUpdate,
         "Lifecycle-only changes should NOT increment version");
-
     // Simulate usage run updating accessed time with a newer timestamp
     // This is what happens when usage ingestion runs repeatedly
     T fetched = getEntityWithFields(updated.getId().toString(), "lifeCycle");
@@ -2576,40 +2315,32 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         new org.openmetadata.schema.type.AccessDetails()
             .withTimestamp(1695060000L)
             .withAccessedBy(testUser2Ref());
-
     org.openmetadata.schema.type.LifeCycle lifeCycleNewer =
         new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedNewer);
-
     fetched.setLifeCycle(lifeCycleNewer);
     T updated2 = patchEntity(fetched.getId().toString(), fetched);
     Double versionAfterSecondLifeCycleUpdate = updated2.getVersion();
-
     // Verify version did NOT increment for lifecycle-only change
     assertEquals(
         versionAfterFirstLifeCycleUpdate,
         versionAfterSecondLifeCycleUpdate,
         "Lifecycle-only changes should NOT increment version");
-
     // Simulate another usage run with even newer timestamp
     T fetched2 = getEntityWithFields(updated2.getId().toString(), "lifeCycle");
     org.openmetadata.schema.type.AccessDetails accessedEvenNewer =
         new org.openmetadata.schema.type.AccessDetails()
             .withTimestamp(1695060100L)
             .withAccessedBy(testUser2Ref());
-
     org.openmetadata.schema.type.LifeCycle lifeCycleEvenNewer =
         new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedEvenNewer);
-
     fetched2.setLifeCycle(lifeCycleEvenNewer);
     T updated3 = patchEntity(fetched2.getId().toString(), fetched2);
     Double versionAfterThirdLifeCycleUpdate = updated3.getVersion();
-
     // Verify version still did NOT increment
     assertEquals(
         versionAfterSecondLifeCycleUpdate,
         versionAfterThirdLifeCycleUpdate,
         "Lifecycle-only changes should NOT increment version");
-
     // Verify the lifecycle data was actually updated even though version didn't change
     T finalEntity = getEntityWithFields(updated3.getId().toString(), "lifeCycle");
     assertNotNull(finalEntity.getLifeCycle(), "Lifecycle should still be present");
@@ -2627,25 +2358,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityLifeCycleWithOtherChanges_versionIncrements(TestNamespace ns) {
     if (!supportsLifeCycle || !supportsPatch) return;
-
     // Create entity without lifecycle
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     Double initialVersion = entity.getVersion();
-
     // Add lifecycle AND change description at the same time
     org.openmetadata.schema.type.AccessDetails accessed =
         new org.openmetadata.schema.type.AccessDetails()
             .withTimestamp(1695059900L)
             .withAccessedBy(testUser2Ref());
-
     org.openmetadata.schema.type.LifeCycle lifeCycle =
         new org.openmetadata.schema.type.LifeCycle().withAccessed(accessed);
-
     entity.setLifeCycle(lifeCycle);
     entity.setDescription("Updated description for version test");
     T updated = patchEntity(entity.getId().toString(), entity);
-
     // Version SHOULD increment because description changed (not because of lifecycle)
     assertTrue(
         updated.getVersion() > initialVersion,
@@ -2654,19 +2380,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             + initialVersion
             + ", After: "
             + updated.getVersion());
-
     // Now update ONLY lifecycle (no description change) - version should NOT increment
     T fetched = getEntityWithFields(updated.getId().toString(), "lifeCycle");
     Double versionAfterDescriptionChange = fetched.getVersion();
-
     org.openmetadata.schema.type.AccessDetails accessedNewer =
         new org.openmetadata.schema.type.AccessDetails()
             .withTimestamp(1695060000L)
             .withAccessedBy(testUser2Ref());
-
     fetched.setLifeCycle(new org.openmetadata.schema.type.LifeCycle().withAccessed(accessedNewer));
     T updated2 = patchEntity(fetched.getId().toString(), fetched);
-
     // Version should NOT increment since only lifecycle changed
     assertEquals(
         versionAfterDescriptionChange,
@@ -2685,7 +2407,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // CERTIFICATION TESTS
   // ===================================================================
-
   /**
    * Test: Add certification to entity
    * Equivalent to: postPutPatch_entityCertification in EntityResourceTest
@@ -2693,17 +2414,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void postPutPatch_entityCertification(TestNamespace ns) {
     if (!supportsCertification || !supportsPatch) return;
-
     // Create entity without certification
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Note: Full certification test requires:
     // 1. Creating a certification tag
     // 2. Configuring certification settings
     // 3. Applying certification to entity
     // This is a simplified test that verifies the certification field is patchable
-
     // Verify entity has no certification initially
     T fetched = getEntity(entity.getId().toString());
     assertNull(fetched.getCertification(), "Entity should not have certification initially");
@@ -2712,7 +2430,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // CUSTOM EXTENSION TESTS
   // ===================================================================
-
   /**
    * Test: Add custom extension attributes to entity
    * Equivalent to: put_addEntityCustomAttributes in EntityResourceTest
@@ -2720,24 +2437,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void put_addEntityCustomAttributes(TestNamespace ns) {
     if (!supportsCustomExtension) return;
-
     // Create entity without extension
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Note: Full custom attributes test requires:
     // 1. Adding custom property to entity type via Type API
     // 2. Creating entity with extension
     // 3. Updating extension via PUT and PATCH
     // This is a placeholder that verifies the entity can be created
-
     assertNotNull(entity.getId(), "Entity should be created");
   }
 
   // ===================================================================
   // SESSION TIMEOUT TESTS
   // ===================================================================
-
   /**
    * Test: Updates outside a session should create new change events
    * Equivalent to: patch_entityUpdatesOutsideASession in EntityResourceTest
@@ -2745,27 +2458,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityUpdatesOutsideASession(TestNamespace ns) {
     if (!supportsPatch) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     Double v1 = entity.getVersion();
     assertEquals(0.1, v1, 0.001, "Initial version should be 0.1");
-
     // First update within session
     String desc1 = "First update - " + System.currentTimeMillis();
     entity.setDescription(desc1);
     T updated1 = patchEntity(entity.getId().toString(), entity);
     Double v2 = updated1.getVersion();
     assertTrue(v2 > v1, "Version should increment after first update");
-
     // Second update - still in session, changes may be consolidated
     String desc2 = "Second update - " + System.currentTimeMillis();
     updated1.setDescription(desc2);
     T updated2 = patchEntity(updated1.getId().toString(), updated1);
     Double v3 = updated2.getVersion();
     assertTrue(v3 >= v2, "Version should be >= previous version");
-
     // Verify final description
     T fetched = getEntity(updated2.getId().toString());
     assertEquals(desc2, fetched.getDescription(), "Description should be updated");
@@ -2774,7 +2483,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // DATA PRODUCT TESTS (Additional)
   // ===================================================================
-
   /**
    * Test: Add data products to entity with multiple operations
    * Equivalent to: patch_dataProducts_multipleOperations_200 in EntityResourceTest
@@ -2782,7 +2490,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_dataProducts_multipleOperations_200(TestNamespace ns) {
     if (!supportsDataProducts || !supportsDomains || !supportsPatch) return;
-
     // Note: This test requires creating DataProducts via DataProductService
     // which needs domain to be set first. This is a placeholder.
   }
@@ -2790,7 +2497,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // ASYNC DELETE TESTS (Placeholder - requires WebSocket)
   // ===================================================================
-
   protected boolean supportsAsyncDelete = false;
 
   /**
@@ -2800,7 +2506,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_async_nonExistentEntity_404(TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-
     // Note: Async delete requires WebSocket connection to receive delete messages
     // This is a placeholder test
   }
@@ -2812,7 +2517,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_async_entity_as_non_admin_401(TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-
     // Note: Async delete requires WebSocket connection
     // This is a placeholder test
   }
@@ -2824,7 +2528,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_async_with_recursive_hardDelete(TestNamespace ns) {
     if (!supportsAsyncDelete) return;
-
     // Note: Async delete requires WebSocket connection
     // This is a placeholder test
   }
@@ -2836,7 +2539,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void delete_async_soft_delete(TestNamespace ns) {
     if (!supportsAsyncDelete || !supportsSoftDelete) return;
-
     // Note: Async delete requires WebSocket connection
     // This is a placeholder test
   }
@@ -2844,7 +2546,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // RECOGNIZER FEEDBACK TESTS (Placeholder - requires specific setup)
   // ===================================================================
-
   protected boolean supportsRecognizerFeedback = false;
 
   /**
@@ -2854,7 +2555,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_recognizerFeedback_autoAppliedTags(TestNamespace ns) {
     if (!supportsRecognizerFeedback || !supportsTags) return;
-
     // Note: Recognizer feedback tests require specific recognizer setup
     // This is a placeholder test
   }
@@ -2866,7 +2566,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_recognizerFeedback_exceptionList(TestNamespace ns) {
     if (!supportsRecognizerFeedback || !supportsTags) return;
-
     // Note: Recognizer feedback tests require specific recognizer setup
     // This is a placeholder test
   }
@@ -2874,29 +2573,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // FIELD FETCHER EFFICIENCY TESTS
   // ===================================================================
-
   /**
    * Test: Verify field fetchers work correctly
    * Equivalent to: test_fieldFetchers in EntityResourceTest
    */
   @Test
   void test_fieldFetchers(TestNamespace ns) {
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Verify entity can be fetched with different field combinations
     T basic = getEntity(entity.getId().toString());
     assertNotNull(basic, "Basic fetch should work");
     assertNotNull(basic.getId(), "ID should be present");
-
     // Fetch with specific fields
     if (supportsOwners) {
       T withOwners = getEntityWithFields(entity.getId().toString(), "owners");
       assertNotNull(withOwners, "Fetch with owners field should work");
     }
-
     if (supportsTags) {
       T withTags = getEntityWithFields(entity.getId().toString(), "tags");
       assertNotNull(withTags, "Fetch with tags field should work");
@@ -2915,14 +2609,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           "Skipping entityStatus test for GlossaryTerm - has different entityStatus implementation");
       return;
     }
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     try {
       // Check if entity supports entityStatus
       org.openmetadata.schema.type.EntityStatus currentStatus = entity.getEntityStatus();
-
       // If entityStatus is null, the entity doesn't support this field - skip the test
       if (currentStatus == null) {
         log.info(
@@ -2930,13 +2621,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             entity.getClass().getSimpleName());
         return;
       }
-
       // Default status should be UNPROCESSED
       assertEquals(
           org.openmetadata.schema.type.EntityStatus.UNPROCESSED,
           currentStatus,
           "Default entity status should be UNPROCESSED");
-
       // Test updating entityStatus via PATCH
       if (supportsPatch) {
         // Update to DRAFT
@@ -2946,7 +2635,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             org.openmetadata.schema.type.EntityStatus.DRAFT,
             updatedEntity.getEntityStatus(),
             "Entity status should be updated to DRAFT");
-
         // Update to IN_REVIEW
         updatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.IN_REVIEW);
         T reviewEntity = patchEntity(updatedEntity.getId().toString(), updatedEntity);
@@ -2954,7 +2642,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             org.openmetadata.schema.type.EntityStatus.IN_REVIEW,
             reviewEntity.getEntityStatus(),
             "Entity status should be updated to IN_REVIEW");
-
         // Update to APPROVED
         reviewEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
         T approvedEntity = patchEntity(reviewEntity.getId().toString(), reviewEntity);
@@ -2962,7 +2649,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             org.openmetadata.schema.type.EntityStatus.APPROVED,
             approvedEntity.getEntityStatus(),
             "Entity status should be updated to APPROVED");
-
         // Update to DEPRECATED
         approvedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
         T deprecatedEntity = patchEntity(approvedEntity.getId().toString(), approvedEntity);
@@ -2970,7 +2656,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             org.openmetadata.schema.type.EntityStatus.DEPRECATED,
             deprecatedEntity.getEntityStatus(),
             "Entity status should be updated to DEPRECATED");
-
         // Update to REJECTED
         deprecatedEntity.setEntityStatus(org.openmetadata.schema.type.EntityStatus.REJECTED);
         T rejectedEntity = patchEntity(deprecatedEntity.getId().toString(), deprecatedEntity);
@@ -2978,20 +2663,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             org.openmetadata.schema.type.EntityStatus.REJECTED,
             rejectedEntity.getEntityStatus(),
             "Entity status should be updated to REJECTED");
-
         // Verify entity can be retrieved with correct status
         T fetchedEntity = getEntity(rejectedEntity.getId().toString());
         assertEquals(
             org.openmetadata.schema.type.EntityStatus.REJECTED,
             fetchedEntity.getEntityStatus(),
             "Fetched entity should maintain the REJECTED status");
-
         // Verify version increments with status changes (if entity supports versioning)
         assertTrue(
             fetchedEntity.getVersion() > entity.getVersion(),
             "Version should increment when entityStatus is updated");
       }
-
     } catch (NoSuchMethodError | UnsupportedOperationException e) {
       log.info(
           "Entity "
@@ -3016,13 +2698,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       T entity = createEntity(createRequest);
       createdIds.add(entity.getId());
     }
-
     // Verify all entities can be fetched individually
     for (UUID id : createdIds) {
       T fetched = getEntity(id.toString());
       assertNotNull(fetched, "Entity should be fetchable");
     }
-
     // Basic list test - just verify list works
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
@@ -3034,7 +2714,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // ETAG/VERSION-BASED CONCURRENCY TESTS
   // ===================================================================
-
   protected boolean supportsEtag = true;
 
   /**
@@ -3046,20 +2725,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_etag_in_get_response(TestNamespace ns) {
     if (!supportsPatch || !supportsEtag) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Get entity and verify version is present
     T fetched = getEntity(entity.getId().toString());
     assertNotNull(fetched.getVersion(), "Version (ETag equivalent) should be present");
     assertEquals(0.1, fetched.getVersion(), 0.001, "Initial version should be 0.1");
-
     // Update entity
     fetched.setDescription("Updated for ETag test");
     T updated = patchEntity(fetched.getId().toString(), fetched);
-
     // Verify version changed
     assertNotNull(updated.getVersion(), "Version should be present after update");
     assertTrue(updated.getVersion() > 0.1, "Version should increment after update");
@@ -3072,20 +2747,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_with_valid_etag(TestNamespace ns) {
     if (!supportsPatch || !supportsEtag) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     Double originalVersion = entity.getVersion();
-
     // Get fresh copy (simulates getting entity with current version/ETag)
     T fetched = getEntity(entity.getId().toString());
     assertEquals(originalVersion, fetched.getVersion(), 0.001, "Versions should match");
-
     // Update with current version
     fetched.setDescription("Updated with valid ETag/version");
     T updated = patchEntity(fetched.getId().toString(), fetched);
-
     // Verify update succeeded
     assertEquals("Updated with valid ETag/version", updated.getDescription());
     assertTrue(updated.getVersion() > originalVersion, "Version should increment");
@@ -3101,28 +2772,22 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_with_stale_etag(TestNamespace ns) {
     if (!supportsPatch || !supportsEtag) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Get entity and save version
     T firstCopy = getEntity(entity.getId().toString());
     Double firstVersion = firstCopy.getVersion();
-
     // First update changes the version
     firstCopy.setDescription("First update");
     T afterFirst = patchEntity(firstCopy.getId().toString(), firstCopy);
     assertTrue(
         afterFirst.getVersion() > firstVersion, "Version should increment after first update");
-
     // Get fresh copy with new version
     T secondCopy = getEntity(entity.getId().toString());
-
     // Update with the current (not stale) version
     secondCopy.setDescription("Second update with current version");
     T afterSecond = patchEntity(secondCopy.getId().toString(), secondCopy);
-
     // Verify update worked
     assertEquals("Second update with current version", afterSecond.getDescription());
     assertTrue(
@@ -3136,33 +2801,26 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_concurrent_updates_with_etag(TestNamespace ns) throws Exception {
     if (!supportsPatch || !supportsEtag) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Get entity
     T fetched = getEntity(entity.getId().toString());
     Double originalVersion = fetched.getVersion();
-
     // Concurrent update 1: description
     String desc1 = "Concurrent update 1 - " + System.currentTimeMillis();
     fetched.setDescription(desc1);
     T updated1 = patchEntity(fetched.getId().toString(), fetched);
     assertTrue(updated1.getVersion() > originalVersion, "Version should increment after update 1");
-
     // Get fresh copy for update 2
     T fresh = getEntity(entity.getId().toString());
-
     // Concurrent update 2: display name
     String displayName2 = "Concurrent Display - " + System.currentTimeMillis();
     fresh.setDisplayName(displayName2);
     T updated2 = patchEntity(fresh.getId().toString(), fresh);
-
     // Both updates should succeed (SDK merges non-conflicting changes)
     assertTrue(
         updated2.getVersion() >= updated1.getVersion(), "Version should be >= after update 2");
-
     // Verify final state
     T finalEntity = getEntity(entity.getId().toString());
     assertNotNull(finalEntity.getDescription(), "Description should be present");
@@ -3176,28 +2834,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_concurrentUpdates_dataLossTest(TestNamespace ns) throws Exception {
     if (!supportsPatch || !supportsEtag) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Set initial description
     T fetched = getEntity(entity.getId().toString());
     fetched.setDescription("Initial description");
     T withDesc = patchEntity(fetched.getId().toString(), fetched);
-
     // Update 1: Modify description
     String newDesc = "Updated description - " + System.currentTimeMillis();
     withDesc.setDescription(newDesc);
     T updated1 = patchEntity(withDesc.getId().toString(), withDesc);
     assertEquals(newDesc, updated1.getDescription(), "Description should be updated");
-
     // Update 2: Modify display name (should not lose description)
     T fresh = getEntity(entity.getId().toString());
     String newDisplayName = "New Display Name - " + System.currentTimeMillis();
     fresh.setDisplayName(newDisplayName);
     T updated2 = patchEntity(fresh.getId().toString(), fresh);
-
     // Verify no data loss
     T finalEntity = getEntity(entity.getId().toString());
     assertEquals(newDisplayName, finalEntity.getDisplayName(), "DisplayName should be updated");
@@ -3207,7 +2860,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SEARCH INDEX TESTS
   // ===================================================================
-
   /**
    * Test: Entity with null description shows INCOMPLETE in search
    * Equivalent to: get_entityWithNullDescriptionFromSearch in EntityResourceTest
@@ -3215,11 +2867,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_entityWithNullDescriptionFromSearch(TestNamespace ns) {
     if (!supportsSearchIndex || !supportsEmptyDescription) return;
-
     // Create entity without description
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Note: Full search test requires Elasticsearch integration
     // This verifies the entity was created with null/empty description
     T fetched = getEntity(entity.getId().toString());
@@ -3233,13 +2883,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_entityWithEmptyDescriptionFromSearch(TestNamespace ns) {
     if (!supportsSearchIndex || !supportsEmptyDescription || !supportsPatch) return;
-
     // Create entity with empty description
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     entity.setDescription("");
     T updated = patchEntity(entity.getId().toString(), entity);
-
     // Verify empty description was set
     T fetched = getEntity(updated.getId().toString());
     assertEquals("", fetched.getDescription(), "Description should be empty");
@@ -3248,39 +2896,33 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SDK CRUD OPERATIONS TESTS
   // ===================================================================
-
   /**
    * Test: SDK CRUD operations (Create, Retrieve, Update, Delete)
    * Equivalent to: test_sdkCRUDOperations in EntityResourceTest
    */
   @Test
   void test_sdkCRUDOperations(TestNamespace ns) {
-
     // CREATE
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     assertNotNull(created, "Created entity should not be null");
     assertNotNull(created.getId(), "Entity ID should not be null");
     assertEquals(0.1, created.getVersion(), 0.001, "Initial version should be 0.1");
-
     // RETRIEVE by ID
     T retrievedById = getEntity(created.getId().toString());
     assertNotNull(retrievedById, "Retrieved entity should not be null");
     assertEquals(created.getId(), retrievedById.getId(), "IDs should match");
     assertEquals(created.getName(), retrievedById.getName(), "Names should match");
-
     // RETRIEVE by Name
     T retrievedByName = getEntityByName(created.getFullyQualifiedName());
     assertNotNull(retrievedByName, "Retrieved by name should not be null");
     assertEquals(created.getId(), retrievedByName.getId(), "IDs should match");
-
     // UPDATE
     String newDescription = "Updated via SDK CRUD test - " + System.currentTimeMillis();
     retrievedById.setDescription(newDescription);
     T updated = patchEntity(retrievedById.getId().toString(), retrievedById);
     assertEquals(newDescription, updated.getDescription(), "Description should be updated");
     assertTrue(updated.getVersion() > 0.1, "Version should increment");
-
     // DELETE
     deleteEntity(created.getId().toString());
     String entityId = created.getId().toString();
@@ -3295,22 +2937,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_sdkDeleteWithOptions(TestNamespace ns) {
     if (!supportsSoftDelete) return;
-
     // Create entity for soft delete test
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Soft delete
     deleteEntity(entity.getId().toString());
-
     // Should be able to retrieve with include=deleted
     T softDeleted = getEntityIncludeDeleted(entity.getId().toString());
     assertNotNull(softDeleted, "Soft deleted entity should be retrievable with include=deleted");
     assertTrue(softDeleted.getDeleted(), "Entity should be marked as deleted");
-
     // Hard delete
     hardDeleteEntity(entity.getId().toString());
-
     // Should not be retrievable even with include=deleted. Polling matches
     // the pattern in delete_entityAsAdmin_hardDelete_200 for the same
     // cache-invalidation propagation reason.
@@ -3333,11 +2970,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_sdkEntityWithTags(TestNamespace ns) {
     if (!supportsTags) return;
-
     // Create test-specific classification and tags to avoid deadlocks with parallel tests
     OpenMetadataClient client = SdkClients.adminClient();
     String classificationName = ns.prefix("SdkTagsClassification");
-
     org.openmetadata.schema.api.classification.CreateClassification createClassification =
         new org.openmetadata.schema.api.classification.CreateClassification()
             .withName(classificationName)
@@ -3349,11 +2984,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             "/v1/classifications",
             createClassification,
             org.openmetadata.schema.entity.classification.Classification.class);
-
     // Create test-specific tags
     String tag1Name = "SdkTag1";
     String tag2Name = "SdkTag2";
-
     for (String tagName : List.of(tag1Name, tag2Name)) {
       org.openmetadata.schema.api.classification.CreateTag createTag =
           new org.openmetadata.schema.api.classification.CreateTag()
@@ -3368,17 +3001,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               createTag,
               org.openmetadata.schema.entity.classification.Tag.class);
     }
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Add tags
     TagLabel tag1 = new TagLabel().withTagFQN(classificationName + "." + tag1Name);
     TagLabel tag2 = new TagLabel().withTagFQN(classificationName + "." + tag2Name);
     entity.setTags(List.of(tag1, tag2));
     T withTags = patchEntity(entity.getId().toString(), entity);
-
     // Verify tags
     T fetched = getEntityWithFields(withTags.getId().toString(), "tags");
     assertNotNull(fetched.getTags(), "Entity should have tags");
@@ -3392,21 +3022,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_sdkEntityWithOwners(TestNamespace ns) {
     if (!supportsOwners || !supportsPatch) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Add owner
     org.openmetadata.schema.type.EntityReference ownerRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(testUser1().getId())
             .withType("user")
             .withName(testUser1().getName());
-
     entity.setOwners(List.of(ownerRef));
     T withOwner = patchEntity(entity.getId().toString(), entity);
-
     // Verify owner
     T fetched = getEntityWithFields(withOwner.getId().toString(), "owners");
     assertNotNull(fetched.getOwners(), "Entity should have owners");
@@ -3421,11 +3047,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_sdkEntityWithDomainAndDataProducts(TestNamespace ns) {
     if (!supportsDomains || !supportsPatch || !supportsPatchDomains) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Add domain
     org.openmetadata.schema.type.EntityReference domainRef =
         new org.openmetadata.schema.type.EntityReference()
@@ -3433,10 +3057,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withType("domain")
             .withName(testDomain().getName())
             .withFullyQualifiedName(testDomain().getFullyQualifiedName());
-
     entity.setDomains(List.of(domainRef));
     T withDomain = patchEntity(entity.getId().toString(), entity);
-
     // Verify domain
     T fetched = getEntityWithFields(withDomain.getId().toString(), "domains");
     assertNotNull(fetched.getDomains(), "Entity should have domains");
@@ -3448,7 +3070,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SDK FLUENT API TESTS
   // ===================================================================
-
   /**
    * Test: SDK list fluent API works correctly.
    * Basic functionality test - comprehensive pagination is in PaginationIT.
@@ -3460,12 +3081,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       K createRequest = createRequest(ns.prefix("list" + i), ns);
       createEntity(createRequest);
     }
-
     // Basic list test - just verify list API works
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
-
     assertNotNull(response, "List response should not be null");
     assertNotNull(response.getData(), "Data should not be null");
     assertTrue(response.getData().size() > 0, "Should have entities");
@@ -3483,11 +3102,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       K createRequest = createRequest(ns.prefix("page" + i), ns);
       createEntity(createRequest);
     }
-
     // Basic pagination test - verify pagination works
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(2);
-
     org.openmetadata.sdk.models.ListResponse<T> page = listEntities(params);
     assertNotNull(page, "Page should not be null");
     assertNotNull(page.getPaging(), "Paging info should not be null");
@@ -3500,7 +3117,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void testBulkFluentAPI(TestNamespace ns) {
-
     // Create multiple entities
     List<T> createdEntities = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
@@ -3508,21 +3124,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       T entity = createEntity(createRequest);
       createdEntities.add(entity);
     }
-
     // Verify all entities exist
     for (T created : createdEntities) {
       T fetched = getEntity(created.getId().toString());
       assertNotNull(fetched, "Bulk created entity should exist");
       assertEquals(created.getName(), fetched.getName(), "Names should match");
     }
-
     // Bulk update descriptions
     for (T entity : createdEntities) {
       T fetched = getEntity(entity.getId().toString());
       fetched.setDescription("Bulk updated - " + entity.getName());
       patchEntity(fetched.getId().toString(), fetched);
     }
-
     // Verify updates. Retry to absorb the cache write-through / pub-sub fan-out under parallel
     // load — the PATCH is synchronous server-side but concurrent test traffic can briefly stall
     // the fresh read of a just-updated row. 60s matches other eventual-consistency windows in
@@ -3546,7 +3159,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // VERSION HISTORY TESTS (Additional)
   // ===================================================================
-
   /**
    * Test: Get deleted entity version from version history
    * Equivalent to: get_deletedVersion in EntityResourceTest
@@ -3554,25 +3166,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_deletedVersion(TestNamespace ns) {
     if (!supportsSoftDelete || !supportsPatch) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     Double previousVersion = entity.getVersion();
-
     // Update to create version history
     entity.setDescription("Updated before delete");
     T updated = patchEntity(entity.getId().toString(), entity);
     assertTrue(updated.getVersion() > previousVersion, "Version should increment");
-
     // Soft delete the entity
     deleteEntity(updated.getId().toString());
-
     // Get entity with include=deleted to verify it exists
     T deleted = getEntityIncludeDeleted(updated.getId().toString());
     assertNotNull(deleted, "Deleted entity should be retrievable");
     assertTrue(deleted.getDeleted(), "Entity should be marked as deleted");
-
     // Version should have incremented after delete
     assertTrue(
         deleted.getVersion() > updated.getVersion(), "Version should increment after delete");
@@ -3581,7 +3188,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SEARCH FLUENT API TESTS
   // ===================================================================
-
   /**
    * Test: Search fluent API
    * Equivalent to: testSearchFluentAPI in EntityResourceTest
@@ -3589,12 +3195,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void testSearchFluentAPI(TestNamespace ns) {
     if (!supportsSearchIndex) return;
-
     // Create entity to ensure there's something to search
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     assertNotNull(entity, "Entity should be created for search test");
-
     try {
       // Test search fluent API
       org.openmetadata.sdk.api.Search.SearchResults results =
@@ -3603,15 +3207,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               .sortBy("name", org.openmetadata.sdk.api.Search.SortOrder.ASC)
               .limit(10)
               .execute();
-
       assertNotNull(results, "Search results should not be null");
-
       // Test suggest API
       org.openmetadata.sdk.api.Search.SuggestionResults suggestions =
           org.openmetadata.sdk.api.Search.suggest("test").in(getSearchIndex()).limit(5).execute();
-
       assertNotNull(suggestions, "Suggestions should not be null");
-
       // Test aggregation API
       org.openmetadata.sdk.api.Search.AggregationResults aggregations =
           org.openmetadata.sdk.api.Search.aggregate()
@@ -3619,9 +3219,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               .in(getSearchIndex())
               .aggregateBy("tags.tagFQN")
               .execute();
-
       assertNotNull(aggregations, "Aggregations should not be null");
-
     } catch (Exception e) {
       // Search may fail if Elasticsearch is not properly configured
       // This is acceptable in some test environments
@@ -3635,7 +3233,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // LINEAGE FLUENT API TESTS
   // ===================================================================
-
   protected boolean supportsLineage = false;
 
   /**
@@ -3645,12 +3242,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void testLineageFluentAPI(TestNamespace ns) {
     if (!supportsLineage) return;
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     assertNotNull(entity, "Entity should be created for lineage test");
-
     try {
       // Test lineage retrieval
       org.openmetadata.sdk.api.Lineage.LineageGraph lineage =
@@ -3659,9 +3254,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
               .downstream(1)
               .includeDeleted(false)
               .fetch();
-
       assertNotNull(lineage, "Lineage graph should not be null");
-
     } catch (Exception e) {
       // Lineage retrieval may fail for newly created entities without edges
       // This is acceptable
@@ -3671,7 +3264,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // RECOGNIZER FEEDBACK TESTS (Additional)
   // ===================================================================
-
   /**
    * Test: Recognizer feedback for multiple entities
    * Equivalent to: test_recognizerFeedback_multipleEntities in EntityResourceTest
@@ -3693,7 +3285,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // CONVERSATION CLEANUP TESTS
   // ===================================================================
-
   protected boolean supportsConversations = false;
 
   /**
@@ -3708,7 +3299,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // SYSTEM ENTITY TESTS
   // ===================================================================
-
   /**
    * Test: System entities cannot be deleted
    * Equivalent to: delete_systemEntity in EntityResourceTest
@@ -3724,7 +3314,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // Comprehensive coverage: CRUD, permissions, idempotency, versioning,
   // partial failure, async, empty, large batch, mixed create+update
   // ===================================================================
-
   /**
    * Test: Bulk create entities
    *
@@ -3733,23 +3322,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_entity_" + i), ns));
     }
-
     BulkOperationResult result = executeBulkCreate(createRequests);
-
     assertNotNull(result);
     assertEquals(5, result.getNumberOfRowsProcessed());
     assertEquals(5, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
-
     assertNotNull(result.getSuccessRequest());
     assertEquals(5, result.getSuccessRequest().size());
-
     for (BulkResponse bulkResponse : result.getSuccessRequest()) {
       String fqn = (String) bulkResponse.getRequest();
       assertNotNull(fqn);
@@ -3767,12 +3351,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_existingEntities(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_upd_", 3);
-
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(3, createResult.getNumberOfRowsPassed());
-
     // Capture initial versions
     List<String> fqns = new ArrayList<>();
     List<Double> initialVersions = new ArrayList<>();
@@ -3782,16 +3363,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       T entity = getEntityByName(fqn);
       initialVersions.add(entity.getVersion());
     }
-
     // Reuse same request objects with updated descriptions
     for (K req : createRequests) {
       setDescription(req, "Updated via bulk");
     }
-
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(3, updateResult.getNumberOfRowsPassed());
     assertEquals(0, updateResult.getNumberOfRowsFailed());
-
     for (int i = 0; i < fqns.size(); i++) {
       T entity = getEntityByName(fqns.get(i));
       assertEquals("Updated via bulk", entity.getDescription());
@@ -3806,12 +3384,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_idempotent(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_idem_", 3);
-
     BulkOperationResult first = executeBulkCreate(createRequests);
     assertEquals(3, first.getNumberOfRowsPassed());
-
     // Same request again should succeed (updates existing)
     BulkOperationResult second = executeBulkCreate(createRequests);
     assertEquals(3, second.getNumberOfRowsPassed());
@@ -3826,23 +3401,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_partialFailure(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_partial_" + i), ns));
     }
-
     K invalidRequest = createInvalidRequestForBulk(ns);
     if (invalidRequest != null) {
       createRequests.add(invalidRequest);
     }
-
     BulkOperationResult result = executeBulkCreate(createRequests);
-
     assertNotNull(result);
     assertTrue(result.getNumberOfRowsProcessed() >= 3);
     assertTrue(result.getNumberOfRowsPassed() >= 3);
-
     if (invalidRequest != null) {
       assertTrue(result.getNumberOfRowsFailed() >= 1);
       assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
@@ -3855,14 +3425,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_async(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_async_" + i), ns));
     }
-
     BulkOperationResult result = executeBulkCreateAsync(createRequests);
-
     assertNotNull(result);
     assertEquals(5, result.getNumberOfRowsProcessed());
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
@@ -3875,9 +3442,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_emptyList(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     BulkOperationResult result = executeBulkCreate(new ArrayList<>());
-
     assertNotNull(result);
     assertEquals(0, result.getNumberOfRowsProcessed());
     assertEquals(0, result.getNumberOfRowsPassed());
@@ -3890,14 +3455,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_largeBatch(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 50; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_large_" + i), ns));
     }
-
     BulkOperationResult result = executeBulkCreate(createRequests);
-
     assertEquals(50, result.getNumberOfRowsProcessed());
     assertEquals(50, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
@@ -3911,27 +3473,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_mixedCreateAndUpdate(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     // Create 4 requests sharing the same parent
     List<K> allRequests = createBulkRequests(ns, "bulk_mix_", 4);
-
     // Pre-create first 2
     List<K> preCreate = new ArrayList<>(allRequests.subList(0, 2));
     BulkOperationResult preResult = executeBulkCreate(preCreate);
     assertEquals(2, preResult.getNumberOfRowsPassed());
-
     // Update descriptions on the existing 2
     for (K req : preCreate) {
       setDescription(req, "Bulk updated");
     }
-
     // Mixed request: 2 existing (updates) + 2 new (creates)
     BulkOperationResult result = executeBulkCreate(allRequests);
-
     assertEquals(4, result.getNumberOfRowsProcessed());
     assertEquals(4, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
-
     for (BulkResponse resp : result.getSuccessRequest()) {
       String fqn = (String) resp.getRequest();
       T entity = getEntityByName(fqn);
@@ -3945,18 +3501,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_verifyEntitiesExist(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_verify_" + i), ns));
     }
-
     BulkOperationResult result = executeBulkCreate(createRequests);
-
     assertEquals(10, result.getNumberOfRowsPassed());
     assertNotNull(result.getSuccessRequest());
     assertEquals(10, result.getSuccessRequest().size());
-
     for (BulkResponse successResponse : result.getSuccessRequest()) {
       assertNotNull(successResponse.getRequest());
       assertEquals(200, successResponse.getStatus());
@@ -3974,20 +3526,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_tags(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsTags) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_tag_", 3);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(3, createResult.getNumberOfRowsPassed());
-
     SharedEntities shared = SharedEntities.get();
     for (K req : createRequests) {
       setFieldViaReflection(req, "setTags", List.class, List.of(shared.PII_SENSITIVE_TAG_LABEL));
     }
-
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(3, updateResult.getNumberOfRowsPassed());
     assertEquals(0, updateResult.getNumberOfRowsFailed());
-
     for (BulkResponse resp : updateResult.getSuccessRequest()) {
       String fqn = (String) resp.getRequest();
       T entity = getEntityByNameWithFields(fqn, "tags");
@@ -4008,20 +3556,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_owners(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsOwners) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_own_", 3);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(3, createResult.getNumberOfRowsPassed());
-
     SharedEntities shared = SharedEntities.get();
     for (K req : createRequests) {
       setFieldViaReflection(req, "setOwners", List.class, List.of(shared.USER1_REF));
     }
-
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(3, updateResult.getNumberOfRowsPassed());
     assertEquals(0, updateResult.getNumberOfRowsFailed());
-
     for (BulkResponse resp : updateResult.getSuccessRequest()) {
       String fqn = (String) resp.getRequest();
       T entity = getEntityByNameWithFields(fqn, "owners");
@@ -4039,21 +3583,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_domain(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsDomains) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_dom_", 3);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(3, createResult.getNumberOfRowsPassed());
-
     SharedEntities shared = SharedEntities.get();
     for (K req : createRequests) {
       setFieldViaReflection(
           req, "setDomains", List.class, List.of(shared.DOMAIN.getFullyQualifiedName()));
     }
-
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(3, updateResult.getNumberOfRowsPassed());
     assertEquals(0, updateResult.getNumberOfRowsFailed());
-
     for (BulkResponse resp : updateResult.getSuccessRequest()) {
       String fqn = (String) resp.getRequest();
       T entity = getEntityByNameWithFields(fqn, "domains");
@@ -4069,11 +3609,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_multipleFields(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsTags || !supportsOwners || !supportsDomains) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_multi_", 3);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(3, createResult.getNumberOfRowsPassed());
-
     SharedEntities shared = SharedEntities.get();
     for (K req : createRequests) {
       setDescription(req, "Multi-field bulk update");
@@ -4082,24 +3620,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       setFieldViaReflection(
           req, "setDomains", List.class, List.of(shared.DOMAIN.getFullyQualifiedName()));
     }
-
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(3, updateResult.getNumberOfRowsPassed());
     assertEquals(0, updateResult.getNumberOfRowsFailed());
-
     for (BulkResponse resp : updateResult.getSuccessRequest()) {
       String fqn = (String) resp.getRequest();
       T entity = getEntityByNameWithFields(fqn, "tags,owners,domains");
-
       assertEquals("Multi-field bulk update", entity.getDescription());
-
       assertNotNull(entity.getTags());
       assertFalse(entity.getTags().isEmpty());
-
       assertNotNull(entity.getOwners());
       assertFalse(entity.getOwners().isEmpty());
       assertEquals(shared.USER1.getId(), entity.getOwners().get(0).getId());
-
       assertNotNull(entity.getDomains());
       assertFalse(entity.getDomains().isEmpty());
       assertEquals(shared.DOMAIN.getId(), entity.getDomains().get(0).getId());
@@ -4114,11 +3646,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_versionHistory(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsVersionHistory) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_ver_", 2);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(2, createResult.getNumberOfRowsPassed());
-
     List<String> fqns = new ArrayList<>();
     List<Double> initialVersions = new ArrayList<>();
     for (BulkResponse resp : createResult.getSuccessRequest()) {
@@ -4127,13 +3657,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       T entity = getEntityByName(fqn);
       initialVersions.add(entity.getVersion());
     }
-
     for (K req : createRequests) {
       setDescription(req, "Version history test update");
     }
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(2, updateResult.getNumberOfRowsPassed());
-
     for (int i = 0; i < fqns.size(); i++) {
       T entity = getEntityByName(fqns.get(i));
       assertTrue(
@@ -4149,11 +3677,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_noChangeSameVersion(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_noop_", 2);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(2, createResult.getNumberOfRowsPassed());
-
     List<String> fqns = new ArrayList<>();
     List<Double> versions = new ArrayList<>();
     for (BulkResponse resp : createResult.getSuccessRequest()) {
@@ -4162,11 +3688,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       T entity = getEntityByName(fqn);
       versions.add(entity.getVersion());
     }
-
     // Re-submit identical data
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(2, updateResult.getNumberOfRowsPassed());
-
     for (int i = 0; i < fqns.size(); i++) {
       T entity = getEntityByName(fqns.get(i));
       assertEquals(
@@ -4182,19 +3706,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_largeBatch(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_lg_", 50);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(50, createResult.getNumberOfRowsPassed());
-
     for (K req : createRequests) {
       setDescription(req, "Large batch updated");
     }
-
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(50, updateResult.getNumberOfRowsPassed());
     assertEquals(0, updateResult.getNumberOfRowsFailed());
-
     // Spot-check a few
     List<BulkResponse> successes = updateResult.getSuccessRequest();
     for (int idx : List.of(0, 24, 49)) {
@@ -4214,12 +3734,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_preservesUserTagsOnReIngestion(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsTags) return;
-
     // Step 1: Ingestion creates entities (no tags)
     List<K> createRequests = createBulkRequests(ns, "bulk_preserve_", 3);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(3, createResult.getNumberOfRowsPassed());
-
     // Step 2: User adds tags to entities via PATCH
     SharedEntities shared = SharedEntities.get();
     List<String> fqns = new ArrayList<>();
@@ -4230,21 +3748,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
       patchEntity(entity.getId().toString(), entity);
     }
-
     // Verify tags were applied
     for (String fqn : fqns) {
       T entity = getEntityByNameWithFields(fqn, "tags");
       assertNotNull(entity.getTags());
       assertFalse(entity.getTags().isEmpty(), "Tags should be present after PATCH: " + fqn);
     }
-
     // Step 3: Ingestion re-runs — bulk update with only description changes (no tags in request)
     for (K req : createRequests) {
       setDescription(req, "Re-ingested description");
     }
     BulkOperationResult reIngestionResult = executeBulkCreate(createRequests);
     assertEquals(3, reIngestionResult.getNumberOfRowsPassed());
-
     // Step 4: Verify tags are still present after re-ingestion
     for (String fqn : fqns) {
       T entity = getEntityByNameWithFields(fqn, "tags");
@@ -4264,12 +3779,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_preservesUserOwnersOnReIngestion(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsOwners) return;
-
     // Step 1: Ingestion creates entities (no owners)
     List<K> createRequests = createBulkRequests(ns, "bulk_own_pres_", 2);
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(2, createResult.getNumberOfRowsPassed());
-
     // Step 2: User adds owners via PATCH
     SharedEntities shared = SharedEntities.get();
     List<String> fqns = new ArrayList<>();
@@ -4280,14 +3793,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setOwners(List.of(shared.USER1_REF));
       patchEntity(entity.getId().toString(), entity);
     }
-
     // Step 3: Re-ingestion with only description changes
     for (K req : createRequests) {
       setDescription(req, "Re-ingested with owners");
     }
     BulkOperationResult reIngestionResult = executeBulkCreate(createRequests);
     assertEquals(2, reIngestionResult.getNumberOfRowsPassed());
-
     // Step 4: Verify owners preserved
     for (String fqn : fqns) {
       T entity = getEntityByNameWithFields(fqn, "owners");
@@ -4306,23 +3817,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_searchIndexed(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsSearchIndex) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_search_" + i), ns));
     }
-
     BulkOperationResult result = executeBulkCreate(createRequests);
     assertEquals(5, result.getNumberOfRowsPassed());
-
     List<String> expectedFqns = new ArrayList<>();
     for (BulkResponse resp : result.getSuccessRequest()) {
       expectedFqns.add((String) resp.getRequest());
     }
-
     String searchIndex = getSearchIndexName();
     OpenMetadataClient client = SdkClients.adminClient();
-
     Awaitility.await()
         .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
@@ -4343,11 +3849,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                         .queryFilter(queryFilter)
                         .size(1)
                         .execute();
-
                 assertNotNull(searchResponse, "Search response should not be null");
                 JsonNode root = MAPPER.readTree(searchResponse);
                 assertTrue(root.has("hits"), "Search response should have hits");
-
                 JsonNode hits = root.get("hits").get("hits");
                 assertTrue(hits.size() > 0, "Entity should be found in search index: " + fqn);
                 assertEquals(fqn, hits.get(0).get("_source").get("fullyQualifiedName").asText());
@@ -4363,28 +3867,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_searchIndexUpdated(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsSearchIndex) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_search_upd_", 3);
-
     BulkOperationResult createResult = executeBulkCreate(createRequests);
     assertEquals(3, createResult.getNumberOfRowsPassed());
-
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : createResult.getSuccessRequest()) {
       fqns.add((String) resp.getRequest());
     }
-
     String updatedDesc = "SearchUpdated_" + System.currentTimeMillis();
     for (K req : createRequests) {
       setDescription(req, updatedDesc);
     }
-
     BulkOperationResult updateResult = executeBulkCreate(createRequests);
     assertEquals(3, updateResult.getNumberOfRowsPassed());
-
     String searchIndex = getSearchIndexName();
     OpenMetadataClient client = SdkClients.adminClient();
-
     Awaitility.await()
         .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
@@ -4405,7 +3902,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                         .queryFilter(queryFilter)
                         .size(1)
                         .execute();
-
                 JsonNode root = MAPPER.readTree(searchResponse);
                 JsonNode hits = root.get("hits").get("hits");
                 assertTrue(hits.size() > 0, "Entity should be found in search index: " + fqn);
@@ -4421,24 +3917,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // BULK API PERMISSION TESTS
   // Tests authorization enforcement for admin, bot, and restricted users
   // ===================================================================
-
   /**
    * Test: Admin can bulk create entities
    */
   @Test
   void test_bulkCreate_adminSuccess(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_admin_" + i), ns));
     }
-
     HttpResponse<String> response =
         callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(3, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
@@ -4450,17 +3941,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreate_botSuccess(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_bot_" + i), ns));
     }
-
     String botToken = getBotToken();
     HttpResponse<String> response = callBulkEndpoint(createRequests, botToken, false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(3, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
@@ -4472,10 +3959,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreate_noAuth_returns401(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     createRequests.add(createRequest(ns.prefix("bulk_noauth"), ns));
-
     String url = SdkClients.getServerUrl() + getResourcePath() + "bulk";
     java.net.http.HttpRequest request =
         java.net.http.HttpRequest.newBuilder()
@@ -4485,11 +3970,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                 java.net.http.HttpRequest.BodyPublishers.ofString(
                     JsonUtils.pojoToJson(createRequests)))
             .build();
-
     HttpResponse<String> response =
         java.net.http.HttpClient.newHttpClient()
             .send(request, HttpResponse.BodyHandlers.ofString());
-
     assertEquals(401, response.statusCode());
   }
 
@@ -4499,15 +3982,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreate_dataConsumer_denied(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     createRequests.add(createRequest(ns.prefix("bulk_consumer_create"), ns));
-
     String consumerToken = getDataConsumerToken();
     HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(0, result.getNumberOfRowsPassed());
     assertEquals(1, result.getNumberOfRowsFailed());
@@ -4523,26 +4002,20 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_dataConsumer_denied(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     // Create entity as admin (reuse same request object for update)
     List<K> createRequests = new ArrayList<>();
     createRequests.add(createRequest(ns.prefix("bulk_consumer_upd"), ns));
-
     HttpResponse<String> createResponse =
         callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
     assertEquals(200, createResponse.statusCode());
     BulkOperationResult createResult =
         JsonUtils.readValue(createResponse.body(), BulkOperationResult.class);
     assertEquals(1, createResult.getNumberOfRowsPassed());
-
     // Attempt update as DataConsumer using same request with changed description
     setDescription(createRequests.get(0), "Consumer tried to update");
-
     String consumerToken = getDataConsumerToken();
     HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(0, result.getNumberOfRowsPassed());
     assertEquals(1, result.getNumberOfRowsFailed());
@@ -4554,23 +4027,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_botSuccess(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     // Create entity as admin
     List<K> createRequests = new ArrayList<>();
     createRequests.add(createRequest(ns.prefix("bulk_bot_upd"), ns));
-
     HttpResponse<String> createResponse =
         callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
     assertEquals(200, createResponse.statusCode());
-
     // Update as bot using same request with changed description
     setDescription(createRequests.get(0), "Updated by bot");
-
     String botToken = getBotToken();
     HttpResponse<String> response = callBulkEndpoint(createRequests, botToken, false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(1, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
@@ -4582,18 +4049,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkAsync_returns202(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     createRequests.add(createRequest(ns.prefix("bulk_async_perm"), ns));
-
     HttpResponse<String> response =
         callBulkEndpoint(createRequests, SdkClients.getAdminToken(), true);
-
     assertEquals(202, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertNotNull(result.getNumberOfRowsProcessed());
-
     // Block until the async bulk worker commits the new entity. Without this, TestNamespace
     // cleanup races the worker: the service's recursive hardDelete may scan its children before
     // the worker establishes the parent→child relationship, leaving an orphan whose parent
@@ -4632,18 +4094,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreate_permissionDenied_returnsFailureStatus(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     createRequests.add(createRequest(ns.prefix("bulk_perm_status"), ns));
-
     String consumerToken = getDataConsumerToken();
     HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(1, result.getNumberOfRowsFailed());
-
     BulkResponse failedRequest = result.getFailedRequest().get(0);
     assertTrue(
         failedRequest.getStatus() == 403 || failedRequest.getStatus() == 400,
@@ -4657,17 +4114,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreate_admin_multipleBatch(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     for (int i = 0; i < 20; i++) {
       createRequests.add(createRequest(ns.prefix("bulk_admin_batch_" + i), ns));
     }
-
     HttpResponse<String> response =
         callBulkEndpoint(createRequests, SdkClients.getAdminToken(), false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(20, result.getNumberOfRowsProcessed());
     assertEquals(20, result.getNumberOfRowsPassed());
@@ -4677,7 +4130,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // BULK API EDGE CASE TESTS
   // ===================================================================
-
   /**
    * Test: Duplicate FQNs in a single batch request.
    *
@@ -4687,15 +4139,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_duplicateFqnsInBatch(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_dup_", 1);
     K original = createRequests.get(0);
-
     // Add the same request again (duplicate FQN)
     createRequests.add(original);
-
     BulkOperationResult result = executeBulkCreate(createRequests);
-
     assertEquals(2, result.getNumberOfRowsProcessed());
     // Both should succeed: first creates, second updates
     assertEquals(2, result.getNumberOfRowsPassed());
@@ -4705,16 +4153,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_tripleDuplicateFqnsInBatch(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = createBulkRequests(ns, "bulk_trip_", 1);
     K original = createRequests.get(0);
-
     // Add the same request two more times (triple duplicate FQN)
     createRequests.add(original);
     createRequests.add(original);
-
     BulkOperationResult result = executeBulkCreate(createRequests);
-
     assertEquals(3, result.getNumberOfRowsProcessed());
     assertEquals(3, result.getNumberOfRowsPassed());
     assertEquals(0, result.getNumberOfRowsFailed());
@@ -4728,29 +4172,22 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_concurrent(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> batch1 = createBulkRequests(ns, "bulk_conc_a_", 5);
     List<K> batch2 = createBulkRequests(ns, "bulk_conc_b_", 5);
-
     String adminToken = SdkClients.getAdminToken();
-
     java.util.concurrent.ExecutorService executor =
         java.util.concurrent.Executors.newFixedThreadPool(2);
     java.util.concurrent.Future<HttpResponse<String>> future1 =
         executor.submit(() -> callBulkEndpoint(batch1, adminToken, false));
     java.util.concurrent.Future<HttpResponse<String>> future2 =
         executor.submit(() -> callBulkEndpoint(batch2, adminToken, false));
-
     HttpResponse<String> resp1 = future1.get();
     HttpResponse<String> resp2 = future2.get();
     executor.shutdown();
-
     assertEquals(200, resp1.statusCode());
     assertEquals(200, resp2.statusCode());
-
     BulkOperationResult result1 = JsonUtils.readValue(resp1.body(), BulkOperationResult.class);
     BulkOperationResult result2 = JsonUtils.readValue(resp2.body(), BulkOperationResult.class);
-
     assertEquals(5, result1.getNumberOfRowsPassed());
     assertEquals(5, result2.getNumberOfRowsPassed());
   }
@@ -4764,16 +4201,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreate_allAuthFailed_reportsFailure(TestNamespace ns) throws Exception {
     if (!supportsBulkAPI) return;
-
     List<K> createRequests = new ArrayList<>();
     createRequests.add(createRequest(ns.prefix("bulk_auth_fail_0"), ns));
     createRequests.add(createRequest(ns.prefix("bulk_auth_fail_1"), ns));
-
     String consumerToken = getDataConsumerToken();
     HttpResponse<String> response = callBulkEndpoint(createRequests, consumerToken, false);
-
     assertEquals(200, response.statusCode());
-
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertEquals(ApiStatus.FAILURE, result.getStatus());
     assertEquals(2, result.getNumberOfRowsProcessed());
@@ -4789,16 +4222,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkCreateOrUpdate_invalidEntitiesRejected(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     K invalidRequest = createInvalidRequestForBulk(ns);
     if (invalidRequest == null) return;
-
     List<K> createRequests = new ArrayList<>();
     createRequests.add(invalidRequest);
     createRequests.add(createRequest(ns.prefix("bulk_valid_alongside"), ns));
-
     BulkOperationResult result = executeBulkCreate(createRequests);
-
     assertEquals(2, result.getNumberOfRowsProcessed());
     assertTrue(result.getNumberOfRowsFailed() > 0, "Invalid entity should fail");
     assertTrue(result.getNumberOfRowsPassed() > 0, "Valid entity should succeed");
@@ -4816,7 +4245,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // metadata when called by bots and exercises the sourceHash fast-path that
   // unchanged entities are supposed to take.
   // ===================================================================
-
   /**
    * Test: A bot bulk-update must NOT overwrite a user-edited description.
    *
@@ -4828,11 +4256,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_bot_preservesUserDescription(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> requests = createBulkRequests(ns, "bulk_botdesc_", 2);
     BulkOperationResult created = executeBulkCreate(requests);
     assertEquals(2, created.getNumberOfRowsPassed());
-
     String userDescription = "User-curated description that must survive re-ingestion";
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : created.getSuccessRequest()) {
@@ -4842,13 +4268,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setDescription(userDescription);
       patchEntity(entity.getId().toString(), entity);
     }
-
     for (K req : requests) {
       setDescription(req, "Bot attempted to overwrite");
     }
     BulkOperationResult reIngested = executeBulkAsBot(requests, false);
     assertEquals(2, reIngested.getNumberOfRowsPassed());
-
     for (String fqn : fqns) {
       T entity = getEntityByName(fqn);
       assertEquals(
@@ -4868,11 +4292,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_bot_preservesUserTags(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsTags) return;
-
     List<K> requests = createBulkRequests(ns, "bulk_bottag_", 2);
     BulkOperationResult created = executeBulkCreate(requests);
     assertEquals(2, created.getNumberOfRowsPassed());
-
     SharedEntities shared = SharedEntities.get();
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : created.getSuccessRequest()) {
@@ -4882,13 +4304,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
       patchEntity(entity.getId().toString(), entity);
     }
-
     for (K req : requests) {
       setDescription(req, "Bot re-ingest");
     }
     BulkOperationResult reIngested = executeBulkAsBot(requests, false);
     assertEquals(2, reIngested.getNumberOfRowsPassed());
-
     for (String fqn : fqns) {
       T entity = getEntityByNameWithFields(fqn, "tags");
       assertNotNull(entity.getTags(), "tags preserved: " + fqn);
@@ -4908,11 +4328,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_bot_preservesUserOwners(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsOwners) return;
-
     List<K> requests = createBulkRequests(ns, "bulk_botown_", 2);
     BulkOperationResult created = executeBulkCreate(requests);
     assertEquals(2, created.getNumberOfRowsPassed());
-
     SharedEntities shared = SharedEntities.get();
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : created.getSuccessRequest()) {
@@ -4922,13 +4340,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setOwners(List.of(shared.USER1_REF));
       patchEntity(entity.getId().toString(), entity);
     }
-
     for (K req : requests) {
       setDescription(req, "Bot re-ingest");
     }
     BulkOperationResult reIngested = executeBulkAsBot(requests, false);
     assertEquals(2, reIngested.getNumberOfRowsPassed());
-
     for (String fqn : fqns) {
       T entity = getEntityByNameWithFields(fqn, "owners");
       assertNotNull(entity.getOwners(), "owners preserved: " + fqn);
@@ -4961,11 +4377,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_bulkUpdate_bot_preservesUserDisplayName(TestNamespace ns) {
     if (!supportsBulkAPI) return;
     if (!hasField("setDisplayName", String.class)) return;
-
     List<K> requests = createBulkRequests(ns, "bulk_botdn_", 2);
     BulkOperationResult created = executeBulkCreate(requests);
     assertEquals(2, created.getNumberOfRowsPassed());
-
     String userDisplayName = "User Curated Display Name";
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : created.getSuccessRequest()) {
@@ -4975,13 +4389,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setDisplayName(userDisplayName);
       patchEntity(entity.getId().toString(), entity);
     }
-
     for (K req : requests) {
       invoke(req, "setDisplayName", String.class, "Bot attempted to overwrite");
     }
     BulkOperationResult reIngested = executeBulkAsBot(requests, false);
     assertEquals(2, reIngested.getNumberOfRowsPassed());
-
     for (String fqn : fqns) {
       T entity = getEntityByName(fqn);
       assertEquals(
@@ -5005,11 +4417,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_overrideMetadata_canOverrideUserDescription(TestNamespace ns) {
     if (!supportsBulkAPI) return;
-
     List<K> requests = createBulkRequests(ns, "bulk_ovdesc_", 2);
     BulkOperationResult created = executeBulkCreate(requests);
     assertEquals(2, created.getNumberOfRowsPassed());
-
     String userDescription = "User-curated description";
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : created.getSuccessRequest()) {
@@ -5019,14 +4429,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setDescription(userDescription);
       patchEntity(entity.getId().toString(), entity);
     }
-
     String botDescription = "Forced description via override-flag";
     for (K req : requests) {
       setDescription(req, botDescription);
     }
     BulkOperationResult reIngested = executeBulkAsBot(requests, true);
     assertEquals(2, reIngested.getNumberOfRowsPassed());
-
     for (String fqn : fqns) {
       T entity = getEntityByName(fqn);
       assertEquals(
@@ -5044,11 +4452,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_bulkUpdate_overrideMetadata_canOverrideUserDisplayName(TestNamespace ns) {
     if (!supportsBulkAPI) return;
     if (!hasField("setDisplayName", String.class)) return;
-
     List<K> requests = createBulkRequests(ns, "bulk_ovdn_", 2);
     BulkOperationResult created = executeBulkCreate(requests);
     assertEquals(2, created.getNumberOfRowsPassed());
-
     String userDisplayName = "User Curated Display Name";
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : created.getSuccessRequest()) {
@@ -5058,14 +4464,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setDisplayName(userDisplayName);
       patchEntity(entity.getId().toString(), entity);
     }
-
     String botDisplayName = "Forced Display Name";
     for (K req : requests) {
       invoke(req, "setDisplayName", String.class, botDisplayName);
     }
     BulkOperationResult reIngested = executeBulkAsBot(requests, true);
     assertEquals(2, reIngested.getNumberOfRowsPassed());
-
     for (String fqn : fqns) {
       T entity = getEntityByName(fqn);
       assertEquals(
@@ -5091,16 +4495,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_singleEntityPut_bot_preservesUserDisplayName(TestNamespace ns) {
     if (!supportsBulkAPI) return;
     if (!hasField("setDisplayName", String.class)) return;
-
     K request = createRequest(ns.prefix("put_denydn_"), ns);
     T created = createEntity(request);
     String fqn = created.getFullyQualifiedName();
-
     String userDisplayName = "User Curated Display Name";
     T entity = getEntityByName(fqn);
     entity.setDisplayName(userDisplayName);
     patchEntity(entity.getId().toString(), entity);
-
     invoke(request, "setDisplayName", String.class, "Bot attempted to overwrite");
     HttpResponse<String> response = putAs(request, BulkApi.botToken());
     assertTrue(
@@ -5109,7 +4510,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             + response.statusCode()
             + " "
             + response.body());
-
     T result = getEntityByName(fqn);
     assertEquals(
         userDisplayName,
@@ -5135,16 +4535,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_singleEntityPut_displayNameAllowedBot_updatesDisplayName(TestNamespace ns) {
     if (!supportsBulkAPI) return;
     if (!hasField("setDisplayName", String.class)) return;
-
     K request = createRequest(ns.prefix("put_allowdn_"), ns);
     T created = createEntity(request);
     String fqn = created.getFullyQualifiedName();
-
     String userDisplayName = "User Curated Display Name";
     T entity = getEntityByName(fqn);
     entity.setDisplayName(userDisplayName);
     patchEntity(entity.getId().toString(), entity);
-
     String botDisplayName = "SCIM-like Bot Display Name";
     invoke(request, "setDisplayName", String.class, botDisplayName);
     HttpResponse<String> response = putAs(request, displayNameAllowedBotToken());
@@ -5154,7 +4551,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             + response.statusCode()
             + " "
             + response.body());
-
     T result = getEntityByName(fqn);
     assertEquals(
         botDisplayName,
@@ -5177,16 +4573,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_singleEntityPut_bot_updatesOwnersWhenPolicyAllows(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsOwners) return;
     if (!hasField("setOwners", List.class)) return;
-
     K request = createRequest(ns.prefix("put_ownallow_"), ns);
     T created = createEntity(request);
     String fqn = created.getFullyQualifiedName();
-
     SharedEntities shared = SharedEntities.get();
     T entity = getEntityByNameWithFields(fqn, "owners");
     entity.setOwners(List.of(shared.USER1_REF));
     patchEntity(entity.getId().toString(), entity);
-
     invoke(request, "setOwners", List.class, List.of(shared.USER2_REF));
     HttpResponse<String> response = putAs(request, BulkApi.botToken());
     assertTrue(
@@ -5195,7 +4588,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             + response.statusCode()
             + " "
             + response.body());
-
     T result = getEntityByNameWithFields(fqn, "owners");
     assertNotNull(result.getOwners(), "owners present after bot update: " + fqn);
     assertFalse(result.getOwners().isEmpty(), "owners not cleared: " + fqn);
@@ -5216,11 +4608,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_bulkUpdate_bot_mergesNewTagsWithExistingUserTags(TestNamespace ns) {
     if (!supportsBulkAPI || !supportsTags) return;
-
     List<K> requests = createBulkRequests(ns, "bulk_tagmrg_", 2);
     BulkOperationResult created = executeBulkCreate(requests);
     assertEquals(2, created.getNumberOfRowsPassed());
-
     SharedEntities shared = SharedEntities.get();
     List<String> fqns = new ArrayList<>();
     for (BulkResponse resp : created.getSuccessRequest()) {
@@ -5230,13 +4620,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       entity.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
       patchEntity(entity.getId().toString(), entity);
     }
-
     for (K req : requests) {
       invoke(req, "setTags", List.class, List.of(shared.PERSONAL_DATA_TAG_LABEL));
     }
     BulkOperationResult reIngested = executeBulkAsBot(requests, false);
     assertEquals(2, reIngested.getNumberOfRowsPassed());
-
     for (String fqn : fqns) {
       T entity = getEntityByNameWithFields(fqn, "tags");
       assertNotNull(entity.getTags(), "tags present: " + fqn);
@@ -5254,7 +4642,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // BULK API - REFLECTION HELPERS
   // ===================================================================
-
   private boolean hasField(String setter, Class<?> paramType) {
     try {
       createMinimalRequest(new TestNamespace("__probe__")).getClass().getMethod(setter, paramType);
@@ -5282,7 +4669,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // BULK API HOOK METHODS
   // Subclasses that support bulk API should override these methods.
   // ===================================================================
-
   protected BulkOperationResult executeBulkCreate(List<K> createRequests) {
     throw new UnsupportedOperationException(
         "Bulk API not implemented for " + getEntityType() + ". Override executeBulkCreate()");
@@ -5433,7 +4819,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
-  /** Derives the v1 collection name (e.g. {@code "tables"}) from {@link #getResourcePath()}. */
+  /**
+   * Derives the v1 collection name (e.g. {@code "tables"}) from {@link #getResourcePath()}.
+   */
   private String getBulkCollection() {
     String path = getResourcePath();
     if (path.startsWith("/v1/")) {
@@ -5467,7 +4855,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     if (async) {
       url += "?async=true";
     }
-
     java.net.http.HttpRequest httpRequest =
         java.net.http.HttpRequest.newBuilder()
             .uri(java.net.URI.create(url))
@@ -5475,7 +4862,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .header("Content-Type", "application/json")
             .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(requests)))
             .build();
-
     return java.net.http.HttpClient.newHttpClient()
         .send(httpRequest, HttpResponse.BodyHandlers.ofString());
   }
@@ -5485,7 +4871,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // Equivalent to: test_sdkOnlyCreateRetrieveUpdate, test_sdkOnlyRetrieveByName,
   //                test_sdkOnlyListEntities, test_sdkOnlyAsyncOperations in EntityResourceTest
   // ===================================================================
-
   /**
    * Test: SDK-only create, retrieve, and update operations
    * Equivalent to: test_sdkOnlyCreateRetrieveUpdate in EntityResourceTest
@@ -5495,21 +4880,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     assertNotNull(created, "Created entity should not be null");
     assertNotNull(created.getId(), "Created entity should have ID");
     assertEquals(0.1, created.getVersion(), 0.001, "Initial version should be 0.1");
-
     // Retrieve by ID
     T retrieved = getEntity(created.getId().toString());
     assertNotNull(retrieved, "Retrieved entity should not be null");
     assertEquals(created.getId(), retrieved.getId(), "IDs should match");
-
     // Update via patch
     if (supportsPatch) {
       retrieved.setDescription("SDK-only updated description");
       T updated = patchEntity(retrieved.getId().toString(), retrieved);
-
       assertNotNull(updated, "Updated entity should not be null");
       assertEquals(
           "SDK-only updated description",
@@ -5528,7 +4909,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     // Retrieve by name
     T retrieved = getEntityByName(created.getFullyQualifiedName());
     assertNotNull(retrieved, "Entity should be retrievable by FQN");
@@ -5548,12 +4928,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       K createRequest = createRequest(ns.prefix("sdk_list_" + i), ns);
       createEntity(createRequest);
     }
-
     // Basic list test
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
     org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
-
     assertNotNull(response, "List response should not be null");
     assertNotNull(response.getData(), "List data should not be null");
     assertTrue(response.getData().size() > 0, "Should have entities in list");
@@ -5563,7 +4941,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // FIELD QUERY PARAM TESTS
   // Equivalent to: get_entityWithDifferentFieldsQueryParam in EntityResourceTest
   // ===================================================================
-
   /**
    * Test: Get entity with different fields query parameters
    * Equivalent to: get_entityWithDifferentFieldsQueryParam in EntityResourceTest
@@ -5571,27 +4948,23 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void get_entityWithDifferentFieldsQueryParam(TestNamespace ns) {
     if (!supportsFieldsQueryParam) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Build fields string based on what entity supports
     List<String> fields = new ArrayList<>();
     if (supportsOwners) fields.add("owners");
     if (supportsTags) fields.add("tags");
     if (supportsDomains) fields.add("domains");
     if (supportsFollowers) fields.add("followers");
-
     String fieldsStr = String.join(",", fields);
     if (fieldsStr.isEmpty()) {
-      return; // Skip if entity doesn't support any of these fields
+      // Skip if entity doesn't support any of these fields
+      return;
     }
-
     // Get entity by ID with fields
     T retrieved = getEntityWithFields(entity.getId().toString(), fieldsStr);
     assertNotNull(retrieved, "Entity should be retrievable with fields");
     assertEquals(entity.getId(), retrieved.getId(), "IDs should match");
-
     // Get entity by name with fields - use a subset of fields
     String nameFields = (supportsOwners ? "owners" : "") + (supportsTags ? ",tags" : "");
     nameFields = nameFields.startsWith(",") ? nameFields.substring(1) : nameFields;
@@ -5606,7 +4979,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // INVALID LIST TESTS
   // Equivalent to: testInvalidEntityList in EntityResourceTest
   // ===================================================================
-
   /**
    * Test: List entities with invalid parameters
    * Equivalent to: testInvalidEntityList in EntityResourceTest
@@ -5617,7 +4989,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     org.openmetadata.sdk.models.ListParams invalidParams =
         new org.openmetadata.sdk.models.ListParams();
     invalidParams.setLimit(-1);
-
     assertThrows(
         Exception.class,
         () -> listEntities(invalidParams),
@@ -5628,7 +4999,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ASYNC OPERATIONS TESTS
   // Equivalent to: test_sdkOnlyAsyncOperations in EntityResourceTest
   // ===================================================================
-
   /**
    * Test: SDK-only async operations (soft delete and restore)
    * Equivalent to: test_sdkOnlyAsyncOperations in EntityResourceTest
@@ -5639,20 +5009,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
     assertNotNull(created, "Created entity should not be null");
-
     // Async delete (soft delete)
     if (supportsSoftDelete) {
       deleteEntity(created.getId().toString());
-
       // Verify entity is soft deleted
       assertThrows(
           Exception.class,
           () -> getEntity(created.getId().toString()),
           "Soft deleted entity should not be directly retrievable");
-
       // Restore entity
       restoreEntity(created.getId().toString());
-
       // Verify entity is restored
       T restored = getEntity(created.getId().toString());
       assertNotNull(restored, "Restored entity should be retrievable");
@@ -5665,7 +5031,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // Equivalent to: checkCreatedEntity, checkDeletedEntity, checkIndexCreated,
   //                deleteTagAndCheckRelationshipsInSearch, updateDescriptionAndCheckInSearch
   // ===================================================================
-
   /**
    * Test: Verify entity is indexed in search after creation
    * Equivalent to: checkCreatedEntity in EntityResourceTest
@@ -5673,10 +5038,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void checkCreatedEntity(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Poll until entity appears in search index (async indexing may take time)
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
@@ -5701,10 +5064,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void checkDeletedEntity(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsSoftDelete);
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Poll until entity appears in search index before delete
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
@@ -5719,10 +5080,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                   searchResponse.contains(entity.getId().toString()),
                   "Entity should be present in search index before delete");
             });
-
     // Delete entity
     deleteEntity(entity.getId().toString());
-
     // Verify entity is no longer in search (or marked deleted)
     // After soft delete, entity may still be in index but marked as deleted
     // This is acceptable behavior - the key is the delete operation succeeded
@@ -5737,10 +5096,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void checkIndexCreated(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Poll until entity appears in search index
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
@@ -5765,10 +5122,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void updateDescriptionAndCheckInSearch(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(supportsPatch);
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // First wait for entity to appear in search index
     Awaitility.await("Wait for entity to appear in search index")
         .pollDelay(Duration.ofMillis(500))
@@ -5783,11 +5138,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                   searchResponse.contains(entity.getId().toString()),
                   "Entity should be present in search index");
             });
-
     String newDescription = "Updated description for search test " + UUID.randomUUID();
     entity.setDescription(newDescription);
     T updated = patchEntity(entity.getId().toString(), entity);
-
     // Wait for updated entity to be reflected in search
     Awaitility.await("Wait for search to reflect update")
         .pollDelay(Duration.ofMillis(500))
@@ -5815,14 +5168,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void deleteTagAndCheckRelationshipsInSearch(TestNamespace ns) throws Exception {
     Assumptions.assumeTrue(supportsTags);
     Assumptions.assumeTrue(supportsPatch);
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     OpenMetadataClient client = SdkClients.adminClient();
     String tagName = ns.prefix("searchRelTag");
     String classificationName = ns.prefix("searchRelClassification");
-
     org.openmetadata.schema.api.classification.CreateClassification createClassification =
         new org.openmetadata.schema.api.classification.CreateClassification()
             .withName(classificationName)
@@ -5834,7 +5184,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             "/v1/classifications",
             createClassification,
             org.openmetadata.schema.entity.classification.Classification.class);
-
     org.openmetadata.schema.api.classification.CreateTag createTag =
         new org.openmetadata.schema.api.classification.CreateTag()
             .withName(tagName)
@@ -5848,9 +5197,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                 "/v1/tags",
                 createTag,
                 org.openmetadata.schema.entity.classification.Tag.class);
-
     String tagFqn = classificationName + "." + tagName;
-
     TagLabel tagLabel =
         new TagLabel()
             .withTagFQN(tagFqn)
@@ -5858,26 +5205,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             .withLabelType(TagLabel.LabelType.MANUAL);
     entity.setTags(List.of(tagLabel));
     T entityWithTag = patchEntity(entity.getId().toString(), entity);
-
     assertNotNull(entityWithTag.getTags(), "Entity should have tags");
     assertTrue(
         entityWithTag.getTags().stream().anyMatch(t -> t.getTagFQN().equals(tagFqn)),
         "Entity should have the test tag");
-
     client
         .getHttpClient()
         .executeForString(HttpMethod.DELETE, "/v1/tags/" + tag.getId() + "?hardDelete=true", null);
-
     try {
       client.getHttpClient().executeForString(HttpMethod.GET, "/v1/tags/" + tag.getId(), null);
       fail("Tag should have been deleted");
     } catch (Exception e) {
       // Expected
     }
-
     T refreshedEntity = getEntityWithFields(entityWithTag.getId().toString(), "tags");
     assertNotNull(refreshedEntity, "Entity should still be retrievable after tag deletion");
-
     try {
       client
           .getHttpClient()
@@ -5909,7 +5251,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // Equivalent to: post_delete_entity_as_bot, put_entityUpdate_as_non_owner_4xx,
   //                patch_entityDescriptionAndTestAuthorizer
   // ===================================================================
-
   /**
    * Test: Bot can create and delete entities
    * Equivalent to: post_delete_entity_as_bot in EntityResourceTest
@@ -5917,14 +5258,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void post_delete_entity_as_bot(TestNamespace ns) {
     Assumptions.assumeTrue(supportsBotOperations());
-
     // Create entity as bot
     T entity = createEntityAsBot(createMinimalRequest(ns));
     assertNotNull(entity, "Bot should be able to create entity");
-
     // Delete entity as bot
     deleteEntityAsBot(entity.getId().toString());
-
     // Verify entity is deleted
     assertThrows(
         Exception.class,
@@ -5937,21 +5275,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * Override in subclasses that don't support bot operations.
    */
   protected boolean supportsBotOperations() {
-    return !supportsOwners; // Bot can operate on entities that don't require owners
+    // Bot can operate on entities that don't require owners
+    return !supportsOwners;
   }
 
   /**
    * Create entity as bot. Subclasses should override.
    */
   protected T createEntityAsBot(K createRequest) {
-    return createEntity(createRequest); // Default uses admin
+    // Default uses admin
+    return createEntity(createRequest);
   }
 
   /**
    * Delete entity as bot. Subclasses should override.
    */
   protected void deleteEntityAsBot(String id) {
-    deleteEntity(id); // Default uses admin
+    // Default uses admin
+    deleteEntity(id);
   }
 
   /**
@@ -5962,19 +5303,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void put_entityUpdate_as_non_owner_4xx(TestNamespace ns) {
     Assumptions.assumeTrue(supportsOwners);
     Assumptions.assumeTrue(supportsPatch);
-
     // Create entity with USER1 as owner
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Set USER1 as owner
     entity.setOwners(List.of(testUser1Ref()));
     T withOwner = patchEntity(entity.getId().toString(), entity);
-
     // Try to update as USER2 (non-owner) - should fail
     withOwner.setDescription("Updated by non-owner");
     String entityId = withOwner.getId().toString();
-
     // This test verifies the authorization pattern - actual implementation
     // depends on entity-specific client behavior
     assertNotNull(withOwner.getOwners(), "Entity should have owner set");
@@ -5987,16 +5324,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void patch_entityDescriptionAndTestAuthorizer(TestNamespace ns) {
     Assumptions.assumeTrue(supportsPatch);
-
     // Create entity
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Admin can update
     entity.setDescription("Updated by admin");
     T updated = patchEntity(entity.getId().toString(), entity);
     assertEquals("Updated by admin", updated.getDescription(), "Admin should update description");
-
     // Set owner and verify owner can update
     if (supportsOwners) {
       updated.setOwners(List.of(testUser1Ref()));
@@ -6010,7 +5344,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // Equivalent to: post_delete_entity_as_admin_200, post_delete_entityWithOwner_200,
   //                post_delete_as_name_entity_as_admin_200
   // ===================================================================
-
   /**
    * Test: Admin can delete entity
    * Equivalent to: post_delete_entity_as_admin_200 in EntityResourceTest
@@ -6019,10 +5352,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void post_delete_entity_as_admin_200(TestNamespace ns) {
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Delete as admin
     deleteEntity(entity.getId().toString());
-
     // Verify entity is deleted
     assertThrows(
         Exception.class,
@@ -6037,17 +5368,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void post_delete_entityWithOwner_200(TestNamespace ns) {
     Assumptions.assumeTrue(supportsOwners);
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Set owner
     entity.setOwners(List.of(testUser1Ref()));
     T withOwner = patchEntity(entity.getId().toString(), entity);
-
     // Delete entity with owner
     deleteEntity(withOwner.getId().toString());
-
     // Verify entity is deleted
     assertThrows(
         Exception.class,
@@ -6062,13 +5389,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void post_delete_as_name_entity_as_admin_200(TestNamespace ns) {
     if (!supportsDeleteByName()) return;
-
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
-
     // Delete by name
     deleteEntityByName(entity.getFullyQualifiedName());
-
     // Verify entity is deleted
     assertThrows(
         Exception.class,
@@ -6080,7 +5404,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // PERFORMANCE / EFFICIENCY TESTS
   // Equivalent to: test_fieldFetchersEfficiency in EntityResourceTest
   // ===================================================================
-
   /**
    * Test: Entity fetching is efficient.
    * Basic functionality test - comprehensive pagination is in PaginationIT.
@@ -6093,14 +5416,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       K createRequest = createRequest(ns.prefix("efficiency_" + i), ns);
       entities.add(createEntity(createRequest));
     }
-
     // Fetch each entity by ID - verify field fetching works
     for (T entity : entities) {
       T fetched = getEntity(entity.getId().toString());
       assertNotNull(fetched, "Entity should be fetchable");
       assertEquals(entity.getName(), fetched.getName(), "Names should match");
     }
-
     // Basic list test
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(10);
@@ -6114,11 +5435,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // Equivalent to: testImportExport, testImportInvalidCsv in EntityResourceTest
   // Only runs for entities that support import/export (supportsImportExport = true)
   // ===================================================================
-
   // Additional feature flags for import/export functionality
-  protected boolean supportsBatchImport = false; // Override in subclasses that support batching
-  protected boolean supportsRecursiveImport =
-      false; // Override in subclasses that support recursive import
+  // Override in subclasses that support batching
+  protected boolean supportsBatchImport = false;
+
+  protected boolean
+      supportsRecursiveImport = // Override in subclasses that support recursive import
+      false;
 
   /**
    * Get the entity service for import/export operations.
@@ -6127,7 +5450,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return The EntityServiceBase for this entity type, or null if not supported
    */
   protected org.openmetadata.sdk.services.EntityServiceBase<T> getEntityService() {
-    return null; // Override in subclasses that support import/export
+    // Override in subclasses that support import/export
+    return null;
   }
 
   /**
@@ -6138,7 +5462,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return Container entity name/FQN for import/export operations
    */
   protected String getImportExportContainerName(TestNamespace ns) {
-    return null; // Override in subclasses that support import/export
+    // Override in subclasses that support import/export
+    return null;
   }
 
   protected String getCsvImportContainerName(TestNamespace ns, EntityInterface entity) {
@@ -6181,7 +5506,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ABSTRACT CSV HELPER METHODS - Override in subclasses
   // Each entity type has different CSV structure and fields
   // ===================================================================
-
   /**
    * Generate valid CSV data for testing import functionality.
    * Each entity type has different CSV structure (e.g., table columns vs schema properties).
@@ -6191,7 +5515,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return Valid CSV data string with headers
    */
   protected String generateValidCsvData(TestNamespace ns, List<T> entities) {
-    return null; // Override in subclasses that support import/export
+    // Override in subclasses that support import/export
+    return null;
   }
 
   /**
@@ -6201,7 +5526,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return Invalid CSV data string (e.g., invalid field values, wrong data types)
    */
   protected String generateInvalidCsvData(TestNamespace ns) {
-    return null; // Override in subclasses that support import/export
+    // Override in subclasses that support import/export
+    return null;
   }
 
   /**
@@ -6210,7 +5536,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return Malformed CSV data string (e.g., missing quotes, wrong delimiters)
    */
   protected String generateMalformedCsvData() {
-    return "name,description\nunclosed\"quote,missing quote"; // Default malformed CSV
+    // Default malformed CSV
+    return "name,description\nunclosed\"quote,missing quote";
   }
 
   /**
@@ -6220,7 +5547,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return CSV data missing required columns
    */
   protected String generateCsvWithMissingRequiredFields(TestNamespace ns) {
-    return null; // Override in subclasses that support import/export
+    // Override in subclasses that support import/export
+    return null;
   }
 
   /**
@@ -6230,7 +5558,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return CSV data with additional columns
    */
   protected String generateCsvWithExtraColumns(TestNamespace ns) {
-    return null; // Override in subclasses that support import/export
+    // Override in subclasses that support import/export
+    return null;
   }
 
   /**
@@ -6241,7 +5570,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return Large CSV data for batch processing tests
    */
   protected String generateLargeCsvData(TestNamespace ns, int rowCount) {
-    return null; // Override in subclasses that support import/export
+    // Override in subclasses that support import/export
+    return null;
   }
 
   /**
@@ -6250,7 +5580,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return List of required header names
    */
   protected List<String> getRequiredCsvHeaders() {
-    return new ArrayList<>(); // Override in subclasses
+    // Override in subclasses
+    return new ArrayList<>();
   }
 
   /**
@@ -6259,7 +5590,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return List of all header names
    */
   protected List<String> getAllCsvHeaders() {
-    return new ArrayList<>(); // Override in subclasses
+    // Override in subclasses
+    return new ArrayList<>();
   }
 
   /**
@@ -6268,7 +5600,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * @return List of optional header names
    */
   protected List<String> getOptionalCsvHeaders() {
-    return new ArrayList<>(); // Override in subclasses
+    // Override in subclasses
+    return new ArrayList<>();
   }
 
   /**
@@ -6296,7 +5629,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // Simple approach: Just fetch entities by name and validate expected changes
     assertNotNull(result, "Import result should not be null");
     assertEquals(ApiStatus.SUCCESS, result.getStatus(), "Import should succeed for validation");
-
     // Subclasses should override to:
     // 1. getByName() for each entity they expect to be changed
     // 2. Assert that expected field values are present
@@ -6316,7 +5648,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       fail(fieldName + " references do not match: one is null, other is not");
     }
     assertEquals(expected.size(), actual.size(), fieldName + " reference count should match");
-
     Set<String> expectedNames =
         expected.stream()
             .map(org.openmetadata.schema.type.EntityReference::getName)
@@ -6325,7 +5656,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         actual.stream()
             .map(org.openmetadata.schema.type.EntityReference::getName)
             .collect(java.util.stream.Collectors.toSet());
-
     assertEquals(expectedNames, actualNames, fieldName + " reference names should match");
   }
 
@@ -6342,7 +5672,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     if (expected == null || actual == null) {
       fail(fieldName + " tags do not match: one is null, other is not");
     }
-
     Set<String> expectedTags =
         expected.stream()
             .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
@@ -6351,7 +5680,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         actual.stream()
             .map(org.openmetadata.schema.type.TagLabel::getTagFQN)
             .collect(java.util.stream.Collectors.toSet());
-
     assertEquals(expectedTags, actualTags, fieldName + " tag FQNs should match");
   }
 
@@ -6411,11 +5739,11 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     // persisted state that is not reachable through public APIs. invalidateCacheForEntity
     // drops the cross-thread Guava L1 entry and bumps the write epoch, which is what the
     // CSV import request (handled on a different Jetty thread) actually reads through.
-    EntityRepository<EntityInterface> repository =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+    EntityPolicy<EntityInterface> repository =
+        (EntityPolicy<EntityInterface>) Entity.getEntityRepository(entityType);
     repository.getDao().update(entity);
-    EntityRepository.invalidateCacheForEntity(
-        entityType, entity.getId(), entity.getFullyQualifiedName());
+    EntityCaches.invalidations()
+        .referencesChanged(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -6426,13 +5754,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected void validateCsvStructure(String csvData) {
     assertNotNull(csvData, "CSV data should not be null");
     assertFalse(csvData.trim().isEmpty(), "CSV data should not be empty");
-
     String[] lines = csvData.split("\n");
     assertTrue(lines.length >= 1, "CSV should have at least header row");
-
     String[] headers = lines[0].split(",");
     List<String> requiredHeaders = getRequiredCsvHeaders();
-
     for (String required : requiredHeaders) {
       boolean found =
           Arrays.stream(headers).anyMatch(header -> header.trim().equals(required.trim()));
@@ -6447,18 +5772,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_exportCsv(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String containerName = getImportExportContainerName(ns);
     Assumptions.assumeTrue(containerName != null, "Container name not provided");
-
     // Create an entity first
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     assertNotNull(entity, "Entity should be created");
-
     // Export CSV
     try {
       String csv = service.exportCsv(containerName);
@@ -6479,27 +5800,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsvDryRun(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String containerName = getImportExportContainerName(ns);
     Assumptions.assumeTrue(containerName != null, "Container name not provided");
-
     // Create an entity first
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     assertNotNull(entity, "Entity should be created");
-
     // Export to get valid CSV format
     try {
       String exportedCsv = service.exportCsv(containerName);
       assertNotNull(exportedCsv, "Export should return CSV data");
-
       // Import with dry run (should not actually modify data)
       String result = service.importCsv(containerName, exportedCsv, true);
       assertNotNull(result, "Import dry run should return a result");
-
       // Verify CsvImportResult values
       CsvImportResult importResult = JsonUtils.readValue(result, CsvImportResult.class);
       assertNotNull(importResult, "Should parse CsvImportResult from response");
@@ -6525,27 +5840,21 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importExportRoundTrip(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String containerName = getImportExportContainerName(ns);
     Assumptions.assumeTrue(containerName != null, "Container name not provided");
-
     // Create an entity first
     K createRequest = createMinimalRequest(ns);
     T entity = createEntity(createRequest);
     assertNotNull(entity, "Entity should be created");
-
     try {
       // Export current state
       String exportedCsv = service.exportCsv(containerName);
       assertNotNull(exportedCsv, "Export should return CSV data");
-
       // Import the exported data (should succeed without changes)
       String result = service.importCsv(containerName, exportedCsv, false);
       assertNotNull(result, "Import should return a result");
-
       // Verify CsvImportResult values
       CsvImportResult importResult = JsonUtils.readValue(result, CsvImportResult.class);
       assertNotNull(importResult, "Should parse CsvImportResult from response");
@@ -6557,16 +5866,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       assertTrue(
           importResult.getNumberOfRowsProcessed() >= 0, "Rows processed should be non-negative");
       assertEquals(0, importResult.getNumberOfRowsFailed(), "No rows should fail on round-trip");
-
       // Export again and verify consistency
       String reExportedCsv = service.exportCsv(containerName);
       assertNotNull(reExportedCsv, "Re-export should return CSV data");
-
       // The re-exported CSV should be similar to original
       // (may have minor differences like timestamps, but structure should match)
       String[] originalLines = exportedCsv.split("\n");
       String[] reExportedLines = reExportedCsv.split("\n");
-
       // At minimum, header should match
       assertEquals(
           originalLines[0], reExportedLines[0], "CSV headers should match after round-trip");
@@ -6582,38 +5888,30 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         supportsCsvImportSessionConsolidationRegression,
         "Entity CSV import does not update the same entity through session consolidation");
     Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     EntityInterface entity = createCsvImportRegressionEntity(ns);
     entity.setDescription("Versioned for CSV import regression");
     EntityInterface versioned = patchCsvImportRegressionEntity(entity);
     Double versionBeforeImport = versioned.getVersion();
     String fqn = versioned.getFullyQualifiedName();
     String entityType = getCsvImportRegressionEntityType();
-
     versioned.setChangeDescription(null);
     versioned.setIncrementalChangeDescription(null);
     persistEntityWithoutChangeDescription(entityType, versioned);
-
     String csvData = generateCsvImportRegressionData(ns, versioned);
     Assumptions.assumeTrue(
         csvData != null && !csvData.isBlank(), "Entity does not provide CSV data generation");
-
     String containerName = getCsvImportContainerName(ns, versioned);
     Assumptions.assumeTrue(containerName != null, "Container name not provided");
-
     CsvImportResult importResult =
         JsonUtils.readValue(
             importCsvForEntity(containerName, csvData, false), CsvImportResult.class);
-
     assertEquals(
         ApiStatus.SUCCESS,
         importResult.getStatus(),
         "Import should succeed: " + importResult.getImportResultsCsv());
     assertEquals(0, importResult.getNumberOfRowsFailed());
-
     EntityInterface updated = getCsvImportRegressionEntityByName(fqn);
     assertTrue(
         updated.getVersion() > versionBeforeImport, "CSV import should create a new version");
@@ -6630,7 +5928,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // COMPREHENSIVE CSV IMPORT/EXPORT TESTS
   // Template-based tests that work with any entity CSV structure
   // ===================================================================
-
   /**
    * Test: Import CSV with dry run and valid data.
    * Verifies dry run validation works without making changes.
@@ -6638,23 +5935,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsv_dryRun_validData(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
     Assumptions.assumeTrue(
         generateValidCsvData(ns, new ArrayList<>()) != null,
         "Entity does not provide CSV data generation");
-
     // Create test entities
     List<T> entities = createTestEntities(ns, 3);
-
     // Generate valid CSV data
     String csvData = generateValidCsvData(ns, entities);
     validateCsvStructure(csvData);
-
     // Perform dry run import
     CsvImportResult result = performImportCsv(ns, csvData, true);
-
     // Validate dry run result
     assertTrue(result.getDryRun(), "Should be a dry run");
     assertNotNull(result.getStatus(), "Status should not be null");
@@ -6669,23 +5961,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsv_actual_validData(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
     Assumptions.assumeTrue(
         generateValidCsvData(ns, new ArrayList<>()) != null,
         "Entity does not provide CSV data generation");
-
     // Create test entities
     List<T> entities = createTestEntities(ns, 2);
-
     // Generate valid CSV data
     String csvData = generateValidCsvData(ns, entities);
     validateCsvStructure(csvData);
-
     // Perform actual import
     CsvImportResult result = performImportCsv(ns, csvData, false);
-
     // Validate actual import result
     assertFalse(result.getDryRun(), "Should not be a dry run");
     assertEquals(
@@ -6695,7 +5982,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertTrue(result.getNumberOfRowsPassed() > 0, "Should have passed rows");
     assertEquals(0, result.getNumberOfRowsFailed(), "Should have no failed rows");
     validateCsvImportResult(result, entities);
-
     // CRITICAL: Validate data persistence - verify CSV changes were actually saved to database
     validateCsvDataPersistence(entities, csvData, result);
   }
@@ -6707,29 +5993,22 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_exportCsv_basicFunctionality(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String containerName = getImportExportContainerName(ns);
     Assumptions.assumeTrue(containerName != null, "Container name not provided");
-
     // Create test entities
     createTestEntities(ns, 2);
-
     // Export CSV
     try {
       String csv = service.exportCsv(containerName);
-
       // Validate export result
       assertNotNull(csv, "Export should return CSV data");
       assertFalse(csv.trim().isEmpty(), "CSV should not be empty");
       assertTrue(csv.contains(","), "CSV should have comma-separated values");
-
       // Validate structure
       String[] lines = csv.split("\n");
       assertTrue(lines.length >= 1, "CSV should have at least header row");
-
       // Check if has content beyond headers
       if (lines.length > 1) {
         assertTrue(lines[1].trim().length() > 0, "CSV should have data rows");
@@ -6746,35 +6025,27 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importExport_roundTripConsistency(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String containerName = getImportExportContainerName(ns);
     Assumptions.assumeTrue(containerName != null, "Container name not provided");
-
     // Create test entities
     List<T> entities = createTestEntities(ns, 2);
-
     try {
       // Export current state
       String exportedCsv = service.exportCsv(containerName);
       assertNotNull(exportedCsv, "Export should return CSV data");
-
       // Import back the exported data
       CsvImportResult importResult = performImportCsv(ns, exportedCsv, false);
       assertEquals(ApiStatus.SUCCESS, importResult.getStatus(), "Round-trip import should succeed");
-
       // Export again to verify consistency
       String reExportedCsv = service.exportCsv(containerName);
       assertNotNull(reExportedCsv, "Re-export should return CSV data");
-
       // Compare headers (structure should be consistent)
       String[] originalLines = exportedCsv.split("\n");
       String[] reExportedLines = reExportedCsv.split("\n");
       assertEquals(
           originalLines[0], reExportedLines[0], "CSV headers should match after round-trip");
-
     } catch (Exception e) {
       fail("Round-trip test failed: " + e.getMessage());
     }
@@ -6787,21 +6058,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsv_invalidFormat(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     // Test with malformed CSV data
     String malformedCsv = generateMalformedCsvData();
-
     try {
       CsvImportResult result = performImportCsv(ns, malformedCsv, true);
-
       // Should either fail completely or have failed rows
       assertTrue(
           result.getStatus() == ApiStatus.FAILURE || result.getNumberOfRowsFailed() > 0,
           "Malformed CSV should cause failures");
-
     } catch (Exception e) {
       // Exception is acceptable for malformed CSV
       assertTrue(
@@ -6817,23 +6083,18 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsv_invalidData(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String invalidCsv = generateInvalidCsvData(ns);
     Assumptions.assumeTrue(invalidCsv != null, "Entity does not provide invalid CSV data");
-
     try {
       CsvImportResult result = performImportCsv(ns, invalidCsv, true);
-
       // Should have validation failures
       assertTrue(
           result.getStatus() == ApiStatus.PARTIAL_SUCCESS
               || result.getStatus() == ApiStatus.FAILURE,
           "Invalid data should cause validation failures");
       assertTrue(result.getNumberOfRowsFailed() > 0, "Should have failed rows with invalid data");
-
     } catch (Exception e) {
       // Exception is acceptable for invalid data
       assertFalse(e.getMessage().isEmpty(), "Exception should have meaningful message");
@@ -6847,22 +6108,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsv_missingRequiredFields(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String csvWithMissingFields = generateCsvWithMissingRequiredFields(ns);
     Assumptions.assumeTrue(
         csvWithMissingFields != null, "Entity does not provide CSV with missing fields");
-
     try {
       CsvImportResult result = performImportCsv(ns, csvWithMissingFields, true);
-
       // Should fail validation for missing required fields
       assertTrue(
           result.getStatus() == ApiStatus.FAILURE || result.getNumberOfRowsFailed() > 0,
           "Missing required fields should cause failures");
-
     } catch (Exception e) {
       // Exception is acceptable for missing required fields
       assertTrue(
@@ -6878,17 +6134,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsv_extraColumns(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     String csvWithExtraColumns = generateCsvWithExtraColumns(ns);
     Assumptions.assumeTrue(
         csvWithExtraColumns != null, "Entity does not provide CSV with extra columns");
-
     try {
       CsvImportResult result = performImportCsv(ns, csvWithExtraColumns, true);
-
       // Should handle extra columns gracefully
       assertTrue(
           result.getStatus() == ApiStatus.SUCCESS
@@ -6896,7 +6148,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           "Extra columns should be handled gracefully");
       assertTrue(
           result.getNumberOfRowsProcessed() > 0, "Should process rows despite extra columns");
-
     } catch (Exception e) {
       // Minor exception might be acceptable, but shouldn't be fatal
       assertFalse(
@@ -6913,22 +6164,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void test_importCsv_batchProcessing(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
     Assumptions.assumeTrue(supportsBatchImport, "Entity does not support batch import");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     // Generate large dataset (more than typical batch size)
     String largeCsv = generateLargeCsvData(ns, 50);
     Assumptions.assumeTrue(largeCsv != null, "Entity does not provide large CSV data");
-
     try {
       CsvImportResult result = performImportCsv(ns, largeCsv, false);
-
       // Should handle batch processing successfully
       assertEquals(ApiStatus.SUCCESS, result.getStatus(), "Batch processing should succeed");
       assertTrue(result.getNumberOfRowsProcessed() >= 50, "Should process all batch rows");
       assertTrue(result.getNumberOfRowsPassed() > 0, "Should have successfully processed rows");
-
     } catch (Exception e) {
       fail("Batch processing failed: " + e.getMessage());
     }
@@ -6941,28 +6187,24 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   @Test
   void test_importCsv_emptyData(TestNamespace ns) {
     Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
-
     org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
     Assumptions.assumeTrue(service != null, "Entity service not provided");
-
     // Create CSV with all headers only (no data rows)
     List<String> headers = getAllCsvHeaders();
     if (headers.isEmpty()) {
       headers = getRequiredCsvHeaders();
     }
     if (headers.isEmpty()) {
-      headers = List.of("name"); // Default header
+      // Default header
+      headers = List.of("name");
     }
     String emptyCsv = String.join(",", headers);
-
     try {
       CsvImportResult result = performImportCsv(ns, emptyCsv, true);
-
       // Should handle empty data gracefully
       assertNotNull(result.getStatus(), "Status should not be null");
       assertEquals(0, result.getNumberOfRowsFailed(), "Empty CSV should not have failed rows");
       assertTrue(result.getNumberOfRowsProcessed() >= 0, "Processed count should be non-negative");
-
     } catch (Exception e) {
       // Should not fail for empty CSV
       fail("Empty CSV should not cause failures: " + e.getMessage());
@@ -6973,32 +6215,27 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Nested
   class ListEntityHistoryByTimestampPaginationTest {
+
     @Test
     void test_listEntityHistoryByTimestamp_pagination(TestNamespace ns) throws Exception {
       Assumptions.assumeTrue(
           supportsListHistoryByTimestamp,
           "Entity does not support listEntityHistoryByTimestamp endpoint");
       Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
-
       OpenMetadataClient client = SdkClients.adminClient();
       long startTs = System.currentTimeMillis();
-
       List<T> createdEntities = new ArrayList<>();
       for (int i = 0; i < 3; i++) {
         K createRequest = createRequest(ns.prefix("versions_test_" + i), ns);
         T entity = createEntity(createRequest);
         createdEntities.add(entity);
-
         entity.setDescription("Updated description v2 - " + System.currentTimeMillis());
         patchEntity(entity.getId().toString(), entity);
-
         entity.setDescription("Updated description v3 - " + System.currentTimeMillis());
         patchEntity(entity.getId().toString(), entity);
       }
-
       long endTs = System.currentTimeMillis();
       String basePath = getResourcePath() + "history";
-
       String response =
           client
               .getHttpClient()
@@ -7006,19 +6243,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                   HttpMethod.GET,
                   basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=2",
                   null);
-
       assertNotNull(response, "Response should not be null");
       JsonNode result = MAPPER.readTree(response);
-
       assertTrue(result.has("data"), "Response should have 'data' field");
       JsonNode data = result.get("data");
       assertTrue(data.isArray(), "Data should be an array");
       assertTrue(data.size() <= 2, "Data size should respect limit of 2");
-
       if (result.has("paging") && result.get("paging").has("after")) {
         String afterCursor = result.get("paging").get("after").asText();
         assertNotNull(afterCursor, "After cursor should be present for paginated results");
-
         String page2Response =
             client
                 .getHttpClient()
@@ -7032,15 +6265,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                         + "&limit=2&after="
                         + afterCursor,
                     null);
-
         JsonNode page2Result = MAPPER.readTree(page2Response);
         assertTrue(page2Result.has("data"), "Page 2 response should have 'data' field");
         JsonNode page2Data = page2Result.get("data");
         assertTrue(page2Data.isArray(), "Page 2 data should be an array");
-
         if (page2Result.has("paging") && page2Result.get("paging").has("before")) {
           String beforeCursor = page2Result.get("paging").get("before").asText();
-
           String backResponse =
               client
                   .getHttpClient()
@@ -7054,7 +6284,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                           + "&limit=2&before="
                           + beforeCursor,
                       null);
-
           JsonNode backResult = MAPPER.readTree(backResponse);
           assertTrue(backResult.has("data"), "Back navigation response should have 'data' field");
         }
@@ -7066,11 +6295,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       Assumptions.assumeTrue(
           supportsListHistoryByTimestamp,
           "Entity does not support listEntityHistoryByTimestamp endpoint");
-
       OpenMetadataClient client = SdkClients.adminClient();
       long now = System.currentTimeMillis();
       String basePath = getResourcePath() + "history";
-
       assertThrows(
           Exception.class,
           () ->
@@ -7081,7 +6308,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                       basePath + "?startTs=" + (now - 1000) + "&endTs=" + now + "&limit=0",
                       null),
           "Limit of 0 should fail validation");
-
       assertThrows(
           Exception.class,
           () ->
@@ -7099,12 +6325,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       Assumptions.assumeTrue(
           supportsListHistoryByTimestamp,
           "Entity does not support listEntityHistoryByTimestamp endpoint");
-
       OpenMetadataClient client = SdkClients.adminClient();
       long futureStart = System.currentTimeMillis() + 86400000;
       long futureEnd = futureStart + 1000;
       String basePath = getResourcePath() + "history";
-
       String response =
           client
               .getHttpClient()
@@ -7112,7 +6336,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
                   HttpMethod.GET,
                   basePath + "?startTs=" + futureStart + "&endTs=" + futureEnd + "&limit=10",
                   null);
-
       JsonNode result = MAPPER.readTree(response);
       assertTrue(result.has("data"), "Response should have 'data' field");
       JsonNode data = result.get("data");
@@ -7128,44 +6351,35 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           supportsListHistoryByTimestamp,
           "Entity does not support listEntityHistoryByTimestamp endpoint");
       Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
-
       OpenMetadataClient client = SdkClients.adminClient();
       long startTs = System.currentTimeMillis();
-
       for (int i = 0; i < 5; i++) {
         K createRequest = createRequest(ns.prefix("pagination_cycle_" + i), ns);
         T entity = createEntity(createRequest);
-
         entity.setDescription("Updated v2 - " + System.currentTimeMillis());
         patchEntity(entity.getId().toString(), entity);
       }
-
       long endTs = System.currentTimeMillis();
       String basePath = getResourcePath() + "history";
       int limit = 3;
-
       List<String> allIds = new ArrayList<>();
       List<String> afterCursors = new ArrayList<>();
       String afterCursor = null;
       String lastPageBeforeCursor = null;
       int forwardPageCount = 0;
-
       do {
         String url = basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=" + limit;
         if (afterCursor != null) {
           url += "&after=" + afterCursor;
         }
-
         String response = client.getHttpClient().executeForString(HttpMethod.GET, url, null);
         JsonNode result = MAPPER.readTree(response);
         JsonNode data = result.get("data");
-
         for (JsonNode item : data) {
           if (item.has("id")) {
             allIds.add(item.get("id").asText());
           }
         }
-
         forwardPageCount++;
         afterCursor = null;
         if (result.has("paging") && !result.get("paging").isNull()) {
@@ -7179,13 +6393,10 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           }
         }
       } while (afterCursor != null);
-
       assertTrue(forwardPageCount > 1, "Should have paginated through multiple pages forward");
       assertFalse(allIds.isEmpty(), "Should have collected entity version IDs");
-
       if (!afterCursors.isEmpty() && lastPageBeforeCursor != null) {
         String beforeCursor = lastPageBeforeCursor;
-
         int backwardPageCount = 0;
         while (beforeCursor != null) {
           String backUrl =
@@ -7201,7 +6412,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           String backResponse =
               client.getHttpClient().executeForString(HttpMethod.GET, backUrl, null);
           JsonNode backResult = MAPPER.readTree(backResponse);
-
           backwardPageCount++;
           beforeCursor = null;
           if (backResult.has("paging") && !backResult.get("paging").isNull()) {
@@ -7211,16 +6421,13 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
             }
           }
         }
-
         assertTrue(
             backwardPageCount >= 1, "Should have been able to navigate backward at least once");
-
         String firstPageUrl =
             basePath + "?startTs=" + startTs + "&endTs=" + endTs + "&limit=" + limit;
         String firstPageResponse =
             client.getHttpClient().executeForString(HttpMethod.GET, firstPageUrl, null);
         JsonNode firstPageResult = MAPPER.readTree(firstPageResponse);
-
         boolean hasBeforeOnFirstPage = false;
         if (firstPageResult.has("paging") && !firstPageResult.get("paging").isNull()) {
           JsonNode paging = firstPageResult.get("paging");
@@ -7231,12 +6438,17 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
 
     private static final int HISTORY_PAGE_SIZE = 3;
+
     private static final int HISTORY_UNPAGINATED_LIMIT = 500;
+
     private static final int HISTORY_ENTITY_COUNT = 5;
+
     private static final int HISTORY_PATCHES_PER_ENTITY = 2;
+
     private static final int HISTORY_MIN_PAGES = 3;
 
     private record HistoryWalk(List<List<String>> pages, String lastPageBeforeCursor) {
+
       List<String> versionKeys() {
         return pages.stream().flatMap(List::stream).toList();
       }
@@ -7263,18 +6475,15 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           supportsListHistoryByTimestamp,
           "Entity does not support listEntityHistoryByTimestamp endpoint");
       Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
-
       OpenMetadataClient client = SdkClients.adminClient();
       long startTs = System.currentTimeMillis();
       List<String> ownEntityIds = createVersionedEntities(ns);
       long endTs = System.currentTimeMillis();
       String basePath = getResourcePath() + "history";
-
       HistoryWalk unpaginated =
           walkForward(client, basePath, startTs, endTs, HISTORY_UNPAGINATED_LIMIT);
       HistoryWalk paged = walkForward(client, basePath, startTs, endTs, HISTORY_PAGE_SIZE);
       List<String> expected = ownVersions(unpaginated.versionKeys(), ownEntityIds);
-
       assertTrue(
           expected.size() >= 2 * HISTORY_PAGE_SIZE,
           "Test data must span more than one page, got " + expected.size() + " versions");
@@ -7287,7 +6496,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
           "Forward paged walk must reproduce the unpaginated read exactly");
       assertNoRepeats(paged.versionKeys());
       assertNewestFirst(paged.versionKeys());
-
       List<List<String>> backwardPages =
           walkBackward(client, basePath, startTs, endTs, paged.lastPageBeforeCursor());
       assertTrue(
@@ -7350,7 +6558,9 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       return pages;
     }
 
-    /** Backward pages arrive oldest-first, so replaying them forward reverses the page sequence. */
+    /**
+     * Backward pages arrive oldest-first, so replaying them forward reverses the page sequence.
+     */
     private List<String> replayInForwardOrder(List<List<String>> backwardPages) {
       List<String> versionKeys = new ArrayList<>();
       for (int i = backwardPages.size() - 1; i >= 0; i--) {
@@ -7445,7 +6655,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
   // CHANGE SUMMARY TESTS
   // ===================================================================
-
   /**
    * Test: Retrieve changeSummary by entity ID after updating the entity.
    * The changeSummary API returns metadata about who changed each field,
@@ -7455,10 +6664,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void get_changeSummaryById_200(TestNamespace ns) throws Exception {
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     created.setDescription("Updated description for changeSummary test");
     T updated = patchEntity(created.getId().toString(), created);
-
     OpenMetadataClient client = SdkClients.adminClient();
     String response =
         client
@@ -7487,10 +6694,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void get_changeSummaryByFqn_200(TestNamespace ns) throws Exception {
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     created.setDescription("Updated description for changeSummary FQN test");
     T updated = patchEntity(created.getId().toString(), created);
-
     OpenMetadataClient client = SdkClients.adminClient();
     String fqn = updated.getFullyQualifiedName();
     String response =
@@ -7519,10 +6724,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void get_changeSummaryWithFieldPrefix_200(TestNamespace ns) throws Exception {
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     created.setDescription("Updated for fieldPrefix test");
     T updated = patchEntity(created.getId().toString(), created);
-
     OpenMetadataClient client = SdkClients.adminClient();
     String response =
         client
@@ -7539,7 +6742,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     JsonNode result = MAPPER.readTree(response);
     assertTrue(result.has("changeSummary"), "Response must contain changeSummary field");
     assertTrue(result.has("totalEntries"), "Response must contain totalEntries field");
-
     JsonNode changeSummary = result.get("changeSummary");
     assertTrue(
         changeSummary.isObject() && changeSummary.size() > 0,
@@ -7560,10 +6762,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void get_changeSummaryWithPagination_200(TestNamespace ns) throws Exception {
     K createRequest = createMinimalRequest(ns);
     T created = createEntity(createRequest);
-
     created.setDescription("Updated for pagination test");
     patchEntity(created.getId().toString(), created);
-
     OpenMetadataClient client = SdkClients.adminClient();
     String response =
         client
@@ -7613,27 +6813,22 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // by-name), mutates the entity, and re-reads to confirm the cached
   // path returns the latest value rather than a pre-mutation snapshot.
   // ===================================================================
-
   @Test
   void cache_displayNameUpdateReflectedOnReadById(TestNamespace ns) {
     Assumptions.assumeTrue(
         org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
         "Skipped — cache write-through tests require cacheProvider=redis");
-
     K request = createMinimalRequest(ns);
     T created = createEntity(request);
     String id = created.getId().toString();
-
     // Warm by-id and by-name caches.
     T warmById = getEntity(id);
     getEntityByName(created.getFullyQualifiedName());
-
     String newDisplayName = "cache-it-" + System.nanoTime();
     warmById.setDisplayName(newDisplayName);
     T patched = patchEntity(id, warmById);
     assertEquals(
         newDisplayName, patched.getDisplayName(), "PATCH response itself must show the update");
-
     T fetchedById = getEntity(id);
     assertEquals(
         newDisplayName,
@@ -7646,20 +6841,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(
         org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
         "Skipped — cache write-through tests require cacheProvider=redis");
-
     K request = createMinimalRequest(ns);
     T created = createEntity(request);
     String id = created.getId().toString();
     String fqn = created.getFullyQualifiedName();
-
     // Warm both caches up front so PATCH's invalidation has something to invalidate.
     T warm = getEntity(id);
     getEntityByName(fqn);
-
     String newDisplayName = "cache-by-name-" + System.nanoTime();
     warm.setDisplayName(newDisplayName);
     patchEntity(id, warm);
-
     T fetchedByName = getEntityByName(fqn);
     assertEquals(
         newDisplayName,
@@ -7672,15 +6863,12 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     Assumptions.assumeTrue(
         org.openmetadata.it.bootstrap.TestSuiteBootstrap.isRedisEnabled(),
         "Skipped — cache write-through tests require cacheProvider=redis");
-
     K request = createMinimalRequest(ns);
     T created = createEntity(request);
     String id = created.getId().toString();
-
     // Warm the cache, then hard-delete.
     getEntity(id);
     hardDeleteEntity(id);
-
     // Subsequent reads must 404 — a stale cache entry would let the entity stay
     // resolvable until TTL.
     Exception thrown = assertThrows(Exception.class, () -> getEntity(id));

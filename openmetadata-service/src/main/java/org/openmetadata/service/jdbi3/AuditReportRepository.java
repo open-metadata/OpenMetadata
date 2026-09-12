@@ -12,28 +12,41 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.ai.AuditReportResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Repository
-public class AuditReportRepository extends EntityRepository<AuditReport> {
+public class AuditReportRepository implements EntityPolicy<AuditReport> {
+
   private static final String FIELDS = "owners,tags,extension,domains";
 
   public AuditReportRepository() {
-    super(
-        AuditReportResource.COLLECTION_PATH,
-        Entity.AUDIT_REPORT,
-        AuditReport.class,
-        Entity.getCollectionDAO().auditReportDAO(),
-        FIELDS,
-        FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                AuditReportResource.COLLECTION_PATH,
+                Entity.AUDIT_REPORT,
+                AuditReport.class,
+                Entity.getCollectionDAO().auditReportDAO()),
+            new EntityPolicyContext.WriteFields(FIELDS, FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -53,7 +66,7 @@ public class AuditReportRepository extends EntityRepository<AuditReport> {
 
   @Override
   public void storeEntity(AuditReport report, boolean update) {
-    store(report, update);
+    persistence().store(report, update);
   }
 
   @Override
@@ -62,40 +75,91 @@ public class AuditReportRepository extends EntityRepository<AuditReport> {
   }
 
   @Override
-  public EntityRepository<AuditReport>.EntityUpdater getUpdater(
-      AuditReport original, AuditReport updated, Operation operation, ChangeSource changeSource) {
-    return new AuditReportUpdater(original, updated, operation);
+  public EntityUpdater<AuditReport> getUpdater(
+      AuditReport original,
+      AuditReport updated,
+      EntityOperation operation,
+      ChangeSource changeSource) {
+    return new AuditReportUpdater(original, updated, operation).mutation();
   }
 
-  public class AuditReportUpdater extends EntityUpdater {
-    public AuditReportUpdater(AuditReport original, AuditReport updated, Operation operation) {
-      super(original, updated, operation);
+  public class AuditReportUpdater implements EntitySpecificMutation<AuditReport> {
+
+    public AuditReportUpdater(
+        AuditReport original, AuditReport updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
-      compareAndUpdate(
+    public void update(EntityUpdater<AuditReport> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
+          "status",
+          () ->
+              entityUpdate.recordChange(
+                  "status",
+                  entityUpdate.getOriginal().getStatus(),
+                  entityUpdate.getUpdated().getStatus()));
+      entityUpdate.compareAndUpdate(
           "startedAt",
-          () -> recordChange("startedAt", original.getStartedAt(), updated.getStartedAt()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "startedAt",
+                  entityUpdate.getOriginal().getStartedAt(),
+                  entityUpdate.getUpdated().getStartedAt()));
+      entityUpdate.compareAndUpdate(
           "completedAt",
-          () -> recordChange("completedAt", original.getCompletedAt(), updated.getCompletedAt()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "completedAt",
+                  entityUpdate.getOriginal().getCompletedAt(),
+                  entityUpdate.getUpdated().getCompletedAt()));
+      entityUpdate.compareAndUpdate(
           "failureReason",
           () ->
-              recordChange(
-                  "failureReason", original.getFailureReason(), updated.getFailureReason()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "failureReason",
+                  entityUpdate.getOriginal().getFailureReason(),
+                  entityUpdate.getUpdated().getFailureReason()));
+      entityUpdate.compareAndUpdate(
           "runningOn",
-          () -> recordChange("runningOn", original.getRunningOn(), updated.getRunningOn()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "runningOn",
+                  entityUpdate.getOriginal().getRunningOn(),
+                  entityUpdate.getUpdated().getRunningOn()));
+      entityUpdate.compareAndUpdate(
           "artifacts",
-          () -> recordChange("artifacts", original.getArtifacts(), updated.getArtifacts(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "artifacts",
+                  entityUpdate.getOriginal().getArtifacts(),
+                  entityUpdate.getUpdated().getArtifacts(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "manifest",
-          () -> recordChange("manifest", original.getManifest(), updated.getManifest(), true));
+          () ->
+              entityUpdate.recordChange(
+                  "manifest",
+                  entityUpdate.getOriginal().getManifest(),
+                  entityUpdate.getUpdated().getManifest(),
+                  true));
     }
+
+    private final EntityUpdater<AuditReport> entityUpdate;
+
+    public EntityUpdater<AuditReport> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<AuditReport> entityContext;
+
+  @Override
+  public final EntityPolicyContext<AuditReport> context() {
+    return entityContext;
   }
 }

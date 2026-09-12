@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -23,6 +23,15 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.ai.McpServerResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -30,21 +39,27 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Repository
-public class McpServerRepository extends EntityRepository<McpServer> {
+public class McpServerRepository implements EntityPolicy<McpServer> {
+
   private static final String SERVER_UPDATE_FIELDS =
       "tools,resources,prompts,governanceMetadata,reviewers";
+
   private static final String SERVER_PATCH_FIELDS =
       "tools,resources,prompts,governanceMetadata,reviewers";
 
   public McpServerRepository() {
-    super(
-        McpServerResource.COLLECTION_PATH,
-        Entity.MCP_SERVER,
-        McpServer.class,
-        Entity.getCollectionDAO().mcpServerDAO(),
-        SERVER_PATCH_FIELDS,
-        SERVER_UPDATE_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                McpServerResource.COLLECTION_PATH,
+                Entity.MCP_SERVER,
+                McpServer.class,
+                Entity.getCollectionDAO().mcpServerDAO()),
+            new EntityPolicyContext.WriteFields(
+                SERVER_PATCH_FIELDS, SERVER_UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -60,7 +75,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
 
   @Override
   public void setFields(McpServer mcpServer, Fields fields, RelationIncludes relationIncludes) {
-    mcpServer.setService(getContainer(mcpServer.getId()));
+    mcpServer.setService(relationships().container(mcpServer.getId(), null));
   }
 
   @Override
@@ -70,7 +85,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
 
   @Override
   public void restorePatchAttributes(McpServer original, McpServer updated) {
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
   }
 
@@ -83,13 +98,13 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service");
   }
 
   @Override
   public void storeEntity(McpServer mcpServer, boolean update) {
-    store(mcpServer, update);
+    persistence().store(mcpServer, update);
   }
 
   @Override
@@ -100,8 +115,8 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   }
 
   @Override
-  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
-    super.deleteChildren(id, recursive, hardDelete, updatedBy);
+  public void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    EntityPolicy.super.deleteChildren(id, recursive, hardDelete, updatedBy);
     if (hardDelete) {
       McpExecutionRepository executionRepo =
           (McpExecutionRepository) Entity.getEntityTimeSeriesRepository(Entity.MCP_EXECUTION);
@@ -110,13 +125,13 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   }
 
   @Override
-  public EntityRepository<McpServer>.EntityUpdater getUpdater(
-      McpServer original, McpServer updated, Operation operation, ChangeSource changeSource) {
-    return new McpServerUpdater(original, updated, operation);
+  public EntityUpdater<McpServer> getUpdater(
+      McpServer original, McpServer updated, EntityOperation operation, ChangeSource changeSource) {
+    return new McpServerUpdater(original, updated, operation).mutation();
   }
 
   @Override
-  protected EntityReference getParentReference(McpServer entity) {
+  public EntityReference getParentReference(McpServer entity) {
     return entity.getService();
   }
 
@@ -126,12 +141,21 @@ public class McpServerRepository extends EntityRepository<McpServer> {
       return null;
     }
     EntityReference service = entity.getService();
-    EntityRepository<?> serviceRepository = Entity.getEntityRepository(service.getType());
-    Fields parentFields = serviceRepository.getOnlySupportedFields(fields);
+    EntityPolicy<?> serviceRepository = Entity.getEntityRepository(service.getType());
+    Fields parentFields = serviceRepository.fieldPolicy().supported(fields);
     return service.getId() != null
-        ? serviceRepository.get(null, service.getId(), parentFields, Include.ALL, true)
-        : serviceRepository.getByName(
-            null, service.getFullyQualifiedName(), parentFields, Include.ALL, true);
+        ? serviceRepository
+            .reads()
+            .byId(
+                service.getId(),
+                new EntityReadService.Query(
+                    null, parentFields, RelationIncludes.fromInclude(Include.ALL), true))
+        : serviceRepository
+            .reads()
+            .byName(
+                service.getFullyQualifiedName(),
+                new EntityReadService.Query(
+                    null, parentFields, RelationIncludes.fromInclude(Include.ALL), true));
   }
 
   private void populateService(McpServer mcpServer) {
@@ -140,46 +164,114 @@ public class McpServerRepository extends EntityRepository<McpServer> {
     mcpServer.setService(service.getEntityReference());
   }
 
-  public class McpServerUpdater extends EntityUpdater {
-    public McpServerUpdater(McpServer original, McpServer updated, Operation operation) {
-      super(original, updated, operation);
+  public class McpServerUpdater implements EntitySpecificMutation<McpServer> {
+
+    public McpServerUpdater(McpServer original, McpServer updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("serverType", original.getServerType(), updated.getServerType());
-      recordChange("transportType", original.getTransportType(), updated.getTransportType());
-      recordChange("protocolVersion", original.getProtocolVersion(), updated.getProtocolVersion());
-      recordChange(
-          "developmentStage", original.getDevelopmentStage(), updated.getDevelopmentStage());
-      recordChange("serverInfo", original.getServerInfo(), updated.getServerInfo(), true);
-      recordChange(
-          "connectionConfig", original.getConnectionConfig(), updated.getConnectionConfig(), true);
-      recordChange("capabilities", original.getCapabilities(), updated.getCapabilities(), true);
-      recordChange("tools", original.getTools(), updated.getTools(), true);
-      recordChange("resources", original.getResources(), updated.getResources(), true);
-      recordChange("prompts", original.getPrompts(), updated.getPrompts(), true);
-      recordChange(
+    public void update(EntityUpdater<McpServer> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.recordChange(
+          "serverType",
+          entityUpdate.getOriginal().getServerType(),
+          entityUpdate.getUpdated().getServerType());
+      entityUpdate.recordChange(
+          "transportType",
+          entityUpdate.getOriginal().getTransportType(),
+          entityUpdate.getUpdated().getTransportType());
+      entityUpdate.recordChange(
+          "protocolVersion",
+          entityUpdate.getOriginal().getProtocolVersion(),
+          entityUpdate.getUpdated().getProtocolVersion());
+      entityUpdate.recordChange(
+          "developmentStage",
+          entityUpdate.getOriginal().getDevelopmentStage(),
+          entityUpdate.getUpdated().getDevelopmentStage());
+      entityUpdate.recordChange(
+          "serverInfo",
+          entityUpdate.getOriginal().getServerInfo(),
+          entityUpdate.getUpdated().getServerInfo(),
+          true);
+      entityUpdate.recordChange(
+          "connectionConfig",
+          entityUpdate.getOriginal().getConnectionConfig(),
+          entityUpdate.getUpdated().getConnectionConfig(),
+          true);
+      entityUpdate.recordChange(
+          "capabilities",
+          entityUpdate.getOriginal().getCapabilities(),
+          entityUpdate.getUpdated().getCapabilities(),
+          true);
+      entityUpdate.recordChange(
+          "tools",
+          entityUpdate.getOriginal().getTools(),
+          entityUpdate.getUpdated().getTools(),
+          true);
+      entityUpdate.recordChange(
+          "resources",
+          entityUpdate.getOriginal().getResources(),
+          entityUpdate.getUpdated().getResources(),
+          true);
+      entityUpdate.recordChange(
+          "prompts",
+          entityUpdate.getOriginal().getPrompts(),
+          entityUpdate.getUpdated().getPrompts(),
+          true);
+      entityUpdate.recordChange(
           "governanceMetadata",
-          original.getGovernanceMetadata(),
-          updated.getGovernanceMetadata(),
+          entityUpdate.getOriginal().getGovernanceMetadata(),
+          entityUpdate.getUpdated().getGovernanceMetadata(),
           true);
-      recordChange(
+      entityUpdate.recordChange(
           "dataAccessSummary",
-          original.getDataAccessSummary(),
-          updated.getDataAccessSummary(),
+          entityUpdate.getOriginal().getDataAccessSummary(),
+          entityUpdate.getUpdated().getDataAccessSummary(),
           true);
-      recordChange("usageMetrics", original.getUsageMetrics(), updated.getUsageMetrics(), true);
-      recordChange(
-          "securityMetrics", original.getSecurityMetrics(), updated.getSecurityMetrics(), true);
-      recordChange(
+      entityUpdate.recordChange(
+          "usageMetrics",
+          entityUpdate.getOriginal().getUsageMetrics(),
+          entityUpdate.getUpdated().getUsageMetrics(),
+          true);
+      entityUpdate.recordChange(
+          "securityMetrics",
+          entityUpdate.getOriginal().getSecurityMetrics(),
+          entityUpdate.getUpdated().getSecurityMetrics(),
+          true);
+      entityUpdate.recordChange(
           "usedByApplications",
-          original.getUsedByApplications(),
-          updated.getUsedByApplications(),
+          entityUpdate.getOriginal().getUsedByApplications(),
+          entityUpdate.getUpdated().getUsedByApplications(),
           true);
-      recordChange("sourceCode", original.getSourceCode(), updated.getSourceCode());
-      recordChange("deploymentUrl", original.getDeploymentUrl(), updated.getDeploymentUrl());
-      recordChange("documentation", original.getDocumentation(), updated.getDocumentation());
+      entityUpdate.recordChange(
+          "sourceCode",
+          entityUpdate.getOriginal().getSourceCode(),
+          entityUpdate.getUpdated().getSourceCode());
+      entityUpdate.recordChange(
+          "deploymentUrl",
+          entityUpdate.getOriginal().getDeploymentUrl(),
+          entityUpdate.getUpdated().getDeploymentUrl());
+      entityUpdate.recordChange(
+          "documentation",
+          entityUpdate.getOriginal().getDocumentation(),
+          entityUpdate.getUpdated().getDocumentation());
     }
+
+    private final EntityUpdater<McpServer> entityUpdate;
+
+    public EntityUpdater<McpServer> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<McpServer> entityContext;
+
+  @Override
+  public final EntityPolicyContext<McpServer> context() {
+    return entityContext;
   }
 }

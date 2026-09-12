@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -13,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -27,7 +29,9 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.EntityFieldPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -45,9 +49,7 @@ class PermissionDebugServiceTest {
     TeamRepository teamRepository = mock(TeamRepository.class);
     RoleRepository roleRepository = mock(RoleRepository.class);
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-
     stubFields(userRepository, teamRepository, roleRepository, policyRepository);
-
     Policy mixedPolicy =
         policy(
             "mixed-policy",
@@ -90,11 +92,9 @@ class PermissionDebugServiceTest {
                 List.of(MetadataOperation.VIEW_ALL),
                 List.of(Entity.TABLE),
                 null));
-
     Role analystRole = role("analyst", mixedPolicy);
     Role editorRole = role("editor", editPolicy);
     Role parentRole = role("parent-role", viewAllPolicy);
-
     Team parentTeam =
         team("parent-team", TeamType.DEPARTMENT, List.of(parentRole), List.of(), List.of());
     Team childTeam =
@@ -104,7 +104,6 @@ class PermissionDebugServiceTest {
             List.of(editorRole),
             List.of(createPolicy),
             List.of(parentTeam));
-
     User user =
         new User()
             .withId(UUID.randomUUID())
@@ -119,8 +118,7 @@ class PermissionDebugServiceTest {
                         .withId(UUID.randomUUID())
                         .withName("Engineering")
                         .withFullyQualifiedName("Engineering")));
-
-    when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+    when(userRepository.getByName(isNull(), eq("alice"), any(EntityUtil.Fields.class)))
         .thenReturn(user);
     stubById(teamRepository, Map.of(childTeam.getId(), childTeam, parentTeam.getId(), parentTeam));
     stubById(
@@ -143,14 +141,11 @@ class PermissionDebugServiceTest {
             createPolicy,
             viewAllPolicy.getId(),
             viewAllPolicy));
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubRepositories(
           entityMock, userRepository, teamRepository, roleRepository, policyRepository);
-
       PermissionDebugInfo debugInfo =
           new PermissionDebugService().debugUserPermissionsByName("alice");
-
       assertEquals("alice", debugInfo.getUser().getName());
       assertEquals(1, debugInfo.getDirectRoles().size());
       assertEquals("analyst", debugInfo.getDirectRoles().get(0).getRole().getName());
@@ -160,7 +155,6 @@ class PermissionDebugServiceTest {
           debugInfo.getDirectRoles().get(0).getPolicies().get(0).getRules().stream()
               .map(PermissionDebugInfo.RuleInfo::getEffect)
               .toList());
-
       assertEquals(2, debugInfo.getTeamPermissions().size());
       TeamPermission directTeam = debugInfo.getTeamPermissions().get(0);
       TeamPermission inheritedTeam = debugInfo.getTeamPermissions().get(1);
@@ -171,11 +165,9 @@ class PermissionDebugServiceTest {
           directTeam.getTeamHierarchy().stream().map(EntityReference::getName).toList());
       assertEquals("parent-team", inheritedTeam.getTeam().getName());
       assertEquals(1, inheritedTeam.getHierarchyLevel());
-
       assertEquals(2, debugInfo.getInheritedPermissions().size());
       assertEquals("ADMIN", debugInfo.getInheritedPermissions().get(0).getPermissionType());
       assertEquals("DOMAIN_ACCESS", debugInfo.getInheritedPermissions().get(1).getPermissionType());
-
       assertEquals(1, debugInfo.getSummary().getDirectRoles());
       assertEquals(3, debugInfo.getSummary().getTotalRoles());
       assertEquals(2, debugInfo.getSummary().getInheritedRoles());
@@ -209,12 +201,10 @@ class PermissionDebugServiceTest {
     TeamRepository teamRepository = mock(TeamRepository.class);
     RoleRepository roleRepository = mock(RoleRepository.class);
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-    EntityRepository<EntityInterface> resourceRepository = mock(EntityRepository.class);
-
+    EntityPolicy<EntityInterface> resourceRepository = mock(EntityPolicy.class);
     stubFields(
         userRepository, teamRepository, roleRepository, policyRepository, resourceRepository);
     when(resourceRepository.getEntityType()).thenReturn(Entity.TABLE);
-
     User user = new User().withId(UUID.randomUUID()).withName("alice");
     EntityReference ownerRef =
         new EntityReference().withType(Entity.USER).withId(user.getId()).withName(user.getName());
@@ -224,12 +214,16 @@ class PermissionDebugServiceTest {
             .withName("sales")
             .withFullyQualifiedName("service.db.sales")
             .withOwners(List.of(ownerRef));
-
-    when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+    when(userRepository.getByName(isNull(), eq("alice"), any(EntityUtil.Fields.class)))
         .thenReturn(user);
-    when(resourceRepository.get(isNull(), eq(table.getId()), eq(EntityUtil.Fields.EMPTY_FIELDS)))
-        .thenReturn(table);
-
+    when(resourceRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(table.getId(), readId);
+                  return table;
+                }));
     SubjectContext.PolicyContext allowContext =
         new SubjectContext.PolicyContext(
             Entity.USER,
@@ -256,7 +250,6 @@ class PermissionDebugServiceTest {
                     List.of(MetadataOperation.VIEW_BASIC),
                     List.of(Entity.TABLE),
                     null)));
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       stubRepositories(
@@ -269,12 +262,10 @@ class PermissionDebugServiceTest {
       subjectCacheMock
           .when(() -> SubjectCache.getPolicies("alice"))
           .thenReturn(List.of(allowContext, denyContext));
-
       PermissionEvaluationDebugInfo debugInfo =
           new PermissionDebugService()
               .debugPermissionEvaluation(
                   "alice", Entity.TABLE, table.getId().toString(), MetadataOperation.VIEW_BASIC);
-
       assertFalse(debugInfo.isAllowed());
       assertEquals("DENIED", debugInfo.getFinalDecision());
       assertEquals(2, debugInfo.getEvaluationSteps().size());
@@ -288,7 +279,6 @@ class PermissionDebugServiceTest {
               .getSummary()
               .getReasonsForDecision()
               .contains("Denied by explicit DENY rule(s)"));
-
       PolicyEvaluationStep allowStep = debugInfo.getEvaluationSteps().get(0);
       PolicyEvaluationStep denyStep = debugInfo.getEvaluationSteps().get(1);
       assertEquals("DIRECT_ROLE", allowStep.getSource());
@@ -308,12 +298,10 @@ class PermissionDebugServiceTest {
     TeamRepository teamRepository = mock(TeamRepository.class);
     RoleRepository roleRepository = mock(RoleRepository.class);
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-    EntityRepository<EntityInterface> resourceRepository = mock(EntityRepository.class);
-
+    EntityPolicy<EntityInterface> resourceRepository = mock(EntityPolicy.class);
     stubFields(
         userRepository, teamRepository, roleRepository, policyRepository, resourceRepository);
     when(resourceRepository.getEntityType()).thenReturn(Entity.TABLE);
-
     User user = new User().withId(UUID.randomUUID()).withName("alice");
     EntityReference ownerRef =
         new EntityReference().withType(Entity.USER).withId(user.getId()).withName(user.getName());
@@ -323,13 +311,11 @@ class PermissionDebugServiceTest {
             .withName("sales")
             .withFullyQualifiedName("service.db.schema.sales")
             .withOwners(List.of(ownerRef));
-
-    when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+    when(userRepository.getByName(isNull(), eq("alice"), any(EntityUtil.Fields.class)))
         .thenReturn(user);
     when(resourceRepository.getByName(
-            isNull(), eq(table.getFullyQualifiedName()), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+            isNull(), eq(table.getFullyQualifiedName()), any(EntityUtil.Fields.class)))
         .thenReturn(table);
-
     SubjectContext.PolicyContext policyContext =
         new SubjectContext.PolicyContext(
             Entity.USER,
@@ -343,7 +329,6 @@ class PermissionDebugServiceTest {
                     List.of(MetadataOperation.VIEW_ALL),
                     List.of(Entity.TABLE),
                     "isOwner()")));
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       stubRepositories(
@@ -356,7 +341,6 @@ class PermissionDebugServiceTest {
       subjectCacheMock
           .when(() -> SubjectCache.getPolicies("alice"))
           .thenReturn(List.of(policyContext));
-
       PermissionEvaluationDebugInfo debugInfo =
           new PermissionDebugService()
               .debugPermissionEvaluation(
@@ -364,7 +348,6 @@ class PermissionDebugServiceTest {
                   Entity.TABLE,
                   table.getFullyQualifiedName(),
                   MetadataOperation.VIEW_BASIC);
-
       assertTrue(debugInfo.isAllowed());
       assertEquals("ALLOWED", debugInfo.getFinalDecision());
       assertEquals(1, debugInfo.getEvaluationSteps().size());
@@ -375,7 +358,6 @@ class PermissionDebugServiceTest {
               .getSummary()
               .getReasonsForDecision()
               .contains("Allowed by matching ALLOW rule(s)"));
-
       PolicyEvaluationStep step = debugInfo.getEvaluationSteps().get(0);
       assertEquals("USER_POLICY", step.getSource());
       assertEquals("alice", step.getSourceEntity().getName());
@@ -386,10 +368,8 @@ class PermissionDebugServiceTest {
       assertEquals(
           "Condition evaluated to true",
           step.getConditionEvaluations().get(0).getEvaluationDetails());
-
       verify(resourceRepository)
-          .getByName(
-              isNull(), eq(table.getFullyQualifiedName()), eq(EntityUtil.Fields.EMPTY_FIELDS));
+          .getByName(isNull(), eq(table.getFullyQualifiedName()), any(EntityUtil.Fields.class));
     }
   }
 
@@ -399,13 +379,10 @@ class PermissionDebugServiceTest {
     TeamRepository teamRepository = mock(TeamRepository.class);
     RoleRepository roleRepository = mock(RoleRepository.class);
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-
     stubFields(userRepository, teamRepository, roleRepository, policyRepository);
-
     User user = new User().withId(UUID.randomUUID()).withName("alice");
-    when(userRepository.getByName(isNull(), eq("alice"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+    when(userRepository.getByName(isNull(), eq("alice"), any(EntityUtil.Fields.class)))
         .thenReturn(user);
-
     SubjectContext.PolicyContext policyContext =
         new SubjectContext.PolicyContext(
             Entity.USER,
@@ -419,7 +396,6 @@ class PermissionDebugServiceTest {
                     List.of(MetadataOperation.VIEW_BASIC),
                     List.of(Entity.TABLE),
                     "isOwner(")));
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       stubRepositories(
@@ -427,11 +403,9 @@ class PermissionDebugServiceTest {
       subjectCacheMock
           .when(() -> SubjectCache.getPolicies("alice"))
           .thenReturn(List.of(policyContext));
-
       PermissionEvaluationDebugInfo debugInfo =
           new PermissionDebugService()
               .debugPermissionEvaluation("alice", Entity.TABLE, null, MetadataOperation.VIEW_BASIC);
-
       assertFalse(debugInfo.isAllowed());
       assertEquals("DENIED", debugInfo.getFinalDecision());
       assertEquals(1, debugInfo.getSummary().getTotalPoliciesEvaluated());
@@ -440,7 +414,6 @@ class PermissionDebugServiceTest {
       assertEquals(0, debugInfo.getSummary().getAllowRules());
       assertTrue(
           debugInfo.getSummary().getReasonsForDecision().contains("No matching ALLOW rules found"));
-
       PolicyEvaluationStep step = debugInfo.getEvaluationSteps().get(0);
       assertFalse(step.isMatched());
       assertEquals(1, step.getConditionEvaluations().size());
@@ -472,24 +445,26 @@ class PermissionDebugServiceTest {
       TeamRepository teamRepository,
       RoleRepository roleRepository,
       PolicyRepository policyRepository,
-      EntityRepository<EntityInterface> resourceRepository) {
+      EntityPolicy<EntityInterface> resourceRepository) {
     stubRepositories(entityMock, userRepository, teamRepository, roleRepository, policyRepository);
     entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(resourceRepository);
   }
 
-  private static void stubFields(EntityRepository<?>... repositories) {
-    for (EntityRepository<?> repository : repositories) {
-      when(repository.getFields("*")).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+  private static void stubFields(EntityPolicy<?>... repositories) {
+    for (EntityPolicy<?> repository : repositories) {
+      when(repository.fieldPolicy()).thenReturn(new EntityFieldPolicy(Set.of()));
     }
   }
 
   private static <T extends EntityInterface> void stubById(
-      EntityRepository<T> repository, Map<UUID, T> entities) {
-    when(repository.get(
-            isNull(),
-            org.mockito.ArgumentMatchers.any(UUID.class),
-            eq(EntityUtil.Fields.EMPTY_FIELDS)))
-        .thenAnswer(invocation -> entities.get(invocation.getArgument(1)));
+      EntityPolicy<T> repository, Map<UUID, T> entities) {
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  return entities.get(readId);
+                }));
   }
 
   private static Policy policy(String name, Rule... rules) {

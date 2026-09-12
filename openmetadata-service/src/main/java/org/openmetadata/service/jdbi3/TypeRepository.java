@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -53,6 +52,15 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -63,19 +71,26 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
-public class TypeRepository extends EntityRepository<Type> {
+@Repository()
+public class TypeRepository implements EntityPolicy<Type> {
+
   private static final String UPDATE_FIELDS = "customProperties";
+
   private static final String PATCH_FIELDS = "customProperties";
+
   private static final Striped<Lock> TYPE_PROPERTY_LOCKS = Striped.lock(4096);
 
   public TypeRepository() {
-    super(
-        TypeResource.COLLECTION_PATH,
-        Entity.TYPE,
-        Type.class,
-        Entity.getCollectionDAO().typeEntityDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                TypeResource.COLLECTION_PATH,
+                Entity.TYPE,
+                Type.class,
+                Entity.getCollectionDAO().typeEntityDAO()),
+            new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
     Entity.setTypeRepository(this);
   }
 
@@ -99,19 +114,18 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("customProperties");
   }
 
   @Override
   public void storeEntity(Type type, boolean update) {
-    store(type, update);
+    persistence().store(type, update);
     updateTypeMap(type);
   }
 
   public void storeEntities(List<Type> types) {
-    storeMany(types);
-
+    persistence().insertMany(types);
     for (Type type : types) {
       updateTypeMap(type);
     }
@@ -122,7 +136,9 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   public void populateRegistryFromDatabase() {
-    listAll(getFields(UPDATE_FIELDS), new ListFilter(NON_DELETED)).forEach(this::addToRegistry);
+    collections()
+        .all(fieldPolicy().parse(UPDATE_FIELDS), new ListFilter(NON_DELETED))
+        .forEach(this::addToRegistry);
   }
 
   @Override
@@ -137,20 +153,20 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  protected void postDelete(Type entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
+  public void postDelete(Type entity, boolean hardDelete) {
+    EntityPolicy.super.postDelete(entity, hardDelete);
     TypeRegistry.instance().removeType(entity.getName());
   }
 
   @Override
-  public EntityRepository<Type>.EntityUpdater getUpdater(
-      Type original, Type updated, Operation operation, ChangeSource changeSource) {
-    return new TypeUpdater(original, updated, operation);
+  public EntityUpdater<Type> getUpdater(
+      Type original, Type updated, EntityOperation operation, ChangeSource changeSource) {
+    return new TypeUpdater(original, updated, operation).mutation();
   }
 
   @Override
   public void postUpdate(Type original, Type updated) {
-    super.postUpdate(original, updated);
+    EntityPolicy.super.postUpdate(original, updated);
     // Refresh TypeRegistry to ensure custom property changes are reflected
     updateTypeMap(updated);
   }
@@ -160,7 +176,7 @@ public class TypeRepository extends EntityRepository<Type> {
     Lock lock = TYPE_PROPERTY_LOCKS.get(id);
     lock.lock();
     try {
-      Type type = find(id, Include.NON_DELETED);
+      Type type = lookup().byId(id, Include.NON_DELETED);
       property.setPropertyType(
           Entity.getEntityReferenceById(
               Entity.TYPE, property.getPropertyType().getId(), NON_DELETED));
@@ -169,10 +185,10 @@ public class TypeRepository extends EntityRepository<Type> {
         throw new IllegalArgumentException(
             "Only entity types can be extended and field types can't be extended");
       }
-      setFieldsInternal(type, putFields);
-
-      find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
-
+      setFieldsInternal(type, context().putFields());
+      lookup()
+          .byId( // Validate customProperty type exists
+              property.getPropertyType().getId(), NON_DELETED);
       // If property already exists, then update it. Else add the new property.
       List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
       for (CustomProperty existing : type.getCustomProperties()) {
@@ -180,11 +196,10 @@ public class TypeRepository extends EntityRepository<Type> {
           updatedProperties.add(existing);
         }
       }
-
       type.setCustomProperties(updatedProperties);
       type.setUpdatedBy(updatedBy);
       type.setUpdatedAt(System.currentTimeMillis());
-      return createOrUpdate(uriInfo, type, updatedBy);
+      return creates().upsert(uriInfo, type, new EntityCommandActor(updatedBy, null), false);
     } finally {
       lock.unlock();
     }
@@ -192,11 +207,14 @@ public class TypeRepository extends EntityRepository<Type> {
 
   private List<CustomProperty> getCustomProperties(Type type) {
     if (type.getCategory().equals(Category.Field)) {
-      return null; // Property type fields don't support custom properties
+      // Property type fields don't support custom properties
+      return null;
     }
     List<CustomProperty> customProperties = new ArrayList<>();
     List<Triple<String, String, String>> results =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .fieldRelationshipDAO()
             .listToByPrefix(
                 getCustomPropertyFQNPrefix(type.getName()),
@@ -205,12 +223,10 @@ public class TypeRepository extends EntityRepository<Type> {
                 Relationship.HAS.ordinal());
     for (Triple<String, String, String> result : results) {
       CustomProperty property = JsonUtils.readValue(result.getRight(), CustomProperty.class);
-      property.setPropertyType(this.getReferenceByName(result.getMiddle(), NON_DELETED));
-
+      property.setPropertyType(this.lookup().referenceByName(result.getMiddle(), NON_DELETED));
       if ("enum".equals(property.getPropertyType().getName())) {
         sortEnumKeys(property);
       }
-
       customProperties.add(property);
     }
     customProperties.sort(EntityUtil.compareCustomProperty);
@@ -285,10 +301,8 @@ public class TypeRepository extends EntityRepository<Type> {
     if (config == null) {
       throw new IllegalArgumentException("Table Custom Property Type must have config populated.");
     }
-
     JsonNode configNode = JsonUtils.valueToTree(config.getConfig());
     TableConfig tableConfig = JsonUtils.convertValue(config.getConfig(), TableConfig.class);
-
     List<String> columns = new ArrayList<>();
     configNode.path("columns").forEach(node -> columns.add(node.asText()));
     Set<String> uniqueColumns = new HashSet<>(columns);
@@ -303,7 +317,6 @@ public class TypeRepository extends EntityRepository<Type> {
               + " and "
               + tableConfig.getMaxColumns());
     }
-
     try {
       JsonUtils.validateJsonSchema(config.getConfig(), TableConfig.class);
     } catch (ConstraintViolationException e) {
@@ -311,7 +324,6 @@ public class TypeRepository extends EntityRepository<Type> {
           e.getConstraintViolations().stream()
               .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
               .collect(Collectors.joining(", "));
-
       throw new IllegalArgumentException(
           CatalogExceptionMessage.customPropertyConfigError("table", validationErrors));
     }
@@ -330,14 +342,23 @@ public class TypeRepository extends EntityRepository<Type> {
     }
   }
 
-  /** Handles entity updated from PUT and POST operation. */
-  public class TypeUpdater extends EntityUpdater {
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class TypeUpdater implements EntitySpecificMutation<Type> {
+
     private final List<CustomProperty> requestedAdditions;
+
     private final List<CustomProperty> requestedDeletions;
+
     private boolean membershipChangesApplied;
 
-    public TypeUpdater(Type original, Type updated, Operation operation) {
-      super(original, updated, operation);
+    public TypeUpdater(Type original, Type updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
       requestedAdditions =
           getPropertiesAbsentByName(updated.getCustomProperties(), original.getCustomProperties());
       requestedDeletions =
@@ -346,24 +367,25 @@ public class TypeRepository extends EntityRepository<Type> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("customProperties", this::updateCustomProperties);
+    public void update(EntityUpdater<Type> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate("customProperties", this::updateCustomProperties);
     }
 
     @Override
-    protected void resetForRetryAttempt() {
+    public void reset() {
       membershipChangesApplied = false;
     }
 
     private void updateCustomProperties() {
-      List<CustomProperty> updatedProperties = listOrEmpty(updated.getCustomProperties());
-      List<CustomProperty> origProperties = listOrEmpty(original.getCustomProperties());
+      List<CustomProperty> updatedProperties =
+          listOrEmpty(entityUpdate.getUpdated().getCustomProperties());
+      List<CustomProperty> origProperties =
+          listOrEmpty(entityUpdate.getOriginal().getCustomProperties());
       List<CustomProperty> added = new ArrayList<>();
       List<CustomProperty> deleted = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           "customProperties", origProperties, updatedProperties, added, deleted, customFieldMatch);
       applyRequestedMembershipChanges();
-
       // Record changes to updated custom properties (only description can be updated)
       for (CustomProperty updateProperty : updatedProperties) {
         // Find property that matches name and type
@@ -372,12 +394,13 @@ public class TypeRepository extends EntityRepository<Type> {
                 .filter(c -> customFieldMatch.test(c, updateProperty))
                 .findAny()
                 .orElse(null);
-        if (storedProperty == null) { // New property added, which is already handled
+        if (storedProperty == null) {
+          // New property added, which is already handled
           continue;
         }
-        updateCustomPropertyDescription(updated, storedProperty, updateProperty);
-        updateDisplayName(updated, storedProperty, updateProperty);
-        updateCustomPropertyConfig(updated, storedProperty, updateProperty);
+        updateCustomPropertyDescription(entityUpdate.getUpdated(), storedProperty, updateProperty);
+        updateDisplayName(entityUpdate.getUpdated(), storedProperty, updateProperty);
+        updateCustomPropertyConfig(entityUpdate.getUpdated(), storedProperty, updateProperty);
       }
     }
 
@@ -399,7 +422,6 @@ public class TypeRepository extends EntityRepository<Type> {
       if (membershipChangesApplied) {
         return;
       }
-
       // Legacy names from existing data are not re-validated; only newly added ones.
       for (CustomProperty property : requestedAdditions) {
         String violations = ValidatorUtil.validate(property);
@@ -417,17 +439,22 @@ public class TypeRepository extends EntityRepository<Type> {
     }
 
     private void storeCustomProperty(CustomProperty property) {
-      String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
+      String customPropertyFQN =
+          getCustomPropertyFQN(entityUpdate.getUpdated().getName(), property.getName());
       EntityReference propertyType = property.getPropertyType();
-      String customPropertyJson =
-          JsonUtils.pojoToJson(property.withPropertyType(null)); // Don't store entity reference
-      property.withPropertyType(propertyType); // Restore entity reference
+      // Don't store entity reference
+      String // Don't store entity reference
+          customPropertyJson = JsonUtils.pojoToJson(property.withPropertyType(null));
+      // Restore entity reference
+      property.withPropertyType(propertyType);
       LOG.info(
           "Adding customProperty {} with type {} to the entity {}",
           customPropertyFQN,
           property.getPropertyType().getName(),
-          updated.getName());
-      daoCollection
+          entityUpdate.getUpdated().getName());
+      context()
+          .dependencies()
+          .daos()
           .fieldRelationshipDAO()
           .insert(
               customPropertyFQN,
@@ -441,13 +468,16 @@ public class TypeRepository extends EntityRepository<Type> {
     }
 
     private void deleteCustomProperty(CustomProperty property) {
-      String customPropertyFQN = getCustomPropertyFQN(updated.getName(), property.getName());
+      String customPropertyFQN =
+          getCustomPropertyFQN(entityUpdate.getUpdated().getName(), property.getName());
       LOG.info(
           "Deleting customProperty {} with type {} from the entity {}",
           property.getName(),
           property.getPropertyType().getName(),
-          updated.getName());
-      daoCollection
+          entityUpdate.getUpdated().getName());
+      context()
+          .dependencies()
+          .daos()
           .fieldRelationshipDAO()
           .delete(
               customPropertyFQN,
@@ -456,31 +486,36 @@ public class TypeRepository extends EntityRepository<Type> {
               Entity.TYPE,
               Relationship.HAS.ordinal());
       // Delete all the data stored in the entity extension for the custom property
-      daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
-
+      context().dependencies().daos().entityExtensionDAO().deleteExtension(customPropertyFQN);
       if (Entity.hasEntityRepository(Entity.INTAKE_FORM)) {
         IntakeFormRepository intakeFormRepository =
             (IntakeFormRepository) Entity.getEntityRepository(Entity.INTAKE_FORM);
         intakeFormRepository.removeCustomPropertyField(
-            updated.getName(), property.getName(), updated.getUpdatedBy());
+            entityUpdate.getUpdated().getName(),
+            property.getName(),
+            entityUpdate.getUpdated().getUpdatedBy());
       }
-
       // Remove from TypeRegistry cache
-      TypeRegistry.instance().removeCustomProperty(updated.getName(), property.getName());
+      TypeRegistry.instance()
+          .removeCustomProperty(entityUpdate.getUpdated().getName(), property.getName());
     }
 
     private void updateCustomPropertyDescription(
         Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
       String fieldName = getCustomField(origProperty, FIELD_DESCRIPTION);
-      if (recordChange(
+      if (entityUpdate.recordChange(
           fieldName, origProperty.getDescription(), updatedProperty.getDescription())) {
         String customPropertyFQN =
             getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
-        EntityReference propertyType =
-            updatedProperty.getPropertyType(); // Don't store entity reference
+        // Don't store entity reference
+        EntityReference // Don't store entity reference
+            propertyType = updatedProperty.getPropertyType();
         String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
-        updatedProperty.withPropertyType(propertyType); // Restore entity reference
-        daoCollection
+        // Restore entity reference
+        updatedProperty.withPropertyType(propertyType);
+        context()
+            .dependencies()
+            .daos()
             .fieldRelationshipDAO()
             .upsert(
                 customPropertyFQN,
@@ -498,15 +533,19 @@ public class TypeRepository extends EntityRepository<Type> {
     private void updateDisplayName(
         Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
       String fieldName = getCustomField(origProperty, "displayName");
-      if (recordChange(
+      if (entityUpdate.recordChange(
           fieldName, origProperty.getDisplayName(), updatedProperty.getDisplayName())) {
         String customPropertyFQN =
             getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
-        EntityReference propertyType =
-            updatedProperty.getPropertyType(); // Don't store entity reference
+        // Don't store entity reference
+        EntityReference // Don't store entity reference
+            propertyType = updatedProperty.getPropertyType();
         String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
-        updatedProperty.withPropertyType(propertyType); // Restore entity reference
-        daoCollection
+        // Restore entity reference
+        updatedProperty.withPropertyType(propertyType);
+        context()
+            .dependencies()
+            .daos()
             .fieldRelationshipDAO()
             .upsert(
                 customPropertyFQN,
@@ -524,19 +563,27 @@ public class TypeRepository extends EntityRepository<Type> {
     private void updateCustomPropertyConfig(
         Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
       String fieldName = getCustomField(origProperty, "customPropertyConfig");
-      if (previous == null || !previous.getVersion().equals(updated.getVersion())) {
+      if (entityUpdate.getPrevious() == null
+          || !entityUpdate
+              .getPrevious()
+              .getVersion()
+              .equals(entityUpdate.getUpdated().getVersion())) {
         validatePropertyConfigUpdate(entity, origProperty, updatedProperty);
-        if (recordChange(
+        if (entityUpdate.recordChange(
             fieldName,
             origProperty.getCustomPropertyConfig(),
             updatedProperty.getCustomPropertyConfig())) {
           String customPropertyFQN =
               getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
-          EntityReference propertyType =
-              updatedProperty.getPropertyType(); // Don't store entity reference
+          // Don't store entity reference
+          EntityReference // Don't store entity reference
+              propertyType = updatedProperty.getPropertyType();
           String customPropertyJson = JsonUtils.pojoToJson(updatedProperty.withPropertyType(null));
-          updatedProperty.withPropertyType(propertyType); // Restore entity reference
-          daoCollection
+          // Restore entity reference
+          updatedProperty.withPropertyType(propertyType);
+          context()
+              .dependencies()
+              .daos()
               .fieldRelationshipDAO()
               .upsert(
                   customPropertyFQN,
@@ -582,30 +629,28 @@ public class TypeRepository extends EntityRepository<Type> {
                 updatedProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
         HashSet<String> origKeys = new HashSet<>(origConfig.getValues());
         HashSet<String> updatedKeys = new HashSet<>(updatedConfig.getValues());
-
         HashSet<String> removedKeys = new HashSet<>(origKeys);
         removedKeys.removeAll(updatedKeys);
         HashSet<String> addedKeys = new HashSet<>(updatedKeys);
         addedKeys.removeAll(origKeys);
-
         if (!removedKeys.isEmpty()) {
           List<String> removedEnumKeys = new ArrayList<>(removedKeys);
-
           try {
             EnumCleanupArgs enumCleanupArgs =
                 new EnumCleanupArgs()
                     .withPropertyName(updatedProperty.getName())
                     .withRemovedEnumKeys(removedEnumKeys)
                     .withEntityType(entity.getName());
-
             String jobArgs = JsonUtils.pojoToJson(enumCleanupArgs);
             long jobId =
-                jobDao.insertJob(
-                    BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP,
-                    new EnumCleanupHandler(daoCollection),
-                    jobArgs,
-                    updatedBy);
-
+                context()
+                    .dependencies()
+                    .jobs()
+                    .insertJob(
+                        BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP,
+                        new EnumCleanupHandler(context().dependencies().daos()),
+                        jobArgs,
+                        updatedBy);
           } catch (Exception e) {
             LOG.error("Failed to trigger background job for enum cleanup", e);
             throw new RuntimeException("Failed to trigger background job", e);
@@ -613,5 +658,18 @@ public class TypeRepository extends EntityRepository<Type> {
         }
       }
     }
+
+    private final EntityUpdater<Type> entityUpdate;
+
+    public EntityUpdater<Type> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<Type> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Type> context() {
+    return entityContext;
   }
 }

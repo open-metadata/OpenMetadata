@@ -18,6 +18,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.ontology.RelationshipTypeIds;
 
@@ -39,10 +40,10 @@ final class RelationshipTypeSeedLoader {
 
   private static void createWhenMissing(
       final RelationshipTypeRepository repository, final RelationshipType seed) {
-    final RelationshipType existing = repository.findByNameOrNull(seed.getName(), Include.ALL);
+    final RelationshipType existing = repository.lookup().byNameOrNull(seed.getName(), Include.ALL);
     if (existing == null) {
       prepareSeed(seed);
-      repository.create(null, seed);
+      repository.creates().create(null, seed, new EntityCommandActor(null, null));
     }
   }
 

@@ -2,9 +2,9 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
@@ -35,6 +35,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.logging.AppRunLogAppender;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -63,6 +65,7 @@ class OmAppJobListenerTest {
 
   @BeforeEach
   void setUp() throws Exception {
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(App.class));
     Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
     unsafeField.setAccessible(true);
     Unsafe unsafe = (Unsafe) unsafeField.get(null);
@@ -197,9 +200,15 @@ class OmAppJobListenerTest {
     when(jobDetail.getJobDataMap()).thenReturn(dataMap);
     when(jobExecutionContext.getMergedJobDataMap()).thenReturn(mergedMap);
     when(jobExecutionContext.isRecovering()).thenReturn(false);
-    when(repository.getByName(
-            any(), eq("SearchIndexingApplication"), any(), eq(Include.NON_DELETED), eq(true)))
-        .thenReturn(jobApp);
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (readName, readQuery) -> {
+                  assertEquals("SearchIndexingApplication", readName);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(true, readQuery.fromCache());
+                  return jobApp;
+                }));
 
     try (MockedStatic<ServerIdentityResolver> sirMock = mockStatic(ServerIdentityResolver.class);
         MockedStatic<AppRunLogAppender> appenderMock = mockStatic(AppRunLogAppender.class);
@@ -230,9 +239,15 @@ class OmAppJobListenerTest {
 
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
     when(jobDetail.getJobDataMap()).thenReturn(dataMap);
-    when(repository.getByName(
-            any(), eq("NonExistentApp"), any(), eq(Include.NON_DELETED), eq(true)))
-        .thenThrow(new RuntimeException("App not found"));
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (readName, readQuery) -> {
+                  assertEquals("NonExistentApp", readName);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(true, readQuery.fromCache());
+                  throw new RuntimeException("App not found");
+                }));
 
     try (MockedStatic<AppRunLogAppender> appenderMock = mockStatic(AppRunLogAppender.class)) {
       assertDoesNotThrow(() -> listener.jobToBeExecuted(jobExecutionContext));
@@ -366,8 +381,15 @@ class OmAppJobListenerTest {
     dataMap.put(AppScheduler.APP_NAME, APP_NAME);
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
     when(jobDetail.getJobDataMap()).thenReturn(dataMap);
-    when(repository.getByName(any(), eq(APP_NAME), any(), eq(Include.NON_DELETED), eq(true)))
-        .thenThrow(new RuntimeException("not reached"));
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (readName, readQuery) -> {
+                  assertEquals(APP_NAME, readName);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(true, readQuery.fromCache());
+                  throw new RuntimeException("not reached");
+                }));
 
     try (MockedStatic<AppRunLogAppender> ignored = mockStatic(AppRunLogAppender.class)) {
       listener.jobToBeExecuted(jobExecutionContext);

@@ -83,7 +83,7 @@ public class DataInsightChartMigration {
       } else {
         scopeToDataAssets(chartDetails);
         chart.setChartDetails(chartDetails);
-        repository.prepareInternal(chart, false);
+        repository.preparation().prepare(chart, false);
         repository.getDao().update(chart);
       }
     } catch (Exception ex) {

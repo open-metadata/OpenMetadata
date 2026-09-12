@@ -32,7 +32,8 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.security.Authorizer;
@@ -61,9 +62,13 @@ import org.openmetadata.service.util.RestUtil;
 public class CreateEntityTool implements McpTool {
 
   private static final Set<String> SHARED = Set.copyOf(DescribeEntityTypeTool.SHARED_FIELDS);
+
   private static final String NAME = "name";
+
   private static final String DESCRIPTION = "description";
+
   private static final String EXTENSION = "extension";
+
   private static final String ATTRIBUTES = "attributes";
 
   @Override
@@ -77,12 +82,10 @@ public class CreateEntityTool implements McpTool {
     String userName = CommonUtils.principal(securityContext);
     EntityInterface entity = buildEntity(type, params, userName);
     Boolean requestedMutuallyExclusive = requestedMutuallyExclusive(entity);
-
     applyRepositoryDefaults(entity);
     authorizeCreate(authorizer, limits, securityContext, entityType, entity);
     RuleEngine.getInstance().evaluate(entity);
     RestUtil.PutResponse<EntityInterface> response = persist(type, entity, userName);
-
     Map<String, Object> result =
         McpResponseUtils.compact(response.getEntity(), response.getChangeType());
     addClassificationWarning(
@@ -105,11 +108,14 @@ public class CreateEntityTool implements McpTool {
 
   private static RestUtil.PutResponse<EntityInterface> persist(
       EntityCreationSpec type, EntityInterface entity, String userName) {
-    EntityRepository<EntityInterface> repository = type.typedRepository();
+    EntityPolicy<EntityInterface> repository = type.typedRepository();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     EntityInterface saved;
     try {
-      saved = repository.create(null, entity, userName, impersonatedBy);
+      saved =
+          repository
+              .creates()
+              .create(null, entity, new EntityCommandActor(userName, impersonatedBy));
     } catch (RuntimeException failure) {
       if (!isDuplicateKey(failure)) {
         throw failure;
@@ -145,7 +151,9 @@ public class CreateEntityTool implements McpTool {
     return false;
   }
 
-  /** Shared parameters plus attributes bound to the entity class owned by the repository. */
+  /**
+   * Shared parameters plus attributes bound to the entity class owned by the repository.
+   */
   private static EntityInterface buildEntity(
       EntityCreationSpec type, Map<String, Object> params, String userName) {
     Set<String> bindable = DescribeEntityTypeTool.bindableNames(type);
@@ -180,7 +188,6 @@ public class CreateEntityTool implements McpTool {
       tag.setClassification(Entity.getEntityReference(classification, Include.NON_DELETED));
       return;
     }
-
     EntityReference resolvedParent = Entity.getEntityReference(parent, Include.NON_DELETED);
     tag.setParent(resolvedParent);
     String derivedClassification =
@@ -191,7 +198,6 @@ public class CreateEntityTool implements McpTool {
               .withType(Entity.CLASSIFICATION)
               .withFullyQualifiedName(derivedClassification);
     }
-
     EntityReference resolvedClassification =
         Entity.getEntityReference(classification, Include.NON_DELETED);
     if (!derivedClassification.equals(resolvedClassification.getFullyQualifiedName())) {
@@ -411,7 +417,9 @@ public class CreateEntityTool implements McpTool {
     return attributes;
   }
 
-  /** A shared field belongs in its own parameter; silently letting it through would shadow one. */
+  /**
+   * A shared field belongs in its own parameter; silently letting it through would shadow one.
+   */
   private static void rejectShadowed(Map<String, Object> attributes) {
     List<String> shadowed = attributes.keySet().stream().filter(SHARED::contains).sorted().toList();
     if (!shadowed.isEmpty()) {
@@ -498,7 +506,9 @@ public class CreateEntityTool implements McpTool {
     return allowed.isEmpty() ? DescribeEntityTypeTool.allowedValuesOf(type, field) : allowed;
   }
 
-  /** The full path to the rejected value, so a nested field is not reported by its leaf name. */
+  /**
+   * The full path to the rejected value, so a nested field is not reported by its leaf name.
+   */
   private static String fieldName(JsonMappingException mapping) {
     return mapping.getPath().stream()
         .map(JsonMappingException.Reference::getFieldName)

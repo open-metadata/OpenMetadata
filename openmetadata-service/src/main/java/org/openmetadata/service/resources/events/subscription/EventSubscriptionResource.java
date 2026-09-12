@@ -75,6 +75,7 @@ import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
 import org.openmetadata.schema.type.Webhook;
@@ -84,6 +85,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -99,6 +101,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.URLValidator;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.quartz.SchedulerException;
@@ -530,7 +533,16 @@ public class EventSubscriptionResource
       throws SchedulerException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
+    EventSubscription eventSubscription =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    null,
+                    repository.fieldPolicy().parse("id"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
     EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return delete(uriInfo, securityContext, id, true, true);
@@ -562,7 +574,16 @@ public class EventSubscriptionResource
       throws SchedulerException {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
+    EventSubscription eventSubscription =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    null,
+                    repository.fieldPolicy().parse("id"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
     EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return deleteByIdAsync(uriInfo, securityContext, id, true, true);
@@ -588,7 +609,7 @@ public class EventSubscriptionResource
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription eventSubscription =
-        repository.getByName(null, name, repository.getFields("id"));
+        repository.getByName(null, name, repository.fieldPolicy().parse("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
     EventSubscriptionScheduler.getInstance()
         .deleteSuccessfulAndFailedEventsRecordByAlert(eventSubscription.getId());
@@ -624,7 +645,8 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
+    EventSubscription sub =
+        repository.getByName(null, name, repository.fieldPolicy().parse("name"));
     return EventSubscriptionScheduler.getInstance()
         .getStatusForEventSubscription(sub.getId(), destinationId);
   }
@@ -855,7 +877,7 @@ public class EventSubscriptionResource
 
     try {
       EventSubscription subscription =
-          repository.getByName(null, subscriptionName, repository.getFields("id"));
+          repository.getByName(null, subscriptionName, repository.fieldPolicy().parse("id"));
 
       if (subscription == null) {
         return Response.status(Response.Status.NOT_FOUND)
@@ -990,7 +1012,7 @@ public class EventSubscriptionResource
 
     try {
       EventSubscription subscription =
-          repository.getByName(null, subscriptionName, repository.getFields("id"));
+          repository.getByName(null, subscriptionName, repository.fieldPolicy().parse("id"));
 
       if (subscription == null) {
         return Response.status(Response.Status.NOT_FOUND)
@@ -1115,7 +1137,8 @@ public class EventSubscriptionResource
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
 
     try {
-      EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
+      EventSubscription subscription =
+          repository.getByName(null, name, repository.fieldPolicy().parse("id"));
 
       List<FailedEventResponse> failedEvents =
           EventSubscriptionScheduler.getInstance()
@@ -1297,7 +1320,8 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     try {
-      EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
+      EventSubscription subscription =
+          repository.getByName(null, name, repository.fieldPolicy().parse("id"));
 
       List<ChangeEvent> changeEvents =
           EventSubscriptionScheduler.getInstance()
@@ -1383,7 +1407,7 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
+    EventSubscription sub = repository.getByName(null, name, repository.fieldPolicy().parse("id"));
     return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
   }
 

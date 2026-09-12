@@ -7,10 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -56,8 +53,9 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.security.AuthorizationException;
@@ -79,7 +77,6 @@ class CreateEntityToolTest {
   void createEntityContractIsCreateOnly() throws IOException {
     JsonNode createEntity = tool("create_entity");
     String description = createEntity.path("description").asText();
-
     assertTrue(description.contains("never modifies an existing entity"));
     assertTrue(description.contains("Use patch_entity for every edit"));
     assertFalse(description.contains("UPDATES"));
@@ -89,38 +86,38 @@ class CreateEntityToolTest {
   @Test
   void patchEntityContractOffersOnlyTheImplementedRawPatch() throws IOException {
     JsonNode parameters = tool("patch_entity").path("parameters");
-
     assertEquals(Set.of("entityType", "fqn", "patch"), propertyNames(parameters));
     assertEquals(Set.of("entityType", "fqn", "patch"), textValues(parameters.path("required")));
   }
 
   @Test
   void repositorySuppliesTheEntityClassAndWritePath() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Glossary.class);
     Glossary saved = new Glossary().withId(UUID.randomUUID()).withName("Finance");
     saved.setFullyQualifiedName("Finance");
     stubWrite(repository, saved);
     Authorizer authorizer = mock(Authorizer.class);
     Limits limits = mock(Limits.class);
     RuleEngine ruleEngine = mock(RuleEngine.class);
-
+    InOrder ordered = inOrder(limits, authorizer, ruleEngine, repository);
+    writes(repository)
+        .beforeCreate(
+            request -> {
+              ordered.verify(limits).enforceLimits(any(), any(), any());
+              ordered.verify(authorizer).authorize(any(), any(), any());
+              ordered.verify(ruleEngine).evaluate(any());
+            });
     withRepository(
         Entity.GLOSSARY,
         repository,
         ruleEngine,
         () -> new CreateEntityTool().execute(authorizer, limits, securityContext(), glossary()));
-
-    InOrder ordered = inOrder(limits, authorizer, ruleEngine, repository);
-    ordered.verify(limits).enforceLimits(any(), any(), any());
-    ordered.verify(authorizer).authorize(any(), any(), any());
-    ordered.verify(ruleEngine).evaluate(any());
-    ordered.verify(repository).create(isNull(), any(), anyString(), any());
+    assertEquals(1, writes(repository).creations().size());
   }
 
   @Test
   void aTypeOutsideTheFormerEightIsResolvedFromEntity() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Team.class);
-
+    EntityPolicy<EntityInterface> repository = repositoryFor(Team.class);
     Map<String, Object> described =
         withRepository(
             Entity.TEAM,
@@ -128,7 +125,6 @@ class CreateEntityToolTest {
             () ->
                 new DescribeEntityTypeTool()
                     .execute(null, null, Map.of("entityType", Entity.TEAM)));
-
     assertEquals(Entity.TEAM, described.get("entityType"));
     assertTrue(attributeNames(described).contains("teamType"));
   }
@@ -155,7 +151,6 @@ class CreateEntityToolTest {
               () ->
                   new DescribeEntityTypeTool()
                       .execute(null, null, Map.of("entityType", entityType)));
-
       assertTrue(
           createFailure.getMessage().contains("cannot be created through create_entity"),
           createFailure.getMessage());
@@ -176,14 +171,12 @@ class CreateEntityToolTest {
           .when(() -> Entity.getEntityRepository("glosary"))
           .thenThrow(new EntityNotFoundException("repository not found"));
       entities.when(Entity::getEntityList).thenReturn(Set.of(Entity.GLOSSARY, Entity.TEAM));
-
       IllegalArgumentException failure =
           assertThrows(
               IllegalArgumentException.class,
               () ->
                   new DescribeEntityTypeTool()
                       .execute(null, null, Map.of("entityType", "glosary")));
-
       assertTrue(failure.getMessage().contains("Unknown entityType 'glosary'"));
       assertTrue(failure.getMessage().contains(Entity.GLOSSARY));
       assertTrue(failure.getMessage().contains("describe_entity_type"));
@@ -192,9 +185,8 @@ class CreateEntityToolTest {
 
   @Test
   void tagClassificationIsResolvedBeforeAuthorization() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Tag.class);
-    EntityRepository<EntityInterface> classificationRepository =
-        repositoryFor(Classification.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Tag.class);
+    EntityPolicy<EntityInterface> classificationRepository = repositoryFor(Classification.class);
     EntityReference parent = new EntityReference().withType(Entity.TAG).withId(UUID.randomUUID());
     EntityReference resolvedParent =
         new EntityReference()
@@ -214,7 +206,13 @@ class CreateEntityToolTest {
     Map<String, Object> input = params(Entity.TAG);
     input.put("description", "restricted data");
     input.put("attributes", Map.of("parent", parent));
-
+    InOrder ordered = inOrder(repository, authorizer, ruleEngine);
+    writes(repository)
+        .beforeCreate(
+            request -> {
+              ordered.verify(authorizer).authorize(any(), any(), any());
+              ordered.verify(ruleEngine).evaluate(request.entity());
+            });
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
         MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
         MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
@@ -236,26 +234,18 @@ class CreateEntityToolTest {
                       Include.NON_DELETED))
           .thenReturn(resolvedClassification);
       rules.when(RuleEngine::getInstance).thenReturn(ruleEngine);
-
       new CreateEntityTool().execute(authorizer, mock(Limits.class), securityContext(), input);
     }
-
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).create(isNull(), captor.capture(), anyString(), any());
-    Tag created = (Tag) captor.getValue();
+    final EntityInterface createdInput = onlyCreated(repository);
+    Tag created = (Tag) createdInput;
     assertEquals("PII", created.getClassification().getFullyQualifiedName());
     assertEquals(resolvedClassification.getId(), created.getClassification().getId());
-
     ArgumentCaptor<CreateResourceContext<EntityInterface>> contextCaptor =
         ArgumentCaptor.forClass(CreateResourceContext.class);
     verify(authorizer).authorize(any(), any(), contextCaptor.capture());
     Tag authorized = (Tag) contextCaptor.getValue().getEntity();
     assertEquals(resolvedClassification.getId(), authorized.getClassification().getId());
-    InOrder ordered = inOrder(repository, authorizer, ruleEngine);
-    ordered.verify(authorizer).authorize(any(), any(), any());
-    ordered.verify(ruleEngine).evaluate(created);
-    ordered.verify(repository).create(isNull(), eq(created), anyString(), any());
-
+    assertEquals(1, writes(repository).creations().size());
     Map<String, Object> described =
         withRepository(
             Entity.TAG,
@@ -268,8 +258,7 @@ class CreateEntityToolTest {
 
   @Test
   void requiredFieldsComeFromTheRegisteredEntityClass() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
-
+    EntityPolicy<EntityInterface> repository = repositoryFor(Glossary.class);
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
@@ -278,16 +267,14 @@ class CreateEntityToolTest {
                     Entity.GLOSSARY,
                     repository,
                     () -> new CreateEntityTool().execute(null, null, securityContext(), params())));
-
     assertTrue(failure.getMessage().contains("description"));
   }
 
   @Test
   void unknownAttributeIsRejectedBeforeTheRepositoryIsCalled() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Glossary.class);
     Map<String, Object> params = glossary();
     params.put("attributes", Map.of("classification", "PII"));
-
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
@@ -296,14 +283,13 @@ class CreateEntityToolTest {
                     Entity.GLOSSARY,
                     repository,
                     () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
-
     assertTrue(failure.getMessage().contains("classification"));
-    verify(repository, never()).prepareInternal(any(), anyBoolean());
+    assertFalse(writes(repository).prepared());
   }
 
   @Test
   void referenceAttributesUseTheEntitySchema() {
-    EntityRepository<EntityInterface> repository = repositoryFor(GlossaryTerm.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(GlossaryTerm.class);
     Map<String, Object> described =
         withRepository(
             Entity.GLOSSARY_TERM,
@@ -311,18 +297,16 @@ class CreateEntityToolTest {
             () ->
                 new DescribeEntityTypeTool()
                     .execute(null, null, Map.of("entityType", Entity.GLOSSARY_TERM)));
-
     assertEquals("EntityReference", attribute(described, "glossary").get("type"));
     assertTrue(described.get("alsoRequired").toString().contains("glossary"));
   }
 
   @Test
   void anEmptyRequiredObjectIsRejectedBeforePersistence() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Metric.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Metric.class);
     Map<String, Object> params = params();
     params.put("entityType", Entity.METRIC);
     params.put("attributes", Map.of("metricExpression", Map.of()));
-
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
@@ -331,56 +315,47 @@ class CreateEntityToolTest {
                     Entity.METRIC,
                     repository,
                     () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
-
     assertTrue(failure.getMessage().contains("metricExpression"));
-    verify(repository, never()).prepareInternal(any(), anyBoolean());
+    assertFalse(writes(repository).prepared());
   }
 
   @Test
   void domainDefaultIsPreservedAfterRepositoryDrivenBinding() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Domain.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Domain.class);
     Domain saved = new Domain().withId(UUID.randomUUID()).withName("Marketing");
     saved.setFullyQualifiedName("Marketing");
     stubWrite(repository, saved);
     Map<String, Object> params = params();
     params.put("entityType", Entity.DOMAIN);
     params.put("description", "a domain");
-
     withRepository(
         Entity.DOMAIN,
         repository,
         () ->
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
-
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).create(isNull(), captor.capture(), anyString(), any());
-    assertEquals(CreateDomain.DomainType.AGGREGATE, ((Domain) captor.getValue()).getDomainType());
+    final EntityInterface createdInput = onlyCreated(repository);
+    assertEquals(CreateDomain.DomainType.AGGREGATE, ((Domain) createdInput).getDomainType());
   }
 
   @Test
   void contextMemoryKeepsMcpProvenance() {
-    EntityRepository<EntityInterface> repository = repositoryFor(ContextMemory.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(ContextMemory.class);
     ContextMemory saved = new ContextMemory().withId(UUID.randomUUID()).withName("memory");
     saved.setFullyQualifiedName("memory");
     stubWrite(repository, saved);
     Map<String, Object> params = params();
     params.put("entityType", Entity.CONTEXT_MEMORY);
     params.put("attributes", Map.of("question", "Q", "answer", "A"));
-
     withRepository(
         Entity.CONTEXT_MEMORY,
         repository,
         () ->
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
-
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).create(isNull(), captor.capture(), anyString(), any());
+    final EntityInterface createdInput = onlyCreated(repository);
     assertEquals(
-        ContextMemorySourceType.REMEMBER_REQUEST,
-        ((ContextMemory) captor.getValue()).getSourceType());
-
+        ContextMemorySourceType.REMEMBER_REQUEST, ((ContextMemory) createdInput).getSourceType());
     Map<String, Object> described =
         withRepository(
             Entity.CONTEXT_MEMORY,
@@ -393,11 +368,10 @@ class CreateEntityToolTest {
 
   @Test
   void deniedCallerDoesNotReachPersistence() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Glossary.class);
     Authorizer authorizer = mock(Authorizer.class);
     RuleEngine ruleEngine = mock(RuleEngine.class);
     doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
-
     assertThrows(
         AuthorizationException.class,
         () ->
@@ -408,19 +382,21 @@ class CreateEntityToolTest {
                 () ->
                     new CreateEntityTool()
                         .execute(authorizer, mock(Limits.class), securityContext(), glossary())));
-
     verify(ruleEngine, never()).evaluate(any());
-    verify(repository, never()).prepareInternal(any(), anyBoolean());
-    verify(repository, never()).create(isNull(), any(), anyString(), any());
-    verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
+    assertFalse(writes(repository).prepared());
+    assertTrue(writes(repository).creations().isEmpty());
+    assertTrue(writes(repository).upserts().isEmpty());
   }
 
   @Test
   void aDuplicateCreateFailureIsPropagatedWithoutUpdating() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Glossary.class);
     IllegalArgumentException duplicate = new IllegalArgumentException("already exists");
-    doThrow(duplicate).when(repository).create(isNull(), any(), anyString(), any());
-
+    writes(repository)
+        .onCreate(
+            request -> {
+              throw duplicate;
+            });
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
@@ -435,22 +411,22 @@ class CreateEntityToolTest {
                                 mock(Limits.class),
                                 securityContext(),
                                 glossary())));
-
     assertEquals(duplicate, failure);
-    verify(repository).create(isNull(), any(), anyString(), any());
-    verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
+    assertEquals(1, writes(repository).creations().size());
+    assertTrue(writes(repository).upserts().isEmpty());
   }
 
   @Test
   void aDatabaseDuplicateReturnsCreateConflictGuidanceWithoutLeakingDatabaseDetails() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Glossary.class);
     SQLException databaseFailure =
         new SQLException(
             "duplicate key value violates unique constraint glossary_name_unique", "23505");
-    doThrow(new RuntimeException(new RuntimeException(databaseFailure)))
-        .when(repository)
-        .create(isNull(), any(), anyString(), any());
-
+    writes(repository)
+        .onCreate(
+            request -> {
+              throw new RuntimeException(new RuntimeException(databaseFailure));
+            });
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
@@ -465,22 +441,22 @@ class CreateEntityToolTest {
                                 mock(Limits.class),
                                 securityContext(),
                                 glossary())));
-
     assertTrue(failure.getMessage().contains("'glossary' entity named 'Finance' already exists"));
     assertTrue(failure.getMessage().contains("Nothing was created"));
     assertTrue(failure.getMessage().contains("patch_entity"));
     assertFalse(failure.getMessage().contains("constraint"));
-    verify(repository, never()).createOrUpdate(isNull(), any(), anyString(), any());
+    assertTrue(writes(repository).upserts().isEmpty());
   }
 
   @Test
   void aMySqlDuplicateIsRecognizedByItsVendorCode() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Glossary.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Glossary.class);
     SQLException databaseFailure = new SQLException("Duplicate entry", "23000", 1062);
-    doThrow(new RuntimeException(databaseFailure))
-        .when(repository)
-        .create(isNull(), any(), anyString(), any());
-
+    writes(repository)
+        .onCreate(
+            request -> {
+              throw new RuntimeException(databaseFailure);
+            });
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
@@ -495,36 +471,31 @@ class CreateEntityToolTest {
                                 mock(Limits.class),
                                 securityContext(),
                                 glossary())));
-
     assertTrue(failure.getMessage().contains("already exists"));
     assertFalse(failure.getMessage().contains("Duplicate entry"));
   }
 
   @Test
   void anArticleUsesTheCreatePageContract() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Page.class);
     Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
     saved.setFullyQualifiedName("runbook");
     stubWrite(repository, saved);
     Map<String, Object> params = params(Entity.PAGE);
     params.put("attributes", Map.of("pageType", PageType.ARTICLE.value(), "page", Map.of()));
-
     withRepository(
         Entity.PAGE,
         repository,
         () ->
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
-
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).create(isNull(), captor.capture(), anyString(), any());
-    Page created = (Page) captor.getValue();
+    final EntityInterface createdInput = onlyCreated(repository);
+    Page created = (Page) createdInput;
     assertEquals(PageType.ARTICLE, created.getPageType());
     assertNotNull(created.getPage());
     assertEquals(0, created.getVotes().getUpVotes());
     assertEquals(
         Entity.ORGANIZATION_NAME, created.getRelatedEntities().getFirst().getFullyQualifiedName());
-
     Map<String, Object> described =
         withRepository(
             Entity.PAGE,
@@ -538,10 +509,9 @@ class CreateEntityToolTest {
 
   @Test
   void anEmptyQuickLinkIsRejectedBeforePersistence() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Page.class);
     Map<String, Object> params = params(Entity.PAGE);
     params.put("attributes", Map.of("pageType", PageType.QUICK_LINK.value(), "page", Map.of()));
-
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
@@ -550,9 +520,8 @@ class CreateEntityToolTest {
                     Entity.PAGE,
                     repository,
                     () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
-
     assertTrue(failure.getMessage().contains("page"));
-    verify(repository, never()).prepareInternal(any(), anyBoolean());
+    assertFalse(writes(repository).prepared());
   }
 
   @Test
@@ -560,8 +529,7 @@ class CreateEntityToolTest {
     // The eight tools this one replaced took references as plain FQN strings. The generic path
     // still resolves a name-only reference, but callers were told to send ids and given the
     // EntityReference schema blurb, so they spent a lookup they did not need.
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
-
+    EntityPolicy<EntityInterface> repository = repositoryFor(Page.class);
     Map<String, Object> described =
         withRepository(
             Entity.PAGE,
@@ -569,7 +537,6 @@ class CreateEntityToolTest {
             () ->
                 new DescribeEntityTypeTool()
                     .execute(null, null, Map.of("entityType", Entity.PAGE)));
-
     String parent = String.valueOf(attribute(described, "parent").get("description"));
     assertTrue(parent.contains("fullyQualifiedName"), parent);
     assertFalse(parent.contains("This schema defines"), parent);
@@ -580,7 +547,7 @@ class CreateEntityToolTest {
 
   @Test
   void anArticleBodySuppliedByTheCallerIsKept() {
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
+    EntityPolicy<EntityInterface> repository = repositoryFor(Page.class);
     Page saved = new Page().withId(UUID.randomUUID()).withName("runbook");
     saved.setFullyQualifiedName("runbook");
     stubWrite(repository, saved);
@@ -594,17 +561,14 @@ class CreateEntityToolTest {
             Map.of("publicationDate", "2026-08-28T00:00:00.000Z"),
             "entityStatus",
             EntityStatus.DRAFT.value()));
-
     withRepository(
         Entity.PAGE,
         repository,
         () ->
             new CreateEntityTool()
                 .execute(mock(Authorizer.class), mock(Limits.class), securityContext(), params));
-
-    ArgumentCaptor<EntityInterface> captor = ArgumentCaptor.forClass(EntityInterface.class);
-    verify(repository).create(isNull(), captor.capture(), anyString(), any());
-    Page created = (Page) captor.getValue();
+    final EntityInterface createdInput = onlyCreated(repository);
+    Page created = (Page) createdInput;
     assertNotNull(
         JsonUtils.convertValue(created.getPage(), Article.class).getPublicationDate(),
         "the caller's article body must not be replaced by the default");
@@ -617,8 +581,7 @@ class CreateEntityToolTest {
     // written from relationships, votes and the extraction fields by background work. Offering
     // 'children' was the harmful one: storeRelationships reads child.getId() and a caller has no id
     // to give, so an accepted value would have written a relationship row with a null id.
-    EntityRepository<EntityInterface> repository = repositoryFor(Page.class);
-
+    EntityPolicy<EntityInterface> repository = repositoryFor(Page.class);
     Map<String, Object> described =
         withRepository(
             Entity.PAGE,
@@ -626,11 +589,9 @@ class CreateEntityToolTest {
             () ->
                 new DescribeEntityTypeTool()
                     .execute(null, null, Map.of("entityType", Entity.PAGE)));
-
     assertEquals(
         Set.of("pageType", "page", "parent", "relatedEntities", "entityStatus"),
         attributeNames(described));
-
     Map<String, Object> params = params(Entity.PAGE);
     params.put(
         "attributes",
@@ -643,36 +604,46 @@ class CreateEntityToolTest {
                     Entity.PAGE,
                     repository,
                     () -> new CreateEntityTool().execute(null, null, securityContext(), params)));
-
     assertTrue(failure.getMessage().contains("children"), failure.getMessage());
-    verify(repository, never()).prepareInternal(any(), anyBoolean());
+    assertFalse(writes(repository).prepared());
   }
 
   @SuppressWarnings("unchecked")
-  private static EntityRepository<EntityInterface> repositoryFor(
+  private static EntityPolicy<EntityInterface> repositoryFor(
       Class<? extends EntityInterface> entityClass) {
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> repository = mock(EntityPolicy.class);
+    EntityCreationFixture.attach(repository);
     when(repository.getEntityClass()).thenReturn((Class<EntityInterface>) entityClass);
     when(repository.getParentEntity(any(), anyString()))
         .thenThrow(new EntityNotFoundException("no parent"));
     return repository;
   }
 
-  private static void stubWrite(
-      EntityRepository<EntityInterface> repository, EntityInterface saved) {
-    when(repository.create(isNull(), any(), anyString(), any())).thenReturn(saved);
+  private static EntityCreationFixture<EntityInterface> writes(
+      EntityPolicy<EntityInterface> repository) {
+    return (EntityCreationFixture<EntityInterface>) repository.creates();
+  }
+
+  private static EntityInterface onlyCreated(EntityPolicy<EntityInterface> repository) {
+    assertEquals(1, writes(repository).creations().size());
+    var request = writes(repository).creations().getFirst();
+    assertEquals(null, request.uri());
+    assertEquals(new EntityCommandActor("admin", null), request.actor());
+    assertTrue(request.withHref());
+    return request.entity();
+  }
+
+  private static void stubWrite(EntityPolicy<EntityInterface> repository, EntityInterface saved) {
+    writes(repository).onCreate(request -> saved);
   }
 
   private static <T> T withRepository(
-      String entityType, EntityRepository<?> repository, Supplier<T> action) {
+      String entityType, EntityPolicy<?> repository, Supplier<T> action) {
     return withRepository(entityType, repository, mock(RuleEngine.class), action);
   }
 
   private static <T> T withRepository(
-      String entityType,
-      EntityRepository<?> repository,
-      RuleEngine ruleEngine,
-      Supplier<T> action) {
+      String entityType, EntityPolicy<?> repository, RuleEngine ruleEngine, Supplier<T> action) {
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
         MockedStatic<RuleEngine> rules = mockStatic(RuleEngine.class);
         MockedStatic<McpChangeEventUtil> events = mockStatic(McpChangeEventUtil.class)) {
@@ -713,7 +684,7 @@ class CreateEntityToolTest {
 
   private static void assertDedicatedApiRequired(
       String entityType, Class<? extends EntityInterface> entityClass) {
-    EntityRepository<EntityInterface> repository = repositoryFor(entityClass);
+    EntityPolicy<EntityInterface> repository = repositoryFor(entityClass);
     IllegalArgumentException createFailure =
         assertThrows(
             IllegalArgumentException.class,
@@ -734,7 +705,6 @@ class CreateEntityToolTest {
                     () ->
                         new DescribeEntityTypeTool()
                             .execute(null, null, Map.of("entityType", entityType))));
-
     assertTrue(
         createFailure.getMessage().contains("dedicated OpenMetadata API"),
         createFailure.getMessage());

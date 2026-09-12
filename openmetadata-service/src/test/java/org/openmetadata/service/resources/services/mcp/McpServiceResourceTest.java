@@ -21,9 +21,11 @@ import java.security.Principal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMcpService;
@@ -32,13 +34,17 @@ import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.history.EntityVersionHistoryFixture;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
 import org.openmetadata.service.jdbi3.McpServiceRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 
 class McpServiceResourceTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
 
   private static Set<String> mcpServiceFields() {
     return new HashSet<>(
@@ -72,6 +78,7 @@ class McpServiceResourceTest {
       McpServiceRepository mockRepo,
       Authorizer mockAuth,
       Limits mockLimits) {
+    lookups.attach(mockRepo, Entity.MCP_SERVICE, McpService.class);
     entityMock.when(() -> Entity.getEntityRepository(Entity.MCP_SERVICE)).thenReturn(mockRepo);
     entityMock
         .when(() -> Entity.getEntityClassFromType(Entity.MCP_SERVICE))
@@ -253,15 +260,20 @@ class McpServiceResourceTest {
       McpServiceResource resource = createResource(entityMock, mockRepo, mockAuth, mockLimits);
 
       UUID id = UUID.randomUUID();
-      EntityHistory mockHistory = new EntityHistory().withVersions(Collections.emptyList());
-      when(mockRepo.listVersions(id)).thenReturn(mockHistory);
+      McpService current = new McpService().withId(id).withName("current").withVersion(0.1);
+      final var history =
+          EntityVersionHistoryFixture.versions(
+              Entity.MCP_SERVICE, McpService.class, current, List.of());
+      when(mockRepo.versions()).thenReturn(history);
       doNothing().when(mockAuth).authorize(any(), any(), any());
 
       UriInfo uriInfo = mock(UriInfo.class);
       SecurityContext secCtx = mock(SecurityContext.class);
 
       EntityHistory result = resource.listVersions(uriInfo, secCtx, id);
-      assertNotNull(result);
+
+      assertEquals(Entity.MCP_SERVICE, result.getEntityType());
+      assertEquals(List.of(JsonUtils.pojoToJson(current)), result.getVersions());
     }
   }
 

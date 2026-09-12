@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
 import static org.openmetadata.service.Entity.BOT;
-import static org.openmetadata.service.jdbi3.EntityRepository.validateOwners;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +14,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityReferenceValidator;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -34,7 +34,8 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
     Boolean supportsIngestionRunner =
         !marketPlaceDefinition.getAppType().equals(AppType.Internal)
             && marketPlaceDefinition.getSupportsIngestionRunner();
-    List<EntityReference> owners = validateOwners(createAppRequest.getOwners());
+    List<EntityReference> owners =
+        EntityReferenceValidator.shared().owners(createAppRequest.getOwners());
     App app =
         new App()
             .withId(UUID.randomUUID())

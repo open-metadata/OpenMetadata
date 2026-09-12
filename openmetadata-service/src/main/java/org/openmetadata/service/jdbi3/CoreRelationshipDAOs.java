@@ -49,6 +49,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
@@ -134,6 +135,17 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension "
+            + "WHERE id = :id AND extension IN (<extensions>) ORDER BY extension")
+    @RegisterRowMapper(ExtensionMapper.class)
+    List<ExtensionRecord> getExtensionsByKeysInternal(
+        @BindUUID("id") UUID id, @BindList("extensions") List<String> extensions);
+
+    default List<ExtensionRecord> getExtensionsByKeys(UUID id, List<String> extensions) {
+      return EntityDAO.queryInChunks(extensions, chunk -> getExtensionsByKeysInternal(id, chunk));
+    }
 
     @SqlQuery(
         "SELECT id, extension, json "
@@ -1134,6 +1146,33 @@ public interface CoreRelationshipDAOs {
           toIds,
           chunk ->
               findFromBatchWithEntityTypeAndCondition(chunk, relation, fromEntityType, condition));
+    }
+
+    @SqlQuery(
+        """
+        SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema
+        FROM entity_relationship
+        WHERE toId IN (<toIds>) AND relation = :ownerRelation
+        UNION ALL
+        SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema
+        FROM entity_relationship
+        WHERE toId IN (<toIds>) AND relation = :domainRelation AND fromEntity = :domainType
+        """)
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findOwnersAndDomainsBatchInternal(
+        @BindList("toIds") List<String> toIds,
+        @Bind("ownerRelation") int ownerRelation,
+        @Bind("domainRelation") int domainRelation,
+        @Bind("domainType") String domainType);
+
+    /** Includes deleted relationships; reference hydration applies each field's Include policy. */
+    default List<EntityRelationshipObject> findOwnersAndDomainsBatch(final List<String> toIds) {
+      // Each ID is bound twice; the existing 30,000-ID chunks stay below 65,535 parameters.
+      return EntityDAO.queryInChunks(
+          toIds,
+          chunk ->
+              findOwnersAndDomainsBatchInternal(
+                  chunk, Relationship.OWNS.ordinal(), Relationship.HAS.ordinal(), Entity.DOMAIN));
     }
 
     @SqlQuery(

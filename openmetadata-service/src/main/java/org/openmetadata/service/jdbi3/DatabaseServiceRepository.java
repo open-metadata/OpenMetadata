@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.csv.CsvUtil.addDomains;
@@ -31,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -55,23 +55,37 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.service.EntityServiceAssembly;
+import org.openmetadata.service.entity.service.EntityServiceOperations;
+import org.openmetadata.service.entity.service.EntityServicePolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
+@Repository()
 public class DatabaseServiceRepository
-    extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
+    implements EntityServicePolicy<DatabaseService, DatabaseConnection> {
+
   public DatabaseServiceRepository() {
-    super(
-        DatabaseServiceResource.COLLECTION_PATH,
-        Entity.DATABASE_SERVICE,
-        Entity.getCollectionDAO().dbServiceDAO(),
-        DatabaseConnection.class,
-        "",
-        ServiceType.DATABASE);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DatabaseServiceResource.COLLECTION_PATH,
+                Entity.DATABASE_SERVICE,
+                DatabaseService.class,
+                Entity.getCollectionDAO().dbServiceDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    this.serviceOperations =
+        EntityServiceAssembly.create(this, DatabaseConnection.class, ServiceType.DATABASE);
+    context().options().setQuoteFqn(true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -83,14 +97,16 @@ public class DatabaseServiceRepository
   public String exportToCsv(
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
-    DatabaseService databaseService =
-        getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate database name
+    // Validate database name
+    DatabaseService // Validate database name
+        databaseService = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
     DatabaseRepository repository = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
     List<Database> databases =
-        repository.listAllForCSV(
-            repository.getFields("name,owners,tags,domains,extension"),
-            databaseService.getFullyQualifiedName());
-
+        repository
+            .collections()
+            .forCsv(
+                repository.fieldPolicy().parse("name,owners,tags,domains,extension"),
+                databaseService.getFullyQualifiedName());
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user, recursive)
         .exportAllCsv(databases, recursive, callback);
@@ -112,8 +128,9 @@ public class DatabaseServiceRepository
       CsvImportProgressCallback callback)
       throws IOException {
     // Validate database service
-    DatabaseService databaseService =
-        getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate glossary name
+    // Validate glossary name
+    DatabaseService // Validate glossary name
+        databaseService = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
     DatabaseServiceCsv databaseServiceCsv =
         new DatabaseServiceCsv(databaseService, user, recursive);
     List<CSVRecord> records;
@@ -126,9 +143,13 @@ public class DatabaseServiceRepository
   }
 
   public static class DatabaseServiceCsv extends EntityCsv<Database> {
+
     public final CsvDocumentation DOCUMENTATION;
+
     public final List<CsvHeader> HEADERS;
+
     private final DatabaseService service;
+
     private final boolean recursive;
 
     public DatabaseServiceCsv(DatabaseService service, String user, boolean recursive) {
@@ -152,7 +173,6 @@ public class DatabaseServiceRepository
       int total = databases.size();
       int exported = 0;
       int batchNumber = 0;
-
       for (Database database : databases) {
         addEntityToCSV(csvFile, database, DATABASE);
         DatabaseRepository databaseRepository =
@@ -176,7 +196,6 @@ public class DatabaseServiceRepository
             LOG.error("Error parsing database CSV: {}", e.getMessage());
           }
         }
-
         exported++;
         if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
           batchNumber++;
@@ -188,7 +207,6 @@ public class DatabaseServiceRepository
           }
         }
       }
-
       return formatCsv(csvFile);
     }
 
@@ -210,24 +228,20 @@ public class DatabaseServiceRepository
           entity.getCertification() != null && entity.getCertification().getTagLabel() != null
               ? entity.getCertification().getTagLabel().getTagFQN()
               : "");
-
       if (recursive) {
         Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
         Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
         addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
         addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
       }
-
       // Handle optional fields that may not exist in all entity types
       addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
-
       // Add entityType and fullyQualifiedName
       if (recursive) {
         addField(recordList, entityType);
         addField(recordList, entity.getFullyQualifiedName());
       }
-
       addRecord(csvFile, recordList);
     }
 
@@ -265,7 +279,6 @@ public class DatabaseServiceRepository
         LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
         database = new Database().withService(service.getEntityReference());
       }
-
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // domain, extension
       List<TagLabel> tagLabels =
@@ -276,9 +289,7 @@ public class DatabaseServiceRepository
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-
       database
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(databaseFqn)
@@ -289,7 +300,6 @@ public class DatabaseServiceRepository
           .withCertification(certification)
           .withDomains(getDomains(printer, csvRecord, 8, database.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 9));
-
       if (processRecord) {
         createEntity(printer, csvRecord, database, DATABASE);
       }
@@ -301,12 +311,10 @@ public class DatabaseServiceRepository
       if (csvRecord == null) {
         return;
       }
-
       // Get entityType and fullyQualifiedName if provided
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : DATABASE;
       String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
       rowEntityType = entityType;
-
       if (DATABASE.equals(entityType)) {
         createDatabaseEntity(printer, csvRecord, entityFQN);
       } else if (DATABASE_SCHEMA.equals(entityType)) {
@@ -328,7 +336,6 @@ public class DatabaseServiceRepository
           entityFQN != null
               ? entityFQN
               : FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
-
       Database database;
       if (importResult.getDryRun()) {
         // Dry run mode: Try lookup first, simulate if not found
@@ -352,7 +359,6 @@ public class DatabaseServiceRepository
           database = new Database().withService(service.getEntityReference());
         }
       }
-
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
       List<TagLabel> tagLabels =
           getTagLabels(
@@ -373,7 +379,6 @@ public class DatabaseServiceRepository
           .withSourceUrl(csvRecord.get(9))
           .withDomains(getDomains(printer, csvRecord, 10, database.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11));
-
       if (processRecord) {
         createEntity(printer, csvRecord, database, DATABASE);
       }
@@ -388,7 +393,6 @@ public class DatabaseServiceRepository
             "Schema import requires fullyQualifiedName to determine the schema it belongs to");
       }
       String dbFQN = FullyQualifiedName.getParentFQN(entityFQN);
-
       // Fetch Database Entity with dependency resolution
       Database database;
       if (importResult.getDryRun()) {
@@ -411,7 +415,6 @@ public class DatabaseServiceRepository
           throw new IllegalArgumentException("Database not found: " + dbFQN);
         }
       }
-
       DatabaseSchema schema;
       DatabaseSchemaRepository databaseSchemaRepository =
           (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
@@ -425,7 +428,6 @@ public class DatabaseServiceRepository
                 .withDatabase(database.getEntityReference())
                 .withService(database.getService());
       }
-
       // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
       // sourceUrl, domain
       List<TagLabel> tagLabels =
@@ -461,5 +463,19 @@ public class DatabaseServiceRepository
     protected void addRecord(CsvFile csvFile, Database entity) {
       addEntityToCSV(csvFile, entity, DATABASE);
     }
+  }
+
+  private final EntityPolicyContext<DatabaseService> entityContext;
+
+  private final EntityServiceOperations<DatabaseService, DatabaseConnection> serviceOperations;
+
+  @Override
+  public final EntityPolicyContext<DatabaseService> context() {
+    return entityContext;
+  }
+
+  @Override
+  public final EntityServiceOperations<DatabaseService, DatabaseConnection> serviceOperations() {
+    return serviceOperations;
   }
 }

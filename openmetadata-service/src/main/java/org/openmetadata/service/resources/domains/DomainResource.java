@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -234,7 +235,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    Fields taskFields = taskRepository.getFields(fieldsParam);
+    Fields taskFields = taskRepository.fieldPolicy().parse(fieldsParam);
 
     ListFilter filter = new ListFilter(include);
     taskRepository.addDomainFilter(filter, fqn);
@@ -274,8 +275,13 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     EntityUtil.addDomainQueryParam(securityContext, filter, Entity.TASK);
 
     return before != null
-        ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
-        : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after);
+        ? taskRepository
+            .pages()
+            .before(
+                new EntityPageReader.Projection(uriInfo, taskFields, filter), limitParam, before)
+        : taskRepository
+            .pages()
+            .after(new EntityPageReader.Projection(uriInfo, taskFields, filter), limitParam, after);
   }
 
   @GET

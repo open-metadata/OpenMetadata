@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.tasks;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -26,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SuggestionPayload;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -34,7 +34,11 @@ import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Generic handler for applying suggestions to entities.
@@ -52,10 +56,8 @@ public class SuggestionHandler {
       throw new IllegalArgumentException(
           "Task is not a suggestion task: " + suggestionTask.getType());
     }
-
     Object payload = suggestionTask.getPayload();
     SuggestionPayload suggestionPayload;
-
     if (payload instanceof SuggestionPayload sp) {
       suggestionPayload = sp;
     } else if (payload != null) {
@@ -70,25 +72,35 @@ public class SuggestionHandler {
     } else {
       throw new IllegalArgumentException("Task does not have a payload");
     }
-
     EntityReference about = suggestionTask.getAbout();
     if (about == null) {
       throw new IllegalArgumentException("Suggestion task has no target entity (about)");
     }
-
-    EntityRepository<?> repository = Entity.getEntityRepository(about.getType());
-    EntityInterface entity = repository.get(null, about.getId(), repository.getFields("*"));
-
+    EntityPolicy<?> repository = Entity.getEntityRepository(about.getType());
+    EntityInterface entity =
+        repository
+            .reads()
+            .byId(
+                about.getId(),
+                new EntityReadService.Query(
+                    null,
+                    repository.fieldPolicy().parse("*"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     String origJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = generatePatch(entity, suggestionPayload);
-
     if (patch == null || patch.toJsonArray().isEmpty()) {
       LOG.warn("No changes to apply for suggestion task {}", suggestionTask.getTaskId());
       return;
     }
-
-    repository.patch(null, entity.getId(), resolvedBy, patch);
-
+    repository
+        .patches()
+        .patch(
+            new EntityPatchService.Target.Id(entity.getId()),
+            patch,
+            new EntityCommandActor(resolvedBy, null),
+            null,
+            new EntityPatchService.Options(null, null));
     LOG.info(
         "Applied suggestion {} to entity {} by user {}",
         suggestionTask.getTaskId(),
@@ -101,7 +113,6 @@ public class SuggestionHandler {
    */
   public void approveSuggestion(Task task, String approvedBy, String comment) {
     applySuggestion(task, approvedBy);
-
     task.setStatus(TaskEntityStatus.Approved);
     task.setResolution(
         new TaskResolution()
@@ -139,12 +150,10 @@ public class SuggestionHandler {
   private JsonPatch generatePatch(EntityInterface entity, SuggestionPayload payload) {
     String fieldPath = payload.getFieldPath();
     SuggestionPayload.SuggestionType suggestionType = payload.getSuggestionType();
-
     if (suggestionType == null) {
       LOG.warn("Suggestion type is null, cannot generate patch");
       return null;
     }
-
     return switch (suggestionType) {
       case DESCRIPTION -> generateDescriptionPatch(fieldPath, payload.getSuggestedValue());
       case TAG -> generateTagsPatch(fieldPath, payload.getSuggestedValue());
@@ -162,13 +171,11 @@ public class SuggestionHandler {
   private JsonPatch generateDescriptionPatch(String fieldPath, String newValue) {
     String jsonPointer = convertToJsonPointer(fieldPath);
     JsonPatchBuilder builder = Json.createPatchBuilder();
-
     if (nullOrEmpty(newValue)) {
       builder.remove(jsonPointer);
     } else {
       builder.replace(jsonPointer, newValue);
     }
-
     return builder.build();
   }
 
@@ -180,9 +187,7 @@ public class SuggestionHandler {
     if (!jsonPointer.endsWith("/tags")) {
       jsonPointer = jsonPointer + "/tags";
     }
-
     JsonPatchBuilder builder = Json.createPatchBuilder();
-
     if (nullOrEmpty(tagsJson)) {
       builder.replace(jsonPointer, Json.createArrayBuilder().build());
     } else {
@@ -196,7 +201,6 @@ public class SuggestionHandler {
         return null;
       }
     }
-
     return builder.build();
   }
 
@@ -205,7 +209,6 @@ public class SuggestionHandler {
    */
   private JsonPatch generateOwnerPatch(String ownerJson) {
     JsonPatchBuilder builder = Json.createPatchBuilder();
-
     if (nullOrEmpty(ownerJson)) {
       builder.remove("/owners");
     } else {
@@ -217,7 +220,6 @@ public class SuggestionHandler {
         return null;
       }
     }
-
     return builder.build();
   }
 
@@ -226,7 +228,6 @@ public class SuggestionHandler {
    */
   private JsonPatch generateTierPatch(String tierFqn) {
     JsonPatchBuilder builder = Json.createPatchBuilder();
-
     if (nullOrEmpty(tierFqn)) {
       builder.remove("/tags");
     } else {
@@ -238,7 +239,6 @@ public class SuggestionHandler {
               .add("labelType", "Manual")
               .build());
     }
-
     return builder.build();
   }
 
@@ -247,7 +247,6 @@ public class SuggestionHandler {
    */
   private JsonPatch generateDomainPatch(String domainJson) {
     JsonPatchBuilder builder = Json.createPatchBuilder();
-
     if (nullOrEmpty(domainJson)) {
       builder.remove("/domain");
     } else {
@@ -259,7 +258,6 @@ public class SuggestionHandler {
         return null;
       }
     }
-
     return builder.build();
   }
 
@@ -269,7 +267,6 @@ public class SuggestionHandler {
   private JsonPatch generateCustomPropertyPatch(String fieldPath, String value) {
     String jsonPointer = "/extension/" + fieldPath.replace("extension.", "");
     JsonPatchBuilder builder = Json.createPatchBuilder();
-
     if (nullOrEmpty(value)) {
       builder.remove(jsonPointer);
     } else {
@@ -280,7 +277,6 @@ public class SuggestionHandler {
         builder.replace(jsonPointer, value);
       }
     }
-
     return builder.build();
   }
 
@@ -304,21 +300,16 @@ public class SuggestionHandler {
     if (nullOrEmpty(fieldPath)) {
       return "/description";
     }
-
     StringBuilder pointer = new StringBuilder("/");
     String[] parts = fieldPath.split("\\.");
-
     for (int i = 0; i < parts.length; i++) {
       String part = parts[i];
-
       // Handle array index notation: columns[0] or columns[name='customer_id']
       if (part.contains("[")) {
         int bracketStart = part.indexOf('[');
         String arrayName = part.substring(0, bracketStart);
         String indexPart = part.substring(bracketStart + 1, part.length() - 1);
-
         pointer.append(arrayName).append("/");
-
         // If it's a numeric index, use directly
         if (indexPart.matches("\\d+")) {
           pointer.append(indexPart);
@@ -330,12 +321,10 @@ public class SuggestionHandler {
       } else {
         pointer.append(part);
       }
-
       if (i < parts.length - 1) {
         pointer.append("/");
       }
     }
-
     return pointer.toString();
   }
 }

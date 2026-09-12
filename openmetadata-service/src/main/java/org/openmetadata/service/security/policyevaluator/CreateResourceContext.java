@@ -17,11 +17,14 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * ResourceContext used for CREATE operations where ownership, tags are inherited from the parent term.
@@ -30,14 +33,19 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  */
 @Slf4j
 public class CreateResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+
   @NonNull @Getter private final String resource;
-  private final EntityRepository<T> entityRepository;
-  private final T entity; // Entity being created
+
+  private final EntityPolicy<T> entityRepository;
+
+  // Entity being created
+  private final T entity;
+
   private List<EntityInterface> parentEntities;
 
   public CreateResourceContext(@NonNull String resource, @NotNull T entity) {
     this.resource = resource;
-    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+    this.entityRepository = (EntityPolicy<T>) Entity.getEntityRepository(resource);
     this.entity = entity;
     setParents(entity);
   }
@@ -79,12 +87,10 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
   @Override
   public List<EntityReference> getDomains() {
     List<EntityReference> domains = new ArrayList<>();
-
     // Add assigned domains at the time of entity creation
     if (entity != null && !nullOrEmpty(entity.getDomains())) {
       domains.addAll(entity.getDomains());
     }
-
     // Add inherited domains from parent entities
     if (!nullOrEmpty(parentEntities)) {
       for (EntityInterface parent : parentEntities) {
@@ -134,17 +140,21 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
             case Entity.TEAM -> ((Team) entity).getParents();
             default -> null;
           };
-
       if (nullOrEmpty(rootReferences)) return null;
       List<EntityInterface> parentEntities = new ArrayList<>();
-
       for (EntityReference rootReference : rootReferences) {
         if (rootReference == null || rootReference.getId() == null) {
           LOG.warn("Root reference is null or does not have an ID: {}", rootReference);
           continue;
         }
-        EntityRepository<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
-        parentEntities.add(rootRepository.get(null, rootReference.getId(), fields));
+        EntityPolicy<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
+        parentEntities.add(
+            rootRepository
+                .reads()
+                .byId(
+                    rootReference.getId(),
+                    new EntityReadService.Query(
+                        null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false)));
       }
       return parentEntities;
     } catch (Exception e) {

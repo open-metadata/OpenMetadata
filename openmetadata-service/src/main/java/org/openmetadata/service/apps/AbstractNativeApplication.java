@@ -35,6 +35,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -42,6 +45,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
@@ -165,7 +169,7 @@ public class AbstractNativeApplication implements NativeApplication {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline storedPipeline =
         ingestionPipelineRepository.getByName(
-            null, fqn, ingestionPipelineRepository.getFields("id"));
+            null, fqn, ingestionPipelineRepository.fieldPolicy().parse("id"));
 
     // Init Application Code for Some Initialization
     List<CollectionDAO.EntityRelationshipRecord> records =
@@ -230,7 +234,7 @@ public class AbstractNativeApplication implements NativeApplication {
       Map<String, Object> appConfiguration,
       String updatedBy) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
-    IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
+    IngestionPipeline updated = repository.lookup().byName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
         JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
@@ -242,7 +246,14 @@ public class AbstractNativeApplication implements NativeApplication {
       updated.setAirflowConfig(airflowConfig);
     }
     airflowConfig.withScheduleInterval(deriveInterval(this.getApp().getAppSchedule()));
-    repository.update(null, original, updated, updatedBy);
+    repository
+        .puts()
+        .update(
+            null,
+            original,
+            updated,
+            new EntityCommandActor(updatedBy, null),
+            EntityPutService.Mode.NORMAL);
   }
 
   private void createAndBindIngestionPipeline(
@@ -252,7 +263,7 @@ public class AbstractNativeApplication implements NativeApplication {
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
         serviceEntityRepository
-            .getByName(null, SERVICE_NAME, serviceEntityRepository.getFields("id"))
+            .getByName(null, SERVICE_NAME, serviceEntityRepository.fieldPolicy().parse("id"))
             .getEntityReference();
 
     CreateIngestionPipeline createPipelineRequest =
@@ -317,8 +328,15 @@ public class AbstractNativeApplication implements NativeApplication {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App jobApp =
-        appRepository.getByName(
-            null, appName, appRepository.getFields("bot"), Include.NON_DELETED, true);
+        appRepository
+            .reads()
+            .byName(
+                appName,
+                new EntityReadService.Query(
+                    null,
+                    appRepository.fieldPolicy().parse("bot"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    true));
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     jobApp.setAppConfiguration(
         JsonUtils.getMapFromJson(

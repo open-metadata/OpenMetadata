@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -37,6 +36,17 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityBatchFields;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -44,28 +54,35 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class DashboardRepository extends EntityRepository<Dashboard> {
+@Repository()
+public class DashboardRepository implements EntityPolicy<Dashboard> {
+
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
+
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
+
   private static final String DASHBOARD_URL = "sourceUrl";
 
   public DashboardRepository() {
-    super(
-        DashboardResource.COLLECTION_PATH,
-        Entity.DASHBOARD,
-        Dashboard.class,
-        Entity.getCollectionDAO().dashboardDAO(),
-        DASHBOARD_PATCH_FIELDS,
-        DASHBOARD_UPDATE_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DashboardResource.COLLECTION_PATH,
+                Entity.DASHBOARD,
+                Dashboard.class,
+                Entity.getCollectionDAO().dashboardDAO()),
+            new EntityPolicyContext.WriteFields(
+                DASHBOARD_PATCH_FIELDS, DASHBOARD_UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
-
-    fieldFetchers.put("charts", this::fetchAndSetCharts);
-    fieldFetchers.put("dataModels", this::fetchAndSetDataModels);
-    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+    context().options().setDescendantsCoveredByAncestorCascade(true);
+    fieldLoading().register("charts", this::fetchAndSetCharts);
+    fieldLoading().register("dataModels", this::fetchAndSetDataModels);
+    fieldLoading().register("usageSummary", this::fetchAndSetUsageSummaries);
   }
 
   @Override
@@ -77,7 +94,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   @Override
   public void setFields(Dashboard dashboard, Fields fields, RelationIncludes relationIncludes) {
-    dashboard.setService(getContainer(dashboard.getId()));
+    dashboard.setService(relationships().container(dashboard.getId(), null));
     dashboard.setCharts(
         fields.contains("charts")
             ? getRelatedEntities(dashboard, Entity.CHART, relationIncludes.getIncludeFor("charts"))
@@ -92,7 +109,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboard.getUsageSummary() == null) {
       dashboard.withUsageSummary(
           fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
+              ? EntityUtil.getLatestUsage(
+                  context().dependencies().daos().usageDAO(), dashboard.getId())
               : null);
     }
   }
@@ -101,8 +119,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   public void setFieldsInBulk(Fields fields, List<Dashboard> entities) {
     // Service reference (incl. FQN/name) is part of default response contract for list/get.
     fetchAndSetDefaultService(entities, true);
-
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     fetchAndSetDashboardSpecificFields(entities, fields);
     setInheritedFields(entities, fields);
     for (Dashboard entity : entities) {
@@ -114,15 +131,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboards == null || dashboards.isEmpty()) {
       return;
     }
-
     if (fields.contains("charts")) {
       fetchAndSetCharts(dashboards, fields);
     }
-
     if (fields.contains("dataModels")) {
       fetchAndSetDataModels(dashboards, fields);
     }
-
     if (fields.contains("usageSummary")) {
       fetchAndSetUsageSummaries(dashboards, fields);
     }
@@ -132,25 +146,26 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (!fields.contains("charts") || dashboards == null || dashboards.isEmpty()) {
       return;
     }
-    setFieldFromMap(true, dashboards, batchFetchCharts(dashboards), Dashboard::setCharts);
+    EntityBatchFields.assign(true, dashboards, batchFetchCharts(dashboards), Dashboard::setCharts);
   }
 
   private void fetchAndSetDataModels(List<Dashboard> dashboards, Fields fields) {
     if (!fields.contains("dataModels") || dashboards == null || dashboards.isEmpty()) {
       return;
     }
-    setFieldFromMap(true, dashboards, batchFetchDataModels(dashboards), Dashboard::setDataModels);
+    EntityBatchFields.assign(
+        true, dashboards, batchFetchDataModels(dashboards), Dashboard::setDataModels);
   }
 
   private void fetchAndSetUsageSummaries(List<Dashboard> dashboards, Fields fields) {
     if (!fields.contains("usageSummary") || dashboards == null || dashboards.isEmpty()) {
       return;
     }
-    setFieldFromMap(
+    EntityBatchFields.assign(
         true,
         dashboards,
         EntityUtil.getLatestUsageForEntities(
-            daoCollection.usageDAO(), entityListToUUID(dashboards)),
+            context().dependencies().daos().usageDAO(), EntityBatchFields.ids(dashboards)),
         Dashboard::setUsageSummary);
   }
 
@@ -168,7 +183,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   // and when dashboards are descendants of a larger hard-delete cascade.
   @Transaction
   @Override
-  protected void hardDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
+  public void hardDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
     cascadeChartCleanup(dashboardId, updatedBy, true);
   }
 
@@ -179,21 +194,24 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   // DashboardService cascade).
   @Transaction
   @Override
-  protected void softDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
+  public void softDeleteAdditionalChildren(UUID dashboardId, String updatedBy) {
     cascadeChartCleanup(dashboardId, updatedBy, false);
   }
 
   private void cascadeChartCleanup(UUID dashboardId, String updatedBy, boolean hardDelete) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findTo(dashboardId, DASHBOARD, Relationship.HAS.ordinal(), CHART);
     if (chartRecords.isEmpty()) {
       return;
     }
-
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 chartRecords.stream()
@@ -202,9 +220,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                     .collect(Collectors.toList()),
                 Relationship.HAS.ordinal(),
                 DASHBOARD);
-
     Set<UUID> nonDeletedDashboards =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .dashboardDAO()
             .findEntitiesByIds(
                 dashboardRelationships.stream()
@@ -216,15 +235,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             .map(Dashboard::getId)
             .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
-
     // Soft-delete charts whose only remaining dashboard is the one being deleted.
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeDeleted =
         new ArrayList<>();
-
     for (CollectionDAO.EntityRelationshipRecord record : chartRecords) {
       UUID chartId = record.getId();
       boolean hasOtherNonDeletedDashboard = false;
-
       for (CollectionDAO.EntityRelationshipObject rel : dashboardRelationships) {
         UUID relFromId = UUID.fromString(rel.getFromId());
         UUID relToId = UUID.fromString(rel.getToId());
@@ -233,12 +249,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           break;
         }
       }
-
       if (!hasOtherNonDeletedDashboard) {
         filteredChartRecordsToBeDeleted.add(record);
       }
     }
-
     deleteChildren(filteredChartRecordsToBeDeleted, hardDelete, updatedBy);
   }
 
@@ -247,17 +261,20 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   // and lives in the per-entity extension hook.
   @Transaction
   @Override
-  protected void restoreAdditionalChildren(UUID dashboardId, String updatedBy) {
+  public void restoreAdditionalChildren(UUID dashboardId, String updatedBy) {
     List<CollectionDAO.EntityRelationshipRecord> chartRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findTo(dashboardId, DASHBOARD, Relationship.HAS.ordinal(), CHART);
     if (chartRecords.isEmpty()) {
       return;
     }
-
     List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 chartRecords.stream()
@@ -266,9 +283,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                     .collect(Collectors.toList()),
                 Relationship.HAS.ordinal(),
                 DASHBOARD);
-
     Set<UUID> deletedDashboards =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .dashboardDAO()
             .findEntitiesByIds(
                 dashboardRelationships.stream()
@@ -280,14 +298,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             .map(Dashboard::getId)
             .filter(id -> !id.equals(dashboardId))
             .collect(Collectors.toSet());
-
     List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeRestored =
         new ArrayList<>();
-
     for (CollectionDAO.EntityRelationshipRecord chartRecord : chartRecords) {
       UUID chartId = chartRecord.getId();
       boolean hasOtherDeletedDashboard = false;
-
       for (CollectionDAO.EntityRelationshipObject relationship : dashboardRelationships) {
         UUID relFromId = UUID.fromString(relationship.getFromId());
         UUID relToId = UUID.fromString(relationship.getToId());
@@ -296,12 +311,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           break;
         }
       }
-
       if (!hasOtherDeletedDashboard) {
         filteredChartRecordsToBeRestored.add(chartRecord);
       }
     }
-
     // Per-chart restore preserves the full chart restoreEntity flow (setFieldsInternal,
     // setInheritedFields, lifecycle hooks, ES restore-from-search). Charts are typically
     // few per dashboard, so the loop isn't a hot path; the bulkRestoreSubtree shortcut
@@ -327,7 +340,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void restorePatchAttributes(Dashboard original, Dashboard updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
   }
 
@@ -347,25 +360,25 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service", "charts", "dataModels");
   }
 
   @Override
   public void storeEntity(Dashboard dashboard, boolean update) {
-    store(dashboard, update);
+    persistence().store(dashboard, update);
   }
 
   @Override
   public void storeEntities(List<Dashboard> dashboards) {
-    storeMany(dashboards);
+    persistence().insertMany(dashboards);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<Dashboard> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<Dashboard> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Dashboard::getId).toList();
-    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteToMany(ids, context().schema().entityType(), Relationship.CONTAINS, null);
     deleteFromMany(ids, Entity.DASHBOARD, Relationship.HAS, Entity.CHART);
     deleteFromMany(ids, Entity.DASHBOARD, Relationship.HAS, Entity.DASHBOARD_DATA_MODEL);
   }
@@ -373,26 +386,36 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public void storeRelationships(Dashboard dashboard) {
     addServiceRelationship(dashboard, dashboard.getService());
-
     // Add relationship from dashboard to chart
     for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
-      addRelationship(
-          dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  dashboard.getId(),
+                  chart.getId(),
+                  Entity.DASHBOARD,
+                  Entity.CHART,
+                  Relationship.HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
-
     // Add relationship from dashboard to data models
     for (EntityReference dataModel : listOrEmpty(dashboard.getDataModels())) {
-      addRelationship(
-          dashboard.getId(),
-          dataModel.getId(),
-          Entity.DASHBOARD,
-          Entity.DASHBOARD_DATA_MODEL,
-          Relationship.HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  dashboard.getId(),
+                  dataModel.getId(),
+                  Entity.DASHBOARD,
+                  Entity.DASHBOARD_DATA_MODEL,
+                  Relationship.HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   @Override
-  protected void storeEntitySpecificRelationshipsForMany(List<Dashboard> entities) {
+  public void storeEntitySpecificRelationshipsForMany(List<Dashboard> entities) {
     List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
     for (Dashboard dashboard : entities) {
       EntityReference service = dashboard.getService();
@@ -402,7 +425,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
                 service.getId(),
                 dashboard.getId(),
                 service.getType(),
-                entityType,
+                context().schema().entityType(),
                 Relationship.CONTAINS));
       }
       for (EntityReference chart : listOrEmpty(dashboard.getCharts())) {
@@ -434,13 +457,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public EntityRepository<Dashboard>.EntityUpdater getUpdater(
-      Dashboard original, Dashboard updated, Operation operation, ChangeSource changeSource) {
-    return new DashboardUpdater(original, updated, operation);
+  public EntityUpdater<Dashboard> getUpdater(
+      Dashboard original, Dashboard updated, EntityOperation operation, ChangeSource changeSource) {
+    return new DashboardUpdater(original, updated, operation).mutation();
   }
 
   @Override
-  protected EntityReference getParentReference(Dashboard entity) {
+  public EntityReference getParentReference(Dashboard entity) {
     return entity.getService();
   }
 
@@ -456,7 +479,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       Dashboard dashboard, String entityType, Include include) {
     return dashboard == null
         ? Collections.emptyList()
-        : findTo(dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType, include);
+        : relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    dashboard.getId(), Entity.DASHBOARD, Relationship.HAS, entityType),
+                include);
   }
 
   private Map<UUID, List<EntityReference>> batchFetchCharts(List<Dashboard> dashboards) {
@@ -464,25 +491,23 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboards == null || dashboards.isEmpty()) {
       return chartsMap;
     }
-
     // Initialize empty lists for all dashboards
     for (Dashboard dashboard : dashboards) {
       chartsMap.put(dashboard.getId(), new ArrayList<>());
     }
-
     // Single batch query to get all charts for all dashboards
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(entityListToStrings(dashboards), Relationship.HAS.ordinal(), Entity.CHART);
-
     Set<UUID> chartIds = new HashSet<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
       chartIds.add(UUID.fromString(record.getToId()));
     }
     Map<UUID, EntityReference> chartRefs =
         batchFetchReferencesById(Entity.CHART, chartIds, NON_DELETED);
-
     // Group charts by dashboard ID
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID dashboardId = UUID.fromString(record.getFromId());
@@ -491,7 +516,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         chartsMap.get(dashboardId).add(chartRef);
       }
     }
-
     return chartsMap;
   }
 
@@ -500,28 +524,26 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboards == null || dashboards.isEmpty()) {
       return dataModelsMap;
     }
-
     // Initialize empty lists for all dashboards
     for (Dashboard dashboard : dashboards) {
       dataModelsMap.put(dashboard.getId(), new ArrayList<>());
     }
-
     // Single batch query to get all data models for all dashboards
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(dashboards),
                 Relationship.HAS.ordinal(),
                 Entity.DASHBOARD_DATA_MODEL);
-
     Set<UUID> dataModelIds = new HashSet<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
       dataModelIds.add(UUID.fromString(record.getToId()));
     }
     Map<UUID, EntityReference> dataModelRefs =
         batchFetchReferencesById(Entity.DASHBOARD_DATA_MODEL, dataModelIds, NON_DELETED);
-
     // Group data models by dashboard ID
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID dashboardId = UUID.fromString(record.getFromId());
@@ -530,7 +552,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dataModelsMap.get(dashboardId).add(dataModelRef);
       }
     }
-
     return dataModelsMap;
   }
 
@@ -538,7 +559,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboards == null || dashboards.isEmpty()) {
       return;
     }
-
     List<Dashboard> dashboardsMissingService =
         dashboards.stream()
             .filter(
@@ -554,11 +574,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboardsMissingService.isEmpty()) {
       return;
     }
-
     // Batch fetch service references for dashboards missing parent refs.
     Map<UUID, EntityReference> serviceMap =
         batchFetchServices(dashboardsMissingService, includeDetails);
-
     for (Dashboard dashboard : dashboardsMissingService) {
       EntityReference serviceRef = serviceMap.get(dashboard.getId());
       if (serviceRef != null) {
@@ -573,13 +591,13 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     if (dashboards == null || dashboards.isEmpty()) {
       return serviceMap;
     }
-
     // Single batch query to get all services for all dashboards
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityListToStrings(dashboards), Relationship.CONTAINS.ordinal());
-
     for (CollectionDAO.EntityRelationshipObject record : records) {
       if (record.getFromId() == null
           || record.getFromEntity() == null
@@ -600,7 +618,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         serviceMap.put(dashboardId, serviceRef);
       }
     }
-
     if (includeDetails) {
       Map<String, Set<UUID>> serviceIdsByType = new HashMap<>();
       for (CollectionDAO.EntityRelationshipObject record : records) {
@@ -624,7 +641,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         }
       }
     }
-
     return serviceMap;
   }
 
@@ -652,39 +668,48 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return refsByType;
   }
 
-  /** Handles entity updated from PUT and POST operation. */
-  public class DashboardUpdater extends EntityUpdater {
-    public DashboardUpdater(Dashboard original, Dashboard updated, Operation operation) {
-      super(original, updated, operation);
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class DashboardUpdater implements EntitySpecificMutation<Dashboard> {
+
+    public DashboardUpdater(Dashboard original, Dashboard updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<Dashboard> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "charts",
           () ->
               update(
                   Entity.CHART,
                   "charts",
-                  listOrEmpty(updated.getCharts()),
-                  listOrEmpty(original.getCharts())));
-      compareAndUpdate(
+                  listOrEmpty(entityUpdate.getUpdated().getCharts()),
+                  listOrEmpty(entityUpdate.getOriginal().getCharts())));
+      entityUpdate.compareAndUpdate(
           "dataModels",
           () ->
               update(
                   Entity.DASHBOARD_DATA_MODEL,
                   "dataModels",
-                  listOrEmpty(updated.getDataModels()),
-                  listOrEmpty(original.getDataModels())));
-      compareAndUpdate("sourceUrl", () -> updateDashboardUrl(original, updated));
-      compareAndUpdate(
+                  listOrEmpty(entityUpdate.getUpdated().getDataModels()),
+                  listOrEmpty(entityUpdate.getOriginal().getDataModels())));
+      entityUpdate.compareAndUpdate(
+          "sourceUrl",
+          () -> updateDashboardUrl(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
           "sourceHash",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "sourceHash",
-                  original.getSourceHash(),
-                  updated.getSourceHash(),
+                  entityUpdate.getOriginal().getSourceHash(),
+                  entityUpdate.getUpdated().getSourceHash(),
                   false,
                   EntityUtil.objectMatch,
                   false));
@@ -696,22 +721,47 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         List<EntityReference> updEntities,
         List<EntityReference> oriEntities) {
       // Remove all entity type associated with this dashboard
-      deleteFrom(updated.getId(), Entity.DASHBOARD, Relationship.HAS, entityType);
-
+      relationshipWrites()
+          .deleteOutgoing(
+              new EntityRelationshipWriter.Selection(
+                  entityUpdate.getUpdated().getId(),
+                  Entity.DASHBOARD,
+                  Relationship.HAS,
+                  entityType));
       // Add relationship from dashboard to entity type
       for (EntityReference entity : updEntities) {
-        addRelationship(
-            updated.getId(), entity.getId(), Entity.DASHBOARD, entityType, Relationship.HAS);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    entityUpdate.getUpdated().getId(),
+                    entity.getId(),
+                    Entity.DASHBOARD,
+                    entityType,
+                    Relationship.HAS),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
-
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
     public void updateDashboardUrl(Dashboard original, Dashboard updated) {
-      recordChange(DASHBOARD_URL, original.getSourceUrl(), updated.getSourceUrl());
+      entityUpdate.recordChange(DASHBOARD_URL, original.getSourceUrl(), updated.getSourceUrl());
     }
+
+    private final EntityUpdater<Dashboard> entityUpdate;
+
+    public EntityUpdater<Dashboard> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<Dashboard> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Dashboard> context() {
+    return entityContext;
   }
 }

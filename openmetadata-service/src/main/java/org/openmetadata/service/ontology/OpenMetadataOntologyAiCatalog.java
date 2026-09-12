@@ -18,9 +18,11 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
   private final GlossaryRepository glossaryRepository;
@@ -39,18 +41,32 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
   @Override
   public Glossary glossary(final String fullyQualifiedName) {
     return glossaryRepository.getByName(
-        null, fullyQualifiedName, glossaryRepository.getFields("ontologyConfiguration"));
+        null, fullyQualifiedName, glossaryRepository.fieldPolicy().parse("ontologyConfiguration"));
   }
 
   @Override
   public GlossaryTerm term(final UUID id) {
-    return termRepository.get(
-        null, id, termRepository.getFields("glossary"), Include.NON_DELETED, false);
+    return termRepository
+        .reads()
+        .byId(
+            id,
+            new EntityReadService.Query(
+                null,
+                termRepository.fieldPolicy().parse("glossary"),
+                RelationIncludes.fromInclude(Include.NON_DELETED),
+                false));
   }
 
   @Override
   public RelationshipType relationshipType(final UUID id) {
-    return relationshipTypeRepository.get(
-        null, id, relationshipTypeRepository.getFields("domain,range"), Include.NON_DELETED, false);
+    return relationshipTypeRepository
+        .reads()
+        .byId(
+            id,
+            new EntityReadService.Query(
+                null,
+                relationshipTypeRepository.fieldPolicy().parse("domain,range"),
+                RelationIncludes.fromInclude(Include.NON_DELETED),
+                false));
   }
 }

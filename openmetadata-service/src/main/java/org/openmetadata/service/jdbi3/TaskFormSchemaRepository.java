@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
@@ -21,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +29,14 @@ import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.type.SuggestionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.tasks.TaskFormSchemaValidator;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -36,34 +44,41 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Repository
-public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
+public class TaskFormSchemaRepository implements EntityPolicy<TaskFormSchema> {
 
   public static final String COLLECTION_PATH = "/v1/taskFormSchemas";
+
   private final ConcurrentMap<String, Optional<TaskFormSchema>> schemaCache =
       new ConcurrentHashMap<>();
 
   public TaskFormSchemaRepository() {
-    super(
-        COLLECTION_PATH,
-        TASK_FORM_SCHEMA,
-        TaskFormSchema.class,
-        Entity.getCollectionDAO().taskFormSchemaDAO(),
-        "",
-        "");
-    supportsSearch = false;
-    quoteFqn = false;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                COLLECTION_PATH,
+                TASK_FORM_SCHEMA,
+                TaskFormSchema.class,
+                Entity.getCollectionDAO().taskFormSchemaDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(false);
+    context().options().setQuoteFqn(false);
   }
 
   public TaskFormSchemaRepository(Jdbi jdbi) {
-    super(
-        COLLECTION_PATH,
-        TASK_FORM_SCHEMA,
-        TaskFormSchema.class,
-        initializeTaskFormSchemaDao(jdbi),
-        "",
-        "");
-    supportsSearch = false;
-    quoteFqn = false;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                COLLECTION_PATH,
+                TASK_FORM_SCHEMA,
+                TaskFormSchema.class,
+                initializeTaskFormSchemaDao(jdbi)),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(false);
+    context().options().setQuoteFqn(false);
   }
 
   @Override
@@ -118,11 +133,15 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
   public void storeEntity(TaskFormSchema schema, boolean update) {
     schemaCache.clear();
     if (update) {
-      daoCollection
+      context()
+          .dependencies()
+          .daos()
           .taskFormSchemaDAO()
           .update(schema.getId(), schema.getFullyQualifiedName(), JsonUtils.pojoToJson(schema));
     } else {
-      daoCollection
+      context()
+          .dependencies()
+          .daos()
           .taskFormSchemaDAO()
           .insertTaskFormSchema(
               schema.getId().toString(),
@@ -147,42 +166,76 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
   }
 
   @Override
-  public TaskFormSchemaUpdater getUpdater(
+  public EntityUpdater<TaskFormSchema> getUpdater(
       TaskFormSchema original,
       TaskFormSchema updated,
-      Operation operation,
+      EntityOperation operation,
       org.openmetadata.schema.type.change.ChangeSource changeSource) {
-    return new TaskFormSchemaUpdater(original, updated, operation, changeSource);
+    return new TaskFormSchemaUpdater(original, updated, operation, changeSource).mutation();
   }
 
-  public class TaskFormSchemaUpdater extends EntityUpdater {
+  public class TaskFormSchemaUpdater implements EntitySpecificMutation<TaskFormSchema> {
+
     public TaskFormSchemaUpdater(
         TaskFormSchema original,
         TaskFormSchema updated,
-        Operation operation,
+        EntityOperation operation,
         org.openmetadata.schema.type.change.ChangeSource changeSource) {
-      super(original, updated, operation, changeSource);
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, changeSource, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("formSchema", original.getFormSchema(), updated.getFormSchema());
-      recordChange("uiSchema", original.getUiSchema(), updated.getUiSchema());
-      recordChange(
-          "createFormSchema", original.getCreateFormSchema(), updated.getCreateFormSchema());
-      recordChange("createUiSchema", original.getCreateUiSchema(), updated.getCreateUiSchema());
-      recordChange(
+    public void update(EntityUpdater<TaskFormSchema> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.recordChange(
+          "formSchema",
+          entityUpdate.getOriginal().getFormSchema(),
+          entityUpdate.getUpdated().getFormSchema());
+      entityUpdate.recordChange(
+          "uiSchema",
+          entityUpdate.getOriginal().getUiSchema(),
+          entityUpdate.getUpdated().getUiSchema());
+      entityUpdate.recordChange(
+          "createFormSchema",
+          entityUpdate.getOriginal().getCreateFormSchema(),
+          entityUpdate.getUpdated().getCreateFormSchema());
+      entityUpdate.recordChange(
+          "createUiSchema",
+          entityUpdate.getOriginal().getCreateUiSchema(),
+          entityUpdate.getUpdated().getCreateUiSchema());
+      entityUpdate.recordChange(
           "workflowDefinitionRef",
-          original.getWorkflowDefinitionRef(),
-          updated.getWorkflowDefinitionRef());
-      recordChange("workflowVersion", original.getWorkflowVersion(), updated.getWorkflowVersion());
-      recordChange("transitionForms", original.getTransitionForms(), updated.getTransitionForms());
-      recordChange(
+          entityUpdate.getOriginal().getWorkflowDefinitionRef(),
+          entityUpdate.getUpdated().getWorkflowDefinitionRef());
+      entityUpdate.recordChange(
+          "workflowVersion",
+          entityUpdate.getOriginal().getWorkflowVersion(),
+          entityUpdate.getUpdated().getWorkflowVersion());
+      entityUpdate.recordChange(
+          "transitionForms",
+          entityUpdate.getOriginal().getTransitionForms(),
+          entityUpdate.getUpdated().getTransitionForms());
+      entityUpdate.recordChange(
           "defaultStageMappings",
-          original.getDefaultStageMappings(),
-          updated.getDefaultStageMappings());
-      recordChange("taskType", original.getTaskType(), updated.getTaskType());
-      recordChange("taskCategory", original.getTaskCategory(), updated.getTaskCategory());
+          entityUpdate.getOriginal().getDefaultStageMappings(),
+          entityUpdate.getUpdated().getDefaultStageMappings());
+      entityUpdate.recordChange(
+          "taskType",
+          entityUpdate.getOriginal().getTaskType(),
+          entityUpdate.getUpdated().getTaskType());
+      entityUpdate.recordChange(
+          "taskCategory",
+          entityUpdate.getOriginal().getTaskCategory(),
+          entityUpdate.getUpdated().getTaskCategory());
+    }
+
+    private final EntityUpdater<TaskFormSchema> entityUpdate;
+
+    public EntityUpdater<TaskFormSchema> mutation() {
+      return entityUpdate;
     }
   }
 
@@ -194,7 +247,6 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if (taskType == null || taskType.isBlank()) {
       return Optional.empty();
     }
-
     String cacheKey =
         taskType
             + "::"
@@ -215,14 +267,12 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if (directMatch.isPresent()) {
       return directMatch;
     }
-
     ListFilter filter = new ListFilter(NON_DELETED);
     filter.addQueryParam("taskFormType", taskType);
     if (taskCategory != null && !taskCategory.isBlank()) {
       filter.addQueryParam("taskFormCategory", taskCategory);
     }
-
-    List<TaskFormSchema> matches = listAll(getFields(""), filter);
+    List<TaskFormSchema> matches = collections().all(fieldPolicy().parse(""), filter);
     if (matches.isEmpty()) {
       return Optional.empty();
     }
@@ -246,30 +296,25 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if (!"Suggestion".equals(taskType)) {
       return Optional.empty();
     }
-
     Optional<String> suggestionSchemaName = getSuggestionSchemaName(payload);
     if (suggestionSchemaName.isEmpty()) {
       return Optional.empty();
     }
-
-    TaskFormSchema schema = findByNameOrNull(suggestionSchemaName.get(), NON_DELETED);
+    TaskFormSchema schema = lookup().byNameOrNull(suggestionSchemaName.get(), NON_DELETED);
     if (schema == null) {
       return Optional.empty();
     }
-
     boolean typeMatches = taskType.equals(schema.getTaskType());
     boolean categoryMatches =
         taskCategory == null
             || taskCategory.isBlank()
             || taskCategory.equals(schema.getTaskCategory());
-
     return typeMatches && categoryMatches ? Optional.of(schema) : Optional.empty();
   }
 
   private void validateUniqueTaskSchemaBinding(TaskFormSchema schema) {
     List<TaskFormSchema> matches =
         listByTaskBinding(schema.getTaskType(), schema.getTaskCategory());
-
     if (matches.size() > 1) {
       boolean updatingExistingVariant =
           matches.stream().anyMatch(existing -> existing.getId().equals(schema.getId()));
@@ -277,7 +322,6 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
         return;
       }
     }
-
     // Suggestion schemas (DescriptionSuggestion, TagSuggestion) share the same
     // taskType+taskCategory but are disambiguated by payload at resolve time via
     // resolveSuggestionSchema/disambiguateMatch. Allow multiple schemas for that
@@ -285,7 +329,6 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if ("Suggestion".equals(schema.getTaskType())) {
       return;
     }
-
     Optional<TaskFormSchema> existing =
         resolveUncached(schema.getTaskType(), schema.getTaskCategory(), null);
     if (existing.isPresent() && !existing.get().getId().equals(schema.getId())) {
@@ -302,14 +345,13 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if (taskCategory != null && !taskCategory.isBlank()) {
       filter.addQueryParam("taskFormCategory", taskCategory);
     }
-    return listAll(getFields(""), filter);
+    return collections().all(fieldPolicy().parse(""), filter);
   }
 
   private void validateTransitionForms(TaskFormSchema schema) {
     if (schema.getTransitionForms() == null) {
       return;
     }
-
     Map<String, Object> transitionForms =
         JsonUtils.convertValue(schema.getTransitionForms(), Map.class);
     for (Map.Entry<String, Object> entry : transitionForms.entrySet()) {
@@ -317,7 +359,6 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
         throw new IllegalArgumentException(
             String.format("Transition form '%s' must be an object", entry.getKey()));
       }
-
       Object formSchema = transitionConfig.get("formSchema");
       if (formSchema != null) {
         TaskFormSchemaValidator.validateFormSchema(formSchema);
@@ -330,12 +371,10 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if (!"Suggestion".equals(taskType)) {
       return Optional.empty();
     }
-
     Optional<String> suggestionSchemaName = getSuggestionSchemaName(payload);
     if (suggestionSchemaName.isEmpty()) {
       return Optional.empty();
     }
-
     return matches.stream()
         .filter(
             schema ->
@@ -348,12 +387,10 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if (payload == null) {
       return Optional.empty();
     }
-
     Optional<String> rawSuggestionType = getRawSuggestionType(payload);
     if (rawSuggestionType.isPresent()) {
       return mapSuggestionTypeToSchema(rawSuggestionType.get());
     }
-
     SuggestionPayload suggestionPayload;
     if (payload instanceof SuggestionPayload typedPayload) {
       suggestionPayload = typedPayload;
@@ -364,11 +401,9 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
         return Optional.empty();
       }
     }
-
     if (suggestionPayload.getSuggestionType() == null) {
       return Optional.empty();
     }
-
     return mapSuggestionTypeToSchema(suggestionPayload.getSuggestionType().value());
   }
 
@@ -382,7 +417,6 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     } catch (Exception ignored) {
       // Fall back to typed conversion below.
     }
-
     return Optional.empty();
   }
 
@@ -390,11 +424,17 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     if (suggestionType == null || suggestionType.isBlank()) {
       return Optional.empty();
     }
-
     return switch (suggestionType.trim().toLowerCase(Locale.ROOT)) {
       case "description" -> Optional.of("DescriptionSuggestion");
       case "tag" -> Optional.of("TagSuggestion");
       default -> Optional.empty();
     };
+  }
+
+  private final EntityPolicyContext<TaskFormSchema> entityContext;
+
+  @Override
+  public final EntityPolicyContext<TaskFormSchema> context() {
+    return entityContext;
   }
 }

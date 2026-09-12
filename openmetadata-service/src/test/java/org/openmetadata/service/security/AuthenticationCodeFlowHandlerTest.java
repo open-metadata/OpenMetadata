@@ -36,6 +36,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -48,6 +49,9 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -63,6 +67,7 @@ import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AuthenticationCodeFlowHandlerTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
 
   private static final String TEST_SERVER_URL = "https://om.test";
   private static final String MCP_CALLBACK = "/mcp/callback";
@@ -552,6 +557,7 @@ class AuthenticationCodeFlowHandlerTest {
 
   private void stubUserNotFoundAndEchoCreate(MockedStatic<Entity> mockedEntity) {
     UserRepository userRepository = mock(UserRepository.class);
+    lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
 
@@ -565,14 +571,14 @@ class AuthenticationCodeFlowHandlerTest {
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
 
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-    when(userRepository.findByNameOrNull(any(), any())).thenReturn(null);
-    when(userRepository.createOrUpdate(eq(null), any(User.class), any()))
-        .thenAnswer(
-            invocation ->
-                new PutResponse<>(
-                    Response.Status.CREATED,
-                    invocation.getArgument(1, User.class),
-                    EventType.ENTITY_CREATED));
+    EntityCreationFixture.attach(userRepository)
+        .onUpsert(
+            request -> {
+              assertEquals(new EntityCommandActor(Entity.ADMIN_USER_NAME, null), request.actor());
+              assertEquals(false, request.importMode());
+              return new PutResponse<>(
+                  Response.Status.CREATED, request.entity(), EventType.ENTITY_CREATED);
+            });
   }
 
   private User invokeGetOrCreateOidcUser(

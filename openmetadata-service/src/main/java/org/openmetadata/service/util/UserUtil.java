@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -54,9 +53,11 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -67,6 +68,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public final class UserUtil {
+
   private UserUtil() {
     // Private constructor for util class
   }
@@ -100,12 +102,10 @@ public final class UserUtil {
       // Create Required Fields List
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
       fieldList.add(AUTH_MECHANISM_FIELD);
-
       // Fetch Original User, is available
       User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
       if (Boolean.FALSE.equals(originalUser.getIsBot())) {
         updatedUser = originalUser;
-
         // Update Auth Mechanism if not present, and send mail to the user
         if (SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
           if (originalUser.getAuthenticationMechanism() == null
@@ -116,10 +116,8 @@ public final class UserUtil {
         } else {
           updatedUser.setAuthenticationMechanism(new AuthenticationMechanism());
         }
-
         // Update the specific fields isAdmin
         updatedUser.setIsAdmin(isAdmin);
-
         // user email
         updatedUser.setEmail(String.format("%s@%s", username, domain));
       } else {
@@ -137,7 +135,6 @@ public final class UserUtil {
         EmailUtil.sendInviteMailToAdmin(updatedUser, password);
       }
     }
-
     // Update the user
     if (updatedUser != null) {
       addOrUpdateUser(updatedUser);
@@ -186,18 +183,15 @@ public final class UserUtil {
                       ? user.getChangeDescription().getPreviousVersion()
                       : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
               .withEntity(user);
-
       // Include changeDescription if present (for updates)
       if (user.getChangeDescription() != null) {
         changeEvent.withChangeDescription(user.getChangeDescription());
       }
-
       // Populate domains if available
       if (user.getDomains() != null && !user.getDomains().isEmpty()) {
         changeEvent.withDomains(
             user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
       }
-
       // Insert directly into change event DAO
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     } catch (Exception e) {
@@ -212,19 +206,20 @@ public final class UserUtil {
       // Check if user exists BEFORE createOrUpdate to determine event type
       User existingUser = null;
       try {
-        existingUser = userRepository.findByNameOrNull(user.getFullyQualifiedName(), NON_DELETED);
+        existingUser =
+            userRepository.lookup().byNameOrNull(user.getFullyQualifiedName(), NON_DELETED);
       } catch (Exception e) {
         // User doesn't exist, will be created
       }
       boolean isCreate = (existingUser == null);
-
       // Perform the actual create/update
-      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user, ADMIN_USER_NAME);
-
+      PutResponse<User> addedUser =
+          userRepository
+              .creates()
+              .upsert(null, user, new EntityCommandActor(ADMIN_USER_NAME, null), false);
       // Create ChangeEvent for EventSubscription evaluation
       EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
       createUserChangeEvent(addedUser.getEntity(), eventType);
-
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
@@ -252,24 +247,19 @@ public final class UserUtil {
     if (nullOrEmpty(teamNames)) {
       return false;
     }
-
     List<EntityReference> currentTeams = user.getTeams();
     if (currentTeams == null) {
       currentTeams = new ArrayList<>();
     } else {
       currentTeams = new ArrayList<>(currentTeams);
     }
-
     boolean anyTeamAssigned = false;
-
     for (String teamName : teamNames) {
       if (nullOrEmpty(teamName)) {
         continue;
       }
-
       try {
         Team team = Entity.getEntityByName(Entity.TEAM, teamName, "id,teamType", NON_DELETED);
-
         if (team.getTeamType() != CreateTeam.TeamType.GROUP) {
           LOG.warn(
               "Team '{}' is of type '{}', not 'Group'. "
@@ -280,11 +270,9 @@ public final class UserUtil {
               user.getName());
           continue;
         }
-
         EntityReference teamRef = team.getEntityReference();
         boolean teamAlreadyAssigned =
             currentTeams.stream().anyMatch(t -> t.getId().equals(teamRef.getId()));
-
         if (!teamAlreadyAssigned) {
           currentTeams.add(teamRef);
           anyTeamAssigned = true;
@@ -305,11 +293,9 @@ public final class UserUtil {
             e);
       }
     }
-
     if (anyTeamAssigned) {
       user.setTeams(currentTeams);
     }
-
     return anyTeamAssigned;
   }
 
@@ -360,8 +346,7 @@ public final class UserUtil {
   }
 
   private static User retrieveWithAuthMechanism(User user) {
-    EntityRepository<User> userRepository =
-        (UserRepository) Entity.getEntityRepository(Entity.USER);
+    EntityPolicy<User> userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       return userRepository.getByName(
           null, user.getName(), new Fields(Set.of("authenticationMechanism")));
@@ -395,7 +380,6 @@ public final class UserUtil {
       return Collections.emptyList();
     }
     List<EntityReference> references = new ArrayList<>();
-
     // Fetch the roles from the database
     for (String role : rolesList) {
       // Admin role is not present in the roles table, it is just a flag in the user table
@@ -423,14 +407,12 @@ public final class UserUtil {
         return true;
       }
     }
-
     // Check if there are roles in the DB that are not present in the token
     for (String role : fromDB) {
       if (!fromToken.contains(role)) {
         return true;
       }
     }
-
     return false;
   }
 
@@ -439,7 +421,6 @@ public final class UserUtil {
     boolean syncUser = false;
     Set<String> mutableRolesFromToken =
         rolesFromToken == null ? new HashSet<>() : new HashSet<>(rolesFromToken);
-
     User updatedUser = JsonUtils.deepCopy(user, User.class);
     // Check if Admin User
     if (mutableRolesFromToken.contains(ADMIN_ROLE)) {
@@ -447,13 +428,10 @@ public final class UserUtil {
         syncUser = true;
         updatedUser.setIsAdmin(true);
       }
-
       // Remove the Admin Role from the list
       mutableRolesFromToken.remove(ADMIN_ROLE);
     }
-
     Set<String> rolesFromUser = getRoleListFromUser(user);
-
     // Check if roles are different
     if (!nullOrEmpty(mutableRolesFromToken)
         && isRolesSyncNeeded(mutableRolesFromToken, rolesFromUser)) {
@@ -461,19 +439,22 @@ public final class UserUtil {
       List<EntityReference> rolesReferenceFromToken = validateAndGetRolesRef(mutableRolesFromToken);
       updatedUser.setRoles(rolesReferenceFromToken);
     }
-
     if (syncUser) {
       LOG.info("Syncing User Roles for User: {}", user.getName());
       JsonPatch patch = JsonUtils.getJsonPatch(user, updatedUser);
-
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      userRepository.patch(uriInfo, user.getId(), user.getName(), patch);
-
+      userRepository
+          .patches()
+          .patch(
+              new EntityPatchService.Target.Id(user.getId()),
+              patch,
+              new EntityCommandActor(user.getName(), null),
+              uriInfo,
+              new EntityPatchService.Options(null, null));
       // Set the updated roles to the original user
       user.setRoles(updatedUser.getRoles());
       user.setIsAdmin(updatedUser.getIsAdmin());
     }
-
     return syncUser;
   }
 

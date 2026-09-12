@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.apps.bundles.rdf.distributed;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -33,8 +32,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexJobDAO.RdfIndexJobRecord;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfAggregatedStatsRecord;
@@ -46,20 +45,33 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DistributedRdfIndexCoordinator {
+
   private static final String REINDEX_LOCK_KEY = "RDF_REINDEX_LOCK";
+
   private static final long LOCK_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
+
   private static final long PARTITION_STALE_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(3);
+
   private static final int MAX_PARTITION_RETRIES = 3;
+
   private static final double IMMEDIATE_CLAIMABLE_PERCENT = 0.50;
+
   private static final long PARTITION_RELEASE_WINDOW_MS = TimeUnit.SECONDS.toMillis(5);
+
   private static final int MAX_ERROR_SAMPLES = 5;
+
   private static final int MAX_ERROR_MESSAGE_LENGTH = 4000;
+
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
+
   private static final int CURSOR_WALK_BATCH_SIZE = 10_000;
 
   private final CollectionDAO collectionDAO;
+
   private final RdfPartitionCalculator partitionCalculator;
+
   private final String serverId;
+
   private final AtomicLong lastClaimTimestamp = new AtomicLong(0);
 
   private final ConcurrentHashMap<UUID, Map<String, Map<Long, String>>> partitionStartCursors =
@@ -134,7 +146,6 @@ public class DistributedRdfIndexCoordinator {
       Set<String> entities, EventPublisherJob jobConfiguration, String createdBy) {
     UUID jobId = UUID.randomUUID();
     long now = System.currentTimeMillis();
-
     Map<String, RdfIndexJob.EntityTypeStats> entityStats = new HashMap<>();
     long totalRecords = 0;
     for (String entityType : entities) {
@@ -153,7 +164,6 @@ public class DistributedRdfIndexCoordinator {
               .failedPartitions(0)
               .build());
     }
-
     RdfIndexJob job =
         RdfIndexJob.builder()
             .id(jobId)
@@ -168,7 +178,6 @@ public class DistributedRdfIndexCoordinator {
             .createdAt(now)
             .updatedAt(now)
             .build();
-
     collectionDAO
         .rdfIndexJobDAO()
         .insert(
@@ -195,7 +204,6 @@ public class DistributedRdfIndexCoordinator {
     long now = System.currentTimeMillis();
     int immediateCount =
         Math.max(1, (int) Math.ceil(partitions.size() * IMMEDIATE_CLAIMABLE_PERCENT));
-
     for (int i = 0; i < partitions.size(); i++) {
       RdfIndexPartition partition = partitions.get(i);
       long claimableAt;
@@ -208,7 +216,6 @@ public class DistributedRdfIndexCoordinator {
       }
       insertPartition(partition.withClaimableAt(claimableAt));
     }
-
     Map<String, RdfIndexJob.EntityTypeStats> entityStats = new HashMap<>(job.getEntityStats());
     for (String entityType : entityTypes) {
       int totalPartitions =
@@ -221,7 +228,6 @@ public class DistributedRdfIndexCoordinator {
         entityStats.put(entityType, existing.toBuilder().totalPartitions(totalPartitions).build());
       }
     }
-
     long totalRecords = partitions.stream().mapToLong(RdfIndexPartition::getEstimatedCount).sum();
     RdfIndexJob updated =
         job.toBuilder()
@@ -255,7 +261,6 @@ public class DistributedRdfIndexCoordinator {
         partitions.stream()
             .filter(p -> p.getEntityType() != null)
             .collect(Collectors.groupingBy(RdfIndexPartition::getEntityType));
-
     Map<String, Map<Long, String>> jobCache = new HashMap<>();
     for (Map.Entry<String, List<RdfIndexPartition>> e : byEntity.entrySet()) {
       try {
@@ -283,14 +288,14 @@ public class DistributedRdfIndexCoordinator {
     if (sortedTargets.isEmpty()) {
       return result;
     }
-    EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repo = Entity.getEntityRepository(entityType);
     walkAndRecord(repo, sortedTargets, result);
     LOG.debug("Precomputed {} RDF boundary cursors for entity {}", result.size(), entityType);
     return result;
   }
 
   private <T extends EntityInterface> void walkAndRecord(
-      EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
+      EntityPolicy<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
     ListFilter filter = new ListFilter(Include.ALL);
     String afterName = "";
     String afterId = "";
@@ -298,7 +303,6 @@ public class DistributedRdfIndexCoordinator {
     int targetIdx = 0;
     long nextTarget = sortedTargets.get(targetIdx);
     T lastSeenEntity = null;
-
     while (targetIdx < sortedTargets.size()) {
       long need = nextTarget - currentOffset;
       if (need <= 0) {
@@ -322,7 +326,6 @@ public class DistributedRdfIndexCoordinator {
       currentOffset += batch.size();
       afterName = FullyQualifiedName.unquoteName(lastEntity.getName());
       afterId = lastEntity.getId() == null ? "" : lastEntity.getId().toString();
-
       if (currentOffset >= nextTarget) {
         result.put(nextTarget, RestUtil.encodeCursor(repo.getCursorValue(lastEntity)));
         targetIdx++;
@@ -335,7 +338,7 @@ public class DistributedRdfIndexCoordinator {
   }
 
   private <T extends EntityInterface> Object deserializeLast(
-      EntityRepository<T> repo, List<String> batch) {
+      EntityPolicy<T> repo, List<String> batch) {
     return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
   }
 
@@ -356,7 +359,6 @@ public class DistributedRdfIndexCoordinator {
           MAX_IN_FLIGHT_PARTITIONS_PER_SERVER);
       return null;
     }
-
     long claimAt = nextClaimTimestamp();
     int updated =
         collectionDAO
@@ -365,7 +367,6 @@ public class DistributedRdfIndexCoordinator {
     if (updated <= 0) {
       return null;
     }
-
     RdfIndexPartitionRecord record =
         collectionDAO
             .rdfIndexPartitionDAO()
@@ -376,7 +377,6 @@ public class DistributedRdfIndexCoordinator {
           jobId);
       return null;
     }
-
     return toPartition(record);
   }
 
@@ -516,7 +516,6 @@ public class DistributedRdfIndexCoordinator {
       LOG.warn("Cannot stop RDF job {} - already in terminal state: {}", jobId, job.getStatus());
       return;
     }
-
     updateJobStatus(jobId, IndexJobStatus.STOPPING, null);
     cancelInFlightPartitions(jobId);
     checkAndUpdateJobCompletion(jobId);
@@ -527,7 +526,6 @@ public class DistributedRdfIndexCoordinator {
     if (job == null || job.isTerminal()) {
       return;
     }
-
     String id = jobId.toString();
     int pending =
         collectionDAO
@@ -537,11 +535,9 @@ public class DistributedRdfIndexCoordinator {
         collectionDAO
             .rdfIndexPartitionDAO()
             .countPartitionsByStatus(id, PartitionStatus.PROCESSING.name());
-
     if (pending > 0 || processing > 0) {
       return;
     }
-
     int failed =
         collectionDAO
             .rdfIndexPartitionDAO()
@@ -550,7 +546,6 @@ public class DistributedRdfIndexCoordinator {
         collectionDAO
             .rdfIndexPartitionDAO()
             .countPartitionsByStatus(id, PartitionStatus.CANCELLED.name());
-
     // A partition can finish COMPLETED but still carry a non-null lastError —
     // e.g. a relationship/lineage bulk write that failed without incrementing
     // the entity-level failedCount or marking the partition FAILED. Treat that
@@ -558,7 +553,6 @@ public class DistributedRdfIndexCoordinator {
     // Fuseki write failures.
     boolean hasPartitionLastError =
         !collectionDAO.rdfIndexPartitionDAO().findRecentPartitionErrors(id, 1).isEmpty();
-
     IndexJobStatus terminal;
     if (job.getStatus() == IndexJobStatus.STOPPING) {
       terminal = IndexJobStatus.STOPPED;
@@ -567,7 +561,6 @@ public class DistributedRdfIndexCoordinator {
     } else {
       terminal = IndexJobStatus.COMPLETED;
     }
-
     String errorMessage = job.getErrorMessage();
     if (terminal == IndexJobStatus.COMPLETED_WITH_ERRORS
         && (errorMessage == null || errorMessage.isBlank())
@@ -581,7 +574,6 @@ public class DistributedRdfIndexCoordinator {
         errorMessage = errorMessage.substring(0, MAX_ERROR_MESSAGE_LENGTH) + "...";
       }
     }
-
     updateJobStatus(jobId, terminal, errorMessage);
     partitionStartCursors.remove(jobId);
     LOG.info(
@@ -612,7 +604,6 @@ public class DistributedRdfIndexCoordinator {
     long now = System.currentTimeMillis();
     Long startedAt = job.getStartedAt();
     Long completedAt = job.getCompletedAt();
-
     if (status == IndexJobStatus.RUNNING && startedAt == null) {
       startedAt = now;
     }
@@ -622,7 +613,6 @@ public class DistributedRdfIndexCoordinator {
         || status == IndexJobStatus.FAILED) {
       completedAt = completedAt != null ? completedAt : now;
     }
-
     collectionDAO
         .rdfIndexJobDAO()
         .update(
@@ -647,9 +637,7 @@ public class DistributedRdfIndexCoordinator {
     if (job == null || job.isTerminal()) {
       return false;
     }
-
     String id = jobId.toString();
-
     return collectionDAO.rdfIndexPartitionDAO().countPendingPartitions(id) > 0
         || collectionDAO.rdfIndexPartitionDAO().countInFlightPartitions(id) > 0;
   }
@@ -688,7 +676,6 @@ public class DistributedRdfIndexCoordinator {
     if (existing == null) {
       return null;
     }
-
     RdfAggregatedStatsRecord aggregate =
         collectionDAO.rdfIndexPartitionDAO().getAggregatedStats(jobId.toString());
     Map<String, RdfIndexJob.EntityTypeStats> entityStats =
@@ -726,7 +713,6 @@ public class DistributedRdfIndexCoordinator {
                             .build(),
                     (left, right) -> right,
                     HashMap::new));
-
     IndexJobStatus status = existing.getStatus();
     String errorMessage = existing.getErrorMessage();
     if (aggregate.pendingPartitions() == 0 && aggregate.processingPartitions() == 0) {
@@ -757,7 +743,6 @@ public class DistributedRdfIndexCoordinator {
     } else if (status == IndexJobStatus.READY) {
       status = IndexJobStatus.RUNNING;
     }
-
     Long completedAt = existing.getCompletedAt();
     boolean isTerminalNow =
         status == IndexJobStatus.COMPLETED
@@ -770,7 +755,6 @@ public class DistributedRdfIndexCoordinator {
     if (isTerminalNow) {
       partitionStartCursors.remove(jobId);
     }
-
     RdfIndexJob refreshed =
         existing.toBuilder()
             .status(status)
@@ -783,7 +767,6 @@ public class DistributedRdfIndexCoordinator {
             .errorMessage(errorMessage)
             .completedAt(completedAt)
             .build();
-
     updateJob(refreshed);
     return refreshed;
   }
@@ -898,12 +881,10 @@ public class DistributedRdfIndexCoordinator {
             ? JsonUtils.readValue(
                 record.stats(), new TypeReference<Map<String, RdfIndexJob.EntityTypeStats>>() {})
             : new HashMap<>();
-
     EventPublisherJob jobConfiguration =
         record.jobConfiguration() != null
             ? JsonUtils.readValue(record.jobConfiguration(), EventPublisherJob.class)
             : new EventPublisherJob();
-
     return RdfIndexJob.builder()
         .id(UUID.fromString(record.id()))
         .status(IndexJobStatus.valueOf(record.status()))

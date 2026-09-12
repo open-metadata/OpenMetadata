@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,6 +28,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -50,16 +53,28 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 class EntityRepositoryInheritanceParentTest {
 
   private CollectionDAO daoCollection;
+
   private ParentTrackingPipelineRepo repository;
+
   private Pipeline parent;
 
-  /** Serves a single mutable parent and counts how many times inheritance asked for it. */
-  private static class ParentTrackingPipelineRepo extends EntityRepository<Pipeline> {
+  /**
+   * Serves a single mutable parent and counts how many times inheritance asked for it.
+   */
+  @Repository()
+  private static class ParentTrackingPipelineRepo implements EntityPolicy<Pipeline> {
+
     private final Pipeline parent;
+
     private int parentLoads;
 
     ParentTrackingPipelineRepo(CollectionDAO.PipelineDAO dao, Pipeline parent) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "domains", "domains");
+      this.entityContext =
+          new EntityPolicyContext<>(
+              new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
+              new EntityPolicyContext.WriteFields("domains", "domains", Set.of()),
+              EntityModuleDependencies.standard());
+      EntityModuleFactory.initialize(this, true);
       this.parent = parent;
     }
 
@@ -83,19 +98,26 @@ class EntityRepositoryInheritanceParentTest {
     }
 
     @Override
-    protected void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
+    public void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
 
     @Override
-    protected void clearFields(Pipeline entity, Fields fields) {}
+    public void clearFields(Pipeline entity, Fields fields) {}
 
     @Override
-    protected void prepare(Pipeline entity, boolean update) {}
+    public void prepare(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Pipeline entity, boolean update) {}
+    public void storeEntity(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeRelationships(Pipeline entity) {}
+    public void storeRelationships(Pipeline entity) {}
+
+    private final EntityPolicyContext<Pipeline> entityContext;
+
+    @Override
+    public final EntityPolicyContext<Pipeline> context() {
+      return entityContext;
+    }
   }
 
   @BeforeEach
@@ -104,7 +126,6 @@ class EntityRepositoryInheritanceParentTest {
     when(daoCollection.relationshipDAO())
         .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
     Entity.setCollectionDAO(daoCollection);
-
     parent =
         new Pipeline()
             .withId(UUID.randomUUID())
@@ -122,14 +143,12 @@ class EntityRepositoryInheritanceParentTest {
   @Test
   void inheritance_reflectsParentMutation_onRepeatedReadsFromOneThread() {
     Fields domains = new Fields(Set.of(Entity.FIELD_DOMAINS));
-
     // First read on this thread: the parent has no domains yet, so nothing is inherited.
     Pipeline before = childPipeline();
     repository.setInheritedFields(before, domains);
     assertTrue(
         before.getDomains() == null || before.getDomains().isEmpty(),
         "Nothing to inherit before the parent has a domain");
-
     // The parent gains a domain — as a glossary gains a reviewer.
     EntityReference domain =
         new EntityReference()
@@ -138,11 +157,9 @@ class EntityRepositoryInheritanceParentTest {
             .withName("finance")
             .withFullyQualifiedName("finance");
     parent.setDomains(new ArrayList<>(List.of(domain)));
-
     // Second read on the SAME thread must see it. A memoized parent would still report none.
     Pipeline after = childPipeline();
     repository.setInheritedFields(after, domains);
-
     assertEquals(
         1,
         after.getDomains() == null ? 0 : after.getDomains().size(),
@@ -154,10 +171,8 @@ class EntityRepositoryInheritanceParentTest {
   @Test
   void inheritance_loadsParentOnEveryRead_soNoStaleSnapshotCanSurvive() {
     Fields domains = new Fields(Set.of(Entity.FIELD_DOMAINS));
-
     repository.setInheritedFields(childPipeline(), domains);
     repository.setInheritedFields(childPipeline(), domains);
-
     assertEquals(
         2,
         repository.parentLoads,

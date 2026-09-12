@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.apps.bundles.rdf.distributed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,15 +25,19 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 
 class RdfPartitionCalculatorTest {
 
   private static final String TABLE = "table";
+
   private static final String UNKNOWN_TYPE = "unknownWidget";
+
   private static final int DEFAULT_PARTITION_SIZE = 10000;
+
   private static final int MIN_PARTITION_SIZE = 1000;
+
   private static final int MAX_PARTITION_SIZE = 50000;
 
   @Test
@@ -42,10 +45,8 @@ class RdfPartitionCalculatorTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, UNKNOWN_TYPE, 0);
       RdfPartitionCalculator calculator = new RdfPartitionCalculator();
-
       List<RdfIndexPartition> partitions =
           calculator.calculatePartitionsForEntity(UUID.randomUUID(), UNKNOWN_TYPE);
-
       assertTrue(partitions.isEmpty());
     }
   }
@@ -55,10 +56,8 @@ class RdfPartitionCalculatorTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, UNKNOWN_TYPE, -5);
       RdfPartitionCalculator calculator = new RdfPartitionCalculator();
-
       List<RdfIndexPartition> partitions =
           calculator.calculatePartitionsForEntity(UUID.randomUUID(), UNKNOWN_TYPE);
-
       assertTrue(partitions.isEmpty());
     }
   }
@@ -68,7 +67,6 @@ class RdfPartitionCalculatorTest {
     UUID jobId = UUID.randomUUID();
     long firstRangeEndTable;
     long firstRangeEndUnknown;
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, TABLE, 20000);
       firstRangeEndTable =
@@ -85,7 +83,6 @@ class RdfPartitionCalculatorTest {
               .get(0)
               .getRangeEnd();
     }
-
     assertEquals((long) (DEFAULT_PARTITION_SIZE / 1.5), firstRangeEndTable);
     assertEquals(DEFAULT_PARTITION_SIZE, firstRangeEndUnknown);
     assertTrue(firstRangeEndTable < firstRangeEndUnknown);
@@ -95,11 +92,9 @@ class RdfPartitionCalculatorTest {
   void numPartitionsUsesCeilingDivision() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, UNKNOWN_TYPE, 25000);
-
       List<RdfIndexPartition> partitions =
           new RdfPartitionCalculator()
               .calculatePartitionsForEntity(UUID.randomUUID(), UNKNOWN_TYPE);
-
       assertEquals(3, partitions.size());
     }
   }
@@ -108,11 +103,9 @@ class RdfPartitionCalculatorTest {
   void lastPartitionRangeEndIsClampedToTotalCount() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, UNKNOWN_TYPE, 25000);
-
       List<RdfIndexPartition> partitions =
           new RdfPartitionCalculator()
               .calculatePartitionsForEntity(UUID.randomUUID(), UNKNOWN_TYPE);
-
       RdfIndexPartition last = partitions.get(partitions.size() - 1);
       assertEquals(20000, last.getRangeStart());
       assertEquals(25000, last.getRangeEnd());
@@ -125,10 +118,8 @@ class RdfPartitionCalculatorTest {
     UUID jobId = UUID.randomUUID();
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, TABLE, 20000);
-
       List<RdfIndexPartition> partitions =
           new RdfPartitionCalculator().calculatePartitionsForEntity(jobId, TABLE);
-
       RdfIndexPartition first = partitions.get(0);
       long expectedAdjustedSize = (long) (DEFAULT_PARTITION_SIZE / 1.5);
       assertEquals(jobId, first.getJobId());
@@ -148,11 +139,9 @@ class RdfPartitionCalculatorTest {
   void adjustedPartitionSizeNeverDropsBelowMinimum() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, TABLE, 1500);
-
       List<RdfIndexPartition> partitions =
           new RdfPartitionCalculator(MIN_PARTITION_SIZE)
               .calculatePartitionsForEntity(UUID.randomUUID(), TABLE);
-
       assertEquals(2, partitions.size());
       assertEquals(MIN_PARTITION_SIZE, partitions.get(0).getRangeEnd());
     }
@@ -162,11 +151,9 @@ class RdfPartitionCalculatorTest {
   void constructorClampsPartitionSizeBelowMinimum() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, UNKNOWN_TYPE, 1500);
-
       List<RdfIndexPartition> partitions =
           new RdfPartitionCalculator(100)
               .calculatePartitionsForEntity(UUID.randomUUID(), UNKNOWN_TYPE);
-
       assertEquals(2, partitions.size());
       assertEquals(MIN_PARTITION_SIZE, partitions.get(0).getRangeEnd());
     }
@@ -176,11 +163,9 @@ class RdfPartitionCalculatorTest {
   void constructorClampsPartitionSizeAboveMaximum() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, UNKNOWN_TYPE, 60000);
-
       List<RdfIndexPartition> partitions =
           new RdfPartitionCalculator(1_000_000)
               .calculatePartitionsForEntity(UUID.randomUUID(), UNKNOWN_TYPE);
-
       assertEquals(2, partitions.size());
       assertEquals(MAX_PARTITION_SIZE, partitions.get(0).getRangeEnd());
     }
@@ -190,7 +175,6 @@ class RdfPartitionCalculatorTest {
   void getEntityCountReturnsListTotalCount() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       stubEntityCount(entityMock, UNKNOWN_TYPE, 4242);
-
       assertEquals(4242L, new RdfPartitionCalculator().getEntityCount(UNKNOWN_TYPE));
     }
   }
@@ -201,7 +185,6 @@ class RdfPartitionCalculatorTest {
       entityMock
           .when(() -> Entity.getEntityRepository(UNKNOWN_TYPE))
           .thenThrow(new IllegalStateException("no repository registered"));
-
       assertEquals(0L, new RdfPartitionCalculator().getEntityCount(UNKNOWN_TYPE));
     }
   }
@@ -212,18 +195,16 @@ class RdfPartitionCalculatorTest {
       entityMock
           .when(() -> Entity.getEntityRepository(UNKNOWN_TYPE))
           .thenThrow(new IllegalStateException("boom"));
-
       List<RdfIndexPartition> partitions =
           new RdfPartitionCalculator()
               .calculatePartitionsForEntity(UUID.randomUUID(), UNKNOWN_TYPE);
-
       assertTrue(partitions.isEmpty());
     }
   }
 
   @SuppressWarnings("unchecked")
   private void stubEntityCount(MockedStatic<Entity> entityMock, String entityType, int count) {
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> repository = mock(EntityPolicy.class);
     EntityDAO<EntityInterface> dao = mock(EntityDAO.class);
     when(repository.getDao()).thenReturn(dao);
     when(dao.listTotalCount()).thenReturn(count);

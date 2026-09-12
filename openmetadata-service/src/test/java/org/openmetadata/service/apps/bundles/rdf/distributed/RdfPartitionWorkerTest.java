@@ -24,13 +24,14 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.ListFilter;
 
 @ExtendWith(MockitoExtension.class)
 class RdfPartitionWorkerTest {
 
   @Mock private DistributedRdfIndexCoordinator coordinator;
+
   @Mock private RdfBatchProcessor batchProcessor;
 
   private RdfPartitionWorker worker;
@@ -43,14 +44,12 @@ class RdfPartitionWorkerTest {
   @Test
   void initializeKeysetCursorHandlesRepositoryBackedEntities() throws Exception {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> repository = mock(EntityPolicy.class);
     RdfIndexPartition partition =
         RdfIndexPartition.builder().jobId(java.util.UUID.randomUUID()).entityType("table").build();
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
       when(repository.getCursorAtOffset(any(ListFilter.class), eq(4))).thenReturn("cursor-4");
-
       assertNull(
           invokePrivate(
               worker,
@@ -86,7 +85,6 @@ class RdfPartitionWorkerTest {
                     partition,
                     "table",
                     (long) Integer.MAX_VALUE + 2L));
-
     assertTrue(exception.getMessage().contains("does not support offsets above"));
   }
 
@@ -100,7 +98,6 @@ class RdfPartitionWorkerTest {
     EntityError recoverable =
         new EntityError().withMessage("Entity type chart not found").withEntity(table);
     EntityError dropped = new EntityError().withMessage("Failed to deserialize entity: boom");
-
     String representative =
         (String)
             invokePrivate(
@@ -109,7 +106,6 @@ class RdfPartitionWorkerTest {
                 new Class<?>[] {String.class, List.class},
                 "table",
                 List.of(recoverable, dropped));
-
     assertEquals("Failed to deserialize entity: boom", representative);
   }
 
@@ -122,7 +118,6 @@ class RdfPartitionWorkerTest {
     EntityError withMessage =
         new EntityError().withMessage("field resolution failed").withEntity(a);
     EntityError nullMessage = new EntityError().withEntity(b);
-
     String representative =
         (String)
             invokePrivate(
@@ -131,7 +126,6 @@ class RdfPartitionWorkerTest {
                 new Class<?>[] {String.class, List.class},
                 "table",
                 List.of(withMessage, nullMessage));
-
     assertEquals("field resolution failed", representative);
   }
 
@@ -152,7 +146,6 @@ class RdfPartitionWorkerTest {
     UUID id = UUID.randomUUID();
     when(table.getId()).thenReturn(id);
     when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.tbl");
-
     assertEquals(
         id + " (svc.db.schema.tbl)",
         invokeStaticPrivate(
@@ -178,14 +171,12 @@ class RdfPartitionWorkerTest {
     EntityError fieldFailure =
         new EntityError().withMessage("field resolution failed").withEntity(dataModel);
     EntityError deserFailure = new EntityError().withMessage("Failed to deserialize entity: boom");
-
     List<EntityInterface> recoverable =
         (List<EntityInterface>)
             invokeStaticPrivate(
                 "recoverableEntities",
                 new Class<?>[] {List.class},
                 List.of(fieldFailure, deserFailure));
-
     assertEquals(1, recoverable.size());
     assertEquals(dataModel, recoverable.get(0));
   }

@@ -23,11 +23,13 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -39,6 +41,7 @@ import org.openmetadata.service.security.session.SessionRefreshInProgressExcepti
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class LdapAuthServletHandler implements AuthServeletHandler {
@@ -322,10 +325,15 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
   private User getSessionUser(UserSession session) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     if (session.getUserId() != null) {
-      return userRepository.get(
-          null,
-          UUID.fromString(session.getUserId()),
-          userRepository.getFieldsWithUserAuth("id,name,email,roles,isAdmin"));
+      return userRepository
+          .reads()
+          .byId(
+              UUID.fromString(session.getUserId()),
+              new EntityReadService.Query(
+                  null,
+                  userRepository.getFieldsWithUserAuth("id,name,email,roles,isAdmin"),
+                  RelationIncludes.fromInclude(Include.NON_DELETED),
+                  false));
     }
     if (session.getUsername() != null) {
       return userRepository.getByName(

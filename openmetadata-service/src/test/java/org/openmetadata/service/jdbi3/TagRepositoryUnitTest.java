@@ -15,19 +15,26 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityPersistence;
 import org.openmetadata.service.exception.BadCursorException;
 
 public class TagRepositoryUnitTest {
+  private final List<Tag> storedTags = new ArrayList<>();
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
   private static final TagRepository tagRepository;
 
   static {
@@ -39,7 +46,6 @@ public class TagRepositoryUnitTest {
             Mockito.nullable(String.class),
             Mockito.anyInt()))
         .thenCallRealMethod();
-    when(tagRepository.parseCursorMap(Mockito.nullable(String.class))).thenCallRealMethod();
   }
 
   private Tag createTagWithRecognizers(int count) {
@@ -320,17 +326,34 @@ public class TagRepositoryUnitTest {
   /** Mock wired so the reconcile logic runs for real while all DB access is stubbed out. */
   private TagRepository reconcilingRepository(Tag stored) {
     TagRepository repository = Mockito.mock(TagRepository.class);
+    EntityDAO<Tag> tagRows = lookups.attach(repository, Entity.TAG, Tag.class);
+    when(repository.persistence())
+        .thenReturn(
+            new EntityPersistence<>(
+                new EntityPersistence.Schema<>(Entity.TAG, tagRows),
+                new EntityPersistence.Boundaries(
+                    TagRepositoryUnitTest::execute, TagRepositoryUnitTest::execute),
+                new EntityPersistence.Cache(() -> null, false),
+                new EntityPersistence.Policy<>(
+                    tag -> {
+                      storedTags.add(tag);
+                      return JsonUtils.pojoToJson(tag);
+                    },
+                    tag -> {})));
     Mockito.doCallRealMethod().when(repository).reconcileSeededTags(Mockito.anyList());
     when(repository.missingSystemRecognizers(Mockito.any(), Mockito.any())).thenCallRealMethod();
-    when(repository.findByNameOrNull(Mockito.anyString(), Mockito.any(Include.class)))
+    when(tagRows.findEntityByName(Mockito.anyString(), Mockito.any(Include.class)))
         .thenReturn(stored);
     return repository;
   }
 
   private Tag captureStoredTag(TagRepository repository) {
-    ArgumentCaptor<Tag> captor = ArgumentCaptor.forClass(Tag.class);
-    Mockito.verify(repository).store(captor.capture(), Mockito.eq(true));
-    return captor.getValue();
+    assertEquals(1, storedTags.size());
+    return storedTags.getFirst();
+  }
+
+  private static <R> R execute(Supplier<R> work) {
+    return work.get();
   }
 
   @Test
@@ -413,7 +436,7 @@ public class TagRepositoryUnitTest {
 
     repository.reconcileSeededTags(List.of(seed));
 
-    Mockito.verify(repository, Mockito.never()).store(Mockito.any(Tag.class), Mockito.anyBoolean());
+    assertTrue(storedTags.isEmpty());
     assertFalse(stored.getAutoClassificationEnabled());
   }
 
@@ -425,7 +448,7 @@ public class TagRepositoryUnitTest {
 
     repository.reconcileSeededTags(List.of(seed));
 
-    Mockito.verify(repository, Mockito.never()).store(Mockito.any(Tag.class), Mockito.anyBoolean());
+    assertTrue(storedTags.isEmpty());
   }
 
   @Test

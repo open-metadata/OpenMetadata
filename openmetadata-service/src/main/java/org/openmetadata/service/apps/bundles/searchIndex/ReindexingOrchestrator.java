@@ -25,8 +25,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.LoggingProgressListener;
 import org.openmetadata.service.apps.bundles.searchIndex.listeners.SlackProgressListener;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -34,13 +34,19 @@ import org.slf4j.MDC;
 
 @Slf4j
 public class ReindexingOrchestrator {
+
   private final CollectionDAO collectionDAO;
+
   private final SearchRepository searchRepository;
+
   private final OrchestratorContext context;
 
   @Getter private EventPublisherJob jobData;
+
   private volatile boolean stopped = false;
+
   private volatile DistributedIndexingStrategy activeStrategy;
+
   private volatile Map<String, Object> resultMetadata = Collections.emptyMap();
 
   public ReindexingOrchestrator(
@@ -54,19 +60,15 @@ public class ReindexingOrchestrator {
     this.jobData = initialJobData;
     initializeState();
     initializeJobData();
-
     String jobId = UUID.randomUUID().toString().substring(0, 8);
     MDC.put("reindexJobId", jobId);
-
     ReindexingMetrics metrics = ReindexingMetrics.getInstance();
     Timer.Sample timerSample = null;
     if (metrics != null) {
       metrics.recordJobStarted();
       timerSample = metrics.startJobTimer();
     }
-
     preflightFixes();
-
     try {
       runReindexing();
     } catch (Exception ex) {
@@ -74,7 +76,6 @@ public class ReindexingOrchestrator {
     } finally {
       finalizeJobExecution();
       cleanupOrphanedIndices();
-
       if (metrics != null && timerSample != null) {
         EventPublisherJob.Status status = jobData != null ? jobData.getStatus() : null;
         if (status == EventPublisherJob.Status.COMPLETED
@@ -86,7 +87,6 @@ public class ReindexingOrchestrator {
           metrics.recordJobFailed(timerSample);
         }
       }
-
       MDC.remove("reindexJobId");
     }
   }
@@ -94,7 +94,6 @@ public class ReindexingOrchestrator {
   public void stop() {
     LOG.info("Reindexing job is being stopped.");
     stopped = true;
-
     DistributedIndexingStrategy strategy = this.activeStrategy;
     if (strategy != null) {
       try {
@@ -103,11 +102,9 @@ public class ReindexingOrchestrator {
         LOG.error("Error stopping indexing strategy", e);
       }
     }
-
     if (jobData != null) {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
     }
-
     AppRunRecord appRecord = context.getJobRecord();
     appRecord.setStatus(AppRunRecord.Status.STOPPED);
     sanitizeRunRecordConfig(appRecord);
@@ -115,7 +112,6 @@ public class ReindexingOrchestrator {
     context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
     context.pushStatusUpdate(appRecord, true);
     sendUpdates();
-
     LOG.info("Reindexing job stopped successfully.");
   }
 
@@ -129,7 +125,6 @@ public class ReindexingOrchestrator {
     if (jobData == null) {
       jobData = loadJobData();
     }
-
     if (ON_DEMAND_JOB.equals(context.getJobName())) {
       Map<String, Object> jsonAppConfig =
           JsonUtils.convertValue(jobData, new TypeReference<Map<String, Object>>() {});
@@ -147,14 +142,12 @@ public class ReindexingOrchestrator {
           SearchIndexAppConfigSanitizer.copyWithoutRemovedOptions(appConfig),
           EventPublisherJob.class);
     }
-
     Map<String, Object> appConfig = context.getAppConfiguration();
     if (appConfig != null) {
       return JsonUtils.convertValue(
           SearchIndexAppConfigSanitizer.copyWithoutRemovedOptions(appConfig),
           EventPublisherJob.class);
     }
-
     LOG.error("Unable to initialize jobData from JobDataMap or App configuration");
     throw new SearchIndexApp.ReindexingException("JobData is not initialized");
   }
@@ -223,15 +216,12 @@ public class ReindexingOrchestrator {
       completeWithoutEntities();
       return;
     }
-
     setupEntities();
     cleanupOldFailures();
     logJobStart();
-
     DistributedIndexingStrategy strategy = createDistributedStrategy();
     activeStrategy = strategy;
     registerProgressListeners(strategy);
-
     ReindexingConfiguration config = buildReindexingConfiguration();
     ExecutionResult result = executeDistributedReindex(strategy, config);
     persistExecutionResult(result);
@@ -267,7 +257,6 @@ public class ReindexingOrchestrator {
   private void registerProgressListeners(DistributedIndexingStrategy strategy) {
     strategy.addListener(context.createProgressListener(jobData));
     strategy.addListener(new LoggingProgressListener());
-
     if (hasSlackConfig()) {
       strategy.addListener(
           new SlackProgressListener(
@@ -291,11 +280,9 @@ public class ReindexingOrchestrator {
 
   private void persistExecutionResult(ExecutionResult result) {
     updateJobDataFromResult(result);
-
     if (jobData.getStats() != null) {
       context.storeRunStats(jobData.getStats());
     }
-
     if (!result.metadata().isEmpty()) {
       saveResultMetadataToJobRecord(result.metadata());
     }
@@ -307,9 +294,7 @@ public class ReindexingOrchestrator {
       StatsReconciler.reconcile(stats);
       jobData.setStats(stats);
     }
-
     resultMetadata = result.metadata() != null ? result.metadata() : Collections.emptyMap();
-
     switch (result.status()) {
       case COMPLETED -> jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       case COMPLETED_WITH_ERRORS -> jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
@@ -346,15 +331,12 @@ public class ReindexingOrchestrator {
       if (successContext == null) {
         successContext = new SuccessContext();
       }
-
       for (Map.Entry<String, Object> entry : metadata.entrySet()) {
         successContext.withAdditionalProperty(entry.getKey(), entry.getValue());
       }
-
       if (jobData.getStats() != null) {
         successContext.withAdditionalProperty("stats", jobData.getStats());
       }
-
       appRecord.setSuccessContext(successContext);
       context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
     } catch (Exception e) {
@@ -371,7 +353,6 @@ public class ReindexingOrchestrator {
         LOG.debug("Could not capture strategy stats during exception handling", e);
       }
     }
-
     if (stopped) {
       if (jobData != null) {
         jobData.setStatus(EventPublisherJob.Status.STOPPED);
@@ -382,7 +363,6 @@ public class ReindexingOrchestrator {
               .withErrorSource(IndexingError.ErrorSource.JOB)
               .withMessage("Reindexing Job Exception: " + ex.getMessage());
       LOG.error("Reindexing Job Failed", ex);
-
       if (jobData != null) {
         jobData.setStatus(EventPublisherJob.Status.FAILED);
         jobData.setFailure(error);
@@ -392,7 +372,6 @@ public class ReindexingOrchestrator {
 
   private void finalizeJobExecution() {
     sendUpdates();
-
     if (stopped) {
       AppRunRecord appRecord = context.getJobRecord();
       appRecord.setStatus(AppRunRecord.Status.STOPPED);
@@ -415,21 +394,17 @@ public class ReindexingOrchestrator {
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
     sanitizeRunRecordConfig(appRecord);
     OmAppJobListener.fillTerminalTimings(appRecord);
-
     if (jobData.getFailure() != null) {
       appRecord.setFailureContext(
           new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
     }
-
     if (jobData.getStats() != null) {
       SuccessContext successContext = appRecord.getSuccessContext();
       if (successContext == null) {
         successContext = new SuccessContext();
       }
       successContext.withAdditionalProperty("stats", jobData.getStats());
-
       String distributedJobId = (String) resultMetadata.get("distributedJobId");
-
       try {
         UUID appId = context.getAppId();
         String jobIdStr =
@@ -443,22 +418,18 @@ public class ReindexingOrchestrator {
       } catch (Exception e) {
         LOG.debug("Could not get failure count", e);
       }
-
       Object serverStats = resultMetadata.get("serverStats");
       if (serverStats != null) {
         successContext.withAdditionalProperty("serverStats", serverStats);
         successContext.withAdditionalProperty("serverCount", resultMetadata.get("serverCount"));
         successContext.withAdditionalProperty("distributedJobId", distributedJobId);
       }
-
       appRecord.setSuccessContext(successContext);
     }
-
     // Persist before broadcasting so OmAppJobListener.jobWasExecuted() sees the correct
     // terminal status (FAILED, STOPPED, etc.) rather than the initial RUNNING record,
     // and so the database is consistent before the UI is notified.
     context.storeRunRecord(JsonUtils.pojoToJson(appRecord));
-
     if (WebSocketManager.getInstance() != null) {
       String messageJson = JsonUtils.pojoToJson(appRecord);
       WebSocketManager.getInstance()
@@ -525,7 +496,7 @@ public class ReindexingOrchestrator {
       try {
         String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
         if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
-          EntityRepository<?> repository = Entity.getEntityRepository(normalizedEntityType);
+          EntityPolicy<?> repository = Entity.getEntityRepository(normalizedEntityType);
           total += repository.getDao().listCount(repository.getReindexFilter());
         }
       } catch (Exception e) {

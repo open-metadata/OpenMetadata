@@ -91,6 +91,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -100,6 +101,7 @@ import org.openmetadata.service.security.session.SessionRefreshInProgressExcepti
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 import org.pac4j.core.exception.TechnicalException;
@@ -1142,10 +1144,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     try {
       if (!nullOrEmpty(session.getUserId())) {
         return Entity.getUserRepository()
-            .get(
-                null,
+            .reads()
+            .byId(
                 UUID.fromString(session.getUserId()),
-                Entity.getUserRepository().getFieldsWithUserAuth("id,name,email,roles,isAdmin"));
+                new EntityReadService.Query(
+                    null,
+                    Entity.getUserRepository().getFieldsWithUserAuth("id,name,email,roles,isAdmin"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
       }
       if (!nullOrEmpty(session.getUsername())) {
         return Entity.getEntityByName(

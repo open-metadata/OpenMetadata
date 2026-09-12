@@ -109,8 +109,8 @@ public class RdfGraphExploreIT {
   }
 
   @AfterAll
-  static void disableRdf() {
-    RdfUpdater.disable();
+  static void restoreRdf() {
+    RdfTestUtils.restoreSuiteConfiguration();
   }
 
   @Test

@@ -20,9 +20,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class TaskAssigneeCleanup {
   private TaskAssigneeCleanup() {}
@@ -30,11 +34,24 @@ public final class TaskAssigneeCleanup {
   public static void removeAssignee(UUID entityId, String entityType) {
     TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> taskReferences =
-        repository.findTo(entityId, entityType, Relationship.ASSIGNED_TO, Entity.TASK, Include.ALL);
-    Fields fields = repository.getFields("assignees,about,createdBy,reviewers,watchers");
+        repository
+            .relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    entityId, entityType, Relationship.ASSIGNED_TO, Entity.TASK),
+                Include.ALL);
+    Fields fields = repository.fieldPolicy().parse("assignees,about,createdBy,reviewers,watchers");
     for (EntityReference taskReference : taskReferences) {
       removeAssignee(
-          repository, repository.get(null, taskReference.getId(), fields), entityId, entityType);
+          repository,
+          repository
+              .reads()
+              .byId(
+                  taskReference.getId(),
+                  new EntityReadService.Query(
+                      null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false)),
+          entityId,
+          entityType);
     }
   }
 
@@ -49,7 +66,9 @@ public final class TaskAssigneeCleanup {
     if (changed) {
       assignees.sort(EntityUtil.compareEntityReference);
       task.setAssignees(assignees);
-      repository.createOrUpdate(null, task, Entity.ADMIN_USER_NAME);
+      repository
+          .creates()
+          .upsert(null, task, new EntityCommandActor(Entity.ADMIN_USER_NAME, null), false);
     }
   }
 }

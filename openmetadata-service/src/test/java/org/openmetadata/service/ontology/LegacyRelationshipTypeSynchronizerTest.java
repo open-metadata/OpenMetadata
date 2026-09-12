@@ -16,12 +16,7 @@ package org.openmetadata.service.ontology;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
@@ -32,7 +27,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -42,19 +37,42 @@ import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture.Deletion;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 
 @ExtendWith(MockitoExtension.class)
 class LegacyRelationshipTypeSynchronizerTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
   private static final Instant NOW = Instant.parse("2026-07-18T00:00:00Z");
   private static final String UPDATED_BY = "admin";
 
   @Mock private RelationshipTypeRepository repository;
+  private EntityDAO<RelationshipType> relationshipRows;
+  private EntityCreationFixture<RelationshipType> creations;
+  private EntityDeleteFixture<RelationshipType> deletions;
 
   private LegacyRelationshipTypeSynchronizer synchronizer;
 
   @BeforeEach
   void setUp() {
+    deletions = EntityDeleteFixture.attach(repository);
+    relationshipRows = lookups.attach(repository, Entity.RELATIONSHIP_TYPE, RelationshipType.class);
+    creations =
+        EntityCreationFixture.attach(repository)
+            .onUpsert(
+                request -> {
+                  assertNull(request.uri());
+                  assertEquals(new EntityCommandActor(UPDATED_BY, null), request.actor());
+                  assertEquals(false, request.importMode());
+                  return null;
+                });
+
     LegacyRelationshipTypeMapper mapper =
         new LegacyRelationshipTypeMapper(Clock.fixed(NOW, ZoneOffset.UTC));
     synchronizer = new LegacyRelationshipTypeSynchronizer(repository, mapper);
@@ -64,27 +82,27 @@ class LegacyRelationshipTypeSynchronizerTest {
   void deletesNamesPresentInPreviousButAbsentFromUpdatedSettings() {
     UUID removedId = UUID.randomUUID();
     RelationshipType removed = existing(removedId, "governs", false);
-    when(repository.findByNameOrNull("keeps", Include.ALL)).thenReturn(null);
-    when(repository.findByNameOrNull("governs", Include.ALL)).thenReturn(removed);
+    when(relationshipRows.findEntityByName("keeps", Include.ALL)).thenReturn(null);
+    when(relationshipRows.findEntityByName("governs", Include.ALL)).thenReturn(removed);
     GlossaryTermRelationSettings previous = settings("keeps", "governs");
     GlossaryTermRelationSettings updated = settings("keeps");
 
     synchronizer.synchronize(previous, updated, null, UPDATED_BY);
 
-    verify(repository).delete(UPDATED_BY, removedId, false, true);
+    assertEquals(List.of(new Deletion(UPDATED_BY, removedId, false, true)), deletions.deletions());
   }
 
   @Test
   void doesNotDeleteRemovedTypeThatIsSystemDefined() {
     RelationshipType removed = existing(UUID.randomUUID(), "governs", true);
-    when(repository.findByNameOrNull("keeps", Include.ALL)).thenReturn(null);
-    when(repository.findByNameOrNull("governs", Include.ALL)).thenReturn(removed);
+    when(relationshipRows.findEntityByName("keeps", Include.ALL)).thenReturn(null);
+    when(relationshipRows.findEntityByName("governs", Include.ALL)).thenReturn(removed);
     GlossaryTermRelationSettings previous = settings("keeps", "governs");
     GlossaryTermRelationSettings updated = settings("keeps");
 
     synchronizer.synchronize(previous, updated, null, UPDATED_BY);
 
-    verify(repository, never()).delete(any(), any(), anyBoolean(), anyBoolean());
+    assertTrue(deletions.deletions().isEmpty());
   }
 
   @Test
@@ -97,7 +115,7 @@ class LegacyRelationshipTypeSynchronizerTest {
             .withProvider(ProviderType.SYSTEM)
             .withOwners(owners)
             .withReviewers(reviewers);
-    when(repository.findByNameOrNull("governs", Include.ALL)).thenReturn(existing);
+    when(relationshipRows.findEntityByName("governs", Include.ALL)).thenReturn(existing);
     GlossaryTermRelationSettings updated = settings("governs");
 
     synchronizer.synchronize(null, updated, null, UPDATED_BY);
@@ -112,7 +130,7 @@ class LegacyRelationshipTypeSynchronizerTest {
 
   @Test
   void upsertOfNewTypeDoesNotCopyIdentityFields() {
-    when(repository.findByNameOrNull("governs", Include.ALL)).thenReturn(null);
+    when(relationshipRows.findEntityByName("governs", Include.ALL)).thenReturn(null);
     GlossaryTermRelationSettings updated = settings("governs");
 
     synchronizer.synchronize(null, updated, null, UPDATED_BY);
@@ -127,19 +145,18 @@ class LegacyRelationshipTypeSynchronizerTest {
 
   @Test
   void nullPreviousSettingsProduceNoSpuriousDeletes() {
-    when(repository.findByNameOrNull("governs", Include.ALL)).thenReturn(null);
+    when(relationshipRows.findEntityByName("governs", Include.ALL)).thenReturn(null);
     GlossaryTermRelationSettings updated = settings("governs");
 
     synchronizer.synchronize(null, updated, null, UPDATED_BY);
 
-    verify(repository, never()).delete(any(), any(), anyBoolean(), anyBoolean());
-    verify(repository).createOrUpdate(isNull(), any(RelationshipType.class), eq(UPDATED_BY));
+    assertTrue(deletions.deletions().isEmpty());
+    assertEquals(1, creations.upserts().size());
   }
 
   private RelationshipType capturePersisted() {
-    ArgumentCaptor<RelationshipType> captor = ArgumentCaptor.forClass(RelationshipType.class);
-    verify(repository).createOrUpdate(isNull(), captor.capture(), eq(UPDATED_BY));
-    return captor.getValue();
+    assertEquals(1, creations.upserts().size());
+    return creations.upserts().getFirst().entity();
   }
 
   private static RelationshipType existing(UUID id, String name, boolean systemDefined) {

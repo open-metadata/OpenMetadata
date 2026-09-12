@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -30,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +52,17 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.InheritedReferences;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.SpreadsheetResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -59,23 +70,28 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
+@Repository()
+public class SpreadsheetRepository implements EntityPolicy<Spreadsheet> {
+
   private static final String WORKSHEETS_FIELD = "worksheets";
 
   public SpreadsheetRepository() {
-    super(
-        SpreadsheetResource.COLLECTION_PATH,
-        Entity.SPREADSHEET,
-        Spreadsheet.class,
-        Entity.getCollectionDAO().spreadsheetDAO(),
-        "",
-        "");
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                SpreadsheetResource.COLLECTION_PATH,
+                Entity.SPREADSHEET,
+                Spreadsheet.class,
+                Entity.getCollectionDAO().spreadsheetDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix (FQNs are service-nested). See
     // EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
+    context().options().setDescendantsCoveredByAncestorCascade(true);
   }
 
   @Override
@@ -103,12 +119,10 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     DriveService driveService = Entity.getEntity(spreadsheet.getService(), "", Include.NON_DELETED);
     spreadsheet.setService(driveService.getEntityReference());
     spreadsheet.setServiceType(driveService.getServiceType());
-
     // Validate parent directory if provided
     if (spreadsheet.getDirectory() != null) {
       Directory directory = Entity.getEntity(spreadsheet.getDirectory(), "", Include.NON_DELETED);
       spreadsheet.setDirectory(directory.getEntityReference());
-
       // Ensure the directory belongs to the same service
       if (!directory.getService().getId().equals(driveService.getId())) {
         throw new IllegalArgumentException(
@@ -122,40 +136,52 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   @Override
   public void storeEntity(Spreadsheet spreadsheet, boolean update) {
     // Store the entity
-    store(spreadsheet, update);
+    persistence().store(spreadsheet, update);
   }
 
   @Override
   public void storeEntities(List<Spreadsheet> spreadsheets) {
     List<String> fqns = new ArrayList<>(spreadsheets.size());
     List<String> jsons = new ArrayList<>(spreadsheets.size());
-
     for (Spreadsheet spreadsheet : spreadsheets) {
       fqns.add(spreadsheet.getFullyQualifiedName());
       jsons.add(serializeForStorage(spreadsheet));
     }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    context()
+        .schema()
+        .dao()
+        .insertMany(
+            context().schema().dao().getTableName(),
+            context().schema().dao().getNameHashColumn(),
+            fqns,
+            jsons);
   }
 
   @Override
   public void storeRelationships(Spreadsheet spreadsheet) {
     // Add relationship from service to spreadsheet
-    addRelationship(
-        spreadsheet.getService().getId(),
-        spreadsheet.getId(),
-        spreadsheet.getService().getType(),
-        SPREADSHEET,
-        Relationship.CONTAINS);
-
+    relationshipWrites()
+        .add(
+            new EntityRelationshipWriter.Edge(
+                spreadsheet.getService().getId(),
+                spreadsheet.getId(),
+                spreadsheet.getService().getType(),
+                SPREADSHEET,
+                Relationship.CONTAINS),
+            EntityRelationshipWriter.Value.EMPTY,
+            false);
     // Add relationship from directory to spreadsheet if present
     if (spreadsheet.getDirectory() != null) {
-      addRelationship(
-          spreadsheet.getDirectory().getId(),
-          spreadsheet.getId(),
-          DIRECTORY,
-          SPREADSHEET,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  spreadsheet.getDirectory().getId(),
+                  spreadsheet.getId(),
+                  DIRECTORY,
+                  SPREADSHEET,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
     LOG.info(
         "Stored relationships for spreadsheet {} with service {} and directory {}",
@@ -171,11 +197,12 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       if (spreadsheet.getDirectory() != null) {
         Directory directory =
             Entity.getEntity(spreadsheet.getDirectory(), "domains,service", Include.ALL);
-        inheritDomains(spreadsheet, fields, directory);
+        InheritedReferences.apply(
+            InheritedReferences.Field.DOMAINS, spreadsheet, fields, directory);
       } else {
         DriveService service =
             Entity.getEntity(spreadsheet.getService(), FIELD_DOMAINS, Include.ALL);
-        inheritDomains(spreadsheet, fields, service);
+        InheritedReferences.apply(InheritedReferences.Field.DOMAINS, spreadsheet, fields, service);
       }
     }
   }
@@ -191,7 +218,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   @Override
   public void setFields(
       Spreadsheet spreadsheet, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
-    spreadsheet.withService(getContainer(spreadsheet.getId()));
+    spreadsheet.withService(relationships().container(spreadsheet.getId(), null));
     spreadsheet.withDirectory(getDirectory(spreadsheet));
     spreadsheet.withWorksheets(
         fields.contains(WORKSHEETS_FIELD) ? getWorksheets(spreadsheet) : null);
@@ -205,7 +232,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     fetchAndSetService(entities);
     fetchAndSetDirectory(entities);
     fetchAndSetWorksheets(entities, fields);
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     for (Spreadsheet entity : entities) {
       clearFieldsInternal(entity, fields);
@@ -237,11 +264,15 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   }
 
   private EntityReference getDirectory(Spreadsheet spreadsheet) {
-    return getFromEntityRef(spreadsheet.getId(), Relationship.CONTAINS, DIRECTORY, false);
+    return relationships().singleFrom(spreadsheet.getId(), Relationship.CONTAINS, DIRECTORY, false);
   }
 
   private List<EntityReference> getWorksheets(Spreadsheet spreadsheet) {
-    return findTo(spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, WORKSHEET);
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(
+                spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, WORKSHEET),
+            Include.NON_DELETED);
   }
 
   private Map<UUID, List<EntityReference>> batchFetchWorksheets(List<Spreadsheet> spreadsheets) {
@@ -250,7 +281,9 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       worksheetsMap.put(spreadsheet.getId(), new ArrayList<>());
     }
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(spreadsheets),
@@ -284,13 +317,13 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   }
 
   @Override
-  public EntityRepository<Spreadsheet>.EntityUpdater getUpdater(
-      Spreadsheet original, Spreadsheet updated, Operation operation) {
-    return new SpreadsheetUpdater(original, updated, operation);
+  public EntityUpdater<Spreadsheet> getUpdater(
+      Spreadsheet original, Spreadsheet updated, EntityOperation operation) {
+    return new SpreadsheetUpdater(original, updated, operation).mutation();
   }
 
   @Override
-  protected void deleteChildren(
+  public void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     // Log for debugging
     if (!children.isEmpty()) {
@@ -302,7 +335,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
         LOG.info("  - Child: type={}, id={}", child.getType(), child.getId());
       }
     }
-    super.deleteChildren(children, hardDelete, updatedBy);
+    EntityPolicy.super.deleteChildren(children, hardDelete, updatedBy);
   }
 
   @Override
@@ -328,7 +361,9 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   }
 
   public static class SpreadsheetCsv extends EntityCsv<Spreadsheet> {
+
     public static final List<CsvHeader> HEADERS;
+
     public static final CsvDocumentation DOCUMENTATION;
 
     static {
@@ -351,11 +386,11 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               new CsvHeader().withName("reviewers"),
               new CsvHeader().withName("createdTime"),
               new CsvHeader().withName("modifiedTime"));
-
       DOCUMENTATION = new CsvDocumentation().withHeaders(HEADERS).withSummary("Spreadsheet");
     }
 
     private final Spreadsheet spreadsheet;
+
     private final boolean recursive;
 
     SpreadsheetCsv(Spreadsheet spreadsheet, String user, boolean recursive) {
@@ -367,7 +402,6 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-
       if (recursive && csvRecord.size() > 18) {
         // This is a recursive import with entityType field
         String entityType = csvRecord.get(18);
@@ -376,19 +410,17 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
           return;
         }
       }
-
       // Get spreadsheet name and directory FQN
       String spreadsheetName = csvRecord.get(0);
-      String directoryFqn = csvRecord.get(3); // directory field
+      // directory field
+      String directoryFqn = csvRecord.get(3);
       String spreadsheetFqn = FullyQualifiedName.add(directoryFqn, spreadsheetName);
-
       Spreadsheet newSpreadsheet;
       try {
         newSpreadsheet =
             Entity.getEntityByName(SPREADSHEET, spreadsheetFqn, "*", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         LOG.warn("Spreadsheet not found: {}, it will be created with Import.", spreadsheetFqn);
-
         // Get directory reference
         EntityReference directoryRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
         if (directoryRef == null) {
@@ -396,11 +428,9 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               printer, "Directory not found for spreadsheet: " + spreadsheetName, csvRecord);
           return;
         }
-
         // Get service from directory
         Directory directory =
             Entity.getEntity(DIRECTORY, directoryRef.getId(), "service", Include.NON_DELETED);
-
         newSpreadsheet =
             new Spreadsheet()
                 .withService(directory.getService())
@@ -408,7 +438,6 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                 .withName(spreadsheetName)
                 .withFullyQualifiedName(spreadsheetFqn);
       }
-
       // Update spreadsheet fields from CSV
       newSpreadsheet
           .withDisplayName(csvRecord.get(1))
@@ -431,7 +460,6 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15)))
           .withModifiedTime(
               nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16)));
-
       if (processRecord) {
         createEntity(printer, csvRecord, newSpreadsheet, SPREADSHEET);
       }
@@ -465,19 +493,20 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
               : "");
       addOwners(recordList, entity.getExperts());
       addOwners(recordList, entity.getReviewers());
-
       if (recursive) {
         // Add entity type and FQN for recursive export
         addField(recordList, SPREADSHEET);
         addField(recordList, entity.getFullyQualifiedName());
-
         // Add empty worksheet-specific fields
-        addField(recordList, ""); // worksheetId
-        addField(recordList, ""); // index
-        addField(recordList, ""); // rowCount
-        addField(recordList, ""); // columnCount
+        // worksheetId
+        addField(recordList, "");
+        // index
+        addField(recordList, "");
+        // rowCount
+        addField(recordList, "");
+        // columnCount
+        addField(recordList, "");
       }
-
       addRecord(csvFile, recordList);
     }
 
@@ -501,32 +530,82 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
     }
   }
 
-  public class SpreadsheetUpdater extends EntityUpdater {
-    public SpreadsheetUpdater(Spreadsheet original, Spreadsheet updated, Operation operation) {
-      super(original, updated, operation);
+  public class SpreadsheetUpdater implements EntitySpecificMutation<Spreadsheet> {
+
+    public SpreadsheetUpdater(
+        Spreadsheet original, Spreadsheet updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<Spreadsheet> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "mimeType",
-          () -> recordChange("mimeType", original.getMimeType(), updated.getMimeType()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "mimeType",
+                  entityUpdate.getOriginal().getMimeType(),
+                  entityUpdate.getUpdated().getMimeType()));
+      entityUpdate.compareAndUpdate(
           "createdTime",
-          () -> recordChange("createdTime", original.getCreatedTime(), updated.getCreatedTime()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "createdTime",
+                  entityUpdate.getOriginal().getCreatedTime(),
+                  entityUpdate.getUpdated().getCreatedTime()));
+      entityUpdate.compareAndUpdate(
           "modifiedTime",
           () ->
-              recordChange("modifiedTime", original.getModifiedTime(), updated.getModifiedTime()));
-      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "modifiedTime",
+                  entityUpdate.getOriginal().getModifiedTime(),
+                  entityUpdate.getUpdated().getModifiedTime()));
+      entityUpdate.compareAndUpdate(
+          "path",
+          () ->
+              entityUpdate.recordChange(
+                  "path",
+                  entityUpdate.getOriginal().getPath(),
+                  entityUpdate.getUpdated().getPath()));
+      entityUpdate.compareAndUpdate(
           "driveFileId",
-          () -> recordChange("driveFileId", original.getDriveFileId(), updated.getDriveFileId()));
-      compareAndUpdate("size", () -> recordChange("size", original.getSize(), updated.getSize()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "driveFileId",
+                  entityUpdate.getOriginal().getDriveFileId(),
+                  entityUpdate.getUpdated().getDriveFileId()));
+      entityUpdate.compareAndUpdate(
+          "size",
+          () ->
+              entityUpdate.recordChange(
+                  "size",
+                  entityUpdate.getOriginal().getSize(),
+                  entityUpdate.getUpdated().getSize()));
+      entityUpdate.compareAndUpdate(
           "fileVersion",
-          () -> recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion()));
+          () ->
+              entityUpdate.recordChange(
+                  "fileVersion",
+                  entityUpdate.getOriginal().getFileVersion(),
+                  entityUpdate.getUpdated().getFileVersion()));
     }
+
+    private final EntityUpdater<Spreadsheet> entityUpdate;
+
+    public EntityUpdater<Spreadsheet> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<Spreadsheet> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Spreadsheet> context() {
+    return entityContext;
   }
 }

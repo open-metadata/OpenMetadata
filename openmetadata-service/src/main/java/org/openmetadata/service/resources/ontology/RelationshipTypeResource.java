@@ -138,7 +138,8 @@ public class RelationshipTypeResource
 
   private RelationshipType updateEntity(final CreateRelationshipType request, final String user) {
     final RelationshipType entity = mapper.createToEntity(request, user);
-    final RelationshipType existing = repository.findByNameOrNull(request.getName(), Include.ALL);
+    final RelationshipType existing =
+        repository.lookup().byNameOrNull(request.getName(), Include.ALL);
     entity.setId(existing == null ? entity.getId() : existing.getId());
     entity.setSystemDefined(existing == null ? false : existing.getSystemDefined());
     entity.setProvider(existing == null ? entity.getProvider() : existing.getProvider());

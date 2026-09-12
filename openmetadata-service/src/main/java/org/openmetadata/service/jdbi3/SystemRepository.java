@@ -1911,7 +1911,7 @@ public class SystemRepository {
               // Skip admin role name check as it's a special marker
               if (!roleName.equals(ldapConfig.getRoleAdminName())) {
                 try {
-                  roleRepo.getByName(null, roleName, roleRepo.getFields("id,name"));
+                  roleRepo.getByName(null, roleName, roleRepo.fieldPolicy().parse("id,name"));
                 } catch (EntityNotFoundException e) {
                   invalidRoles.add(roleName);
                 }

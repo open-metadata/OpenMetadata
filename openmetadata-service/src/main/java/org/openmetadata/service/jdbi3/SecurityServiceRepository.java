@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -22,6 +21,7 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -40,6 +40,16 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.service.EntityServiceAssembly;
+import org.openmetadata.service.entity.service.EntityServiceOperations;
+import org.openmetadata.service.entity.service.EntityServicePolicy;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.security.SecurityServiceResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -47,21 +57,29 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
+@Repository()
 public class SecurityServiceRepository
-    extends ServiceEntityRepository<SecurityService, SecurityConnection> {
+    implements EntityServicePolicy<SecurityService, SecurityConnection> {
 
   private static final String UPDATE_FIELDS = "owners,tags,connection";
+
   private static final String PATCH_FIELDS = "owners,tags,connection";
 
   public SecurityServiceRepository() {
-    super(
-        SecurityServiceResource.COLLECTION_PATH,
-        Entity.SECURITY_SERVICE,
-        Entity.getCollectionDAO().securityServiceDAO(),
-        SecurityConnection.class,
-        UPDATE_FIELDS,
-        ServiceType.SECURITY);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                SecurityServiceResource.COLLECTION_PATH,
+                Entity.SECURITY_SERVICE,
+                SecurityService.class,
+                Entity.getCollectionDAO().securityServiceDAO()),
+            new EntityPolicyContext.WriteFields("", UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    this.serviceOperations =
+        EntityServiceAssembly.create(this, SecurityConnection.class, ServiceType.SECURITY);
+    context().options().setQuoteFqn(true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -73,22 +91,20 @@ public class SecurityServiceRepository
   @Override
   public void prepare(SecurityService securityService, boolean update) {
     // Call parent to handle connection encryption and other service-level preparations
-    super.prepare(securityService, update);
-
+    EntityServicePolicy.super.prepare(securityService, update);
     // Additional security service specific preparations can be added here
   }
 
   @Override
   public void storeEntity(SecurityService securityService, boolean update) {
     // Store the security service entity
-    store(securityService, update);
+    persistence().store(securityService, update);
   }
 
   @Override
   public void storeRelationships(SecurityService securityService) {
     // Call parent to handle ingestion runner relationship
-    super.storeRelationships(securityService);
-
+    EntityServicePolicy.super.storeRelationships(securityService);
     // Additional relationships can be added here if needed
   }
 
@@ -102,7 +118,7 @@ public class SecurityServiceRepository
   public void clearFields(SecurityService securityService, EntityUtil.Fields fields) {
     // Clear fields based on the requested fields
     // Call parent to handle standard service fields like pipelines
-    super.clearFields(securityService, fields);
+    EntityServicePolicy.super.clearFields(securityService, fields);
   }
 
   @Override
@@ -112,22 +128,21 @@ public class SecurityServiceRepository
       RelationIncludes relationIncludes) {
     // Set fields based on the requested fields
     // Call parent to handle standard service fields like pipelines
-    super.setFields(securityService, fields, relationIncludes);
+    EntityServicePolicy.super.setFields(securityService, fields, relationIncludes);
   }
 
   @Override
   public void restorePatchAttributes(SecurityService original, SecurityService updated) {
     // Restore attributes that shouldn't be changed via PATCH
-    super.restorePatchAttributes(original, updated);
-
+    EntityServicePolicy.super.restorePatchAttributes(original, updated);
     // Service type should not change
     updated.withServiceType(original.getServiceType());
   }
 
   @Override
-  public ServiceEntityRepository<SecurityService, SecurityConnection>.ServiceUpdater getUpdater(
-      SecurityService original, SecurityService updated, Operation operation) {
-    return new SecurityServiceUpdater(original, updated, operation);
+  public EntityUpdater<SecurityService> getUpdater(
+      SecurityService original, SecurityService updated, EntityOperation operation) {
+    return new SecurityServiceUpdater(original, updated, operation).mutation();
   }
 
   @Override
@@ -164,7 +179,9 @@ public class SecurityServiceRepository
   }
 
   public static class SecurityServiceCsv extends EntityCsv<SecurityService> {
+
     public static final List<CsvHeader> HEADERS;
+
     public static final CsvDocumentation DOCUMENTATION;
 
     static {
@@ -178,7 +195,6 @@ public class SecurityServiceRepository
               new CsvHeader().withName("tags"),
               new CsvHeader().withName("domain"),
               new CsvHeader().withName("dataProducts"));
-
       DOCUMENTATION =
           new CsvDocumentation()
               .withHeaders(HEADERS)
@@ -195,12 +211,10 @@ public class SecurityServiceRepository
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-
       String serviceName = csvRecord.get(0);
       String serviceDisplayName = csvRecord.get(1);
       String serviceDescription = csvRecord.get(2);
       String serviceTypeStr = csvRecord.get(3);
-
       SecurityService newSecurityService;
       try {
         newSecurityService =
@@ -210,7 +224,6 @@ public class SecurityServiceRepository
         newSecurityService =
             new SecurityService().withName(serviceName).withFullyQualifiedName(serviceName);
       }
-
       // Update security service fields from CSV
       newSecurityService
           .withDisplayName(nullOrEmpty(serviceDisplayName) ? null : serviceDisplayName)
@@ -220,7 +233,6 @@ public class SecurityServiceRepository
               getTagLabels(
                   printer, csvRecord, List.of(Pair.of(5, TagLabel.TagSource.CLASSIFICATION))))
           .withDomains(getDomains(printer, csvRecord, 6, newSecurityService.getDomains()));
-
       if (processRecord) {
         createEntity(printer, csvRecord, newSecurityService, Entity.SECURITY_SERVICE);
       }
@@ -241,27 +253,56 @@ public class SecurityServiceRepository
                   || Boolean.TRUE.equals(entity.getDomains().get(0).getInherited())
               ? ""
               : entity.getDomains().get(0).getFullyQualifiedName());
-      addField(recordList, ""); // dataProducts - placeholder for future use
+      // dataProducts - placeholder for future use
+      addField(recordList, "");
       addRecord(csvFile, recordList);
     }
   }
 
-  public class SecurityServiceUpdater extends ServiceUpdater {
+  public class SecurityServiceUpdater implements EntitySpecificMutation<SecurityService> {
+
     public SecurityServiceUpdater(
-        SecurityService original, SecurityService updated, Operation operation) {
-      super(original, updated, operation);
+        SecurityService original, SecurityService updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<SecurityService> entityUpdate, boolean consolidatingChanges) {
       // Call parent to handle connection and ingestion runner updates
-      super.entitySpecificUpdate(consolidatingChanges);
-
+      serviceOperations().mutation().update(entityUpdate, consolidatingChanges);
       // Handle security service specific updates
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "serviceType",
-          () -> recordChange("serviceType", original.getServiceType(), updated.getServiceType()));
+          () ->
+              entityUpdate.recordChange(
+                  "serviceType",
+                  entityUpdate.getOriginal().getServiceType(),
+                  entityUpdate.getUpdated().getServiceType()));
     }
+
+    private final EntityUpdater<SecurityService> entityUpdate;
+
+    public EntityUpdater<SecurityService> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<SecurityService> entityContext;
+
+  private final EntityServiceOperations<SecurityService, SecurityConnection> serviceOperations;
+
+  @Override
+  public final EntityPolicyContext<SecurityService> context() {
+    return entityContext;
+  }
+
+  @Override
+  public final EntityServiceOperations<SecurityService, SecurityConnection> serviceOperations() {
+    return serviceOperations;
   }
 }

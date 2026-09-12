@@ -8,7 +8,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -16,26 +16,22 @@ import org.openmetadata.service.util.EntityUtil;
 public class MigrationUtil {
 
   private static final SystemRepository systemRepository = Entity.getSystemRepository();
+
   private static final String SEARCH_SETTINGS_KEY = "searchSettings";
 
   public static void updateSearchSettingsNlqConfiguration() {
     try {
       LOG.info("Updating search settings nlqConfiguration for improved owner search (PR #23794)");
-
       Settings searchSettings = systemRepository.getConfigWithKey(SEARCH_SETTINGS_KEY);
-
       if (searchSettings == null) {
         LOG.warn("Search settings not found, loading from default file");
         loadDefaultSearchSettings();
         return;
       }
-
       SearchSettings currentSettings =
           JsonUtils.readValue(
               JsonUtils.pojoToJson(searchSettings.getConfigValue()), SearchSettings.class);
-
       SearchSettings defaultSettings = loadSearchSettingsFromFile();
-
       if (defaultSettings != null && defaultSettings.getNlqConfiguration() != null) {
         LOG.info("Updating nlqConfiguration with latest changes");
         currentSettings.setNlqConfiguration(defaultSettings.getNlqConfiguration());
@@ -45,7 +41,6 @@ public class MigrationUtil {
       } else {
         LOG.warn("Could not load default nlqConfiguration, skipping update");
       }
-
     } catch (Exception e) {
       LOG.error("Error updating search settings nlqConfiguration", e);
       throw new RuntimeException("Failed to update search settings nlqConfiguration", e);
@@ -59,7 +54,7 @@ public class MigrationUtil {
       if (!jsonDataFiles.isEmpty()) {
         String json =
             CommonUtil.getResourceAsStream(
-                EntityRepository.class.getClassLoader(), jsonDataFiles.getFirst());
+                EntityPolicy.class.getClassLoader(), jsonDataFiles.getFirst());
         return JsonUtils.readValue(json, SearchSettings.class);
       }
     } catch (Exception e) {

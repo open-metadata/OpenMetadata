@@ -10380,6 +10380,12 @@ public class WorkflowDefinitionResourceIT {
 
       patchAddTag(client, fx.schema.getId(), "PII.Sensitive");
       Task firstTask = awaitSingleOpenApprovalTask(client, schemaFqn);
+      Task firstTaskDetails =
+          client
+              .tasks()
+              .get(firstTask.getId().toString(), "workflowDefinitionId,workflowInstanceId");
+      assertEquals(fx.workflow.getId(), firstTaskDetails.getWorkflowDefinitionId());
+      assertNotNull(firstTaskDetails.getWorkflowInstanceId());
       LOG.debug("CE1 created approval task {}", firstTask.getId());
 
       patchAddTag(client, fx.schema.getId(), "PII.None");
@@ -10501,6 +10507,7 @@ public class WorkflowDefinitionResourceIT {
           "name": "%s",
           "displayName": "Supersede Approval Workflow",
           "description": "Creates an approval task only when gated tags change",
+          "config": {"storeStageStatus": true},
           "type": "eventBasedEntity",
           "trigger": {
             "type": "eventBasedEntity",
@@ -10865,9 +10872,12 @@ public class WorkflowDefinitionResourceIT {
 
     CreateWorkflowDefinition workflow =
         JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
-    client
-        .getHttpClient()
-        .executeForString(HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    final String workflowResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    trackWorkflowFromJson(MAPPER.readTree(workflowResponse));
     waitForWorkflowDeployment(client, workflowName);
 
     DatabaseService dbService =

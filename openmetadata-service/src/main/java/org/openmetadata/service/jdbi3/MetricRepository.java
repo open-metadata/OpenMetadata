@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -65,6 +64,18 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityBatchFields;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
@@ -74,24 +85,30 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class MetricRepository extends EntityRepository<Metric> {
+@Repository()
+public class MetricRepository implements EntityPolicy<Metric> {
+
   private static final String UPDATE_FIELDS = "relatedMetrics,assets,dimensions,measures,filters";
+
   private static final String PATCH_FIELDS = "relatedMetrics,assets,dimensions,measures,filters";
+
   static final String FIELD_ASSETS = "assets";
 
   public MetricRepository() {
-    super(
-        MetricResource.COLLECTION_PATH,
-        Entity.METRIC,
-        Metric.class,
-        Entity.getCollectionDAO().metricDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
-    supportsSearch = true;
-    renameAllowed = true;
-
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                MetricResource.COLLECTION_PATH,
+                Entity.METRIC,
+                Metric.class,
+                Entity.getCollectionDAO().metricDAO()),
+            new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
+    context().options().setRenameAllowed(true);
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("relatedMetrics", this::fetchAndSetRelatedMetrics);
+    fieldLoading().register("relatedMetrics", this::fetchAndSetRelatedMetrics);
   }
 
   @Override
@@ -131,7 +148,6 @@ public class MetricRepository extends EntityRepository<Metric> {
   private void validateCustomUnitOfMeasurement(Metric metric) {
     MetricUnitOfMeasurement unitOfMeasurement = metric.getUnitOfMeasurement();
     String customUnit = metric.getCustomUnitOfMeasurement();
-
     if (unitOfMeasurement == MetricUnitOfMeasurement.OTHER) {
       if (CommonUtil.nullOrEmpty(customUnit)) {
         throw new IllegalArgumentException(
@@ -154,7 +170,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
-  protected void clearFields(Metric entity, EntityUtil.Fields fields) {
+  public void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
     entity.setAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
   }
@@ -164,7 +180,11 @@ public class MetricRepository extends EntityRepository<Metric> {
    * findTo resolves the to-side (the assets).
    */
   private List<EntityReference> getAssets(Metric metric) {
-    return findTo(metric.getId(), METRIC, Relationship.APPLIED_TO, null);
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(
+                metric.getId(), METRIC, Relationship.APPLIED_TO, null),
+            Include.NON_DELETED);
   }
 
   // Individual field fetchers registered in constructor
@@ -173,26 +193,27 @@ public class MetricRepository extends EntityRepository<Metric> {
       return;
     }
     // Use bulk relationship fetching for related metrics
-    setFieldFromMap(true, metrics, batchFetchRelatedMetrics(metrics), Metric::setRelatedMetrics);
+    EntityBatchFields.assign(
+        true, metrics, batchFetchRelatedMetrics(metrics), Metric::setRelatedMetrics);
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("relatedMetrics", "assets");
   }
 
   @Override
   public void storeEntity(Metric metric, boolean update) {
-    store(metric, update);
+    persistence().store(metric, update);
   }
 
   @Override
   public void storeEntities(List<Metric> entities) {
-    storeMany(entities);
+    persistence().insertMany(entities);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<Metric> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<Metric> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Metric::getId).toList();
     deleteFromMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
@@ -211,17 +232,28 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public void storeRelationships(Metric metric) {
     for (EntityReference relatedMetric : listOrEmpty(metric.getRelatedMetrics())) {
-      addRelationship(
-          metric.getId(), relatedMetric.getId(), METRIC, METRIC, Relationship.RELATED_TO, true);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  metric.getId(), relatedMetric.getId(), METRIC, METRIC, Relationship.RELATED_TO),
+              EntityRelationshipWriter.Value.EMPTY,
+              true);
     }
     for (EntityReference asset : listOrEmpty(metric.getAssets())) {
-      addRelationship(
-          metric.getId(), asset.getId(), METRIC, asset.getType(), Relationship.APPLIED_TO);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  metric.getId(), asset.getId(), METRIC, asset.getType(), Relationship.APPLIED_TO),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   private List<EntityReference> getRelatedMetrics(Metric metric) {
-    return findBoth(metric.getId(), METRIC, Relationship.RELATED_TO, METRIC);
+    return relationships()
+        .both(
+            new EntityRelationshipReader.Selection(
+                metric.getId(), METRIC, Relationship.RELATED_TO, METRIC));
   }
 
   @Override
@@ -235,8 +267,8 @@ public class MetricRepository extends EntityRepository<Metric> {
       throws IOException {
     List<Metric> metrics =
         "*".equals(name)
-            ? listAll(getFields("*"), new ListFilter(NON_DELETED))
-            : List.of(getByName(null, name, getFields("*")));
+            ? collections().all(fieldPolicy().parse("*"), new ListFilter(NON_DELETED))
+            : List.of(getByName(null, name, fieldPolicy().parse("*")));
     return new MetricCsv(user).exportCsv(metrics, callback);
   }
 
@@ -264,9 +296,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
-  public EntityRepository<Metric>.EntityUpdater getUpdater(
-      Metric original, Metric updated, Operation operation, ChangeSource changeSource) {
-    return new MetricRepository.MetricUpdater(original, updated, operation);
+  public EntityUpdater<Metric> getUpdater(
+      Metric original, Metric updated, EntityOperation operation, ChangeSource changeSource) {
+    return new MetricRepository.MetricUpdater(original, updated, operation).mutation();
   }
 
   private void validateRelatedTerms(Metric metric, List<EntityReference> relatedMetrics) {
@@ -283,7 +315,9 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   public static class MetricCsv extends EntityCsv<Metric> {
+
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(METRIC, false);
+
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
 
     MetricCsv(String user) {
@@ -296,7 +330,6 @@ public class MetricRepository extends EntityRepository<Metric> {
       if (csvRecord == null) {
         return;
       }
-
       Metric metric =
           new Metric()
               .withName(csvRecord.get(0))
@@ -322,7 +355,6 @@ public class MetricRepository extends EntityRepository<Metric> {
               .withDataProducts(getEntityReferences(printer, csvRecord, 16, Entity.DATA_PRODUCT))
               .withEntityStatus(getEntityStatus(printer, csvRecord, 17))
               .withExtension(getExtension(printer, csvRecord, 18));
-
       if (processRecord) {
         createEntity(printer, csvRecord, metric);
       }
@@ -332,7 +364,6 @@ public class MetricRepository extends EntityRepository<Metric> {
     protected void addRecord(CsvFile csvFile, Metric entity) {
       List<String> recordList = new ArrayList<>();
       MetricExpression expression = entity.getMetricExpression();
-
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
@@ -465,79 +496,106 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
   }
 
-  public class MetricUpdater extends EntityUpdater {
+  public class MetricUpdater implements EntitySpecificMutation<Metric> {
 
-    public MetricUpdater(Metric original, Metric updated, Operation operation) {
-      super(original, updated, operation);
+    public MetricUpdater(Metric original, Metric updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
+    public void reviewers(EntityUpdater<Metric> entityUpdate) {
+      EntitySpecificMutation.super.reviewers(entityUpdate);
+      if (entityUpdate.getOriginal().getReviewers() != null
+          && entityUpdate.getUpdated().getReviewers() != null
+          && !entityUpdate
+              .getOriginal()
+              .getReviewers()
+              .equals(entityUpdate.getUpdated().getReviewers())) {
+        updateTaskWithNewReviewers(entityUpdate.getUpdated());
       }
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<Metric> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "granularity",
-          () -> recordChange("granularity", original.getGranularity(), updated.getGranularity()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "granularity",
+                  entityUpdate.getOriginal().getGranularity(),
+                  entityUpdate.getUpdated().getGranularity()));
+      entityUpdate.compareAndUpdate(
           "metricType",
-          () -> recordChange("metricType", original.getMetricType(), updated.getMetricType()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "metricType",
+                  entityUpdate.getOriginal().getMetricType(),
+                  entityUpdate.getUpdated().getMetricType()));
+      entityUpdate.compareAndUpdate(
           "unitOfMeasurement",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "unitOfMeasurement",
-                  original.getUnitOfMeasurement(),
-                  updated.getUnitOfMeasurement()));
-      compareAndUpdate(
+                  entityUpdate.getOriginal().getUnitOfMeasurement(),
+                  entityUpdate.getUpdated().getUnitOfMeasurement()));
+      entityUpdate.compareAndUpdate(
           "customUnitOfMeasurement",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "customUnitOfMeasurement",
-                  original.getCustomUnitOfMeasurement(),
-                  updated.getCustomUnitOfMeasurement()));
-      compareAndUpdate(
+                  entityUpdate.getOriginal().getCustomUnitOfMeasurement(),
+                  entityUpdate.getUpdated().getCustomUnitOfMeasurement()));
+      entityUpdate.compareAndUpdate(
           "metricExpression",
           () -> {
-            if (updated.getMetricExpression() != null) {
-              recordChange(
+            if (entityUpdate.getUpdated().getMetricExpression() != null) {
+              entityUpdate.recordChange(
                   "metricExpression",
-                  original.getMetricExpression(),
-                  updated.getMetricExpression());
+                  entityUpdate.getOriginal().getMetricExpression(),
+                  entityUpdate.getUpdated().getMetricExpression());
             }
           });
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "dimensions",
-          () -> recordChange("dimensions", original.getDimensions(), updated.getDimensions()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "dimensions",
+                  entityUpdate.getOriginal().getDimensions(),
+                  entityUpdate.getUpdated().getDimensions()));
+      entityUpdate.compareAndUpdate(
           "measures",
-          () -> recordChange("measures", original.getMeasures(), updated.getMeasures()));
-      compareAndUpdate(
-          "filters", () -> recordChange("filters", original.getFilters(), updated.getFilters()));
-      compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
-      compareAndUpdate(FIELD_ASSETS, () -> updateAssets(original, updated));
+          () ->
+              entityUpdate.recordChange(
+                  "measures",
+                  entityUpdate.getOriginal().getMeasures(),
+                  entityUpdate.getUpdated().getMeasures()));
+      entityUpdate.compareAndUpdate(
+          "filters",
+          () ->
+              entityUpdate.recordChange(
+                  "filters",
+                  entityUpdate.getOriginal().getFilters(),
+                  entityUpdate.getUpdated().getFilters()));
+      entityUpdate.compareAndUpdate(
+          "relatedMetrics",
+          () -> updateRelatedMetrics(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          FIELD_ASSETS, () -> updateAssets(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
       List<EntityReference> originalRelatedMetrics = listOrEmpty(original.getRelatedMetrics());
       List<EntityReference> updatedRelatedMetrics = listOrEmpty(updated.getRelatedMetrics());
       validateRelatedTerms(updated, updatedRelatedMetrics);
-      updateToRelationships(
-          "relatedMetrics",
-          METRIC,
-          original.getId(),
-          Relationship.RELATED_TO,
-          METRIC,
-          originalRelatedMetrics,
-          updatedRelatedMetrics,
+      entityUpdate.updateToRelationships(
+          new EntityRelationshipUpdates.Target(
+              "relatedMetrics", original.getId(), METRIC, METRIC, Relationship.RELATED_TO),
+          new EntityRelationshipUpdates.References(originalRelatedMetrics, updatedRelatedMetrics),
           true);
     }
 
@@ -554,19 +612,18 @@ public class MetricRepository extends EntityRepository<Metric> {
       originalAssets.forEach(asset -> assetTypes.add(asset.getType()));
       updatedAssets.forEach(asset -> assetTypes.add(asset.getType()));
       for (String assetType : assetTypes) {
-        updateToRelationships(
-            FIELD_ASSETS,
-            METRIC,
-            original.getId(),
-            Relationship.APPLIED_TO,
-            assetType,
-            ofType(originalAssets, assetType),
-            ofType(updatedAssets, assetType),
+        entityUpdate.updateToRelationships(
+            new EntityRelationshipUpdates.Target(
+                FIELD_ASSETS, original.getId(), METRIC, assetType, Relationship.APPLIED_TO),
+            new EntityRelationshipUpdates.References(
+                ofType(originalAssets, assetType), ofType(updatedAssets, assetType)),
             false);
       }
     }
 
-    /** References with a null/blank type (bad or legacy data) cannot be diffed; skip them. */
+    /**
+     * References with a null/blank type (bad or legacy data) cannot be diffed; skip them.
+     */
     private List<EntityReference> typedAssets(List<EntityReference> refs) {
       List<EntityReference> valid = new ArrayList<>();
       for (EntityReference ref : listOrEmpty(refs)) {
@@ -577,7 +634,9 @@ public class MetricRepository extends EntityRepository<Metric> {
       return valid;
     }
 
-    /** Mutable on purpose: updateToRelationships sorts the lists it receives. */
+    /**
+     * Mutable on purpose: updateToRelationships sorts the lists it receives.
+     */
     private List<EntityReference> ofType(List<EntityReference> refs, String assetType) {
       List<EntityReference> matching = new ArrayList<>();
       for (EntityReference ref : refs) {
@@ -587,11 +646,17 @@ public class MetricRepository extends EntityRepository<Metric> {
       }
       return matching;
     }
+
+    private final EntityUpdater<Metric> entityUpdate;
+
+    public EntityUpdater<Metric> mutation() {
+      return entityUpdate;
+    }
   }
 
   public List<String> getDistinctCustomUnitsOfMeasurement() {
     // Execute efficient database query to get distinct custom units
-    return daoCollection.metricDAO().getDistinctCustomUnitsOfMeasurement();
+    return context().dependencies().daos().metricDAO().getDistinctCustomUnitsOfMeasurement();
   }
 
   private Map<UUID, List<EntityReference>> batchFetchRelatedMetrics(List<Metric> metrics) {
@@ -599,19 +664,18 @@ public class MetricRepository extends EntityRepository<Metric> {
     if (metrics == null || metrics.isEmpty()) {
       return relatedMetricsMap;
     }
-
     // Initialize empty lists for all metrics
     for (Metric metric : metrics) {
       relatedMetricsMap.put(metric.getId(), new ArrayList<>());
     }
-
     // For bidirectional relationships, we need to fetch both directions
     // First, get relationships where these metrics are the source
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(entityListToStrings(metrics), Relationship.RELATED_TO.ordinal(), METRIC);
-
     // Group related metrics by source metric ID
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID metricId = UUID.fromString(record.getFromId());
@@ -619,13 +683,13 @@ public class MetricRepository extends EntityRepository<Metric> {
           Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getToId()), NON_DELETED);
       relatedMetricsMap.get(metricId).add(relatedMetricRef);
     }
-
     // Second, get relationships where these metrics are the target (bidirectional)
     List<CollectionDAO.EntityRelationshipObject> reverseRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityListToStrings(metrics), Relationship.RELATED_TO.ordinal());
-
     // Group related metrics by target metric ID
     for (CollectionDAO.EntityRelationshipObject record : reverseRecords) {
       UUID metricId = UUID.fromString(record.getToId());
@@ -633,13 +697,12 @@ public class MetricRepository extends EntityRepository<Metric> {
           Entity.getEntityReferenceById(METRIC, UUID.fromString(record.getFromId()), NON_DELETED);
       relatedMetricsMap.get(metricId).add(relatedMetricRef);
     }
-
     return relatedMetricsMap;
   }
 
   @Override
   public void postUpdate(Metric original, Metric updated) {
-    super.postUpdate(original, updated);
+    EntityPolicy.super.postUpdate(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {
         closeApprovalTask(updated, "Approved the metric");
@@ -647,7 +710,6 @@ public class MetricRepository extends EntityRepository<Metric> {
         closeApprovalTask(updated, "Rejected the metric");
       }
     }
-
     // Handle case where task goes from DRAFT to IN_REVIEW to DRAFT quickly
     // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT,
     // but there will be a task created. This handles that case scenario.
@@ -662,7 +724,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
-  protected void preDelete(Metric entity, String deletedBy) {
+  public void preDelete(Metric entity, String deletedBy) {
     if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }
@@ -714,5 +776,12 @@ public class MetricRepository extends EntityRepository<Metric> {
         metric.getFullyQualifiedName(),
         new ArrayList<>(metric.getReviewers()),
         metric.getUpdatedBy());
+  }
+
+  private final EntityPolicyContext<Metric> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Metric> context() {
+    return entityContext;
   }
 }

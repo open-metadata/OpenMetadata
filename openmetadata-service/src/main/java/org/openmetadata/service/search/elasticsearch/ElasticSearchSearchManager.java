@@ -1869,7 +1869,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", fqn);
     List<Table> tables =
-        repository.listAll(repository.getFields("tableConstraints, displayName, owners"), filter);
+        repository
+            .collections()
+            .all(repository.fieldPolicy().parse("tableConstraints, displayName, owners"), filter);
     for (Table table : tables) {
       getEntityRelationship(
           table.getFullyQualifiedName(),

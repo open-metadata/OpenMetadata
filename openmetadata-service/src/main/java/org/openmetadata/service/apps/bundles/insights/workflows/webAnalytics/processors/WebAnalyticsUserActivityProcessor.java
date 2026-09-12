@@ -20,9 +20,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.workflows.interfaces.Processor;
 
 @Slf4j
@@ -81,7 +83,14 @@ public class WebAnalyticsUserActivityProcessor
         User userDetails =
             (User)
                 Entity.getEntityRepository(Entity.USER)
-                    .get(null, userId, new EntityUtil.Fields(Set.of("teams")), Include.ALL, false);
+                    .reads()
+                    .byId(
+                        userId,
+                        new EntityReadService.Query(
+                            null,
+                            new EntityUtil.Fields(Set.of("teams")),
+                            RelationIncludes.fromInclude(Include.ALL),
+                            false));
 
         Map<UUID, List<Long>> sessions = new HashMap<>();
         sessions.put(sessionId, List.of(timestamp));

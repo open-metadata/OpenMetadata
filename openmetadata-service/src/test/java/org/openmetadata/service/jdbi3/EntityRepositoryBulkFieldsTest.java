@@ -44,6 +44,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -59,28 +63,44 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 class EntityRepositoryBulkFieldsTest {
 
   private CollectionDAO daoCollection;
+
   private CollectionDAO.EntityRelationshipDAO relationshipDAO;
+
   private CollectionDAO.PipelineDAO pipelineDAO;
 
-  private static class DomainAwarePipelineRepo extends EntityRepository<Pipeline> {
+  @Repository()
+  private static class DomainAwarePipelineRepo implements EntityPolicy<Pipeline> {
+
     DomainAwarePipelineRepo(CollectionDAO.PipelineDAO dao) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "domains", "domains");
+      this.entityContext =
+          new EntityPolicyContext<>(
+              new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
+              new EntityPolicyContext.WriteFields("domains", "domains", Set.of()),
+              EntityModuleDependencies.standard());
+      EntityModuleFactory.initialize(this, true);
     }
 
     @Override
-    protected void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
+    public void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
 
     @Override
-    protected void clearFields(Pipeline entity, Fields fields) {}
+    public void clearFields(Pipeline entity, Fields fields) {}
 
     @Override
-    protected void prepare(Pipeline entity, boolean update) {}
+    public void prepare(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Pipeline entity, boolean update) {}
+    public void storeEntity(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeRelationships(Pipeline entity) {}
+    public void storeRelationships(Pipeline entity) {}
+
+    private final EntityPolicyContext<Pipeline> entityContext;
+
+    @Override
+    public final EntityPolicyContext<Pipeline> context() {
+      return entityContext;
+    }
   }
 
   @BeforeEach
@@ -100,11 +120,9 @@ class EntityRepositoryBulkFieldsTest {
   @Test
   void resolveRelationshipEntityReferencesByType_skipsUnregisteredEntityType() {
     DomainAwarePipelineRepo repo = new DomainAwarePipelineRepo(pipelineDAO);
-
     UUID pipelineId = UUID.randomUUID();
     Pipeline entity =
         new Pipeline().withId(pipelineId).withName("p").withFullyQualifiedName("svc.p");
-
     UUID domainId = UUID.randomUUID();
     EntityRelationshipObject domainRecord =
         EntityRelationshipObject.builder()
@@ -122,29 +140,23 @@ class EntityRepositoryBulkFieldsTest {
             .toEntity(Entity.PIPELINE)
             .relation(Relationship.HAS.ordinal())
             .build();
-
     when(relationshipDAO.findFromBatchWithRelations(
             anyList(), eq(Entity.PIPELINE), anyList(), eq(Include.ALL)))
         .thenReturn(List.of(domainRecord, columnRecord));
-
     EntityReference domainRef =
         new EntityReference().withId(domainId).withType(Entity.DOMAIN).withName("sales");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(() -> Entity.hasEntityRepository(Entity.DOMAIN)).thenReturn(true);
       entityMock.when(() -> Entity.hasEntityRepository(Entity.TABLE_COLUMN)).thenReturn(false);
       entityMock
           .when(() -> Entity.getEntityReferencesByIds(eq(Entity.DOMAIN), anyList(), any()))
           .thenReturn(List.of(domainRef));
-
       assertDoesNotThrow(
           () -> repo.setFieldsInBulk(new Fields(Set.of(Entity.FIELD_DOMAINS)), List.of(entity)));
-
       entityMock.verify(
           () -> Entity.getEntityReferencesByIds(eq(Entity.TABLE_COLUMN), anyList(), any()),
           never());
     }
-
     assertNotNull(entity.getDomains());
     assertEquals(1, entity.getDomains().size());
     assertEquals(domainId, entity.getDomains().get(0).getId());
@@ -159,10 +171,8 @@ class EntityRepositoryBulkFieldsTest {
         .thenReturn(
             List.of(
                 CollectionDAO.EntityRelationshipCount.builder().id(f0.getId()).count(3).build()));
-
     newFolderRepository()
         .setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(f0, f1)));
-
     verify(relationshipDAO, times(1))
         .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
     verify(relationshipDAO, never())
@@ -177,10 +187,8 @@ class EntityRepositoryBulkFieldsTest {
     when(relationshipDAO.countNonDeletedChildFilesBatch(
             anyList(), anyString(), anyInt(), anyString()))
         .thenReturn(List.of());
-
     newFolderRepository()
         .setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(f0)));
-
     verify(relationshipDAO)
         .countNonDeletedChildFilesBatch(
             anyList(),
@@ -192,7 +200,6 @@ class EntityRepositoryBulkFieldsTest {
   @Test
   void folderChildrenCount_forEmptyPage_issuesNoQuery() {
     newFolderRepository().setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>());
-
     verify(relationshipDAO, never())
         .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
   }
@@ -200,9 +207,7 @@ class EntityRepositoryBulkFieldsTest {
   @Test
   void folderChildrenCount_notRequested_issuesNoQueryAndClearsField() {
     Folder f0 = folder("drive.f0");
-
     newFolderRepository().setFieldsInBulk(new Fields(Set.of()), new ArrayList<>(List.of(f0)));
-
     verify(relationshipDAO, never())
         .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
     assertNull(f0.getChildrenCount());

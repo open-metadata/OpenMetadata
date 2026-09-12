@@ -144,9 +144,11 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityCollectionReader;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -176,6 +178,7 @@ import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -219,6 +222,7 @@ public class SearchRepository {
    */
   public record DeferredSearchWrite(
       Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+
     public void run() {
       esWrite.run();
     }
@@ -226,6 +230,7 @@ public class SearchRepository {
 
   public record ScriptedPartialUpdate(
       String script, Map<String, Object> parameters, boolean scriptedUpsert) {
+
     public ScriptedPartialUpdate(String script, Map<String, Object> parameters) {
       this(script, parameters, false);
     }
@@ -239,7 +244,6 @@ public class SearchRepository {
       if (!scriptedUpsert || parameters.values().stream().noneMatch(Objects::isNull)) {
         return parameters;
       }
-
       Map<String, Object> normalizedParameters = new LinkedHashMap<>();
       Set<String> fieldsToRemove = new TreeSet<>();
       Object configuredRemovals = parameters.get("fieldsToRemove");
@@ -278,28 +282,28 @@ public class SearchRepository {
       String relationshipField, String revisionField) {
     String replacementScript =
         """
-        if (ctx._source.%2$s == null || params.%2$s >= ctx._source.%2$s) {
-          ctx._source.%1$s = params.%1$s;
-          ctx._source.%2$s = params.%2$s;
-        }
-        """
+            if (ctx._source.%2$s == null || params.%2$s >= ctx._source.%2$s) {
+              ctx._source.%1$s = params.%1$s;
+              ctx._source.%2$s = params.%2$s;
+            }
+            """
             .formatted(relationshipField, revisionField);
     String documentUpdateScript =
         """
-        def preserveRelationship = ctx._source.containsKey('%1$s') || ctx._source.containsKey('%2$s');
-        for (k in params.keySet()) {
-          if (k != 'fieldsToRemove' && (!preserveRelationship || (k != '%1$s' && k != '%2$s'))) {
-            ctx._source.put(k, params.get(k));
-          }
-        }
-        if (params.containsKey('fieldsToRemove')) {
-          for (field in params.fieldsToRemove) {
-            if (!preserveRelationship || (field != '%1$s' && field != '%2$s')) {
-              ctx._source.remove(field);
+            def preserveRelationship = ctx._source.containsKey('%1$s') || ctx._source.containsKey('%2$s');
+            for (k in params.keySet()) {
+              if (k != 'fieldsToRemove' && (!preserveRelationship || (k != '%1$s' && k != '%2$s'))) {
+                ctx._source.put(k, params.get(k));
+              }
             }
-          }
-        }
-        """
+            if (params.containsKey('fieldsToRemove')) {
+              for (field in params.fieldsToRemove) {
+                if (!preserveRelationship || (field != '%1$s' && field != '%2$s')) {
+                  ctx._source.remove(field);
+                }
+              }
+            }
+            """
             .formatted(relationshipField, revisionField);
     return new RelationshipRevisionSpec(
         relationshipField, revisionField, replacementScript, documentUpdateScript);
@@ -361,7 +365,9 @@ public class SearchRepository {
     return deferred == null ? 0 : deferred.size();
   }
 
-  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  /**
+   * Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly.
+   */
   public static void rollbackSearchWriteToCheckpoint(int checkpoint) {
     List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
     if (deferred != null) {
@@ -371,19 +377,25 @@ public class SearchRepository {
     }
   }
 
-  /** Return the closures captured since {@link #beginSearchWriteDeferral} and close the scope. */
+  /**
+   * Return the closures captured since {@link #beginSearchWriteDeferral} and close the scope.
+   */
   public static List<DeferredSearchWrite> drainSearchWriteDeferred() {
     List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
     DEFERRED_SEARCH_WRITES.remove();
     return deferred == null ? List.of() : deferred;
   }
 
-  /** Discard captured closures and close the scope without running them (failed transaction). */
+  /**
+   * Discard captured closures and close the scope without running them (failed transaction).
+   */
   public static void clearSearchWriteDeferred() {
     DEFERRED_SEARCH_WRITES.remove();
   }
 
-  /** {@code true} while a flush has opened a search-write deferral scope on the current thread. */
+  /**
+   * {@code true} while a flush has opened a search-write deferral scope on the current thread.
+   */
   public static boolean isSearchWriteDeferralActive() {
     return DEFERRED_SEARCH_WRITES.get() != null;
   }
@@ -413,7 +425,7 @@ public class SearchRepository {
   /**
    * Static variant of {@link #deferIfFlushScopeActive} for call sites that have no {@code
    * SearchRepository} instance in scope (e.g. the static {@code
-   * EntityRepository.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
+   * EntityCaches.targets().tagged} ES-search loop). The {@code entityId}/{@code
    * entityFqn} locator drives durable retry on a failed post-commit drain.
    */
   public static void deferOrRunSearchWrite(
@@ -427,6 +439,7 @@ public class SearchRepository {
   }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
+
   private Map<String, IndexMapping> aliasIndexMap;
 
   /**
@@ -480,14 +493,19 @@ public class SearchRepository {
           "pipelineStatus");
 
   private static final String TESTS = "tests";
+
   private static final String TEST_SUITES_REVISION = "testSuitesRevision";
+
   private static final String TESTS_REVISION = "testsRevision";
+
   private static final RelationshipRevisionSpec TEST_CASE_RELATIONSHIP_REVISION =
       relationshipRevisionSpec(TEST_SUITES, TEST_SUITES_REVISION);
+
   private static final RelationshipRevisionSpec TEST_SUITE_RELATIONSHIP_REVISION =
       relationshipRevisionSpec(TESTS, TESTS_REVISION);
 
   @Getter private final ElasticSearchConfiguration searchConfiguration;
+
   @Getter private final int maxDBConnections;
 
   @Getter private final String clusterAlias;
@@ -506,9 +524,13 @@ public class SearchRepository {
   protected NLQService nlqService;
 
   @Getter private EmbeddingClient embeddingClient;
+
   @Getter private VectorIndexService vectorIndexService;
+
   @Getter private VectorEmbeddingHandler vectorEmbeddingHandler;
+
   @Getter private volatile String vectorServiceInitError;
+
   private volatile boolean vectorServiceInitialized = false;
 
   public SearchRepository(ElasticSearchConfiguration config, int maxDBConnections) {
@@ -579,10 +601,8 @@ public class SearchRepository {
 
   public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
     SearchClient sc;
-
     // Initialize NLQ service first
     initializeNLQService(config);
-
     if (config != null
         && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       sc = new OpenSearchClient(config, nlqService);
@@ -614,7 +634,6 @@ public class SearchRepository {
           Set<String> existingAliases = context.getExistingAliases(entityType);
           Set<String> parentAliases =
               new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
-
           EntityReindexContext entityReindexContext =
               EntityReindexContext.builder()
                   .entityType(entityType)
@@ -761,7 +780,6 @@ public class SearchRepository {
       }
       LOG.info("Index template drift detected in the search cluster; rebuilding templates");
     }
-
     LOG.info("Creating/updating index templates for all entities...");
     int success = 0;
     int failed = buildResult.failures();
@@ -881,17 +899,14 @@ public class SearchRepository {
     if (vectorServiceInitialized) {
       return;
     }
-
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     if (!isVectorEmbeddingEnabled()) {
       LOG.info("Vector embedding is not enabled, skipping initialization");
       return;
     }
-
     LLMConfiguration llmConfig = LlmConfigHolder.get();
     try {
       this.embeddingClient = createEmbeddingClient(llmConfig);
-
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
             ((OpenSearchClient) getSearchClient()).getNewClient();
@@ -903,14 +918,10 @@ public class SearchRepository {
         ElasticSearchVectorService.init(esClient, embeddingClient, knnMultiplier);
         this.vectorIndexService = ElasticSearchVectorService.getInstance();
       }
-
       this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
-
       vectorServiceInitialized = true;
       this.vectorServiceInitError = null;
-
       ensureHybridSearchPipeline();
-
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
           resolveEmbeddingProvider(llmConfig),
@@ -940,13 +951,11 @@ public class SearchRepository {
     if (!(vectorIndexService instanceof OpenSearchVectorService)) {
       return;
     }
-
     ElasticSearchConfiguration cfg = getSearchConfiguration();
     NaturalLanguageSearchConfiguration nlConfig = cfg.getNaturalLanguageSearch();
     double keywordWeight = nlConfig.getKeywordWeight() != null ? nlConfig.getKeywordWeight() : 0.6;
     double semanticWeight =
         nlConfig.getSemanticWeight() != null ? nlConfig.getSemanticWeight() : 0.4;
-
     try {
       SearchSettings ss =
           SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
@@ -961,7 +970,6 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.warn("Failed to load hybrid weights from Settings, using config defaults", e);
     }
-
     updateHybridSearchPipeline(keywordWeight, semanticWeight);
   }
 
@@ -1009,7 +1017,9 @@ public class SearchRepository {
         stagedIndex);
   }
 
-  /** Clear the staged-index routing for {@code entityType} if it matches {@code stagedIndex}. */
+  /**
+   * Clear the staged-index routing for {@code entityType} if it matches {@code stagedIndex}.
+   */
   public void unregisterStagedIndex(String entityType, String stagedIndex) {
     if (entityType == null || stagedIndex == null) {
       return;
@@ -1222,7 +1232,6 @@ public class SearchRepository {
           searchClient.removeAliases(target, Set.of(indexName));
           searchClient.deleteIndex(target);
         }
-
         String indexMappingContent = readIndexMapping(indexMapping);
         searchClient.createIndex(indexMapping, indexMappingContent);
         searchClient.createAliases(indexMapping);
@@ -1316,18 +1325,15 @@ public class SearchRepository {
       LOG.warn("Entity is null, cannot create index.");
       return;
     }
-
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
       return;
     }
-
     if (!Entity.isSearchIndexable(entity)) {
       deleteEntityIndex(entity);
       return;
     }
-
     String entityId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
@@ -1340,7 +1346,6 @@ public class SearchRepository {
       SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
       String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
       searchClient.createEntity(getWriteIndexName(indexMapping), entityId, doc);
-
       if (Entity.TABLE.equals(entityType)) {
         indexTableColumns((Table) entity);
       }
@@ -1364,16 +1369,13 @@ public class SearchRepository {
     if (table.getColumns() == null || table.getColumns().isEmpty()) {
       return;
     }
-
     IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
     if (columnIndexMapping == null) {
       LOG.debug("Column index mapping not found, skipping column indexing");
       return;
     }
-
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
     List<Map<String, String>> docs = new ArrayList<>();
-
     for (Column column : flattenedColumns) {
       try {
         ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
@@ -1388,7 +1390,6 @@ public class SearchRepository {
             e.getMessage());
       }
     }
-
     if (!docs.isEmpty()) {
       try {
         searchClient.createEntities(getWriteIndexName(columnIndexMapping), docs);
@@ -1410,7 +1411,6 @@ public class SearchRepository {
     if (columnIndexMapping == null) {
       return;
     }
-
     try {
       searchClient.deleteEntityByFields(
           List.of(getWriteIndexName(columnIndexMapping)),
@@ -1473,7 +1473,6 @@ public class SearchRepository {
   private void syncTableColumns(Table table, ChangeDescription changeDescription) {
     // Check if columns were actually modified
     boolean columnsChanged = hasColumnsChanged(changeDescription);
-
     if (columnsChanged) {
       // Columns were added/removed/modified - do full reindex
       deleteTableColumns(table);
@@ -1486,9 +1485,9 @@ public class SearchRepository {
 
   private boolean hasColumnsChanged(ChangeDescription changeDescription) {
     if (changeDescription == null) {
-      return true; // Default to full reindex if no change description
+      // Default to full reindex if no change description
+      return true;
     }
-
     return listOrEmpty(changeDescription.getFieldsAdded()).stream()
             .anyMatch(field -> field.getName().startsWith(Entity.FIELD_COLUMNS))
         || listOrEmpty(changeDescription.getFieldsUpdated()).stream()
@@ -1502,11 +1501,9 @@ public class SearchRepository {
     if (columnIndexMapping == null) {
       return;
     }
-
     try {
       // Build the inherited fields update map
       Map<String, Object> inheritedFields = new HashMap<>();
-
       // Update table reference fields
       Map<String, Object> tableRef = new HashMap<>();
       tableRef.put("id", table.getId().toString());
@@ -1521,13 +1518,11 @@ public class SearchRepository {
       tableRef.put("deleted", table.getDeleted());
       tableRef.put("type", Entity.TABLE);
       inheritedFields.put("table", tableRef);
-
       // Update inherited fields from table
       inheritedFields.put("deleted", table.getDeleted() != null && table.getDeleted());
       inheritedFields.put("updatedAt", table.getUpdatedAt());
       inheritedFields.put("updatedBy", table.getUpdatedBy());
       inheritedFields.put("version", table.getVersion());
-
       if (table.getService() != null) {
         inheritedFields.put("service", SearchIndexUtils.toEntityRefMap(table.getService()));
       }
@@ -1550,19 +1545,16 @@ public class SearchRepository {
       if (table.getFollowers() != null) {
         inheritedFields.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
       }
-
       int totalVotes =
           nullOrEmpty(table.getVotes())
               ? 0
               : Math.max(table.getVotes().getUpVotes() - table.getVotes().getDownVotes(), 0);
       inheritedFields.put("totalVotes", totalVotes);
-
       // Use updateChildren to efficiently update all columns for this table
       searchClient.updateChildren(
           List.of(getWriteIndexName(columnIndexMapping)),
           new ImmutablePair<>("table.id", table.getId().toString()),
           new ImmutablePair<>(DEFAULT_UPDATE_SCRIPT, inheritedFields));
-
       LOG.debug(
           "Efficiently updated inherited fields for columns of table [{}]",
           table.getFullyQualifiedName());
@@ -1654,13 +1646,10 @@ public class SearchRepository {
                 ie);
           }
         }
-
         if (docs.isEmpty()) {
           return;
         }
-
         searchClient.createEntities(getWriteIndexName(indexMapping), docs);
-
         if (Entity.TABLE.equals(entityType)) {
           indexColumnsForTables(entities);
         }
@@ -1677,16 +1666,13 @@ public class SearchRepository {
     if (columnIndexMapping == null) {
       return;
     }
-
     String indexName = getWriteIndexName(columnIndexMapping);
     List<Map<String, String>> allColumnDocs = new ArrayList<>();
-
     for (EntityInterface entity : entities) {
       Table table = (Table) entity;
       if (table.getColumns() == null || table.getColumns().isEmpty()) {
         continue;
       }
-
       List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
       for (Column column : flattenedColumns) {
         try {
@@ -1694,7 +1680,6 @@ public class SearchRepository {
           String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
           String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));
-
           if (allColumnDocs.size() >= COLUMN_BATCH_SIZE) {
             searchClient.createEntities(indexName, allColumnDocs);
             allColumnDocs.clear();
@@ -1708,7 +1693,6 @@ public class SearchRepository {
         }
       }
     }
-
     if (!allColumnDocs.isEmpty()) {
       try {
         searchClient.createEntities(indexName, allColumnDocs);
@@ -1828,36 +1812,29 @@ public class SearchRepository {
     if (deferEntityIndex(entity, relationshipRevision)) {
       return;
     }
-
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
       return;
     }
-
     if (!Entity.isSearchIndexable(entity)) {
       deleteEntityIndex(entity);
       return;
     }
-
     String entityType = entity.getEntityReference().getType();
     String entityId = entity.getId().toString();
     if (shouldSkipStreamingIndexing(
         entityType, entityId, entity.getFullyQualifiedName(), "updateEntityIndex")) {
       return;
     }
-
     // Start timing search operation
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
     long startTime = System.currentTimeMillis();
-
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       String scriptTxt = DEFAULT_UPDATE_SCRIPT;
       Map<String, Object> doc = new HashMap<>();
-
       ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
-
       if (relationshipRevision != null) {
         RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
         if (revisionSpec == null) {
@@ -1906,9 +1883,7 @@ public class SearchRepository {
           }
         }
       }
-
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
-
       if (Entity.TABLE.equals(entityType)) {
         try {
           syncTableColumns((Table) entity, changeDescription);
@@ -1919,9 +1894,7 @@ public class SearchRepository {
               e);
         }
       }
-
       long updateTime = System.currentTimeMillis() - startTime;
-
       // Only propagate if fields that affect children have changed
       long propagateTime = 0;
       if (requiresPropagation(changeDescription, entityType, entity)) {
@@ -1929,7 +1902,6 @@ public class SearchRepository {
         startTime = System.currentTimeMillis();
         propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
         propagateTime = System.currentTimeMillis() - startTime;
-
         LOG.info(
             "Search index update with propagation - entity: {}, type: {}, update: {}ms, propagate: {}ms, total: {}ms",
             entityId,
@@ -1944,12 +1916,10 @@ public class SearchRepository {
             entityType,
             updateTime);
       }
-
       // Record search index metrics
       Tags tags = Tags.of("entity_type", entityType, "operation", "update");
       Metrics.timer("search.index.update", tags)
           .record(updateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
-
       if (propagateTime > 0) {
         Metrics.timer("search.index.propagate", tags)
             .record(propagateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
@@ -2010,7 +1980,7 @@ public class SearchRepository {
             entityReference.getType()))) {
       return;
     }
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
     // Fetch only the fields this entity's search index needs, never "*". For container
     // entities (database/schema) "*" hydrates every child — tens of thousands of tables on
     // large catalogs — and can OOM the server on a single live update. The required-field
@@ -2019,8 +1989,15 @@ public class SearchRepository {
     String fields =
         String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface entity =
-        entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+        entityRepository
+            .reads()
+            .byId(
+                entityReference.getId(),
+                new EntityReadService.Query(
+                    null,
+                    entityRepository.fieldPolicy().supported(fields),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
@@ -2045,12 +2022,19 @@ public class SearchRepository {
             entityReference.getType()))) {
       return;
     }
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
     String fields =
         String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface entity =
-        entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+        entityRepository
+            .reads()
+            .byId(
+                entityReference.getId(),
+                new EntityReadService.Query(
+                    null,
+                    entityRepository.fieldPolicy().supported(fields),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
     propagateInheritedDomainsForType(
@@ -2086,19 +2070,22 @@ public class SearchRepository {
           .computeIfAbsent(reference.getType(), ignored -> new ArrayList<>())
           .add(reference.getId());
     }
-
     for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
-      final EntityRepository<?> entityRepository = Entity.getEntityRepository(entry.getKey());
+      final EntityPolicy<?> entityRepository = Entity.getEntityRepository(entry.getKey());
       final String fieldNames =
           String.join(",", searchIndexFactory.getReindexFieldsFor(entry.getKey()));
-      final EntityUtil.Fields fields = entityRepository.getOnlySupportedFields(fieldNames);
+      final EntityUtil.Fields fields = entityRepository.fieldPolicy().supported(fieldNames);
       final List<UUID> ids = entry.getValue();
       for (int start = 0; start < ids.size(); start += REFERENCE_REINDEX_BATCH_SIZE) {
         final List<UUID> chunk =
             List.copyOf(
                 ids.subList(start, Math.min(start + REFERENCE_REINDEX_BATCH_SIZE, ids.size())));
         final List<? extends EntityInterface> entities =
-            entityRepository.get(null, chunk, fields, Include.NON_DELETED);
+            entityRepository
+                .collections()
+                .byIds(
+                    chunk,
+                    new EntityCollectionReader.Projection(null, fields, Include.NON_DELETED));
         entities.forEach(entity -> entity.setChangeDescription(null));
         if (!entities.isEmpty()) {
           updateEntitiesIndex(entities);
@@ -2131,12 +2118,10 @@ public class SearchRepository {
     if (entities == null || entities.isEmpty()) {
       return;
     }
-
     Map<UUID, Long> relationshipRevisions =
         suppliedRelationshipRevisions == null
             ? Map.of()
             : Map.copyOf(suppliedRelationshipRevisions);
-
     // Keep only the latest state per (entityType, entityId) within the same bulk call.
     // This avoids repeated writes/propagation for duplicates in a single request.
     Map<String, EntityInterface> dedupedEntities = new LinkedHashMap<>();
@@ -2155,7 +2140,6 @@ public class SearchRepository {
     if (dedupedEntities.isEmpty()) {
       return;
     }
-
     // Group entities by their actual type to ensure each goes to the correct index
     Map<String, List<EntityInterface>> entitiesByType = new HashMap<>();
     for (EntityInterface entity : dedupedEntities.values()) {
@@ -2164,16 +2148,13 @@ public class SearchRepository {
           || !checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
         continue;
       }
-
       String actualType = entity.getEntityReference().getType();
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
-
     int batchSize = 100;
     int maxConcurrentRequests = 5;
     long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
     List<EntityInterface> propagationCandidates = new ArrayList<>();
-
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
@@ -2203,14 +2184,12 @@ public class SearchRepository {
                       EntityInterface::getFullyQualifiedName,
                       Function.identity(),
                       (first, ignored) -> first));
-
       if (!getSearchClient().isClientAvailable()) {
         for (EntityInterface entity : typeEntities) {
           enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
         continue;
       }
-
       BulkSink bulkSink = null;
       boolean bulkWriteAttempted = false;
       boolean bulkWriteReturned = false;
@@ -2251,7 +2230,8 @@ public class SearchRepository {
         bulkWriteAttempted = true;
         bulkSink.write(typeEntities, contextData);
         bulkWriteReturned = true;
-        boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+        // Wait up to 60 seconds for completion
+        boolean completed = bulkSink.flushAndAwait(60);
         StepStats sinkStats = bulkSink.getStats();
         if (!completed
             || recordedBulkFailures.get() > 0
@@ -2316,7 +2296,6 @@ public class SearchRepository {
         }
       }
     }
-
     propagateEntitiesAfterBulkFlush(propagationCandidates);
   }
 
@@ -2365,7 +2344,6 @@ public class SearchRepository {
     int candidates = 0;
     int propagated = 0;
     long startTime = System.currentTimeMillis();
-
     for (EntityInterface entity : entities) {
       if (entity == null || entity.getId() == null || entity.getEntityReference() == null) {
         continue;
@@ -2374,17 +2352,14 @@ public class SearchRepository {
       if (!checkIfIndexingIsSupported(entityType)) {
         continue;
       }
-
       ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
       ChangeDescription changeDescription =
           !isNullOrEmptyChangeDescription(incrementalChangeDescription)
               ? incrementalChangeDescription
               : entity.getChangeDescription();
-
       if (!requiresPropagation(changeDescription, entityType, entity)) {
         continue;
       }
-
       candidates++;
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
@@ -2398,7 +2373,6 @@ public class SearchRepository {
             e);
       }
     }
-
     if (candidates > 0) {
       LOG.info(
           "Bulk propagation phase completed: candidates={}, propagated={}, durationMs={}",
@@ -2519,7 +2493,6 @@ public class SearchRepository {
       return;
     }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-
     if (!getSearchClient().isClientAvailable()) {
       for (UUID assetId : listOrEmpty(assetIds)) {
         SearchIndexRetryQueue.enqueue(
@@ -2580,7 +2553,6 @@ public class SearchRepository {
       return;
     }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
-
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
           null, newFqn, "updateAssetDomainFqnByPrefix: Search client unavailable");
@@ -2636,13 +2608,11 @@ public class SearchRepository {
   private boolean requiresPropagation(
       ChangeDescription changeDescription, String entityType, EntityInterface entity) {
     if (changeDescription == null) return false;
-
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     Set<String> propagatedFields =
         repository.getSearchPropagationDescriptors().stream()
             .map(PropagationDescriptor::fieldName)
             .collect(Collectors.toSet());
-
     return Stream.of(
             changeDescription.getFieldsAdded(),
             changeDescription.getFieldsUpdated(),
@@ -2829,6 +2799,7 @@ public class SearchRepository {
   }
 
   private static final String CERTIFICATION_FIELD = "certification";
+
   private static final String CERTIFICATION_TAG_FQN_FIELD = "certification.tagLabel.tagFQN";
 
   public void propagateCertificationTags(
@@ -2836,7 +2807,6 @@ public class SearchRepository {
     if (changeDescription == null) {
       return;
     }
-
     if (Entity.TAG.equalsIgnoreCase(entityType)) {
       handleTagEntityUpdate((Tag) entity, changeDescription);
     } else {
@@ -2849,7 +2819,6 @@ public class SearchRepository {
     if (allowedClassification == null) return;
     if (!allowedClassification.equals(tagEntity.getClassification().getFullyQualifiedName()))
       return;
-
     String oldFQN = tagEntity.getFullyQualifiedName();
     for (FieldChange field : changeDescription.getFieldsUpdated()) {
       if (FIELD_NAME.equals(field.getName()) && field.getOldValue() != null) {
@@ -2891,7 +2860,6 @@ public class SearchRepository {
     if (!isCertificationUpdated(change)) {
       return;
     }
-
     AssetCertification certification = getCertificationFromEntity(entity);
     updateEntityCertificationInSearch(entity, certification);
     cascadeCertificationToChildren(entity, certification);
@@ -2917,12 +2885,9 @@ public class SearchRepository {
     if (nullOrEmpty(childAliases)) {
       return;
     }
-
     Map<String, Object> params = new HashMap<>();
     params.put("style", style);
-
     Pair<String, String> parentMatch = new ImmutablePair<>(SERVICE_ID, service.getId().toString());
-
     try {
       searchClient.updateChildren(
           childAliases, parentMatch, new ImmutablePair<>(CASCADE_SERVICE_STYLE_SCRIPT, params));
@@ -2957,12 +2922,10 @@ public class SearchRepository {
     if (nullOrEmpty(childAliases)) {
       return;
     }
-
     Map<String, Object> params = new HashMap<>();
-    params.put("certification", certification); // null when cert was removed
-
+    // null when cert was removed
+    params.put("certification", certification);
     Pair<String, String> parentMatch = new ImmutablePair<>("table.id", entity.getId().toString());
-
     try {
       searchClient.updateChildren(
           childAliases, parentMatch, new ImmutablePair<>(CASCADE_CERTIFICATION_SCRIPT, params));
@@ -3000,7 +2963,6 @@ public class SearchRepository {
     IndexMapping indexMapping = entityIndexMap.get(entity.getEntityReference().getType());
     String indexName = getWriteIndexName(indexMapping);
     Map<String, Object> paramMap = new HashMap<>();
-
     if (certification != null && certification.getTagLabel() != null) {
       paramMap.put("name", certification.getTagLabel().getName());
       paramMap.put("description", certification.getTagLabel().getDescription());
@@ -3012,7 +2974,6 @@ public class SearchRepository {
       paramMap.put("tagFQN", null);
       paramMap.put("style", null);
     }
-
     searchClient.updateEntity(
         indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
   }
@@ -3022,9 +2983,7 @@ public class SearchRepository {
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
       EntityInterface entity) {
-
     reindexQueriesForDomainChange(entityType, changeDescription, entity);
-
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
       String indexName = getWriteIndexName(indexMapping);
       for (FieldChange field : changeDescription.getFieldsAdded()) {
@@ -3036,7 +2995,6 @@ public class SearchRepository {
               indexName, oldParentFQN, newParentFQN, FIELD_FULLY_QUALIFIED_NAME);
         }
       }
-
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (field.getName().contains(PARENT)) {
           EntityReference entityReferenceBeforeUpdate =
@@ -3050,7 +3008,6 @@ public class SearchRepository {
               indexName, originalFqn, updatedFqn, FIELD_FULLY_QUALIFIED_NAME);
         }
       }
-
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (field.getName().contains(PARENT)) {
           EntityReference entityReferenceBeforeUpdate =
@@ -3061,7 +3018,6 @@ public class SearchRepository {
           params.put("field", parentFieldPath);
           searchClient.updateEntity(
               indexName, entity.getId().toString(), params, "ctx._source.remove(params.field)");
-
           // Propagate FQN updates to all subchildren
           String originalFqn =
               FullyQualifiedName.add(
@@ -3075,14 +3031,12 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.GLOSSARY)
             || entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)
             || entityType.equalsIgnoreCase(Entity.TAG))) {
-
       // Update the assets associated with the tags/terms in classification/glossary
       Map<String, Object> paramMap = new HashMap<>();
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         String parentFQN = FullyQualifiedName.getParentFQN(entity.getFullyQualifiedName());
         String oldFQN;
         String newFQN;
-
         if (!nullOrEmpty(parentFQN)) {
           oldFQN = FullyQualifiedName.add(parentFQN, field.getOldValue().toString());
           newFQN = FullyQualifiedName.add(parentFQN, field.getNewValue().toString());
@@ -3090,11 +3044,9 @@ public class SearchRepository {
           oldFQN = FullyQualifiedName.quoteName(field.getOldValue().toString());
           newFQN = FullyQualifiedName.quoteName(field.getNewValue().toString());
         }
-
         if (FIELD_NAME.equals(field.getName())) {
           searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
-
         if (field.getName().equalsIgnoreCase(FIELD_DISPLAY_NAME)) {
           Map<String, Object> updates = new HashMap<>();
           updates.put("displayName", field.getNewValue().toString());
@@ -3135,9 +3087,8 @@ public class SearchRepository {
       ChangeDescription changeDescription, EntityInterface entity, String entityType) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
-
     if (changeDescription != null) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      EntityPolicy<?> repo = Entity.getEntityRepository(entityType);
       Map<String, PropagationDescriptor> descriptorMap =
           repo.getSearchPropagationDescriptors().stream()
               .collect(Collectors.toMap(PropagationDescriptor::fieldName, Function.identity()));
@@ -3364,11 +3315,11 @@ public class SearchRepository {
     String cap = capitalizeFirst(fieldName);
     return String.format(
         """
-        if (ctx._source.%s == null || ctx._source.%s.isEmpty() ||
-            (ctx._source.%s.size() > 0 && ctx._source.%s[0] != null && ctx._source.%s[0].inherited == true)) {
-          ctx._source.%s = params.updated%s;
-        }
-        """,
+            if (ctx._source.%s == null || ctx._source.%s.isEmpty() ||
+                (ctx._source.%s.size() > 0 && ctx._source.%s[0] != null && ctx._source.%s[0].inherited == true)) {
+              ctx._source.%s = params.updated%s;
+            }
+            """,
         fieldName, fieldName, fieldName, fieldName, fieldName, fieldName, cap);
   }
 
@@ -3380,87 +3331,87 @@ public class SearchRepository {
     // would append them onto children that carry an explicit value, matching generateAddListScript.
     return String.format(
         """
-        if (ctx._source.%s != null) {
-          ctx._source.%s.removeIf(item -> item.inherited == true);
-          if (ctx._source.%s.isEmpty()) {
-            ctx._source.%s.addAll(params.removed%s);
-          }
-        }
-        """,
+            if (ctx._source.%s != null) {
+              ctx._source.%s.removeIf(item -> item.inherited == true);
+              if (ctx._source.%s.isEmpty()) {
+                ctx._source.%s.addAll(params.removed%s);
+              }
+            }
+            """,
         fieldName, fieldName, fieldName, fieldName, cap);
   }
 
   private String generateAddTagLabelListScript() {
     return """
-        if (ctx._source.tags == null) {
-          ctx._source.tags = [];
-        }
-        if (params.tagAdded != null) {
-          for (def newTag : params.tagAdded) {
-            boolean exists = false;
-            for (def existing : ctx._source.tags) {
-              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
-                exists = true;
-                break;
+            if (ctx._source.tags == null) {
+              ctx._source.tags = [];
+            }
+            if (params.tagAdded != null) {
+              for (def newTag : params.tagAdded) {
+                boolean exists = false;
+                for (def existing : ctx._source.tags) {
+                  if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
+                    exists = true;
+                    break;
+                  }
+                }
+                if (!exists) {
+                  ctx._source.tags.add(newTag);
+                }
               }
             }
-            if (!exists) {
-              ctx._source.tags.add(newTag);
-            }
-          }
-        }
-        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
+            Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+            """
         + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateDeleteTagLabelListScript() {
     return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
+            if (ctx._source.tags != null && params.tagDeleted != null) {
+              for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+                for (int j = 0; j < params.tagDeleted.size(); j++) {
+                  if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                    ctx._source.tags.remove(i);
+                    break;
+                  }
+                }
               }
             }
-          }
-        }
-        """
+            """
         + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
   private String generateUpdateTagLabelListScript() {
     return """
-        if (ctx._source.tags != null && params.tagDeleted != null) {
-          for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
-            for (int j = 0; j < params.tagDeleted.size(); j++) {
-              if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
-                ctx._source.tags.remove(i);
-                break;
+            if (ctx._source.tags != null && params.tagDeleted != null) {
+              for (int i = ctx._source.tags.size() - 1; i >= 0; i--) {
+                for (int j = 0; j < params.tagDeleted.size(); j++) {
+                  if (ctx._source.tags[i].tagFQN.equalsIgnoreCase(params.tagDeleted[j].tagFQN)) {
+                    ctx._source.tags.remove(i);
+                    break;
+                  }
+                }
               }
             }
-          }
-        }
-        if (ctx._source.tags == null) {
-          ctx._source.tags = [];
-        }
-        if (params.tagAdded != null) {
-          for (def newTag : params.tagAdded) {
-            boolean exists = false;
-            for (def existing : ctx._source.tags) {
-              if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
-                exists = true;
-                break;
+            if (ctx._source.tags == null) {
+              ctx._source.tags = [];
+            }
+            if (params.tagAdded != null) {
+              for (def newTag : params.tagAdded) {
+                boolean exists = false;
+                for (def existing : ctx._source.tags) {
+                  if (existing.tagFQN.equalsIgnoreCase(newTag.tagFQN)) {
+                    exists = true;
+                    break;
+                  }
+                }
+                if (!exists) {
+                  ctx._source.tags.add(newTag);
+                }
               }
             }
-            if (!exists) {
-              ctx._source.tags.add(newTag);
-            }
-          }
-        }
-        Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
-        """
+            Collections.sort(ctx._source.tags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
+            """
         + SearchClient.TAG_RESEPARATION_SCRIPT;
   }
 
@@ -3485,13 +3436,11 @@ public class SearchRepository {
       LOG.debug("Entity or EntityReference is null, cannot perform delete.");
       return;
     }
-
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
       return;
     }
-
     String entityId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     if (shouldSkipStreamingIndexing(
@@ -3590,13 +3539,11 @@ public class SearchRepository {
       LOG.debug("Entity or EntityReference is null, cannot perform soft delete or restore.");
       return;
     }
-
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
       return;
     }
-
     String entityId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     if (shouldSkipStreamingIndexing(
@@ -3611,7 +3558,6 @@ public class SearchRepository {
           getWriteIndexName(indexMapping), entityId, script.painless());
       softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
       reindexQueriesForDomainSource(entityType, entity.getId(), entity.getFullyQualifiedName());
-
       if (Entity.TABLE.equals(entityType)) {
         softDeleteOrRestoreTableColumns((Table) entity, delete);
       }
@@ -3635,7 +3581,6 @@ public class SearchRepository {
     if (columnIndexMapping == null) {
       return;
     }
-
     SoftDeleteScript script = new SoftDeleteScript(delete);
     try {
       searchClient.updateChildren(
@@ -3680,7 +3625,6 @@ public class SearchRepository {
           new ImmutablePair<>(
               REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
-
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
@@ -3785,7 +3729,6 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.description = params.description;");
       }
     }
-
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
@@ -3800,7 +3743,6 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.description = null;");
       }
     }
-
     for (FieldChange fieldChange : changeDescription.getFieldsUpdated()) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
         fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
@@ -3924,7 +3866,6 @@ public class SearchRepository {
     if (changeDescription == null) {
       return Collections.emptySet();
     }
-
     Set<String> changedFields = new HashSet<>();
     listOrEmpty(changeDescription.getFieldsAdded())
         .forEach(fieldChange -> changedFields.add(fieldChange.getName()));
@@ -3977,7 +3918,6 @@ public class SearchRepository {
       writer.write(SearchResultCsvExporter.CSV_HEADER);
       writer.newLine();
       writer.flush();
-
       if (totalHits > 0) {
         writeCsvBatches(baseRequest, subjectContext, writer, totalHits, from);
       }
@@ -3999,31 +3939,24 @@ public class SearchRepository {
     int maxIterations = (totalHits / SearchResultCsvExporter.BATCH_SIZE) + 2;
     int iteration = 0;
     List<Object> searchAfter = null;
-
     String sortField = resolveSortField(baseRequest.getSortFieldParam());
     List<String> sourceFields = buildSourceFields(sortField);
-
     while (exported < totalHits && iteration < maxIterations) {
       iteration++;
       enforceTimeout(startTime, timeoutMs);
-
       int remaining = totalHits - exported;
       int batchSize = Math.min(SearchResultCsvExporter.BATCH_SIZE, remaining);
       SearchRequest batchRequest =
           buildBatchRequest(baseRequest, sortField, sourceFields, searchAfter, batchSize);
-
       // On the first batch, use from-based pagination to skip to the requested offset.
       // Subsequent batches use search_after (set above from the previous batch).
       if (iteration == 1 && from > 0) {
         batchRequest.withFrom(from);
       }
-
       SearchResultListMapper batch = searchClient.searchForExport(batchRequest, subjectContext);
-
       if (batch.getResults().isEmpty()) {
         break;
       }
-
       for (Map<String, Object> source : batch.getResults()) {
         if (exported >= totalHits) {
           break;
@@ -4033,7 +3966,6 @@ public class SearchRepository {
         exported++;
       }
       writer.flush();
-
       if (batch.getLastHitSortValues() != null) {
         searchAfter = Arrays.asList(batch.getLastHitSortValues());
       } else {
@@ -4403,7 +4335,6 @@ public class SearchRepository {
           String.format(
               "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
               ReindexingUtil.escapeDoubleQuotes(entityFQN));
-
       SearchRequest searchRequest =
           new SearchRequest()
               .withQuery("")
@@ -4417,12 +4348,10 @@ public class SearchRepository {
               .withDeleted(false)
               .withSortOrder("desc")
               .withIncludeSourceFields(new ArrayList<>());
-
       // Execute the search and parse the response
       Response response = search(searchRequest, null);
       String json = (String) response.getEntity();
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
-
       // Extract hits from the response JSON and create entity references
       for (Iterator<JsonNode> it =
               ((ArrayNode) Objects.requireNonNull(JsonUtils.extractValue(json, HITS, HITS)))
@@ -4440,7 +4369,6 @@ public class SearchRepository {
                   .withType(type));
         }
       }
-
       return new ArrayList<>(fqns);
     } catch (Exception ex) {
       LOG.error("Error while getting entities from ES for validation", ex);
@@ -4587,7 +4515,6 @@ public class SearchRepository {
         embeddings != null && embeddings.getProvider() != null
             ? embeddings.getProvider().value()
             : "bedrock";
-
     return switch (provider.toLowerCase()) {
       case "bedrock" -> {
         if (embeddings == null || embeddings.getBedrock() == null) {
@@ -4643,7 +4570,6 @@ public class SearchRepository {
    */
   public void initializeLineageComponents() {
     LOG.info("Initializing lineage components for SearchRepository");
-
     if (searchClient != null) {
       try {
         searchClient.initializeLineageBuilders();

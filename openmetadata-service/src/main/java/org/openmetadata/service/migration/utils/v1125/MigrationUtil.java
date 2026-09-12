@@ -15,6 +15,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -37,7 +38,7 @@ public class MigrationUtil {
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
     List<WorkflowDefinition> allWorkflows =
-        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+        repository.collections().all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
 
     int needsMigration = 0;
     int totalUpdated = 0;
@@ -52,7 +53,9 @@ public class MigrationUtil {
           needsMigration++;
           WorkflowDefinition updated =
               JsonUtils.readValue(MAPPER.writeValueAsString(migrated), WorkflowDefinition.class);
-          repository.createOrUpdate(null, updated, ADMIN_USER_NAME);
+          repository
+              .creates()
+              .upsert(null, updated, new EntityCommandActor(ADMIN_USER_NAME, null), false);
           totalUpdated++;
           LOG.debug("Migrated workflow definition: {}", workflow.getFullyQualifiedName());
         }

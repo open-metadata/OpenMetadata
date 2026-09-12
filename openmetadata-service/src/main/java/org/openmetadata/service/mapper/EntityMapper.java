@@ -1,8 +1,6 @@
 package org.openmetadata.service.mapper;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.jdbi3.EntityRepository.validateOwners;
-import static org.openmetadata.service.jdbi3.EntityRepository.validateReviewers;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import java.util.List;
@@ -12,15 +10,16 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityReferenceValidator;
 import org.openmetadata.service.rules.RuleEngine;
 
 public interface EntityMapper<T extends EntityInterface, C extends CreateEntity> {
   T createToEntity(C create, String user);
 
   default T copy(T entity, CreateEntity request, String updatedBy) {
-    List<EntityReference> owners = validateOwners(request.getOwners());
+    List<EntityReference> owners = EntityReferenceValidator.shared().owners(request.getOwners());
     List<EntityReference> domains = validateDomains(request.getDomains());
-    validateReviewers(request.getReviewers());
+    EntityReferenceValidator.shared().reviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());

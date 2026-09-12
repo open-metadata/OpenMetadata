@@ -10,18 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INTAKE_FORM;
 
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.governance.IntakeFormResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -29,18 +37,22 @@ import org.openmetadata.service.util.IntakeFormUtil;
 
 @Slf4j
 @Repository
-public class IntakeFormRepository extends EntityRepository<IntakeForm> {
+public class IntakeFormRepository implements EntityPolicy<IntakeForm> {
+
   private static final String UPDATE_FIELDS = "owners,formFields,requiredFields,enabled,entityType";
 
   public IntakeFormRepository() {
-    super(
-        IntakeFormResource.COLLECTION_PATH,
-        INTAKE_FORM,
-        IntakeForm.class,
-        Entity.getCollectionDAO().intakeFormDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
-    supportsSearch = false;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                IntakeFormResource.COLLECTION_PATH,
+                INTAKE_FORM,
+                IntakeForm.class,
+                Entity.getCollectionDAO().intakeFormDAO()),
+            new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(false);
   }
 
   @Override
@@ -65,7 +77,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
   @Override
   public void storeEntity(IntakeForm entity, boolean update) {
     IntakeFormUtil.synchronizeFields(entity);
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
@@ -74,7 +86,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
   }
 
   @Override
-  protected boolean shouldCleanupFqnDependents() {
+  public boolean shouldCleanupFqnDependents() {
     return false;
   }
 
@@ -110,7 +122,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
       IntakeForm updated = JsonUtils.deepCopy(original, IntakeForm.class);
       if (IntakeFormUtil.removeCustomPropertyField(updated, propertyName)) {
         updated.setUpdatedBy(updatedBy);
-        getUpdater(original, updated, Operation.PATCH, null).update();
+        getUpdater(original, updated, EntityOperation.PATCH, null).update();
         // Change events are normally emitted by ChangeEventHandler, a REST
         // response filter. This cascade runs inside the Type update request, so
         // that filter only ever sees the Type — without this the IntakeForm
@@ -139,22 +151,55 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
   }
 
   @Override
-  public EntityRepository<IntakeForm>.EntityUpdater getUpdater(
-      IntakeForm original, IntakeForm updated, Operation operation, ChangeSource changeSource) {
-    return new IntakeFormUpdater(original, updated, operation);
+  public EntityUpdater<IntakeForm> getUpdater(
+      IntakeForm original,
+      IntakeForm updated,
+      EntityOperation operation,
+      ChangeSource changeSource) {
+    return new IntakeFormUpdater(original, updated, operation).mutation();
   }
 
-  public class IntakeFormUpdater extends EntityUpdater {
-    public IntakeFormUpdater(IntakeForm original, IntakeForm updated, Operation operation) {
-      super(original, updated, operation);
+  public class IntakeFormUpdater implements EntitySpecificMutation<IntakeForm> {
+
+    public IntakeFormUpdater(IntakeForm original, IntakeForm updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("entityType", original.getEntityType(), updated.getEntityType());
-      recordChange("enabled", original.getEnabled(), updated.getEnabled());
-      recordChange("formFields", original.getFormFields(), updated.getFormFields());
-      recordChange("requiredFields", original.getRequiredFields(), updated.getRequiredFields());
+    public void update(EntityUpdater<IntakeForm> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.recordChange(
+          "entityType",
+          entityUpdate.getOriginal().getEntityType(),
+          entityUpdate.getUpdated().getEntityType());
+      entityUpdate.recordChange(
+          "enabled",
+          entityUpdate.getOriginal().getEnabled(),
+          entityUpdate.getUpdated().getEnabled());
+      entityUpdate.recordChange(
+          "formFields",
+          entityUpdate.getOriginal().getFormFields(),
+          entityUpdate.getUpdated().getFormFields());
+      entityUpdate.recordChange(
+          "requiredFields",
+          entityUpdate.getOriginal().getRequiredFields(),
+          entityUpdate.getUpdated().getRequiredFields());
     }
+
+    private final EntityUpdater<IntakeForm> entityUpdate;
+
+    public EntityUpdater<IntakeForm> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<IntakeForm> entityContext;
+
+  @Override
+  public final EntityPolicyContext<IntakeForm> context() {
+    return entityContext;
   }
 }

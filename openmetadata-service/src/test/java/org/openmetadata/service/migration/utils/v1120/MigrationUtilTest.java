@@ -35,8 +35,8 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.utils.LongStatementsUtil;
@@ -57,20 +57,17 @@ class MigrationUtilTest {
     CollectionDAO.TableDAO tableDAO = mock(CollectionDAO.TableDAO.class);
     CollectionDAO.StoredProcedureDAO storedProcedureDAO =
         mock(CollectionDAO.StoredProcedureDAO.class);
-
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(collectionDAO.dbServiceDAO()).thenReturn(databaseServiceDAO);
     when(collectionDAO.databaseDAO()).thenReturn(databaseDAO);
     when(collectionDAO.databaseSchemaDAO()).thenReturn(schemaDAO);
     when(collectionDAO.tableDAO()).thenReturn(tableDAO);
     when(collectionDAO.storedProcedureDAO()).thenReturn(storedProcedureDAO);
-
     UUID serviceId = UUID.randomUUID();
     UUID databaseId = UUID.randomUUID();
     UUID schemaId = UUID.randomUUID();
     UUID tableId = UUID.randomUUID();
     UUID storedProcedureId = UUID.randomUUID();
-
     stubServiceRows(handle, "dbservice_entity", serviceId);
     when(relationshipDAO.findTo(
             serviceId, Entity.DATABASE_SERVICE, Relationship.CONTAINS.ordinal(), Entity.DATABASE))
@@ -87,7 +84,6 @@ class MigrationUtilTest {
             Relationship.CONTAINS.ordinal(),
             Entity.STORED_PROCEDURE))
         .thenReturn(List.of(relationship(storedProcedureId, Entity.STORED_PROCEDURE)));
-
     String serviceFqn = "\"db.service\"";
     DatabaseService databaseService =
         new DatabaseService()
@@ -118,23 +114,19 @@ class MigrationUtilTest {
             .withName("refresh_orders")
             .withDatabaseSchema(schema.getEntityReference())
             .withFullyQualifiedName("db.service.warehouse.analytics.refresh_orders");
-
     when(databaseServiceDAO.findEntityById(serviceId)).thenReturn(databaseService);
     when(databaseDAO.findEntityById(databaseId)).thenReturn(database);
     when(schemaDAO.findEntityById(schemaId)).thenReturn(schema);
     when(tableDAO.findEntityById(tableId)).thenReturn(table);
     when(storedProcedureDAO.findEntityById(storedProcedureId)).thenReturn(storedProcedure);
-
     MigrationUtil.fixDatabaseFqnHash(handle, collectionDAO);
     MigrationUtil.fixDatabaseSchemaFqnHash(handle, collectionDAO);
     MigrationUtil.fixTableFqnHash(handle, collectionDAO);
     MigrationUtil.fixStoredProcedureFqnHash(handle, collectionDAO);
-
     String databaseFqn = FullyQualifiedName.add(serviceFqn, database.getName());
     String schemaFqn = FullyQualifiedName.add(databaseFqn, schema.getName());
     String tableFqn = FullyQualifiedName.add(schemaFqn, table.getName());
     String storedProcedureFqn = FullyQualifiedName.add(schemaFqn, storedProcedure.getName());
-
     assertEquals(databaseFqn, database.getFullyQualifiedName());
     assertEquals(schemaFqn, schema.getFullyQualifiedName());
     assertEquals(tableFqn, table.getFullyQualifiedName());
@@ -154,20 +146,17 @@ class MigrationUtilTest {
     CollectionDAO.ApiServiceDAO apiServiceDAO = mock(CollectionDAO.ApiServiceDAO.class);
     CollectionDAO.APICollectionDAO apiCollectionDAO = mock(CollectionDAO.APICollectionDAO.class);
     CollectionDAO.APIEndpointDAO apiEndpointDAO = mock(CollectionDAO.APIEndpointDAO.class);
-
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(collectionDAO.dashboardServiceDAO()).thenReturn(dashboardServiceDAO);
     when(collectionDAO.dashboardDataModelDAO()).thenReturn(dataModelDAO);
     when(collectionDAO.apiServiceDAO()).thenReturn(apiServiceDAO);
     when(collectionDAO.apiCollectionDAO()).thenReturn(apiCollectionDAO);
     when(collectionDAO.apiEndpointDAO()).thenReturn(apiEndpointDAO);
-
     UUID dashboardServiceId = UUID.randomUUID();
     UUID dataModelId = UUID.randomUUID();
     UUID apiServiceId = UUID.randomUUID();
     UUID apiCollectionId = UUID.randomUUID();
     UUID apiEndpointId = UUID.randomUUID();
-
     stubServiceRows(handle, "dashboard_service_entity", dashboardServiceId);
     stubServiceRows(handle, "api_service_entity", apiServiceId);
     when(relationshipDAO.findTo(
@@ -188,7 +177,6 @@ class MigrationUtilTest {
             Relationship.CONTAINS.ordinal(),
             Entity.API_ENDPOINT))
         .thenReturn(List.of(relationship(apiEndpointId, Entity.API_ENDPOINT)));
-
     String dashboardServiceFqn = "\"dash.service\"";
     DashboardService dashboardService =
         new DashboardService()
@@ -201,7 +189,6 @@ class MigrationUtilTest {
             .withName("orders")
             .withFullyQualifiedName("dash.service.model.orders")
             .withColumns(List.of(new Column().withName("metric")));
-
     String apiServiceFqn = "\"api.service\"";
     ApiService apiService =
         new ApiService()
@@ -219,22 +206,18 @@ class MigrationUtilTest {
             .withName("charge")
             .withApiCollection(apiCollection.getEntityReference())
             .withFullyQualifiedName("api.service.payments.charge");
-
     when(dashboardServiceDAO.findEntityById(dashboardServiceId)).thenReturn(dashboardService);
     when(dataModelDAO.findEntityById(dataModelId)).thenReturn(dataModel);
     when(apiServiceDAO.findEntityById(apiServiceId)).thenReturn(apiService);
     when(apiCollectionDAO.findEntityById(apiCollectionId)).thenReturn(apiCollection);
     when(apiEndpointDAO.findEntityById(apiEndpointId)).thenReturn(apiEndpoint);
-
     MigrationUtil.fixDashboardDataModelFqnHash(handle, collectionDAO);
     MigrationUtil.fixApiCollectionFqnHash(handle, collectionDAO);
     MigrationUtil.fixApiEndpointFqnHash(handle, collectionDAO);
-
     String dataModelFqn =
         FullyQualifiedName.add(dashboardServiceFqn + ".model", dataModel.getName());
     String apiCollectionFqn = FullyQualifiedName.add(apiServiceFqn, apiCollection.getName());
     String apiEndpointFqn = FullyQualifiedName.add(apiCollectionFqn, apiEndpoint.getName());
-
     assertEquals(dataModelFqn, dataModel.getFullyQualifiedName());
     assertEquals(dataModelFqn + ".metric", dataModel.getColumns().get(0).getFullyQualifiedName());
     assertEquals(apiCollectionFqn, apiCollection.getFullyQualifiedName());
@@ -245,11 +228,9 @@ class MigrationUtilTest {
   void fixMethodsReturnEarlyWhenNoDottedServicesExist() {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
-
     stubServiceRows(handle, "dbservice_entity");
     stubServiceRows(handle, "dashboard_service_entity");
     stubServiceRows(handle, "api_service_entity");
-
     MigrationUtil.fixDatabaseFqnHash(handle, collectionDAO);
     MigrationUtil.fixDatabaseSchemaFqnHash(handle, collectionDAO);
     MigrationUtil.fixTableFqnHash(handle, collectionDAO);
@@ -257,7 +238,6 @@ class MigrationUtilTest {
     MigrationUtil.fixDashboardDataModelFqnHash(handle, collectionDAO);
     MigrationUtil.fixApiCollectionFqnHash(handle, collectionDAO);
     MigrationUtil.fixApiEndpointFqnHash(handle, collectionDAO);
-
     verifyNoInteractions(collectionDAO);
   }
 
@@ -265,7 +245,6 @@ class MigrationUtilTest {
   void updateClassificationAndRecognizersExecutesClassificationAndTagStatements() {
     Handle handle = mock(Handle.class);
     MigrationDAO migrationDAO = mock(MigrationDAO.class);
-
     LoadTags loadTags =
         new LoadTags()
             .withCreateClassification(
@@ -278,7 +257,6 @@ class MigrationUtilTest {
                         .withName("Sensitive")
                         .withAutoClassificationEnabled(true)
                         .withAutoClassificationPriority(25)));
-
     String classificationStatement = "UPDATE classification_entity SET config = ?";
     String tagStatement = "UPDATE tag_entity SET config = ?";
     Object[] classificationArgs = {
@@ -290,19 +268,18 @@ class MigrationUtilTest {
       JsonUtils.pojoToJson(loadTags.getCreateTags().get(0).getRecognizers()),
       "PII.Sensitive"
     };
-
     Map<String, QueryStatus> classificationResult =
         Map.of("classification", new QueryStatus(QueryStatus.Status.SUCCESS, "classification ok"));
     Map<String, QueryStatus> tagResult =
         Map.of("tag", new QueryStatus(QueryStatus.Status.SUCCESS, "tag ok"));
-
-    try (MockedStatic<EntityRepository> entityRepositoryMock = mockStatic(EntityRepository.class);
+    try (MockedStatic<EntityPolicySupport> entityRepositoryMock =
+            mockStatic(EntityPolicySupport.class);
         MockedStatic<LongStatementsUtil> longStatementsMock =
             mockStatic(LongStatementsUtil.class)) {
       entityRepositoryMock
           .when(
               () ->
-                  EntityRepository.getEntitiesFromSeedData(
+                  EntityPolicySupport.getEntitiesFromSeedData(
                       Entity.CLASSIFICATION,
                       ".*json/data/tags/piiTagsWithRecognizers.json$",
                       LoadTags.class))
@@ -324,11 +301,9 @@ class MigrationUtilTest {
                   LongStatementsUtil.executeAndUpdate(
                       handle, migrationDAO, "1.12.0", false, tagStatement, tagArgs))
           .thenReturn(tagResult);
-
       Map<String, QueryStatus> result =
           MigrationUtil.updateClassificationAndRecognizers(
               classificationStatement, tagStatement, handle, migrationDAO, "1.12.0", false);
-
       assertEquals(2, result.size());
       assertEquals(QueryStatus.Status.SUCCESS, result.get("classification").getStatus());
       assertEquals(QueryStatus.Status.SUCCESS, result.get("tag").getStatus());
@@ -337,16 +312,16 @@ class MigrationUtilTest {
 
   @Test
   void updateClassificationAndRecognizersReportsSeedLoadFailures() {
-    try (MockedStatic<EntityRepository> entityRepositoryMock = mockStatic(EntityRepository.class)) {
+    try (MockedStatic<EntityPolicySupport> entityRepositoryMock =
+        mockStatic(EntityPolicySupport.class)) {
       entityRepositoryMock
           .when(
               () ->
-                  EntityRepository.getEntitiesFromSeedData(
+                  EntityPolicySupport.getEntitiesFromSeedData(
                       Entity.CLASSIFICATION,
                       ".*json/data/tags/piiTagsWithRecognizers.json$",
                       LoadTags.class))
           .thenThrow(new IOException("missing seed data"));
-
       Map<String, QueryStatus> result =
           MigrationUtil.updateClassificationAndRecognizers(
               "UPDATE classification",
@@ -355,7 +330,6 @@ class MigrationUtilTest {
               mock(MigrationDAO.class),
               "1.12.0",
               false);
-
       assertEquals(1, result.size());
       assertEquals(QueryStatus.Status.FAILURE, result.get("loadPiiTagsSeedData").getStatus());
       assertTrue(result.get("loadPiiTagsSeedData").getMessage().contains("missing seed data"));

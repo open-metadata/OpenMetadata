@@ -49,6 +49,12 @@
       <version>1.27.1</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>2.4.240</version>
+      <scope>test</scope>
+    </dependency>
     <!-- SDK client -->
     <dependency>
       <groupId>org.open-metadata</groupId>

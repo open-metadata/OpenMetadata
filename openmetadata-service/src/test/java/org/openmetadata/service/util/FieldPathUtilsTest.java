@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -24,7 +28,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchFixture;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.util.FieldPathUtils.FieldPathComponents;
 
 /**
@@ -42,7 +50,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_colonSeparator_simple() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns::customer_id::description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("customer_id", result.fieldName());
@@ -52,7 +59,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_colonSeparator_noProperty() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns::customer_id");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("customer_id", result.fieldName());
@@ -63,7 +69,6 @@ class FieldPathUtilsTest {
   void testParseFieldPath_colonSeparator_quotedFieldName() throws Exception {
     FieldPathComponents result =
         invokeParseFieldPath("messageSchema::\"level.somefield\"::description");
-
     assertNotNull(result);
     assertEquals("messageSchema", result.containerName());
     assertEquals("level.somefield", result.fieldName());
@@ -73,7 +78,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_dotSeparator_simple() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns.email.description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("email", result.fieldName());
@@ -83,7 +87,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_dotSeparator_noProperty() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns.email");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("email", result.fieldName());
@@ -93,7 +96,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_arrayIndex() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns[0].description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("0", result.fieldName());
@@ -103,7 +105,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_arrayIndex_nestedProperty() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("schemaFields[2].tags");
-
     assertNotNull(result);
     assertEquals("schemaFields", result.containerName());
     assertEquals("2", result.fieldName());
@@ -113,7 +114,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_messageSchema() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("messageSchema::event_id::description");
-
     assertNotNull(result);
     assertEquals("messageSchema", result.containerName());
     assertEquals("event_id", result.fieldName());
@@ -123,7 +123,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_dataModel() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("dataModel::product_id::description");
-
     assertNotNull(result);
     assertEquals("dataModel", result.containerName());
     assertEquals("product_id", result.fieldName());
@@ -133,7 +132,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_schemaFields() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("schemaFields::user_id::description");
-
     assertNotNull(result);
     assertEquals("schemaFields", result.containerName());
     assertEquals("user_id", result.fieldName());
@@ -143,7 +141,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_responseSchema() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("responseSchema::status_code::description");
-
     assertNotNull(result);
     assertEquals("responseSchema", result.containerName());
     assertEquals("status_code", result.fieldName());
@@ -153,7 +150,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_tasks() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("tasks::etl_task::description");
-
     assertNotNull(result);
     assertEquals("tasks", result.containerName());
     assertEquals("etl_task", result.fieldName());
@@ -163,7 +159,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_charts() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("charts::revenue_chart::description");
-
     assertNotNull(result);
     assertEquals("charts", result.containerName());
     assertEquals("revenue_chart", result.fieldName());
@@ -173,7 +168,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_fields() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("fields::title::description");
-
     assertNotNull(result);
     assertEquals("fields", result.containerName());
     assertEquals("title", result.fieldName());
@@ -202,7 +196,6 @@ class FieldPathUtilsTest {
   void testParseFieldPath_nestedChildrenPath() throws Exception {
     FieldPathComponents result =
         invokeParseFieldPath("columns::address::children::street::description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("address", result.fieldName());
@@ -212,7 +205,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_dotSeparator_nestedDepth2() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns.profile.personal.description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("profile.personal", result.fieldName());
@@ -223,7 +215,6 @@ class FieldPathUtilsTest {
   void testParseFieldPath_dotSeparator_nestedDepth3() throws Exception {
     FieldPathComponents result =
         invokeParseFieldPath("columns.profile.personal.full_name.description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("profile.personal.full_name", result.fieldName());
@@ -234,7 +225,6 @@ class FieldPathUtilsTest {
   void testParseFieldPath_dotSeparator_nestedDepth3_quoted() throws Exception {
     FieldPathComponents result =
         invokeParseFieldPath("columns.\"profile.personal.full_name\".description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("profile.personal.full_name", result.fieldName());
@@ -244,7 +234,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_dotSeparator_nestedTags() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns.profile.contact.phone.tags");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("profile.contact.phone", result.fieldName());
@@ -257,7 +246,6 @@ class FieldPathUtilsTest {
     // flat column + property). Property-last wins — this pins the pre-existing behavior for
     // three-segment paths; every real producer appends an explicit ".description"/".tags".
     FieldPathComponents result = invokeParseFieldPath("columns.profile.personal");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("profile", result.fieldName());
@@ -267,7 +255,6 @@ class FieldPathUtilsTest {
   @Test
   void testParseFieldPath_dotSeparator_literalDottedName() throws Exception {
     FieldPathComponents result = invokeParseFieldPath("columns.\"a.b\".description");
-
     assertNotNull(result);
     assertEquals("columns", result.containerName());
     assertEquals("a.b", result.fieldName());
@@ -279,15 +266,17 @@ class FieldPathUtilsTest {
     // The FQN parser rejects empty segments; parseFieldPath must return null (fail-loud
     // upstream at updateFieldDescription) instead of producing garbage components.
     FieldPathComponents result = invokeParseFieldPath("columns..description");
-
     assertNull(result);
   }
 
   @Test
   void testUpdateFieldDescription_nestedLeaf_updatesLeafOnly() {
     Table table = nestedTable();
-    EntityRepository<?> repository = mock(EntityRepository.class);
-
+    final Table original = JsonUtils.deepCopy(table, Table.class);
+    @SuppressWarnings("unchecked")
+    EntityPolicy<Table> repository = mock(EntityPolicy.class);
+    final var patches = new EntityPatchFixture<Table>(request -> null);
+    when(repository.patches()).thenReturn(patches);
     boolean updated =
         FieldPathUtils.updateFieldDescription(
             table,
@@ -295,9 +284,14 @@ class FieldPathUtilsTest {
             "admin",
             "columns.profile.personal.full_name.description",
             "Full name of the customer");
-
     assertTrue(updated);
-    Column profile = table.getColumns().getFirst();
+    assertEquals(1, patches.requests().size());
+    final var request = patches.requests().getFirst();
+    assertEquals(new EntityPatchService.Target.Id(table.getId()), request.target());
+    assertEquals(new EntityCommandActor("admin", null), request.actor());
+    assertEquals(new EntityPatchService.Options(null, null), request.options());
+    final Table stored = JsonUtils.applyPatch(original, request.patch(), Table.class);
+    Column profile = stored.getColumns().getFirst();
     Column personal = profile.getChildren().getFirst();
     Column fullName = personal.getChildren().getFirst();
     assertEquals("Full name of the customer", fullName.getDescription());
@@ -308,12 +302,10 @@ class FieldPathUtilsTest {
   @Test
   void testUpdateFieldDescription_unresolvableNestedPath_failsLoudly() {
     Table table = nestedTable();
-    EntityRepository<?> repository = mock(EntityRepository.class);
-
+    EntityPolicy<?> repository = mock(EntityPolicy.class);
     boolean updated =
         FieldPathUtils.updateFieldDescription(
             table, repository, "admin", "columns.profile.nonexistent.child.description", "text");
-
     assertFalse(updated);
     assertEquals("Customer profile block", table.getColumns().getFirst().getDescription());
     verifyNoInteractions(repository);
@@ -322,10 +314,8 @@ class FieldPathUtilsTest {
   @Test
   void testGetFieldDescription_nestedLeaf() {
     Table table = nestedTable();
-
     Optional<String> description =
         FieldPathUtils.getFieldDescription(table, "columns.profile.personal.full_name.description");
-
     assertEquals(Optional.of("name"), description);
   }
 

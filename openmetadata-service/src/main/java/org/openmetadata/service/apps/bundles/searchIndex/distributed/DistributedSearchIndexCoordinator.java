@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import java.util.HashMap;
@@ -29,8 +28,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
@@ -55,13 +54,19 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 public class DistributedSearchIndexCoordinator {
 
-  /** Lock key for exclusive reindexing operations */
+  /**
+   * Lock key for exclusive reindexing operations
+   */
   private static final String REINDEX_LOCK_KEY = "SEARCH_REINDEX_LOCK";
 
-  /** Lock timeout in milliseconds (5 minutes) */
+  /**
+   * Lock timeout in milliseconds (5 minutes)
+   */
   private static final long LOCK_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
 
-  /** Partition claim timeout - how long before an unresponsive partition can be reclaimed */
+  /**
+   * Partition claim timeout - how long before an unresponsive partition can be reclaimed
+   */
   private static final long PARTITION_CLAIM_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(3);
 
   /**
@@ -78,7 +83,9 @@ public class DistributedSearchIndexCoordinator {
    */
   private static final long PARTITION_RELEASE_WINDOW_MS = TimeUnit.SECONDS.toMillis(5);
 
-  /** Maximum number of retries for a failed partition */
+  /**
+   * Maximum number of retries for a failed partition
+   */
   private static final int MAX_PARTITION_RETRIES = 3;
 
   /**
@@ -88,16 +95,24 @@ public class DistributedSearchIndexCoordinator {
    */
   private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
 
-  /** Throttle interval for touching job.updatedAt from partition completions */
+  /**
+   * Throttle interval for touching job.updatedAt from partition completions
+   */
   private static final long JOB_TOUCH_INTERVAL_MS = TimeUnit.MINUTES.toMillis(2);
 
   private final CollectionDAO collectionDAO;
+
   private final PartitionCalculator partitionCalculator;
+
   private final String serverId;
+
   private EntityCompletionTracker entityTracker;
+
   private final AtomicLong lastJobTouchTime = new AtomicLong(0);
 
-  /** Monotonic counter to guarantee unique claimedAt values across concurrent worker threads. */
+  /**
+   * Monotonic counter to guarantee unique claimedAt values across concurrent worker threads.
+   */
   private final AtomicLong claimCounter = new AtomicLong(0);
 
   /**
@@ -160,14 +175,11 @@ public class DistributedSearchIndexCoordinator {
       EventPublisherJob jobConfiguration,
       String createdBy,
       ReindexingConfiguration reindexConfig) {
-
     UUID jobId = UUID.randomUUID();
     long now = System.currentTimeMillis();
-
     // Calculate entity statistics (with time-series date filtering if config is provided)
     Map<String, Long> entityCounts = partitionCalculator.getEntityCounts(entities, reindexConfig);
     long totalRecords = entityCounts.values().stream().mapToLong(Long::longValue).sum();
-
     // Build entity stats map
     Map<String, SearchIndexJob.EntityTypeStats> entityStats = new HashMap<>();
     for (String entityType : entities) {
@@ -185,7 +197,6 @@ public class DistributedSearchIndexCoordinator {
               .failedPartitions(0)
               .build());
     }
-
     SearchIndexJob job =
         SearchIndexJob.builder()
             .id(jobId)
@@ -201,17 +212,14 @@ public class DistributedSearchIndexCoordinator {
             .createdAt(now)
             .updatedAt(now)
             .build();
-
     // Persist job
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
     insertJob(jobDAO, job);
-
     LOG.info(
         "Created distributed indexing job {} with {} entities ({} total records)",
         jobId,
         entities.size(),
         totalRecords);
-
     return job;
   }
 
@@ -247,7 +255,6 @@ public class DistributedSearchIndexCoordinator {
             .filter(p -> p.getEntityType() != null)
             .filter(p -> !SearchIndexEntityTypes.isTimeSeriesEntity(p.getEntityType()))
             .collect(Collectors.groupingBy(SearchIndexPartition::getEntityType));
-
     Map<String, Map<Long, String>> jobCache = new HashMap<>();
     for (Map.Entry<String, List<SearchIndexPartition>> e : byEntity.entrySet()) {
       try {
@@ -270,7 +277,7 @@ public class DistributedSearchIndexCoordinator {
     if (sortedTargets.isEmpty()) {
       return result;
     }
-    EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repo = Entity.getEntityRepository(entityType);
     walkAndRecord(repo, sortedTargets, result);
     LOG.debug("Precomputed {} boundary cursors for entity {}", result.size(), entityType);
     return result;
@@ -293,7 +300,7 @@ public class DistributedSearchIndexCoordinator {
    * rows.
    */
   private <T extends org.openmetadata.schema.EntityInterface> void walkAndRecord(
-      EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
+      EntityPolicy<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
     ListFilter filter = repo.getReindexFilter();
     String afterName = "";
     String afterId = "";
@@ -301,7 +308,6 @@ public class DistributedSearchIndexCoordinator {
     int targetIdx = 0;
     long nextTarget = sortedTargets.get(targetIdx);
     final int batchSize = 10_000;
-
     while (targetIdx < sortedTargets.size()) {
       long need = nextTarget - currentOffset;
       if (need <= 0) {
@@ -326,20 +332,20 @@ public class DistributedSearchIndexCoordinator {
       afterName =
           org.openmetadata.service.util.FullyQualifiedName.unquoteName(lastEntity.getName());
       afterId = lastEntity.getId() == null ? "" : lastEntity.getId().toString();
-
       if (currentOffset >= nextTarget) {
         result.put(nextTarget, RestUtil.encodeCursor(repo.getCursorValue(lastEntity)));
         targetIdx++;
         nextTarget = (targetIdx < sortedTargets.size()) ? sortedTargets.get(targetIdx) : -1;
       }
       if (batch.size() < fetch) {
-        break; // entity exhausted
+        // entity exhausted
+        break;
       }
     }
   }
 
   private <T extends org.openmetadata.schema.EntityInterface> Object deserializeLast(
-      EntityRepository<T> repo, List<String> batch) {
+      EntityPolicy<T> repo, List<String> batch) {
     return JsonUtils.readValue(batch.get(batch.size() - 1), repo.getEntityClass());
   }
 
@@ -366,21 +372,16 @@ public class DistributedSearchIndexCoordinator {
   public SearchIndexJob initializePartitions(UUID jobId, ReindexingConfiguration reindexConfig) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     SearchIndexJob job = getJobById(jobDAO, jobId);
-
     if (job.getStatus() != IndexJobStatus.INITIALIZING) {
       throw new IllegalStateException(
           "Job must be in INITIALIZING state to create partitions. Current: " + job.getStatus());
     }
-
     // Get entity types from job configuration
     Set<String> entityTypes = Set.copyOf(job.getJobConfiguration().getEntities());
-
     // Calculate partitions (with date filtering for time series if config provided)
     List<SearchIndexPartition> partitions =
         partitionCalculator.calculatePartitions(jobId, entityTypes, reindexConfig);
-
     if (partitions.isEmpty()) {
       LOG.warn(
           "No partitions created for job {} - this may indicate no entities to index for types: {}",
@@ -392,26 +393,23 @@ public class DistributedSearchIndexCoordinator {
           partitions.size(),
           jobId,
           entityTypes.size());
-
       // Precompute keyset cursors at every partition boundary in a single keyset walk per
       // entity type. Replaces per-worker EntityRepository.getCursorAtOffset(SQL OFFSET) calls
       // — O(N²) total scan cost across all partitions — with one O(N) keyset traversal here.
       precomputePartitionStartCursors(jobId, partitions);
     }
-
     // Calculate staggered claimableAt timestamps for partitions
     // 50% immediately claimable, remaining 50% staggered over 5 seconds
     // This balances single-server performance with multi-server fairness
     long now = System.currentTimeMillis();
     int totalPartitions = partitions.size();
     int immediateCount = Math.max(1, (int) (totalPartitions * IMMEDIATE_CLAIMABLE_PERCENT));
-
     for (int i = 0; i < partitions.size(); i++) {
       SearchIndexPartition partition = partitions.get(i);
-
       long claimableAt;
       if (i < immediateCount) {
-        claimableAt = now; // Immediately claimable
+        // Immediately claimable
+        claimableAt = now;
       } else {
         // Distribute remaining partitions evenly over the release window
         int remainingIndex = i - immediateCount;
@@ -419,12 +417,10 @@ public class DistributedSearchIndexCoordinator {
         long delayMs = (remainingIndex * PARTITION_RELEASE_WINDOW_MS) / Math.max(1, remainingCount);
         claimableAt = now + delayMs;
       }
-
       SearchIndexPartition partitionWithClaimable =
           partition.toBuilder().claimableAt(claimableAt).build();
       insertPartition(partitionDAO, partitionWithClaimable);
     }
-
     LOG.info(
         "Initialized {} partitions for job {} ({} immediately claimable, {} staggered over {}s)",
         partitions.size(),
@@ -432,13 +428,11 @@ public class DistributedSearchIndexCoordinator {
         immediateCount,
         totalPartitions - immediateCount,
         PARTITION_RELEASE_WINDOW_MS / 1000);
-
     // Update entity stats with partition counts
     Map<String, SearchIndexJob.EntityTypeStats> updatedStats = new HashMap<>(job.getEntityStats());
     for (String entityType : entityTypes) {
       long partitionCount =
           partitions.stream().filter(p -> p.getEntityType().equals(entityType)).count();
-
       SearchIndexJob.EntityTypeStats stats = updatedStats.get(entityType);
       if (stats != null) {
         updatedStats.put(
@@ -455,7 +449,6 @@ public class DistributedSearchIndexCoordinator {
                 .build());
       }
     }
-
     // Reconcile totalRecords from actual partitions (accounts for time-series filtering)
     long actualTotalRecords =
         partitions.stream().mapToLong(SearchIndexPartition::getEstimatedCount).sum();
@@ -466,7 +459,6 @@ public class DistributedSearchIndexCoordinator {
           job.getTotalRecords(),
           actualTotalRecords);
     }
-
     // Update job status
     SearchIndexJob updatedJob =
         job.toBuilder()
@@ -475,9 +467,7 @@ public class DistributedSearchIndexCoordinator {
             .entityStats(updatedStats)
             .updatedAt(System.currentTimeMillis())
             .build();
-
     updateJob(jobDAO, updatedJob);
-
     return updatedJob;
   }
 
@@ -497,10 +487,8 @@ public class DistributedSearchIndexCoordinator {
    */
   public Optional<SearchIndexPartition> claimNextPartition(UUID jobId) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     // Get in-flight count for this server
     int inFlightCount = partitionDAO.countInFlightPartitions(jobId.toString(), serverId);
-
     // Check if this server already has too many in-flight partitions
     if (inFlightCount >= MAX_IN_FLIGHT_PARTITIONS_PER_SERVER) {
       LOG.debug(
@@ -510,18 +498,15 @@ public class DistributedSearchIndexCoordinator {
           MAX_IN_FLIGHT_PARTITIONS_PER_SERVER);
       return Optional.empty();
     }
-
     // Ensure unique claimTime per call so concurrent claims on the same server are distinguishable.
     // The counter suffix keeps values within normal epoch-millis range while preventing collisions.
     long claimTime = uniqueClaimTime();
-
     // Atomically claim a partition - FOR UPDATE SKIP LOCKED ensures no race condition
     int claimed = partitionDAO.claimNextPartitionAtomic(jobId.toString(), serverId, claimTime);
     if (claimed == 0) {
       LOG.debug("No partitions available to claim for server {} on job {}", serverId, jobId);
       return Optional.empty();
     }
-
     // Fetch the partition we just claimed using the unique claimTime
     SearchIndexPartitionRecord record =
         partitionDAO.findLatestClaimedPartition(jobId.toString(), serverId, claimTime);
@@ -529,9 +514,7 @@ public class DistributedSearchIndexCoordinator {
       LOG.warn("Claimed partition but couldn't find it - this shouldn't happen");
       return Optional.empty();
     }
-
     SearchIndexPartition partition = recordToPartition(record);
-
     LOG.debug(
         "Server {} claimed partition {} for entity type {} (in-flight: {}/{})",
         serverId,
@@ -539,7 +522,6 @@ public class DistributedSearchIndexCoordinator {
         partition.getEntityType(),
         inFlightCount + 1,
         MAX_IN_FLIGHT_PARTITIONS_PER_SERVER);
-
     return Optional.of(partition);
   }
 
@@ -562,7 +544,6 @@ public class DistributedSearchIndexCoordinator {
    */
   public void updatePartitionProgress(SearchIndexPartition partition) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     long now = System.currentTimeMillis();
     partitionDAO.updateProgress(
         partition.getId().toString(),
@@ -571,7 +552,6 @@ public class DistributedSearchIndexCoordinator {
         partition.getSuccessCount(),
         partition.getFailedCount(),
         now);
-
     LOG.debug(
         "Updated progress for partition {}: cursor={}, processed={}, success={}, failed={}",
         partition.getId(),
@@ -603,13 +583,11 @@ public class DistributedSearchIndexCoordinator {
   public void completePartition(
       UUID partitionId, long successCount, long failedCount, long warningCount) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     SearchIndexPartitionRecord record = partitionDAO.findById(partitionId.toString());
     if (record == null) {
       LOG.warn("Partition not found for completion: {}", partitionId);
       return;
     }
-
     long now = System.currentTimeMillis();
     // Status-guarded write: a worker on another server might be the one calling this
     // moments after requestStop already wrote CANCELLED via cancelInFlightPartitions.
@@ -630,7 +608,6 @@ public class DistributedSearchIndexCoordinator {
             now,
             record.lastError(),
             record.retryCount());
-
     if (updated == 0) {
       LOG.info(
           "Skipped completion of partition {} (entity {}) — row no longer PROCESSING (likely "
@@ -639,7 +616,6 @@ public class DistributedSearchIndexCoordinator {
           record.entityType());
       return;
     }
-
     LOG.info(
         "Completed partition {} for entity type {} (success: {}, failed: {}, warnings: {})",
         partitionId,
@@ -647,13 +623,11 @@ public class DistributedSearchIndexCoordinator {
         successCount,
         failedCount,
         warningCount);
-
     // Keep job.updatedAt fresh so OrphanJobMonitor doesn't mark it as orphaned.
     // This is especially important after recovery when no coordinator lock-refresh loop is running.
     // Throttled to avoid excessive DB writes — ABANDONED_LOCK_THRESHOLD is 10 min, so every 2 min
     // is safe.
     touchJobThrottled(record.jobId(), now);
-
     // Record partition completion for per-entity index promotion
     if (entityTracker != null) {
       LOG.debug(
@@ -664,7 +638,6 @@ public class DistributedSearchIndexCoordinator {
     } else {
       LOG.debug("Entity tracker is null, skipping per-entity completion tracking");
     }
-
     // Check if job should be marked as complete
     checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
   }
@@ -689,15 +662,12 @@ public class DistributedSearchIndexCoordinator {
    */
   public void failPartition(UUID partitionId, String errorMessage) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     SearchIndexPartitionRecord record = partitionDAO.findById(partitionId.toString());
     if (record == null) {
       LOG.warn("Partition not found for failure: {}", partitionId);
       return;
     }
-
     long now = System.currentTimeMillis();
-
     // Status-guarded write — if requestStop already moved this row to CANCELLED,
     // updateIfProcessing returns 0 and we leave the cancellation authoritative
     // instead of resurrecting the row to PENDING (retry) or FAILED (terminal).
@@ -755,18 +725,15 @@ public class DistributedSearchIndexCoordinator {
             record.entityType());
         return;
       }
-
       LOG.error(
           "Partition {} permanently failed after {} retries: {}",
           partitionId,
           MAX_PARTITION_RETRIES,
           errorMessage);
-
       // Record partition completion (with failure) for per-entity index promotion
       if (entityTracker != null) {
         entityTracker.recordPartitionComplete(record.entityType(), true);
       }
-
       checkAndUpdateJobCompletion(UUID.fromString(record.jobId()));
     }
   }
@@ -778,21 +745,17 @@ public class DistributedSearchIndexCoordinator {
    */
   public void startJob(UUID jobId) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
-
     SearchIndexJob job = getJobById(jobDAO, jobId);
-
     if (job.getStatus() != IndexJobStatus.READY) {
       throw new IllegalStateException(
           "Job must be in READY state to start. Current: " + job.getStatus());
     }
-
     SearchIndexJob started =
         job.toBuilder()
             .status(IndexJobStatus.RUNNING)
             .startedAt(System.currentTimeMillis())
             .updatedAt(System.currentTimeMillis())
             .build();
-
     updateJob(jobDAO, started);
     LOG.info("Started job {}", jobId);
   }
@@ -815,20 +778,15 @@ public class DistributedSearchIndexCoordinator {
    */
   public void requestStop(UUID jobId) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
-
     SearchIndexJob job = getJobById(jobDAO, jobId);
-
     if (job.isTerminal()) {
       LOG.warn("Cannot stop job {} - already in terminal state: {}", jobId, job.getStatus());
       return;
     }
-
     long now = System.currentTimeMillis();
     SearchIndexJob stopping =
         job.toBuilder().status(IndexJobStatus.STOPPING).updatedAt(now).build();
-
     updateJob(jobDAO, stopping);
-
     // Cancel both PENDING and PROCESSING partitions. The previous cancelPendingPartitions
     // left PROCESSING rows orphaned: workerExecutor.shutdownNow() killed the worker threads
     // but did not update partition status, so checkAndUpdateJobCompletion (which requires
@@ -837,7 +795,6 @@ public class DistributedSearchIndexCoordinator {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
     int cancelled = partitionDAO.cancelInFlightPartitions(jobId.toString(), now);
     LOG.info("Requested stop for job {} ({} in-flight partitions cancelled)", jobId, cancelled);
-
     // Drive STOPPING → STOPPED immediately so monitorDistributedJob exits without
     // waiting for the next poll tick.
     checkAndUpdateJobCompletion(jobId);
@@ -866,15 +823,11 @@ public class DistributedSearchIndexCoordinator {
   public SearchIndexJob getJobWithAggregatedStats(UUID jobId) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     SearchIndexJob job = getJobById(jobDAO, jobId);
-
     // Get aggregated stats from database
     AggregatedStatsRecord stats = partitionDAO.getAggregatedStats(jobId.toString());
-
     // Get per-entity stats
     List<EntityStatsRecord> entityStatsList = partitionDAO.getEntityStats(jobId.toString());
-
     // Per-entity timing comes from search_index_server_stats (the per-stage tracker), keyed
     // by entityType. Lookup once into a map to avoid an O(N*M) match in the loop below.
     Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> entityTimingByType =
@@ -883,13 +836,11 @@ public class DistributedSearchIndexCoordinator {
         collectionDAO.searchIndexServerStatsDAO().getStatsByEntityType(jobId.toString())) {
       entityTimingByType.put(e.entityType(), e);
     }
-
     Map<String, SearchIndexJob.EntityTypeStats> entityStatsMap = new HashMap<>();
     // Calculate totals from entity stats for consistency (entity stats are always accurate)
     long totalProcessed = 0;
     long totalSuccess = 0;
     long totalFailed = 0;
-
     for (EntityStatsRecord es : entityStatsList) {
       CollectionDAO.SearchIndexServerStatsDAO.EntityStats timing =
           entityTimingByType.get(es.entityType());
@@ -923,7 +874,6 @@ public class DistributedSearchIndexCoordinator {
       totalSuccess += es.successRecords();
       totalFailed += es.failedRecords();
     }
-
     // Per-server timing comes from search_index_server_stats grouped by serverId.
     Map<String, CollectionDAO.SearchIndexServerStatsDAO.ServerTimingStats> serverTimingById =
         new HashMap<>();
@@ -931,7 +881,6 @@ public class DistributedSearchIndexCoordinator {
         collectionDAO.searchIndexServerStatsDAO().getStatsByServer(jobId.toString())) {
       serverTimingById.put(s.serverId(), s);
     }
-
     // Get per-server stats for distributed visibility
     List<ServerStatsRecord> serverStatsList = partitionDAO.getServerStats(jobId.toString());
     LOG.debug("Fetched server stats for job {}: {} records from DB", jobId, serverStatsList.size());
@@ -961,7 +910,6 @@ public class DistributedSearchIndexCoordinator {
               .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
     }
-
     // Use entity stats sum for job-level stats (more reliable than single aggregation query)
     return job.toBuilder()
         .processedRecords(totalProcessed)
@@ -981,14 +929,12 @@ public class DistributedSearchIndexCoordinator {
    */
   public List<SearchIndexPartition> getPartitions(UUID jobId, PartitionStatus status) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     List<SearchIndexPartitionRecord> records;
     if (status != null) {
       records = partitionDAO.findByJobIdAndStatus(jobId.toString(), status.name());
     } else {
       records = partitionDAO.findByJobId(jobId.toString());
     }
-
     return records.stream().map(this::recordToPartition).collect(Collectors.toList());
   }
 
@@ -1001,7 +947,6 @@ public class DistributedSearchIndexCoordinator {
   public void checkAndUpdateJobCompletion(UUID jobId) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     SearchIndexJobRecord jobRecord = jobDAO.findById(jobId.toString());
     if (jobRecord == null) {
       return;
@@ -1010,7 +955,6 @@ public class DistributedSearchIndexCoordinator {
     if (job.isTerminal()) {
       return;
     }
-
     // Count partitions by status
     List<SearchIndexPartitionRecord> pending =
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name());
@@ -1028,13 +972,10 @@ public class DistributedSearchIndexCoordinator {
       // upgrade).
       boolean stopping = job.getStatus() == IndexJobStatus.STOPPING;
       IndexJobStatus newStatus = stopping ? IndexJobStatus.STOPPED : IndexJobStatus.PROMOTING;
-
       writeJobStatusWithStats(jobDAO, job, newStatus, stopping);
-
       // Partitions are all terminal now, so the precomputed cursor cache can never be re-claimed;
       // drop it to avoid leaking ~one entry per reindex run for the process lifetime.
       partitionStartCursors.remove(jobId);
-
       LOG.info("Job {} finished processing, status -> {}", jobId, newStatus);
     }
   }
@@ -1051,12 +992,10 @@ public class DistributedSearchIndexCoordinator {
     if (jobRecord == null || recordToJob(jobRecord).getStatus() != IndexJobStatus.PROMOTING) {
       return;
     }
-
     IndexJobStatus finalStatus =
         allPromoted && !hasFailedOrCancelledPartitions(jobId)
             ? IndexJobStatus.COMPLETED
             : IndexJobStatus.COMPLETED_WITH_ERRORS;
-
     writeJobStatusWithStats(jobDAO, recordToJob(jobRecord), finalStatus, true);
     LOG.info(
         "Job {} promotion finished, status -> {} (allPromoted={})",
@@ -1119,7 +1058,6 @@ public class DistributedSearchIndexCoordinator {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
     List<SearchIndexPartitionRecord> processing =
         partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name());
-
     if (!processing.isEmpty()) {
       long now = System.currentTimeMillis();
       for (SearchIndexPartitionRecord p : processing) {
@@ -1161,10 +1099,8 @@ public class DistributedSearchIndexCoordinator {
    */
   public int reclaimStalePartitions(UUID jobId) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
-
     long staleThreshold = System.currentTimeMillis() - PARTITION_CLAIM_TIMEOUT_MS;
     long now = System.currentTimeMillis();
-
     // First, fail partitions that have exceeded max retries
     int failed =
         partitionDAO.failStalePartitionsExceedingRetries(
@@ -1177,16 +1113,13 @@ public class DistributedSearchIndexCoordinator {
           MAX_PARTITION_RETRIES);
       checkAndUpdateJobCompletion(jobId);
     }
-
     // Then, reclaim partitions that can still be retried
     int reclaimed =
         partitionDAO.reclaimStalePartitionsForRetry(
             jobId.toString(), staleThreshold, MAX_PARTITION_RETRIES);
-
     if (reclaimed > 0) {
       LOG.info("Reclaimed {} stale partitions for job {}", reclaimed, jobId);
     }
-
     return reclaimed;
   }
 
@@ -1198,10 +1131,8 @@ public class DistributedSearchIndexCoordinator {
    */
   public boolean tryAcquireReindexLock(UUID jobId) {
     SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
-
     long now = System.currentTimeMillis();
     long expiresAt = now + LOCK_TIMEOUT_MS;
-
     try {
       return lockDAO.tryAcquireLock(REINDEX_LOCK_KEY, jobId.toString(), serverId, now, expiresAt);
     } catch (Exception e) {
@@ -1229,10 +1160,8 @@ public class DistributedSearchIndexCoordinator {
    */
   public boolean refreshReindexLock(UUID jobId) {
     SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
-
     long now = System.currentTimeMillis();
     long expiresAt = now + LOCK_TIMEOUT_MS;
-
     return lockDAO.refreshLock(REINDEX_LOCK_KEY, jobId.toString(), serverId, now, expiresAt);
   }
 
@@ -1245,14 +1174,11 @@ public class DistributedSearchIndexCoordinator {
    */
   public boolean transferReindexLock(UUID fromJobId, UUID toJobId) {
     SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
-
     long now = System.currentTimeMillis();
     long expiresAt = now + LOCK_TIMEOUT_MS;
-
     boolean transferred =
         lockDAO.transferLock(
             REINDEX_LOCK_KEY, fromJobId.toString(), toJobId.toString(), serverId, now, expiresAt);
-
     if (!transferred) {
       LOG.error(
           "Failed to transfer reindex lock from {} to {} - lock was lost to another server",
@@ -1282,7 +1208,6 @@ public class DistributedSearchIndexCoordinator {
    */
   public List<SearchIndexJob> getRecentJobs(List<IndexJobStatus> statuses, int limit) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
-
     List<SearchIndexJobRecord> records;
     if (statuses != null && !statuses.isEmpty()) {
       List<String> statusNames = statuses.stream().map(Enum::name).toList();
@@ -1290,7 +1215,6 @@ public class DistributedSearchIndexCoordinator {
     } else {
       records = jobDAO.listRecent(limit);
     }
-
     return records.stream().map(this::recordToJob).collect(Collectors.toList());
   }
 
@@ -1316,31 +1240,26 @@ public class DistributedSearchIndexCoordinator {
    */
   public void deleteJob(UUID jobId) {
     SearchIndexJobDAO jobDAO = collectionDAO.searchIndexJobDAO();
-
     SearchIndexJobRecord record = jobDAO.findById(jobId.toString());
     if (record == null) {
       LOG.warn("Job not found for deletion: {}", jobId);
       return;
     }
-
     SearchIndexJob job = recordToJob(record);
     if (!job.isTerminal()) {
       throw new IllegalStateException(
           "Cannot delete job in non-terminal state: " + job.getStatus());
     }
-
     // Partitions are deleted via CASCADE
     jobDAO.delete(jobId.toString());
     // Defensive: checkAndUpdateJobCompletion already evicts on terminal transition,
     // but a job can be inserted, terminate, and then be deleted across server restarts —
     // remove here too so this path is self-sufficient.
     partitionStartCursors.remove(jobId);
-
     LOG.info("Deleted job {} and its partitions", jobId);
   }
 
   // ========== Helper methods for record/domain conversion ==========
-
   private SearchIndexJob getJobById(SearchIndexJobDAO jobDAO, UUID jobId) {
     SearchIndexJobRecord record = jobDAO.findById(jobId.toString());
     if (record == null) {
@@ -1353,7 +1272,6 @@ public class DistributedSearchIndexCoordinator {
     String jobConfigJson = JsonUtils.pojoToJson(job.getJobConfiguration());
     String statsJson =
         job.getEntityStats() != null ? JsonUtils.pojoToJson(job.getEntityStats()) : null;
-
     jobDAO.insert(
         job.getId().toString(),
         job.getStatus().name(),
@@ -1373,7 +1291,6 @@ public class DistributedSearchIndexCoordinator {
   private void updateJob(SearchIndexJobDAO jobDAO, SearchIndexJob job) {
     String statsJson =
         job.getEntityStats() != null ? JsonUtils.pojoToJson(job.getEntityStats()) : null;
-
     jobDAO.update(
         job.getId().toString(),
         job.getStatus().name(),
@@ -1391,20 +1308,16 @@ public class DistributedSearchIndexCoordinator {
   private SearchIndexJob recordToJob(SearchIndexJobRecord record) {
     EventPublisherJob jobConfig =
         JsonUtils.readValue(record.jobConfiguration(), EventPublisherJob.class);
-
     Map<String, SearchIndexJob.EntityTypeStats> entityStats = null;
     Map<String, String> stagedIndexMapping = null;
-
     // Parse staged index mapping from dedicated column
     if (record.stagedIndexMapping() != null) {
       stagedIndexMapping = JsonUtils.readValue(record.stagedIndexMapping(), Map.class);
     }
-
     // Parse entity stats
     if (record.stats() != null) {
       Map<String, Object> statsMap = JsonUtils.readValue(record.stats(), Map.class);
       entityStats = new HashMap<>();
-
       for (Map.Entry<String, Object> entry : statsMap.entrySet()) {
         Map<String, Object> es = (Map<String, Object>) entry.getValue();
         entityStats.put(
@@ -1422,7 +1335,6 @@ public class DistributedSearchIndexCoordinator {
                 .build());
       }
     }
-
     return SearchIndexJob.builder()
         .id(UUID.fromString(record.id()))
         .status(IndexJobStatus.valueOf(record.status()))

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.csv.CsvUtil.addDomains;
@@ -27,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -48,22 +48,36 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.service.EntityServiceAssembly;
+import org.openmetadata.service.entity.service.EntityServiceOperations;
+import org.openmetadata.service.entity.service.EntityServicePolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.services.drive.DriveServiceResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class DriveServiceRepository extends ServiceEntityRepository<DriveService, DriveConnection> {
+@Repository()
+public class DriveServiceRepository implements EntityServicePolicy<DriveService, DriveConnection> {
+
   public DriveServiceRepository() {
-    super(
-        DriveServiceResource.COLLECTION_PATH,
-        Entity.DRIVE_SERVICE,
-        Entity.getCollectionDAO().driveServiceDAO(),
-        DriveConnection.class,
-        "",
-        ServiceType.DRIVE);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DriveServiceResource.COLLECTION_PATH,
+                Entity.DRIVE_SERVICE,
+                DriveService.class,
+                Entity.getCollectionDAO().driveServiceDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    this.serviceOperations =
+        EntityServiceAssembly.create(this, DriveConnection.class, ServiceType.DRIVE);
+    context().options().setQuoteFqn(true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -75,14 +89,16 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
   public String exportToCsv(
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
-    DriveService driveService =
-        getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate drive service name
+    // Validate drive service name
+    DriveService // Validate drive service name
+        driveService = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
     DirectoryRepository repository = (DirectoryRepository) Entity.getEntityRepository(DIRECTORY);
     List<Directory> directories =
-        repository.listAllForCSV(
-            repository.getFields("name,owners,tags,domains,extension"),
-            driveService.getFullyQualifiedName());
-
+        repository
+            .collections()
+            .forCsv(
+                repository.fieldPolicy().parse("name,owners,tags,domains,extension"),
+                driveService.getFullyQualifiedName());
     directories.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DriveServiceCsv(driveService, user, recursive)
         .exportAllCsv(directories, recursive, callback);
@@ -104,8 +120,9 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       CsvImportProgressCallback callback)
       throws IOException {
     // Validate drive service
-    DriveService driveService =
-        getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate drive service name
+    // Validate drive service name
+    DriveService // Validate drive service name
+        driveService = getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS);
     DriveServiceCsv driveServiceCsv = new DriveServiceCsv(driveService, user, recursive);
     List<CSVRecord> records;
     if (recursive) {
@@ -117,9 +134,13 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
   }
 
   public static class DriveServiceCsv extends EntityCsv<Directory> {
+
     public final CsvDocumentation DOCUMENTATION;
+
     public final List<CsvHeader> HEADERS;
+
     private final DriveService service;
+
     private final boolean recursive;
 
     public DriveServiceCsv(DriveService service, String user, boolean recursive) {
@@ -143,7 +164,6 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       int total = directories.size();
       int exported = 0;
       int batchNumber = 0;
-
       for (Directory directory : directories) {
         addEntityToCSV(csvFile, directory, DIRECTORY);
         DirectoryRepository directoryRepository =
@@ -168,7 +188,6 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
             LOG.error("Error parsing directory CSV: {}", e.getMessage());
           }
         }
-
         exported++;
         if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
           batchNumber++;
@@ -204,7 +223,6 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                 .withName(csvRecord.get(0))
                 .withFullyQualifiedName(directoryFqn);
       }
-
       // Update directory fields from CSV (header order: name, displayName, description, ...)
       directory
           .withDisplayName(csvRecord.get(1))
@@ -219,7 +237,6 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                       Pair.of(5, TagLabel.TagSource.GLOSSARY))))
           .withDomains(getDomains(printer, csvRecord, 6, directory.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 7));
-
       if (processRecord) {
         createEntity(printer, csvRecord, directory, DIRECTORY);
       }
@@ -235,13 +252,11 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
       addGlossaryTerms(recordList, entity.getTags());
       addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
-
       // Add entity type and FQN for recursive export
       if (recursive) {
         addField(recordList, entityType);
         addField(recordList, entity.getFullyQualifiedName());
       }
-
       addRecord(csvFile, recordList);
     }
 
@@ -253,5 +268,19 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
         return null;
       }
     }
+  }
+
+  private final EntityPolicyContext<DriveService> entityContext;
+
+  private final EntityServiceOperations<DriveService, DriveConnection> serviceOperations;
+
+  @Override
+  public final EntityPolicyContext<DriveService> context() {
+    return entityContext;
+  }
+
+  @Override
+  public final EntityServiceOperations<DriveService, DriveConnection> serviceOperations() {
+    return serviceOperations;
   }
 }

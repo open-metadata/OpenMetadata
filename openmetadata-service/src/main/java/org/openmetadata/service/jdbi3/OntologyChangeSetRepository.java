@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -32,6 +31,17 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.ontology.OntologyChangeSetValidator;
 import org.openmetadata.service.resources.ontology.OntologyChangeSetResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -39,18 +49,22 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Repository
-public class OntologyChangeSetRepository extends EntityRepository<OntologyChangeSet> {
+public class OntologyChangeSetRepository implements EntityPolicy<OntologyChangeSet> {
+
   private static final String UPDATE_FIELDS =
       "operations,undoCursor,state,reviewTask,applicationResult";
 
   public OntologyChangeSetRepository() {
-    super(
-        OntologyChangeSetResource.COLLECTION_PATH,
-        Entity.ONTOLOGY_CHANGE_SET,
-        OntologyChangeSet.class,
-        Entity.getCollectionDAO().ontologyChangeSetDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                OntologyChangeSetResource.COLLECTION_PATH,
+                Entity.ONTOLOGY_CHANGE_SET,
+                OntologyChangeSet.class,
+                Entity.getCollectionDAO().ontologyChangeSetDAO()),
+            new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
@@ -122,18 +136,22 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
 
   @Override
   public void storeEntity(final OntologyChangeSet entity, final boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
   public void storeRelationships(final OntologyChangeSet entity) {
     for (final EntityReference glossary : entity.getGlossaries()) {
-      addRelationship(
-          glossary.getId(),
-          entity.getId(),
-          Entity.GLOSSARY,
-          Entity.ONTOLOGY_CHANGE_SET,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  glossary.getId(),
+                  entity.getId(),
+                  Entity.GLOSSARY,
+                  Entity.ONTOLOGY_CHANGE_SET,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
@@ -172,8 +190,8 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
 
   private PutResponse<OntologyChangeSet> persist(
       final UriInfo uriInfo, final OntologyChangeSet updated, final String user) {
-    prepareInternal(updated, true);
-    return createOrUpdate(uriInfo, updated, user);
+    preparation().prepare(updated, true);
+    return creates().upsert(uriInfo, updated, new EntityCommandActor(user, null), false);
   }
 
   private OntologyChangeSet editableCopy(final UUID id) {
@@ -188,7 +206,14 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
 
   private OntologyChangeSet copy(final UUID id) {
     final OntologyChangeSet current =
-        get(null, id, getFields(UPDATE_FIELDS), Include.NON_DELETED, false);
+        reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse(UPDATE_FIELDS),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     return JsonUtils.deepCopy(current, OntologyChangeSet.class);
   }
 
@@ -222,33 +247,68 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
   }
 
   @Override
-  public EntityUpdater getUpdater(
+  public EntityUpdater<OntologyChangeSet> getUpdater(
       final OntologyChangeSet original,
       final OntologyChangeSet updated,
-      final Operation operation,
+      final EntityOperation operation,
       final ChangeSource changeSource) {
-    return new OntologyChangeSetUpdater(original, updated, operation);
+    return new OntologyChangeSetUpdater(original, updated, operation).mutation();
   }
 
-  public class OntologyChangeSetUpdater extends EntityUpdater {
+  public class OntologyChangeSetUpdater implements EntitySpecificMutation<OntologyChangeSet> {
+
     OntologyChangeSetUpdater(
         final OntologyChangeSet original,
         final OntologyChangeSet updated,
-        final Operation operation) {
-      super(original, updated, operation);
+        final EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(final boolean consolidatingChanges) {
-      if (!original.getGlossaries().equals(updated.getGlossaries())) {
+    public void update(
+        EntityUpdater<OntologyChangeSet> entityUpdate, final boolean consolidatingChanges) {
+      if (!entityUpdate
+          .getOriginal()
+          .getGlossaries()
+          .equals(entityUpdate.getUpdated().getGlossaries())) {
         throw new BadRequestException("Ontology change set scope is immutable");
       }
-      recordChange("operations", original.getOperations(), updated.getOperations(), true);
-      recordChange("undoCursor", original.getUndoCursor(), updated.getUndoCursor());
-      recordChange("state", original.getState(), updated.getState());
-      recordChange("reviewTask", original.getReviewTask(), updated.getReviewTask());
-      recordChange(
-          "applicationResult", original.getApplicationResult(), updated.getApplicationResult());
+      entityUpdate.recordChange(
+          "operations",
+          entityUpdate.getOriginal().getOperations(),
+          entityUpdate.getUpdated().getOperations(),
+          true);
+      entityUpdate.recordChange(
+          "undoCursor",
+          entityUpdate.getOriginal().getUndoCursor(),
+          entityUpdate.getUpdated().getUndoCursor());
+      entityUpdate.recordChange(
+          "state", entityUpdate.getOriginal().getState(), entityUpdate.getUpdated().getState());
+      entityUpdate.recordChange(
+          "reviewTask",
+          entityUpdate.getOriginal().getReviewTask(),
+          entityUpdate.getUpdated().getReviewTask());
+      entityUpdate.recordChange(
+          "applicationResult",
+          entityUpdate.getOriginal().getApplicationResult(),
+          entityUpdate.getUpdated().getApplicationResult());
     }
+
+    private final EntityUpdater<OntologyChangeSet> entityUpdate;
+
+    public EntityUpdater<OntologyChangeSet> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<OntologyChangeSet> entityContext;
+
+  @Override
+  public final EntityPolicyContext<OntologyChangeSet> context() {
+    return entityContext;
   }
 }

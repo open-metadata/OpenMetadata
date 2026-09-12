@@ -10,36 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.ai.AIApplicationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Repository
-public class AIApplicationRepository extends EntityRepository<AIApplication> {
+public class AIApplicationRepository implements EntityPolicy<AIApplication> {
+
   private static final String FIELD_MCP_SERVERS = "mcpServers";
+
   private static final String FIELD_PRIMARY_MODEL = "primaryModel";
+
   private static final String APPLICATION_UPDATE_FIELDS =
       "modelConfigurations,tools,dataSources,reviewers";
+
   private static final String APPLICATION_PATCH_FIELDS =
       "modelConfigurations,tools,dataSources,reviewers";
 
   public AIApplicationRepository() {
-    super(
-        AIApplicationResource.COLLECTION_PATH,
-        Entity.AI_APPLICATION,
-        AIApplication.class,
-        Entity.getCollectionDAO().aiApplicationDAO(),
-        APPLICATION_PATCH_FIELDS,
-        APPLICATION_UPDATE_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                AIApplicationResource.COLLECTION_PATH,
+                Entity.AI_APPLICATION,
+                AIApplication.class,
+                Entity.getCollectionDAO().aiApplicationDAO()),
+            new EntityPolicyContext.WriteFields(
+                APPLICATION_PATCH_FIELDS, APPLICATION_UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -62,7 +78,7 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
 
   @Override
   public void storeEntity(AIApplication aiApplication, boolean update) {
-    store(aiApplication, update);
+    persistence().store(aiApplication, update);
   }
 
   @Override
@@ -72,152 +88,207 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
   }
 
   @Override
-  public EntityRepository<AIApplication>.EntityUpdater getUpdater(
+  public EntityUpdater<AIApplication> getUpdater(
       AIApplication original,
       AIApplication updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new AIApplicationUpdater(original, updated, operation);
+    return new AIApplicationUpdater(original, updated, operation).mutation();
   }
 
-  public class AIApplicationUpdater extends EntityUpdater {
+  public class AIApplicationUpdater implements EntitySpecificMutation<AIApplication> {
+
     public AIApplicationUpdater(
-        AIApplication original, AIApplication updated, Operation operation) {
-      super(original, updated, operation);
+        AIApplication original, AIApplication updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<AIApplication> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "applicationType",
           () ->
-              recordChange(
-                  "applicationType", original.getApplicationType(), updated.getApplicationType()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "applicationType",
+                  entityUpdate.getOriginal().getApplicationType(),
+                  entityUpdate.getUpdated().getApplicationType()));
+      entityUpdate.compareAndUpdate(
           "developmentStage",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "developmentStage",
-                  original.getDevelopmentStage(),
-                  updated.getDevelopmentStage()));
-      compareAndUpdate(
+                  entityUpdate.getOriginal().getDevelopmentStage(),
+                  entityUpdate.getUpdated().getDevelopmentStage()));
+      entityUpdate.compareAndUpdate(
           "modelConfigurations",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "modelConfigurations",
-                  original.getModelConfigurations(),
-                  updated.getModelConfigurations(),
+                  entityUpdate.getOriginal().getModelConfigurations(),
+                  entityUpdate.getUpdated().getModelConfigurations(),
                   true));
       updateModelReferences();
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "promptTemplates",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "promptTemplates",
-                  original.getPromptTemplates(),
-                  updated.getPromptTemplates(),
+                  entityUpdate.getOriginal().getPromptTemplates(),
+                  entityUpdate.getUpdated().getPromptTemplates(),
                   true));
-      compareAndUpdate(
-          "tools", () -> recordChange("tools", original.getTools(), updated.getTools(), true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
+          "tools",
+          () ->
+              entityUpdate.recordChange(
+                  "tools",
+                  entityUpdate.getOriginal().getTools(),
+                  entityUpdate.getUpdated().getTools(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "dataSources",
           () ->
-              recordChange(
-                  "dataSources", original.getDataSources(), updated.getDataSources(), true));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "dataSources",
+                  entityUpdate.getOriginal().getDataSources(),
+                  entityUpdate.getUpdated().getDataSources(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "knowledgeBases",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "knowledgeBases",
-                  original.getKnowledgeBases(),
-                  updated.getKnowledgeBases(),
+                  entityUpdate.getOriginal().getKnowledgeBases(),
+                  entityUpdate.getUpdated().getKnowledgeBases(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "upstreamApplications",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "upstreamApplications",
-                  original.getUpstreamApplications(),
-                  updated.getUpstreamApplications(),
+                  entityUpdate.getOriginal().getUpstreamApplications(),
+                  entityUpdate.getUpdated().getUpstreamApplications(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "downstreamApplications",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "downstreamApplications",
-                  original.getDownstreamApplications(),
-                  updated.getDownstreamApplications(),
+                  entityUpdate.getOriginal().getDownstreamApplications(),
+                  entityUpdate.getUpdated().getDownstreamApplications(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "framework",
-          () -> recordChange("framework", original.getFramework(), updated.getFramework(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "framework",
+                  entityUpdate.getOriginal().getFramework(),
+                  entityUpdate.getUpdated().getFramework(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "governanceMetadata",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "governanceMetadata",
-                  original.getGovernanceMetadata(),
-                  updated.getGovernanceMetadata(),
+                  entityUpdate.getOriginal().getGovernanceMetadata(),
+                  entityUpdate.getUpdated().getGovernanceMetadata(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "biasMetrics",
           () ->
-              recordChange(
-                  "biasMetrics", original.getBiasMetrics(), updated.getBiasMetrics(), true));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "biasMetrics",
+                  entityUpdate.getOriginal().getBiasMetrics(),
+                  entityUpdate.getUpdated().getBiasMetrics(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "performanceMetrics",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "performanceMetrics",
-                  original.getPerformanceMetrics(),
-                  updated.getPerformanceMetrics(),
+                  entityUpdate.getOriginal().getPerformanceMetrics(),
+                  entityUpdate.getUpdated().getPerformanceMetrics(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "qualityMetrics",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "qualityMetrics",
-                  original.getQualityMetrics(),
-                  updated.getQualityMetrics(),
+                  entityUpdate.getOriginal().getQualityMetrics(),
+                  entityUpdate.getUpdated().getQualityMetrics(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "safetyMetrics",
           () ->
-              recordChange(
-                  "safetyMetrics", original.getSafetyMetrics(), updated.getSafetyMetrics(), true));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "safetyMetrics",
+                  entityUpdate.getOriginal().getSafetyMetrics(),
+                  entityUpdate.getUpdated().getSafetyMetrics(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "testSuites",
           () ->
-              recordChange("testSuites", original.getTestSuites(), updated.getTestSuites(), true));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "testSuites",
+                  entityUpdate.getOriginal().getTestSuites(),
+                  entityUpdate.getUpdated().getTestSuites(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "sourceCode",
-          () -> recordChange("sourceCode", original.getSourceCode(), updated.getSourceCode()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "sourceCode",
+                  entityUpdate.getOriginal().getSourceCode(),
+                  entityUpdate.getUpdated().getSourceCode()));
+      entityUpdate.compareAndUpdate(
           "deploymentUrl",
           () ->
-              recordChange(
-                  "deploymentUrl", original.getDeploymentUrl(), updated.getDeploymentUrl()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "deploymentUrl",
+                  entityUpdate.getOriginal().getDeploymentUrl(),
+                  entityUpdate.getUpdated().getDeploymentUrl()));
+      entityUpdate.compareAndUpdate(
           "documentation",
           () ->
-              recordChange(
-                  "documentation", original.getDocumentation(), updated.getDocumentation()));
+              entityUpdate.recordChange(
+                  "documentation",
+                  entityUpdate.getOriginal().getDocumentation(),
+                  entityUpdate.getUpdated().getDocumentation()));
     }
 
     private void updateModelReferences() {
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           FIELD_PRIMARY_MODEL,
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   FIELD_PRIMARY_MODEL,
-                  original.getPrimaryModel(),
-                  updated.getPrimaryModel(),
+                  entityUpdate.getOriginal().getPrimaryModel(),
+                  entityUpdate.getUpdated().getPrimaryModel(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           FIELD_MCP_SERVERS,
           () ->
-              recordChange(
-                  FIELD_MCP_SERVERS, original.getMcpServers(), updated.getMcpServers(), true));
+              entityUpdate.recordChange(
+                  FIELD_MCP_SERVERS,
+                  entityUpdate.getOriginal().getMcpServers(),
+                  entityUpdate.getUpdated().getMcpServers(),
+                  true));
     }
+
+    private final EntityUpdater<AIApplication> entityUpdate;
+
+    public EntityUpdater<AIApplication> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<AIApplication> entityContext;
+
+  @Override
+  public final EntityPolicyContext<AIApplication> context() {
+    return entityContext;
   }
 }

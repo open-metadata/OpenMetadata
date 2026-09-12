@@ -129,7 +129,7 @@ public class MigrationUtil {
       final WorkflowDefinitionRepository repository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
       final List<WorkflowDefinition> workflows =
-          repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+          repository.collections().all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
       total = workflows.size();
       redeployed = redeployEach(WorkflowHandler.getInstance(), workflows);
     } catch (Exception e) {

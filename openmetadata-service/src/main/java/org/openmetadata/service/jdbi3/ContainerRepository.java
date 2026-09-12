@@ -51,6 +51,23 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.AncestorsCache;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.ChildrenPageCache;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.cache.EntityCacheTargets;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.metadata.ColumnSelectionValidator;
+import org.openmetadata.service.entity.metadata.DerivedTagLoader;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.EntityTagWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityBatchFields;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityColumnMutation;
+import org.openmetadata.service.entity.write.EntityColumnUpdater;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.storages.ContainerResource;
@@ -63,34 +80,41 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ContainerRepository extends EntityRepository<Container> {
+@Repository()
+public class ContainerRepository implements EntityPolicy<Container> {
+
   private static final Logger LOG = LoggerFactory.getLogger(ContainerRepository.class);
+
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel,parent";
+
   private static final String CONTAINER_PATCH_FIELDS = "dataModel,parent";
+
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("dataModel.columns.description");
+
   public static final String CONTAINER_SAMPLE_DATA_EXTENSION = "container.sampleData";
 
   public ContainerRepository() {
-    super(
-        ContainerResource.COLLECTION_PATH,
-        Entity.CONTAINER,
-        Container.class,
-        Entity.getCollectionDAO().containerDAO(),
-        CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS,
-        CHANGE_SUMMARY_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                ContainerResource.COLLECTION_PATH,
+                Entity.CONTAINER,
+                Container.class,
+                Entity.getCollectionDAO().containerDAO()),
+            new EntityPolicyContext.WriteFields(
+                CONTAINER_PATCH_FIELDS, CONTAINER_UPDATE_FIELDS, CHANGE_SUMMARY_FIELDS),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix (FQNs are service-nested). See
     // EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
-
-    allowedFields.remove("children");
-
+    context().options().setDescendantsCoveredByAncestorCascade(true);
+    context().allowedFields().remove("children");
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
+    fieldLoading().register(FIELD_PARENT, this::fetchAndSetParents);
+    fieldLoading().register(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
   }
 
   @Override
@@ -114,8 +138,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   public void setFieldsInBulk(EntityUtil.Fields fields, List<Container> entities) {
     // Always set default service field for all containers
     fetchAndSetDefaultService(entities);
-
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     for (Container entity : entities) {
       clearFieldsInternal(entity, fields);
@@ -127,7 +150,12 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (!fields.contains(FIELD_PARENT) || containers == null || containers.isEmpty()) {
       return;
     }
-    setFieldFromMap(true, containers, batchFetchParents(containers), Container::setParent);
+    EntityBatchFields.assign(true, containers, batchFetchParents(containers), Container::setParent);
+  }
+
+  @Override
+  public DerivedTagLoader.FailureMode derivedTagFailureMode() {
+    return DerivedTagLoader.FailureMode.FALL_BACK_TO_INDIVIDUAL;
   }
 
   private void fetchAndSetDataModelColumnTags(
@@ -135,34 +163,13 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (!fields.contains(FIELD_TAGS) || containers == null || containers.isEmpty()) {
       return;
     }
-
-    // Container-level tags. Important for search indexing where we may process 100k+
-    // containers in a single bulk batch — we must not issue a derived-tag DB query per
-    // container, so collect all tags up front and batch derived tags once.
-    List<String> entityFQNs = containers.stream().map(Container::getFullyQualifiedName).toList();
-    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
-
-    Map<String, List<TagLabel>> derivedTagsMap =
-        tryBatchFetchDerivedTags(tagsMap, containers.size() + " containers");
-
-    for (Container container : containers) {
-      List<TagLabel> containerTags =
-          tagsMap.getOrDefault(container.getFullyQualifiedName(), Collections.emptyList());
-      if (derivedTagsMap != null) {
-        container.setTags(addDerivedTagsWithPreFetched(containerTags, derivedTagsMap));
-      } else {
-        container.setTags(addDerivedTagsGracefully(containerTags));
-      }
-    }
-
     // Then, if dataModel field is requested, also fetch data model column tags
     if (fields.contains("dataModel")) {
       // Filter containers that have data models and use bulk tag fetching
       List<Container> containersWithDataModels =
           containers.stream().filter(c -> c.getDataModel() != null).collect(Collectors.toList());
-
       if (!containersWithDataModels.isEmpty()) {
-        bulkPopulateEntityFieldTags(containersWithDataModels, c -> c.getDataModel().getColumns());
+        fieldTags().populate(containersWithDataModels, c -> c.getDataModel().getColumns());
       }
     }
   }
@@ -172,12 +179,12 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (containers == null || containers.isEmpty()) {
       return parentsMap;
     }
-
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityListToStrings(containers), Relationship.CONTAINS.ordinal());
-
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID containerId = UUID.fromString(record.getToId());
       // Only consider container parents, not service parents
@@ -188,16 +195,16 @@ public class ContainerRepository extends EntityRepository<Container> {
         parentsMap.put(containerId, parentRef);
       }
     }
-
     return parentsMap;
   }
 
   @Override
-  protected void fetchAndSetChildren(List<Container> containers, EntityUtil.Fields fields) {
+  public void fetchAndSetChildren(List<Container> containers, EntityUtil.Fields fields) {
     if (!fields.contains("children") || containers == null || containers.isEmpty()) {
       return;
     }
-    setFieldFromMap(true, containers, batchFetchChildren(containers), Container::setChildren);
+    EntityBatchFields.assign(
+        true, containers, batchFetchChildren(containers), Container::setChildren);
   }
 
   private Map<UUID, List<EntityReference>> batchFetchChildren(List<Container> containers) {
@@ -205,19 +212,18 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (containers == null || containers.isEmpty()) {
       return childrenMap;
     }
-
     // Initialize empty lists for all containers
     for (Container container : containers) {
       childrenMap.put(container.getId(), new ArrayList<>());
     }
-
     // Single batch query to get all children for all containers
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(containers), Relationship.CONTAINS.ordinal(), CONTAINER);
-
     // Group children by parent container ID
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID parentId = UUID.fromString(record.getFromId());
@@ -225,7 +231,6 @@ public class ContainerRepository extends EntityRepository<Container> {
           getEntityReferenceById(CONTAINER, UUID.fromString(record.getToId()), NON_DELETED);
       childrenMap.get(parentId).add(childRef);
     }
-
     return childrenMap;
   }
 
@@ -233,10 +238,8 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (containers == null || containers.isEmpty()) {
       return;
     }
-
     // Batch fetch service references for all containers
     Map<UUID, EntityReference> serviceMap = batchFetchServices(containers);
-
     // Set service for all containers
     for (Container container : containers) {
       container.setService(serviceMap.get(container.getId()));
@@ -248,17 +251,17 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (containers == null || containers.isEmpty()) {
       return serviceMap;
     }
-
     // Single batch query to get all services for all containers
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityListToStrings(containers), Relationship.CONTAINS.ordinal());
-
     // De-dupe service IDs before resolving them to references. In any practical paged
     // listing the children are all under the same storage service, so the naive loop
     // below would call getEntityReferenceById N times for the same service id —
-    // each call hits EntityRepository.CACHE_WITH_ID (or DB) for the full StorageService JSON. Cache
+    // each call hits EntityCaches.byId() (or DB) for the full StorageService JSON. Cache
     // one
     // ref per unique service id and fan it back out to every child.
     Map<UUID, EntityReference> serviceRefById = new HashMap<>();
@@ -273,7 +276,6 @@ public class ContainerRepository extends EntityRepository<Container> {
               serviceId, id -> getEntityReferenceById(STORAGE_SERVICE, id, NON_DELETED));
       serviceMap.put(containerId, serviceRef);
     }
-
     return serviceMap;
   }
 
@@ -303,15 +305,15 @@ public class ContainerRepository extends EntityRepository<Container> {
                     (a, b) -> a,
                     LinkedHashMap::new));
     Map<String, List<TagLabel>> tagsByHash =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .tagUsageDAO()
             .getTagsByTargetFQNHashes(new ArrayList<>(hashToColumn.keySet()));
-
     // Batch-fetch derived tags for every glossary tag across all columns in a single query.
     // Falls back to per-column gracefully on failure to avoid changing existing semantics.
     Map<String, List<TagLabel>> derivedTagsMap =
         tryBatchFetchDerivedTags(tagsByHash, "container columns");
-
     for (Map.Entry<String, Column> entry : hashToColumn.entrySet()) {
       List<TagLabel> columnTags = tagsByHash.get(entry.getKey());
       if (columnTags == null) {
@@ -350,16 +352,20 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   private void setDefaultFields(Container container) {
     EntityReference parentServiceRef =
-        getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
+        relationships().singleFrom(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
     container.withService(parentServiceRef);
   }
 
   private EntityReference getContainerParent(Container container) {
-    return getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
+    return relationships().singleFrom(container.getId(), Relationship.CONTAINS, CONTAINER, false);
   }
 
-  protected List<EntityReference> getChildren(Container container) {
-    return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
+  public List<EntityReference> getChildren(Container container) {
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(
+                container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER),
+            Include.NON_DELETED);
   }
 
   @Override
@@ -404,7 +410,6 @@ public class ContainerRepository extends EntityRepository<Container> {
         (StorageService) getCachedParentOrLoad(container.getService(), "", Include.NON_DELETED);
     container.setService(storageService.getEntityReference());
     container.setServiceType(storageService.getServiceType());
-
     if (container.getParent() != null) {
       Container parent = Entity.getEntity(container.getParent(), "owners", ALL);
       container.withParent(parent.getEntityReference());
@@ -412,13 +417,13 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service", "parent");
   }
 
   @Override
-  protected ObjectNode storageJsonNode(Container container) {
-    ObjectNode node = super.storageJsonNode(container);
+  public ObjectNode storageJsonNode(Container container) {
+    ObjectNode node = EntityPolicy.super.storageJsonNode(container);
     stripColumnTags(node.at("/dataModel/columns"));
     return node;
   }
@@ -438,19 +443,19 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void storeEntity(Container container, boolean update) {
-    store(container, update);
+    persistence().store(container, update);
   }
 
   @Override
   public void storeEntities(List<Container> containers) {
-    storeMany(containers);
+    persistence().insertMany(containers);
   }
 
   @Override
   public void restorePatchAttributes(Container original, Container updated) {
     // Service can't change via PATCH; parent is patchable (see #24294 — same-service re-parent
     // is validated in ContainerUpdater.validateParent).
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
   }
 
@@ -465,16 +470,15 @@ public class ContainerRepository extends EntityRepository<Container> {
   // which is invalidated on every entity write. Cross-instance invalidation is handled
   // separately by the pubsub handler in CacheBundle (gated to entityType=container).
   // ----------------------------------------------------------------------------------------
-
   @Override
-  protected void postCreate(Container entity) {
-    super.postCreate(entity);
+  public void postCreate(Container entity) {
+    EntityPolicy.super.postCreate(entity);
     invalidateContainerDerivedCaches(entity.getFullyQualifiedName());
   }
 
   @Override
-  protected void postUpdate(Container original, Container updated) {
-    super.postUpdate(original, updated);
+  public void postUpdate(Container original, Container updated) {
+    EntityPolicy.super.postUpdate(original, updated);
     invalidateContainerDerivedCaches(updated.getFullyQualifiedName());
     String originalFqn = original.getFullyQualifiedName();
     if (originalFqn != null && !originalFqn.equals(updated.getFullyQualifiedName())) {
@@ -485,8 +489,8 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  protected void invalidateCache(Container entity) {
-    super.invalidateCache(entity);
+  public void invalidateCache(Container entity) {
+    EntityPolicy.super.invalidateCache(entity);
     invalidateContainerDerivedCaches(entity.getFullyQualifiedName());
   }
 
@@ -512,27 +516,34 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<Container> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<Container> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Container::getId).toList();
-    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteToMany(ids, context().schema().entityType(), Relationship.CONTAINS, null);
   }
 
   @Override
   public void storeRelationships(Container container) {
     // store each relationship separately in the entity_relationship table
     addServiceRelationship(container, container.getService());
-
     // parent container if exists
     EntityReference parentReference = container.getParent();
     if (parentReference != null) {
-      addRelationship(
-          parentReference.getId(), container.getId(), CONTAINER, CONTAINER, Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  parentReference.getId(),
+                  container.getId(),
+                  CONTAINER,
+                  CONTAINER,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   @Override
-  protected void storeEntitySpecificRelationshipsForMany(List<Container> entities) {
+  public void storeEntitySpecificRelationshipsForMany(List<Container> entities) {
     List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
     for (Container container : entities) {
       EntityReference service = container.getService();
@@ -542,7 +553,7 @@ public class ContainerRepository extends EntityRepository<Container> {
                 service.getId(),
                 container.getId(),
                 service.getType(),
-                entityType,
+                context().schema().entityType(),
                 Relationship.CONTAINS));
       }
       EntityReference parent = container.getParent();
@@ -556,30 +567,30 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public EntityRepository<Container>.EntityUpdater getUpdater(
-      Container original, Container updated, Operation operation, ChangeSource changeSource) {
-    return new ContainerUpdater(original, updated, operation);
+  public EntityUpdater<Container> getUpdater(
+      Container original, Container updated, EntityOperation operation, ChangeSource changeSource) {
+    return new ContainerUpdater(original, updated, operation).mutation();
   }
 
   @Override
   public void applyTags(Container container) {
     // Add container level tags by adding tag to container relationship
-    super.applyTags(container);
+    EntityPolicy.super.applyTags(container);
     if (container.getDataModel() != null) {
-      applyColumnTags(container.getDataModel().getColumns());
+      tagWrites().addColumns(container.getDataModel().getColumns());
     }
   }
 
   @Override
   public void validateTags(Container container) {
-    super.validateTags(container);
+    EntityPolicy.super.validateTags(container);
     if (container.getDataModel() != null) {
       validateColumnTags(container.getDataModel().getColumns());
     }
   }
 
   @Override
-  protected EntityReference getParentReference(Container entity) {
+  public EntityReference getParentReference(Container entity) {
     return entity.getService();
   }
 
@@ -656,7 +667,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     Include safeInclude = include != null ? include : Include.NON_DELETED;
     String nameLike = buildNameLikeBind(search);
     boolean hasSearch = !"%".equals(nameLike);
-
     ChildrenPageCache pageCache = hasSearch ? null : CacheBundle.getChildrenPageCache();
     if (pageCache != null) {
       ResultList<Container> cached;
@@ -667,7 +677,6 @@ public class ContainerRepository extends EntityRepository<Container> {
         return cached;
       }
     }
-
     // Phase markers feed the slow-request log so when a /children call exceeds the
     // latency budget in prod we can tell which step (depth query / count / service
     // restore) was responsible. The parent-lookup phase from the previous
@@ -676,8 +685,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     String parentHash = parentHashRaw + Entity.SEPARATOR + "%";
     String parentHashChild = parentHashRaw + Entity.SEPARATOR + "%" + Entity.SEPARATOR + "%";
     String includeBind = includeToBindString(safeInclude);
-    CollectionDAO.ContainerDAO containerDAO = (CollectionDAO.ContainerDAO) dao;
-
+    CollectionDAO.ContainerDAO containerDAO = (CollectionDAO.ContainerDAO) context().schema().dao();
     try {
       List<Container> children;
       try (var ignored = RequestLatencyContext.phase("listChildrenPage")) {
@@ -685,14 +693,12 @@ public class ContainerRepository extends EntityRepository<Container> {
             containerDAO.listDirectChildSummariesByParentHash(
                 parentHash, parentHashChild, nameLike, includeBind, safeLimit, safeOffset);
       }
-
       int total;
       try (var ignored = RequestLatencyContext.phase("listChildrenCount")) {
         total =
             containerDAO.countDirectChildrenByParentHash(
                 parentHash, parentHashChild, nameLike, includeBind);
       }
-
       if (children.isEmpty()) {
         ResultList<Container> empty = new ResultList<>(new ArrayList<>(), null, null, total);
         if (pageCache != null) {
@@ -700,12 +706,10 @@ public class ContainerRepository extends EntityRepository<Container> {
         }
         return empty;
       }
-
       // service is stripped from stored JSON; restore via batched relationship lookup.
       try (var ignored = RequestLatencyContext.phase("listChildrenService")) {
         fetchAndSetDefaultService(children);
       }
-
       ResultList<Container> page = new ResultList<>(children, null, null, total);
       if (pageCache != null) {
         pageCache.put(CONTAINER, parentFQN, safeLimit, safeOffset, safeInclude, page);
@@ -781,7 +785,6 @@ public class ContainerRepository extends EntityRepository<Container> {
         return hydrateRefsByFqn(cachedFqns);
       }
     }
-
     List<String> ancestorFqns = computeAncestorFqns(fqn);
     if (ancestorFqns.isEmpty()) {
       return Collections.emptyList();
@@ -800,7 +803,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (parts.length < 3) {
       return Collections.emptyList();
     }
-
     // FullyQualifiedName.split preserves each segment as it appears in the source
     // FQN (quoted segments stay quoted, unquoted stay unquoted). We still round-trip
     // every segment through FullyQualifiedName.add — its quoteName step is idempotent,
@@ -830,11 +832,9 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (fqns.isEmpty()) {
       return Collections.emptyList();
     }
-
     var entityCache = CacheBundle.getCachedEntityDao();
     Map<String, EntityReference> byFqn = new HashMap<>();
     List<String> misses = new ArrayList<>();
-
     if (entityCache != null) {
       for (String ancestorFqn : fqns) {
         Optional<String> hit = entityCache.getReferenceByName(CONTAINER, ancestorFqn);
@@ -867,9 +867,9 @@ public class ContainerRepository extends EntityRepository<Container> {
     } else {
       misses.addAll(fqns);
     }
-
     if (!misses.isEmpty()) {
-      for (EntityReference ref : dao.findReferencesByFqns(misses, NON_DELETED)) {
+      for (EntityReference ref :
+          context().schema().dao().findReferencesByFqns(misses, NON_DELETED)) {
         byFqn.put(ref.getFullyQualifiedName(), ref);
         // Warm the write-through cache so the next reader is also hydrated cheaply.
         if (entityCache != null) {
@@ -882,7 +882,6 @@ public class ContainerRepository extends EntityRepository<Container> {
         }
       }
     }
-
     List<EntityReference> ordered = new ArrayList<>(fqns.size());
     for (String ancestorFqn : fqns) {
       EntityReference ref = byFqn.get(ancestorFqn);
@@ -895,7 +894,9 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   private TableData getSampleDataInternal(UUID containerId) {
     String json =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .entityExtensionDAO()
             .getExtension(containerId, CONTAINER_SAMPLE_DATA_EXTENSION);
     return json != null ? JsonUtils.readValue(json, TableData.class) : null;
@@ -903,8 +904,7 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Transaction
   public Container addSampleData(UUID containerId, TableData tableData) {
-    Container container = find(containerId, NON_DELETED);
-
+    Container container = lookup().byId(containerId, NON_DELETED);
     if (container.getDataModel() == null || container.getDataModel().getColumns() == null) {
       throw new IllegalArgumentException(
           String.format(
@@ -912,11 +912,9 @@ public class ContainerRepository extends EntityRepository<Container> {
                   + "Container must have a dataModel with columns defined before sample data can be stored.",
               container.getFullyQualifiedName()));
     }
-
     for (String columnName : tableData.getColumns()) {
-      validateColumn(container.getDataModel().getColumns(), columnName);
+      ColumnSelectionValidator.validate(container.getDataModel().getColumns(), columnName);
     }
-
     for (List<Object> row : tableData.getRows()) {
       if (row.size() != tableData.getColumns().size()) {
         throw new IllegalArgumentException(
@@ -925,8 +923,9 @@ public class ContainerRepository extends EntityRepository<Container> {
                 tableData.getColumns().size(), row.size()));
       }
     }
-
-    daoCollection
+    context()
+        .dependencies()
+        .daos()
         .entityExtensionDAO()
         .insert(
             containerId,
@@ -938,24 +937,26 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   public Container getSampleData(UUID containerId, boolean authorizePII) {
-    Container container = find(containerId, NON_DELETED);
+    Container container = lookup().byId(containerId, NON_DELETED);
     TableData sampleData = getSampleDataInternal(container.getId());
     container.setSampleData(sampleData);
     setFieldsInternal(container, Fields.EMPTY_FIELDS);
-
     if (!authorizePII && container.getDataModel() != null) {
       populateDataModelColumnTags(true, container.getDataModel().getColumns());
-      container.setTags(getTags(container));
+      container.setTags(tags().read(container));
       return PIIMasker.getSampleData(container);
     }
-
     return container;
   }
 
   @Transaction
   public Container deleteSampleData(UUID containerId) {
-    Container container = find(containerId, NON_DELETED);
-    daoCollection.entityExtensionDAO().delete(containerId, CONTAINER_SAMPLE_DATA_EXTENSION);
+    Container container = lookup().byId(containerId, NON_DELETED);
+    context()
+        .dependencies()
+        .daos()
+        .entityExtensionDAO()
+        .delete(containerId, CONTAINER_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(container, Fields.EMPTY_FIELDS);
     return container;
   }
@@ -965,7 +966,7 @@ public class ContainerRepository extends EntityRepository<Container> {
    * move).
    *
    * <p>{@code renamedDescendants} is the snapshot returned by
-   * {@link EntityRepository#invalidateCacheForRenameCascade} — it contains every descendant
+   * {@link EntityCacheTargets#beforeRename} — it contains every descendant
    * id paired with the OLD fqn at the time of capture. We rewrite each descendant's legacy
    * thread {@code about} link with the corresponding NEW fqn so deep subtrees (grandchildren
    * and beyond) do not keep stale entityLinks. Direct-children-only is insufficient: a
@@ -977,11 +978,9 @@ public class ContainerRepository extends EntityRepository<Container> {
       String newFqn,
       Container updated,
       List<EntityDAO.EntityIdFqnPair> renamedDescendants) {
-    daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
-
+    context().dependencies().daos().fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
     ConversationRepository conversations = Entity.getConversationRepository();
     conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
-
     if (renamedDescendants == null || renamedDescendants.isEmpty()) {
       return;
     }
@@ -1004,15 +1003,20 @@ public class ContainerRepository extends EntityRepository<Container> {
    * one indexed update-by-query.
    */
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository.deferIfFlushScopeActive(
-        () ->
-            searchRepository
-                .getSearchClient()
-                .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName"),
-        "containerUpdateAssetIndexes",
-        null,
-        newFqn,
-        CONTAINER);
+    context()
+        .dependencies()
+        .search()
+        .deferIfFlushScopeActive(
+            () ->
+                context()
+                    .dependencies()
+                    .search()
+                    .getSearchClient()
+                    .updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, "fullyQualifiedName"),
+            "containerUpdateAssetIndexes",
+            null,
+            newFqn,
+            CONTAINER);
   }
 
   /**
@@ -1067,7 +1071,9 @@ public class ContainerRepository extends EntityRepository<Container> {
     maxReparentDescendantsTestOverride = max;
   }
 
-  /** Test-only counterpart to {@link #setMaxReparentDescendantsForTest(int)}. */
+  /**
+   * Test-only counterpart to {@link #setMaxReparentDescendantsForTest(int)}.
+   */
   public static void clearMaxReparentDescendantsForTest() {
     maxReparentDescendantsTestOverride = null;
   }
@@ -1129,75 +1135,100 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
   }
 
-  /** Handles entity updated from PUT and POST operations */
-  public class ContainerUpdater extends ColumnEntityUpdater {
-    public ContainerUpdater(Container original, Container updated, Operation operation) {
-      super(original, updated, operation);
+  /**
+   * Handles entity updated from PUT and POST operations
+   */
+  public class ContainerUpdater implements EntityColumnMutation<Container> {
+
+    public ContainerUpdater(Container original, Container updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
+      this.columnUpdate = new EntityColumnUpdater<>(entityUpdate, this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<Container> entityUpdate, boolean consolidatingChanges) {
       validateParent();
-      compareAndUpdate("dataModel", () -> updateDataModel(original, updated));
-      compareAndUpdate(
-          "prefix", () -> recordChange("prefix", original.getPrefix(), updated.getPrefix()));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
+          "dataModel",
+          () -> updateDataModel(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "prefix",
+          () ->
+              entityUpdate.recordChange(
+                  "prefix",
+                  entityUpdate.getOriginal().getPrefix(),
+                  entityUpdate.getUpdated().getPrefix()));
+      entityUpdate.compareAndUpdate(
           "fileFormats",
           () -> {
             List<ContainerFileFormat> addedItems = new ArrayList<>();
             List<ContainerFileFormat> deletedItems = new ArrayList<>();
-            recordListChange(
+            entityUpdate.recordListChange(
                 "fileFormats",
-                original.getFileFormats(),
-                updated.getFileFormats(),
+                entityUpdate.getOriginal().getFileFormats(),
+                entityUpdate.getUpdated().getFileFormats(),
                 addedItems,
                 deletedItems,
                 EntityUtil.containerFileFormatMatch);
           });
-
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "numberOfObjects",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "numberOfObjects",
-                  original.getNumberOfObjects(),
-                  updated.getNumberOfObjects(),
+                  entityUpdate.getOriginal().getNumberOfObjects(),
+                  entityUpdate.getUpdated().getNumberOfObjects(),
                   false,
                   EntityUtil.objectMatch,
                   false));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "size",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "size",
-                  original.getSize(),
-                  updated.getSize(),
+                  entityUpdate.getOriginal().getSize(),
+                  entityUpdate.getUpdated().getSize(),
                   false,
                   EntityUtil.objectMatch,
                   false));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "sourceUrl",
-          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "sourceUrl",
+                  entityUpdate.getOriginal().getSourceUrl(),
+                  entityUpdate.getUpdated().getSourceUrl()));
+      entityUpdate.compareAndUpdate(
           "fullPath",
-          () -> recordChange("fullPath", original.getFullPath(), updated.getFullPath()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "fullPath",
+                  entityUpdate.getOriginal().getFullPath(),
+                  entityUpdate.getUpdated().getFullPath()));
+      entityUpdate.compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "retentionPeriod",
+                  entityUpdate.getOriginal().getRetentionPeriod(),
+                  entityUpdate.getUpdated().getRetentionPeriod()));
+      entityUpdate.compareAndUpdate(
           "sourceHash",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "sourceHash",
-                  original.getSourceHash(),
-                  updated.getSourceHash(),
+                  entityUpdate.getOriginal().getSourceHash(),
+                  entityUpdate.getUpdated().getSourceHash(),
                   false,
                   EntityUtil.objectMatch,
                   false));
-      compareAndUpdateAny(() -> updateParent(original, updated), FIELD_PARENT);
+      entityUpdate.compareAndUpdateAny(
+          () -> updateParent(entityUpdate.getOriginal(), entityUpdate.getUpdated()), FIELD_PARENT);
     }
 
     /**
@@ -1215,12 +1246,15 @@ public class ContainerRepository extends EntityRepository<Container> {
      * </ol>
      */
     void validateParent() {
-      validateContainerParent(original, updated);
-      EntityReference newParent = updated.getParent();
+      validateContainerParent(entityUpdate.getOriginal(), entityUpdate.getUpdated());
+      EntityReference newParent = entityUpdate.getUpdated().getParent();
       if (newParent == null) {
         return;
       }
-      UUID oldParentId = original.getParent() == null ? null : original.getParent().getId();
+      UUID oldParentId =
+          entityUpdate.getOriginal().getParent() == null
+              ? null
+              : entityUpdate.getOriginal().getParent().getId();
       if (!Objects.equals(oldParentId, newParent.getId())) {
         validateAncestorChainCycle(newParent.getId());
       }
@@ -1235,16 +1269,19 @@ public class ContainerRepository extends EntityRepository<Container> {
      */
     private void validateAncestorChainCycle(UUID newParentId) {
       Set<UUID> visited = new HashSet<>();
-      visited.add(original.getId());
+      visited.add(entityUpdate.getOriginal().getId());
       UUID current = newParentId;
       while (current != null) {
         if (!visited.add(current)) {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.invalidContainerMove(
-                  original.getFullyQualifiedName(), updated.getParent().getFullyQualifiedName()));
+                  entityUpdate.getOriginal().getFullyQualifiedName(),
+                  entityUpdate.getUpdated().getParent().getFullyQualifiedName()));
         }
         List<CollectionDAO.EntityRelationshipRecord> parentRecords =
-            daoCollection
+            context()
+                .dependencies()
+                .daos()
                 .relationshipDAO()
                 .findFrom(current, CONTAINER, Relationship.CONTAINS.ordinal(), CONTAINER);
         if (parentRecords.isEmpty()) {
@@ -1265,59 +1302,55 @@ public class ContainerRepository extends EntityRepository<Container> {
       if (Objects.equals(oldParentId, newParentId)) {
         return;
       }
-
-      String oldFqn = getOriginalFqn();
+      String oldFqn = entityUpdate.getOriginalFqn();
       setFullyQualifiedName(updated);
       String newFqn = updated.getFullyQualifiedName();
       if (oldFqn.equals(newFqn)) {
         return;
       }
-
       LOG.info("Container FQN changed from {} to {} (parent reassignment)", oldFqn, newFqn);
-
       // #24294 — bail out BEFORE any cascade work if the subtree is large enough that the
       // single-transaction rewrite would lock thousands of rows + reindex hundreds of thousands
       // of search docs. Cheap indexed COUNT(*); short-circuits before any cache work runs.
       int maxAllowed = maxReparentDescendants();
       int descendantCount =
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .containerDAO()
               .countDescendantsByPrefix(FullyQualifiedName.buildHash(oldFqn) + ".%");
       validateSubtreeSize(oldFqn, descendantCount, maxAllowed);
-
       List<EntityDAO.EntityIdFqnPair> renamedContainers =
-          EntityRepository.invalidateCacheForRenameCascade(CONTAINER, oldFqn);
-      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(CONTAINER, oldFqn);
-
-      daoCollection.containerDAO().updateFqn(oldFqn, newFqn);
-
-      daoCollection.tagUsageDAO().deleteTagsByTarget(oldFqn);
+          EntityCaches.targets().beforeRename(CONTAINER, oldFqn);
+      EntityCaches.targets().taggedDescendants(CONTAINER, oldFqn);
+      context().dependencies().daos().containerDAO().updateFqn(oldFqn, newFqn);
+      context().dependencies().daos().tagUsageDAO().deleteTagsByTarget(oldFqn);
       List<TagLabel> updatedTags = listOrEmpty(updated.getTags());
       if (!updatedTags.isEmpty()) {
         updatedTags = new ArrayList<>(updatedTags);
         updatedTags.sort(compareTagLabel);
-        applyTags(updatedTags, newFqn);
+        tagWrites().apply(updatedTags, new EntityTagWriter.Target(newFqn));
       }
-      daoCollection
+      context()
+          .dependencies()
+          .daos()
           .tagUsageDAO()
           .renameByTargetFQNHash(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
-      daoCollection
+      context()
+          .dependencies()
+          .daos()
           .tagUsageDAO()
           .renameByTargetFQNHash(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
-
       updateEntityLinks(oldFqn, newFqn, updated, renamedContainers);
-
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
-
       updateParentRelationship(original, updated);
-      recordChange(
+      entityUpdate.recordChange(
           FIELD_PARENT, original.getParent(), updated.getParent(), true, entityReferenceMatch);
-
       updateAssetIndexes(oldFqn, newFqn);
-      EntityRepository.finishInvalidateCacheForRenameCascade(CONTAINER, renamedContainers);
+      EntityCaches.targets().afterRename(CONTAINER, renamedContainers);
     }
 
     private void updateParentRelationship(Container orig, Container updated) {
@@ -1327,42 +1360,63 @@ public class ContainerRepository extends EntityRepository<Container> {
 
     private void deleteParentRelationship(Container container) {
       if (container.getParent() != null) {
-        deleteRelationship(
-            container.getParent().getId(),
-            CONTAINER,
-            container.getId(),
-            CONTAINER,
-            Relationship.CONTAINS);
+        relationshipWrites()
+            .delete(
+                new EntityRelationshipWriter.Edge(
+                    container.getParent().getId(),
+                    container.getId(),
+                    CONTAINER,
+                    CONTAINER,
+                    Relationship.CONTAINS));
       }
     }
 
     private void addParentRelationship(Container container) {
       if (container.getParent() != null) {
-        addRelationship(
-            container.getParent().getId(),
-            container.getId(),
-            CONTAINER,
-            CONTAINER,
-            Relationship.CONTAINS);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    container.getParent().getId(),
+                    container.getId(),
+                    CONTAINER,
+                    CONTAINER,
+                    Relationship.CONTAINS),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
     }
 
     private void updateDataModel(Container original, Container updated) {
       if (original.getDataModel() == null || updated.getDataModel() == null) {
-        recordChange("dataModel", original.getDataModel(), updated.getDataModel(), true);
+        entityUpdate.recordChange(
+            "dataModel", original.getDataModel(), updated.getDataModel(), true);
       }
-
       if (original.getDataModel() != null && updated.getDataModel() != null) {
-        updateColumns(
+        columnUpdate.updateColumns(
             "dataModel.columns",
             original.getDataModel().getColumns(),
             updated.getDataModel().getColumns(),
             EntityUtil.columnMatch);
-        recordChange(
+        entityUpdate.recordChange(
             "dataModel.partition",
             original.getDataModel().getIsPartitioned(),
             updated.getDataModel().getIsPartitioned());
       }
     }
+
+    private final EntityUpdater<Container> entityUpdate;
+
+    public EntityUpdater<Container> mutation() {
+      return entityUpdate;
+    }
+
+    private final EntityColumnUpdater<Container> columnUpdate;
+  }
+
+  private final EntityPolicyContext<Container> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Container> context() {
+    return entityContext;
   }
 }

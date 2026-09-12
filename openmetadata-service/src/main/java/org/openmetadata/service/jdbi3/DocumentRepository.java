@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DOCUMENT;
@@ -18,6 +17,7 @@ import static org.openmetadata.service.Entity.DOCUMENT;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.email.EmailTemplate;
@@ -29,6 +29,14 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -38,22 +46,32 @@ import org.openmetadata.service.util.email.DefaultTemplateProvider;
 import org.openmetadata.service.util.email.TemplateProvider;
 
 @Slf4j
-public class DocumentRepository extends EntityRepository<Document> {
+@Repository()
+public class DocumentRepository implements EntityPolicy<Document> {
+
   static final String DOCUMENT_UPDATE_FIELDS = "data";
+
   static final String DOCUMENT_PATCH_FIELDS = "data";
+
   private final CollectionDAO.DocStoreDAO dao;
+
   private final TemplateProvider templateProvider;
+
   private final String COLLATE = "collate";
 
   public DocumentRepository() {
-    super(
-        DocStoreResource.COLLECTION_PATH,
-        DOCUMENT,
-        Document.class,
-        Entity.getCollectionDAO().docStoreDAO(),
-        DOCUMENT_UPDATE_FIELDS,
-        DOCUMENT_PATCH_FIELDS);
-    supportsSearch = false;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DocStoreResource.COLLECTION_PATH,
+                DOCUMENT,
+                Document.class,
+                Entity.getCollectionDAO().docStoreDAO()),
+            new EntityPolicyContext.WriteFields(
+                DOCUMENT_UPDATE_FIELDS, DOCUMENT_PATCH_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(false);
     this.dao = Entity.getCollectionDAO().docStoreDAO();
     this.templateProvider = new DefaultTemplateProvider();
   }
@@ -63,20 +81,22 @@ public class DocumentRepository extends EntityRepository<Document> {
     List<Document> entitiesFromSeedData = new ArrayList<>();
     SmtpSettings emailConfig =
         SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
-
     if (emailConfig.getTemplates().value().equals(COLLATE)) {
       entitiesFromSeedData.addAll(
           getEntitiesFromSeedData(
-              String.format(".*json/data/%s/emailTemplates/collate/.*\\.json$", entityType)));
+              String.format(
+                  ".*json/data/%s/emailTemplates/collate/.*\\.json$",
+                  context().schema().entityType())));
     } else {
       entitiesFromSeedData.addAll(
           getEntitiesFromSeedData(
-              String.format(".*json/data/%s/emailTemplates/openmetadata/.*\\.json$", entityType)));
+              String.format(
+                  ".*json/data/%s/emailTemplates/openmetadata/.*\\.json$",
+                  context().schema().entityType())));
     }
-
     entitiesFromSeedData.addAll(
-        getEntitiesFromSeedData(String.format(".*json/data/%s/docs/.*\\.json$", entityType)));
-
+        getEntitiesFromSeedData(
+            String.format(".*json/data/%s/docs/.*\\.json$", context().schema().entityType())));
     return entitiesFromSeedData;
   }
 
@@ -121,7 +141,7 @@ public class DocumentRepository extends EntityRepository<Document> {
 
   @Override
   public void storeEntity(Document document, boolean update) {
-    store(document, update);
+    persistence().store(document, update);
   }
 
   @Override
@@ -134,26 +154,43 @@ public class DocumentRepository extends EntityRepository<Document> {
   }
 
   @Override
-  public EntityRepository<Document>.EntityUpdater getUpdater(
-      Document original, Document updated, Operation operation, ChangeSource changeSource) {
-    return new DocumentUpdater(original, updated, operation);
+  public EntityUpdater<Document> getUpdater(
+      Document original, Document updated, EntityOperation operation, ChangeSource changeSource) {
+    return new DocumentUpdater(original, updated, operation).mutation();
   }
 
-  /** Handles entity updated from PUT and POST operation. */
-  public class DocumentUpdater extends EntityUpdater {
-    public DocumentUpdater(Document original, Document updated, Operation operation) {
-      super(original, updated, operation);
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class DocumentUpdater implements EntitySpecificMutation<Document> {
+
+    public DocumentUpdater(Document original, Document updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<Document> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "data",
           () -> {
-            updateEmailTemplatePlaceholders(original, updated);
-            recordChange("data", original.getData(), updated.getData(), true);
+            updateEmailTemplatePlaceholders(entityUpdate.getOriginal(), entityUpdate.getUpdated());
+            entityUpdate.recordChange(
+                "data",
+                entityUpdate.getOriginal().getData(),
+                entityUpdate.getUpdated().getData(),
+                true);
           });
+    }
+
+    private final EntityUpdater<Document> entityUpdate;
+
+    public EntityUpdater<Document> mutation() {
+      return entityUpdate;
     }
   }
 
@@ -166,5 +203,12 @@ public class DocumentRepository extends EntityRepository<Document> {
       updatedTemplate.setPlaceHolders(originalTemplate.getPlaceHolders());
       updated.setData(JsonUtils.convertValue(updatedTemplate, Data.class));
     }
+  }
+
+  private final EntityPolicyContext<Document> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Document> context() {
+    return entityContext;
   }
 }

@@ -21,6 +21,9 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
@@ -29,6 +32,7 @@ import org.openmetadata.service.util.EntityUtil;
 public class RecognizerFeedbackRepository {
 
   private final CollectionDAO daoCollection;
+
   private final TagRepository tagRepository;
 
   public RecognizerFeedbackRepository(CollectionDAO daoCollection) {
@@ -40,20 +44,15 @@ public class RecognizerFeedbackRepository {
     if (feedback.getId() == null) {
       feedback.setId(UUID.randomUUID());
     }
-
     if (feedback.getCreatedAt() == null) {
       feedback.setCreatedAt(System.currentTimeMillis());
     }
-
     if (feedback.getStatus() == null) {
       feedback.setStatus(RecognizerFeedback.Status.PENDING);
     }
-
     String json = JsonUtils.pojoToJson(feedback);
     daoCollection.recognizerFeedbackDAO().insert(json);
-
     publishChangeEvent(feedback);
-
     return feedback;
   }
 
@@ -61,10 +60,8 @@ public class RecognizerFeedbackRepository {
     try {
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(feedback.getEntityLink());
-
       String userName =
           feedback.getCreatedBy() != null ? feedback.getCreatedBy().getName() : "unknown";
-
       ChangeEvent changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
@@ -76,9 +73,7 @@ public class RecognizerFeedbackRepository {
               .withTimestamp(feedback.getCreatedAt())
               .withCurrentVersion(1.0)
               .withPreviousVersion(0.0);
-
       Entity.getChangeEventRepository().insert(changeEvent);
-
       LOG.debug(
           "Published ChangeEvent for RecognizerFeedback {} on entity {}",
           feedback.getId(),
@@ -91,12 +86,9 @@ public class RecognizerFeedbackRepository {
   public RecognizerFeedback processFeedback(RecognizerFeedback feedback, String updatedBy) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(feedback.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
-
     validateTagIsAutoApplied(feedback.getEntityLink(), feedback.getTagFQN());
-
     feedback.setStatus(RecognizerFeedback.Status.PENDING);
     feedback.setCreatedBy(getUserReference(updatedBy));
-
     return create(feedback);
   }
 
@@ -105,16 +97,13 @@ public class RecognizerFeedbackRepository {
       throw new IllegalStateException(
           String.format("Cannot apply feedback in status %s", feedback.getStatus()));
     }
-
     Tag tag =
-        tagRepository.getByName(null, feedback.getTagFQN(), tagRepository.getFields("recognizers"));
-
+        tagRepository.getByName(
+            null, feedback.getTagFQN(), tagRepository.fieldPolicy().parse("recognizers"));
     if (tag.getRecognizers() != null) {
       Tag originalTag = JsonUtils.readValue(JsonUtils.pojoToJson(tag), Tag.class);
-
       UUID recognizerId =
           getRecognizerIdFromTagLabel(feedback.getEntityLink(), feedback.getTagFQN());
-
       if (recognizerId != null) {
         Recognizer targetRecognizer = findRecognizerById(tag, recognizerId);
         if (targetRecognizer != null) {
@@ -136,20 +125,19 @@ public class RecognizerFeedbackRepository {
             feedback.getEntityLink());
         applyToAllRecognizers(tag, feedback);
       }
-
-      tagRepository.patch(
-          null,
-          tag.getId(),
-          reviewedBy,
-          JsonUtils.getJsonPatch(originalTag, tag),
-          reviewedBy != null ? ChangeSource.MANUAL : ChangeSource.AUTOMATED);
+      tagRepository
+          .patches()
+          .patch(
+              new EntityPatchService.Target.Id(tag.getId()),
+              JsonUtils.getJsonPatch(originalTag, tag),
+              new EntityCommandActor(reviewedBy, null),
+              null,
+              new EntityPatchService.Options(
+                  reviewedBy != null ? ChangeSource.MANUAL : ChangeSource.AUTOMATED, null));
     }
-
     removeTagFromEntity(feedback.getEntityLink(), feedback.getTagFQN(), reviewedBy);
-
     feedback.setStatus(RecognizerFeedback.Status.APPLIED);
     feedback.setResolution(createAppliedResolution(reviewedBy));
-
     return update(feedback);
   }
 
@@ -159,10 +147,8 @@ public class RecognizerFeedbackRepository {
       throw new IllegalStateException(
           String.format("Cannot reject feedback in status %s", feedback.getStatus()));
     }
-
     feedback.setStatus(RecognizerFeedback.Status.REJECTED);
     feedback.setResolution(createRejectedResolution(reviewedBy, comment));
-
     return update(feedback);
   }
 
@@ -185,17 +171,14 @@ public class RecognizerFeedbackRepository {
     if (recognizer.getExceptionList() == null) {
       recognizer.setExceptionList(new ArrayList<>());
     }
-
     boolean exists =
         recognizer.getExceptionList().stream()
             .anyMatch(e -> e.getEntityLink().equals(feedback.getEntityLink()));
-
     if (!exists) {
       String userReason = feedback.getUserReason().toString();
       if (feedback.getUserComments() != null) {
         userReason += ": " + feedback.getUserComments();
       }
-
       RecognizerException exception =
           new RecognizerException()
               .withEntityLink(feedback.getEntityLink())
@@ -203,7 +186,6 @@ public class RecognizerFeedbackRepository {
               .withAddedBy(feedback.getCreatedBy())
               .withAddedAt(System.currentTimeMillis())
               .withFeedbackId(feedback.getId());
-
       recognizer.getExceptionList().add(exception);
       LOG.info(
           "Added exception for entity {} to recognizer {}",
@@ -232,22 +214,17 @@ public class RecognizerFeedbackRepository {
   public UUID getRecognizerIdFromTagLabel(String entityLink, String tagFQN) {
     try {
       MessageParser.EntityLink parsedLink = MessageParser.EntityLink.parse(entityLink);
-
       String entityType = parsedLink.getEntityType();
       String entityFQN = parsedLink.getEntityFQN();
       String fieldName = parsedLink.getFieldName();
       String arrayFieldName = parsedLink.getArrayFieldName();
-
-      EntityRepository repository = Entity.getEntityRepository(entityType);
+      EntityPolicy repository = Entity.getEntityRepository(entityType);
       if (repository == null) {
         return null;
       }
-
       org.openmetadata.schema.EntityInterface entity =
-          repository.getByName(null, entityFQN, repository.getFields("tags"));
-
+          repository.getByName(null, entityFQN, repository.fieldPolicy().parse("tags"));
       List<TagLabel> tagsToCheck = null;
-
       if (Entity.TABLE.equals(entityType) && Entity.FIELD_COLUMNS.equals(fieldName)) {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         List<Column> results =
@@ -255,7 +232,6 @@ public class RecognizerFeedbackRepository {
                 .getTableColumnsByFQN(
                     entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
                 .getData();
-
         for (Column column : results) {
           if (column.getName().equals(arrayFieldName)) {
             tagsToCheck = column.getTags();
@@ -265,11 +241,9 @@ public class RecognizerFeedbackRepository {
       } else if (arrayFieldName != null && fieldName != null) {
         String entityJson = JsonUtils.pojoToJson(entity);
         com.fasterxml.jackson.databind.JsonNode rootNode = JsonUtils.readTree(entityJson);
-
         if (rootNode.has(fieldName) && rootNode.get(fieldName).isArray()) {
           com.fasterxml.jackson.databind.node.ArrayNode arrayNode =
               (com.fasterxml.jackson.databind.node.ArrayNode) rootNode.get(fieldName);
-
           for (int i = 0; i < arrayNode.size(); i++) {
             com.fasterxml.jackson.databind.JsonNode fieldNode = arrayNode.get(i);
             if (fieldNode.has("name") && fieldNode.get("name").asText().equals(arrayFieldName)) {
@@ -286,7 +260,6 @@ public class RecognizerFeedbackRepository {
       } else {
         tagsToCheck = entity.getTags();
       }
-
       if (tagsToCheck != null) {
         for (TagLabel tag : tagsToCheck) {
           if (tag.getTagFQN().equals(tagFQN)
@@ -297,7 +270,6 @@ public class RecognizerFeedbackRepository {
           }
         }
       }
-
       return null;
     } catch (Exception e) {
       LOG.warn(
@@ -310,22 +282,17 @@ public class RecognizerFeedbackRepository {
   private void validateTagIsAutoApplied(String entityLink, String tagFQN) {
     try {
       MessageParser.EntityLink parsedLink = MessageParser.EntityLink.parse(entityLink);
-
       String entityType = parsedLink.getEntityType();
       String entityFQN = parsedLink.getEntityFQN();
       String fieldName = parsedLink.getFieldName();
       String arrayFieldName = parsedLink.getArrayFieldName();
-
-      EntityRepository repository = Entity.getEntityRepository(entityType);
+      EntityPolicy repository = Entity.getEntityRepository(entityType);
       if (repository == null) {
         throw new IllegalArgumentException("Unknown entity type: " + entityType);
       }
-
       org.openmetadata.schema.EntityInterface entity =
-          repository.getByName(null, entityFQN, repository.getFields("tags"));
-
+          repository.getByName(null, entityFQN, repository.fieldPolicy().parse("tags"));
       List<TagLabel> tagsToCheck = null;
-
       if (Entity.TABLE.equals(entityType) && Entity.FIELD_COLUMNS.equals(fieldName)) {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         List<Column> results =
@@ -333,7 +300,6 @@ public class RecognizerFeedbackRepository {
                 .getTableColumnsByFQN(
                     entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
                 .getData();
-
         for (Column column : results) {
           if (column.getName().equals(arrayFieldName)) {
             tagsToCheck = column.getTags();
@@ -343,11 +309,9 @@ public class RecognizerFeedbackRepository {
       } else if (arrayFieldName != null && fieldName != null) {
         String entityJson = JsonUtils.pojoToJson(entity);
         com.fasterxml.jackson.databind.JsonNode rootNode = JsonUtils.readTree(entityJson);
-
         if (rootNode.has(fieldName) && rootNode.get(fieldName).isArray()) {
           com.fasterxml.jackson.databind.node.ArrayNode arrayNode =
               (com.fasterxml.jackson.databind.node.ArrayNode) rootNode.get(fieldName);
-
           for (int i = 0; i < arrayNode.size(); i++) {
             com.fasterxml.jackson.databind.JsonNode fieldNode = arrayNode.get(i);
             if (fieldNode.has("name") && fieldNode.get("name").asText().equals(arrayFieldName)) {
@@ -364,7 +328,6 @@ public class RecognizerFeedbackRepository {
       } else {
         tagsToCheck = entity.getTags();
       }
-
       if (tagsToCheck != null) {
         boolean isAutoApplied =
             tagsToCheck.stream()
@@ -372,7 +335,6 @@ public class RecognizerFeedbackRepository {
                     tag ->
                         tag.getTagFQN().equals(tagFQN)
                             && tag.getLabelType() == TagLabel.LabelType.GENERATED);
-
         if (!isAutoApplied) {
           throw new IllegalArgumentException(
               "Feedback can only be submitted for auto-applied tags");
@@ -392,26 +354,20 @@ public class RecognizerFeedbackRepository {
   private void removeTagFromEntity(String entityLink, String tagFQN, String updatedBy) {
     try {
       MessageParser.EntityLink parsedLink = MessageParser.EntityLink.parse(entityLink);
-
       String entityType = parsedLink.getEntityType();
       String entityFQN = parsedLink.getEntityFQN();
       String fieldName = parsedLink.getFieldName();
       String arrayFieldName = parsedLink.getArrayFieldName();
-
-      EntityRepository repository = Entity.getEntityRepository(entityType);
+      EntityPolicy repository = Entity.getEntityRepository(entityType);
       if (repository == null) {
         LOG.error("Unknown entity type: {}", entityType);
         return;
       }
-
       org.openmetadata.schema.EntityInterface entity =
-          repository.getByName(null, entityFQN, repository.getFields("tags"));
-
+          repository.getByName(null, entityFQN, repository.fieldPolicy().parse("tags"));
       org.openmetadata.schema.EntityInterface originalEntity =
           JsonUtils.readValue(JsonUtils.pojoToJson(entity), entity.getClass());
-
       boolean entityModified = false;
-
       if (Entity.TABLE.equals(entityType) && Entity.FIELD_COLUMNS.equals(fieldName)) {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         List<Column> results =
@@ -427,14 +383,12 @@ public class RecognizerFeedbackRepository {
                     null,
                     null)
                 .getData();
-
         originalEntity =
             ((Table) originalEntity)
                 .withColumns(
                     results.stream()
                         .map(c -> JsonUtils.readValue(JsonUtils.pojoToJson(c), c.getClass()))
                         .collect(Collectors.toList()));
-
         for (Column column : results) {
           if (column.getName().equals(arrayFieldName)) {
             entityModified =
@@ -447,23 +401,18 @@ public class RecognizerFeedbackRepository {
             break;
           }
         }
-
         entity = ((Table) entity).withColumns(results);
-
       } else if (arrayFieldName != null) {
         // Tag is on a nested field (schemaFields, requestSchema, responseSchema, etc.)
         // We need to handle this through JSON manipulation since we don't know the specific
         // structure
-
         // Convert entity to JSON for manipulation
         String entityJson = JsonUtils.pojoToJson(entity);
         com.fasterxml.jackson.databind.JsonNode rootNode = JsonUtils.readTree(entityJson);
-
         // Try to find and update the nested field
         if (rootNode.has(fieldName) && rootNode.get(fieldName).isArray()) {
           com.fasterxml.jackson.databind.node.ArrayNode arrayNode =
               (com.fasterxml.jackson.databind.node.ArrayNode) rootNode.get(fieldName);
-
           // Find the specific field in the array
           for (int i = 0; i < arrayNode.size(); i++) {
             com.fasterxml.jackson.databind.JsonNode fieldNode = arrayNode.get(i);
@@ -472,11 +421,9 @@ public class RecognizerFeedbackRepository {
               if (fieldNode.has("tags") && fieldNode.get("tags").isArray()) {
                 com.fasterxml.jackson.databind.node.ArrayNode tagsArray =
                     (com.fasterxml.jackson.databind.node.ArrayNode) fieldNode.get("tags");
-
                 // Create new array without the matching tag
                 com.fasterxml.jackson.databind.node.ArrayNode newTagsArray =
                     JsonUtils.getObjectMapper().createArrayNode();
-
                 for (com.fasterxml.jackson.databind.JsonNode tagNode : tagsArray) {
                   if (!(tagNode.has("tagFQN")
                       && tagNode.get("tagFQN").asText().equals(tagFQN)
@@ -487,7 +434,6 @@ public class RecognizerFeedbackRepository {
                     entityModified = true;
                   }
                 }
-
                 // Replace the tags array with the filtered one
                 ((com.fasterxml.jackson.databind.node.ObjectNode) fieldNode)
                     .set("tags", newTagsArray);
@@ -496,7 +442,6 @@ public class RecognizerFeedbackRepository {
             }
           }
         }
-
         if (entityModified) {
           // Convert back to entity object
           entity = JsonUtils.readValue(rootNode.toString(), entity.getClass());
@@ -518,11 +463,16 @@ public class RecognizerFeedbackRepository {
                               && tag.getLabelType() == TagLabel.LabelType.GENERATED);
         }
       }
-
       if (entityModified) {
         // Update the entity
-        repository.patch(
-            null, entity.getId(), updatedBy, JsonUtils.getJsonPatch(originalEntity, entity));
+        repository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Id(entity.getId()),
+                JsonUtils.getJsonPatch(originalEntity, entity),
+                new EntityCommandActor(updatedBy, null),
+                null,
+                new EntityPatchService.Options(null, null));
         LOG.info("Removed auto-applied tag {} from entity {}", tagFQN, entityLink);
       }
     } catch (Exception e) {

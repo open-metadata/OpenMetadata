@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -85,8 +86,13 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
     try {
       do {
         ResultList<User> result =
-            userRepository.listAfter(
-                null, userRepository.getFields("email,profile"), listFilter, 50, after);
+            userRepository
+                .pages()
+                .after(
+                    new EntityPageReader.Projection(
+                        null, userRepository.fieldPolicy().parse("email,profile"), listFilter),
+                    50,
+                    after);
 
         adminUsers.addAll(result.getData());
 

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -35,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +65,16 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
@@ -76,23 +86,28 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class ClassificationRepository extends EntityRepository<Classification> {
+@Repository()
+public class ClassificationRepository implements EntityPolicy<Classification> {
+
   public ClassificationRepository() {
-    super(
-        ClassificationResource.TAG_COLLECTION_PATH,
-        Entity.CLASSIFICATION,
-        Classification.class,
-        Entity.getCollectionDAO().classificationDAO(),
-        "",
-        "");
-    quoteFqn = true;
-    supportsSearch = true;
-    renameAllowed = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                ClassificationResource.TAG_COLLECTION_PATH,
+                Entity.CLASSIFICATION,
+                Classification.class,
+                Entity.getCollectionDAO().classificationDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setQuoteFqn(true);
+    context().options().setSupportsSearch(true);
+    context().options().setRenameAllowed(true);
   }
 
   @Override
-  protected void postDelete(Classification entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
+  public void postDelete(Classification entity, boolean hardDelete) {
+    EntityPolicy.super.postDelete(entity, hardDelete);
     PolicyConditionUpdater.updateAllPolicyConditions(
         condition ->
             PolicyConditionUpdater.removeByPrefixFromCondition(
@@ -100,12 +115,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public EntityRepository<Classification>.EntityUpdater getUpdater(
+  public EntityUpdater<Classification> getUpdater(
       Classification original,
       Classification updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new ClassificationUpdater(original, updated, operation);
+    return new ClassificationUpdater(original, updated, operation).mutation();
   }
 
   @Override
@@ -130,7 +145,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (entities == null || entities.isEmpty()) {
       return;
     }
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     fetchAndSetClassificationSpecificFields(entities, fields);
     setInheritedFields(entities, fields);
     for (Classification entity : entities) {
@@ -173,23 +188,23 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (classifications == null || classifications.isEmpty()) {
       return termCountMap;
     }
-
     try {
       // Convert classifications to their hash representations
       List<String> classificationHashes = new ArrayList<>();
       Map<String, String> hashToFqnMap = new HashMap<>();
-
       for (Classification classification : classifications) {
         String fqn = classification.getFullyQualifiedName();
         String hash = FullyQualifiedName.buildHash(fqn);
         classificationHashes.add(hash);
         hashToFqnMap.put(hash, fqn);
       }
-
       // Use the DAO method with simple IN clause - much more efficient
       List<Pair<String, Integer>> results =
-          daoCollection.classificationDAO().bulkGetTermCounts(classificationHashes);
-
+          context()
+              .dependencies()
+              .daos()
+              .classificationDAO()
+              .bulkGetTermCounts(classificationHashes);
       // Process results
       for (Pair<String, Integer> result : results) {
         String classificationHash = result.getLeft();
@@ -199,12 +214,10 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           termCountMap.put(fqn, count);
         }
       }
-
       // Set 0 for classifications with no tags
       for (Classification classification : classifications) {
         termCountMap.putIfAbsent(classification.getFullyQualifiedName(), 0);
       }
-
       return termCountMap;
     } catch (Exception e) {
       LOG.error("Error batch fetching term counts, falling back to individual queries", e);
@@ -213,7 +226,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         ListFilter filterWithParent =
             new ListFilter(Include.NON_DELETED)
                 .addQueryParam("parent", classification.getFullyQualifiedName());
-        int count = daoCollection.tagDAO().listCount(filterWithParent);
+        int count = context().dependencies().daos().tagDAO().listCount(filterWithParent);
         termCountMap.put(classification.getFullyQualifiedName(), count);
       }
       return termCountMap;
@@ -225,18 +238,17 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (classifications == null || classifications.isEmpty()) {
       return usageCountMap;
     }
-
     // Batch fetch usage counts for all classifications at once
     List<String> classificationFQNs =
         classifications.stream()
             .map(Classification::getFullyQualifiedName)
             .collect(Collectors.toList());
-
     Map<String, Integer> counts =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .tagUsageDAO()
             .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), classificationFQNs);
-
     return counts != null ? counts : usageCountMap;
   }
 
@@ -247,7 +259,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public void storeEntity(Classification classification, boolean update) {
-    store(classification, update);
+    persistence().store(classification, update);
   }
 
   @Override
@@ -259,16 +271,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     ListFilter filter =
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("parent", classification.getFullyQualifiedName());
-    return daoCollection.tagDAO().listCount(filter);
+    return context().dependencies().daos().tagDAO().listCount(filter);
   }
 
   private Integer getUsageCount(Classification classification) {
-    return daoCollection
+    return context()
+        .dependencies()
+        .daos()
         .tagUsageDAO()
         .getTagCount(TagSource.CLASSIFICATION.ordinal(), classification.getFullyQualifiedName());
   }
 
-  /** Export a classification with all its tags as CSV */
+  /**
+   * Export a classification with all its tags as CSV
+   */
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     return exportToCsv(name, user, recursive, null);
@@ -284,7 +300,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         .exportCsv(listTagsForCsv(classification), callback);
   }
 
-  /** Import tags into a classification from CSV */
+  /**
+   * Import tags into a classification from CSV
+   */
   @Override
   public CsvImportResult importFromCsv(
       String name,
@@ -314,17 +332,22 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   private List<Tag> listTagsForCsv(Classification classification) {
     TagRepository repository = (TagRepository) Entity.getEntityRepository(TAG);
     List<Tag> tags =
-        repository.listAllForCSV(
-            repository.getFields("owners,reviewers,parent,domains"),
-            classification.getFullyQualifiedName());
+        repository
+            .collections()
+            .forCsv(
+                repository.fieldPolicy().parse("owners,reviewers,parent,domains"),
+                classification.getFullyQualifiedName());
     tags.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return tags;
   }
 
   public static class ClassificationCsv extends EntityCsv<Tag> {
+
     public static final CsvDocumentation DOCUMENTATION =
         getCsvDocumentation(Entity.CLASSIFICATION, false);
+
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+
     private final Classification classification;
 
     ClassificationCsv(Classification classification, String user) {
@@ -344,7 +367,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
               ? FullyQualifiedName.build(classification.getFullyQualifiedName(), csvRecord.get(1))
               : FullyQualifiedName.add(parentFqn, csvRecord.get(1));
       Tag existingTag =
-          ((TagRepository) Entity.getEntityRepository(TAG)).findByNameOrNull(tagFqn, Include.ALL);
+          ((TagRepository) Entity.getEntityRepository(TAG))
+              .lookup()
+              .byNameOrNull(tagFqn, Include.ALL);
       // On update, start from the stored tag so fields the CSV does not carry (recognizers,
       // auto-classification, deprecated, ...) are retained instead of reset to their defaults.
       // Any field added to the tag schema later is preserved automatically - no per-field handling.
@@ -361,7 +386,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           .withStyle(getStyle(csvRecord, existingTag))
           .withDomains(getDomains(printer, csvRecord, 9))
           .withMutuallyExclusive(getMutuallyExclusive(csvRecord, existingTag));
-
       if (processRecord) {
         createEntity(printer, csvRecord, tag, TAG);
       }
@@ -459,6 +483,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   public static class TagLabelMapper implements RowMapper<TagLabel> {
+
     @Override
     public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx)
         throws SQLException {
@@ -471,8 +496,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public void entityRelationshipReindex(Classification original, Classification updated) {
-    super.entityRelationshipReindex(original, updated);
-
+    EntityPolicy.super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
       updateAssetIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
@@ -480,19 +504,26 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository.deferIfFlushScopeActive(
-        () -> runAssetIndexRewrite(oldFqn, newFqn),
-        "classificationUpdateAssetIndexes",
-        null,
-        newFqn,
-        Entity.TAG);
+    context()
+        .dependencies()
+        .search()
+        .deferIfFlushScopeActive(
+            () -> runAssetIndexRewrite(oldFqn, newFqn),
+            "classificationUpdateAssetIndexes",
+            null,
+            newFqn,
+            Entity.TAG);
   }
 
   private void runAssetIndexRewrite(String oldFqn, String newFqn) {
-    searchRepository
+    context()
+        .dependencies()
+        .search()
         .getSearchClient()
         .updateClassificationTagByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
-    searchRepository
+    context()
+        .dependencies()
+        .search()
         .getSearchClient()
         .updateByFqnPrefix(TAG_SEARCH_INDEX, oldFqn, newFqn, "fullyQualifiedName");
   }
@@ -500,110 +531,121 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   private List<Tag> getAllTagsByClassification(Classification classification) {
     // Get all the tags under the specified classification
     List<String> jsons =
-        daoCollection.tagDAO().getTagsStartingWithPrefix(classification.getFullyQualifiedName());
+        context()
+            .dependencies()
+            .daos()
+            .tagDAO()
+            .getTagsStartingWithPrefix(classification.getFullyQualifiedName());
     return JsonUtils.readObjects(jsons, Tag.class);
   }
 
-  public class ClassificationUpdater extends EntityUpdater {
+  public class ClassificationUpdater implements EntitySpecificMutation<Classification> {
+
     private boolean renameProcessed = false;
 
     public ClassificationUpdater(
-        Classification original, Classification updated, Operation operation) {
-      super(original, updated, operation);
+        Classification original, Classification updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    protected void resetForRetryAttempt() {
+    public void reset() {
       renameProcessed = false;
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<Classification> entityUpdate, boolean consolidatingChanges) {
       // Mutually exclusive cannot be updated
-      updated.setMutuallyExclusive(original.getMutuallyExclusive());
-      restrictSystemProviderChange(updated::setProvider);
+      entityUpdate
+          .getUpdated()
+          .setMutuallyExclusive(entityUpdate.getOriginal().getMutuallyExclusive());
+      entityUpdate.restrictSystemProviderChange(entityUpdate.getUpdated()::setProvider);
       preserveAutoClassificationConfigOnPut();
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "disabled",
-          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "disabled",
+                  entityUpdate.getOriginal().getDisabled(),
+                  entityUpdate.getUpdated().getDisabled()));
+      entityUpdate.compareAndUpdate(
           "autoClassificationConfig",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "autoClassificationConfig",
-                  original.getAutoClassificationConfig(),
-                  updated.getAutoClassificationConfig(),
+                  entityUpdate.getOriginal().getAutoClassificationConfig(),
+                  entityUpdate.getUpdated().getAutoClassificationConfig(),
                   true));
-      compareAndUpdate("name", () -> updateName(updated));
+      entityUpdate.compareAndUpdate("name", () -> updateName(entityUpdate.getUpdated()));
     }
 
     private void preserveAutoClassificationConfigOnPut() {
-      if (operation == Operation.PUT && updated.getAutoClassificationConfig() == null) {
-        updated.setAutoClassificationConfig(original.getAutoClassificationConfig());
+      if (entityUpdate.getOperation() == EntityOperation.PUT
+          && entityUpdate.getUpdated().getAutoClassificationConfig() == null) {
+        entityUpdate
+            .getUpdated()
+            .setAutoClassificationConfig(entityUpdate.getOriginal().getAutoClassificationConfig());
       }
     }
 
     public void updateName(Classification updated) {
       // Use getOriginalFqn() which was captured at EntityUpdater construction time.
-      String oldFqn = getOriginalFqn();
+      String oldFqn = entityUpdate.getOriginalFqn();
       setFullyQualifiedName(updated);
       String newFqn = updated.getFullyQualifiedName();
-
       if (oldFqn.equals(newFqn)) {
         return;
       }
-
       // Only process the rename once per update operation.
       if (renameProcessed) {
         return;
       }
       renameProcessed = true;
-
-      if (ProviderType.SYSTEM.equals(original.getProvider())) {
+      if (ProviderType.SYSTEM.equals(entityUpdate.getOriginal().getProvider())) {
         throw new IllegalArgumentException(
-            CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+            CatalogExceptionMessage.systemEntityRenameNotAllowed(
+                entityUpdate.getOriginal().getName(), context().schema().entityType()));
       }
-
       // on Classification name change - update tag's name under classification
       LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every tag under this classification BEFORE we rewrite the DB.
       // Capture the descendants so the post-write pass can re-evict any entry a racing reader
       // re-populated with the pre-rename row between this call and tagDAO.updateFqn below. The
       // pass below runs after updateFqn but inside this transaction — see
-      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      // EntityCaches.targets().beforeRename for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTags =
-          EntityRepository.invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+          EntityCaches.targets().beforeRename(Entity.TAG, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with any tag under this
       // classification. Tags live in the TAG entity table with FQNs starting with the
       // classification FQN, so the descendant helper finds them correctly.
-      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
-      daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
-      daoCollection
+      EntityCaches.targets().taggedDescendants(Entity.TAG, oldFqn);
+      context().dependencies().daos().tagDAO().updateFqn(oldFqn, newFqn);
+      context()
+          .dependencies()
+          .daos()
           .tagUsageDAO()
           .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
-      recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
-
+      entityUpdate.recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
       updateEntityLinks(oldFqn, newFqn, updated);
       updateAssetIndexes(oldFqn, newFqn);
-
       PolicyConditionUpdater.updateAllPolicyConditions(
           condition ->
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
-
       invalidateClassification(updated.getId());
-      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+      EntityCaches.targets().afterRename(Entity.TAG, renamedTags);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Classification updated) {
-      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
-
+      context().dependencies().daos().fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
       ConversationRepository conversations = Entity.getConversationRepository();
       conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
-
       List<Tag> childTags = getAllTagsByClassification(updated);
-
       for (Tag child : childTags) {
         String childNewFqn = child.getFullyQualifiedName();
         String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
@@ -613,10 +655,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
     private void invalidateClassification(UUID classificationId) {
       // Name of the classification changed. Invalidate the classification and all the children tags
-      EntityRepository.CACHE_WITH_ID.invalidate(
-          new ImmutablePair<>(CLASSIFICATION, classificationId));
+      EntityCaches.byId().invalidate(new ImmutablePair<>(CLASSIFICATION, classificationId));
       List<EntityRelationshipRecord> tagRecords =
-          findToRecords(classificationId, CLASSIFICATION, Relationship.CONTAINS, TAG);
+          relationships()
+              .toRecords(
+                  new EntityRelationshipReader.Selection(
+                      classificationId, CLASSIFICATION, Relationship.CONTAINS, TAG));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }
@@ -625,11 +669,26 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     private void invalidateTags(UUID tagId) {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
       List<EntityRelationshipRecord> tagRecords =
-          findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
-      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+          relationships()
+              .toRecords(
+                  new EntityRelationshipReader.Selection(tagId, TAG, Relationship.CONTAINS, TAG));
+      EntityCaches.byId().invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }
     }
+
+    private final EntityUpdater<Classification> entityUpdate;
+
+    public EntityUpdater<Classification> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<Classification> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Classification> context() {
+    return entityContext;
   }
 }

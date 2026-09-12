@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -64,6 +63,23 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.EntityTagAssetRemoval;
+import org.openmetadata.service.entity.metadata.EntityTagWriter;
+import org.openmetadata.service.entity.metadata.EntityTagWriter.Target;
+import org.openmetadata.service.entity.metadata.InheritedReferences;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityCursor;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -83,30 +99,51 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class TagRepository extends EntityRepository<Tag> {
+@Repository()
+public class TagRepository implements EntityPolicy<Tag> {
+
+  private final EntityTagAssetRemoval tagAssetRemoval =
+      new EntityTagAssetRemoval(
+          () -> context().dependencies().daos().tagUsageDAO(),
+          target ->
+              EntityCaches.invalidations()
+                  .metadataChanged(target.type(), target.id(), target.fqn()),
+          target ->
+              context()
+                  .dependencies()
+                  .search()
+                  .updateEntity(
+                      new EntityReference()
+                          .withType(target.type())
+                          .withId(target.id())
+                          .withFullyQualifiedName(target.fqn())));
+
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public TagRepository() {
-    super(
-        TagResource.TAG_COLLECTION_PATH,
-        Entity.TAG,
-        Tag.class,
-        Entity.getCollectionDAO().tagDAO(),
-        "",
-        "");
-    supportsSearch = true;
-    renameAllowed = true;
-
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                TagResource.TAG_COLLECTION_PATH,
+                Entity.TAG,
+                Tag.class,
+                Entity.getCollectionDAO().tagDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
+    context().options().setRenameAllowed(true);
     // Initialize inherited field search
-    if (searchRepository != null) {
-      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    if (context().dependencies().search() != null) {
+      inheritedFieldEntitySearch =
+          new DefaultInheritedFieldEntitySearch(context().dependencies().search());
     }
   }
 
   @Override
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
-        new ArrayList<>(super.getSearchPropagationDescriptors());
+        new ArrayList<>(EntityPolicy.super.getSearchPropagationDescriptors());
     descriptors.add(
         new PropagationDescriptor(
             FIELD_NAME, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null));
@@ -117,16 +154,21 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
-    Tag tag = get(null, tagId, getFields("id,fullyQualifiedName"));
-
+    Tag tag =
+        reads()
+            .byId(
+                tagId,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse("id,fullyQualifiedName"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for tag assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
-
     InheritedFieldQuery query =
         InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit);
-
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
             query,
@@ -136,12 +178,11 @@ public class TagRepository extends EntityRepository<Tag> {
                   tag.getFullyQualifiedName());
               return new InheritedFieldResult(new ArrayList<>(), 0);
             });
-
     return new ResultList<>(result.entities(), null, null, result.total());
   }
 
   public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
-    Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
+    Tag tag = getByName(null, tagName, fieldPolicy().parse("id,fullyQualifiedName"));
     return getTagAssets(tag.getId(), limit, offset);
   }
 
@@ -150,13 +191,11 @@ public class TagRepository extends EntityRepository<Tag> {
       LOG.warn("Search unavailable for tag asset counts");
       return new HashMap<>();
     }
-
-    List<Tag> allTags = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    List<Tag> allTags =
+        collections().all(fieldPolicy().parse("fullyQualifiedName"), new ListFilter(null));
     Map<String, Integer> tagAssetCounts = new LinkedHashMap<>();
-
     for (Tag tag : allTags) {
       InheritedFieldQuery query = InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0);
-
       Integer count =
           inheritedFieldEntitySearch.getCountForField(
               query,
@@ -166,10 +205,8 @@ public class TagRepository extends EntityRepository<Tag> {
                     tag.getFullyQualifiedName());
                 return 0;
               });
-
       tagAssetCounts.put(tag.getFullyQualifiedName(), count);
     }
-
     return tagAssetCounts;
   }
 
@@ -178,12 +215,10 @@ public class TagRepository extends EntityRepository<Tag> {
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent(), NON_DELETED);
     entity.setParent(parentTerm);
-
     // Validate Classification
     EntityReference classification =
         Entity.getEntityReference(entity.getClassification(), NON_DELETED);
     entity.setClassification(classification);
-
     // Validate recognizers
     if (entity.getRecognizers() != null) {
       for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
@@ -203,14 +238,12 @@ public class TagRepository extends EntityRepository<Tag> {
     if (recognizer.getRecognizerConfig() == null) {
       throw new IllegalArgumentException("recognizerConfig is required");
     }
-
     if (recognizer.getConfidenceThreshold() != null) {
       double threshold = recognizer.getConfidenceThreshold();
       if (threshold < 0.0 || threshold > 1.0) {
         throw new IllegalArgumentException("confidenceThreshold must be between 0.0 and 1.0");
       }
     }
-
     if (recognizer.getId() == null) {
       throw new IllegalArgumentException("Can't create recognizer without an ID");
     }
@@ -233,11 +266,10 @@ public class TagRepository extends EntityRepository<Tag> {
 
   private void reconcileSeededTag(Tag seedTag) {
     // A Tag missing altogether was just created from this same seed by initializeEntity()
-    Tag stored = findByNameOrNull(seedTag.getFullyQualifiedName(), ALL);
+    Tag stored = lookup().byNameOrNull(seedTag.getFullyQualifiedName(), ALL);
     if (stored == null) {
       return;
     }
-
     List<Recognizer> seeded = systemRecognizers(seedTag);
     List<Recognizer> missing = missingSystemRecognizers(stored.getRecognizers(), seeded);
     // CreateTag defaults provider to user, so any PUT that omits it downgrades a seeded Tag - and a
@@ -247,14 +279,13 @@ public class TagRepository extends EntityRepository<Tag> {
     if (missing.isEmpty() && !providerDrifted) {
       return;
     }
-
     if (!missing.isEmpty()) {
       appendRecognizers(stored, seedTag, missing, seeded.size());
     }
     if (providerDrifted) {
       stored.setProvider(seedTag.getProvider());
     }
-    store(stored, true);
+    persistence().store(stored, true);
     LOG.info(
         "Reconciled seeded tag {}: provider={}, recognizers re-added={}",
         stored.getFullyQualifiedName(),
@@ -276,7 +307,9 @@ public class TagRepository extends EntityRepository<Tag> {
     restoreAutoClassification(stored, seedTag, missing.size() == seededCount);
   }
 
-  /** Seeded recognizers absent from {@code stored}, copied so the seed list stays reusable. */
+  /**
+   * Seeded recognizers absent from {@code stored}, copied so the seed list stays reusable.
+   */
   protected List<Recognizer> missingSystemRecognizers(
       List<Recognizer> stored, List<Recognizer> seeded) {
     Set<String> storedNames =
@@ -306,7 +339,6 @@ public class TagRepository extends EntityRepository<Tag> {
     if (tag.getClassification() == null || tag.getClassification().getId() == null) {
       return;
     }
-
     try {
       Classification parent =
           Entity.getEntity(
@@ -314,9 +346,9 @@ public class TagRepository extends EntityRepository<Tag> {
       if (parent.getDisabled() != null && parent.getDisabled()) {
         tag.setDisabled(true);
       }
-      inheritOwners(tag, fields, parent);
-      inheritDomains(tag, fields, parent);
-      inheritReviewers(tag, fields, parent);
+      InheritedReferences.apply(InheritedReferences.Field.OWNERS, tag, fields, parent);
+      InheritedReferences.apply(InheritedReferences.Field.DOMAINS, tag, fields, parent);
+      InheritedReferences.apply(InheritedReferences.Field.REVIEWERS, tag, fields, parent);
     } catch (Exception e) {
       LOG.debug(
           "Failed to get classification {} for tag {}: {}",
@@ -331,7 +363,6 @@ public class TagRepository extends EntityRepository<Tag> {
     if (tags == null || tags.isEmpty()) {
       return;
     }
-
     Set<UUID> classificationIds =
         tags.stream()
             .map(Tag::getClassification)
@@ -339,24 +370,19 @@ public class TagRepository extends EntityRepository<Tag> {
             .map(EntityReference::getId)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
-
     if (classificationIds.isEmpty()) {
       return;
     }
-
     ClassificationRepository classificationRepository =
         (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
     List<Classification> classifications =
         classificationRepository
             .getDao()
             .findEntitiesByIds(new ArrayList<>(classificationIds), ALL);
-
     classificationRepository.setFieldsInBulk(
         new Fields(Set.of("owners", "domains", "reviewers")), classifications);
-
     Map<UUID, Classification> classificationMap =
         classifications.stream().collect(Collectors.toMap(Classification::getId, c -> c));
-
     for (Tag tag : tags) {
       if (tag.getClassification() != null && tag.getClassification().getId() != null) {
         Classification classification = classificationMap.get(tag.getClassification().getId());
@@ -364,9 +390,10 @@ public class TagRepository extends EntityRepository<Tag> {
           if (classification.getDisabled() != null && classification.getDisabled()) {
             tag.setDisabled(true);
           }
-          inheritOwners(tag, fields, classification);
-          inheritDomains(tag, fields, classification);
-          inheritReviewers(tag, fields, classification);
+          InheritedReferences.apply(InheritedReferences.Field.OWNERS, tag, fields, classification);
+          InheritedReferences.apply(InheritedReferences.Field.DOMAINS, tag, fields, classification);
+          InheritedReferences.apply(
+              InheritedReferences.Field.REVIEWERS, tag, fields, classification);
         }
       }
     }
@@ -387,7 +414,7 @@ public class TagRepository extends EntityRepository<Tag> {
     // reloaded from the row. Restoring is also unnecessary: inheritance is re-applied on the way
     // out, so the write response still reports the effective value.
     tag.setDisabled(getOwnDisabled(tag, update, tag.getDisabled()));
-    store(tag, update);
+    persistence().store(tag, update);
   }
 
   /**
@@ -407,7 +434,7 @@ public class TagRepository extends EntityRepository<Tag> {
   private Boolean getStoredDisabled(UUID tagId) {
     Boolean storedDisabled = Boolean.FALSE;
     try {
-      storedDisabled = dao.findEntityById(tagId, ALL).getDisabled();
+      storedDisabled = context().schema().dao().findEntityById(tagId, ALL).getDisabled();
     } catch (EntityNotFoundException e) {
       LOG.debug("Tag {} not found while reading its stored disabled flag", tagId, e);
     }
@@ -434,7 +461,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("classification", "parent");
   }
 
@@ -446,7 +473,7 @@ public class TagRepository extends EntityRepository<Tag> {
     // storeEntity() guards against. Tags are almost never created disabled, so the guard costs
     // nothing on the common path.
     entities.forEach(this::clearInheritedDisabled);
-    storeMany(entities);
+    persistence().insertMany(entities);
   }
 
   private void clearInheritedDisabled(Tag tag) {
@@ -457,12 +484,12 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void restorePatchAttributes(Tag original, Tag updated) {
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.setChildren(original.getChildren());
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<Tag> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<Tag> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Tag::getId).toList();
     deleteToMany(ids, Entity.TAG, Relationship.CONTAINS, Entity.CLASSIFICATION);
@@ -491,33 +518,34 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID classificationTagId, BulkAssetsRequestInterface request) {
     AddTagToAssetsRequest addTagToAssetsRequest = (AddTagToAssetsRequest) request;
     boolean dryRun = Boolean.TRUE.equals(addTagToAssetsRequest.getDryRun());
-
-    Tag tag = this.get(null, classificationTagId, getFields("id"));
-
+    Tag tag =
+        this.reads()
+            .byId(
+                classificationTagId,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse("id"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
-
     if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
           .withSuccessRequest(List.of(new BulkResponse().withMessage("Nothing to Validate.")));
     }
-
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
-
     TagLabel tagLabel =
         new TagLabel()
             .withTagFQN(tag.getFullyQualifiedName())
             .withSource(TagSource.CLASSIFICATION)
             .withLabelType(TagLabel.LabelType.MANUAL);
-
     for (EntityReference ref : request.getAssets()) {
       // Update Result Processed
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
@@ -529,14 +557,24 @@ public class TagRepository extends EntityRepository<Tag> {
         }
         continue;
       }
-
-      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+      EntityPolicy<?> entityRepository = Entity.getEntityRepository(ref.getType());
       EntityInterface asset =
-          entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
-
+          entityRepository
+              .reads()
+              .byId(
+                  ref.getId(),
+                  new EntityReadService.Query(
+                      null,
+                      entityRepository.fieldPolicy().parse("tags"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       try {
         Map<String, List<TagLabel>> allAssetTags =
-            daoCollection.tagUsageDAO().getTagsByPrefix(asset.getFullyQualifiedName(), "%", true);
+            context()
+                .dependencies()
+                .daos()
+                .tagUsageDAO()
+                .getTagsByPrefix(asset.getFullyQualifiedName(), "%", true);
         checkMutuallyExclusiveForParentAndSubField(
             asset.getFullyQualifiedName(),
             FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
@@ -556,15 +594,15 @@ public class TagRepository extends EntityRepository<Tag> {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
-        entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
-
-        searchRepository.updateEntity(ref);
+        entityRepository
+            .tagWrites()
+            .apply(
+                getUniqueTags(tempList), new EntityTagWriter.Target(asset.getFullyQualifiedName()));
+        context().dependencies().search().updateEntity(ref);
       }
     }
-
     // Add Failed And Suceess Request
     result.withFailedRequest(failures).withSuccessRequest(success);
-
     // Set Final Status
     if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
       result.withStatus(ApiStatus.SUCCESS);
@@ -573,7 +611,6 @@ public class TagRepository extends EntityRepository<Tag> {
     } else {
       result.withStatus(ApiStatus.FAILURE);
     }
-
     return result;
   }
 
@@ -592,38 +629,33 @@ public class TagRepository extends EntityRepository<Tag> {
     if (columnFqn == null) {
       throw new IllegalArgumentException("Column FQN is required");
     }
-
     // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
     String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
-
     // Get the table with columns
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     Table table =
-        tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns,tags"));
-
+        tableRepository.getByName(
+            null, tableFqn, tableRepository.fieldPolicy().parse("columns,tags"));
     // Find the column by FQN
     Column targetColumn = findColumnByFqn(table.getColumns(), columnFqn);
     if (targetColumn == null) {
       throw new IllegalArgumentException("Column not found: " + columnFqn);
     }
-
     // Validate mutually exclusive tags
     Map<String, List<TagLabel>> allAssetTags =
-        daoCollection.tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
+        context().dependencies().daos().tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
     checkMutuallyExclusiveForParentAndSubField(
         columnFqn,
         FullyQualifiedName.buildHash(columnFqn),
         allAssetTags,
         new ArrayList<>(Collections.singleton(tagLabel)),
         false);
-
     if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
-      searchRepository.updateEntity(table.getEntityReference());
+      tagWrites().apply(getUniqueTags(columnTags), new EntityTagWriter.Target(columnFqn));
+      context().dependencies().search().updateEntity(table.getEntityReference());
     }
-
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
   }
@@ -652,26 +684,28 @@ public class TagRepository extends EntityRepository<Tag> {
       UUID classificationTagId, BulkAssetsRequestInterface request) {
     AddTagToAssetsRequest assetsRequest = (AddTagToAssetsRequest) request;
     boolean dryRun = Boolean.TRUE.equals(assetsRequest.getDryRun());
-
-    Tag tag = this.get(null, classificationTagId, getFields("id"));
-
+    Tag tag =
+        this.reads()
+            .byId(
+                classificationTagId,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse("id"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
-
     if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result.withSuccessRequest(
           List.of(new BulkResponse().withMessage("Nothing to Validate.")));
     }
-
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
-
     for (EntityReference ref : request.getAssets()) {
       // Update Result Processed
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
@@ -682,28 +716,27 @@ public class TagRepository extends EntityRepository<Tag> {
         }
         continue;
       }
-
-      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+      EntityPolicy<?> entityRepository = Entity.getEntityRepository(ref.getType());
       EntityInterface asset =
-          entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
-
-      // Skip the destructive tag_usage delete + ES update on dryRun so the preview
-      // surfaces the same lookup errors a real call would without mutating state.
-      if (!dryRun) {
-        daoCollection
-            .tagUsageDAO()
-            .deleteTagsByTagAndTargetEntity(
-                tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
-      }
-      success.add(new BulkResponse().withRequest(ref));
-      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-      if (!dryRun) {
-        // Update ES
-        searchRepository.updateEntity(ref);
-      }
+          entityRepository
+              .reads()
+              .byId(
+                  ref.getId(),
+                  new EntityReadService.Query(
+                      null,
+                      entityRepository.fieldPolicy().parse("id"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
+      tagAssetRemoval.remove(
+          tag.getFullyQualifiedName(),
+          asset.getFullyQualifiedName(),
+          new Target(asset.getFullyQualifiedName(), ref.getType(), asset.getId()),
+          dryRun,
+          () -> {
+            success.add(new BulkResponse().withRequest(ref));
+            result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+          });
     }
-
     return result.withSuccessRequest(success);
   }
 
@@ -720,58 +753,61 @@ public class TagRepository extends EntityRepository<Tag> {
     if (columnFqn == null) {
       throw new IllegalArgumentException("Column FQN is required");
     }
-
     // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
     String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
-
     // Get the table — also validates that the column's parent table exists
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-    Table table = tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns"));
-
-    if (!dryRun) {
-      // Remove the tag from the column
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
-    }
-    success.add(new BulkResponse().withRequest(columnRef));
-    result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-    if (!dryRun) {
-      // Update the parent table's search index
-      searchRepository.updateEntity(table.getEntityReference());
-    }
+    Table table =
+        tableRepository.getByName(null, tableFqn, tableRepository.fieldPolicy().parse("columns"));
+    tagAssetRemoval.remove(
+        tag.getFullyQualifiedName(),
+        columnFqn,
+        new Target(table.getFullyQualifiedName(), Entity.TABLE, table.getId()),
+        dryRun,
+        () -> {
+          success.add(new BulkResponse().withRequest(columnRef));
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+        });
   }
 
   @Override
-  public EntityRepository<Tag>.EntityUpdater getUpdater(
-      Tag original, Tag updated, Operation operation, ChangeSource changeSource) {
-    return new TagUpdater(original, updated, operation);
+  public EntityUpdater<Tag> getUpdater(
+      Tag original, Tag updated, EntityOperation operation, ChangeSource changeSource) {
+    return new TagUpdater(original, updated, operation).mutation();
   }
 
   @Override
   public void entityRelationshipReindex(Tag original, Tag updated) {
-    super.entityRelationshipReindex(original, updated);
+    EntityPolicy.super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
       EntityReference originalRef = original.getEntityReference();
-      searchRepository.deferIfFlushScopeActive(
-          () -> searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", originalRef),
-          "reindexAcrossIndices",
-          originalRef.getId() != null ? originalRef.getId().toString() : null,
-          originalRef.getFullyQualifiedName(),
-          TAG);
+      context()
+          .dependencies()
+          .search()
+          .deferIfFlushScopeActive(
+              () ->
+                  context()
+                      .dependencies()
+                      .search()
+                      .getSearchClient()
+                      .reindexAcrossIndices("tags.tagFQN", originalRef),
+              "reindexAcrossIndices",
+              originalRef.getId() != null ? originalRef.getId().toString() : null,
+              originalRef.getFullyQualifiedName(),
+              TAG);
     }
   }
 
   @Override
-  protected void postDelete(Tag entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
+  public void postDelete(Tag entity, boolean hardDelete) {
+    EntityPolicy.super.postDelete(entity, hardDelete);
     // Cleanup all the tag labels using this tag
-    daoCollection
+    context()
+        .dependencies()
+        .daos()
         .tagUsageDAO()
         .deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
-
     // Remove this tag from policy rule conditions
     PolicyConditionUpdater.updateAllPolicyConditions(
         condition ->
@@ -792,18 +828,15 @@ public class TagRepository extends EntityRepository<Tag> {
     if (entities == null || entities.isEmpty()) {
       return;
     }
-
     // Batch fetch classifications and parents for all tags
     var classificationsMap = batchFetchClassifications(entities);
     var parentsMap = batchFetchParents(entities);
-
     // Set default fields (classification and parent) for all entities first
     entities.forEach(
         entity ->
             entity
                 .withClassification(classificationsMap.get(entity.getId()))
                 .withParent(parentsMap.get(entity.getId())));
-
     // Batch fetch usage counts if requested
     if (fields.contains("usageCount")) {
       var usageCountMap = batchFetchUsageCounts(entities);
@@ -811,9 +844,8 @@ public class TagRepository extends EntityRepository<Tag> {
           entity ->
               entity.withUsageCount(usageCountMap.getOrDefault(entity.getFullyQualifiedName(), 0)));
     }
-
     // Process other fields using the standard bulk processing
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
@@ -824,39 +856,34 @@ public class TagRepository extends EntityRepository<Tag> {
     if (tags == null || tags.isEmpty()) {
       return Map.of();
     }
-
     var entityIds = tags.stream().map(e -> e.getId().toString()).toList();
-
     // Find all CONTAINS relationships where tags are on the "to" side and from entity is
     // CLASSIFICATION
     var records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION, NON_DELETED);
-
     if (records.isEmpty()) {
       return Map.of();
     }
-
     // Get unique classification IDs and batch fetch references
     var classificationIds =
         records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
-
     var classificationRefs =
         Entity.getEntityReferencesByIds(Entity.CLASSIFICATION, classificationIds, NON_DELETED);
     var idToRefMap =
         classificationRefs.stream()
             .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
-
     // Map tags to their classifications
     return records.stream()
         .collect(
             Collectors.toMap(
-                r -> UUID.fromString(r.getToId()),
+                r -> UUID.fromString(r.getToId()), // In case of duplicates, keep first
                 r -> idToRefMap.get(r.getFromId()),
-                (existing, replacement) -> existing // In case of duplicates, keep first
-                ))
+                (existing, replacement) -> existing))
         .entrySet()
         .stream()
         .filter(e -> e.getValue() != null)
@@ -868,27 +895,23 @@ public class TagRepository extends EntityRepository<Tag> {
     if (tags == null || tags.isEmpty()) {
       return Map.of();
     }
-
     var entityIds = tags.stream().map(e -> e.getId().toString()).toList();
-
     // For parent tags, we need to find where current tags are the "to" side of CONTAINS
     // relationship
     var records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG, NON_DELETED);
-
     if (records.isEmpty()) {
       return Map.of();
     }
-
     // Get unique parent IDs and batch fetch references
     var parentIds = records.stream().map(r -> UUID.fromString(r.getFromId())).distinct().toList();
-
     var parentRefs = Entity.getEntityReferencesByIds(TAG, parentIds, NON_DELETED);
     var idToRefMap =
         parentRefs.stream().collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
-
     // Map tags to their parents
     return records.stream()
         .collect(
@@ -906,10 +929,8 @@ public class TagRepository extends EntityRepository<Tag> {
     if (tags == null || tags.isEmpty()) {
       return Map.of();
     }
-
     // Build and execute a single query for all tags
     var tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
-
     // Build UNION query that gets counts for all tags in one go
     var queryBuilder = new StringBuilder();
     tagFQNs.forEach(
@@ -920,21 +941,19 @@ public class TagRepository extends EntityRepository<Tag> {
           var escapedFQN = tagFQN.replace("'", "''");
           queryBuilder.append(
               """
-          SELECT '%s' as tagFQN,
-          COUNT(DISTINCT targetFQNHash) as count
-          FROM tag_usage
-          WHERE source = %d
-          AND (tagFQNHash = MD5('%s') OR tagFQNHash LIKE CONCAT(MD5('%s'), '.%%'))
-          """
+                SELECT '%s' as tagFQN,
+                COUNT(DISTINCT targetFQNHash) as count
+                FROM tag_usage
+                WHERE source = %d
+                AND (tagFQNHash = MD5('%s') OR tagFQNHash LIKE CONCAT(MD5('%s'), '.%%'))
+                """
                   .formatted(
                       escapedFQN, TagSource.CLASSIFICATION.ordinal(), escapedFQN, escapedFQN));
         });
-
     try {
       var results =
           Entity.getJdbi()
               .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
-
       return results.stream()
           .filter(row -> row.get("tagFQN") != null)
           .collect(
@@ -947,7 +966,9 @@ public class TagRepository extends EntityRepository<Tag> {
     } catch (Exception e) {
       LOG.error("Error batch fetching usage counts", e);
       // Fall back to individual queries
-      return daoCollection
+      return context()
+          .dependencies()
+          .daos()
           .tagUsageDAO()
           .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
     }
@@ -961,92 +982,126 @@ public class TagRepository extends EntityRepository<Tag> {
   private Integer getUsageCount(Tag tag) {
     return tag.getUsageCount() != null
         ? tag.getUsageCount()
-        : daoCollection
+        : context()
+            .dependencies()
+            .daos()
             .tagUsageDAO()
             .getTagCount(TagSource.CLASSIFICATION.ordinal(), tag.getFullyQualifiedName());
   }
 
   private EntityReference getClassification(Tag tag) {
-    return getFromEntityRef(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
+    return relationships()
+        .singleFrom(tag.getId(), Relationship.CONTAINS, Entity.CLASSIFICATION, true);
   }
 
   private void addClassificationRelationship(Tag term) {
-    addRelationship(
-        term.getClassification().getId(),
-        term.getId(),
-        Entity.CLASSIFICATION,
-        TAG,
-        Relationship.CONTAINS);
+    relationshipWrites()
+        .add(
+            new EntityRelationshipWriter.Edge(
+                term.getClassification().getId(),
+                term.getId(),
+                Entity.CLASSIFICATION,
+                TAG,
+                Relationship.CONTAINS),
+            EntityRelationshipWriter.Value.EMPTY,
+            false);
   }
 
   private void addParentRelationship(Tag term) {
     if (term.getParent() != null) {
-      addRelationship(term.getParent().getId(), term.getId(), TAG, TAG, Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  term.getParent().getId(), term.getId(), TAG, TAG, Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
-  public class TagUpdater extends EntityUpdater {
+  public class TagUpdater implements EntitySpecificMutation<Tag> {
+
     private boolean renameProcessed = false;
 
-    public TagUpdater(Tag original, Tag updated, Operation operation) {
-      super(original, updated, operation);
+    public TagUpdater(Tag original, Tag updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    protected void resetForRetryAttempt() {
+    public void reset() {
       renameProcessed = false;
     }
 
     @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
+    public void reviewers(EntityUpdater<Tag> entityUpdate) {
+      EntitySpecificMutation.super.reviewers(entityUpdate);
+      if (entityUpdate.getOriginal().getReviewers() != null
+          && entityUpdate.getUpdated().getReviewers() != null
+          && !entityUpdate
+              .getOriginal()
+              .getReviewers()
+              .equals(entityUpdate.getUpdated().getReviewers())) {
+        updateTaskWithNewReviewers(entityUpdate.getUpdated());
       }
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      restrictSystemProviderChange(updated::setProvider);
+    public void update(EntityUpdater<Tag> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.restrictSystemProviderChange(entityUpdate.getUpdated()::setProvider);
       preserveRecognizerConfigOnPut();
-      compareAndUpdate("mutuallyExclusive", this::run);
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate("mutuallyExclusive", this::run);
+      entityUpdate.compareAndUpdate(
           "disabled",
-          () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "disabled",
+                  entityUpdate.getOriginal().getDisabled(),
+                  entityUpdate.getUpdated().getDisabled()));
+      entityUpdate.compareAndUpdate(
           "recognizers",
           () ->
-              recordChange(
-                  "recognizers", original.getRecognizers(), updated.getRecognizers(), true));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "recognizers",
+                  entityUpdate.getOriginal().getRecognizers(),
+                  entityUpdate.getUpdated().getRecognizers(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "autoClassificationEnabled",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "autoClassificationEnabled",
-                  original.getAutoClassificationEnabled(),
-                  updated.getAutoClassificationEnabled()));
-      compareAndUpdate(
+                  entityUpdate.getOriginal().getAutoClassificationEnabled(),
+                  entityUpdate.getUpdated().getAutoClassificationEnabled()));
+      entityUpdate.compareAndUpdate(
           "autoClassificationPriority",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "autoClassificationPriority",
-                  original.getAutoClassificationPriority(),
-                  updated.getAutoClassificationPriority()));
-      compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
+                  entityUpdate.getOriginal().getAutoClassificationPriority(),
+                  entityUpdate.getUpdated().getAutoClassificationPriority()));
+      entityUpdate.compareAndUpdateAny(
+          () -> updateNameAndParent(entityUpdate.getUpdated()), "name", "parent", "classification");
     }
 
     // CreateTag defaults recognizers to empty and autoClassificationEnabled to false, so a PUT
     // that never mentions them is indistinguishable from one clearing them. Clear via PATCH.
     private void preserveRecognizerConfigOnPut() {
-      if (operation != Operation.PUT || !nullOrEmpty(updated.getRecognizers())) {
+      if (entityUpdate.getOperation() != EntityOperation.PUT
+          || !nullOrEmpty(entityUpdate.getUpdated().getRecognizers())) {
         return;
       }
-      updated.setRecognizers(original.getRecognizers());
-      updated.setAutoClassificationEnabled(original.getAutoClassificationEnabled());
-      updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
+      entityUpdate.getUpdated().setRecognizers(entityUpdate.getOriginal().getRecognizers());
+      entityUpdate
+          .getUpdated()
+          .setAutoClassificationEnabled(entityUpdate.getOriginal().getAutoClassificationEnabled());
+      entityUpdate
+          .getUpdated()
+          .setAutoClassificationPriority(
+              entityUpdate.getOriginal().getAutoClassificationPriority());
     }
 
     /**
@@ -1054,80 +1109,76 @@ public class TagRepository extends EntityRepository<Tag> {
      */
     public void updateNameAndParent(Tag updated) {
       // Use getOriginalFqn() which was captured at EntityUpdater construction time.
-      String oldFqn = getOriginalFqn();
+      String oldFqn = entityUpdate.getOriginalFqn();
       setFullyQualifiedName(updated);
       String newFqn = updated.getFullyQualifiedName();
-
       // Check if this is a name change
       String[] oldParts = FullyQualifiedName.split(oldFqn);
       String oldTagName = oldParts.length > 0 ? oldParts[oldParts.length - 1] : "";
       boolean nameChanged = !oldTagName.equals(updated.getName());
-
       // Check for parent/classification changes
-      UUID oldParentId = getId(original.getParent());
+      UUID oldParentId = getId(entityUpdate.getOriginal().getParent());
       UUID newParentId = getId(updated.getParent());
       boolean parentChanged = !Objects.equals(oldParentId, newParentId);
-
-      UUID oldCategoryId = getId(original.getClassification());
+      UUID oldCategoryId = getId(entityUpdate.getOriginal().getClassification());
       UUID newCategoryId = getId(updated.getClassification());
       boolean classificationChanged = !Objects.equals(oldCategoryId, newCategoryId);
-
       boolean fqnChanged = !oldFqn.equals(newFqn);
-
       if (fqnChanged && !renameProcessed) {
         renameProcessed = true;
-
-        if (nameChanged && ProviderType.SYSTEM.equals(original.getProvider())) {
+        if (nameChanged && ProviderType.SYSTEM.equals(entityUpdate.getOriginal().getProvider())) {
           throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+              CatalogExceptionMessage.systemEntityRenameNotAllowed(
+                  entityUpdate.getOriginal().getName(), context().schema().entityType()));
         }
-
         LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
         // Drop cache entries for every child tag under this renamed tag BEFORE the DB rewrite.
         // Capture the descendants so the post-write pass can re-evict any entry a racing reader
         // re-populated with the pre-rename row between this call and tagDAO.updateFqn below.
         // The pass below runs after updateFqn but inside this transaction — see
-        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit
+        // EntityCaches.targets().beforeRename for the residual pre-commit
         // window.
         List<EntityDAO.EntityIdFqnPair> renamedTags =
-            EntityRepository.invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+            EntityCaches.targets().beforeRename(Entity.TAG, oldFqn);
         // Drop cached entity JSON / bundle for every entity tagged with this tag (or any
         // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-        EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
-        daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
-        daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
-
+        EntityCaches.targets().taggedDescendants(Entity.TAG, oldFqn);
+        context().dependencies().daos().tagDAO().updateFqn(oldFqn, newFqn);
+        context()
+            .dependencies()
+            .daos()
+            .tagUsageDAO()
+            .rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
         if (nameChanged) {
-          recordChange("name", oldTagName, updated.getName());
+          entityUpdate.recordChange("name", oldTagName, updated.getName());
         }
-
         updateEntityLinks(oldFqn, newFqn, updated);
-
         PolicyConditionUpdater.updateAllPolicyConditions(
             condition ->
                 PolicyConditionUpdater.renamePrefixInCondition(
                     condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
-
-        EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+        EntityCaches.targets().afterRename(Entity.TAG, renamedTags);
       }
-
       if (classificationChanged) {
-        updateClassificationRelationship(original, updated);
-        recordChange(
+        updateClassificationRelationship(entityUpdate.getOriginal(), updated);
+        entityUpdate.recordChange(
             "Classification",
-            original.getClassification(),
+            entityUpdate.getOriginal().getClassification(),
             updated.getClassification(),
             true,
             entityReferenceMatch);
         invalidateTags(updated.getId());
       }
       if (parentChanged) {
-        updateParentRelationship(original, updated);
-        recordChange(
-            "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
+        updateParentRelationship(entityUpdate.getOriginal(), updated);
+        entityUpdate.recordChange(
+            "parent",
+            entityUpdate.getOriginal().getParent(),
+            updated.getParent(),
+            true,
+            entityReferenceMatch);
         invalidateTags(updated.getId());
       }
-
       // Populate response fields
       invalidateTags(updated.getId());
       getChildren(updated);
@@ -1139,12 +1190,14 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     private void deleteClassificationRelationship(Tag term) {
-      deleteRelationship(
-          term.getClassification().getId(),
-          Entity.CLASSIFICATION,
-          term.getId(),
-          TAG,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .delete(
+              new EntityRelationshipWriter.Edge(
+                  term.getClassification().getId(),
+                  term.getId(),
+                  Entity.CLASSIFICATION,
+                  TAG,
+                  Relationship.CONTAINS));
     }
 
     private void updateParentRelationship(Tag orig, Tag updated) {
@@ -1154,18 +1207,23 @@ public class TagRepository extends EntityRepository<Tag> {
 
     private void deleteParentRelationship(Tag term) {
       if (term.getParent() != null) {
-        deleteRelationship(term.getParent().getId(), TAG, term.getId(), TAG, Relationship.CONTAINS);
+        relationshipWrites()
+            .delete(
+                new EntityRelationshipWriter.Edge(
+                    term.getParent().getId(), term.getId(), TAG, TAG, Relationship.CONTAINS));
       }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
-      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
-
+      context().dependencies().daos().fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
       ConversationRepository conversations = Entity.getConversationRepository();
       conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
-
-      List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
-
+      List<EntityReference> childTags =
+          relationships()
+              .to(
+                  new EntityRelationshipReader.Selection(
+                      updated.getId(), TAG, Relationship.CONTAINS, TAG),
+                  Include.NON_DELETED);
       for (EntityReference child : childTags) {
         String childNewFqn = child.getFullyQualifiedName();
         String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
@@ -1176,22 +1234,32 @@ public class TagRepository extends EntityRepository<Tag> {
     private void invalidateTags(UUID tagId) {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
       List<EntityRelationshipRecord> tagRecords =
-          findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
-      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+          relationships()
+              .toRecords(
+                  new EntityRelationshipReader.Selection(tagId, TAG, Relationship.CONTAINS, TAG));
+      EntityCaches.byId().invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }
     }
 
     private void run() {
-      recordChange(
-          "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
+      entityUpdate.recordChange(
+          "mutuallyExclusive",
+          entityUpdate.getOriginal().getMutuallyExclusive(),
+          entityUpdate.getUpdated().getMutuallyExclusive());
+    }
+
+    private final EntityUpdater<Tag> entityUpdate;
+
+    public EntityUpdater<Tag> mutation() {
+      return entityUpdate;
     }
   }
 
   @Override
   public void postUpdate(Tag original, Tag updated) {
-    super.postUpdate(original, updated);
+    EntityPolicy.super.postUpdate(original, updated);
     if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
       if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
         closeApprovalTask(updated, "Approved the tag");
@@ -1199,7 +1267,6 @@ public class TagRepository extends EntityRepository<Tag> {
         closeApprovalTask(updated, "Rejected the tag");
       }
     }
-
     // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
     // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
     // will be a Task created.
@@ -1210,12 +1277,13 @@ public class TagRepository extends EntityRepository<Tag> {
       try {
         closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
+      }
+      // No ApprovalTask is present, and thus we don't need to worry about this.
     }
   }
 
   @Override
-  protected void preDelete(Tag entity, String deletedBy) {
+  public void preDelete(Tag entity, String deletedBy) {
     if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }
@@ -1280,30 +1348,35 @@ public class TagRepository extends EntityRepository<Tag> {
 
   public ResultList<Recognizer> getRecognizersOfTagById(
       UUID tagId, String before, String after, int limit) {
-    Tag tag = get(null, tagId, getFields("recognizers"));
+    Tag tag =
+        reads()
+            .byId(
+                tagId,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse("recognizers"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     return getRecognizersOfTag(tag, before, after, limit);
   }
 
   public ResultList<Recognizer> getRecognizersOfTagByFQN(
       String tagFqn, String before, String after, int limit) {
-    Tag tag = getByName(null, tagFqn, getFields("recognizers"));
+    Tag tag = getByName(null, tagFqn, fieldPolicy().parse("recognizers"));
     return getRecognizersOfTag(tag, before, after, limit);
   }
 
   public ResultList<Recognizer> getRecognizersOfTag(
       Tag tag, String before, String after, int limit) {
     ResultList<Recognizer> result;
-
     if (tag.getRecognizers() == null || tag.getRecognizers().isEmpty()) {
       return new ResultList<>(Collections.emptyList(), null, null, 0);
     }
-
     if (before != null) {
       result = listRecognizersBeforeCursor(tag.getRecognizers(), before, limit);
     } else {
       result = listRecognizersAfterCursor(tag.getRecognizers(), after, limit);
     }
-
     return result;
   }
 
@@ -1311,15 +1384,12 @@ public class TagRepository extends EntityRepository<Tag> {
     UUID id = null;
     if (cursor != null) {
       try {
-        Map<String, String> map = parseCursorMap(RestUtil.decodeCursor(cursor));
+        Map<String, String> map = EntityCursor.parse(RestUtil.decodeCursor(cursor));
         String idString = map.get("id");
-
         if (idString == null) {
           throw new BadCursorException();
         }
-
         id = UUID.fromString(idString);
-
       } catch (Exception e) {
         throw new BadCursorException();
       }
@@ -1330,67 +1400,61 @@ public class TagRepository extends EntityRepository<Tag> {
   private ResultList<Recognizer> listRecognizersAfterCursor(
       List<Recognizer> recognizers, String after, int limit) {
     UUID afterId;
-
     try {
       afterId = extractIdFromCursor(after);
     } catch (BadCursorException ignored) {
       throw new BadCursorException("Invalid `after` cursor");
     }
-
     return listRecognizersAfter(recognizers, afterId, limit);
   }
 
   private ResultList<Recognizer> listRecognizersBeforeCursor(
       List<Recognizer> recognizers, String before, int limit) {
     UUID beforeId;
-
     try {
       beforeId = extractIdFromCursor(before);
     } catch (BadCursorException ignored) {
       throw new BadCursorException("Invalid `before` cursor");
     }
-
     return listRecognizersAfter(recognizers.reversed(), beforeId, limit);
   }
 
   private ResultList<Recognizer> listRecognizersAfter(
       List<Recognizer> recognizers, UUID startId, int limit) {
     int total = recognizers.size();
-
     boolean append = startId == null;
     limit = limit > 0 ? Math.min(total, limit) : total;
-
     List<Recognizer> result = new ArrayList<>(limit);
     int startIndex = 0;
     int endIndex = -1;
-
     for (int i = 0; i < recognizers.size(); i++) {
       Recognizer recognizer = recognizers.get(i);
-
       if (result.size() >= limit) {
         break;
       }
-
       if (!append) {
         append = startId.equals(recognizer.getId());
         continue;
       }
-
       if (result.isEmpty()) {
         startIndex = i;
       }
       endIndex = i;
       result.add(recognizer);
     }
-
     if (result.isEmpty()) {
       return new ResultList<>(result, null, null, total);
     }
-
     String newBefore = (startIndex == 0) ? null : getRecognizerCursorValue(result.getFirst());
     String newAfter =
         (endIndex == recognizers.size() - 1) ? null : getRecognizerCursorValue(result.getLast());
-
     return new ResultList<>(result, newBefore, newAfter, total);
+  }
+
+  private final EntityPolicyContext<Tag> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Tag> context() {
+    return entityContext;
   }
 }

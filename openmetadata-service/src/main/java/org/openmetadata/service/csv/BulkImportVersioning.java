@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.csv;
 
 import jakarta.ws.rs.core.UriInfo;
@@ -19,11 +18,13 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * The version bump a completed bulk CSV import records on the entity the import targeted, shared by
@@ -48,7 +49,7 @@ public final class BulkImportVersioning {
    * keeps the outcome from becoming a cross-domain existence oracle.
    */
   public static void recordVersion(
-      EntityRepository<EntityInterface> versioningRepo,
+      EntityPolicy<EntityInterface> versioningRepo,
       UriInfo uriInfo,
       String targetFqn,
       String updatedBy,
@@ -62,7 +63,7 @@ public final class BulkImportVersioning {
   }
 
   private static EntityInterface resolveAccessibleTarget(
-      EntityRepository<EntityInterface> versioningRepo,
+      EntityPolicy<EntityInterface> versioningRepo,
       UriInfo uriInfo,
       String targetFqn,
       String updatedBy) {
@@ -72,12 +73,15 @@ public final class BulkImportVersioning {
     try {
       String fields = versioningRepo.isSupportsDomains() ? Entity.FIELD_DOMAINS : "";
       EntityInterface candidate =
-          versioningRepo.getByName(
-              uriInfo,
-              targetFqn,
-              new Fields(versioningRepo.getAllowedFields(), fields),
-              Include.NON_DELETED,
-              false);
+          versioningRepo
+              .reads()
+              .byName(
+                  targetFqn,
+                  new EntityReadService.Query(
+                      uriInfo,
+                      new Fields(versioningRepo.getAllowedFields(), fields),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       if (DomainAccessFilter.isAccessible(subjectContext, candidate.getDomains())) {
         target = candidate;
       }

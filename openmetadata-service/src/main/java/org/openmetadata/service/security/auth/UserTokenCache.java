@@ -19,10 +19,12 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class UserTokenCache {
@@ -71,12 +73,15 @@ public class UserTokenCache {
       HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(
-              null,
-              userName,
-              new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
-              NON_DELETED,
-              true);
+          userRepository
+              .reads()
+              .byName(
+                  userName,
+                  new EntityReadService.Query(
+                      null,
+                      new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
+                      RelationIncludes.fromInclude(NON_DELETED),
+                      true));
       List<TokenInterface> tokens =
           tokenRepository.findByUserIdAndType(
               user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());

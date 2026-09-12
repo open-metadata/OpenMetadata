@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.schema.type.OntologyPackModuleInstallation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 
 public final class OntologyPackInstallationService {
@@ -120,12 +121,12 @@ public final class OntologyPackInstallationService {
   private static final class EntityInstallationStore implements InstallationStore {
     @Override
     public Glossary find(final String glossaryName) {
-      return repository().findByNameOrNull(glossaryName, Include.NON_DELETED);
+      return repository().lookup().byNameOrNull(glossaryName, Include.NON_DELETED);
     }
 
     @Override
     public void save(final UriInfo uriInfo, final Glossary glossary, final String user) {
-      repository().createOrUpdate(uriInfo, glossary, user);
+      repository().creates().upsert(uriInfo, glossary, new EntityCommandActor(user, null), false);
     }
 
     private static GlossaryRepository repository() {

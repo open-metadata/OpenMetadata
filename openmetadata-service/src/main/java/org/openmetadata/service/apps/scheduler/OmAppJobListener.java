@@ -21,8 +21,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.logging.AppRunLogAppender;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
@@ -107,8 +109,15 @@ public class OmAppJobListener implements JobListener {
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp =
-          repository.getByName(
-              null, appName, repository.getFields("bot"), Include.NON_DELETED, true);
+          repository
+              .reads()
+              .byName(
+                  appName,
+                  new EntityReadService.Query(
+                      null,
+                      repository.fieldPolicy().parse("bot"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      true));
 
       // Debug logging to check if App ID is present
       if (jobApp.getId() == null) {

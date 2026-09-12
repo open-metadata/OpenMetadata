@@ -98,9 +98,10 @@ import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
@@ -133,7 +134,9 @@ import org.openmetadata.service.util.email.EmailUtil;
 @Slf4j
 @LatencyPhase
 public class SystemResource {
+
   public static final String COLLECTION_PATH = "/v1/system";
+
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
 
   // Settings that hold no secrets and that the UI must read to render entity pages for every
@@ -142,10 +145,14 @@ public class SystemResource {
   private static final Set<String> USER_READABLE_SETTINGS =
       Set.of(
           LINEAGE_SETTINGS.value().toLowerCase(Locale.ROOT),
-          GLOSSARY_TERM_RELATION_SETTINGS.value().toLowerCase(Locale.ROOT),
-          // appConfiguration is read by every user at boot (fallback-chain resolution),
+          GLOSSARY_TERM_RELATION_SETTINGS
+              .value()
+              .toLowerCase(
+                  Locale.ROOT), // appConfiguration is read by every user at boot (fallback-chain
+          // resolution),
           // not just admins; PATCH remains admin-only.
           APP_CONFIGURATION.value().toLowerCase(Locale.ROOT));
+
   private static final ExecutorService SEARCH_FITNESS_EXECUTOR =
       Executors.newFixedThreadPool(
           2,
@@ -154,12 +161,19 @@ public class SystemResource {
             thread.setDaemon(true);
             return thread;
           });
+
   private final SystemRepository systemRepository;
+
   private final Authorizer authorizer;
+
   private OpenMetadataApplicationConfig applicationConfig;
+
   private PipelineServiceClientInterface pipelineServiceClient;
+
   private JwtFilter jwtFilter;
+
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
+
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
 
   public SystemResource(Authorizer authorizer) {
@@ -172,7 +186,6 @@ public class SystemResource {
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
-
     this.jwtFilter =
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
@@ -191,7 +204,7 @@ public class SystemResource {
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
-                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+                  EntityPolicy.class.getClassLoader(), jsonDataFiles.get(0));
           defaultSearchSettingsCache = JsonUtils.readValue(json, SearchSettings.class);
         } else {
           throw new IllegalArgumentException("Default search settings file not found.");
@@ -241,7 +254,6 @@ public class SystemResource {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     ResultList<Settings> allConfigs = systemRepository.listAllConfigs();
-
     // Filter out authenticationConfiguration and authorizerConfiguration
     List<Settings> filteredSettings = new ArrayList<>();
     if (allConfigs != null && allConfigs.getData() != null) {
@@ -252,7 +264,6 @@ public class SystemResource {
         }
       }
     }
-
     return new ResultList<>(filteredSettings, null, null, filteredSettings.size());
   }
 
@@ -283,14 +294,15 @@ public class SystemResource {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
-
     if (!isUserReadableSetting(name)) {
       authorizer.authorizeAdmin(securityContext);
     }
     return forResponse(systemRepository.getConfigWithKey(name));
   }
 
-  /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
+  /**
+   * The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried.
+   */
   private SearchSettings storedSearchSettings() {
     SearchSettings result = null;
     Settings stored = systemRepository.getConfigWithKey(SettingsType.SEARCH_SETTINGS.value());
@@ -336,7 +348,9 @@ public class SystemResource {
     return result;
   }
 
-  /** {@link #forResponse(Settings)} for the write paths, which return an already-built response. */
+  /**
+   * {@link #forResponse(Settings)} for the write paths, which return an already-built response.
+   */
   private Response forResponse(Response response) {
     Response result = response;
     if (response.getEntity() instanceof Settings settings) {
@@ -345,7 +359,9 @@ public class SystemResource {
     return result;
   }
 
-  /** {@link #forResponse(Settings)} for the reset path, which returns a bare {@link SearchSettings}. */
+  /**
+   * {@link #forResponse(Settings)} for the reset path, which returns a bare {@link SearchSettings}.
+   */
   private SearchSettings forResponse(SearchSettings searchSettings) {
     SearchSettings result = JsonUtils.deepCopy(searchSettings, SearchSettings.class);
     searchSettingsHandler.annotateHighlightableFields(result);
@@ -381,13 +397,11 @@ public class SystemResource {
     if (relationTypes == null) {
       relationTypes = List.of();
     }
-
     int total = relationTypes.size();
     int fromIndex = Math.min(offset, total);
     int toIndex = Math.min(fromIndex + limit, total);
     List<GlossaryTermRelationType> page =
         new ArrayList<>(relationTypes.subList(fromIndex, toIndex));
-
     return new ResultList<>(page, offset, limit, total);
   }
 
@@ -402,12 +416,10 @@ public class SystemResource {
     if (relationType == null || nullOrEmpty(relationType.getName())) {
       throw new BadRequestException("The relation type name is required.");
     }
-
     relationType.setIsSystemDefined(false);
     GlossaryTermRelationSettingsUtil.normalize(relationType);
     JsonValue relationTypeJson = JsonUtils.readJson(JsonUtils.pojoToJson(relationType));
     JsonPatch patch = Json.createPatchBuilder().add("/relationTypes/-", relationTypeJson).build();
-
     systemRepository.patchSetting(GLOSSARY_TERM_RELATION_SETTINGS.value(), patch);
     return Response.status(Response.Status.CREATED).entity(relationType).build();
   }
@@ -434,7 +446,6 @@ public class SystemResource {
     if (!name.equals(relationType.getName())) {
       throw new BadRequestException("The relation type name cannot be changed.");
     }
-
     relationType.setIsSystemDefined(false);
     GlossaryTermRelationSettingsUtil.normalize(relationType);
     String relationTypePath = "/relationTypes/" + relationTypeIndex;
@@ -443,7 +454,6 @@ public class SystemResource {
             .test(relationTypePath + "/name", existing.getName())
             .replace(relationTypePath, JsonUtils.readJson(JsonUtils.pojoToJson(relationType)))
             .build();
-
     systemRepository.patchSetting(GLOSSARY_TERM_RELATION_SETTINGS.value(), patch);
     return Response.ok(relationType).build();
   }
@@ -462,7 +472,6 @@ public class SystemResource {
     if (Boolean.TRUE.equals(existing.getIsSystemDefined())) {
       throw new SystemSettingsException("System-defined relation types cannot be deleted.");
     }
-
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     int usageCount =
@@ -473,7 +482,6 @@ public class SystemResource {
               "Cannot delete relation type %s (%d usage%s).",
               existing.getName(), usageCount, usageCount == 1 ? "" : "s"));
     }
-
     String relationTypePath = "/relationTypes/" + relationTypeIndex;
     JsonPatch patch =
         Json.createPatchBuilder()
@@ -481,7 +489,6 @@ public class SystemResource {
             .remove(relationTypePath)
             .build();
     systemRepository.patchSetting(GLOSSARY_TERM_RELATION_SETTINGS.value(), patch);
-
     return Response.noContent().build();
   }
 
@@ -680,7 +687,6 @@ public class SystemResource {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
-
     authorizer.authorizeAdmin(securityContext);
     if (SettingsType.SEARCH_SETTINGS
         .value()
@@ -693,7 +699,6 @@ public class SystemResource {
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
-
       if (mergedSettings.getGlobalSettings() != null
           && mergedSettings.getGlobalSettings().getKeywordWeight() != null
           && mergedSettings.getGlobalSettings().getSemanticWeight() != null) {
@@ -709,7 +714,6 @@ public class SystemResource {
         }
       }
     }
-
     LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
     if (GLOSSARY_TERM_RELATION_SETTINGS
         .value()
@@ -732,7 +736,6 @@ public class SystemResource {
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
     synchronizeRelationshipTypes(
         relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
-
     return forResponse(response);
   }
 
@@ -810,9 +813,7 @@ public class SystemResource {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
-
     authorizer.authorizeAdmin(securityContext);
-
     if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
       throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
     }
@@ -842,9 +843,7 @@ public class SystemResource {
     if (nullOrEmpty(emailRequest.getEmail())) {
       throw new IllegalArgumentException("Email address is required.");
     }
-
     authorizer.authorizeAdmin(securityContext);
-
     try {
       EmailUtil.testConnection();
       EmailUtil.sendTestEmail(emailRequest.getEmail(), false);
@@ -852,7 +851,6 @@ public class SystemResource {
       LOG.error("Failed in sending mail. Message: {}", ex.getMessage(), ex);
       throw new UnhandledServerException(ex.getMessage());
     }
-
     return Response.status(Response.Status.OK).entity("Test Email Sent Successfully.").build();
   }
 
@@ -888,7 +886,6 @@ public class SystemResource {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
-
     authorizer.authorizeAdmin(securityContext);
     GlossaryTermRelationSettings previous =
         isRelationshipTypeSetting(settingName) ? previousRelationshipTypeSettings() : null;
@@ -1034,11 +1031,9 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
     SecurityConfiguration originalConfig =
         SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
-
     // Create a deep copy to avoid mutating the original shared objects
     String configJson = JsonUtils.pojoToJson(originalConfig);
     SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
-
     // Apply password masking if needed - only to the copy
     if (authorizer.shouldMaskPasswords(securityContext)) {
       // Mask OIDC configuration if present
@@ -1049,7 +1044,6 @@ public class SystemResource {
             .getOidcConfiguration()
             .setSecret(PasswordEntityMasker.PASSWORD_MASK);
       }
-
       // Mask LDAP configuration if present
       if (config.getAuthenticationConfiguration() != null
           && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
@@ -1082,36 +1076,28 @@ public class SystemResource {
       @Context SecurityContext securityContext,
       @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
-
     try {
       SecurityConfiguration originalConfig =
           SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
       preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
-
       // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
       systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);
-
       // Update both configurations in a transaction
       Settings authSettings =
           new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
-
       Settings authzSettings =
           new Settings()
               .withConfigType(AUTHORIZER_CONFIGURATION)
               .withConfigValue(securityConfig.getAuthorizerConfiguration());
-
       // Save both to database
       systemRepository.createOrUpdate(authSettings);
       systemRepository.createOrUpdate(authzSettings);
-
       // Invalidate both caches
       SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
       SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
-
       // Reload entire security system
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
-
       return Response.ok(getSecurityConfig(securityContext)).build();
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
@@ -1143,31 +1129,24 @@ public class SystemResource {
                       }))
           JsonPatch patch) {
     authorizer.authorizeAdmin(securityContext);
-
     try {
       SecurityConfiguration originalConfig =
           SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
-
       String configJson = JsonUtils.pojoToJson(originalConfig);
       SecurityConfiguration currentConfig =
           JsonUtils.readValue(configJson, SecurityConfiguration.class);
-
       JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
-
       JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
       preserveMaskedSecuritySecrets(updatedConfig, currentConfig);
-
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
           systemRepository.validateSecurityConfiguration(
               updatedConfig, applicationConfig, currentUsername);
-
       boolean isValidConfig =
           validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
-
       if (!isValidConfig) {
         // Consolidate all error messages for logging
         List<String> failedMessages = new ArrayList<>();
@@ -1176,31 +1155,25 @@ public class SystemResource {
             failedMessages.add(error.getField() + ": " + error.getError());
           }
         }
-
         // Log the errors
         if (!failedMessages.isEmpty()) {
           LOG.error(
               "Security configuration validation failed: {}", String.join("; ", failedMessages));
         }
-
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
       Settings authSettings =
           new Settings()
               .withConfigType(AUTHENTICATION_CONFIGURATION)
               .withConfigValue(updatedConfig.getAuthenticationConfiguration());
-
       Settings authzSettings =
           new Settings()
               .withConfigType(AUTHORIZER_CONFIGURATION)
               .withConfigValue(updatedConfig.getAuthorizerConfiguration());
-
       systemRepository.createOrUpdate(authSettings);
       systemRepository.createOrUpdate(authzSettings);
-
       SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
       SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
-
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
       return Response.noContent().build();
     } catch (Exception e) {
@@ -1346,7 +1319,6 @@ public class SystemResource {
   public Response updateMCPConfiguration(
       @Context SecurityContext securityContext, @Valid MCPConfiguration mcpConfig) {
     authorizer.authorizeAdmin(securityContext);
-
     try {
       // Validate baseUrl
       if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
@@ -1363,7 +1335,6 @@ public class SystemResource {
               .build();
         }
       }
-
       // Validate allowedOrigins
       if (mcpConfig.getAllowedOrigins() != null) {
         for (String origin : mcpConfig.getAllowedOrigins()) {
@@ -1386,16 +1357,11 @@ public class SystemResource {
           }
         }
       }
-
       Settings mcpSettings =
           new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
-
       systemRepository.createOrUpdate(mcpSettings);
-
       SettingsCache.invalidateSettings(MCP_CONFIGURATION.toString());
-
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
-
       return Response.ok(mcpConfig).build();
     } catch (Exception e) {
       LOG.error("Failed to update MCP configuration", e);
@@ -1417,7 +1383,6 @@ public class SystemResource {
       })
   public Response getCacheStats(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-
     CacheProvider cacheProvider = CacheBundle.getCacheProvider();
     Map<String, Object> stats = cacheProvider.getStats();
     // Gate on the *configured* provider, not the runtime available() flag. When the cache
@@ -1577,8 +1542,8 @@ public class SystemResource {
     // something that's gone" is harmless for the id-keyed layers.
     if (id == null && normalizedFqn != null) {
       try {
-        EntityRepository<?> repository = Entity.getEntityRepository(type);
-        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, false);
+        EntityPolicy<?> repository = Entity.getEntityRepository(type);
+        EntityInterface resolved = repository.lookup().byName(normalizedFqn, Include.ALL, false);
         if (resolved != null) {
           id = resolved.getId();
         }
@@ -1597,10 +1562,10 @@ public class SystemResource {
     //   2. Guava L1 caches (CACHE_WITH_ID, CACHE_WITH_NAME) — the hot path on every entity
     //      GET; without explicit eviction here, an admin force-invalidate wouldn't actually
     //      take effect on the originating pod's in-memory cache. The static
-    //      EntityRepository.invalidateCacheForEntity also propagates over the pub-sub channel
+    //      EntityCaches.invalidations().referencesChanged also propagates over the pub-sub channel
     //      to other pods so multi-replica deploys all evict simultaneously.
     CacheBundle.invalidateEntity(type, id, normalizedFqn);
-    EntityRepository.invalidateCacheForEntity(type, id, normalizedFqn);
+    EntityCaches.invalidations().referencesChanged(type, id, normalizedFqn);
     return Response.ok(Map.of("invalidated", true, "type", type)).build();
   }
 
@@ -1610,13 +1575,11 @@ public class SystemResource {
     if (currentSettings == null) {
       return;
     }
-
     GlossaryTermRelationSettings currentConfig =
         JsonUtils.convertValue(
             currentSettings.getConfigValue(), GlossaryTermRelationSettings.class);
     GlossaryTermRelationSettings newConfig =
         JsonUtils.convertValue(newSettings.getConfigValue(), GlossaryTermRelationSettings.class);
-
     GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
         currentConfig, newConfig);
     if (currentConfig == null
@@ -1625,30 +1588,24 @@ public class SystemResource {
         || newConfig.getRelationTypes() == null) {
       return;
     }
-
     List<String> currentRelationTypeNames =
         currentConfig.getRelationTypes().stream().map(GlossaryTermRelationType::getName).toList();
     List<String> newRelationTypeNames =
         newConfig.getRelationTypes().stream().map(GlossaryTermRelationType::getName).toList();
-
     List<String> removedRelationTypes =
         currentRelationTypeNames.stream()
             .filter(name -> !newRelationTypeNames.contains(name))
             .toList();
-
     if (removedRelationTypes.isEmpty()) {
       return;
     }
-
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     List<RelationshipTypeUsage> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
-
     List<String> inUseRelationTypes =
         removedRelationTypes.stream()
             .filter(name -> relationTypeUsage(name, usageCounts) > 0)
             .toList();
-
     if (!inUseRelationTypes.isEmpty()) {
       StringBuilder message = new StringBuilder("Cannot delete relation types that are in use: ");
       for (String relationTypeName : inUseRelationTypes) {
@@ -1677,7 +1634,6 @@ public class SystemResource {
     if (settings.getQueryTemplates().size() > 50) {
       throw new SystemSettingsException("At most 50 SPARQL query templates are allowed");
     }
-
     Set<UUID> queryIds = new HashSet<>();
     for (SavedSparqlQuery query : settings.getQueryTemplates()) {
       if (query == null || query.getId() == null || !queryIds.add(query.getId())) {
@@ -1716,7 +1672,6 @@ public class SystemResource {
     if (settings == null || settings.getConfigValue() == null) {
       throw new NotFoundException("Glossary term relation settings were not found.");
     }
-
     return JsonUtils.convertValue(settings.getConfigValue(), GlossaryTermRelationSettings.class);
   }
 

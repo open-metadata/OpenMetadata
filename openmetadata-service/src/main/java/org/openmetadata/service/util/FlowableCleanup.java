@@ -95,8 +95,9 @@ public class FlowableCleanup {
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
       List<WorkflowDefinition> allWorkflowDefinitions =
-          workflowDefRepo.listAll(
-              EntityUtil.Fields.EMPTY_FIELDS, new org.openmetadata.service.jdbi3.ListFilter());
+          workflowDefRepo
+              .collections()
+              .all(EntityUtil.Fields.EMPTY_FIELDS, new org.openmetadata.service.jdbi3.ListFilter());
 
       // Get all process definitions from Flowable
       var repositoryService =

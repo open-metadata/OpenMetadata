@@ -29,8 +29,10 @@ import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.history.EntityVersionHistoryFixture;
 import org.openmetadata.service.jdbi3.McpServerRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
@@ -189,8 +191,11 @@ class McpServerResourceTest {
       McpServerResource resource = createResource(entityMock, mockRepo, mockAuth, mockLimits);
 
       UUID id = UUID.randomUUID();
-      EntityHistory expected = new EntityHistory().withVersions(Collections.emptyList());
-      when(mockRepo.listVersions(id)).thenReturn(expected);
+      McpServer current = new McpServer().withId(id).withName("current").withVersion(0.1);
+      final var history =
+          EntityVersionHistoryFixture.versions(
+              Entity.MCP_SERVER, McpServer.class, current, List.of());
+      when(mockRepo.versions()).thenReturn(history);
       doNothing().when(mockAuth).authorize(any(), any(), any());
 
       UriInfo uriInfo = mock(UriInfo.class);
@@ -198,7 +203,8 @@ class McpServerResourceTest {
 
       EntityHistory result = resource.listVersions(uriInfo, securityContext, id);
 
-      assertNotNull(result);
+      assertEquals(Entity.MCP_SERVER, result.getEntityType());
+      assertEquals(List.of(JsonUtils.pojoToJson(current)), result.getVersions());
     }
   }
 

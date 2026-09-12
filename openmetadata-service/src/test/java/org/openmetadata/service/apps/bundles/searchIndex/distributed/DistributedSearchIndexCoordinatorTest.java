@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,9 +54,9 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
@@ -72,14 +71,21 @@ import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
 class DistributedSearchIndexCoordinatorTest {
 
   @Mock private CollectionDAO collectionDAO;
+
   @Mock private SearchIndexJobDAO jobDAO;
+
   @Mock private SearchIndexPartitionDAO partitionDAO;
+
   @Mock private SearchReindexLockDAO lockDAO;
+
   @Mock private CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO;
+
   @Mock private PartitionCalculator partitionCalculator;
 
   private DistributedSearchIndexCoordinator coordinator;
+
   private MockedStatic<ServerIdentityResolver> serverIdentityMock;
+
   private ServerIdentityResolver mockServerIdentityResolver;
 
   private static final String TEST_SERVER_ID = "test-server-1";
@@ -89,12 +95,10 @@ class DistributedSearchIndexCoordinatorTest {
     // Mock ServerIdentityResolver
     mockServerIdentityResolver = mock(ServerIdentityResolver.class);
     when(mockServerIdentityResolver.getServerId()).thenReturn(TEST_SERVER_ID);
-
     serverIdentityMock = mockStatic(ServerIdentityResolver.class);
     serverIdentityMock
         .when(ServerIdentityResolver::getInstance)
         .thenReturn(mockServerIdentityResolver);
-
     // Setup DAO mocks
     when(collectionDAO.searchIndexJobDAO()).thenReturn(jobDAO);
     when(collectionDAO.searchIndexPartitionDAO()).thenReturn(partitionDAO);
@@ -105,7 +109,6 @@ class DistributedSearchIndexCoordinatorTest {
     when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
     when(serverStatsDAO.getStatsByEntityType(anyString())).thenReturn(java.util.List.of());
     when(serverStatsDAO.getStatsByServer(anyString())).thenReturn(java.util.List.of());
-
     coordinator = new DistributedSearchIndexCoordinator(collectionDAO, partitionCalculator);
   }
 
@@ -119,20 +122,18 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void precomputedPartitionCursorsUseRepositoryReindexFilter() throws Exception {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> repository = mock(EntityPolicy.class);
     @SuppressWarnings("unchecked")
     EntityDAO<EntityInterface> dao = mock(EntityDAO.class);
     ListFilter reindexFilter = mock(ListFilter.class);
     when(repository.getReindexFilter()).thenReturn(reindexFilter);
     when(repository.getDao()).thenReturn(dao);
     when(dao.listAfter(any(ListFilter.class), eq(1), eq(""), eq(""))).thenReturn(List.of());
-
     Method walkAndRecord =
         DistributedSearchIndexCoordinator.class.getDeclaredMethod(
-            "walkAndRecord", EntityRepository.class, List.class, Map.class);
+            "walkAndRecord", EntityPolicy.class, List.class, Map.class);
     walkAndRecord.setAccessible(true);
     walkAndRecord.invoke(coordinator, repository, List.of(1L), new HashMap<Long, String>());
-
     ArgumentCaptor<ListFilter> filterCaptor = ArgumentCaptor.forClass(ListFilter.class);
     verify(dao).listAfter(filterCaptor.capture(), eq(1), eq(""), eq(""));
     assertSame(reindexFilter, filterCaptor.getValue());
@@ -142,35 +143,31 @@ class DistributedSearchIndexCoordinatorTest {
   void testCreateJob_Success() {
     Set<String> entities = Set.of("table", "user");
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(entities).withBatchSize(500);
-
     when(partitionCalculator.getEntityCounts(entities, null))
         .thenReturn(java.util.Map.of("table", 10000L, "user", 5000L));
-
     SearchIndexJob job = coordinator.createJob(entities, jobConfig, "admin");
-
     assertNotNull(job);
     assertNotNull(job.getId());
     assertEquals(IndexJobStatus.INITIALIZING, job.getStatus());
     assertEquals(15000, job.getTotalRecords());
     assertEquals("admin", job.getCreatedBy());
     assertEquals(2, job.getEntityStats().size());
-
     // Verify job was inserted
     verify(jobDAO)
         .insert(
             eq(job.getId().toString()),
-            eq(IndexJobStatus.INITIALIZING.name()),
-            anyString(), // jobConfiguration JSON
+            eq(IndexJobStatus.INITIALIZING.name()), // jobConfiguration JSON
             anyString(), // targetIndexPrefix
+            anyString(),
             eq(15000L),
             eq(0L),
             eq(0L),
-            eq(0L),
-            anyString(), // stats JSON
+            eq(0L), // stats JSON
+            anyString(),
             eq("admin"),
             anyLong(),
-            anyLong(),
-            isNull()); // registrationDeadline (no longer used)
+            anyLong(), // registrationDeadline (no longer used)
+            isNull());
   }
 
   @Test
@@ -182,10 +179,8 @@ class DistributedSearchIndexCoordinatorTest {
   void testInitializePartitions_Success() {
     UUID jobId = UUID.randomUUID();
     Set<String> entities = Set.of("table");
-
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(entities);
     String jobConfigJson = JsonUtils.pojoToJson(jobConfig);
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
             jobId.toString(),
@@ -203,12 +198,10 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             null,
             System.currentTimeMillis(),
-            null,
-            System.currentTimeMillis() - 5000, // registrationDeadline (in past)
-            2); // registeredServerCount
-
+            null, // registrationDeadline (in past)
+            System.currentTimeMillis() - 5000, // registeredServerCount
+            2);
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     List<SearchIndexPartition> mockPartitions =
         List.of(
             SearchIndexPartition.builder()
@@ -237,14 +230,10 @@ class DistributedSearchIndexCoordinatorTest {
                 .status(PartitionStatus.PENDING)
                 .cursor(5000)
                 .build());
-
     when(partitionCalculator.calculatePartitions(jobId, entities, null)).thenReturn(mockPartitions);
-
     SearchIndexJob result = coordinator.initializePartitions(jobId);
-
     assertNotNull(result);
     assertEquals(IndexJobStatus.READY, result.getStatus());
-
     // Verify partitions were inserted with claimableAt
     verify(partitionDAO, times(2))
         .insert(
@@ -258,9 +247,8 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             anyInt(),
             eq(PartitionStatus.PENDING.name()),
-            anyLong(),
-            anyLong()); // claimableAt
-
+            anyLong(), // claimableAt
+            anyLong());
     // Verify job was updated
     verify(jobDAO)
         .update(
@@ -281,14 +269,13 @@ class DistributedSearchIndexCoordinatorTest {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
     String jobConfigJson = JsonUtils.pojoToJson(jobConfig);
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
-            jobId.toString(),
-            IndexJobStatus.RUNNING.name(), // Wrong state
+            jobId.toString(), // Wrong state
+            IndexJobStatus.RUNNING.name(),
             jobConfigJson,
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             10000,
             0,
             0,
@@ -302,9 +289,7 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 5000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     assertThrows(IllegalStateException.class, () -> coordinator.initializePartitions(jobId));
   }
 
@@ -312,10 +297,8 @@ class DistributedSearchIndexCoordinatorTest {
   void testClaimNextPartition_Success() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
-
     // Mock in-flight count below limit
     when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(0);
-
     // Atomic claim succeeds
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(1);
@@ -343,16 +326,13 @@ class DistributedSearchIndexCoordinatorTest {
                 null,
                 System.currentTimeMillis(),
                 null,
-                0,
-                0L)); // claimableAt
-
+                0, // claimableAt
+                0L));
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
-
     assertTrue(result.isPresent());
     assertEquals(partitionId, result.get().getId());
     assertEquals(PartitionStatus.PROCESSING, result.get().getStatus());
     assertEquals(TEST_SERVER_ID, result.get().getAssignedServer());
-
     verify(partitionDAO)
         .claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong());
   }
@@ -360,16 +340,12 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testClaimNextPartition_NoPartitionsAvailable() {
     UUID jobId = UUID.randomUUID();
-
     // Mock in-flight count below limit
     when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(0);
-
     // Atomic claim returns 0 (no partitions available)
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(0);
-
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
-
     assertFalse(result.isPresent());
     verify(partitionDAO, never()).findLatestClaimedPartition(anyString(), anyString(), anyLong());
   }
@@ -377,12 +353,9 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testClaimNextPartition_InFlightLimitReached() {
     UUID jobId = UUID.randomUUID();
-
     // Mock in-flight count at limit (5)
     when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(5);
-
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
-
     // Should not claim any partition when at the limit
     assertFalse(result.isPresent());
     // Should not even attempt to claim
@@ -393,10 +366,8 @@ class DistributedSearchIndexCoordinatorTest {
   void testClaimNextPartition_BelowInFlightLimit() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
-
     // Mock in-flight count below limit
     when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(2);
-
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(1);
     when(partitionDAO.findLatestClaimedPartition(
@@ -423,11 +394,9 @@ class DistributedSearchIndexCoordinatorTest {
                 null,
                 System.currentTimeMillis(),
                 null,
-                0,
-                0L)); // claimableAt
-
+                0, // claimableAt
+                0L));
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
-
     // Should successfully claim partition
     assertTrue(result.isPresent());
     assertEquals(partitionId, result.get().getId());
@@ -438,16 +407,12 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testClaimNextPartition_AtomicClaimRaceCondition() {
     UUID jobId = UUID.randomUUID();
-
     // Mock in-flight count below limit
     when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(0);
-
     // Atomic claim returns 0 - another server won the race
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(0);
-
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
-
     // Should return empty - lost the race
     assertFalse(result.isPresent());
     // Should NOT call findLatestClaimedPartition since claim failed
@@ -458,10 +423,8 @@ class DistributedSearchIndexCoordinatorTest {
   void testClaimNextPartition_JustBelowInFlightLimit() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
-
     // Mock in-flight count at 4 (one below limit of 5)
     when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(4);
-
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(1);
     when(partitionDAO.findLatestClaimedPartition(
@@ -488,11 +451,9 @@ class DistributedSearchIndexCoordinatorTest {
                 null,
                 System.currentTimeMillis(),
                 null,
-                0,
-                0L)); // claimableAt
-
+                0, // claimableAt
+                0L));
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
-
     // Should claim - just below in-flight limit
     assertTrue(result.isPresent());
     verify(partitionDAO)
@@ -502,12 +463,9 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testClaimNextPartition_AboveInFlightLimit() {
     UUID jobId = UUID.randomUUID();
-
     // Mock in-flight count above limit (6)
     when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(6);
-
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
-
     // Should not claim - above in-flight limit
     assertFalse(result.isPresent());
     verify(partitionDAO, never()).claimNextPartitionAtomic(anyString(), anyString(), anyLong());
@@ -525,9 +483,7 @@ class DistributedSearchIndexCoordinatorTest {
             .successCount(95L)
             .failedCount(5L)
             .build();
-
     coordinator.updatePartitionProgress(partition);
-
     verify(partitionDAO)
         .updateProgress(
             eq(partition.getId().toString()), eq(120L), eq(100L), eq(95L), eq(5L), anyLong());
@@ -537,7 +493,6 @@ class DistributedSearchIndexCoordinatorTest {
   void testCompletePartition_Success() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
-
     SearchIndexPartitionRecord record =
         new SearchIndexPartitionRecord(
             partitionId.toString(),
@@ -560,9 +515,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 1000,
             null,
-            0,
-            0L); // claimableAt
-
+            0, // claimableAt
+            0L);
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
     when(partitionDAO.updateIfProcessing(
             eq(partitionId.toString()),
@@ -579,24 +533,21 @@ class DistributedSearchIndexCoordinatorTest {
             any(),
             anyInt()))
         .thenReturn(1);
-
     // Mock that there are still pending partitions
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
         .thenReturn(List.of(mock(SearchIndexPartitionRecord.class)));
-
     coordinator.completePartition(partitionId, 4900, 100);
-
     // Verify partition was updated to COMPLETED via the status-guarded SQL — the unguarded
     // update() must NOT be called, so a late completion write can no longer overwrite a
     // CANCELLED row written by requestStop on another server.
     verify(partitionDAO)
         .updateIfProcessing(
             eq(partitionId.toString()),
-            eq(PartitionStatus.COMPLETED.name()),
-            eq(5000L), // cursor = rangeEnd
+            eq(PartitionStatus.COMPLETED.name()), // cursor = rangeEnd
             eq(5000L), // processed = success + failed
-            eq(4900L), // success
-            eq(100L), // failed
+            eq(5000L), // success
+            eq(4900L), // failed
+            eq(100L),
             eq(TEST_SERVER_ID),
             anyLong(),
             anyLong(),
@@ -627,7 +578,6 @@ class DistributedSearchIndexCoordinatorTest {
     UUID partitionId = UUID.randomUUID();
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     coordinator.setEntityCompletionTracker(tracker);
-
     SearchIndexPartitionRecord record =
         new SearchIndexPartitionRecord(
             partitionId.toString(),
@@ -652,7 +602,6 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             0,
             0L);
-
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
     // updateIfProcessing returns 0 — row is no longer PROCESSING (already CANCELLED by
     // requestStop). The completion writer must not advance the tracker and must not
@@ -672,9 +621,7 @@ class DistributedSearchIndexCoordinatorTest {
             any(),
             anyInt()))
         .thenReturn(0);
-
     coordinator.completePartition(partitionId, 4900, 100);
-
     verify(tracker, never()).recordPartitionComplete(anyString(), anyBoolean());
   }
 
@@ -684,7 +631,6 @@ class DistributedSearchIndexCoordinatorTest {
     UUID partitionId = UUID.randomUUID();
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     coordinator.setEntityCompletionTracker(tracker);
-
     SearchIndexPartitionRecord record =
         new SearchIndexPartitionRecord(
             partitionId.toString(),
@@ -709,7 +655,6 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             0,
             0L);
-
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
     when(partitionDAO.updateIfProcessing(
             eq(partitionId.toString()),
@@ -736,9 +681,7 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(List.of());
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name()))
         .thenReturn(List.of());
-
     coordinator.completePartition(partitionId, 5000, 0);
-
     verify(tracker).recordPartitionComplete("table", false);
   }
 
@@ -746,7 +689,6 @@ class DistributedSearchIndexCoordinatorTest {
   void testFailPartition_RetryAvailable() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
-
     SearchIndexPartitionRecord record =
         new SearchIndexPartitionRecord(
             partitionId.toString(),
@@ -768,10 +710,9 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis() - 10000,
             null,
             System.currentTimeMillis() - 1000,
-            null,
-            0, // retryCount = 0
-            0L); // claimableAt
-
+            null, // retryCount = 0
+            0, // claimableAt
+            0L);
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
     when(partitionDAO.updateIfProcessing(
             anyString(),
@@ -788,14 +729,11 @@ class DistributedSearchIndexCoordinatorTest {
             anyString(),
             anyInt()))
         .thenReturn(1);
-
     coordinator.failPartition(partitionId, "Connection timeout");
-
     // Verify partition was reset to PENDING for retry via the status-guarded SQL,
     // and the unguarded update() is never called (Stop must remain authoritative).
     ArgumentCaptor<String> statusCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
-
     verify(partitionDAO)
         .updateIfProcessing(
             eq(partitionId.toString()),
@@ -826,16 +764,15 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             anyString(),
             anyInt());
-
     assertEquals(PartitionStatus.PENDING.name(), statusCaptor.getValue());
-    assertEquals(1, retryCaptor.getValue()); // retryCount incremented
+    // retryCount incremented
+    assertEquals(1, retryCaptor.getValue());
   }
 
   @Test
   void testFailPartition_NoOpWhenAlreadyCancelled() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
-
     SearchIndexPartitionRecord record =
         new SearchIndexPartitionRecord(
             partitionId.toString(),
@@ -860,7 +797,6 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             0,
             0L);
-
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
     // Simulate the row already being CANCELLED by requestStop on another server —
     // the guarded SQL matches zero rows.
@@ -879,9 +815,7 @@ class DistributedSearchIndexCoordinatorTest {
             anyString(),
             anyInt()))
         .thenReturn(0);
-
     coordinator.failPartition(partitionId, "Connection timeout");
-
     // The unguarded update() must not be called — that's what would resurrect a CANCELLED row.
     verify(partitionDAO, never())
         .update(
@@ -917,7 +851,6 @@ class DistributedSearchIndexCoordinatorTest {
   void testFailPartition_MaxRetriesExceeded() {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
-
     SearchIndexPartitionRecord record =
         new SearchIndexPartitionRecord(
             partitionId.toString(),
@@ -939,12 +872,10 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis() - 10000,
             null,
             System.currentTimeMillis() - 1000,
-            null,
-            3, // retryCount = 3 (max)
-            0L); // claimableAt
-
+            null, // retryCount = 3 (max)
+            3, // claimableAt
+            0L);
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
-
     // Mock for job completion check
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
     SearchIndexJobRecord jobRecord =
@@ -952,8 +883,8 @@ class DistributedSearchIndexCoordinatorTest {
             jobId.toString(),
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             5000,
             2500,
             2400,
@@ -974,7 +905,6 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(List.of());
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name()))
         .thenReturn(List.of(record));
-
     AggregatedStatsRecord aggregatedStats =
         new AggregatedStatsRecord(5000, 2500, 2400, 100, 1, 0, 1, 0, 0);
     when(partitionDAO.getAggregatedStats(jobId.toString())).thenReturn(aggregatedStats);
@@ -993,9 +923,7 @@ class DistributedSearchIndexCoordinatorTest {
             anyString(),
             anyInt()))
         .thenReturn(1);
-
     coordinator.failPartition(partitionId, "Connection timeout");
-
     // Verify partition was marked as FAILED via the status-guarded SQL,
     // and the unguarded update() is never called.
     verify(partitionDAO)
@@ -1034,14 +962,13 @@ class DistributedSearchIndexCoordinatorTest {
   void testStartJob_Success() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
             jobId.toString(),
             IndexJobStatus.READY.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             10000,
             0,
             0,
@@ -1055,11 +982,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 5000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     coordinator.startJob(jobId);
-
     verify(jobDAO)
         .update(
             eq(jobId.toString()),
@@ -1078,14 +1002,13 @@ class DistributedSearchIndexCoordinatorTest {
   void testStartJob_WrongState() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
-            jobId.toString(),
-            IndexJobStatus.INITIALIZING.name(), // Wrong state
+            jobId.toString(), // Wrong state
+            IndexJobStatus.INITIALIZING.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             10000,
             0,
             0,
@@ -1099,9 +1022,7 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 5000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     assertThrows(IllegalStateException.class, () -> coordinator.startJob(jobId));
   }
 
@@ -1109,14 +1030,13 @@ class DistributedSearchIndexCoordinatorTest {
   void testRequestStop_Success() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
             jobId.toString(),
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             10000,
             5000,
             4900,
@@ -1130,11 +1050,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 55000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     coordinator.requestStop(jobId);
-
     // Verify job status updated to STOPPING
     verify(jobDAO)
         .update(
@@ -1148,7 +1065,6 @@ class DistributedSearchIndexCoordinatorTest {
             any(),
             anyLong(),
             any());
-
     // Both PENDING and PROCESSING partitions must be cancelled — leaving PROCESSING orphaned
     // means workerExecutor.shutdownNow() kills the threads but the rows stay PROCESSING in
     // the DB, so checkAndUpdateJobCompletion (which requires processing.isEmpty()) never
@@ -1170,7 +1086,6 @@ class DistributedSearchIndexCoordinatorTest {
   void testRequestStop_ProcessingPartitionsTransitionToStopped() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord runningJob =
         new SearchIndexJobRecord(
             jobId.toString(),
@@ -1191,7 +1106,6 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 55000,
             2);
-
     SearchIndexJobRecord stoppingJob =
         new SearchIndexJobRecord(
             runningJob.id(),
@@ -1212,11 +1126,9 @@ class DistributedSearchIndexCoordinatorTest {
             runningJob.errorMessage(),
             runningJob.registrationDeadline(),
             runningJob.registeredServerCount());
-
     // First findById returns RUNNING (entry into requestStop). After the STOPPING write,
     // checkAndUpdateJobCompletion's findById should see STOPPING.
     when(jobDAO.findById(jobId.toString())).thenReturn(runningJob, stoppingJob);
-
     // Critical: cancelInFlightPartitions empties both PENDING and PROCESSING. The
     // post-cancel partition lists are all empty, so checkAndUpdateJobCompletion's
     // pending.isEmpty() && processing.isEmpty() check passes and STOPPING → STOPPED fires.
@@ -1229,9 +1141,7 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(List.of());
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name()))
         .thenReturn(List.of());
-
     coordinator.requestStop(jobId);
-
     // STOPPING write happens first.
     verify(jobDAO)
         .update(
@@ -1245,7 +1155,6 @@ class DistributedSearchIndexCoordinatorTest {
             any(),
             anyLong(),
             any());
-
     // STOPPED write happens before requestStop returns — driven by the in-call
     // checkAndUpdateJobCompletion. Without the fix this never fires because PROCESSING
     // rows were never cleaned up and the state machine couldn't advance.
@@ -1266,7 +1175,6 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testCheckAndUpdateJobCompletion_EvictsPartitionStartCursorsCache() throws Exception {
     UUID jobId = UUID.randomUUID();
-
     // Seed the per-jobId cursor cache directly. Going through precomputePartitionStartCursors
     // would require real EntityRepository wiring — testing the eviction contract is the
     // point here, not the population path.
@@ -1279,11 +1187,9 @@ class DistributedSearchIndexCoordinatorTest {
     Map<String, Map<Long, String>> entityCursors = new HashMap<>();
     entityCursors.put("table", Map.of(10000L, "encoded-cursor-blob"));
     cache.put(jobId, entityCursors);
-
     assertNotNull(
         coordinator.getPartitionStartCursor(jobId, "table", 10000L),
         "Cache should hold the seeded cursor before terminal transition");
-
     // RUNNING job with no remaining partitions — checkAndUpdateJobCompletion should
     // promote it to COMPLETED and evict the cache entry.
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
@@ -1312,9 +1218,7 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(List.of());
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
-
     coordinator.checkAndUpdateJobCompletion(jobId);
-
     assertNull(
         coordinator.getPartitionStartCursor(jobId, "table", 10000L),
         "Cache should be evicted once the job reaches a terminal state — long-running"
@@ -1330,9 +1234,7 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(List.of());
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
-
     coordinator.checkAndUpdateJobCompletion(jobId);
-
     // All partitions are done, but the job must go to PROMOTING (non-terminal), NOT COMPLETED — the
     // coordinator/pod must stay alive for the promotion sweep. Pre-fix this wrote COMPLETED and the
     // pod could be torn down mid-promotion, orphaning the tail of entities on stale pre-reindex
@@ -1372,9 +1274,7 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(List.of());
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
-
     coordinator.markPromotionComplete(jobId, true);
-
     verify(jobDAO)
         .update(
             eq(jobId.toString()),
@@ -1398,9 +1298,7 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(List.of());
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
-
     coordinator.markPromotionComplete(jobId, false);
-
     verify(jobDAO)
         .update(
             eq(jobId.toString()),
@@ -1420,9 +1318,7 @@ class DistributedSearchIndexCoordinatorTest {
     UUID jobId = UUID.randomUUID();
     when(jobDAO.findById(jobId.toString()))
         .thenReturn(createJobRecord(jobId, IndexJobStatus.RUNNING, null, "{}"));
-
     coordinator.markPromotionComplete(jobId, true);
-
     // Only a PROMOTING job is terminalized; a RUNNING job is left untouched (idempotent guard).
     verify(jobDAO, never())
         .update(
@@ -1445,9 +1341,7 @@ class DistributedSearchIndexCoordinatorTest {
         .thenReturn(createJobRecord(jobId, IndexJobStatus.PROMOTING, null, "{}"));
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
-
     coordinator.markOrphanedJobCompletedWithErrors(jobId);
-
     verify(jobDAO)
         .update(
             eq(jobId.toString()),
@@ -1466,14 +1360,13 @@ class DistributedSearchIndexCoordinatorTest {
   void testGetJob_Found() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
             jobId.toString(),
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             10000,
             5000,
             4900,
@@ -1487,11 +1380,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 5000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     Optional<SearchIndexJob> result = coordinator.getJob(jobId);
-
     assertTrue(result.isPresent());
     assertEquals(jobId, result.get().getId());
     assertEquals(IndexJobStatus.RUNNING, result.get().getStatus());
@@ -1501,9 +1391,7 @@ class DistributedSearchIndexCoordinatorTest {
   void testGetJob_NotFound() {
     UUID jobId = UUID.randomUUID();
     when(jobDAO.findById(jobId.toString())).thenReturn(null);
-
     Optional<SearchIndexJob> result = coordinator.getJob(jobId);
-
     assertFalse(result.isPresent());
   }
 
@@ -1511,14 +1399,13 @@ class DistributedSearchIndexCoordinatorTest {
   void testGetJobWithAggregatedStats() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table", "user"));
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
             jobId.toString(),
             IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             15000,
             0,
             0,
@@ -1532,27 +1419,21 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 5000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     AggregatedStatsRecord aggregatedStats =
         new AggregatedStatsRecord(15000, 10000, 9800, 200, 4, 2, 0, 1, 1);
     when(partitionDAO.getAggregatedStats(jobId.toString())).thenReturn(aggregatedStats);
-
     List<EntityStatsRecord> entityStats =
         List.of(
             new EntityStatsRecord("table", 10000, 7000, 6900, 100, 2, 1, 0),
             new EntityStatsRecord("user", 5000, 3000, 2900, 100, 2, 1, 0));
     when(partitionDAO.getEntityStats(jobId.toString())).thenReturn(entityStats);
-
     SearchIndexJob result = coordinator.getJobWithAggregatedStats(jobId);
-
     assertNotNull(result);
     assertEquals(10000, result.getProcessedRecords());
     assertEquals(9800, result.getSuccessRecords());
     assertEquals(200, result.getFailedRecords());
     assertEquals(2, result.getEntityStats().size());
-
     SearchIndexJob.EntityTypeStats tableStats = result.getEntityStats().get("table");
     assertNotNull(tableStats);
     assertEquals(10000, tableStats.getTotalRecords());
@@ -1564,32 +1445,24 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testGetPartitions_AllPartitions() {
     UUID jobId = UUID.randomUUID();
-
     List<SearchIndexPartitionRecord> records =
         List.of(
             createPartitionRecord(jobId, "table", 0, PartitionStatus.COMPLETED),
             createPartitionRecord(jobId, "table", 1, PartitionStatus.PROCESSING),
             createPartitionRecord(jobId, "user", 0, PartitionStatus.PENDING));
-
     when(partitionDAO.findByJobId(jobId.toString())).thenReturn(records);
-
     List<SearchIndexPartition> result = coordinator.getPartitions(jobId, null);
-
     assertEquals(3, result.size());
   }
 
   @Test
   void testGetPartitions_FilterByStatus() {
     UUID jobId = UUID.randomUUID();
-
     List<SearchIndexPartitionRecord> pendingRecords =
         List.of(createPartitionRecord(jobId, "user", 0, PartitionStatus.PENDING));
-
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
         .thenReturn(pendingRecords);
-
     List<SearchIndexPartition> result = coordinator.getPartitions(jobId, PartitionStatus.PENDING);
-
     assertEquals(1, result.size());
     assertEquals(PartitionStatus.PENDING, result.get(0).getStatus());
   }
@@ -1597,18 +1470,14 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testReclaimStalePartitions() {
     UUID jobId = UUID.randomUUID();
-
     // Mock failing stale partitions exceeding retries
     when(partitionDAO.failStalePartitionsExceedingRetries(
             eq(jobId.toString()), anyLong(), anyInt(), anyLong()))
         .thenReturn(0);
-
     // Mock reclaiming partitions for retry
     when(partitionDAO.reclaimStalePartitionsForRetry(eq(jobId.toString()), anyLong(), anyInt()))
         .thenReturn(3);
-
     int reclaimed = coordinator.reclaimStalePartitions(jobId);
-
     assertEquals(3, reclaimed);
     verify(partitionDAO).reclaimStalePartitionsForRetry(eq(jobId.toString()), anyLong(), anyInt());
   }
@@ -1616,16 +1485,13 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testReclaimStalePartitions_FailsExceededRetries() {
     UUID jobId = UUID.randomUUID();
-
     // Some partitions exceeded retry limit and should be marked failed
     when(partitionDAO.failStalePartitionsExceedingRetries(
             eq(jobId.toString()), anyLong(), anyInt(), anyLong()))
         .thenReturn(2);
-
     // Remaining partitions can be retried
     when(partitionDAO.reclaimStalePartitionsForRetry(eq(jobId.toString()), anyLong(), anyInt()))
         .thenReturn(1);
-
     // Mock job completion check
     when(jobDAO.findById(jobId.toString()))
         .thenReturn(
@@ -1633,8 +1499,8 @@ class DistributedSearchIndexCoordinatorTest {
                 jobId.toString(),
                 IndexJobStatus.RUNNING.name(),
                 "{}",
-                "staged_",
-                null, // stagedIndexMapping
+                "staged_", // stagedIndexMapping
+                null,
                 10000,
                 5000,
                 4900,
@@ -1648,14 +1514,11 @@ class DistributedSearchIndexCoordinatorTest {
                 null,
                 System.currentTimeMillis() - 5000,
                 2));
-
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
         .thenReturn(List.of());
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
         .thenReturn(List.of());
-
     int reclaimed = coordinator.reclaimStalePartitions(jobId);
-
     assertEquals(1, reclaimed);
     verify(partitionDAO)
         .failStalePartitionsExceedingRetries(eq(jobId.toString()), anyLong(), anyInt(), anyLong());
@@ -1667,9 +1530,7 @@ class DistributedSearchIndexCoordinatorTest {
     when(lockDAO.tryAcquireLock(
             anyString(), eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong(), anyLong()))
         .thenReturn(true);
-
     boolean result = coordinator.tryAcquireReindexLock(jobId);
-
     assertTrue(result);
   }
 
@@ -1679,9 +1540,7 @@ class DistributedSearchIndexCoordinatorTest {
     when(lockDAO.tryAcquireLock(
             anyString(), eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong(), anyLong()))
         .thenReturn(false);
-
     boolean result = coordinator.tryAcquireReindexLock(jobId);
-
     assertFalse(result);
   }
 
@@ -1691,9 +1550,7 @@ class DistributedSearchIndexCoordinatorTest {
     when(lockDAO.tryAcquireLock(
             anyString(), eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong(), anyLong()))
         .thenThrow(new IllegalStateException("lock store unavailable"));
-
     boolean result = coordinator.tryAcquireReindexLock(jobId);
-
     assertFalse(result);
   }
 
@@ -1701,9 +1558,7 @@ class DistributedSearchIndexCoordinatorTest {
   void testReleaseReindexLock() {
     UUID jobId = UUID.randomUUID();
     doNothing().when(lockDAO).releaseLock(anyString(), eq(jobId.toString()));
-
     coordinator.releaseReindexLock(jobId);
-
     verify(lockDAO).releaseLock(anyString(), eq(jobId.toString()));
   }
 
@@ -1713,9 +1568,7 @@ class DistributedSearchIndexCoordinatorTest {
     when(lockDAO.refreshLock(
             anyString(), eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong(), anyLong()))
         .thenReturn(true);
-
     boolean result = coordinator.refreshReindexLock(jobId);
-
     assertTrue(result);
   }
 
@@ -1731,9 +1584,7 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             anyLong()))
         .thenReturn(true);
-
     boolean result = coordinator.transferReindexLock(fromJobId, toJobId);
-
     assertTrue(result);
   }
 
@@ -1749,9 +1600,7 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             anyLong()))
         .thenReturn(false);
-
     boolean result = coordinator.transferReindexLock(fromJobId, toJobId);
-
     assertFalse(result);
   }
 
@@ -1760,9 +1609,7 @@ class DistributedSearchIndexCoordinatorTest {
     UUID jobId = UUID.randomUUID();
     when(partitionDAO.getAssignedServers(jobId.toString()))
         .thenReturn(List.of("server-a", "server-b"));
-
     List<String> result = coordinator.getParticipatingServers(jobId);
-
     assertEquals(List.of("server-a", "server-b"), result);
   }
 
@@ -1770,12 +1617,9 @@ class DistributedSearchIndexCoordinatorTest {
   void testGetRecentJobs_WithStatuses() {
     List<SearchIndexJobRecord> records =
         List.of(createJobRecord(IndexJobStatus.RUNNING), createJobRecord(IndexJobStatus.READY));
-
     when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(records);
-
     List<SearchIndexJob> result =
         coordinator.getRecentJobs(List.of(IndexJobStatus.RUNNING, IndexJobStatus.READY), 10);
-
     assertEquals(2, result.size());
   }
 
@@ -1783,11 +1627,8 @@ class DistributedSearchIndexCoordinatorTest {
   void testGetRecentJobs_NoStatusFilter() {
     List<SearchIndexJobRecord> records =
         List.of(createJobRecord(IndexJobStatus.COMPLETED), createJobRecord(IndexJobStatus.RUNNING));
-
     when(jobDAO.listRecent(10)).thenReturn(records);
-
     List<SearchIndexJob> result = coordinator.getRecentJobs(null, 10);
-
     assertEquals(2, result.size());
   }
 
@@ -1796,9 +1637,7 @@ class DistributedSearchIndexCoordinatorTest {
     UUID jobId = UUID.randomUUID();
     Map<String, String> stagedMapping = Map.of("table", "staged_table");
     ArgumentCaptor<String> mappingCaptor = ArgumentCaptor.forClass(String.class);
-
     coordinator.updateStagedIndexMapping(jobId, stagedMapping);
-
     verify(jobDAO)
         .updateStagedIndexMapping(eq(jobId.toString()), mappingCaptor.capture(), anyLong());
     assertEquals(stagedMapping, JsonUtils.readValue(mappingCaptor.getValue(), Map.class));
@@ -1807,9 +1646,7 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testUpdateStagedIndexMapping_AllowsNullMapping() {
     UUID jobId = UUID.randomUUID();
-
     coordinator.updateStagedIndexMapping(jobId, null);
-
     verify(jobDAO).updateStagedIndexMapping(eq(jobId.toString()), isNull(), anyLong());
   }
 
@@ -1817,14 +1654,13 @@ class DistributedSearchIndexCoordinatorTest {
   void testDeleteJob_Success() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
-            jobId.toString(),
-            IndexJobStatus.COMPLETED.name(), // Terminal state
+            jobId.toString(), // Terminal state
+            IndexJobStatus.COMPLETED.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             10000,
             10000,
             9900,
@@ -1838,11 +1674,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 55000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     coordinator.deleteJob(jobId);
-
     verify(jobDAO).delete(jobId.toString());
   }
 
@@ -1850,9 +1683,7 @@ class DistributedSearchIndexCoordinatorTest {
   void testDeleteJob_NotFound() {
     UUID jobId = UUID.randomUUID();
     when(jobDAO.findById(jobId.toString())).thenReturn(null);
-
     coordinator.deleteJob(jobId);
-
     verify(jobDAO, never()).delete(anyString());
   }
 
@@ -1860,14 +1691,13 @@ class DistributedSearchIndexCoordinatorTest {
   void testDeleteJob_NonTerminalState() {
     UUID jobId = UUID.randomUUID();
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord jobRecord =
         new SearchIndexJobRecord(
-            jobId.toString(),
-            IndexJobStatus.RUNNING.name(), // Non-terminal state
+            jobId.toString(), // Non-terminal state
+            IndexJobStatus.RUNNING.name(),
             JsonUtils.pojoToJson(jobConfig),
-            "staged_123_",
-            null, // stagedIndexMapping
+            "staged_123_", // stagedIndexMapping
+            null,
             10000,
             5000,
             4900,
@@ -1881,9 +1711,7 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 5000,
             2);
-
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
-
     assertThrows(IllegalStateException.class, () -> coordinator.deleteJob(jobId));
     verify(jobDAO, never()).delete(anyString());
   }
@@ -1893,7 +1721,6 @@ class DistributedSearchIndexCoordinatorTest {
     UUID jobId = UUID.randomUUID();
     Map<String, String> stagedMapping = Map.of("table", "staged_table");
     EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-
     SearchIndexJobRecord jobRecord =
         createJobRecord(
             jobId,
@@ -1929,9 +1756,7 @@ class DistributedSearchIndexCoordinatorTest {
             List.of(
                 new CollectionDAO.SearchIndexPartitionDAO.ServerStatsRecord(
                     TEST_SERVER_ID, 7, 6, 1, 1, 1, 0)));
-
     SearchIndexJob result = coordinator.getJobWithAggregatedStats(jobId);
-
     assertEquals(stagedMapping, result.getStagedIndexMapping());
     assertNotNull(result.getServerStats());
     assertEquals(1, result.getServerStats().size());
@@ -1949,9 +1774,7 @@ class DistributedSearchIndexCoordinatorTest {
             createPartitionRecord(jobId, "user", 1, PartitionStatus.PROCESSING));
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
         .thenReturn(processing);
-
     coordinator.forceCompleteProcessingPartitions(jobId);
-
     verify(partitionDAO, times(2))
         .update(
             anyString(),
@@ -1974,9 +1797,7 @@ class DistributedSearchIndexCoordinatorTest {
     UUID jobId = UUID.randomUUID();
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
         .thenReturn(List.of());
-
     coordinator.forceCompleteProcessingPartitions(jobId);
-
     verify(partitionDAO, never())
         .update(
             anyString(),
@@ -1995,7 +1816,6 @@ class DistributedSearchIndexCoordinatorTest {
   }
 
   // Helper methods
-
   private SearchIndexPartitionRecord createPartitionRecord(
       UUID jobId, String entityType, int index, PartitionStatus status) {
     return new SearchIndexPartitionRecord(
@@ -2019,8 +1839,8 @@ class DistributedSearchIndexCoordinatorTest {
         status == PartitionStatus.COMPLETED ? System.currentTimeMillis() : null,
         System.currentTimeMillis(),
         null,
-        0,
-        0L); // claimableAt
+        0, // claimableAt
+        0L);
   }
 
   private SearchIndexJobRecord createJobRecord(IndexJobStatus status) {
@@ -2046,22 +1866,18 @@ class DistributedSearchIndexCoordinatorTest {
         System.currentTimeMillis() - 50000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? System.currentTimeMillis() : null,
         System.currentTimeMillis(),
-        null,
-        System.currentTimeMillis() - 55000, // registrationDeadline (in past)
-        2); // registeredServerCount
+        null, // registrationDeadline (in past)
+        System.currentTimeMillis() - 55000, // registeredServerCount
+        2);
   }
 
   // ==================== Server Tracking Tests ====================
-
   @Test
   void testGetParticipatingServers() {
     UUID jobId = UUID.randomUUID();
-
     when(partitionDAO.getAssignedServers(jobId.toString()))
         .thenReturn(List.of("server-1", "server-2", "server-3"));
-
     List<String> servers = coordinator.getParticipatingServers(jobId);
-
     assertEquals(3, servers.size());
     assertTrue(servers.contains("server-1"));
     assertTrue(servers.contains("server-2"));

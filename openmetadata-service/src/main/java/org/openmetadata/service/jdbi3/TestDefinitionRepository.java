@@ -4,6 +4,7 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -15,25 +16,39 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
-public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
+@Repository()
+public class TestDefinitionRepository implements EntityPolicy<TestDefinition> {
+
   private static final String ENTITY_TYPE_PARAM = "entityType";
+
   private static final List<TestDefinitionEntityType> ENTITY_TYPES =
       List.of(TestDefinitionEntityType.values());
 
   public TestDefinitionRepository() {
-    super(
-        TestDefinitionResource.COLLECTION_PATH,
-        TEST_DEFINITION,
-        TestDefinition.class,
-        Entity.getCollectionDAO().testDefinitionDAO(),
-        "",
-        "");
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                TestDefinitionResource.COLLECTION_PATH,
+                TEST_DEFINITION,
+                TestDefinition.class,
+                Entity.getCollectionDAO().testDefinitionDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
@@ -57,10 +72,9 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     if (entity.getEnabled() == null) {
       entity.setEnabled(true);
     }
-
     // For updates to system test definitions, only allow changes to the enabled field
     if (update && entity.getProvider() == ProviderType.SYSTEM) {
-      TestDefinition existing = find(entity.getId(), Include.ALL);
+      TestDefinition existing = lookup().byId(entity.getId(), Include.ALL);
       if (existing != null) {
         validateSystemTestDefinitionUpdate(existing, entity);
       }
@@ -106,7 +120,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
   @Override
   public void storeEntity(TestDefinition entity, boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
@@ -115,7 +129,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  protected void preDelete(TestDefinition entity, String deletedBy) {
+  public void preDelete(TestDefinition entity, String deletedBy) {
     // Prevent deletion of system test definitions
     if (entity.getProvider() == ProviderType.SYSTEM) {
       throw new BadRequestException(
@@ -131,21 +145,24 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
    * {@link EntityRepository#deleteChildren}.
    */
   @Override
-  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+  public void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
     if (!recursive) {
       requireNoDependentTestCases(id);
     }
-    super.deleteChildren(id, recursive, hardDelete, updatedBy);
+    EntityPolicy.super.deleteChildren(id, recursive, hardDelete, updatedBy);
   }
 
   private void requireNoDependentTestCases(UUID testDefinitionId) {
     int testCaseCount =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .countFindTo(
                 testDefinitionId, TEST_DEFINITION, List.of(Relationship.CONTAINS.ordinal()));
     if (testCaseCount > 0) {
-      String testDefinitionName = find(testDefinitionId, Include.ALL).getFullyQualifiedName();
+      String testDefinitionName =
+          lookup().byId(testDefinitionId, Include.ALL).getFullyQualifiedName();
       throw new IllegalArgumentException(
           CatalogExceptionMessage.testDefinitionHasTestCases(testDefinitionName, testCaseCount));
     }
@@ -182,71 +199,103 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public EntityRepository<TestDefinition>.EntityUpdater getUpdater(
+  public EntityUpdater<TestDefinition> getUpdater(
       TestDefinition original,
       TestDefinition updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new TestDefinitionUpdater(original, updated, operation);
+    return new TestDefinitionUpdater(original, updated, operation).mutation();
   }
 
-  public class TestDefinitionUpdater extends EntityUpdater {
+  public class TestDefinitionUpdater implements EntitySpecificMutation<TestDefinition> {
+
     public TestDefinitionUpdater(
-        TestDefinition original, TestDefinition updated, Operation operation) {
-      super(original, updated, operation);
+        TestDefinition original, TestDefinition updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<TestDefinition> entityUpdate, boolean consolidatingChanges) {
       // For system test definitions, only allow enabled field changes
-      if (original.getProvider() == ProviderType.SYSTEM) {
+      if (entityUpdate.getOriginal().getProvider() == ProviderType.SYSTEM) {
         // Only record enabled field changes for system test definitions
-        compareAndUpdate(
-            "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
+        entityUpdate.compareAndUpdate(
+            "enabled",
+            () ->
+                entityUpdate.recordChange(
+                    "enabled",
+                    entityUpdate.getOriginal().getEnabled(),
+                    entityUpdate.getUpdated().getEnabled()));
       } else {
         // For user/automation test definitions, allow all changes
-        compareAndUpdate(
+        entityUpdate.compareAndUpdate(
             "testPlatforms",
             () ->
-                recordChange(
-                    "testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms()));
-        compareAndUpdate(
+                entityUpdate.recordChange(
+                    "testPlatforms",
+                    entityUpdate.getOriginal().getTestPlatforms(),
+                    entityUpdate.getUpdated().getTestPlatforms()));
+        entityUpdate.compareAndUpdate(
             "supportedDataTypes",
             () ->
-                recordChange(
+                entityUpdate.recordChange(
                     "supportedDataTypes",
-                    original.getSupportedDataTypes(),
-                    updated.getSupportedDataTypes()));
-        compareAndUpdate(
+                    entityUpdate.getOriginal().getSupportedDataTypes(),
+                    entityUpdate.getUpdated().getSupportedDataTypes()));
+        entityUpdate.compareAndUpdate(
             "parameterDefinition",
             () ->
-                recordChange(
+                entityUpdate.recordChange(
                     "parameterDefinition",
-                    original.getParameterDefinition(),
-                    updated.getParameterDefinition()));
-        compareAndUpdate(
-            "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
-        compareAndUpdate(
+                    entityUpdate.getOriginal().getParameterDefinition(),
+                    entityUpdate.getUpdated().getParameterDefinition()));
+        entityUpdate.compareAndUpdate(
+            "enabled",
+            () ->
+                entityUpdate.recordChange(
+                    "enabled",
+                    entityUpdate.getOriginal().getEnabled(),
+                    entityUpdate.getUpdated().getEnabled()));
+        entityUpdate.compareAndUpdate(
             "dataQualityDimension",
             () ->
-                recordChange(
+                entityUpdate.recordChange(
                     "dataQualityDimension",
-                    original.getDataQualityDimension(),
-                    updated.getDataQualityDimension()));
-        compareAndUpdate(
+                    entityUpdate.getOriginal().getDataQualityDimension(),
+                    entityUpdate.getUpdated().getDataQualityDimension()));
+        entityUpdate.compareAndUpdate(
             "supportedServices",
             () ->
-                recordChange(
+                entityUpdate.recordChange(
                     "supportedServices",
-                    original.getSupportedServices(),
-                    updated.getSupportedServices()));
-        compareAndUpdate(
+                    entityUpdate.getOriginal().getSupportedServices(),
+                    entityUpdate.getUpdated().getSupportedServices()));
+        entityUpdate.compareAndUpdate(
             "sqlExpression",
             () ->
-                recordChange(
-                    "sqlExpression", original.getSqlExpression(), updated.getSqlExpression()));
+                entityUpdate.recordChange(
+                    "sqlExpression",
+                    entityUpdate.getOriginal().getSqlExpression(),
+                    entityUpdate.getUpdated().getSqlExpression()));
       }
     }
+
+    private final EntityUpdater<TestDefinition> entityUpdate;
+
+    public EntityUpdater<TestDefinition> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<TestDefinition> entityContext;
+
+  @Override
+  public final EntityPolicyContext<TestDefinition> context() {
+    return entityContext;
   }
 }

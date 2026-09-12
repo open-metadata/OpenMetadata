@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.secrets;
 
 import java.util.ArrayList;
@@ -29,19 +28,23 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.service.EntityServicePolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
 import org.openmetadata.service.exception.UnhandledServerException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Update service using the configured secret manager.
@@ -54,14 +57,18 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  */
 @Slf4j
 public class SecretsManagerUpdateService {
+
   private final SecretsManager secretManager;
+
   private final SecretsManager oldSecretManager;
+
   private final UserRepository userRepository;
+
   private final IngestionPipelineRepository ingestionPipelineRepository;
+
   private final WorkflowRepository workflowRepository;
 
-  private final Map<
-          Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
+  private final Map<Class<? extends ServiceConnectionEntityInterface>, EntityServicePolicy<?, ?>>
       connectionTypeRepositoriesMap;
 
   public SecretsManagerUpdateService(SecretsManager secretsManager, String clusterName) {
@@ -143,7 +150,7 @@ public class SecretsManagerUpdateService {
   }
 
   private void updateService(ServiceEntityInterface serviceEntityInterface) {
-    ServiceEntityRepository<?, ?> repository =
+    EntityServicePolicy<?, ?> repository =
         connectionTypeRepositoriesMap.get(serviceEntityInterface.getConnection().getClass());
     try {
       ServiceEntityInterface service =
@@ -182,13 +189,13 @@ public class SecretsManagerUpdateService {
   }
 
   private List<ServiceEntityInterface> retrieveServices(
-      ServiceEntityRepository<?, ?> serviceEntityRepository) {
+      EntityServicePolicy<?, ?> serviceEntityRepository) {
     try {
       return serviceEntityRepository
-          .listAfter(
-              null,
-              EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
+          .pages()
+          .after(
+              new EntityPageReader.Projection(
+                  null, EntityUtil.Fields.EMPTY_FIELDS, new ListFilter()),
               serviceEntityRepository.getDao().listCount(new ListFilter()),
               null)
           .getData()
@@ -204,9 +211,9 @@ public class SecretsManagerUpdateService {
     }
   }
 
-  private Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
+  private Map<Class<? extends ServiceConnectionEntityInterface>, EntityServicePolicy<?, ?>>
       retrieveConnectionTypeRepositoriesMap() {
-    Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
+    Map<Class<? extends ServiceConnectionEntityInterface>, EntityServicePolicy<?, ?>>
         connTypeRepositoriesMap =
             Entity.getEntityList().stream()
                 .map(this::retrieveServiceRepository)
@@ -214,20 +221,18 @@ public class SecretsManagerUpdateService {
                 .map(Optional::get)
                 .collect(
                     Collectors.toMap(
-                        ServiceEntityRepository::getServiceConnectionClass, Function.identity()));
-
+                        EntityServicePolicy::getServiceConnectionClass, Function.identity()));
     if (connTypeRepositoriesMap.isEmpty()) {
       throw new SecretsManagerUpdateException("Unexpected error: ServiceRepository not found.");
     }
     return connTypeRepositoriesMap;
   }
 
-  private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(String entityType) {
+  private Optional<EntityServicePolicy<?, ?>> retrieveServiceRepository(String entityType) {
     try {
-      EntityRepository<? extends EntityInterface> repository =
-          Entity.getEntityRepository(entityType);
-      if (ServiceEntityRepository.class.isAssignableFrom(repository.getClass())) {
-        return Optional.of(((ServiceEntityRepository<?, ?>) repository));
+      EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+      if (repository instanceof EntityServicePolicy<?, ?> servicePolicy) {
+        return Optional.of(servicePolicy);
       }
       return Optional.empty();
     } catch (EntityNotFoundException e) {
@@ -238,10 +243,10 @@ public class SecretsManagerUpdateService {
   private List<User> retrieveBotUsers() {
     try {
       return userRepository
-          .listAfter(
-              null,
-              new Fields(Set.of("authenticationMechanism")),
-              new ListFilter(),
+          .pages()
+          .after(
+              new EntityPageReader.Projection(
+                  null, new Fields(Set.of("authenticationMechanism")), new ListFilter()),
               userRepository.getDao().listCount(new ListFilter()),
               null)
           .getData()
@@ -273,14 +278,12 @@ public class SecretsManagerUpdateService {
       Fields fields = new Fields(Set.of("service"));
       List<IngestionPipeline> pipelines =
           ingestionPipelineRepository
-              .listAfter(
-                  null,
-                  fields,
-                  new ListFilter(),
+              .pages()
+              .after(
+                  new EntityPageReader.Projection(null, fields, new ListFilter()),
                   ingestionPipelineRepository.getDao().listCount(new ListFilter()),
                   null)
               .getData();
-
       LOG.info(
           "Successfully retrieved {} ingestion pipelines for secrets migration", pipelines.size());
       return pipelines;
@@ -303,17 +306,21 @@ public class SecretsManagerUpdateService {
       int totalCount = ingestionPipelineRepository.getDao().listCount(new ListFilter());
       List<String> pipelineJsons =
           ingestionPipelineRepository.getDao().listAfter(new ListFilter(), totalCount, 0);
-
       LOG.info("Processing {} pipelines individually to filter out orphaned ones", totalCount);
-
       int skippedCount = 0;
       for (String pipelineJson : pipelineJsons) {
         try {
           IngestionPipeline pipeline = JsonUtils.readValue(pipelineJson, IngestionPipeline.class);
           IngestionPipeline fullPipeline =
-              ingestionPipelineRepository.get(
-                  null, pipeline.getId(), ingestionPipelineRepository.getFields("service"));
-
+              ingestionPipelineRepository
+                  .reads()
+                  .byId(
+                      pipeline.getId(),
+                      new EntityReadService.Query(
+                          null,
+                          ingestionPipelineRepository.fieldPolicy().parse("service"),
+                          RelationIncludes.fromInclude(Include.NON_DELETED),
+                          false));
           if (fullPipeline != null && fullPipeline.getService() != null) {
             validPipelines.add(fullPipeline);
           }
@@ -340,13 +347,11 @@ public class SecretsManagerUpdateService {
               String.format("Unexpected error loading ingestion pipeline: %s", e.getMessage()), e);
         }
       }
-
       LOG.info(
           "Successfully filtered pipelines: {} valid, {} skipped out of {} total",
           validPipelines.size(),
           skippedCount,
           totalCount);
-
       return validPipelines;
     } catch (Exception e) {
       LOG.error("Failed to retrieve pipelines individually: {}", e.getMessage());
@@ -357,10 +362,10 @@ public class SecretsManagerUpdateService {
   private List<Workflow> retrieveWorkflows() {
     try {
       return workflowRepository
-          .listAfter(
-              null,
-              EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
+          .pages()
+          .after(
+              new EntityPageReader.Projection(
+                  null, EntityUtil.Fields.EMPTY_FIELDS, new ListFilter()),
               workflowRepository.getDao().listCount(new ListFilter()),
               null)
           .getData();

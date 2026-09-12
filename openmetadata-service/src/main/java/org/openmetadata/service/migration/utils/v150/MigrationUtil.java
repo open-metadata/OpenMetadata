@@ -137,7 +137,7 @@ public class MigrationUtil {
       IngestionPipelineRepository entityRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       entityRepository.setPipelineServiceClient(pipelineServiceClient);
-      entityRepository.delete("admin", dataInsightsPipeline.getId(), true, true);
+      entityRepository.deletes().byId("admin", dataInsightsPipeline.getId(), true, true);
     }
   }
 
@@ -146,7 +146,7 @@ public class MigrationUtil {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
     try {
-      appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+      appRepository.deletes().byName("admin", "DataInsightsApplication", true, true);
     } catch (EntityNotFoundException ex) {
       LOG.debug("DataInsights Application not found.");
     } catch (UnableToExecuteStatementException ex) {
@@ -159,7 +159,7 @@ public class MigrationUtil {
         (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
 
     try {
-      marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+      marketPlaceRepository.deletes().byName("admin", "DataInsightsApplication", true, true);
     } catch (EntityNotFoundException ex) {
       LOG.debug("DataInsights Application Marketplace Definition not found.");
     } catch (UnableToExecuteStatementException ex) {
@@ -282,7 +282,7 @@ public class MigrationUtil {
               .withUpdatedBy("ingestion-bot")
               .withDeleted(false)
               .withIsSystemChart(true);
-      dataInsightSystemChartRepository.prepareInternal(chart, false);
+      dataInsightSystemChartRepository.preparation().prepare(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());

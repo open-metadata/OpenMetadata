@@ -55,6 +55,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -106,7 +107,9 @@ public class MetadataServiceResource
         LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
       repository.setFullyQualifiedName(openMetadataService);
-      repository.createOrUpdate(null, openMetadataService, ADMIN_USER_NAME);
+      repository
+          .creates()
+          .upsert(null, openMetadataService, new EntityCommandActor(ADMIN_USER_NAME, null), false);
     } else {
       throw new IOException("Failed to initialize OpenMetadata Service.");
     }

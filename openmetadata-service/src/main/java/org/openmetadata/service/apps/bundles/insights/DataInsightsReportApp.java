@@ -208,8 +208,11 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private List<Kpi> getAvailableKpi() {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
-    return repository.listAll(
-        repository.getFields("dataInsightChart"), new ListFilter(Include.NON_DELETED));
+    return repository
+        .collections()
+        .all(
+            repository.fieldPolicy().parse("dataInsightChart"),
+            new ListFilter(Include.NON_DELETED));
   }
 
   private KpiResult getKpiResult(String fqn) {

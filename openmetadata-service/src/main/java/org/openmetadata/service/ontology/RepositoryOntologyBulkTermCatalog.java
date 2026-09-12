@@ -30,7 +30,7 @@ final class RepositoryOntologyBulkTermCatalog implements OntologyBulkTermCatalog
 
   RepositoryOntologyBulkTermCatalog(final GlossaryTermRepository repository) {
     this.repository = repository;
-    fields = repository.getFields(BULK_FIELDS);
+    fields = repository.fieldPolicy().parse(BULK_FIELDS);
   }
 
   @Override
@@ -38,6 +38,6 @@ final class RepositoryOntologyBulkTermCatalog implements OntologyBulkTermCatalog
     final ListFilter filter =
         new ListFilter(Include.NON_DELETED)
             .addQueryParam(PARENT_FILTER, glossary.getFullyQualifiedName());
-    return repository.listAll(fields, filter);
+    return repository.collections().all(fields, filter);
   }
 }

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.lineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -33,7 +32,8 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityCollectionReader;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -129,9 +129,11 @@ public class LineageHydrator {
       List<UUID> ids,
       String fieldsParam,
       Include include,
-      EntityRepository<T> repo) {
-    Fields fields = repo.getFields(fieldsParam);
-    List<T> entities = repo.get(uriInfo, ids, fields, include);
+      EntityPolicy<T> repo) {
+    Fields fields = repo.fieldPolicy().parse(fieldsParam);
+    List<T> entities =
+        repo.collections()
+            .byIds(ids, new EntityCollectionReader.Projection(uriInfo, fields, include));
     String userName = securityContext.getUserPrincipal().getName();
     List<T> authorized = new ArrayList<>(entities.size());
     for (T entity : entities) {

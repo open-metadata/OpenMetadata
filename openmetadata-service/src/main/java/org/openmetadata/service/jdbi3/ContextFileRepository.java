@@ -9,6 +9,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityCursor;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.drive.ContextFileResource;
@@ -39,23 +50,31 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Repository
-public class ContextFileRepository extends EntityRepository<ContextFile> {
+public class ContextFileRepository implements EntityPolicy<ContextFile> {
+
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
+
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
+
   private final AssetRepository assetRepository;
+
   private final ContextFileContentRepository contentRepository;
+
   private final CollectionDAO.ContextFileDAO contextFileDAO;
 
   public ContextFileRepository(Jdbi jdbi) {
-    super(
-        ContextFileResource.COLLECTION_PATH,
-        CONTEXT_FILE_ENTITY,
-        ContextFile.class,
-        jdbi.onDemand(CollectionDAO.class).contextFileDAO(),
-        "",
-        "");
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                ContextFileResource.COLLECTION_PATH,
+                CONTEXT_FILE_ENTITY,
+                ContextFile.class,
+                jdbi.onDemand(CollectionDAO.class).contextFileDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);
     this.assetRepository = new AssetRepository(dao.assetDAO());
@@ -87,13 +106,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (entities == null || entities.isEmpty()) {
       return;
     }
-
     if (fields.contains("folder")) {
-      var folderMap = batchFetchFromIdsAndRelationSingleRelation(entities, Relationship.CONTAINS);
+      var folderMap = batchReferences().singleIncoming(entities, Relationship.CONTAINS);
       entities.forEach(file -> file.setFolder(folderMap.get(file.getId())));
     }
-
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
@@ -121,16 +138,16 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public void storeEntity(ContextFile file, boolean update) {
     EntityReference folder = file.getFolder();
     file.withFolder(null);
-    store(file, update);
+    persistence().store(file, update);
     file.withFolder(folder);
   }
 
   @Override
-  protected void storeEntityWithVersion(ContextFile file, boolean update, Double expectedVersion) {
+  public void storeEntityWithVersion(ContextFile file, boolean update, Double expectedVersion) {
     EntityReference folder = file.getFolder();
     file.withFolder(null);
     try {
-      store(file, update, expectedVersion);
+      persistence().store(file, update, expectedVersion);
     } finally {
       file.withFolder(folder);
     }
@@ -139,12 +156,16 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   @Override
   public void storeRelationships(ContextFile file) {
     if (file.getFolder() != null) {
-      addRelationship(
-          file.getFolder().getId(),
-          file.getId(),
-          FOLDER_ENTITY,
-          CONTEXT_FILE_ENTITY,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  file.getFolder().getId(),
+                  file.getId(),
+                  FOLDER_ENTITY,
+                  CONTEXT_FILE_ENTITY,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
@@ -154,20 +175,19 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      ContextFile original, ContextFile updated, Operation operation, ChangeSource source) {
-    return new ContextFileUpdater(original, updated, operation);
+  public EntityUpdater<ContextFile> getUpdater(
+      ContextFile original, ContextFile updated, EntityOperation operation, ChangeSource source) {
+    return new ContextFileUpdater(original, updated, operation).mutation();
   }
 
   private EntityReference getFolder(ContextFile file) {
-    return getFromEntityRef(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
+    return relationships().singleFrom(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
   }
 
   public ContextFile moveContextFile(UUID id, EntityReference newFolderRef, String user) {
     ContextFile original =
         Entity.getEntity(CONTEXT_FILE_ENTITY, id, "folder,owners,tags", Include.NON_DELETED);
     ContextFile updated = JsonUtils.deepCopy(original, ContextFile.class);
-
     EntityReference resolvedFolder = null;
     if (newFolderRef != null && newFolderRef.getId() != null) {
       Folder folder =
@@ -179,8 +199,8 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     setFullyQualifiedName(updated);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
-
-    ContextFileUpdater updater = new ContextFileUpdater(original, updated, Operation.PUT);
+    EntityUpdater<ContextFile> updater =
+        new ContextFileUpdater(original, updated, EntityOperation.PUT).mutation();
     updater.update();
     emitMoveChangeEvent(original, updated);
     return updated;
@@ -196,7 +216,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           new ChangeEvent()
               .withId(UUID.randomUUID())
               .withEventType(EventType.ENTITY_UPDATED)
-              .withEntityType(entityType)
+              .withEntityType(context().schema().entityType())
               .withEntityId(updated.getId())
               .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
               .withUserName(updated.getUpdatedBy())
@@ -210,48 +230,77 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     }
   }
 
-  public class ContextFileUpdater extends EntityUpdater {
-    public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
-      super(original, updated, operation);
+  public class ContextFileUpdater implements EntitySpecificMutation<ContextFile> {
+
+    public ContextFileUpdater(
+        ContextFile original, ContextFile updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      recordChange("fileType", original.getFileType(), updated.getFileType());
-      recordChange(
-          "processingStatus", original.getProcessingStatus(), updated.getProcessingStatus());
-      recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
-      recordChange("pageCount", original.getPageCount(), updated.getPageCount());
+    public void update(EntityUpdater<ContextFile> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.recordChange(
+          "fileType",
+          entityUpdate.getOriginal().getFileType(),
+          entityUpdate.getUpdated().getFileType());
+      entityUpdate.recordChange(
+          "processingStatus",
+          entityUpdate.getOriginal().getProcessingStatus(),
+          entityUpdate.getUpdated().getProcessingStatus());
+      entityUpdate.recordChange(
+          "extractedText",
+          entityUpdate.getOriginal().getExtractedText(),
+          entityUpdate.getUpdated().getExtractedText());
+      entityUpdate.recordChange(
+          "pageCount",
+          entityUpdate.getOriginal().getPageCount(),
+          entityUpdate.getUpdated().getPageCount());
       updateFolder();
     }
 
     private void updateFolder() {
-      EntityReference oldFolder = original.getFolder();
-      EntityReference newFolder = updated.getFolder();
-      if (!recordChange("folder", oldFolder, newFolder, true, entityReferenceMatch)) {
+      EntityReference oldFolder = entityUpdate.getOriginal().getFolder();
+      EntityReference newFolder = entityUpdate.getUpdated().getFolder();
+      if (!entityUpdate.recordChange("folder", oldFolder, newFolder, true, entityReferenceMatch)) {
         return;
       }
       if (oldFolder != null) {
-        deleteRelationship(
-            oldFolder.getId(),
-            FOLDER_ENTITY,
-            updated.getId(),
-            CONTEXT_FILE_ENTITY,
-            Relationship.CONTAINS);
+        relationshipWrites()
+            .delete(
+                new EntityRelationshipWriter.Edge(
+                    oldFolder.getId(),
+                    entityUpdate.getUpdated().getId(),
+                    FOLDER_ENTITY,
+                    CONTEXT_FILE_ENTITY,
+                    Relationship.CONTAINS));
       }
       if (newFolder != null) {
-        addRelationship(
-            newFolder.getId(),
-            updated.getId(),
-            FOLDER_ENTITY,
-            CONTEXT_FILE_ENTITY,
-            Relationship.CONTAINS);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    newFolder.getId(),
+                    entityUpdate.getUpdated().getId(),
+                    FOLDER_ENTITY,
+                    CONTEXT_FILE_ENTITY,
+                    Relationship.CONTAINS),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
+    }
+
+    private final EntityUpdater<ContextFile> entityUpdate;
+
+    public EntityUpdater<ContextFile> mutation() {
+      return entityUpdate;
     }
   }
 
   @Override
-  protected void entitySpecificCleanup(ContextFile entityInterface) {
+  public void entitySpecificCleanup(ContextFile entityInterface) {
     List<ContextFileContent> contents =
         new ArrayList<>(contentRepository.listByContextFileId(entityInterface.getId()));
     if (contents.isEmpty()) {
@@ -267,11 +316,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
         }
       }
     }
-
     for (ContextFileContent content : contents) {
       deleteContentSnapshot(content);
     }
-
     if (contents.isEmpty()
         && entityInterface.getAssetId() != null
         && !entityInterface.getAssetId().isEmpty()) {
@@ -306,12 +353,15 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       String before,
       String after,
       OrderBy orderBy) {
-    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    int total =
+        ListCountCache.getOrCompute(
+            context().schema().entityType(),
+            filter,
+            () -> context().schema().dao().listCount(filter));
     List<ContextFile> entities = new ArrayList<>();
     if (limitParam <= 0) {
-      return getResultList(entities, null, null, total);
+      return new ResultList<>(entities, null, null, total);
     }
-
     if (before != null && !before.isEmpty()) {
       UpdatedAtCursor cursor = parseUpdatedAtCursor(before);
       List<String> jsons =
@@ -338,9 +388,8 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       if (!entities.isEmpty()) {
         afterCursor = updatedAtCursorValue(entities.get(entities.size() - 1));
       }
-      return getResultList(entities, beforeCursor, afterCursor, total);
+      return new ResultList<>(entities, beforeCursor, afterCursor, total);
     }
-
     List<String> jsons;
     if (after == null || after.isEmpty()) {
       jsons =
@@ -366,7 +415,6 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
                   cursor.updatedAt(),
                   cursor.id());
     }
-
     entities = hydrateList(jsons, fields, uriInfo, filter);
     String beforeCursor =
         after == null || after.isEmpty() || entities.isEmpty()
@@ -377,7 +425,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       entities.remove(limitParam);
       afterCursor = updatedAtCursorValue(entities.get(limitParam - 1));
     }
-    return getResultList(entities, beforeCursor, afterCursor, total);
+    return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 
   private List<ContextFile> hydrateList(
@@ -389,7 +437,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   private UpdatedAtCursor parseUpdatedAtCursor(String cursor) {
-    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(cursor));
+    Map<String, String> cursorMap = EntityCursor.parse(RestUtil.decodeCursor(cursor));
     String updatedAt = cursorMap.get("updatedAt");
     String id = cursorMap.get("id");
     if (updatedAt == null || updatedAt.isBlank() || id == null || id.isBlank()) {
@@ -424,8 +472,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (content.getAssetId() != null && !content.getAssetId().isEmpty()) {
       deleteAsset(content.getAssetId());
     }
-
-    contentRepository.delete(ADMIN_USER_NAME, content.getId(), false, true);
+    contentRepository.deletes().byId(ADMIN_USER_NAME, content.getId(), false, true);
   }
 
   private void deleteAsset(String assetId) {
@@ -456,5 +503,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     } else {
       assetRepository.delete(assetId);
     }
+  }
+
+  private final EntityPolicyContext<ContextFile> entityContext;
+
+  @Override
+  public final EntityPolicyContext<ContextFile> context() {
+    return entityContext;
   }
 }

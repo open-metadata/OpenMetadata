@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import jakarta.ws.rs.BadRequestException;
@@ -23,6 +22,14 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
 import org.openmetadata.service.ontology.RelationshipTypeGraphValidator;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
@@ -32,22 +39,29 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Repository
-public class RelationshipTypeRepository extends EntityRepository<RelationshipType> {
+public class RelationshipTypeRepository implements EntityPolicy<RelationshipType> {
+
   private static final String UPDATE_FIELDS =
       "iri,rdfPredicate,category,inverse,domain,range,characteristics,cardinality,propertyChain,"
           + "disjointWith,crossGlossaryAllowed,paletteKey,replacedBy,entityStatus";
+
   private final RelationshipTypeResolver resolver;
+
   private final RelationshipTypeGraphValidator graphValidator;
+
   private final OntologyChangeEventPublisher eventPublisher;
 
   public RelationshipTypeRepository() {
-    super(
-        RelationshipTypeResource.COLLECTION_PATH,
-        Entity.RELATIONSHIP_TYPE,
-        RelationshipType.class,
-        Entity.getCollectionDAO().relationshipTypeDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                RelationshipTypeResource.COLLECTION_PATH,
+                Entity.RELATIONSHIP_TYPE,
+                RelationshipType.class,
+                Entity.getCollectionDAO().relationshipTypeDAO()),
+            new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
     resolver = new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     graphValidator =
         new RelationshipTypeGraphValidator(
@@ -111,21 +125,21 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   @Override
   public void storeEntity(final RelationshipType entity, final boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
   public void storeRelationships(final RelationshipType entity) {}
 
   @Override
-  protected void postCreate(final RelationshipType entity) {
-    super.postCreate(entity);
+  public void postCreate(final RelationshipType entity) {
+    EntityPolicy.super.postCreate(entity);
     publishOntologyEvent(entity);
   }
 
   @Override
-  protected void postUpdate(final RelationshipType original, final RelationshipType updated) {
-    super.postUpdate(original, updated);
+  public void postUpdate(final RelationshipType original, final RelationshipType updated) {
+    EntityPolicy.super.postUpdate(original, updated);
     publishOntologyEvent(updated);
   }
 
@@ -135,7 +149,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   }
 
   @Override
-  protected void preDelete(final RelationshipType entity, final String deletedBy) {
+  public void preDelete(final RelationshipType entity, final String deletedBy) {
     if (Boolean.TRUE.equals(entity.getSystemDefined())) {
       throw new BadRequestException(
           "System relationship type '" + entity.getName() + "' cannot be deleted");
@@ -143,24 +157,30 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   }
 
   @Override
-  public EntityUpdater getUpdater(
+  public EntityUpdater<RelationshipType> getUpdater(
       final RelationshipType original,
       final RelationshipType updated,
-      final Operation operation,
+      final EntityOperation operation,
       final ChangeSource changeSource) {
-    return new RelationshipTypeUpdater(original, updated, operation);
+    return new RelationshipTypeUpdater(original, updated, operation).mutation();
   }
 
-  public class RelationshipTypeUpdater extends EntityUpdater {
+  public class RelationshipTypeUpdater implements EntitySpecificMutation<RelationshipType> {
+
     RelationshipTypeUpdater(
         final RelationshipType original,
         final RelationshipType updated,
-        final Operation operation) {
-      super(original, updated, operation);
+        final EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(final boolean consolidatingChanges) {
+    public void update(
+        EntityUpdater<RelationshipType> entityUpdate, final boolean consolidatingChanges) {
       validateImmutableFields();
       recordIdentityChanges();
       recordSemanticChanges();
@@ -168,35 +188,89 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     }
 
     private void validateImmutableFields() {
-      if (!original.getSystemDefined().equals(updated.getSystemDefined())) {
+      if (!entityUpdate
+          .getOriginal()
+          .getSystemDefined()
+          .equals(entityUpdate.getUpdated().getSystemDefined())) {
         throw new BadRequestException("The systemDefined field is immutable");
       }
     }
 
     private void recordIdentityChanges() {
-      recordChange("iri", original.getIri(), updated.getIri());
-      recordChange("rdfPredicate", original.getRdfPredicate(), updated.getRdfPredicate());
-      recordChange("category", original.getCategory(), updated.getCategory());
-      recordChange("paletteKey", original.getPaletteKey(), updated.getPaletteKey());
+      entityUpdate.recordChange(
+          "iri", entityUpdate.getOriginal().getIri(), entityUpdate.getUpdated().getIri());
+      entityUpdate.recordChange(
+          "rdfPredicate",
+          entityUpdate.getOriginal().getRdfPredicate(),
+          entityUpdate.getUpdated().getRdfPredicate());
+      entityUpdate.recordChange(
+          "category",
+          entityUpdate.getOriginal().getCategory(),
+          entityUpdate.getUpdated().getCategory());
+      entityUpdate.recordChange(
+          "paletteKey",
+          entityUpdate.getOriginal().getPaletteKey(),
+          entityUpdate.getUpdated().getPaletteKey());
     }
 
     private void recordSemanticChanges() {
-      recordChange("inverse", original.getInverse(), updated.getInverse());
-      recordChange("domain", original.getDomain(), updated.getDomain(), true);
-      recordChange("range", original.getRange(), updated.getRange(), true);
-      recordChange(
-          "characteristics", original.getCharacteristics(), updated.getCharacteristics(), true);
-      recordChange("cardinality", original.getCardinality(), updated.getCardinality());
-      recordChange("propertyChain", original.getPropertyChain(), updated.getPropertyChain(), true);
-      recordChange("disjointWith", original.getDisjointWith(), updated.getDisjointWith(), true);
+      entityUpdate.recordChange(
+          "inverse",
+          entityUpdate.getOriginal().getInverse(),
+          entityUpdate.getUpdated().getInverse());
+      entityUpdate.recordChange(
+          "domain",
+          entityUpdate.getOriginal().getDomain(),
+          entityUpdate.getUpdated().getDomain(),
+          true);
+      entityUpdate.recordChange(
+          "range",
+          entityUpdate.getOriginal().getRange(),
+          entityUpdate.getUpdated().getRange(),
+          true);
+      entityUpdate.recordChange(
+          "characteristics",
+          entityUpdate.getOriginal().getCharacteristics(),
+          entityUpdate.getUpdated().getCharacteristics(),
+          true);
+      entityUpdate.recordChange(
+          "cardinality",
+          entityUpdate.getOriginal().getCardinality(),
+          entityUpdate.getUpdated().getCardinality());
+      entityUpdate.recordChange(
+          "propertyChain",
+          entityUpdate.getOriginal().getPropertyChain(),
+          entityUpdate.getUpdated().getPropertyChain(),
+          true);
+      entityUpdate.recordChange(
+          "disjointWith",
+          entityUpdate.getOriginal().getDisjointWith(),
+          entityUpdate.getUpdated().getDisjointWith(),
+          true);
     }
 
     private void recordGovernanceChanges() {
-      recordChange(
+      entityUpdate.recordChange(
           "crossGlossaryAllowed",
-          original.getCrossGlossaryAllowed(),
-          updated.getCrossGlossaryAllowed());
-      recordChange("replacedBy", original.getReplacedBy(), updated.getReplacedBy());
+          entityUpdate.getOriginal().getCrossGlossaryAllowed(),
+          entityUpdate.getUpdated().getCrossGlossaryAllowed());
+      entityUpdate.recordChange(
+          "replacedBy",
+          entityUpdate.getOriginal().getReplacedBy(),
+          entityUpdate.getUpdated().getReplacedBy());
     }
+
+    private final EntityUpdater<RelationshipType> entityUpdate;
+
+    public EntityUpdater<RelationshipType> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<RelationshipType> entityContext;
+
+  @Override
+  public final EntityPolicyContext<RelationshipType> context() {
+    return entityContext;
   }
 }

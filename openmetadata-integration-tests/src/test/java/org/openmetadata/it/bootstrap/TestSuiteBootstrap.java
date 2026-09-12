@@ -286,7 +286,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
-      mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
+      configureDatabaseStorage(mysql, "/var/lib/mysql");
       mysql.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -340,7 +340,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // under load.
           "-c",
           "work_mem=32MB");
-      postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
+      configureDatabaseStorage(postgres, "/var/lib/postgresql/data");
       postgres.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -350,6 +350,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       postgres.start();
       DATABASE_CONTAINER = postgres;
       LOG.info("PostgreSQL started: {}", DATABASE_CONTAINER.getJdbcUrl());
+    }
+  }
+
+  private void configureDatabaseStorage(JdbcDatabaseContainer<?> database, String dataDirectory) {
+    // fsync on tmpfs measures RAM; durable benchmarks need the image's disk-backed data volume.
+    if (!Boolean.getBoolean("dbDurable")) {
+      database.withTmpFs(Map.of(dataDirectory, "rw,size=2g"));
     }
   }
 

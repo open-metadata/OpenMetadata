@@ -70,6 +70,7 @@ import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
 import org.openmetadata.service.drive.ContextFileExtractionService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -326,7 +327,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
 
     ContextFile file = mapper.createToEntity(createFile, user);
-    repository.prepareInternal(file, false);
+    repository.preparation().prepare(file, false);
     repository.validateNoDuplicateFileName(pageName, file.getFolder(), null);
 
     try (ContextFileUploadSupport.BufferedUpload bufferedUpload =
@@ -359,14 +360,18 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
         repository
             .getContentRepository()
-            .create(null, content, user, ImpersonationContext.getImpersonatedBy());
+            .creates()
+            .create(
+                null,
+                content,
+                new EntityCommandActor(user, ImpersonationContext.getImpersonatedBy()));
         contentPersisted = true;
         extractionService.submit(createdFile.getId(), content.getId());
         return createResponse;
       } catch (Exception e) {
         if (contentPersisted) {
           try {
-            repository.getContentRepository().delete(user, content.getId(), false, true);
+            repository.getContentRepository().deletes().byId(user, content.getId(), false, true);
           } catch (Exception ignored) {
             // Best-effort cleanup.
           }
@@ -864,7 +869,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
 
   private void cleanupFailedUpload(String user, UUID fileId) {
     try {
-      repository.delete(user, fileId, false, true);
+      repository.deletes().byId(user, fileId, false, true);
     } catch (Exception ignored) {
       // Best-effort cleanup after a partially completed upload.
     }

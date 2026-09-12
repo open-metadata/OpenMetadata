@@ -1,12 +1,11 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -45,89 +44,78 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 class RuleEvaluatorTest {
+
   private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
+
   private static final Table table =
       new Table().withId(UUID.randomUUID()).withName("table").withFullyQualifiedName("test.table");
+
   private static User user;
+
   private static EvaluationContext evaluationContext;
+
   private static SubjectContext subjectContext;
+
   private static ResourceContext<?> resourceContext;
+
   private static final String DATA_CONSUMER_POLICY_NAME = "DataConsumerPolicy";
 
   private static CreateResourceContext<?> createResourceContextSchema;
+
   private static CreateResourceContext<?> createResourceContextDataProduct;
+
   private static ResourceContext<DataProduct> resourceContextDataProduct;
 
   private static User ownerUser;
+
   private static User nonOwnerUser;
+
   private static EntityReference ownerRef;
+
   private static EntityReference databaseRef;
+
   private static TableRepository tableRepository;
 
   @BeforeAll
   public static void setup() {
     TeamRepository teamRepository = stubIndexingPolicy(mock(TeamRepository.class));
+    Mockito.when(teamRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(Team.class));
     Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
-    Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
-        .thenAnswer(
-            i ->
-                JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
-                        new ImmutablePair<>(Entity.TEAM, i.getArgument(0))),
-                    Team.class));
-    Mockito.when(teamRepository.getReference(any(UUID.class), any(Include.class)))
-        .thenAnswer(
-            i ->
-                JsonUtils.readValue(
-                        EntityRepository.CACHE_WITH_ID.get(
-                            new ImmutablePair<>(Entity.TEAM, i.getArgument(0))),
-                        Team.class)
-                    .getEntityReference());
-
-    Mockito.when(teamRepository.findByName(anyString(), any(Include.class)))
-        .thenAnswer(
-            i ->
-                JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_NAME.get(
-                        new ImmutablePair<>(Entity.TEAM, i.getArgument(0))),
-                    Team.class));
-
-    Mockito.when(
-            teamRepository.get(
-                isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(
-            i ->
-                JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
-                        new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
-                    Team.class));
-
-    Mockito.when(
-            teamRepository.getByName(
-                isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
-        .thenAnswer(
-            i ->
-                JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
-                        new ImmutablePair<>(Entity.TEAM, i.getArgument(1))),
-                    Team.class));
-
+    EntityLookupTestContext.attachCached(teamRepository, Entity.TEAM, Team.class);
+    Mockito.when(teamRepository.reads())
+        .thenReturn(
+            new EntityReadFixture<>(
+                (readId, readQuery) ->
+                    JsonUtils.readValue(
+                        EntityCaches.byId().getUnchecked(new ImmutablePair<>(Entity.TEAM, readId)),
+                        Team.class),
+                (readName, readQuery) ->
+                    JsonUtils.readValue(
+                        EntityCaches.byName()
+                            .getUnchecked(new ImmutablePair<>(Entity.TEAM, readName)),
+                        Team.class)));
     tableRepository = stubIndexingPolicy(mock(TableRepository.class));
+    Mockito.when(tableRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
@@ -135,39 +123,46 @@ class RuleEvaluatorTest {
     Mockito.when(tableRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
     // A lazily-resolved ResourceContext asks the repository which fields authorization needs;
     // the mock would otherwise hand back null. Real repositories always return a Fields.
-    Mockito.when(tableRepository.getFields(anyString())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
-
+    Mockito.when(tableRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
     DatabaseRepository databaseRepository = stubIndexingPolicy(mock(DatabaseRepository.class));
     Mockito.when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
     Mockito.when(databaseRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    Mockito.when(databaseRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(Database.class));
     Entity.registerEntity(Database.class, Entity.DATABASE, databaseRepository);
-
     DatabaseSchemaRepository databaseSchemaRepository =
         stubIndexingPolicy(mock(DatabaseSchemaRepository.class));
     Mockito.when(databaseSchemaRepository.getEntityType()).thenReturn(Entity.DATABASE_SCHEMA);
     Mockito.when(databaseSchemaRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    Mockito.when(databaseSchemaRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(DatabaseSchema.class));
     Entity.registerEntity(DatabaseSchema.class, Entity.DATABASE_SCHEMA, databaseSchemaRepository);
-
     DomainRepository domainRepository = stubIndexingPolicy(mock(DomainRepository.class));
     Mockito.when(domainRepository.getEntityType()).thenReturn(Entity.DOMAIN);
     Mockito.when(domainRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    Mockito.when(domainRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(Domain.class));
     Entity.registerEntity(Domain.class, Entity.DOMAIN, domainRepository);
-    Mockito.when(domainRepository.get(isNull(), any(UUID.class), any(EntityUtil.Fields.class)))
-        .thenAnswer(
-            i ->
-                JsonUtils.readValue(
-                    EntityRepository.CACHE_WITH_ID.get(
-                        new ImmutablePair<>(Entity.DOMAIN, i.getArgument(1))),
-                    Domain.class));
-
+    Mockito.when(domainRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  return JsonUtils.readValue(
+                      EntityCaches.byId().getUnchecked(new ImmutablePair<>(Entity.DOMAIN, readId)),
+                      Domain.class);
+                }));
     DataProductRepository dataProductRepository =
         stubIndexingPolicy(mock(DataProductRepository.class));
     Mockito.when(dataProductRepository.getEntityType()).thenReturn(Entity.DATA_PRODUCT);
     Mockito.when(dataProductRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    Mockito.when(dataProductRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(DataProduct.class));
     Entity.registerEntity(DataProduct.class, Entity.DATA_PRODUCT, dataProductRepository);
     Mockito.when(dataProductRepository.getParentEntity(any(DataProduct.class), anyString()))
-        .thenReturn(null); // DataProduct doesn't have direct parent, should use domains
-
+        .thenReturn( // DataProduct doesn't have direct parent, should use domains
+            null);
     user = new User().withId(UUID.randomUUID()).withName("user").withFullyQualifiedName("user");
     ownerUser =
         new User().withId(UUID.randomUUID()).withName("owner").withFullyQualifiedName("owner");
@@ -177,16 +172,18 @@ class RuleEvaluatorTest {
             .withName("nonOwner")
             .withFullyQualifiedName("nonOwner");
     ownerRef = ownerUser.getEntityReference().withType(Entity.USER);
-
     Database database = new Database().withId(UUID.randomUUID()).withName("testDB");
     databaseRef = database.getEntityReference();
     DatabaseSchema schema = new DatabaseSchema().withId(UUID.randomUUID()).withName("testSchema");
     schema.setDatabase(databaseRef);
     database.setOwners(List.of(ownerRef));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DATABASE_SCHEMA, schema.getId()), JsonUtils.pojoToJson(schema));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DATABASE, database.getId()), JsonUtils.pojoToJson(database));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DATABASE_SCHEMA, schema.getId()),
+            JsonUtils.pojoToJson(schema));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DATABASE, database.getId()), JsonUtils.pojoToJson(database));
     Mockito.when(databaseSchemaRepository.getParentEntity(any(DatabaseSchema.class), anyString()))
         .thenAnswer(
             i -> {
@@ -194,13 +191,11 @@ class RuleEvaluatorTest {
               EntityReference dbRef = cachedSchema.getDatabase();
               if (dbRef == null) return null;
               return JsonUtils.readValue(
-                  EntityRepository.CACHE_WITH_ID.get(
-                      new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
+                  EntityCaches.byId().get(new ImmutablePair<>(Entity.DATABASE, dbRef.getId())),
                   Database.class);
             });
     createResourceContextSchema =
         Mockito.spy(new CreateResourceContext<>(Entity.DATABASE_SCHEMA, schema));
-
     Domain domain =
         new Domain()
             .withId(UUID.randomUUID())
@@ -213,16 +208,16 @@ class RuleEvaluatorTest {
             .withName("testDataProduct")
             .withFullyQualifiedName("testDataProduct")
             .withDomains(List.of(domain.getEntityReference()));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, domain.getId()), JsonUtils.pojoToJson(domain));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DATA_PRODUCT, dataProduct.getId()),
-        JsonUtils.pojoToJson(dataProduct));
+    EntityCaches.byId()
+        .put(new ImmutablePair<>(Entity.DOMAIN, domain.getId()), JsonUtils.pojoToJson(domain));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DATA_PRODUCT, dataProduct.getId()),
+            JsonUtils.pojoToJson(dataProduct));
     resourceContextDataProduct =
         Mockito.spy(new ResourceContext<>(Entity.DATA_PRODUCT, dataProduct, dataProductRepository));
     createResourceContextDataProduct =
         Mockito.spy(new CreateResourceContext<>(Entity.DATA_PRODUCT, dataProduct));
-
     resourceContext = new ResourceContext<>(Entity.TABLE, table, tableRepository);
     subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
@@ -235,7 +230,6 @@ class RuleEvaluatorTest {
     table.setOwners(null);
     assertTrue(evaluateExpression("noOwner()"));
     assertFalse(evaluateExpression("!noOwner()"));
-
     // Set owner to the entity and test noOwner method
     table.setOwners(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     assertFalse(evaluateExpression("noOwner()"));
@@ -253,7 +247,6 @@ class RuleEvaluatorTest {
                 .withName("otherUser")));
     assertFalse(evaluateExpression("isOwner()"));
     assertTrue(evaluateExpression("!isOwner()"));
-
     // Table owner is same as the user in subjectContext and hence isOwner returns true
     table.setOwners(
         List.of(
@@ -263,12 +256,10 @@ class RuleEvaluatorTest {
                 .withName(user.getName())));
     assertTrue(evaluateExpression("isOwner()"));
     assertFalse(evaluateExpression("!isOwner()"));
-
     // noOwner() || isOwner() - with noOwner being true and isOwner false
     table.setOwners(null);
     assertTrue(evaluateExpression("noOwner() || isOwner()"));
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
-
     // noOwner() || isOwner() - with noOwner is false and isOwner true
     table.setOwners(
         List.of(
@@ -278,7 +269,6 @@ class RuleEvaluatorTest {
                 .withName(user.getName())));
     assertTrue(evaluateExpression("noOwner() || isOwner()"));
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
-
     // Verify that parent owner has the necessary permissions to create child entities -
     // createResourceContext
     Role dataConsumerRole = new Role().withId(UUID.randomUUID()).withName(DATA_CONSUMER_ROLE_NAME);
@@ -298,18 +288,15 @@ class RuleEvaluatorTest {
             DATA_CONSUMER_ROLE_NAME,
             policy.getName(),
             compiledRules);
-
     subjectContext = new SubjectContext(ownerUser, null);
     RuleEvaluator ruleEvaluator =
         new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
-
     subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertFalse(evaluateExpression("isOwner()"));
-
     // Verify that domain owner has the necessary permissions to create/edit its  dataProduct -
     // ResourceContext (edit related permissions)
     Rule editRule =
@@ -327,7 +314,6 @@ class RuleEvaluatorTest {
             DATA_CONSUMER_ROLE_NAME,
             policy.getName(),
             compiledRules);
-
     subjectContext = new SubjectContext(ownerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
@@ -336,7 +322,6 @@ class RuleEvaluatorTest {
         new RuleEvaluator(policyContext, subjectContext, createResourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
     assertTrue(evaluateExpression("isOwner()"));
-
     subjectContext = new SubjectContext(nonOwnerUser, null);
     ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContextDataProduct);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
@@ -350,36 +335,31 @@ class RuleEvaluatorTest {
   @Test
   void test_isReviewer() {
     GlossaryRepository glossaryRepository = stubIndexingPolicy(mock(GlossaryRepository.class));
+    Mockito.when(glossaryRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(Glossary.class));
     Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);
-
     User reviewer = new User().withId(UUID.randomUUID()).withName("reviewerUser");
     EntityReference reviewerRef =
         new EntityReference()
             .withId(reviewer.getId())
             .withType(Entity.USER)
             .withName("reviewerUser");
-
     Glossary glossary =
         new Glossary()
             .withId(UUID.randomUUID())
             .withName("testGlossary")
             .withReviewers(List.of(reviewerRef));
-
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.GLOSSARY, glossary.getId()), JsonUtils.pojoToJson(glossary));
-
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.GLOSSARY, glossary.getId()), JsonUtils.pojoToJson(glossary));
     SubjectContext subjectContext = new SubjectContext(reviewer, null);
-
     ResourceContext<Glossary> glossaryResourceContext =
         new ResourceContext<>(Entity.GLOSSARY, glossary, glossaryRepository);
-
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, glossaryResourceContext);
     EvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-
     assertTrue(
         parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
         "Reviewer user should return true for isReviewer()");
-
     User otherUser = new User().withId(UUID.randomUUID()).withName("otherUser");
     SubjectContext otherSubjectContext = new SubjectContext(otherUser, null);
     ruleEvaluator = new RuleEvaluator(null, otherSubjectContext, glossaryResourceContext);
@@ -387,7 +367,6 @@ class RuleEvaluatorTest {
     assertFalse(
         parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
         "Non-reviewer user should return false for isReviewer()");
-
     Glossary createGlossary =
         new Glossary()
             .withId(UUID.randomUUID())
@@ -405,7 +384,6 @@ class RuleEvaluatorTest {
   @Test
   void test_matchAllTags() {
     table.withTags(getTags("tag1", "tag2", "tag3"));
-
     // All tags present
     assertTrue(evaluateExpression("matchAllTags('tag1', 'tag2', 'tag3')"));
     assertFalse(evaluateExpression("!matchAllTags('tag1', 'tag2', 'tag3')"));
@@ -413,7 +391,6 @@ class RuleEvaluatorTest {
     assertFalse(evaluateExpression("!matchAllTags('tag1', 'tag2')"));
     assertTrue(evaluateExpression("matchAllTags('tag1')"));
     assertFalse(evaluateExpression("!matchAllTags('tag1')"));
-
     // Tag 'tag4' is missing
     assertFalse(evaluateExpression("matchAllTags('tag1', 'tag2', 'tag3', 'tag4')"));
     assertTrue(evaluateExpression("!matchAllTags('tag1', 'tag2', 'tag3', 'tag4')"));
@@ -430,15 +407,12 @@ class RuleEvaluatorTest {
     // Test the scenario where getTags() returns null (e.g., due to deny policies)
     // Set table tags to null to simulate the deny policy scenario
     table.setTags(null);
-
     // Create a mock ResourceContext that returns null for getTags()
     ResourceContext<?> nullTagsResourceContext = Mockito.spy(resourceContext);
     Mockito.when(nullTagsResourceContext.getTags()).thenReturn(null);
-
     // Create RuleEvaluator with the mock context
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, nullTagsResourceContext);
     EvaluationContext testEvaluationContext = new StandardEvaluationContext(ruleEvaluator);
-
     // Test that matchAllTags handles null tags gracefully without throwing NPE
     // Before the fix, this would throw: "Cannot invoke \"java.util.List.toArray()\" because
     // \"tags\" is null"
@@ -446,7 +420,6 @@ class RuleEvaluatorTest {
         parseExpression("matchAllTags('tag1', 'tag2')")
             .getValue(testEvaluationContext, Boolean.class);
     assertNotEquals(Boolean.TRUE, result, "matchAllTags should return false when tags is null");
-
     // Test with single tag
     result = parseExpression("matchAllTags('tag1')").getValue(testEvaluationContext, Boolean.class);
     assertNotEquals(Boolean.TRUE, result, "matchAllTags should return false when tags is null");
@@ -455,7 +428,6 @@ class RuleEvaluatorTest {
   @Test
   void test_matchAnyTag() {
     table.withTags(getTags("tag1", "tag2", "tag3"));
-
     // Tag is present
     assertTrue(evaluateExpression("matchAnyTag('tag1', 'tag2', 'tag3', 'tag4')"));
     assertFalse(evaluateExpression("!matchAnyTag('tag1', 'tag2', 'tag3', 'tag4')"));
@@ -465,7 +437,6 @@ class RuleEvaluatorTest {
     assertFalse(evaluateExpression("!matchAnyTag('tag1', 'tag2', 'tag4')"));
     assertTrue(evaluateExpression("matchAnyTag('tag1', 'tag4')"));
     assertFalse(evaluateExpression("!matchAnyTag('tag1', 'tag4')"));
-
     // Tag `tag4` is not present
     assertFalse(evaluateExpression("matchAnyTag('tag4')"));
     assertTrue(evaluateExpression("!matchAnyTag('tag4')"));
@@ -478,10 +449,8 @@ class RuleEvaluatorTest {
     assertTrue(
         evaluateExpression("!matchAnyCertification('Certification.Gold', 'Certification.Silver')"));
     assertFalse(evaluateExpression("matchAnyCertification('Certification.Bronze')"));
-
     table.withCertification(
         new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
-
     // Certification is present
     assertTrue(
         evaluateExpression("matchAnyCertification('Certification.Gold', 'Certification.Silver')"));
@@ -489,7 +458,6 @@ class RuleEvaluatorTest {
         evaluateExpression("!matchAnyCertification('Certification.Gold', 'Certification.Silver')"));
     assertTrue(evaluateExpression("matchAnyCertification('Certification.Gold')"));
     assertFalse(evaluateExpression("!matchAnyCertification('Certification.Gold')"));
-
     // Certification is different
     assertFalse(
         evaluateExpression(
@@ -505,10 +473,8 @@ class RuleEvaluatorTest {
   void test_matchAnyCertification_nullEntity() {
     ResourceContextInterface nullEntityContext = mock(ResourceContextInterface.class);
     Mockito.when(nullEntityContext.getEntity()).thenReturn(null);
-
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, nullEntityContext);
     EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
-
     assertFalse(
         parseExpression("matchAnyCertification('Certification.Gold')")
             .getValue(ctx, Boolean.class));
@@ -521,7 +487,6 @@ class RuleEvaluatorTest {
   void test_matchAnyCertification_nullResourceContext() {
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, null);
     EvaluationContext ctx = new StandardEvaluationContext(ruleEvaluator);
-
     assertFalse(
         parseExpression("matchAnyCertification('Certification.Gold')")
             .getValue(ctx, Boolean.class));
@@ -537,36 +502,35 @@ class RuleEvaluatorTest {
     Team team11 = createTeam("team11", "team1");
     Team team12 = createTeam("team12", "team1");
     Team team111 = createTeam("team111", "team11");
-
     // Resource belongs to team111 and the Policy executed is coming from team111
     table.setOwners(List.of(team111.getEntityReference()));
     updatePolicyContext("team111");
-    for (Team team : listOf(team111)) { // For users in team111 hierarchy matchTeam is true
+    for (Team team : listOf(team111)) {
+      // For users in team111 hierarchy matchTeam is true
       user.setTeams(listOf(team.getEntityReference()));
       assertTrue(evaluateExpression("matchTeam()"));
     }
-    for (Team team :
-        listOf(team1, team12, team11)) { // For users not in team111 hierarchy matchTeam is false
+    for (Team team : listOf(team1, team12, team11)) {
+      // For users not in team111 hierarchy matchTeam is false
       user.setTeams(listOf(team.getEntityReference()));
       assertFalse(evaluateExpression("matchTeam()"), "Failed for team " + team.getName());
     }
-
     // Resource belongs to team111 and the Policy executed is coming from team11
     updatePolicyContext("team11");
-    for (Team team : listOf(team11, team111)) { // For users in team11 hierarchy matchTeam is true
+    for (Team team : listOf(team11, team111)) {
+      // For users in team11 hierarchy matchTeam is true
       user.setTeams(listOf(team.getEntityReference()));
       assertTrue(evaluateExpression("matchTeam()"));
     }
-    for (Team team :
-        listOf(team1, team12)) { // For users not in team11 hierarchy matchTeam is false
+    for (Team team : listOf(team1, team12)) {
+      // For users not in team11 hierarchy matchTeam is false
       user.setTeams(listOf(team.getEntityReference()));
       assertFalse(evaluateExpression("matchTeam()"), "Failed for team " + team.getName());
     }
-
     // Resource belongs to team111 and the Policy executed is coming from team1
     updatePolicyContext("team1");
-    for (Team team :
-        listOf(team1, team11, team111, team12)) { // For users in team1 hierarchy matchTeam is true
+    for (Team team : listOf(team1, team11, team111, team12)) {
+      // For users in team1 hierarchy matchTeam is true
       user.setTeams(listOf(team.getEntityReference()));
       assertTrue(evaluateExpression("matchTeam()"));
     }
@@ -579,20 +543,17 @@ class RuleEvaluatorTest {
     createTeam("team11", "team1");
     Team team12 = createTeam("team12", "team1");
     Team team111 = createTeam("team111", "team11");
-
     // User in team111 - that means user is also in parent teams team11 and team1
     user.setTeams(listOf(team111.getEntityReference()));
     assertTrue(evaluateExpression("inAnyTeam('team1')"));
     assertTrue(evaluateExpression("inAnyTeam('team11')"));
     assertTrue(evaluateExpression("inAnyTeam('team111')"));
     assertFalse(evaluateExpression("inAnyTeam('team12')"));
-
     // User in team12 - that means user is also in parent team team1
     user.setTeams(listOf(team12.getEntityReference()));
     assertTrue(evaluateExpression("inAnyTeam('team1')"));
     assertTrue(evaluateExpression("inAnyTeam('team12')"));
     assertFalse(evaluateExpression("inAnyTeam('team111', 'team11')"));
-
     // User in team1 with no parents
     user.setTeams(listOf(team1.getEntityReference()));
     assertTrue(evaluateExpression("inAnyTeam('team1')"));
@@ -606,19 +567,16 @@ class RuleEvaluatorTest {
     Team team11 = createTeamWithRole("team11", "team1");
     Team team111 = createTeamWithRole("team111", "team11");
     user.setRoles(listOf(createRole("user").getEntityReference()));
-
     // User in team111 inherits all roles
     user.setTeams(listOf(team111.getEntityReference()));
     for (String role : listOf("user", "team111", "team11", "team1")) {
       assertTrue(evaluateExpression(String.format("hasAnyRole('%s')", role)));
     }
-
     // User in team11 inherits all roles except team111
     user.setTeams(listOf(team11.getEntityReference()));
     for (String role : listOf("user", "team11", "team1")) {
       assertTrue(evaluateExpression(String.format("hasAnyRole('%s')", role)));
     }
-
     // User in team1 does not have parent team to inherit from
     user.setTeams(listOf(team1.getEntityReference()));
     for (String role : listOf("user", "team1")) {
@@ -636,21 +594,17 @@ class RuleEvaluatorTest {
             .withName("test-task")
             .withFullyQualifiedName("test-task")
             .withCreatedBy(filer.getEntityReference().withType(Entity.USER).withName("filer"));
-
     TaskResourceContext taskContext = new TaskResourceContext(task);
-
     // Filer sees themselves as the task filer
     SubjectContext filerSubject = new SubjectContext(filer, null);
     RuleEvaluator evaluator = new RuleEvaluator(null, filerSubject, taskContext);
     EvaluationContext ctx = new StandardEvaluationContext(evaluator);
     assertTrue(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
-
     // Another user does not match the filer
     SubjectContext otherSubject = new SubjectContext(other, null);
     evaluator = new RuleEvaluator(null, otherSubject, taskContext);
     ctx = new StandardEvaluationContext(evaluator);
     assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
-
     // Task with no createdBy is not filed by anyone
     Task unowned = new Task().withId(UUID.randomUUID()).withName("unowned");
     TaskResourceContext unownedContext = new TaskResourceContext(unowned);
@@ -669,7 +623,6 @@ class RuleEvaluatorTest {
             .withName("teamMember")
             .withTeams(List.of(team.getEntityReference()));
     User outsider = new User().withId(UUID.randomUUID()).withName("outsider");
-
     EntityReference assigneeRef = assignee.getEntityReference().withType(Entity.USER);
     EntityReference teamRef = team.getEntityReference().withType(Entity.TEAM);
     Task task =
@@ -677,18 +630,14 @@ class RuleEvaluatorTest {
             .withId(UUID.randomUUID())
             .withName("assign-task")
             .withAssignees(List.of(assigneeRef, teamRef));
-
     TaskResourceContext taskContext = new TaskResourceContext(task);
-
     RuleEvaluator evaluator =
         new RuleEvaluator(null, new SubjectContext(assignee, null), taskContext);
     EvaluationContext ctx = new StandardEvaluationContext(evaluator);
     assertTrue(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
-
     evaluator = new RuleEvaluator(null, new SubjectContext(teamMember, null), taskContext);
     ctx = new StandardEvaluationContext(evaluator);
     assertTrue(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
-
     evaluator = new RuleEvaluator(null, new SubjectContext(outsider, null), taskContext);
     ctx = new StandardEvaluationContext(evaluator);
     assertFalse(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
@@ -704,14 +653,11 @@ class RuleEvaluatorTest {
             .withId(UUID.randomUUID())
             .withName("review-task")
             .withReviewers(List.of(reviewerRef));
-
     TaskResourceContext taskContext = new TaskResourceContext(task);
-
     RuleEvaluator evaluator =
         new RuleEvaluator(null, new SubjectContext(reviewer, null), taskContext);
     EvaluationContext ctx = new StandardEvaluationContext(evaluator);
     assertTrue(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
-
     evaluator = new RuleEvaluator(null, new SubjectContext(other, null), taskContext);
     ctx = new StandardEvaluationContext(evaluator);
     assertFalse(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
@@ -732,7 +678,6 @@ class RuleEvaluatorTest {
     User adminTarget =
         new User().withId(UUID.randomUUID()).withName("admin-target").withIsAdmin(true);
     User regularTarget = new User().withId(UUID.randomUUID()).withName("regular-target");
-
     assertTrue(evaluateUserResourceCondition(adminTarget, "isAdminUser()"));
     assertFalse(evaluateUserResourceCondition(adminTarget, "!isAdminUser()"));
     assertFalse(evaluateUserResourceCondition(regularTarget, "isAdminUser()"));
@@ -743,7 +688,6 @@ class RuleEvaluatorTest {
   void test_isBotUser() {
     User botTarget = new User().withId(UUID.randomUUID()).withName("bot-target").withIsBot(true);
     User regularTarget = new User().withId(UUID.randomUUID()).withName("regular-target");
-
     assertTrue(evaluateUserResourceCondition(botTarget, "isBotUser()"));
     assertFalse(evaluateUserResourceCondition(botTarget, "isAdminUser()"));
     assertFalse(evaluateUserResourceCondition(regularTarget, "isBotUser()"));
@@ -774,18 +718,15 @@ class RuleEvaluatorTest {
   @Test
   void test_bareResourceContextCannotSeeTags() {
     table.withTags(getTags("MCP.DEMO"));
-
     RuleEvaluator bare =
         new RuleEvaluator(null, subjectContext, new ResourceContext<>(Entity.TABLE));
     EvaluationContext bareContext = new StandardEvaluationContext(bare);
-
     assertFalse(
         parseExpression("matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
         "an unresolved context reads a present tag as absent");
     assertTrue(
         parseExpression("!matchAnyTag('MCP.DEMO')").getValue(bareContext, Boolean.class),
         "so the negated form is true for a tagged entity, and a Deny over-blocks");
-
     // The entity-scoped context, which is what the fixed callers build, sees the truth.
     assertTrue(evaluateExpression("matchAnyTag('MCP.DEMO')"));
     assertFalse(evaluateExpression("!matchAnyTag('MCP.DEMO')"));
@@ -812,14 +753,15 @@ class RuleEvaluatorTest {
           Entity.getEntityReferenceById(Entity.TEAM, parentId, Include.NON_DELETED);
       team.setParents(listOf(parentTeam));
     }
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    EntityCaches.byId()
+        .put(new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
     return team;
   }
 
   private Team createTeamWithRole(String teamName, String parentName) {
     Team team = createTeam(teamName, parentName);
-    Role role = createRole(teamName); // Create a role with same name as the teamName
+    // Create a role with same name as the teamName
+    Role role = createRole(teamName);
     team.setDefaultRoles(listOf(role.getEntityReference()));
     team.setInheritedRoles(new ArrayList<>());
     for (EntityReference parent : listOrEmpty(team.getParents())) {
@@ -828,16 +770,16 @@ class RuleEvaluatorTest {
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getDefaultRoles()));
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getInheritedRoles()));
     }
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    EntityCaches.byId()
+        .put(new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
     return team;
   }
 
   private Role createRole(String roleName) {
     UUID roleId = UUID.nameUUIDFromBytes(roleName.getBytes(StandardCharsets.UTF_8));
     Role role = new Role().withName(roleName).withId(roleId);
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
+    EntityCaches.byId()
+        .put(new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
     return role;
   }
 
@@ -855,80 +797,73 @@ class RuleEvaluatorTest {
             .withId(UUID.randomUUID())
             .withName("Engineering")
             .withFullyQualifiedName("Engineering");
-
     Domain subDomain =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("Backend")
             .withFullyQualifiedName("Engineering.Backend")
             .withParent(rootDomain.getEntityReference());
-
     Domain subSubDomain =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("APIs")
             .withFullyQualifiedName("Engineering.Backend.APIs")
             .withParent(subDomain.getEntityReference());
-
     Domain unrelatedDomain =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("Marketing")
             .withFullyQualifiedName("Marketing");
-
     // Cache domains for Entity.getEntity calls
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, rootDomain.getId()), JsonUtils.pojoToJson(rootDomain));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, subDomain.getId()), JsonUtils.pojoToJson(subDomain));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, subSubDomain.getId()),
-        JsonUtils.pojoToJson(subSubDomain));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, unrelatedDomain.getId()),
-        JsonUtils.pojoToJson(unrelatedDomain));
-
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, rootDomain.getId()),
+            JsonUtils.pojoToJson(rootDomain));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, subDomain.getId()), JsonUtils.pojoToJson(subDomain));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, subSubDomain.getId()),
+            JsonUtils.pojoToJson(subSubDomain));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, unrelatedDomain.getId()),
+            JsonUtils.pojoToJson(unrelatedDomain));
     // Test 1: User with no domains should not have access
     user.setDomains(null);
     table.setDomains(List.of(rootDomain.getEntityReference()));
     assertFalse(evaluateExpression("hasDomain()"));
     assertTrue(evaluateExpression("!hasDomain()"));
-
     // Test 2: User with direct domain access
     user.setDomains(List.of(rootDomain.getEntityReference()));
     table.setDomains(List.of(rootDomain.getEntityReference()));
     assertTrue(evaluateExpression("hasDomain()"));
     assertFalse(evaluateExpression("!hasDomain()"));
-
     // Test 3: User with parent domain should have access to sub-domain resources
     user.setDomains(List.of(rootDomain.getEntityReference()));
     table.setDomains(List.of(subDomain.getEntityReference()));
     assertTrue(evaluateExpression("hasDomain()"));
     assertFalse(evaluateExpression("!hasDomain()"));
-
     // Test 4: User with parent domain should have access to nested sub-domain resources
     user.setDomains(List.of(rootDomain.getEntityReference()));
     table.setDomains(List.of(subSubDomain.getEntityReference()));
     assertTrue(evaluateExpression("hasDomain()"));
     assertFalse(evaluateExpression("!hasDomain()"));
-
     // Test 5: User should not have access to unrelated domains
     user.setDomains(List.of(rootDomain.getEntityReference()));
     table.setDomains(List.of(unrelatedDomain.getEntityReference()));
     assertFalse(evaluateExpression("hasDomain()"));
     assertTrue(evaluateExpression("!hasDomain()"));
-
     // Test 6: User with multiple domains
     user.setDomains(
         Arrays.asList(rootDomain.getEntityReference(), unrelatedDomain.getEntityReference()));
     table.setDomains(List.of(subDomain.getEntityReference()));
     assertTrue(evaluateExpression("hasDomain()"));
-
     // Test 7: Resource with no domains - everyone has access
     user.setDomains(List.of(rootDomain.getEntityReference()));
     table.setDomains(null);
     assertTrue(evaluateExpression("hasDomain()"));
-
     // Test 8: Resource with multiple domains
     user.setDomains(List.of(rootDomain.getEntityReference()));
     table.setDomains(
@@ -944,54 +879,50 @@ class RuleEvaluatorTest {
             .withId(UUID.randomUUID())
             .withName("Company")
             .withFullyQualifiedName("Company");
-
     Domain engineering =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("Engineering")
             .withFullyQualifiedName("Company.Engineering")
             .withParent(company.getEntityReference());
-
     Domain dataEngineering =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("DataEngineering")
             .withFullyQualifiedName("Company.Engineering.DataEngineering")
             .withParent(engineering.getEntityReference());
-
     Domain analytics =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("Analytics")
             .withFullyQualifiedName("Company.Analytics")
             .withParent(company.getEntityReference());
-
     // Cache domains
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, company.getId()), JsonUtils.pojoToJson(company));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, engineering.getId()), JsonUtils.pojoToJson(engineering));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, dataEngineering.getId()),
-        JsonUtils.pojoToJson(dataEngineering));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, analytics.getId()), JsonUtils.pojoToJson(analytics));
-
+    EntityCaches.byId()
+        .put(new ImmutablePair<>(Entity.DOMAIN, company.getId()), JsonUtils.pojoToJson(company));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, engineering.getId()),
+            JsonUtils.pojoToJson(engineering));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, dataEngineering.getId()),
+            JsonUtils.pojoToJson(dataEngineering));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, analytics.getId()), JsonUtils.pojoToJson(analytics));
     // Test: User with Engineering domain should have access to DataEngineering resources
     user.setDomains(List.of(engineering.getEntityReference()));
     table.setDomains(List.of(dataEngineering.getEntityReference()));
     assertTrue(evaluateExpression("hasDomain()"));
-
     // Test: User with Engineering domain should NOT have access to Analytics resources
     user.setDomains(List.of(engineering.getEntityReference()));
     table.setDomains(List.of(analytics.getEntityReference()));
     assertFalse(evaluateExpression("hasDomain()"));
-
     // Test: User with Company domain should have access to all sub-domains
     user.setDomains(List.of(company.getEntityReference()));
     table.setDomains(List.of(dataEngineering.getEntityReference()));
     assertTrue(evaluateExpression("hasDomain()"));
-
     table.setDomains(List.of(analytics.getEntityReference()));
     assertTrue(evaluateExpression("hasDomain()"));
   }
@@ -999,73 +930,60 @@ class RuleEvaluatorTest {
   @Test
   void test_hasDomain_edgeCases_realFQNFormat() {
     // Test edge cases for domain hierarchy matching using proper OpenMetadata FQN format
-
     // Edge Case 1: Domains with dots in names (quoted format)
     Domain corpDomain = createDomain("Corp.Domain", "\"Corp.Domain\"");
     Domain corpSubDomain = createDomain("Sub.Division", "\"Corp.Domain\".\"Sub.Division\"");
     Domain corpDifferent = createDomain("Other.Division", "\"Corp.Domain\".\"Other.Division\"");
-
     user.setDomains(List.of(corpDomain.getEntityReference()));
     table.setDomains(List.of(corpSubDomain.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"),
         "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Sub.Division\"' resources");
-
     user.setDomains(List.of(corpDomain.getEntityReference()));
     table.setDomains(List.of(corpDifferent.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"),
         "User with '\"Corp.Domain\"' should have access to '\"Corp.Domain\".\"Other.Division\"' resources");
-
     // Edge Case 2: Similar but different root domains
     Domain engineering = createDomain("Engineering", "Engineering");
     Domain engineeringOps = createDomain("EngineeringOps", "EngineeringOps");
-
     user.setDomains(List.of(engineering.getEntityReference()));
     table.setDomains(List.of(engineeringOps.getEntityReference()));
     assertFalse(
         evaluateExpression("hasDomain()"),
         "User with 'Engineering' domain should NOT have access to 'EngineeringOps' resources");
-
     // Edge Case 3: Multi-level hierarchy with quoted names
     Domain rootWithDots = createDomain("AI.ML", "\"AI.ML\"");
     Domain level2 = createDomain("Models.Production", "\"AI.ML\".\"Models.Production\"");
     Domain level3 = createDomain("Team.Alpha", "\"AI.ML\".\"Models.Production\".\"Team.Alpha\"");
-
     // Test root can access deep levels
     user.setDomains(List.of(rootWithDots.getEntityReference()));
     table.setDomains(List.of(level3.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"),
         "User with root domain should have access to deep hierarchy");
-
     // Test middle level can access child but not parent
     user.setDomains(List.of(level2.getEntityReference()));
     table.setDomains(List.of(level3.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain()"), "User with middle level should have access to child");
-
     user.setDomains(List.of(level2.getEntityReference()));
     table.setDomains(List.of(rootWithDots.getEntityReference()));
     assertFalse(
         evaluateExpression("hasDomain()"),
         "User with middle level should NOT have access to parent");
-
     // Edge Case 4: Empty/null domains
     user.setDomains(null);
     table.setDomains(List.of(engineering.getEntityReference()));
     assertFalse(evaluateExpression("hasDomain()"), "User with null domains should not have access");
-
     user.setDomains(List.of(engineering.getEntityReference()));
     table.setDomains(null);
     assertTrue(
         evaluateExpression("hasDomain()"),
         "Resource with null domains should allow access to any user");
-
     // Edge Case 5: Mixed quoted and unquoted
     Domain simpleRoot = createDomain("SimpleRoot", "SimpleRoot");
     Domain quotedChild = createDomain("Child.With.Dots", "SimpleRoot.\"Child.With.Dots\"");
-
     user.setDomains(List.of(simpleRoot.getEntityReference()));
     table.setDomains(List.of(quotedChild.getEntityReference()));
     assertTrue(
@@ -1076,8 +994,8 @@ class RuleEvaluatorTest {
   private Domain createDomain(String name, String fqn) {
     Domain domain =
         new Domain().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(fqn);
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, domain.getId()), JsonUtils.pojoToJson(domain));
+    EntityCaches.byId()
+        .put(new ImmutablePair<>(Entity.DOMAIN, domain.getId()), JsonUtils.pojoToJson(domain));
     return domain;
   }
 
@@ -1085,76 +1003,67 @@ class RuleEvaluatorTest {
   void test_hasDomain_hierarchicalAccess_parentDomainUsersCanAccessSubDomainResources() {
     // This test explicitly demonstrates that hasDomain() includes hierarchical access
     // where users with parent domain access can access resources in sub-domains
-
     // Create domain hierarchy: Finance -> Finance.Accounting -> Finance.Accounting.Payroll
     Domain financeDomain =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("Finance")
             .withFullyQualifiedName("Finance");
-
     Domain accountingDomain =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("Accounting")
             .withFullyQualifiedName("Finance.Accounting")
             .withParent(financeDomain.getEntityReference());
-
     Domain payrollDomain =
         new Domain()
             .withId(UUID.randomUUID())
             .withName("Payroll")
             .withFullyQualifiedName("Finance.Accounting.Payroll")
             .withParent(accountingDomain.getEntityReference());
-
     // Cache domains for Entity.getEntity calls
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, financeDomain.getId()),
-        JsonUtils.pojoToJson(financeDomain));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, accountingDomain.getId()),
-        JsonUtils.pojoToJson(accountingDomain));
-    EntityRepository.CACHE_WITH_ID.put(
-        new ImmutablePair<>(Entity.DOMAIN, payrollDomain.getId()),
-        JsonUtils.pojoToJson(payrollDomain));
-
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, financeDomain.getId()),
+            JsonUtils.pojoToJson(financeDomain));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, accountingDomain.getId()),
+            JsonUtils.pojoToJson(accountingDomain));
+    EntityCaches.byId()
+        .put(
+            new ImmutablePair<>(Entity.DOMAIN, payrollDomain.getId()),
+            JsonUtils.pojoToJson(payrollDomain));
     // MAIN TEST: User with Finance domain access should have access to Payroll resources
     // This is the core functionality - parent domain users can access sub-domain resources
     EntityReference financeRef = financeDomain.getEntityReference();
     EntityReference payrollRef = payrollDomain.getEntityReference();
     EntityReference accountingRef = accountingDomain.getEntityReference();
-
     user.setDomains(List.of(financeRef));
     table.setDomains(List.of(payrollRef));
-
     // This assertion proves that hasDomain() checks sub-domains hierarchically
     assertTrue(
         evaluateExpression("hasDomain()"),
         "User with Finance domain should have access to Finance.Accounting.Payroll resources");
-
     // Also test with intermediate domain
     table.setDomains(List.of(accountingRef));
     assertTrue(
         evaluateExpression("hasDomain()"),
         "User with Finance domain should have access to Finance.Accounting resources");
-
     // Test the opposite - user with sub-domain should NOT have access to parent domain resources
     user.setDomains(List.of(payrollRef));
     table.setDomains(List.of(financeRef));
     assertFalse(
         evaluateExpression("hasDomain()"),
         "User with Payroll domain should NOT have access to Finance domain resources");
-
     // Test with policy expression combinations
     user.setDomains(List.of(financeRef));
     table.setDomains(List.of(payrollRef));
-
     // Set up table with proper owner to test complex expressions
     table.setOwners(List.of(user.getEntityReference()));
     assertTrue(
         evaluateExpression("hasDomain() && !noOwner()"),
         "Complex expression with hasDomain should work for sub-domain access");
-
     // Test with no owner
     table.setOwners(null);
     assertTrue(
@@ -1167,97 +1076,77 @@ class RuleEvaluatorTest {
     // Test 1: Entity with no domains assigned
     CreateResourceContext<?> contextNoDomains = mock(CreateResourceContext.class);
     Mockito.when(contextNoDomains.getDomains()).thenReturn(new ArrayList<>());
-
     RuleEvaluator ruleEvaluatorNoDomains =
         new RuleEvaluator(null, subjectContext, contextNoDomains);
     StandardEvaluationContext contextEmpty = new StandardEvaluationContext(ruleEvaluatorNoDomains);
-
     // Should return true when entity has no domains
     Boolean noDomainResult = parseExpression("noDomain()").getValue(contextEmpty, Boolean.class);
     assertTrue(noDomainResult);
-
     // Test 2: Entity with null domains (no parent entities)
     CreateResourceContext<?> contextNullDomains = mock(CreateResourceContext.class);
     Mockito.when(contextNullDomains.getDomains()).thenReturn(null);
-
     RuleEvaluator ruleEvaluatorNullDomains =
         new RuleEvaluator(null, subjectContext, contextNullDomains);
     StandardEvaluationContext contextNull = new StandardEvaluationContext(ruleEvaluatorNullDomains);
-
     // Should return true when getDomains() returns null
     Boolean noDomainNullResult = parseExpression("noDomain()").getValue(contextNull, Boolean.class);
     assertTrue(noDomainNullResult);
-
     // Test 3: Entity with directly assigned domains
     EntityReference domainRef =
         new EntityReference()
             .withId(UUID.randomUUID())
             .withName("Engineering")
             .withFullyQualifiedName("Engineering");
-
     CreateResourceContext<?> contextWithDomains = mock(CreateResourceContext.class);
     Mockito.when(contextWithDomains.getDomains()).thenReturn(listOf(domainRef));
-
     RuleEvaluator ruleEvaluatorWithDomains =
         new RuleEvaluator(null, subjectContext, contextWithDomains);
     StandardEvaluationContext contextWithDomainsEval =
         new StandardEvaluationContext(ruleEvaluatorWithDomains);
-
     // Should return false when entity has domains
     Boolean hasDomainResult =
         parseExpression("noDomain()").getValue(contextWithDomainsEval, Boolean.class);
     assertFalse(hasDomainResult);
-
     // Test 4: Entity with inherited domains from parent
     EntityReference inheritedDomainRef =
         new EntityReference()
             .withId(UUID.randomUUID())
             .withName("DataScience")
             .withFullyQualifiedName("DataScience");
-
     CreateResourceContext<?> contextWithInheritedDomains = mock(CreateResourceContext.class);
     Mockito.when(contextWithInheritedDomains.getDomains()).thenReturn(listOf(inheritedDomainRef));
-
     RuleEvaluator ruleEvaluatorWithInheritedDomains =
         new RuleEvaluator(null, subjectContext, contextWithInheritedDomains);
     StandardEvaluationContext contextInherited =
         new StandardEvaluationContext(ruleEvaluatorWithInheritedDomains);
-
     // Should return false when entity has inherited domains
     Boolean inheritedDomainResult =
         parseExpression("noDomain()").getValue(contextInherited, Boolean.class);
     assertTrue(inheritedDomainResult != null && !inheritedDomainResult);
-
     // Test 5: Entity with multiple domains (direct + inherited)
     EntityReference domain2Ref =
         new EntityReference()
             .withId(UUID.randomUUID())
             .withName("Marketing")
             .withFullyQualifiedName("Marketing");
-
     CreateResourceContext<?> contextWithMultipleDomains = mock(CreateResourceContext.class);
     Mockito.when(contextWithMultipleDomains.getDomains())
         .thenReturn(listOf(domainRef, inheritedDomainRef, domain2Ref));
-
     RuleEvaluator ruleEvaluatorWithMultipleDomains =
         new RuleEvaluator(null, subjectContext, contextWithMultipleDomains);
     StandardEvaluationContext contextMultiple =
         new StandardEvaluationContext(ruleEvaluatorWithMultipleDomains);
-
     // Should return false when entity has multiple domains
     Boolean multipleDomainResult =
         parseExpression("noDomain()").getValue(contextMultiple, Boolean.class);
     assertTrue(multipleDomainResult != null && !multipleDomainResult);
-
     // Test 6: Negation tests - !noDomain()
     Boolean negatedNoDomainEmpty =
         parseExpression("!noDomain()").getValue(contextEmpty, Boolean.class);
     assertTrue(negatedNoDomainEmpty != null && !negatedNoDomainEmpty);
-
     Boolean negatedNoDomainWithDomains =
         parseExpression("!noDomain()").getValue(contextWithDomainsEval, Boolean.class);
     assertTrue(negatedNoDomainWithDomains != null && negatedNoDomainWithDomains);
-
     Boolean negatedNoDomainInherited =
         parseExpression("!noDomain()").getValue(contextInherited, Boolean.class);
     assertTrue(negatedNoDomainInherited != null && negatedNoDomainInherited);
@@ -1277,7 +1166,7 @@ class RuleEvaluatorTest {
    * would make {@link Entity#isSearchIndexable} report every entity of that type as non-indexable
    * for the rest of the JVM and break unrelated tests that run later.
    */
-  private static <T extends EntityRepository<?>> T stubIndexingPolicy(T repository) {
+  private static <T extends EntityPolicy<?>> T stubIndexingPolicy(T repository) {
     Mockito.doReturn(true).when(repository).isSearchIndexable(any());
     Mockito.doReturn(true).when(repository).isVectorEmbeddable(any());
     return repository;

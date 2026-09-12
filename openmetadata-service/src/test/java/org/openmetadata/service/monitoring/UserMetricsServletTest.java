@@ -3,7 +3,6 @@ package org.openmetadata.service.monitoring;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -26,10 +25,10 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageFixture;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 @ExtendWith(MockitoExtension.class)
 class UserMetricsServletTest {
@@ -106,9 +105,8 @@ class UserMetricsServletTest {
 
       // Mock the fallback listAfter method to return empty list
       ResultList<User> emptyResult = new ResultList<>();
-      when(userRepository.listAfter(
-              any(), any(EntityUtil.Fields.class), any(ListFilter.class), anyInt(), any()))
-          .thenReturn(emptyResult);
+      when(userRepository.pages())
+          .thenReturn(new EntityPageFixture<>((projection, limit, cursor) -> emptyResult));
 
       servlet.doGet(request, response);
 

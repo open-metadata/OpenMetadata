@@ -51,6 +51,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -134,7 +137,9 @@ public class OneTransactionFlushAtomicityIT {
     repo.failOnStore = true;
 
     RuntimeException thrown =
-        assertThrows(RuntimeException.class, () -> repo.createInternal(chart));
+        assertThrows(
+            RuntimeException.class,
+            () -> repo.creates().create(chart, new EntityCommandActor(null, null)));
     assertNotNull(thrown);
 
     UUID id = chart.getId();
@@ -153,7 +158,7 @@ public class OneTransactionFlushAtomicityIT {
     Chart chart = buildChart(ns, "atomicOk", true);
     ChartRepository repo = new ChartRepository();
 
-    Chart created = repo.createInternal(chart);
+    Chart created = repo.creates().create(chart, new EntityCommandActor(null, null));
     assertNotNull(created.getId());
 
     Chart byId = SdkClients.adminClient().charts().get(created.getId().toString(), "owners,tags");
@@ -176,7 +181,7 @@ public class OneTransactionFlushAtomicityIT {
     FaultyChartRepository repo = new FaultyChartRepository();
     repo.deadlockOnFirstAttempt = true;
 
-    Chart created = repo.createInternal(chart);
+    Chart created = repo.creates().create(chart, new EntityCommandActor(null, null));
     assertNotNull(created.getId());
     assertEquals(2, repo.storeAttempts, "first attempt deadlocks, second succeeds");
 
@@ -251,7 +256,8 @@ public class OneTransactionFlushAtomicityIT {
   @Test
   void midUpdateFailureLeavesEntityUnchanged(TestNamespace ns) {
     Chart chart = buildChart(ns, "updateAtomicFail", true);
-    Chart original = new ChartRepository().createInternal(chart);
+    Chart original =
+        new ChartRepository().creates().create(chart, new EntityCommandActor(null, null));
     Double originalVersion = original.getVersion();
 
     Chart updated = JsonUtils.deepCopy(original, Chart.class);
@@ -262,7 +268,14 @@ public class OneTransactionFlushAtomicityIT {
 
     assertThrows(
         RuntimeException.class,
-        () -> repo.update(null, JsonUtils.deepCopy(original, Chart.class), updated, "admin"));
+        () ->
+            repo.puts()
+                .update(
+                    null,
+                    JsonUtils.deepCopy(original, Chart.class),
+                    updated,
+                    new EntityCommandActor("admin", null),
+                    EntityPutService.Mode.NORMAL));
 
     Chart afterFailure =
         SdkClients.adminClient().charts().get(original.getId().toString(), "owners,tags");
@@ -275,7 +288,8 @@ public class OneTransactionFlushAtomicityIT {
   @Test
   void updateDeadlockReplaysWithSingleVersionBump(TestNamespace ns) {
     Chart chart = buildChart(ns, "updateDeadlock", true);
-    Chart original = new ChartRepository().createInternal(chart);
+    Chart original =
+        new ChartRepository().creates().create(chart, new EntityCommandActor(null, null));
 
     Chart updated = JsonUtils.deepCopy(original, Chart.class);
     updated.setDescription("deadlock-replayed-description");
@@ -283,7 +297,13 @@ public class OneTransactionFlushAtomicityIT {
     FaultyChartRepository repo = new FaultyChartRepository();
     repo.deadlockOnFirstUpdateStore = true;
 
-    repo.update(null, JsonUtils.deepCopy(original, Chart.class), updated, "admin");
+    repo.puts()
+        .update(
+            null,
+            JsonUtils.deepCopy(original, Chart.class),
+            updated,
+            new EntityCommandActor("admin", null),
+            EntityPutService.Mode.NORMAL);
     assertEquals(2, repo.updateStoreAttempts, "first update store deadlocks, second succeeds");
 
     Chart afterReplay =
@@ -304,12 +324,18 @@ public class OneTransactionFlushAtomicityIT {
   void consolidatingPatchDeadlockReplayProducesCorrectVersion(TestNamespace ns) {
     Chart chart = buildChart(ns, "consolidatePatch", false);
     ChartRepository setupRepo = new ChartRepository();
-    Chart v01 = setupRepo.createInternal(chart);
+    Chart v01 = setupRepo.creates().create(chart, new EntityCommandActor(null, null));
 
     Chart v02Source = JsonUtils.deepCopy(v01, Chart.class);
     v02Source.setDescription("first-patch");
-    setupRepo.patch(
-        null, v01.getId(), "admin", JsonUtils.getJsonPatch(v01, v02Source), null, null, null);
+    setupRepo
+        .patches()
+        .patch(
+            new EntityPatchService.Target.Id(v01.getId()),
+            JsonUtils.getJsonPatch(v01, v02Source),
+            new EntityCommandActor("admin", null),
+            null,
+            new EntityPatchService.Options(null, null));
 
     Chart current =
         SdkClients.adminClient().charts().get(v01.getId().toString(), "owners,tags,description");
@@ -322,7 +348,13 @@ public class OneTransactionFlushAtomicityIT {
 
     FaultyChartRepository repo = new FaultyChartRepository();
     repo.deadlockOnFirstUpdateStore = true;
-    repo.patch(null, v01.getId(), "admin", consolidatingPatch, null, null, null);
+    repo.patches()
+        .patch(
+            new EntityPatchService.Target.Id(v01.getId()),
+            consolidatingPatch,
+            new EntityCommandActor("admin", null),
+            null,
+            new EntityPatchService.Options(null, null));
 
     assertEquals(2, repo.updateStoreAttempts, "consolidating patch deadlocks once then replays");
 
@@ -353,7 +385,8 @@ public class OneTransactionFlushAtomicityIT {
     assumeTrue(TestSuiteBootstrap.isRedisEnabled(), "requires cacheProvider=redis");
 
     Chart chart = buildChart(ns, "redisRyw", true);
-    Chart created = new ChartRepository().createInternal(chart);
+    Chart created =
+        new ChartRepository().creates().create(chart, new EntityCommandActor(null, null));
 
     Chart afterCreate =
         SdkClients.adminClient().charts().get(created.getId().toString(), "owners,tags");
@@ -364,7 +397,13 @@ public class OneTransactionFlushAtomicityIT {
     Chart updated = JsonUtils.deepCopy(afterCreate, Chart.class);
     updated.setDescription("redis-l2-updated");
     new ChartRepository()
-        .update(null, JsonUtils.deepCopy(afterCreate, Chart.class), updated, "admin");
+        .puts()
+        .update(
+            null,
+            JsonUtils.deepCopy(afterCreate, Chart.class),
+            updated,
+            new EntityCommandActor("admin", null),
+            EntityPutService.Mode.NORMAL);
 
     Chart afterUpdateById =
         SdkClients.adminClient().charts().get(created.getId().toString(), "owners,tags");
@@ -419,7 +458,13 @@ public class OneTransactionFlushAtomicityIT {
 
     FaultyGlossaryTermRepository repo = new FaultyGlossaryTermRepository();
     repo.deadlockOnFirstUpdateStore = true;
-    repo.update(null, JsonUtils.deepCopy(original, GlossaryTerm.class), updated, "admin");
+    repo.puts()
+        .update(
+            null,
+            JsonUtils.deepCopy(original, GlossaryTerm.class),
+            updated,
+            new EntityCommandActor("admin", null),
+            EntityPutService.Mode.NORMAL);
     assertEquals(2, repo.updateStoreAttempts, "first rename store deadlocks, second succeeds");
 
     GlossaryTerm renamedParent =
@@ -460,7 +505,13 @@ public class OneTransactionFlushAtomicityIT {
 
     FaultyDataProductRepository repo = new FaultyDataProductRepository();
     repo.deadlockOnFirstUpdateStore = true;
-    repo.update(null, JsonUtils.deepCopy(original, DataProduct.class), updated, "admin");
+    repo.puts()
+        .update(
+            null,
+            JsonUtils.deepCopy(original, DataProduct.class),
+            updated,
+            new EntityCommandActor("admin", null),
+            EntityPutService.Mode.NORMAL);
     assertEquals(
         2, repo.updateStoreAttempts, "first domain-change store deadlocks, second succeeds");
 

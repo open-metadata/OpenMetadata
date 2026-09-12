@@ -34,8 +34,10 @@ import org.openmetadata.schema.api.data.OntologyStructuralDiff;
 import org.openmetadata.schema.api.data.OntologyStructuralDiffRequest;
 import org.openmetadata.schema.api.data.OntologyStructuralMergeResult;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
@@ -47,6 +49,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/ontology/structure")
 @Tag(
@@ -112,7 +115,15 @@ public final class OntologyStructureResource {
   }
 
   private Glossary glossary(final UUID id) {
-    return glossaryRepository.get(null, id, glossaryRepository.getFields(""));
+    return glossaryRepository
+        .reads()
+        .byId(
+            id,
+            new EntityReadService.Query(
+                null,
+                glossaryRepository.fieldPolicy().parse(""),
+                RelationIncludes.fromInclude(Include.NON_DELETED),
+                false));
   }
 
   private void authorize(

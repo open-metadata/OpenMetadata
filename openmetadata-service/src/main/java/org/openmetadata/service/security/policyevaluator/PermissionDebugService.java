@@ -15,26 +15,42 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.*;
-import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo.*;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.DirectRolePermission;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.InheritedPermission;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.PermissionSummary;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.PolicyInfo;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.RolePermission;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.RuleInfo;
+import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.TeamPermission;
+import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo.ConditionEvaluation;
+import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo.EvaluationSummary;
+import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo.PolicyEvaluationStep;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
 @Slf4j
 public class PermissionDebugService {
+
   private static final String ALLOW_EFFECT = Rule.Effect.ALLOW.value();
+
   private static final String DENY_EFFECT = Rule.Effect.DENY.value();
 
   private final UserRepository userRepository;
+
   private final TeamRepository teamRepository;
+
   private final RoleRepository roleRepository;
+
   private final PolicyRepository policyRepository;
 
   public PermissionDebugService() {
@@ -45,26 +61,21 @@ public class PermissionDebugService {
   }
 
   public PermissionDebugInfo debugUserPermissionsByName(String userName) {
-    User user = userRepository.getByName(null, userName, userRepository.getFields("*"));
+    User user = userRepository.getByName(null, userName, userRepository.fieldPolicy().parse("*"));
     return debugUserPermissions(user);
   }
 
   private PermissionDebugInfo debugUserPermissions(User user) {
     PermissionDebugInfo debugInfo = new PermissionDebugInfo();
     debugInfo.setUser(user.getEntityReference());
-
     // Process direct roles
     processDirectRoles(user, debugInfo);
-
     // Process team permissions (including hierarchy)
     processTeamPermissions(user, debugInfo);
-
     // Process other inherited permissions (domain, owner, etc.)
     processOtherInheritedPermissions(user, debugInfo);
-
     // Generate summary
     generateSummary(debugInfo);
-
     return debugInfo;
   }
 
@@ -72,22 +83,36 @@ public class PermissionDebugService {
     if (user.getRoles() == null || user.getRoles().isEmpty()) {
       return;
     }
-
     for (EntityReference roleRef : user.getRoles()) {
-      Role role = roleRepository.get(null, roleRef.getId(), roleRepository.getFields("*"));
+      Role role =
+          roleRepository
+              .reads()
+              .byId(
+                  roleRef.getId(),
+                  new EntityReadService.Query(
+                      null,
+                      roleRepository.fieldPolicy().parse("*"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       DirectRolePermission directRole = new DirectRolePermission();
       directRole.setRole(role.getEntityReference());
-
       // Get policies for this role
       if (role.getPolicies() != null) {
         for (EntityReference policyRef : role.getPolicies()) {
           Policy policy =
-              policyRepository.get(null, policyRef.getId(), policyRepository.getFields("*"));
+              policyRepository
+                  .reads()
+                  .byId(
+                      policyRef.getId(),
+                      new EntityReadService.Query(
+                          null,
+                          policyRepository.fieldPolicy().parse("*"),
+                          RelationIncludes.fromInclude(Include.NON_DELETED),
+                          false));
           PolicyInfo policyInfo = convertPolicyToInfo(policy);
           directRole.getPolicies().add(policyInfo);
         }
       }
-
       debugInfo.getDirectRoles().add(directRole);
     }
   }
@@ -96,9 +121,17 @@ public class PermissionDebugService {
     if (user.getTeams() == null || user.getTeams().isEmpty()) {
       return;
     }
-
     for (EntityReference teamRef : user.getTeams()) {
-      Team team = teamRepository.get(null, teamRef.getId(), teamRepository.getFields("*"));
+      Team team =
+          teamRepository
+              .reads()
+              .byId(
+                  teamRef.getId(),
+                  new EntityReadService.Query(
+                      null,
+                      teamRepository.fieldPolicy().parse("*"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       processTeamHierarchy(team, debugInfo, 0);
     }
   }
@@ -108,7 +141,6 @@ public class PermissionDebugService {
     teamPermission.setTeam(team.getEntityReference());
     teamPermission.setTeamType(team.getTeamType().value());
     teamPermission.setHierarchyLevel(level);
-
     // Build team hierarchy path
     List<EntityReference> hierarchy = new ArrayList<>();
     Team currentTeam = team;
@@ -117,53 +149,89 @@ public class PermissionDebugService {
       if (currentTeam.getParents() != null && !currentTeam.getParents().isEmpty()) {
         // Get the first parent (assuming single parent for simplicity)
         EntityReference parentRef = currentTeam.getParents().get(0);
-        currentTeam = teamRepository.get(null, parentRef.getId(), teamRepository.getFields("*"));
+        currentTeam =
+            teamRepository
+                .reads()
+                .byId(
+                    parentRef.getId(),
+                    new EntityReadService.Query(
+                        null,
+                        teamRepository.fieldPolicy().parse("*"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
       } else {
         currentTeam = null;
       }
     }
     teamPermission.setTeamHierarchy(hierarchy);
-
     // Process team's default roles
     if (team.getDefaultRoles() != null) {
       for (EntityReference roleRef : team.getDefaultRoles()) {
-        Role role = roleRepository.get(null, roleRef.getId(), roleRepository.getFields("*"));
+        Role role =
+            roleRepository
+                .reads()
+                .byId(
+                    roleRef.getId(),
+                    new EntityReadService.Query(
+                        null,
+                        roleRepository.fieldPolicy().parse("*"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
         RolePermission rolePermission = new RolePermission();
         rolePermission.setRole(role.getEntityReference());
         rolePermission.setInheritedFrom(team.getName());
         rolePermission.setDefaultRole(true);
-
         // Get policies for this role
         if (role.getPolicies() != null) {
           for (EntityReference policyRef : role.getPolicies()) {
             Policy policy =
-                policyRepository.get(null, policyRef.getId(), policyRepository.getFields("*"));
+                policyRepository
+                    .reads()
+                    .byId(
+                        policyRef.getId(),
+                        new EntityReadService.Query(
+                            null,
+                            policyRepository.fieldPolicy().parse("*"),
+                            RelationIncludes.fromInclude(Include.NON_DELETED),
+                            false));
             PolicyInfo policyInfo = convertPolicyToInfo(policy);
             rolePermission.getPolicies().add(policyInfo);
           }
         }
-
         teamPermission.getRolePermissions().add(rolePermission);
       }
     }
-
     // Process team's direct policies
     if (team.getPolicies() != null) {
       for (EntityReference policyRef : team.getPolicies()) {
         Policy policy =
-            policyRepository.get(null, policyRef.getId(), policyRepository.getFields("*"));
+            policyRepository
+                .reads()
+                .byId(
+                    policyRef.getId(),
+                    new EntityReadService.Query(
+                        null,
+                        policyRepository.fieldPolicy().parse("*"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
         PolicyInfo policyInfo = convertPolicyToInfo(policy);
         teamPermission.getDirectPolicies().add(policyInfo);
       }
     }
-
     debugInfo.getTeamPermissions().add(teamPermission);
-
     // Process parent teams
     if (team.getParents() != null && !team.getParents().isEmpty()) {
       for (EntityReference parentRef : team.getParents()) {
         Team parentTeam =
-            teamRepository.get(null, parentRef.getId(), teamRepository.getFields("*"));
+            teamRepository
+                .reads()
+                .byId(
+                    parentRef.getId(),
+                    new EntityReadService.Query(
+                        null,
+                        teamRepository.fieldPolicy().parse("*"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
         processTeamHierarchy(parentTeam, debugInfo, level + 1);
       }
     }
@@ -177,7 +245,6 @@ public class PermissionDebugService {
       adminPermission.setDescription("User has admin privileges");
       debugInfo.getInheritedPermissions().add(adminPermission);
     }
-
     // Check domain permissions
     if (user.getDomains() != null && !user.getDomains().isEmpty()) {
       for (EntityReference domainRef : user.getDomains()) {
@@ -193,35 +260,28 @@ public class PermissionDebugService {
   private PolicyInfo convertPolicyToInfo(Policy policy) {
     PolicyInfo policyInfo = new PolicyInfo();
     policyInfo.setPolicy(policy.getEntityReference());
-
     if (policy.getRules() != null) {
       for (Rule rule : policy.getRules()) {
         RuleInfo ruleInfo = new RuleInfo();
         ruleInfo.setName(rule.getName());
         ruleInfo.setEffect(normalizeEffect(rule.getEffect()));
-
         if (rule.getOperations() != null) {
           ruleInfo.setOperations(
               rule.getOperations().stream()
                   .map(MetadataOperation::value)
                   .collect(Collectors.toList()));
         }
-
         if (rule.getResources() != null) {
           ruleInfo.setResources(rule.getResources());
         }
-
         if (rule.getCondition() != null) {
           ruleInfo.setCondition(rule.getCondition());
         }
-
         policyInfo.getRules().add(ruleInfo);
       }
-
       // Determine overall policy effect
       boolean hasAllow = policyInfo.getRules().stream().anyMatch(r -> isAllowEffect(r.getEffect()));
       boolean hasDeny = policyInfo.getRules().stream().anyMatch(r -> isDenyEffect(r.getEffect()));
-
       if (hasDeny && hasAllow) {
         policyInfo.setEffect("MIXED");
       } else if (hasDeny) {
@@ -230,16 +290,13 @@ public class PermissionDebugService {
         policyInfo.setEffect("ALLOW");
       }
     }
-
     return policyInfo;
   }
 
   private void generateSummary(PermissionDebugInfo debugInfo) {
     PermissionSummary summary = new PermissionSummary();
-
     // Count direct roles
     summary.setDirectRoles(debugInfo.getDirectRoles().size());
-
     // Count total unique roles
     Set<String> uniqueRoles = new HashSet<>();
     debugInfo.getDirectRoles().forEach(dr -> uniqueRoles.add(dr.getRole().getName()));
@@ -249,13 +306,11 @@ public class PermissionDebugService {
             tp -> tp.getRolePermissions().forEach(rp -> uniqueRoles.add(rp.getRole().getName())));
     summary.setTotalRoles(uniqueRoles.size());
     summary.setInheritedRoles(summary.getTotalRoles() - summary.getDirectRoles());
-
     // Count policies and rules
     Set<String> uniquePolicies = new HashSet<>();
     int totalRules = 0;
     Set<String> allowedOps = new HashSet<>();
     Set<String> deniedOps = new HashSet<>();
-
     // From direct roles
     for (DirectRolePermission drp : debugInfo.getDirectRoles()) {
       for (PolicyInfo pi : drp.getPolicies()) {
@@ -264,14 +319,12 @@ public class PermissionDebugService {
         collectOperations(pi, allowedOps, deniedOps);
       }
     }
-
     // From teams
     Set<String> uniqueTeams = new HashSet<>();
     int maxDepth = 0;
     for (TeamPermission tp : debugInfo.getTeamPermissions()) {
       uniqueTeams.add(tp.getTeam().getName());
       maxDepth = Math.max(maxDepth, tp.getHierarchyLevel());
-
       for (RolePermission rp : tp.getRolePermissions()) {
         for (PolicyInfo pi : rp.getPolicies()) {
           uniquePolicies.add(pi.getPolicy().getName());
@@ -279,21 +332,18 @@ public class PermissionDebugService {
           collectOperations(pi, allowedOps, deniedOps);
         }
       }
-
       for (PolicyInfo pi : tp.getDirectPolicies()) {
         uniquePolicies.add(pi.getPolicy().getName());
         totalRules += pi.getRules().size();
         collectOperations(pi, allowedOps, deniedOps);
       }
     }
-
     summary.setTotalPolicies(uniquePolicies.size());
     summary.setTotalRules(totalRules);
     summary.setTeamCount(uniqueTeams.size());
     summary.setMaxHierarchyDepth(maxDepth);
     summary.setEffectiveOperations(new ArrayList<>(allowedOps));
     summary.setDeniedOperations(new ArrayList<>(deniedOps));
-
     debugInfo.setSummary(summary);
   }
 
@@ -310,27 +360,34 @@ public class PermissionDebugService {
   public PermissionEvaluationDebugInfo debugPermissionEvaluation(
       String userName, String resourceType, String resourceIdOrFqn, MetadataOperation operation) {
     long startTime = System.currentTimeMillis();
-
-    User user = userRepository.getByName(null, userName, userRepository.getFields("*"));
-
+    User user = userRepository.getByName(null, userName, userRepository.fieldPolicy().parse("*"));
     PermissionEvaluationDebugInfo debugInfo = new PermissionEvaluationDebugInfo();
     debugInfo.setUser(user.getEntityReference());
     debugInfo.setResource(resourceType);
     debugInfo.setResourceId(resourceIdOrFqn);
     debugInfo.setOperation(operation);
-
     // Get the resource if resourceIdOrFqn is provided
     EntityInterface resource = null;
     if (resourceIdOrFqn != null) {
       try {
-        EntityRepository<?> repository = Entity.getEntityRepository(resourceType);
+        EntityPolicy<?> repository = Entity.getEntityRepository(resourceType);
         // Try to parse as UUID first
         try {
           UUID resourceId = UUID.fromString(resourceIdOrFqn);
-          resource = repository.get(null, resourceId, repository.getFields("*"));
+          resource =
+              repository
+                  .reads()
+                  .byId(
+                      resourceId,
+                      new EntityReadService.Query(
+                          null,
+                          repository.fieldPolicy().parse("*"),
+                          RelationIncludes.fromInclude(Include.NON_DELETED),
+                          false));
         } catch (IllegalArgumentException e) {
           // Not a UUID, try as FQN
-          resource = repository.getByName(null, resourceIdOrFqn, repository.getFields("*"));
+          resource =
+              repository.getByName(null, resourceIdOrFqn, repository.fieldPolicy().parse("*"));
         }
       } catch (Exception e) {
         LOG.warn(
@@ -340,7 +397,6 @@ public class PermissionDebugService {
             e.getMessage());
       }
     }
-
     // Create evaluation contexts
     SubjectContext subjectContext = new SubjectContext(user, null);
     ResourceContext resourceContext =
@@ -348,11 +404,9 @@ public class PermissionDebugService {
             ? new ResourceContext(resourceType, resource, Entity.getEntityRepository(resourceType))
             : new ResourceContext(resourceType);
     OperationContext operationContext = new OperationContext(resourceType, operation);
-
     // Track evaluation steps
     List<PolicyEvaluationStep> evaluationSteps = new ArrayList<>();
     int stepNumber = 1;
-
     // Evaluate policies with tracking
     boolean finalDecision =
         evaluatePoliciesWithTracking(
@@ -362,11 +416,9 @@ public class PermissionDebugService {
             operation,
             evaluationSteps,
             stepNumber);
-
     debugInfo.setAllowed(finalDecision);
     debugInfo.setFinalDecision(finalDecision ? "ALLOWED" : "DENIED");
     debugInfo.setEvaluationSteps(evaluationSteps);
-
     // Generate summary
     EvaluationSummary summary = new EvaluationSummary();
     summary.setTotalPoliciesEvaluated(
@@ -384,7 +436,6 @@ public class PermissionDebugService {
             evaluationSteps.stream()
                 .filter(s -> s.isMatched() && isAllowEffect(s.getEffect()))
                 .count());
-
     if (!finalDecision) {
       if (summary.getDenyRules() > 0) {
         summary.getReasonsForDecision().add("Denied by explicit DENY rule(s)");
@@ -394,10 +445,8 @@ public class PermissionDebugService {
     } else {
       summary.getReasonsForDecision().add("Allowed by matching ALLOW rule(s)");
     }
-
     summary.setEvaluationTimeMs(System.currentTimeMillis() - startTime);
     debugInfo.setSummary(summary);
-
     return debugInfo;
   }
 
@@ -408,34 +457,26 @@ public class PermissionDebugService {
       MetadataOperation operation,
       List<PolicyEvaluationStep> evaluationSteps,
       int startStepNumber) {
-
     int stepNumber = startStepNumber;
-
     // Get all policies for the user
     Iterator<SubjectContext.PolicyContext> policyIterator = subjectContext.getPolicies(null);
-
     boolean hasDenyMatch = false;
     boolean hasAllowMatch = false;
-
     while (policyIterator.hasNext()) {
       SubjectContext.PolicyContext policyContext = policyIterator.next();
       List<CompiledRule> rules = policyContext.getRules();
-
       for (CompiledRule compiledRule : rules) {
         // For permission debugging, we're checking a single specific operation
         List<MetadataOperation> operations = operationContext.getOperations(resourceContext);
-
         // If operations is null or empty, use the single operation from operationContext
         if (operations == null || operations.isEmpty()) {
           operations = List.of(operation);
         }
-
         for (MetadataOperation op : operations) {
           PolicyEvaluationStep step =
               createEvaluationStep(
                   stepNumber++, policyContext, compiledRule, subjectContext, resourceContext, op);
           evaluationSteps.add(step);
-
           if (step.isMatched()) {
             if (compiledRule.getEffect() == Rule.Effect.DENY) {
               hasDenyMatch = true;
@@ -446,12 +487,10 @@ public class PermissionDebugService {
         }
       }
     }
-
     // Deny takes precedence
     if (hasDenyMatch) {
       return false;
     }
-
     return hasAllowMatch;
   }
 
@@ -462,24 +501,19 @@ public class PermissionDebugService {
       SubjectContext subjectContext,
       ResourceContext resourceContext,
       MetadataOperation operation) {
-
     PolicyEvaluationStep step = new PolicyEvaluationStep();
     step.setStepNumber(stepNumber);
-
     // Create policy reference
     EntityReference policyRef = new EntityReference();
     policyRef.setName(policyContext.getPolicyName());
     policyRef.setType(Entity.POLICY);
     step.setPolicy(policyRef);
-
     step.setRule(rule.getName());
     step.setEffect(normalizeEffect(rule.getEffect()));
-
     // Determine source based on entity type and role
     String entityType = policyContext.getEntityType();
     String entityName = policyContext.getEntityName();
     String roleName = policyContext.getRoleName();
-
     if (Entity.USER.equals(entityType)) {
       if (roleName != null) {
         step.setSource("DIRECT_ROLE");
@@ -505,16 +539,13 @@ public class PermissionDebugService {
       teamRef.setType(Entity.TEAM);
       step.setSourceEntity(teamRef);
     }
-
     // Check if rule matches - use the same logic as CompiledRule
     boolean operationMatches = matchOperation(rule, operation);
     boolean resourceMatches = rule.matchResource(resourceContext.getResource());
     boolean conditionMatches = true;
-
     if (rule.getCondition() != null && !rule.getCondition().isEmpty()) {
       ConditionEvaluation condEval = new ConditionEvaluation();
       condEval.setCondition(rule.getCondition());
-
       try {
         Expression expression = CompiledRule.parseExpression(rule.getCondition());
         if (expression != null) {
@@ -535,13 +566,10 @@ public class PermissionDebugService {
         condEval.setResult(false);
         condEval.setEvaluationDetails("Condition evaluation failed: " + e.getMessage());
       }
-
       step.getConditionEvaluations().add(condEval);
     }
-
     boolean matched = operationMatches && resourceMatches && conditionMatches;
     step.setMatched(matched);
-
     if (!matched) {
       List<String> reasons = new ArrayList<>();
       if (!operationMatches) {
@@ -557,7 +585,6 @@ public class PermissionDebugService {
     } else {
       step.setMatchReason("Matched: operation, resource, and conditions all satisfied");
     }
-
     return step;
   }
 
@@ -565,7 +592,8 @@ public class PermissionDebugService {
   private boolean matchOperation(CompiledRule rule, MetadataOperation operation) {
     List<MetadataOperation> operations = rule.getOperations();
     if (operations.contains(MetadataOperation.ALL)) {
-      return true; // Match all operations
+      // Match all operations
+      return true;
     }
     if (operations.contains(MetadataOperation.EDIT_ALL)
         && OperationContext.isEditOperation(operation)) {

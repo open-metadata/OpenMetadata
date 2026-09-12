@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.kpi.KpiService;
 import org.openmetadata.service.resources.kpi.KpiResource;
 
@@ -229,8 +231,6 @@ public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
   }
 
   @Test
-  @org.junit.jupiter.api.Disabled(
-      "KPI PUT expects CreateKpiRequest, not Kpi entity - needs SDK update")
   void put_kpiUpdate_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -247,12 +247,19 @@ public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
     Kpi kpi = createEntity(request);
     assertEquals(80.0, kpi.getTargetValue());
 
-    kpi.setTargetValue(90.0);
-    kpi.setDescription("Updated description");
-    Kpi updated = patchEntity(kpi.getId().toString(), kpi);
+    request
+        .withTargetValue(90.0)
+        .withDescription("Updated description")
+        .withDataInsightChart(KpiDataInsightChart.PERCENTAGE_OF_DATA_ASSET_WITH_OWNER_KPI);
+    Kpi updated = client.getHttpClient().execute(HttpMethod.PUT, "/v1/kpi", request, Kpi.class);
 
+    assertEquals(kpi.getId(), updated.getId());
     assertEquals(90.0, updated.getTargetValue());
     assertEquals("Updated description", updated.getDescription());
+    assertNotEquals(kpi.getDataInsightChart().getId(), updated.getDataInsightChart().getId());
+    Kpi stored = getKpiService().get(kpi.getId().toString(), "dataInsightChart");
+    assertEquals(updated.getDataInsightChart().getId(), stored.getDataInsightChart().getId());
+    assertEquals(90.0, stored.getTargetValue());
   }
 
   @Test

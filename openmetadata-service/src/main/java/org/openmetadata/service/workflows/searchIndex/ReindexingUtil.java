@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes.TIME_SERIES_ENTITIES;
@@ -45,7 +44,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -56,13 +55,17 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ReindexingUtil {
+
   private ReindexingUtil() {
     /*unused*/
   }
 
   public static final String ENTITY_TYPE_KEY = "entityType";
+
   public static final String TIMESTAMP_KEY = "@timestamp";
+
   public static final String TARGET_INDEX_KEY = "targetIndex";
+
   public static final String RECREATE_CONTEXT = "recreateContext";
 
   /**
@@ -244,11 +247,10 @@ public class ReindexingUtil {
     Stats initialStats = new Stats();
     EntityStats entityLevelStat = new EntityStats();
     int total = 0;
-
     for (String entityType : entities) {
       try {
         if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-          EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+          EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
           int entityCount = repository.getDao().listTotalCount();
           total += entityCount;
           entityLevelStat.withAdditionalProperty(
@@ -324,7 +326,6 @@ public class ReindexingUtil {
     List<EntityReference> entities = new ArrayList<>();
     Response response = Entity.getSearchRepository().search(searchRequest, null);
     String json = (String) response.getEntity();
-
     for (Iterator<JsonNode> it =
             ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
         it.hasNext(); ) {
@@ -340,7 +341,6 @@ public class ReindexingUtil {
                 .withType(type));
       }
     }
-
     return entities;
   }
 

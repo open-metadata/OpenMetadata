@@ -32,8 +32,10 @@ import java.util.UUID;
 import org.openmetadata.schema.api.data.BuildOntologySubset;
 import org.openmetadata.schema.api.data.OntologySubsetResult;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
@@ -43,6 +45,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/ontology/subsets")
 @Tag(name = "Ontology Subsets", description = "Version-pinned application ontology subset builder.")
@@ -83,7 +86,15 @@ public final class OntologySubsetResource {
   }
 
   private Glossary glossary(final UUID id) {
-    return glossaryRepository.get(null, id, glossaryRepository.getFields(""));
+    return glossaryRepository
+        .reads()
+        .byId(
+            id,
+            new EntityReadService.Query(
+                null,
+                glossaryRepository.fieldPolicy().parse(""),
+                RelationIncludes.fromInclude(Include.NON_DELETED),
+                false));
   }
 
   private void authorize(

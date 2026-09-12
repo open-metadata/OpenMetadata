@@ -17,9 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -47,6 +44,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.formatter.util.ActivityMessageFormatter;
 import org.openmetadata.service.formatter.util.FormattedMessage;
@@ -344,14 +343,17 @@ class RichPlatformMessageDecoratorTest {
 
   private static TestCaseRepository mockTestCaseRepository(TestCase testCase) {
     TestCaseRepository repository = mock(TestCaseRepository.class);
-    when(repository.getFields("*")).thenReturn(null);
-    when(repository.getByName(
-            isNull(),
-            eq(testCase.getFullyQualifiedName()),
-            any(),
-            eq(Include.NON_DELETED),
-            eq(false)))
-        .thenReturn(testCase);
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(TestCase.class));
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (readName, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(testCase.getFullyQualifiedName(), readName);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return testCase;
+                }));
     return repository;
   }
 }

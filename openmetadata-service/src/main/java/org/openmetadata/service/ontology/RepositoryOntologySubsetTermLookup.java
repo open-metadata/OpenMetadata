@@ -17,10 +17,13 @@ import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.ontology.OntologySubsetTermSelector.TermLookup;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 final class RepositoryOntologySubsetTermLookup implements TermLookup {
   private static final String SUBSET_FIELDS = "parent,relatedTerms,attributes,conceptMappings";
@@ -29,18 +32,26 @@ final class RepositoryOntologySubsetTermLookup implements TermLookup {
 
   RepositoryOntologySubsetTermLookup(final GlossaryTermRepository repository) {
     this.repository = repository;
-    fields = repository.getFields(SUBSET_FIELDS);
+    fields = repository.fieldPolicy().parse(SUBSET_FIELDS);
   }
 
   @Override
   public GlossaryTerm read(final UUID termId) {
-    return repository.get(null, termId, fields, Include.NON_DELETED, false);
+    return repository
+        .reads()
+        .byId(
+            termId,
+            new EntityReadService.Query(
+                null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
   }
 
   @Override
   public List<GlossaryTerm> descendants(final GlossaryTerm root, final int limit) {
     final ListFilter filter =
         new ListFilter(Include.NON_DELETED).addQueryParam("parent", root.getFullyQualifiedName());
-    return repository.listAfter(null, fields, filter, limit, null).getData();
+    return repository
+        .pages()
+        .after(new EntityPageReader.Projection(null, fields, filter), limit, null)
+        .getData();
   }
 }

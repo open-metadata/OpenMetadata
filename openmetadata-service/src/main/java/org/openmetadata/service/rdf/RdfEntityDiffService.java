@@ -184,7 +184,9 @@ public final class RdfEntityDiffService {
 
   private static EntityInterface readVersion(
       final String entityType, final UUID entityId, final Double version) {
-    return Entity.getEntityRepository(entityType).getVersion(entityId, version.toString());
+    return Entity.getEntityRepository(entityType)
+        .versions()
+        .getVersion(entityId, version.toString());
   }
 
   @FunctionalInterface

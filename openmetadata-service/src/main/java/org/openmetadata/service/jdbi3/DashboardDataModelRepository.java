@@ -10,18 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -34,11 +30,21 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.DerivedTagLoader;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityColumnMutation;
+import org.openmetadata.service.entity.write.EntityColumnUpdater;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -47,26 +53,29 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+@Repository()
+public class DashboardDataModelRepository implements EntityPolicy<DashboardDataModel> {
+
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
 
   public DashboardDataModelRepository() {
-    super(
-        DashboardDataModelResource.COLLECTION_PATH,
-        Entity.DASHBOARD_DATA_MODEL,
-        DashboardDataModel.class,
-        Entity.getCollectionDAO().dashboardDataModelDAO(),
-        "",
-        "",
-        CHANGE_SUMMARY_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DashboardDataModelResource.COLLECTION_PATH,
+                Entity.DASHBOARD_DATA_MODEL,
+                DashboardDataModel.class,
+                Entity.getCollectionDAO().dashboardDataModelDAO()),
+            new EntityPolicyContext.WriteFields("", "", CHANGE_SUMMARY_FIELDS),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
-
+    context().options().setDescendantsCoveredByAncestorCascade(true);
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldLoading().register(FIELD_TAGS, this::fetchAndSetColumnTags);
   }
 
   @Override
@@ -89,30 +98,30 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service");
   }
 
   @Override
   public void storeEntity(DashboardDataModel dashboardDataModel, boolean update) {
-    store(dashboardDataModel, update);
+    persistence().store(dashboardDataModel, update);
   }
 
   @Override
   public void storeEntities(List<DashboardDataModel> entities) {
-    storeMany(entities);
+    persistence().insertMany(entities);
   }
 
   @Override
-  protected List<Column> getColumnsForExtensionPersistence(DashboardDataModel entity) {
+  public List<Column> getColumnsForExtensionPersistence(DashboardDataModel entity) {
     return entity.getColumns();
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DashboardDataModel::getId).toList();
-    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteToMany(ids, context().schema().entityType(), Relationship.CONTAINS, null);
   }
 
   @Override
@@ -122,7 +131,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  protected void storeEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
+  public void storeEntitySpecificRelationshipsForMany(List<DashboardDataModel> entities) {
     List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
     for (DashboardDataModel dataModel : entities) {
       EntityReference service = dataModel.getService();
@@ -134,7 +143,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
               service.getId(),
               dataModel.getId(),
               service.getType(),
-              entityType,
+              context().schema().entityType(),
               Relationship.CONTAINS));
     }
     bulkInsertRelationships(relationships);
@@ -145,7 +154,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       DashboardDataModel dashboardDataModel, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(dashboardDataModel);
     populateEntityFieldTags(
-        entityType,
+        context().schema().entityType(),
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
@@ -160,7 +169,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
-    EntityReference service = getContainer(dashboardDataModel.getId());
+    EntityReference service = relationships().container(dashboardDataModel.getId(), null);
     dashboardDataModel.withService(service);
   }
 
@@ -168,7 +177,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     try {
       String extensionKey = FullyQualifiedName.buildHash(columnFQN);
       String extensionJson =
-          daoCollection.entityExtensionDAO().getExtension(dataModelId, extensionKey);
+          context()
+              .dependencies()
+              .daos()
+              .entityExtensionDAO()
+              .getExtension(dataModelId, extensionKey);
       if (extensionJson != null) {
         return JsonUtils.readValue(extensionJson, Object.class);
       }
@@ -179,25 +192,19 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   // Individual field fetchers registered in constructor
+  @Override
+  public DerivedTagLoader.FailureMode derivedTagFailureMode() {
+    return DerivedTagLoader.FailureMode.FALL_BACK_TO_INDIVIDUAL;
+  }
+
   private void fetchAndSetColumnTags(List<DashboardDataModel> dataModels, Fields fields) {
     if (!fields.contains(FIELD_TAGS) || dataModels == null || dataModels.isEmpty()) {
       return;
     }
-
-    // First, fetch entity-level tags (important for search indexing)
-    List<String> entityFQNs =
-        dataModels.stream().map(DashboardDataModel::getFullyQualifiedName).toList();
-    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
-    for (DashboardDataModel dataModel : dataModels) {
-      dataModel.setTags(
-          addDerivedTagsGracefully(
-              tagsMap.getOrDefault(dataModel.getFullyQualifiedName(), Collections.emptyList())));
-    }
-
     // Then, if columns field is requested, also fetch column-level tags
     if (fields.contains("columns")) {
       // Use bulk tag fetching to avoid N+1 queries
-      bulkPopulateEntityFieldTags(dataModels, DashboardDataModel::getColumns);
+      fieldTags().populate(dataModels, DashboardDataModel::getColumns);
     }
   }
 
@@ -209,35 +216,30 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (dataModels.isEmpty()) {
       return;
     }
-
     // Set default fields (service) for all data models
     for (DashboardDataModel dataModel : dataModels) {
       setDefaultFields(dataModel);
     }
-
-    fetchAndSetFields(dataModels, fields);
+    fieldLoading().populate(dataModels, fields);
     setInheritedFields(dataModels, fields);
-
-    // Bulk fetch tags for columns if needed
-    fetchAndSetColumnTags(dataModels, fields);
   }
 
   @Override
   public void restorePatchAttributes(DashboardDataModel original, DashboardDataModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
   }
 
   @Override
   public void applyTags(DashboardDataModel dashboardDataModel) {
     // Add table level tags by adding tag to table relationship
-    super.applyTags(dashboardDataModel);
-    applyColumnTags(dashboardDataModel.getColumns());
+    EntityPolicy.super.applyTags(dashboardDataModel);
+    tagWrites().addColumns(dashboardDataModel.getColumns());
   }
 
   @Override
-  protected EntityReference getParentReference(DashboardDataModel entity) {
+  public EntityReference getParentReference(DashboardDataModel entity) {
     return entity.getService();
   }
 
@@ -250,63 +252,88 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public EntityRepository<DashboardDataModel>.EntityUpdater getUpdater(
+  public EntityUpdater<DashboardDataModel> getUpdater(
       DashboardDataModel original,
       DashboardDataModel updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new DataModelUpdater(original, updated, operation);
+    return new DataModelUpdater(original, updated, operation).mutation();
   }
 
   @Override
   public void validateTags(DashboardDataModel entity) {
-    super.validateTags(entity);
+    EntityPolicy.super.validateTags(entity);
     validateColumnTags(entity.getColumns());
   }
 
-  public class DataModelUpdater extends ColumnEntityUpdater {
+  public class DataModelUpdater implements EntityColumnMutation<DashboardDataModel> {
 
     public DataModelUpdater(
-        DashboardDataModel original, DashboardDataModel updated, Operation operation) {
-      super(original, updated, operation);
+        DashboardDataModel original, DashboardDataModel updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
+      this.columnUpdate = new EntityColumnUpdater<>(entityUpdate, this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(
+        EntityUpdater<DashboardDataModel> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "columns",
           () -> {
-            DatabaseUtil.validateColumns(original.getColumns());
-            updateColumns(
-                "columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+            DatabaseUtil.validateColumns(entityUpdate.getOriginal().getColumns());
+            columnUpdate.updateColumns(
+                "columns",
+                entityUpdate.getOriginal().getColumns(),
+                entityUpdate.getUpdated().getColumns(),
+                EntityUtil.columnMatch);
           });
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "sourceUrl",
-          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "sourceUrl",
+                  entityUpdate.getOriginal().getSourceUrl(),
+                  entityUpdate.getUpdated().getSourceUrl()));
+      entityUpdate.compareAndUpdate(
           "sourceHash",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "sourceHash",
-                  original.getSourceHash(),
-                  updated.getSourceHash(),
+                  entityUpdate.getOriginal().getSourceHash(),
+                  entityUpdate.getUpdated().getSourceHash(),
                   false,
                   EntityUtil.objectMatch,
                   false));
-      compareAndUpdate("sql", () -> recordChange("sql", original.getSql(), updated.getSql()));
+      entityUpdate.compareAndUpdate(
+          "sql",
+          () ->
+              entityUpdate.recordChange(
+                  "sql", entityUpdate.getOriginal().getSql(), entityUpdate.getUpdated().getSql()));
     }
+
+    private final EntityUpdater<DashboardDataModel> entityUpdate;
+
+    public EntityUpdater<DashboardDataModel> mutation() {
+      return entityUpdate;
+    }
+
+    private final EntityColumnUpdater<DashboardDataModel> columnUpdate;
   }
 
   public ResultList<Column> getDataModelColumns(
       UUID dataModelId, int limit, int offset, String fieldsParam, Include include) {
-    DashboardDataModel dataModel = find(dataModelId, include);
+    DashboardDataModel dataModel = lookup().byId(dataModelId, include);
     return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam, include);
   }
 
   public ResultList<Column> getDataModelColumnsByFQN(
       String fqn, int limit, int offset, String fieldsParam, Include include) {
-    DashboardDataModel dataModel = findByName(fqn, include);
+    DashboardDataModel dataModel = lookup().byName(fqn, include);
     return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam, include);
   }
 
@@ -315,36 +342,39 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // For paginated column access, we need to load the data model with columns
     // but we'll optimize the field loading to only process what we need
     DashboardDataModel fullDataModel =
-        get(null, dataModel.getId(), getFields(Set.of("columns")), include, false);
-
+        reads()
+            .byId(
+                dataModel.getId(),
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse(Set.of("columns")),
+                    RelationIncludes.fromInclude(include),
+                    false));
     List<Column> allColumns = fullDataModel.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
     }
-
     // Apply pagination
     int total = allColumns.size();
     int fromIndex = Math.min(offset, total);
     int toIndex = Math.min(offset + limit, total);
-
     List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
-
     // Apply field processing if needed
     if (fieldsParam != null && fieldsParam.contains("tags")) {
       populateEntityFieldTags(
-          entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
+          context().schema().entityType(),
+          paginatedColumns,
+          dataModel.getFullyQualifiedName(),
+          true);
     }
-
     if (fieldsParam != null && fieldsParam.contains("extension")) {
       for (Column column : paginatedColumns) {
         column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
       }
     }
-
     // Calculate pagination metadata
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = toIndex < total ? String.valueOf(toIndex) : null;
-
     return new ResultList<>(paginatedColumns, before, after, total);
   }
 
@@ -355,7 +385,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     }
     List<Column> singleton = new ArrayList<>(List.of(column));
     if (fieldsParam.contains("tags")) {
-      populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
+      populateEntityFieldTags(
+          context().schema().entityType(), singleton, dataModel.getFullyQualifiedName(), true);
     }
     if (fieldsParam.contains("extension")) {
       column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
@@ -365,13 +396,29 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   public ResultList<Column> searchDataModelColumnsById(
       UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
-    DashboardDataModel dataModel = get(null, id, getFields(fieldsParam), include, false);
+    DashboardDataModel dataModel =
+        reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse(fieldsParam),
+                    RelationIncludes.fromInclude(include),
+                    false));
     return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
   }
 
   public ResultList<Column> searchDataModelColumnsByFQN(
       String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
-    DashboardDataModel dataModel = getByName(null, fqn, getFields(fieldsParam), include, false);
+    DashboardDataModel dataModel =
+        reads()
+            .byName(
+                fqn,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse(fieldsParam),
+                    RelationIncludes.fromInclude(include),
+                    false));
     return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
   }
 
@@ -381,10 +428,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(List.of(), null, null, 0);
     }
-
     // Flatten nested columns for search
     List<Column> flattenedColumns = flattenColumns(allColumns);
-
     List<Column> matchingColumns;
     if (query == null || query.trim().isEmpty()) {
       matchingColumns = flattenedColumns;
@@ -407,20 +452,19 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
                   })
               .toList();
     }
-
     int total = matchingColumns.size();
     int startIndex = Math.min(offset, total);
     int endIndex = Math.min(offset + limit, total);
-
     List<Column> paginatedResults =
         startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
-
-    Fields fields = getFields(fieldsParam);
+    Fields fields = fieldPolicy().parse(fieldsParam);
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(
-          entityType, paginatedResults, dataModel.getFullyQualifiedName(), true);
+          context().schema().entityType(),
+          paginatedResults,
+          dataModel.getFullyQualifiedName(),
+          true);
     }
-
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = endIndex < total ? String.valueOf(endIndex) : null;
     return new ResultList<>(paginatedResults, before, after, total);
@@ -435,5 +479,12 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       }
     }
     return flattened;
+  }
+
+  private final EntityPolicyContext<DashboardDataModel> entityContext;
+
+  @Override
+  public final EntityPolicyContext<DashboardDataModel> context() {
+    return entityContext;
   }
 }

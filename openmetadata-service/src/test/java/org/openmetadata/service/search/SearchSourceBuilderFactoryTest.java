@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.search;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -42,7 +46,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchSourceBuilderFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
@@ -53,11 +57,16 @@ import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 public class SearchSourceBuilderFactoryTest {
 
   private static final String FUZZY_STAGE_QUERY_NAME = "ranking:fuzzyName";
+
   private static final String CLOSE_NAME_STAGE_QUERY_NAME = "ranking:closeName";
+
   private static final String PREFIX_STAGE_QUERY_NAME = "ranking:prefixName";
+
   private static final String INDEX_DATA_ASSET = "dataAsset";
 
-  /** fuzzyName, partialName, structuralContext and descriptionContext from searchSettings.json. */
+  /**
+   * fuzzyName, partialName, structuralContext and descriptionContext from searchSettings.json.
+   */
   private static final int TEXT_RANKING_STAGE_COUNT = 4;
 
   private static final List<Double> TEXT_RANKING_STAGE_WEIGHTS = List.of(24.0, 16.0, 12.0, 4.0);
@@ -71,9 +80,13 @@ public class SearchSourceBuilderFactoryTest {
   private static SearchSettings shippedSearchSettings;
 
   private SearchSettings searchSettings;
+
   private AssetTypeConfiguration tableConfig;
+
   private AssetTypeConfiguration topicConfig;
+
   private AssetTypeConfiguration contextFileConfig;
+
   private AssetTypeConfiguration defaultConfig;
 
   @BeforeAll
@@ -82,7 +95,7 @@ public class SearchSourceBuilderFactoryTest {
         EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
     String json =
         CommonUtil.getResourceAsStream(
-            EntityRepository.class.getClassLoader(), jsonDataFiles.getFirst());
+            EntityPolicy.class.getClassLoader(), jsonDataFiles.getFirst());
     shippedSearchSettings = JsonUtils.readValue(json, SearchSettings.class);
   }
 
@@ -91,19 +104,15 @@ public class SearchSourceBuilderFactoryTest {
     // Set up search settings with configurations
     searchSettings = new SearchSettings();
     SearchRepository mockSearchRepository = mock(SearchRepository.class);
-
     // Add mock for getIndexNameWithoutAlias method
     when(mockSearchRepository.getIndexNameWithoutAlias(anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0));
-
     Entity.setSearchRepository(mockSearchRepository);
-
     // Global settings
     GlobalSettings globalSettings = new GlobalSettings();
     globalSettings.setMaxResultHits(10000);
     globalSettings.setMaxAggregateSize(10000);
     searchSettings.setGlobalSettings(globalSettings);
-
     // Table configuration
     tableConfig = new AssetTypeConfiguration();
     tableConfig.setAssetType("table");
@@ -119,7 +128,6 @@ public class SearchSourceBuilderFactoryTest {
     tableFields.add(createFieldBoost("description", 2.0, "standard"));
     tableFields.add(createFieldBoost("fullyQualifiedName", 5.0, "standard"));
     tableConfig.setSearchFields(tableFields);
-
     // Topic configuration
     topicConfig = new AssetTypeConfiguration();
     topicConfig.setAssetType("topic");
@@ -130,14 +138,12 @@ public class SearchSourceBuilderFactoryTest {
     topicFields.add(createFieldBoost("displayName", 10.0, "phrase"));
     topicFields.add(createFieldBoost("description", 2.0, "standard"));
     topicConfig.setSearchFields(topicFields);
-
     contextFileConfig = new AssetTypeConfiguration();
     contextFileConfig.setAssetType(Entity.CONTEXT_FILE);
     contextFileConfig.setSearchFields(
         List.of(
             createFieldBoost("name.ngram", 1.0, "fuzzy"),
             createFieldBoost("extractedText", 3.0, "standard")));
-
     // Default configuration
     defaultConfig = new AssetTypeConfiguration();
     defaultConfig.setAssetType("default");
@@ -151,7 +157,6 @@ public class SearchSourceBuilderFactoryTest {
     defaultFields.add(createFieldBoost("fullyQualifiedName", 5.0, "standard"));
     defaultFields.add(createFieldBoost("fqnParts", 5.0, "standard"));
     defaultConfig.setSearchFields(defaultFields);
-
     // Set configurations
     List<AssetTypeConfiguration> assetConfigs = new ArrayList<>();
     assetConfigs.add(tableConfig);
@@ -177,27 +182,20 @@ public class SearchSourceBuilderFactoryTest {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     String query = "test query";
-
     // Test that dataAsset index uses buildDataAssetSearchBuilderV2
     var osDataAssetBuilder = osFactory.getSearchSourceBuilderV2("dataAsset", query, 0, 10);
     var esDataAssetBuilder = esFactory.getSearchSourceBuilderV2("dataAsset", query, 0, 10);
-
     assertNotNull(osDataAssetBuilder, "OpenSearch dataAsset builder should not be null");
     assertNotNull(esDataAssetBuilder, "ElasticSearch dataAsset builder should not be null");
-
     // Test that table index uses buildDataAssetSearchBuilderV2
     var osTableBuilder = osFactory.getSearchSourceBuilderV2("table", query, 0, 10);
     var esTableBuilder = esFactory.getSearchSourceBuilderV2("table", query, 0, 10);
-
     assertNotNull(osTableBuilder, "OpenSearch table builder should not be null");
     assertNotNull(esTableBuilder, "ElasticSearch table builder should not be null");
-
     // Test that all index uses buildDataAssetSearchBuilderV2
     var osAllBuilder = osFactory.getSearchSourceBuilderV2("all", query, 0, 10);
     var esAllBuilder = esFactory.getSearchSourceBuilderV2("all", query, 0, 10);
-
     assertNotNull(osAllBuilder, "OpenSearch all builder should not be null");
     assertNotNull(esAllBuilder, "ElasticSearch all builder should not be null");
   }
@@ -207,12 +205,10 @@ public class SearchSourceBuilderFactoryTest {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     OpenSearchRequestBuilder osBuilder =
         osFactory.getSearchSourceBuilderV2("context_file_search_index", "needle", 0, 10);
     ElasticSearchRequestBuilder esBuilder =
         esFactory.getSearchSourceBuilderV2("context_file_search_index", "needle", 0, 10);
-
     String osQuery = osBuilder.query().toJsonString();
     String esQuery = esBuilder.query().toString();
     assertTrue(osQuery.contains("extractedText"), osQuery);
@@ -222,21 +218,17 @@ public class SearchSourceBuilderFactoryTest {
   @Test
   public void testMultiWordQueryHandling() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-
     // Test multi-word queries
     String[] multiWordQueries = {"log fail", "test data", "customer order", "user profile"};
-
     for (String query : multiWordQueries) {
       // Test with different indexes
       var tableBuilder = osFactory.getSearchSourceBuilderV2("table", query, 0, 10);
       var dataAssetBuilder = osFactory.getSearchSourceBuilderV2("dataAsset", query, 0, 10);
-
       // Verify builders are created with valid queries
       assertNotNull(tableBuilder, "Table builder should handle multi-word query: " + query);
       assertNotNull(dataAssetBuilder, "DataAsset builder should handle multi-word query: " + query);
       assertNotNull(tableBuilder.query(), "Table query should not be null");
       assertNotNull(dataAssetBuilder.query(), "DataAsset query should not be null");
-
       // Verify pagination parameters are set correctly
       assertEquals(0, tableBuilder.from(), "Table builder should have correct 'from' value");
       assertEquals(10, tableBuilder.size(), "Table builder should have correct 'size' value");
@@ -250,7 +242,6 @@ public class SearchSourceBuilderFactoryTest {
   @Test
   public void testComplexQuerySyntaxHandling() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-
     // Test complex queries with wildcards, field queries, and boolean operators
     String[] complexQueries = {
       "*PII.Sensitive* AND disabled:false",
@@ -258,18 +249,15 @@ public class SearchSourceBuilderFactoryTest {
       "name:log* AND type:table",
       "description:\"exact phrase\" OR name:test"
     };
-
     for (String query : complexQueries) {
       var tableBuilder = osFactory.getSearchSourceBuilderV2("table", query, 0, 10);
       var dataAssetBuilder = osFactory.getSearchSourceBuilderV2("dataAsset", query, 0, 10);
-
       // Verify builders are created successfully for complex queries
       assertNotNull(tableBuilder, "Table builder should handle complex query: " + query);
       assertNotNull(dataAssetBuilder, "DataAsset builder should handle complex query: " + query);
       assertNotNull(tableBuilder.query(), "Table query should not be null for complex syntax");
       assertNotNull(
           dataAssetBuilder.query(), "DataAsset query should not be null for complex syntax");
-
       // Verify pagination is set correctly
       assertEquals(0, tableBuilder.from());
       assertEquals(10, tableBuilder.size());
@@ -279,7 +267,6 @@ public class SearchSourceBuilderFactoryTest {
   @Test
   public void testQuerySyntaxDetectionHandlesLongMalformedQueries() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-
     List.of(
             "owner:john",
             "name : test",
@@ -295,7 +282,6 @@ public class SearchSourceBuilderFactoryTest {
             "*PII*",
             "\\\\".repeat(5000) + "*")
         .forEach(query -> assertTrue(osFactory.containsQuerySyntax(query)));
-
     List.of(
             "customer order",
             "customer-orders",
@@ -306,7 +292,6 @@ public class SearchSourceBuilderFactoryTest {
             "\\\\".repeat(5000),
             "\\\\".repeat(5000) + "\\*")
         .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
-
     List.of(
             "customer\\-orders",
             "name\\:test",
@@ -330,12 +315,10 @@ public class SearchSourceBuilderFactoryTest {
                         .withFields(List.of("fullyQualifiedName"))
                         .withMatchType(RankingStage.MatchType.EXACT)
                         .withWeight(32.0))));
-
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
     String escapedFqn = "pw\\-ml\\-model\\-service.pw\\-mlmodel";
-
     String osQuery =
         serializeOpenSearchRequest(
             osFactory.buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false));
@@ -344,7 +327,6 @@ public class SearchSourceBuilderFactoryTest {
             .buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false)
             .query()
             .toString();
-
     assertTrue(osQuery.contains("pw-ml-model-service.pw-mlmodel"), osQuery);
     assertTrue(esQuery.contains("pw-ml-model-service.pw-mlmodel"), esQuery);
     assertFalse(osQuery.contains("\\\\-"), osQuery);
@@ -363,11 +345,9 @@ public class SearchSourceBuilderFactoryTest {
                         .withFields(List.of("name.compound"))
                         .withMatchType(RankingStage.MatchType.TOKEN_COVERAGE)
                         .withMinimumShouldMatch("2<70%"))));
-
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     String osQuery =
         serializeOpenSearchRequest(
             osFactory.buildDataAssetSearchBuilderV2("table", "N0NExistent", 0, 10, false, false));
@@ -376,7 +356,6 @@ public class SearchSourceBuilderFactoryTest {
             .buildDataAssetSearchBuilderV2("table", "N0NExistent", 0, 10, false, false)
             .query()
             .toString();
-
     assertTrue(osQuery.contains("\"operator\":\"and\""), osQuery);
     assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
   }
@@ -390,7 +369,6 @@ public class SearchSourceBuilderFactoryTest {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     String osQuery =
         serializeOpenSearchRequest(
             osFactory.getSearchSourceBuilderV2("tableColumn", "customer orders", 0, 15));
@@ -399,7 +377,6 @@ public class SearchSourceBuilderFactoryTest {
             .getSearchSourceBuilderV2("tableColumn", "customer orders", 0, 15)
             .query()
             .toString();
-
     assertTrue(osQuery.contains("fqnParts"), osQuery);
     assertTrue(osQuery.contains("\"operator\":\"and\""), osQuery);
     assertTrue(esQuery.contains("fqnParts"), esQuery);
@@ -415,7 +392,6 @@ public class SearchSourceBuilderFactoryTest {
     // search instead — see SearchRankingHelper#isExactIdentifierLookup — which can tell a real
     // identifier from a half-typed one, as the query text alone cannot.
     String columnFqn = "svc_a.db_a.schema_a.table_a.user_id";
-
     assertTrue(rankedOpenSearchQuery(columnFqn).contains(FUZZY_STAGE_QUERY_NAME));
     assertTrue(rankedElasticSearchQuery(columnFqn).contains(FUZZY_STAGE_QUERY_NAME));
   }
@@ -427,7 +403,6 @@ public class SearchSourceBuilderFactoryTest {
     String phrase = "sample_data table";
     String osQuery = rankedOpenSearchQuery(phrase);
     String esQuery = rankedElasticSearchQuery(phrase);
-
     assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
     assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
   }
@@ -438,7 +413,6 @@ public class SearchSourceBuilderFactoryTest {
     // a non-zero fuzziness, which is the stage's documented purpose.
     String osQuery = rankedOpenSearchQuery("custmer");
     String esQuery = rankedElasticSearchQuery("custmer");
-
     assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME), osQuery);
     assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME), esQuery);
   }
@@ -451,7 +425,6 @@ public class SearchSourceBuilderFactoryTest {
     // outscore exactName's ceiling of 100.
     String osQuery = rankedTableOpenSearchQuery("customers");
     String esQuery = rankedTableElasticSearchQuery("customers");
-
     for (String queryJson : List.of(osQuery, esQuery)) {
       assertTrue(queryJson.contains(SearchRankingHelper.STAGE_SATURATION_SCRIPT), queryJson);
       assertEquals(
@@ -472,7 +445,6 @@ public class SearchSourceBuilderFactoryTest {
     // not drop the _name that identifies which stage matched.
     String osQuery = rankedTableOpenSearchQuery("customers");
     String esQuery = rankedTableElasticSearchQuery("customers");
-
     assertTrue(osQuery.contains(FUZZY_STAGE_QUERY_NAME + ":text"), osQuery);
     assertTrue(esQuery.contains(FUZZY_STAGE_QUERY_NAME + ":text"), esQuery);
   }
@@ -489,7 +461,6 @@ public class SearchSourceBuilderFactoryTest {
       assertTrue(queryJson.contains(PREFIX_STAGE_QUERY_NAME + ":displayName"), queryJson);
       assertTrue(queryJson.contains("\"boost\":55.0"), queryJson);
     }
-
     // Two characters is below the n-gram floor; the prefix stage still has to be built.
     assertTrue(rankedTableOpenSearchQuery("cu").contains("match_bool_prefix"));
     assertTrue(rankedTableElasticSearchQuery("cu").contains("match_bool_prefix"));
@@ -500,7 +471,6 @@ public class SearchSourceBuilderFactoryTest {
     // A prefix on a keyword field can only match the whole value, and prefixing an n-gram field
     // re-grams the query. Only the analyzed name fields belong in this stage.
     String queryJson = rankedTableOpenSearchQuery("cust");
-
     assertFalse(queryJson.contains(PREFIX_STAGE_QUERY_NAME + ":name.keyword"), queryJson);
     assertFalse(queryJson.contains(PREFIX_STAGE_QUERY_NAME + ":name.ngram"), queryJson);
     assertFalse(queryJson.contains(PREFIX_STAGE_QUERY_NAME + ":fullyQualifiedName"), queryJson);
@@ -531,7 +501,6 @@ public class SearchSourceBuilderFactoryTest {
     // sub-field as redundant removed typo tolerance for every word kstem shortens.
     String fuzzyStage =
         clauseContaining(rankedTableOpenSearchQuery("customers"), FUZZY_STAGE_QUERY_NAME + ":text");
-
     assertTrue(fuzzyStage.contains("name.compound"), fuzzyStage);
     assertTrue(fuzzyStage.contains("displayName.compound"), fuzzyStage);
     // The double counting that motivated dropping them is handled by the zero tie breaker.
@@ -560,7 +529,6 @@ public class SearchSourceBuilderFactoryTest {
     String descriptionStage =
         clauseContaining(
             rankedTableOpenSearchQuery("customers"), "ranking:descriptionContext:text");
-
     assertTrue(descriptionStage.contains("description^0.8"), descriptionStage);
     assertFalse(descriptionStage.contains("description^1.25"), descriptionStage);
   }
@@ -576,14 +544,15 @@ public class SearchSourceBuilderFactoryTest {
         serializeOpenSearchRequest(
             factory.getSearchSourceBuilderV2(INDEX_DATA_ASSET, "customers", 0, 15));
     String structuralStage = clauseContaining(queryJson, "ranking:structuralContext:text");
-
     assertTrue(structuralStage.contains("fqnParts^0.875"), structuralStage);
     assertFalse(
         structuralStage.contains("^1.25"),
         "no field may be promoted to the top of the " + "band by the merge: " + structuralStage);
   }
 
-  /** The smallest {@code {...}} object in {@code json} that contains {@code marker}. */
+  /**
+   * The smallest {@code {...}} object in {@code json} that contains {@code marker}.
+   */
   private static String clauseContaining(String json, String marker) {
     int at = json.indexOf(marker);
     assertTrue(at >= 0, "expected " + marker + " in " + json);
@@ -673,9 +642,7 @@ public class SearchSourceBuilderFactoryTest {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     String luceneExpression = "testSuite.name.keyword:my_suite AND NOT entityFQN:archived";
-
     String osQuery =
         osFactory
             .getSearchSourceBuilderV2("test_case_search_index", luceneExpression, 0, 10)
@@ -686,7 +653,6 @@ public class SearchSourceBuilderFactoryTest {
             .getSearchSourceBuilderV2("test_suite_search_index", luceneExpression, 0, 10)
             .query()
             .toString();
-
     for (String builtQuery : List.of(osQuery, esQuery)) {
       assertTrue(
           builtQuery.contains(luceneExpression),
@@ -710,9 +676,7 @@ public class SearchSourceBuilderFactoryTest {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     String pastedUrl = "https://localhost:8585/table/orders";
-
     String osQuery =
         osFactory
             .buildDataQualitySearchBuilderV2("test_case_search_index", pastedUrl, 0, 10, true)
@@ -723,7 +687,6 @@ public class SearchSourceBuilderFactoryTest {
             .buildDataQualitySearchBuilderV2("test_suite_search_index", pastedUrl, 0, 10, true)
             .query()
             .toString();
-
     for (String builtQuery : List.of(osQuery, esQuery)) {
       assertTrue(
           builtQuery.contains("simple_query_string"),
@@ -750,13 +713,11 @@ public class SearchSourceBuilderFactoryTest {
   public void testDataQualitySearchQueriesTheSubstringFields() {
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     String esQuery =
         esFactory
             .buildDataQualitySearchBuilderV2("test_case_search_index", "alues", 0, 10, true)
             .query()
             .toString();
-
     assertTrue(esQuery.contains("name.substring"), esQuery);
     assertTrue(esQuery.contains("displayName.substring"), esQuery);
     // The ngram fields are only precise because every gram of the query must match. Under the
@@ -769,7 +730,6 @@ public class SearchSourceBuilderFactoryTest {
   @Test
   public void testEmptyAndWildcardQueries() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-
     // Test empty query - should return a valid builder with a query
     var emptyBuilder = osFactory.getSearchSourceBuilderV2("table", "", 0, 10);
     assertNotNull(emptyBuilder, "Should handle empty query");
@@ -777,12 +737,10 @@ public class SearchSourceBuilderFactoryTest {
         emptyBuilder.query(), "Empty query should have a query object (likely match_all)");
     assertEquals(0, emptyBuilder.from());
     assertEquals(10, emptyBuilder.size());
-
     // Test null query - should return a valid builder with a query
     var nullBuilder = osFactory.getSearchSourceBuilderV2("table", null, 0, 10);
     assertNotNull(nullBuilder, "Should handle null query");
     assertNotNull(nullBuilder.query(), "Null query should have a query object (likely match_all)");
-
     // Test wildcard query - should return a valid builder with a query
     var wildcardBuilder = osFactory.getSearchSourceBuilderV2("table", "*", 0, 10);
     assertNotNull(wildcardBuilder, "Should handle wildcard query");
@@ -793,19 +751,15 @@ public class SearchSourceBuilderFactoryTest {
   @Test
   public void testDataAssetIndexUsesCompositeConfiguration() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-
     String query = "test";
-
     // Get builders for comparison - dataAsset should use composite configuration
     var tableBuilder = osFactory.getSearchSourceBuilderV2("table", query, 0, 10);
     var dataAssetBuilder = osFactory.getSearchSourceBuilderV2("dataAsset", query, 0, 10);
-
     // Verify both builders are created successfully with queries
     assertNotNull(tableBuilder, "Table builder should not be null");
     assertNotNull(dataAssetBuilder, "DataAsset builder should not be null");
     assertNotNull(tableBuilder.query(), "Table query should not be null");
     assertNotNull(dataAssetBuilder.query(), "DataAsset query should not be null");
-
     // Verify dataAsset has aggregations (composite config should add entity type aggregations)
     assertNotNull(
         dataAssetBuilder.aggregations(), "DataAsset should have aggregations map initialized");
@@ -814,11 +768,9 @@ public class SearchSourceBuilderFactoryTest {
   @Test
   public void testAggregateBuildersHandleMissingGlobalAggregations() {
     searchSettings.setDefaultConfiguration(null);
-
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     OpenSearchRequestBuilder osAggregate =
         assertDoesNotThrow(() -> osFactory.buildAggregateSearchBuilderV2("customer", 0, 10));
     ElasticSearchRequestBuilder esAggregate =
@@ -827,7 +779,6 @@ public class SearchSourceBuilderFactoryTest {
         assertDoesNotThrow(() -> osFactory.buildCommonSearchBuilderV2("customer", 0, 10));
     ElasticSearchRequestBuilder esCommon =
         assertDoesNotThrow(() -> esFactory.buildCommonSearchBuilderV2("customer", 0, 10));
-
     assertNotNull(osAggregate.query());
     assertNotNull(esAggregate.query());
     assertNotNull(osCommon.query());
@@ -847,16 +798,13 @@ public class SearchSourceBuilderFactoryTest {
     searchSettings.getGlobalSettings().setHighlightFields(List.of("name"));
     tableConfig.setAggregations(List.of(createAggregation("service", "service.name")));
     tableConfig.setHighlightFields(List.of("displayName"));
-
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     OpenSearchRequestBuilder osBuilder =
         osFactory.buildDataAssetSearchBuilderV2("table", "customer", 100, 50, true, true);
     ElasticSearchRequestBuilder esBuilder =
         esFactory.buildDataAssetSearchBuilderV2("table", "customer", 100, 50, true, true);
-
     assertEquals(25, osBuilder.from());
     assertEquals(25, osBuilder.size());
     assertEquals(25, esBuilder.from());
@@ -867,12 +815,10 @@ public class SearchSourceBuilderFactoryTest {
     assertEquals(Set.of("owners", "service"), esBuilder.aggregations().keySet());
     assertHighlightFields(osBuilder, "displayName");
     assertHighlightFields(esBuilder, "displayName");
-
     OpenSearchRequestBuilder osWithoutAggregations =
         osFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
     ElasticSearchRequestBuilder esWithoutAggregations =
         esFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
-
     assertTrue(osWithoutAggregations.aggregations().isEmpty());
     assertTrue(esWithoutAggregations.aggregations().isEmpty());
     assertEquals(Boolean.FALSE, osWithoutAggregations.explain());
@@ -887,11 +833,9 @@ public class SearchSourceBuilderFactoryTest {
     // subfield) fails the whole shard with a 500. buildHighlightsV2 must drop those while keeping
     // the real analyzable fields. Regression guard for ExtensionHighlightSearchIT.
     tableConfig.setHighlightFields(List.of("name", "extension", "extension.foundry_rid"));
-
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     OpenSearchRequestBuilder osBuilder =
         osFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
-
     assertHighlightFields(osBuilder, "name");
   }
 
@@ -899,7 +843,6 @@ public class SearchSourceBuilderFactoryTest {
   public void testElasticDataAssetBuilderHandlesMatchAllAndComplexSyntaxQueries() {
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     ElasticSearchRequestBuilder emptyBuilder =
         esFactory.buildDataAssetSearchBuilderV2("table", "", 0, 10, false, false);
     ElasticSearchRequestBuilder nullBuilder =
@@ -909,7 +852,6 @@ public class SearchSourceBuilderFactoryTest {
     ElasticSearchRequestBuilder complexBuilder =
         esFactory.buildDataAssetSearchBuilderV2(
             "table", "name:orders AND owner:alice", 0, 10, false, false);
-
     assertTrue(emptyBuilder.query().isFunctionScore());
     assertTrue(nullBuilder.query().isFunctionScore());
     assertTrue(wildcardBuilder.query().isFunctionScore());
@@ -928,16 +870,13 @@ public class SearchSourceBuilderFactoryTest {
     tableConfig.setHighlightFields(null);
     tableConfig.setAggregations(
         List.of(createScriptAggregation("serviceScript", "doc['service.name'].value")));
-
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     OpenSearchRequestBuilder osBuilder =
         osFactory.buildDataAssetSearchBuilderV2("table", "orders", 0, 10, false, true);
     ElasticSearchRequestBuilder esBuilder =
         esFactory.buildDataAssetSearchBuilderV2("table", "orders", 0, 10, false, true);
-
     assertHighlightFields(osBuilder, "name");
     assertHighlightFields(esBuilder, "name");
     assertEquals(Set.of("entityTypeScript", "serviceScript"), osBuilder.aggregations().keySet());
@@ -949,14 +888,12 @@ public class SearchSourceBuilderFactoryTest {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     OpenSearchRequestBuilder osDataQuality =
         osFactory.getSearchSourceBuilderV2("test_case_search_index", "status", 0, 10);
     ElasticSearchRequestBuilder esDataQuality =
         esFactory.getSearchSourceBuilderV2("test_case_search_index", "status", 0, 10);
     assertHighlightFields(osDataQuality, "testSuite.name", "testSuite.description");
     assertHighlightFields(esDataQuality, "testSuite.name", "testSuite.description");
-
     OpenSearchRequestBuilder osTimeSeries =
         osFactory.getSearchSourceBuilderV2("test_case_result_search_index", "passed", 0, 10);
     ElasticSearchRequestBuilder esTimeSeries =
@@ -965,14 +902,12 @@ public class SearchSourceBuilderFactoryTest {
     assertNotNull(esTimeSeries.highlighter());
     assertTrue(osTimeSeries.highlighter().fields().isEmpty());
     assertTrue(esTimeSeries.highlighter().fields().isEmpty());
-
     OpenSearchRequestBuilder osCost =
         osFactory.getSearchSourceBuilderV2("raw_cost_analysis_report_data_index", "usage", 0, 10);
     ElasticSearchRequestBuilder esCost =
         esFactory.getSearchSourceBuilderV2("raw_cost_analysis_report_data_index", "usage", 0, 10);
     assertNull(osCost.highlighter());
     assertNull(esCost.highlighter());
-
     OpenSearchRequestBuilder osService =
         osFactory.getSearchSourceBuilderV2("database_service_search_index", "snowflake", 0, 10);
     ElasticSearchRequestBuilder esService =
@@ -981,7 +916,6 @@ public class SearchSourceBuilderFactoryTest {
     assertNotNull(esService.highlighter());
     assertTrue(osService.highlighter().fields().isEmpty());
     assertTrue(esService.highlighter().fields().isEmpty());
-
     OpenSearchRequestBuilder osUser = osFactory.getSearchSourceBuilderV2("user", "alice", 0, 10);
     ElasticSearchRequestBuilder esUser = esFactory.getSearchSourceBuilderV2("user", "alice", 0, 10);
     assertNull(osUser.highlighter());
@@ -1015,18 +949,15 @@ public class SearchSourceBuilderFactoryTest {
                 FieldValueBoost.Modifier.SQRT,
                 1.0,
                 new Range().withLt(100.0))));
-
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
     ElasticSearchSourceBuilderFactory esFactory =
         new ElasticSearchSourceBuilderFactory(searchSettings);
-
     OpenSearchRequestBuilder osCommon = osFactory.buildCommonSearchBuilderV2("customer", 0, 10);
     ElasticSearchRequestBuilder esCommon = esFactory.buildCommonSearchBuilderV2("customer", 0, 10);
     OpenSearchRequestBuilder osEntitySpecific =
         osFactory.buildEntitySpecificAggregateSearchBuilderV2("customer", 0, 10);
     ElasticSearchRequestBuilder esEntitySpecific =
         esFactory.buildEntitySpecificAggregateSearchBuilderV2("customer", 0, 10);
-
     assertTrue(osCommon.query().isFunctionScore());
     assertTrue(esCommon.query().isFunctionScore());
     assertTrue(osEntitySpecific.query().isFunctionScore());
@@ -1038,20 +969,16 @@ public class SearchSourceBuilderFactoryTest {
   @Test
   public void testConsistencyBetweenIndexes() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
-
     String query = "customer data";
-
     // Test that both specific index and generic index return valid builders
     var tableSpecificBuilder =
         osFactory.getSearchSourceBuilderV2("table_search_index", query, 0, 10);
     var tableBuilder = osFactory.getSearchSourceBuilderV2("table", query, 0, 10);
-
     // Verify both builders are created successfully with queries
     assertNotNull(tableSpecificBuilder, "Specific index builder should not be null");
     assertNotNull(tableBuilder, "Generic index builder should not be null");
     assertNotNull(tableSpecificBuilder.query(), "Specific index query should not be null");
     assertNotNull(tableBuilder.query(), "Generic index query should not be null");
-
     // Both should have same pagination parameters
     assertEquals(tableSpecificBuilder.from(), tableBuilder.from(), "Both should have same 'from'");
     assertEquals(tableSpecificBuilder.size(), tableBuilder.size(), "Both should have same 'size'");

@@ -45,12 +45,14 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.formatter.util.ActivityMessageFormatter;
 import org.openmetadata.service.formatter.util.FormattedMessage;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.branding.MessageBrandingResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -592,7 +594,12 @@ public interface MessageDecorator<T> {
   static TestCase fetchTestCase(String fqn) {
     TestCaseRepository testCaseRepository =
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    EntityUtil.Fields fields = testCaseRepository.getFields("*");
-    return testCaseRepository.getByName(null, fqn, fields, Include.NON_DELETED, false);
+    EntityUtil.Fields fields = testCaseRepository.fieldPolicy().parse("*");
+    return testCaseRepository
+        .reads()
+        .byName(
+            fqn,
+            new EntityReadService.Query(
+                null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
   }
 }

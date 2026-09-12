@@ -43,6 +43,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.cache.EntityCacheKeys;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.delete.EntityHierarchy;
+import org.openmetadata.service.entity.delete.EntitySubtree;
+import org.openmetadata.service.entity.delete.EntitySubtreeFixture;
+import org.openmetadata.service.entity.delete.EntitySubtreeFixture.Change;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -54,14 +64,14 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  * <ul>
  *   <li>{@link EntityRepository#restoreChildren(UUID, String)} groups CONTAINS + PARENT_OF
  *       children by entity type and dispatches a single {@link
- *       EntityRepository#bulkRestoreSubtree(List, String)} call per type (instead of N
+ *       EntitySubtree#bulkRestoreSubtree(List, String)} call per type (instead of N
  *       recursive {@code Entity.restoreEntity} calls). The relation set matches
  *       {@code deleteChildren} so a Team / KnowledgePage / Classification hierarchy is
  *       restored the same way it was cascade-soft-deleted.
  *   <li>{@link EntityRepository#deleteChildren(List, boolean, String)} with
- *       {@code hardDelete=false} dispatches one {@link EntityRepository#bulkSoftDeleteSubtree(
+ *       {@code hardDelete=false} dispatches one {@link EntitySubtree#bulkSoftDeleteSubtree(
  *       List, String)} call per type and with {@code hardDelete=true} dispatches one
- *       {@link EntityRepository#bulkHardDeleteSubtree(List, String)} call per type.
+ *       {@link EntitySubtree#bulkHardDeleteSubtree(List, String)} call per type.
  *   <li>All three bulk methods bail out cleanly on null / empty inputs.
  *   <li>All three bulk methods issue a single batched {@code findToBatchAllTypes} per tree
  *       level that walks both {@code CONTAINS} and {@code PARENT_OF} so Glossary / Team /
@@ -83,65 +93,88 @@ class EntityRepositoryRestoreTest {
       List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal());
 
   private CollectionDAO daoCollection;
+
   private CollectionDAO.EntityRelationshipDAO relationshipDAO;
+
   private CollectionDAO.PipelineDAO pipelineDAO;
 
-  private static class CountingPipelineRepo extends EntityRepository<Pipeline> {
+  @Repository()
+  private static class CountingPipelineRepo implements EntityPolicy<Pipeline> {
+
     int restoreAdditionalChildrenCalls = 0;
+
     int softDeleteAdditionalChildrenCalls = 0;
+
     int hardDeleteAdditionalChildrenCalls = 0;
+
     int bulkEntitySpecificCleanupCalls = 0;
+
     final List<String> entitySpecificCleanupDeletedBy = new ArrayList<>();
+
     final Set<UUID> bulkRestoreInvokedWith = new HashSet<>();
+
     final Set<UUID> bulkSoftDeleteInvokedWith = new HashSet<>();
+
     final Set<UUID> bulkHardDeleteInvokedWith = new HashSet<>();
 
     CountingPipelineRepo(CollectionDAO.PipelineDAO dao) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
+      this.entityContext =
+          new EntityPolicyContext<>(
+              new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
+              new EntityPolicyContext.WriteFields("", "", Set.of()),
+              EntityModuleDependencies.standard());
+      EntityModuleFactory.initialize(this, true);
     }
 
     @Override
-    protected void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
+    public void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
 
     @Override
-    protected void clearFields(Pipeline entity, Fields fields) {}
+    public void clearFields(Pipeline entity, Fields fields) {}
 
     @Override
-    protected void prepare(Pipeline entity, boolean update) {}
+    public void prepare(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Pipeline entity, boolean update) {}
+    public void storeEntity(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeRelationships(Pipeline entity) {}
+    public void storeRelationships(Pipeline entity) {}
 
     @Override
-    protected void restoreAdditionalChildren(UUID id, String updatedBy) {
+    public void restoreAdditionalChildren(UUID id, String updatedBy) {
       restoreAdditionalChildrenCalls++;
       bulkRestoreInvokedWith.add(id);
     }
 
     @Override
-    protected void softDeleteAdditionalChildren(UUID id, String updatedBy) {
+    public void softDeleteAdditionalChildren(UUID id, String updatedBy) {
       softDeleteAdditionalChildrenCalls++;
       bulkSoftDeleteInvokedWith.add(id);
     }
 
     @Override
-    protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
+    public void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
       hardDeleteAdditionalChildrenCalls++;
       bulkHardDeleteInvokedWith.add(id);
     }
 
     @Override
-    protected void entitySpecificCleanup(String deletedBy, Pipeline entity) {
+    public void entitySpecificCleanup(String deletedBy, Pipeline entity) {
       entitySpecificCleanupDeletedBy.add(deletedBy);
     }
 
     @Override
-    protected void bulkEntitySpecificCleanup(List<Pipeline> entities, String deletedBy) {
+    public void bulkEntitySpecificCleanup(List<Pipeline> entities, String deletedBy) {
       bulkEntitySpecificCleanupCalls++;
-      super.bulkEntitySpecificCleanup(entities, deletedBy);
+      EntityPolicy.super.bulkEntitySpecificCleanup(entities, deletedBy);
+    }
+
+    private final EntityPolicyContext<Pipeline> entityContext;
+
+    @Override
+    public final EntityPolicyContext<Pipeline> context() {
+      return entityContext;
     }
   }
 
@@ -165,9 +198,7 @@ class EntityRepositoryRestoreTest {
     UUID parentId = UUID.randomUUID();
     when(relationshipDAO.findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS)))
         .thenReturn(List.of());
-
     repo.restoreChildren(parentId, "user");
-
     verify(relationshipDAO).findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
   }
@@ -176,55 +207,37 @@ class EntityRepositoryRestoreTest {
   void restoreChildren_groupsByTypeAndDispatchesOnceEach() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
     UUID parentId = UUID.randomUUID();
-
     UUID schemaA = UUID.randomUUID();
     UUID schemaB = UUID.randomUUID();
     UUID procA = UUID.randomUUID();
-
     List<CollectionDAO.EntityRelationshipRecord> children = new ArrayList<>();
     children.add(record(schemaA, Entity.DATABASE_SCHEMA));
     children.add(record(schemaB, Entity.DATABASE_SCHEMA));
     children.add(record(procA, Entity.STORED_PROCEDURE));
     when(relationshipDAO.findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS)))
         .thenReturn(children);
-
-    EntityRepository<?> schemaRepo = mock(EntityRepository.class);
-    EntityRepository<?> procRepo = mock(EntityRepository.class);
-
+    EntityPolicy<?> schemaRepo = mock(EntityPolicy.class);
+    final var schemaSubtree = EntitySubtreeFixture.attach(schemaRepo);
+    EntityPolicy<?> procRepo = mock(EntityPolicy.class);
+    final var procSubtree = EntitySubtreeFixture.attach(procRepo);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SCHEMA))
-          .thenReturn(schemaRepo);
-      entityMock
-          .when(() -> Entity.getEntityRepository(Entity.STORED_PROCEDURE))
-          .thenReturn(procRepo);
-
+      entityMock.when(() -> Entity.getEntityModule(Entity.DATABASE_SCHEMA)).thenReturn(schemaRepo);
+      entityMock.when(() -> Entity.getEntityModule(Entity.STORED_PROCEDURE)).thenReturn(procRepo);
       repo.restoreChildren(parentId, "user");
     }
-
-    ArgumentCaptor<List<UUID>> schemaIds = captureUuidList();
-    verify(schemaRepo, times(1)).bulkRestoreSubtree(schemaIds.capture(), eq("user"));
-    assertEquals(2, schemaIds.getValue().size());
-    assertTrue(schemaIds.getValue().contains(schemaA));
-    assertTrue(schemaIds.getValue().contains(schemaB));
-
-    ArgumentCaptor<List<UUID>> procIds = captureUuidList();
-    verify(procRepo, times(1)).bulkRestoreSubtree(procIds.capture(), eq("user"));
-    assertEquals(1, procIds.getValue().size());
-    assertTrue(procIds.getValue().contains(procA));
-
-    verify(schemaRepo, never()).restoreEntity(eq("user"), eq(schemaA));
-    verify(schemaRepo, never()).restoreEntity(eq("user"), eq(schemaB));
-    verify(procRepo, never()).restoreEntity(eq("user"), eq(procA));
+    assertEquals(
+        List.of(new Change(EntityHierarchy.Action.RESTORE, List.of(schemaA, schemaB), "user")),
+        schemaSubtree.changes());
+    assertEquals(
+        List.of(new Change(EntityHierarchy.Action.RESTORE, List.of(procA), "user")),
+        procSubtree.changes());
   }
 
   @Test
   void bulkRestoreSubtree_emptyOrNullIds_isNoOp() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
-
-    repo.bulkRestoreSubtree(null, "user");
-    repo.bulkRestoreSubtree(List.of(), "user");
-
+    repo.subtrees().bulkRestoreSubtree(null, "user");
+    repo.subtrees().bulkRestoreSubtree(List.of(), "user");
     // bulkRestoreSubtree loads with Include.ALL — guard that neither the DELETED nor ALL
     // shape is invoked when the input list is empty/null.
     verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.DELETED));
@@ -239,9 +252,7 @@ class EntityRepositoryRestoreTest {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
     UUID id = UUID.randomUUID();
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of());
-
-    repo.bulkRestoreSubtree(List.of(id), "user");
-
+    repo.subtrees().bulkRestoreSubtree(List.of(id), "user");
     verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
   }
@@ -254,10 +265,8 @@ class EntityRepositoryRestoreTest {
             .withId(UUID.randomUUID())
             .withName("pipeline")
             .withFullyQualifiedName("service.pipeline");
-
     try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
       repo.invalidate(pipeline);
-
       cacheBundle.verify(
           () ->
               CacheBundle.invalidateEntity(
@@ -269,21 +278,16 @@ class EntityRepositoryRestoreTest {
   void remoteInvalidationEvictsLocalEntriesAndAdvancesLoaderEpochs() {
     UUID id = UUID.randomUUID();
     String fqn = "service.pipeline";
-    long idEpoch = EntityRepository.readEpochById(Entity.PIPELINE, id);
-    long nameEpoch = EntityRepository.readEpochByName(Entity.PIPELINE, fqn);
-    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.PIPELINE, id), "stale");
-    EntityRepository.CACHE_WITH_NAME.put(
-        EntityRepository.cacheNameKey(Entity.PIPELINE, fqn), "stale");
-
-    EntityRepository.onRemoteCacheInvalidate(Entity.PIPELINE, id, fqn);
-
-    assertNull(
-        EntityRepository.CACHE_WITH_ID.getIfPresent(new ImmutablePair<>(Entity.PIPELINE, id)));
-    assertNull(
-        EntityRepository.CACHE_WITH_NAME.getIfPresent(
-            EntityRepository.cacheNameKey(Entity.PIPELINE, fqn)));
-    assertTrue(EntityRepository.readEpochById(Entity.PIPELINE, id) > idEpoch);
-    assertTrue(EntityRepository.readEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
+    long idEpoch = EntityCaches.epochs().byId(EntityCacheKeys.id(Entity.PIPELINE, id));
+    long nameEpoch = EntityCaches.epochs().byName(EntityCacheKeys.name(Entity.PIPELINE, fqn));
+    EntityCaches.byId().put(new ImmutablePair<>(Entity.PIPELINE, id), "stale");
+    EntityCaches.byName().put(EntityCacheKeys.name(Entity.PIPELINE, fqn), "stale");
+    EntityCaches.invalidations().remotelyChanged(Entity.PIPELINE, id, fqn);
+    assertNull(EntityCaches.byId().getIfPresent(new ImmutablePair<>(Entity.PIPELINE, id)));
+    assertNull(EntityCaches.byName().getIfPresent(EntityCacheKeys.name(Entity.PIPELINE, fqn)));
+    assertTrue(EntityCaches.epochs().byId(EntityCacheKeys.id(Entity.PIPELINE, id)) > idEpoch);
+    assertTrue(
+        EntityCaches.epochs().byName(EntityCacheKeys.name(Entity.PIPELINE, fqn)) > nameEpoch);
   }
 
   @Test
@@ -298,9 +302,7 @@ class EntityRepositoryRestoreTest {
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa));
     when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
         .thenReturn(List.of());
-
-    repo.bulkRestoreSubtree(List.of(id), "user");
-
+    repo.subtrees().bulkRestoreSubtree(List.of(id), "user");
     assertEquals(1, repo.restoreAdditionalChildrenCalls);
     assertTrue(repo.bulkRestoreInvokedWith.contains(id));
   }
@@ -317,14 +319,12 @@ class EntityRepositoryRestoreTest {
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
         .thenReturn(List.of());
-
     try {
-      repo.bulkRestoreSubtree(List.of(a, b), "user");
+      repo.subtrees().bulkRestoreSubtree(List.of(a, b), "user");
     } catch (Exception ignored) {
       // Heavy DB write path requires more wiring than this unit test mocks; we only care
       // that the per-level findTo collapse happened before any failure downstream.
     }
-
     ArgumentCaptor<List<String>> idsCap = captureStringList();
     verify(relationshipDAO, times(1))
         .findToBatchAllTypes(idsCap.capture(), eq(SUBTREE_RELATIONS), eq(Include.ALL));
@@ -336,49 +336,35 @@ class EntityRepositoryRestoreTest {
   @Test
   void deleteChildren_softDelete_groupsByTypeAndDispatchesToBulkSoftDelete() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
-
     UUID schemaA = UUID.randomUUID();
     UUID schemaB = UUID.randomUUID();
     UUID procA = UUID.randomUUID();
-
     List<CollectionDAO.EntityRelationshipRecord> children = new ArrayList<>();
     children.add(record(schemaA, Entity.DATABASE_SCHEMA));
     children.add(record(schemaB, Entity.DATABASE_SCHEMA));
     children.add(record(procA, Entity.STORED_PROCEDURE));
-
-    EntityRepository<?> schemaRepo = mock(EntityRepository.class);
-    EntityRepository<?> procRepo = mock(EntityRepository.class);
-
+    EntityPolicy<?> schemaRepo = mock(EntityPolicy.class);
+    final var schemaSubtree = EntitySubtreeFixture.attach(schemaRepo);
+    EntityPolicy<?> procRepo = mock(EntityPolicy.class);
+    final var procSubtree = EntitySubtreeFixture.attach(procRepo);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SCHEMA))
-          .thenReturn(schemaRepo);
-      entityMock
-          .when(() -> Entity.getEntityRepository(Entity.STORED_PROCEDURE))
-          .thenReturn(procRepo);
-
+      entityMock.when(() -> Entity.getEntityModule(Entity.DATABASE_SCHEMA)).thenReturn(schemaRepo);
+      entityMock.when(() -> Entity.getEntityModule(Entity.STORED_PROCEDURE)).thenReturn(procRepo);
       repo.deleteChildren(children, false, "user");
     }
-
-    ArgumentCaptor<List<UUID>> schemaIds = captureUuidList();
-    verify(schemaRepo, times(1)).bulkSoftDeleteSubtree(schemaIds.capture(), eq("user"));
-    assertEquals(2, schemaIds.getValue().size());
-    assertTrue(schemaIds.getValue().contains(schemaA));
-    assertTrue(schemaIds.getValue().contains(schemaB));
-
-    ArgumentCaptor<List<UUID>> procIds = captureUuidList();
-    verify(procRepo, times(1)).bulkSoftDeleteSubtree(procIds.capture(), eq("user"));
-    assertEquals(1, procIds.getValue().size());
-    assertTrue(procIds.getValue().contains(procA));
+    assertEquals(
+        List.of(new Change(EntityHierarchy.Action.SOFT_DELETE, List.of(schemaA, schemaB), "user")),
+        schemaSubtree.changes());
+    assertEquals(
+        List.of(new Change(EntityHierarchy.Action.SOFT_DELETE, List.of(procA), "user")),
+        procSubtree.changes());
   }
 
   @Test
   void bulkSoftDeleteSubtree_emptyOrNullIds_isNoOp() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
-
-    repo.bulkSoftDeleteSubtree(null, "user");
-    repo.bulkSoftDeleteSubtree(List.of(), "user");
-
+    repo.subtrees().bulkSoftDeleteSubtree(null, "user");
+    repo.subtrees().bulkSoftDeleteSubtree(List.of(), "user");
     verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.softDeleteAdditionalChildrenCalls);
   }
@@ -393,13 +379,11 @@ class EntityRepositoryRestoreTest {
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
         .thenReturn(List.of());
-
     try {
-      repo.bulkSoftDeleteSubtree(List.of(a, b), "user");
+      repo.subtrees().bulkSoftDeleteSubtree(List.of(a, b), "user");
     } catch (Exception ignored) {
       // Heavy DB write path is not mocked; we verify only the per-level findTo collapse.
     }
-
     ArgumentCaptor<List<String>> idsCap = captureStringList();
     verify(relationshipDAO, times(1))
         .findToBatchAllTypes(idsCap.capture(), eq(SUBTREE_RELATIONS), eq(Include.ALL));
@@ -411,52 +395,35 @@ class EntityRepositoryRestoreTest {
   @Test
   void deleteChildren_hardDelete_groupsByTypeAndDispatchesToBulkHardDelete() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
-
     UUID schemaA = UUID.randomUUID();
     UUID schemaB = UUID.randomUUID();
     UUID procA = UUID.randomUUID();
-
     List<CollectionDAO.EntityRelationshipRecord> children = new ArrayList<>();
     children.add(record(schemaA, Entity.DATABASE_SCHEMA));
     children.add(record(schemaB, Entity.DATABASE_SCHEMA));
     children.add(record(procA, Entity.STORED_PROCEDURE));
-
-    EntityRepository<?> schemaRepo = mock(EntityRepository.class);
-    EntityRepository<?> procRepo = mock(EntityRepository.class);
-
+    EntityPolicy<?> schemaRepo = mock(EntityPolicy.class);
+    final var schemaSubtree = EntitySubtreeFixture.attach(schemaRepo);
+    EntityPolicy<?> procRepo = mock(EntityPolicy.class);
+    final var procSubtree = EntitySubtreeFixture.attach(procRepo);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock
-          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SCHEMA))
-          .thenReturn(schemaRepo);
-      entityMock
-          .when(() -> Entity.getEntityRepository(Entity.STORED_PROCEDURE))
-          .thenReturn(procRepo);
-
+      entityMock.when(() -> Entity.getEntityModule(Entity.DATABASE_SCHEMA)).thenReturn(schemaRepo);
+      entityMock.when(() -> Entity.getEntityModule(Entity.STORED_PROCEDURE)).thenReturn(procRepo);
       repo.deleteChildren(children, true, "user");
     }
-
-    ArgumentCaptor<List<UUID>> schemaIds = captureUuidList();
-    verify(schemaRepo, times(1)).bulkHardDeleteSubtree(schemaIds.capture(), eq("user"));
-    assertEquals(2, schemaIds.getValue().size());
-    assertTrue(schemaIds.getValue().contains(schemaA));
-    assertTrue(schemaIds.getValue().contains(schemaB));
-
-    ArgumentCaptor<List<UUID>> procIds = captureUuidList();
-    verify(procRepo, times(1)).bulkHardDeleteSubtree(procIds.capture(), eq("user"));
-    assertEquals(1, procIds.getValue().size());
-    assertTrue(procIds.getValue().contains(procA));
-
-    verify(schemaRepo, never()).bulkSoftDeleteSubtree(anyList(), eq("user"));
-    verify(procRepo, never()).bulkSoftDeleteSubtree(anyList(), eq("user"));
+    assertEquals(
+        List.of(new Change(EntityHierarchy.Action.HARD_DELETE, List.of(schemaA, schemaB), "user")),
+        schemaSubtree.changes());
+    assertEquals(
+        List.of(new Change(EntityHierarchy.Action.HARD_DELETE, List.of(procA), "user")),
+        procSubtree.changes());
   }
 
   @Test
   void bulkHardDeleteSubtree_emptyOrNullIds_isNoOp() {
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
-
-    repo.bulkHardDeleteSubtree(null, "user");
-    repo.bulkHardDeleteSubtree(List.of(), "user");
-
+    repo.subtrees().bulkHardDeleteSubtree(null, "user");
+    repo.subtrees().bulkHardDeleteSubtree(List.of(), "user");
     verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.hardDeleteAdditionalChildrenCalls);
     assertEquals(0, repo.bulkEntitySpecificCleanupCalls);
@@ -472,14 +439,12 @@ class EntityRepositoryRestoreTest {
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
         .thenReturn(List.of());
-
     try {
-      repo.bulkHardDeleteSubtree(List.of(a, b), "user");
+      repo.subtrees().bulkHardDeleteSubtree(List.of(a, b), "user");
     } catch (Exception ignored) {
       // Heavy DB write path is not mocked; we verify only the per-level findTo collapse and
       // hook invocation.
     }
-
     ArgumentCaptor<List<String>> idsCap = captureStringList();
     verify(relationshipDAO, times(1))
         .findToBatchAllTypes(idsCap.capture(), eq(SUBTREE_RELATIONS), eq(Include.ALL));
@@ -498,7 +463,6 @@ class EntityRepositoryRestoreTest {
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
         .thenReturn(List.of());
-
     CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
     CollectionDAO.FieldRelationshipDAO fieldRelationshipDAO =
         mock(CollectionDAO.FieldRelationshipDAO.class);
@@ -508,13 +472,11 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.fieldRelationshipDAO()).thenReturn(fieldRelationshipDAO);
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
-
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
-      repo.bulkHardDeleteSubtree(List.of(a, b), "user");
+      repo.subtrees().bulkHardDeleteSubtree(List.of(a, b), "user");
     }
-
     // bulkEntitySpecificCleanup is invoked once per bulk call with the whole batch.
     assertEquals(1, repo.bulkEntitySpecificCleanupCalls);
     // ...and it must reach the deletedBy-aware per-entity hook. Dispatching to the no-arg variant
@@ -560,7 +522,6 @@ class EntityRepositoryRestoreTest {
             });
     when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
         .thenReturn(List.of());
-
     CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
     CollectionDAO.FieldRelationshipDAO fieldRelationshipDAO =
         mock(CollectionDAO.FieldRelationshipDAO.class);
@@ -570,13 +531,11 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.fieldRelationshipDAO()).thenReturn(fieldRelationshipDAO);
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
-
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
-      repo.bulkHardDeleteSubtree(ids, "user");
+      repo.subtrees().bulkHardDeleteSubtree(ids, "user");
     }
-
     ArgumentCaptor<List<UUID>> loadCap = captureUuidList();
     verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(loadCap.capture(), eq(Include.ALL));
     List<List<UUID>> chunks = loadCap.getAllValues();
@@ -587,7 +546,6 @@ class EntityRepositoryRestoreTest {
       covered.addAll(chunk);
     }
     assertEquals(total, covered.size(), "every id must be loaded exactly once across chunks");
-
     int chunkCount = chunks.size();
     assertEquals(chunkCount, repo.bulkEntitySpecificCleanupCalls, "one bulk cleanup per chunk");
     verify(relationshipDAO, times(chunkCount))
@@ -606,7 +564,7 @@ class EntityRepositoryRestoreTest {
     // round-trips. usage is keyed by id (not covered by the FQN prefix), so it must still be
     // cleared, but in ONE batched IN-list delete rather than one per entity.
     CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
-    repo.descendantsCoveredByAncestorCascade = true;
+    repo.context().options().setDescendantsCoveredByAncestorCascade(true);
     UUID a = UUID.randomUUID();
     UUID b = UUID.randomUUID();
     Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
@@ -614,7 +572,6 @@ class EntityRepositoryRestoreTest {
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
     when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
         .thenReturn(List.of());
-
     CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
     CollectionDAO.FieldRelationshipDAO fieldRelationshipDAO =
         mock(CollectionDAO.FieldRelationshipDAO.class);
@@ -624,13 +581,11 @@ class EntityRepositoryRestoreTest {
     when(daoCollection.fieldRelationshipDAO()).thenReturn(fieldRelationshipDAO);
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.usageDAO()).thenReturn(usageDAO);
-
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
-      repo.bulkHardDeleteSubtree(List.of(a, b), "user");
+      repo.subtrees().bulkHardDeleteSubtree(List.of(a, b), "user");
     }
-
     // Per-entity FQN-keyed cleanup is skipped (covered by the ancestor's prefix cascade).
     verify(fieldRelationshipDAO, never()).deleteAllByPrefix(any());
     verify(tagUsageDAO, never()).deleteTagLabelsByTargetPrefix(any());

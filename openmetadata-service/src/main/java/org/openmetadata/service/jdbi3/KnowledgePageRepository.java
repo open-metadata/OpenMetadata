@@ -49,6 +49,18 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
@@ -62,7 +74,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Repository
-public class KnowledgePageRepository extends EntityRepository<Page> {
+public class KnowledgePageRepository implements EntityPolicy<Page> {
+
   public static final String KNOWLEDGE_PAGE_ENTITY = "page";
 
   static {
@@ -70,11 +83,17 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   private static final String KNOWLEDGE_PATCH_FIELDS = "page,relatedEntities,parent,children";
+
   private static final String KNOWLEDGE_UPDATE_FIELDS = "page,relatedEntities,parent,children";
+
   public static final String RELATED_ENTITIES = "relatedEntities";
+
   public static final String EDITORS = "editors";
+
   public static final String KNOWLEDGE_PAGE_TERM_SEARCH_INDEX = "page";
+
   private final CollectionDAO.KnowledgePageDAO daoExtension;
+
   private final CollectionDAO.AssetDAO assetDAO;
 
   /**
@@ -83,14 +102,18 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
    * when working with relatedEntities to prevent duplicate assignments.
    */
   public KnowledgePageRepository(Jdbi jdbi) {
-    super(
-        KnowledgePageResource.COLLECTION_PATH,
-        KNOWLEDGE_PAGE_ENTITY,
-        Page.class,
-        (jdbi.onDemand(CollectionDAO.class)).knowledgePageDAO(),
-        KNOWLEDGE_PATCH_FIELDS,
-        KNOWLEDGE_UPDATE_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                KnowledgePageResource.COLLECTION_PATH,
+                KNOWLEDGE_PAGE_ENTITY,
+                Page.class,
+                (jdbi.onDemand(CollectionDAO.class)).knowledgePageDAO()),
+            new EntityPolicyContext.WriteFields(
+                KNOWLEDGE_PATCH_FIELDS, KNOWLEDGE_UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     this.daoExtension = jdbi.onDemand(CollectionDAO.class).knowledgePageDAO();
     this.assetDAO = jdbi.onDemand(CollectionDAO.class).assetDAO();
@@ -99,7 +122,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   @Override
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
-        new ArrayList<>(super.getSearchPropagationDescriptors());
+        new ArrayList<>(EntityPolicy.super.getSearchPropagationDescriptors());
     descriptors.add(
         new PropagationDescriptor(
             "parent", PropagationDescriptor.PropagationType.ENTITY_REFERENCE, null));
@@ -144,7 +167,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     fetchAndSetParents(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
     fetchAndSetEditors(entities, fields);
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     for (Page entity : entities) {
       setArticleFields(entity, fields);
@@ -163,7 +186,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   private Map<UUID, EntityReference> batchFetchParents(List<Page> entities) {
     Map<UUID, EntityReference> parentByPageId = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(entities),
@@ -197,7 +222,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   private Map<UUID, List<EntityReference>> batchFetchRelatedEntities(List<Page> entities) {
     Map<UUID, List<EntityReference>> relatedByPageId = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityListToStrings(entities), HAS.ordinal(), Include.NON_DELETED);
     Map<String, EntityReference> refById = resolveReferencesByType(records);
@@ -254,7 +281,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   private Map<UUID, List<EntityReference>> batchFetchEditors(List<Page> entities) {
     Map<UUID, List<EntityReference>> editorsByPageId = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(entities),
@@ -313,7 +342,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   @Override
   public void restorePatchAttributes(Page original, Page updated) {
     // Patch can't update Children
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withChildren(original.getChildren());
   }
 
@@ -332,18 +361,31 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     if (entity == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> allRelated = findFrom(entity.getId(), KNOWLEDGE_PAGE_ENTITY, HAS, null);
+    List<EntityReference> allRelated =
+        relationships()
+            .from(
+                new EntityRelationshipReader.Selection(
+                    entity.getId(), KNOWLEDGE_PAGE_ENTITY, HAS, null),
+                Include.NON_DELETED);
     return filterOutDomainsAndDataProducts(allRelated);
   }
 
   private List<EntityReference> getEditors(Page entity) {
     return entity == null
         ? Collections.emptyList()
-        : findTo(entity.getId(), KNOWLEDGE_PAGE_ENTITY, EDITED_BY, USER);
+        : relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    entity.getId(), KNOWLEDGE_PAGE_ENTITY, EDITED_BY, USER),
+                Include.NON_DELETED);
   }
 
   private List<EntityReference> getRelatedArticles(Page entity) {
-    return findFrom(entity.getId(), KNOWLEDGE_PAGE_ENTITY, RELATED_TO, KNOWLEDGE_PAGE_ENTITY);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(
+                entity.getId(), KNOWLEDGE_PAGE_ENTITY, RELATED_TO, KNOWLEDGE_PAGE_ENTITY),
+            Include.NON_DELETED);
   }
 
   private List<Asset> getAttachments(Page page) {
@@ -356,12 +398,15 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
-  protected List<EntityReference> getChildren(Page knowledgePage) {
-    return findTo(
-        knowledgePage.getId(),
-        KNOWLEDGE_PAGE_ENTITY,
-        Relationship.PARENT_OF,
-        KNOWLEDGE_PAGE_ENTITY);
+  public List<EntityReference> getChildren(Page knowledgePage) {
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(
+                knowledgePage.getId(),
+                KNOWLEDGE_PAGE_ENTITY,
+                Relationship.PARENT_OF,
+                KNOWLEDGE_PAGE_ENTITY),
+            Include.NON_DELETED);
   }
 
   @Override
@@ -390,7 +435,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     if (parent != null && parent.getId() == null) {
       knowledgePage.withParent(Entity.getEntityReference(parent, Include.NON_DELETED));
     }
-
     // Validate Related Entities
     List<EntityReference> relatedEntities = knowledgePage.getRelatedEntities();
     if (!nullOrEmpty(relatedEntities)) {
@@ -402,13 +446,10 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     // fail every later read that resolves them via getEntityRepository.
     knowledgePage.withRelatedEntities(
         EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities()));
-
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
-
       // Validate Related Articles
       EntityUtil.populateEntityReferences(article.getRelatedArticles());
-
       knowledgePage.setPage(article);
     }
   }
@@ -416,7 +457,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public ResultList<PageHierarchy> getHierarchyWithSearch(
       String parent, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
-    return searchRepository
+    return context()
+        .dependencies()
+        .search()
         .getSearchClient()
         .listPageHierarchy(parent, pageTypeValue, sortFilter, offset, limit);
   }
@@ -424,25 +467,25 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public ResultList<PageHierarchy> getHierarchyWithSearchForActivePage(
       String activeFqn, PageType pageType, SearchSortFilter sortFilter, int offset, int limit) {
     String pageTypeValue = pageType != null ? pageType.value() : null;
-    return searchRepository
+    return context()
+        .dependencies()
+        .search()
         .getSearchClient()
         .listPageHierarchyForActivePage(activeFqn, pageTypeValue, sortFilter, offset, limit);
   }
 
   public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {
     List<PageHierarchy> pageHierarchyList = new ArrayList<>();
-    EntityUtil.Fields fields = getFields("parent,children");
-
-    ResultList<Page> resultList = listAfter(null, fields, filter, limit, null);
+    EntityUtil.Fields fields = fieldPolicy().parse("parent,children");
+    ResultList<Page> resultList =
+        pages().after(new EntityPageReader.Projection(null, fields, filter), limit, null);
     Map<UUID, Page> lookUp =
         resultList.getData().stream().collect(Collectors.toMap(Page::getId, p -> p));
     List<Page> topLevelPages =
         resultList.getData().stream().filter(p -> p.getParent() == null).toList();
-
     for (Page page : topLevelPages) {
       pageHierarchyList.add(getHierarchy(lookUp, page));
     }
-
     return pageHierarchyList;
   }
 
@@ -484,18 +527,16 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     EntityReference parent = knowledgePage.getParent();
     List<EntityReference> children = knowledgePage.getChildren();
     knowledgePage.withRelatedEntities(null).withParent(null).withChildren(null);
-
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
       List<EntityReference> relatedArticles = article.getRelatedArticles();
       article.withRelatedArticles(null);
-      store(knowledgePage, update);
+      persistence().store(knowledgePage, update);
       article.withRelatedArticles(relatedArticles);
       knowledgePage.withRelatedEntities(relatedEntities).withParent(parent).withChildren(children);
       return;
     }
-
-    store(knowledgePage, update);
+    persistence().store(knowledgePage, update);
     knowledgePage.withRelatedEntities(relatedEntities).withParent(parent).withChildren(children);
   }
 
@@ -503,41 +544,55 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public void storeRelationships(Page knowledgePage) {
     // Add Parent for this entity
     if (knowledgePage.getParent() != null) {
-      addRelationship(
-          knowledgePage.getParent().getId(),
-          knowledgePage.getId(),
-          KNOWLEDGE_PAGE_ENTITY,
-          KNOWLEDGE_PAGE_ENTITY,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  knowledgePage.getParent().getId(),
+                  knowledgePage.getId(),
+                  KNOWLEDGE_PAGE_ENTITY,
+                  KNOWLEDGE_PAGE_ENTITY,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
-
     for (EntityReference child : listOrEmpty(knowledgePage.getChildren())) {
-      addRelationship(
-          knowledgePage.getId(),
-          child.getId(),
-          KNOWLEDGE_PAGE_ENTITY,
-          KNOWLEDGE_PAGE_ENTITY,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  knowledgePage.getId(),
+                  child.getId(),
+                  KNOWLEDGE_PAGE_ENTITY,
+                  KNOWLEDGE_PAGE_ENTITY,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
     // Add Related Entities
     for (EntityReference relatedEntity : listOrEmpty(knowledgePage.getRelatedEntities())) {
-      addRelationship(
-          relatedEntity.getId(),
-          knowledgePage.getId(),
-          relatedEntity.getType(),
-          KNOWLEDGE_PAGE_ENTITY,
-          HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  relatedEntity.getId(),
+                  knowledgePage.getId(),
+                  relatedEntity.getType(),
+                  KNOWLEDGE_PAGE_ENTITY,
+                  HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
-
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
       for (EntityReference relatedArticle : listOrEmpty(article.getRelatedArticles())) {
-        addRelationship(
-            relatedArticle.getId(),
-            knowledgePage.getId(),
-            KNOWLEDGE_PAGE_ENTITY,
-            KNOWLEDGE_PAGE_ENTITY,
-            RELATED_TO);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    relatedArticle.getId(),
+                    knowledgePage.getId(),
+                    KNOWLEDGE_PAGE_ENTITY,
+                    KNOWLEDGE_PAGE_ENTITY,
+                    RELATED_TO),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
     }
   }
@@ -551,15 +606,18 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     List<EntityReference> validEntities = filterOutDomainsAndDataProducts(entityIds);
     validEntities.forEach(
         entityRef ->
-            addRelationship(
-                entityRef.getId(),
-                knowledgePageId,
-                entityRef.getType(),
-                KNOWLEDGE_PAGE_ENTITY,
-                HAS));
-
+            relationshipWrites()
+                .add(
+                    new EntityRelationshipWriter.Edge(
+                        entityRef.getId(),
+                        knowledgePageId,
+                        entityRef.getType(),
+                        KNOWLEDGE_PAGE_ENTITY,
+                        HAS),
+                    EntityRelationshipWriter.Value.EMPTY,
+                    false));
     // Populate Fields
-    setFieldsInternal(page, new EntityUtil.Fields(allowedFields, RELATED_ENTITIES));
+    setFieldsInternal(page, new EntityUtil.Fields(context().allowedFields(), RELATED_ENTITIES));
     Entity.withHref(uriInfo, page.getRelatedEntities());
     ChangeEvent changeEvent =
         getKnowledgeChangeEvent(
@@ -578,11 +636,13 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     List<EntityReference> oldValue = page.getRelatedEntities();
     List<EntityReference> validEntities = filterOutDomainsAndDataProducts(entityIds);
     for (EntityReference ref : validEntities) {
-      deleteRelationship(ref.getId(), ref.getType(), knowledgePageId, KNOWLEDGE_PAGE_ENTITY, HAS);
+      relationshipWrites()
+          .delete(
+              new EntityRelationshipWriter.Edge(
+                  ref.getId(), knowledgePageId, ref.getType(), KNOWLEDGE_PAGE_ENTITY, HAS));
     }
-
     // Populate Fields
-    setFieldsInternal(page, new EntityUtil.Fields(allowedFields, RELATED_ENTITIES));
+    setFieldsInternal(page, new EntityUtil.Fields(context().allowedFields(), RELATED_ENTITIES));
     Entity.withHref(uriInfo, page.getRelatedEntities());
     ChangeEvent changeEvent =
         getKnowledgeChangeEvent(
@@ -605,7 +665,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         .withEntity(updatedPage)
         .withChangeDescription(change)
         .withEventType(EventType.ENTITY_UPDATED)
-        .withEntityType(entityType)
+        .withEntityType(context().schema().entityType())
         .withEntityId(updatedPage.getId())
         .withEntityFullyQualifiedName(updatedPage.getFullyQualifiedName())
         .withUserName(updatedBy)
@@ -615,40 +675,51 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      Page original, Page updated, Operation operation, ChangeSource source) {
-    return new KnowledgePageUpdater(original, updated, operation);
+  public EntityUpdater<Page> getUpdater(
+      Page original, Page updated, EntityOperation operation, ChangeSource source) {
+    return new KnowledgePageUpdater(original, updated, operation).mutation();
   }
 
-  public class KnowledgePageUpdater extends EntityUpdater {
-    public KnowledgePageUpdater(Page original, Page updated, Operation operation) {
-      super(original, updated, operation);
+  public class KnowledgePageUpdater implements EntitySpecificMutation<Page> {
+
+    public KnowledgePageUpdater(Page original, Page updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<Page> entityUpdate, boolean consolidatingChanges) {
       // Update Related Terms
-      updateRelatedEntities(original, updated);
-
+      updateRelatedEntities(entityUpdate.getOriginal(), entityUpdate.getUpdated());
       // Updated Quick Link
-      if (original.getPageType().equals(PageType.QUICK_LINK)) {
-        QuickLink originalLink = JsonUtils.convertValue(original.getPage(), QuickLink.class);
-        QuickLink updatedLink = JsonUtils.convertValue(updated.getPage(), QuickLink.class);
-        recordChange("quickLink", originalLink, updatedLink);
+      if (entityUpdate.getOriginal().getPageType().equals(PageType.QUICK_LINK)) {
+        QuickLink originalLink =
+            JsonUtils.convertValue(entityUpdate.getOriginal().getPage(), QuickLink.class);
+        QuickLink updatedLink =
+            JsonUtils.convertValue(entityUpdate.getUpdated().getPage(), QuickLink.class);
+        entityUpdate.recordChange("quickLink", originalLink, updatedLink);
       }
-
       // Updated Article
-      if (original.getPageType().equals(PageType.ARTICLE)) {
-        updateArticles(original, updated);
+      if (entityUpdate.getOriginal().getPageType().equals(PageType.ARTICLE)) {
+        updateArticles(entityUpdate.getOriginal(), entityUpdate.getUpdated());
       }
-
       // Add Editor
-      if (fieldsChanged() && updatingUser.getId() != null) {
-        addRelationship(
-            original.getId(), updatingUser.getId(), KNOWLEDGE_PAGE_ENTITY, USER, EDITED_BY);
+      if (entityUpdate.fieldsChanged() && entityUpdate.getUpdatingUser().getId() != null) {
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    entityUpdate.getOriginal().getId(),
+                    entityUpdate.getUpdatingUser().getId(),
+                    KNOWLEDGE_PAGE_ENTITY,
+                    USER,
+                    EDITED_BY),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
-
-      updateParent(original, updated);
+      updateParent(entityUpdate.getOriginal(), entityUpdate.getUpdated());
     }
 
     private void updateParent(Page original, Page updated) {
@@ -657,27 +728,33 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       final boolean parentChanged = !Objects.equals(oldParentId, newParentId);
       if (parentChanged) {
         if (oldParentId != null) {
-          deleteRelationship(
-              oldParentId,
-              KNOWLEDGE_PAGE_ENTITY,
-              original.getId(),
-              KNOWLEDGE_PAGE_ENTITY,
-              Relationship.CONTAINS);
+          relationshipWrites()
+              .delete(
+                  new EntityRelationshipWriter.Edge(
+                      oldParentId,
+                      original.getId(),
+                      KNOWLEDGE_PAGE_ENTITY,
+                      KNOWLEDGE_PAGE_ENTITY,
+                      Relationship.CONTAINS));
         }
         if (newParentId != null) {
           setFullyQualifiedName(updated);
           daoExtension.updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-          addRelationship(
-              newParentId,
-              original.getId(),
-              KNOWLEDGE_PAGE_ENTITY,
-              KNOWLEDGE_PAGE_ENTITY,
-              Relationship.CONTAINS);
+          relationshipWrites()
+              .add(
+                  new EntityRelationshipWriter.Edge(
+                      newParentId,
+                      original.getId(),
+                      KNOWLEDGE_PAGE_ENTITY,
+                      KNOWLEDGE_PAGE_ENTITY,
+                      Relationship.CONTAINS),
+                  EntityRelationshipWriter.Value.EMPTY,
+                  false);
         } else {
           setFullyQualifiedName(updated);
           daoExtension.updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }
-        recordChange(
+        entityUpdate.recordChange(
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
       }
     }
@@ -685,14 +762,14 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     private void updateChildren(Page original, Page updated) {
       List<EntityReference> origChildren = listOrEmpty(original.getChildren());
       List<EntityReference> updatedChildren = listOrEmpty(updated.getChildren());
-      updateToRelationships(
-          "children",
-          KNOWLEDGE_PAGE_ENTITY,
-          original.getId(),
-          Relationship.PARENT_OF,
-          KNOWLEDGE_PAGE_ENTITY,
-          origChildren,
-          updatedChildren,
+      entityUpdate.updateToRelationships(
+          new EntityRelationshipUpdates.Target(
+              "children",
+              original.getId(),
+              KNOWLEDGE_PAGE_ENTITY,
+              KNOWLEDGE_PAGE_ENTITY,
+              Relationship.PARENT_OF),
+          new EntityRelationshipUpdates.References(origChildren, updatedChildren),
           false);
     }
 
@@ -703,24 +780,31 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
           filterOutDomainsAndDataProducts(listOrEmpty(updated.getRelatedEntities()));
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      if (!recordListChange(
+      if (!entityUpdate.recordListChange(
           RELATED_ENTITIES,
           origRelatedEntities,
           updatedRelatedEntities,
           added,
           deleted,
           entityReferenceMatch)) {
-        return; // No changes between original and updated.
+        // No changes between original and updated.
+        return;
       }
       // Remove relationships from original
       for (EntityReference ref : origRelatedEntities) {
-        deleteRelationship(
-            ref.getId(), ref.getType(), original.getId(), KNOWLEDGE_PAGE_ENTITY, HAS);
+        relationshipWrites()
+            .delete(
+                new EntityRelationshipWriter.Edge(
+                    ref.getId(), original.getId(), ref.getType(), KNOWLEDGE_PAGE_ENTITY, HAS));
       }
-
       // Add relationships from updated
       for (EntityReference ref : updatedRelatedEntities) {
-        addRelationship(ref.getId(), original.getId(), ref.getType(), KNOWLEDGE_PAGE_ENTITY, HAS);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    ref.getId(), original.getId(), ref.getType(), KNOWLEDGE_PAGE_ENTITY, HAS),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
       updatedRelatedEntities.sort(EntityUtil.compareEntityReference);
       origRelatedEntities.sort(EntityUtil.compareEntityReference);
@@ -729,19 +813,24 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     private void updateArticles(Page original, Page updated) {
       Article oldArticle = JsonUtils.convertValue(original.getPage(), Article.class);
       Article updateArticle = JsonUtils.convertValue(updated.getPage(), Article.class);
-
       // Related Articles
       List<EntityReference> origRelatedArticles = listOrEmpty(oldArticle.getRelatedArticles());
       List<EntityReference> updatedRelatedArticles =
           listOrEmpty(updateArticle.getRelatedArticles());
-      updateFromRelationships(
-          RELATED_ENTITIES,
-          KNOWLEDGE_PAGE_ENTITY,
-          origRelatedArticles,
-          updatedRelatedArticles,
-          RELATED_TO,
-          KNOWLEDGE_PAGE_ENTITY,
-          original.getId());
+      entityUpdate.updateFromRelationships(
+          new EntityRelationshipUpdates.Target(
+              RELATED_ENTITIES,
+              original.getId(),
+              KNOWLEDGE_PAGE_ENTITY,
+              KNOWLEDGE_PAGE_ENTITY,
+              RELATED_TO),
+          new EntityRelationshipUpdates.References(origRelatedArticles, updatedRelatedArticles));
+    }
+
+    private final EntityUpdater<Page> entityUpdate;
+
+    public EntityUpdater<Page> mutation() {
+      return entityUpdate;
     }
   }
 
@@ -761,7 +850,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   @Override
   public void postUpdate(Page original, Page updated) {
-    super.postUpdate(original, updated);
+    EntityPolicy.super.postUpdate(original, updated);
     if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
       if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
         closeApprovalTask(updated, "Approved the page");
@@ -769,7 +858,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         closeApprovalTask(updated, "Rejected the page");
       }
     }
-
     // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
     // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
     // will be a Task created.
@@ -779,7 +867,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       try {
         closeApprovalTask(updated, "Closed due to page going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
+      }
+      // No ApprovalTask is present, and thus we don't need to worry about this.
     }
   }
 
@@ -820,5 +909,12 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         throw new AuthorizationException(notReviewer(updatedBy));
       }
     }
+  }
+
+  private final EntityPolicyContext<Page> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Page> context() {
+    return entityContext;
   }
 }

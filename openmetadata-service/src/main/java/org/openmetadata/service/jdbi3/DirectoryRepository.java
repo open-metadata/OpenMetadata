@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -33,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +53,17 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.InheritedReferences;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.DirectoryResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -60,25 +71,32 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class DirectoryRepository extends EntityRepository<Directory> {
+@Repository()
+public class DirectoryRepository implements EntityPolicy<Directory> {
+
   private static final String NUMBER_OF_FILES = "numberOfFiles";
+
   private static final String NUMBER_OF_SUB_DIRECTORIES = "numberOfSubDirectories";
+
   private static final String TOTAL_SIZE = "totalSize";
 
   public DirectoryRepository() {
-    super(
-        DirectoryResource.COLLECTION_PATH,
-        Entity.DIRECTORY,
-        Directory.class,
-        Entity.getCollectionDAO().directoryDAO(),
-        "",
-        "");
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DirectoryResource.COLLECTION_PATH,
+                Entity.DIRECTORY,
+                Directory.class,
+                Entity.getCollectionDAO().directoryDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix (FQNs are service-nested). See
     // EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
+    context().options().setDescendantsCoveredByAncestorCascade(true);
   }
 
   @Override
@@ -102,12 +120,10 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     DriveService driveService = Entity.getEntity(directory.getService(), "", Include.NON_DELETED);
     directory.setService(driveService.getEntityReference());
     directory.setServiceType(driveService.getServiceType());
-
     // Validate parent directory if present
     if (directory.getParent() != null) {
       Directory parentDir = Entity.getEntity(directory.getParent(), "", Include.NON_DELETED);
       directory.setParent(parentDir.getEntityReference());
-
       // Ensure parent belongs to the same service
       if (!parentDir.getService().getId().equals(driveService.getId())) {
         throw new IllegalArgumentException(
@@ -121,40 +137,52 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   @Override
   public void storeEntity(Directory directory, boolean update) {
     // Store the entity
-    store(directory, update);
+    persistence().store(directory, update);
   }
 
   @Override
   public void storeEntities(List<Directory> directories) {
     List<String> fqns = new ArrayList<>(directories.size());
     List<String> jsons = new ArrayList<>(directories.size());
-
     for (Directory directory : directories) {
       fqns.add(directory.getFullyQualifiedName());
       jsons.add(serializeForStorage(directory));
     }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    context()
+        .schema()
+        .dao()
+        .insertMany(
+            context().schema().dao().getTableName(),
+            context().schema().dao().getNameHashColumn(),
+            fqns,
+            jsons);
   }
 
   @Override
   public void storeRelationships(Directory directory) {
     // Add relationship from service to directory
-    addRelationship(
-        directory.getService().getId(),
-        directory.getId(),
-        directory.getService().getType(),
-        DIRECTORY,
-        Relationship.CONTAINS);
-
+    relationshipWrites()
+        .add(
+            new EntityRelationshipWriter.Edge(
+                directory.getService().getId(),
+                directory.getId(),
+                directory.getService().getType(),
+                DIRECTORY,
+                Relationship.CONTAINS),
+            EntityRelationshipWriter.Value.EMPTY,
+            false);
     // Add relationship from parent directory to this directory if parent exists
     if (directory.getParent() != null) {
-      addRelationship(
-          directory.getParent().getId(),
-          directory.getId(),
-          DIRECTORY,
-          DIRECTORY,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  directory.getParent().getId(),
+                  directory.getId(),
+                  DIRECTORY,
+                  DIRECTORY,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
@@ -164,10 +192,10 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     if (nullOrEmpty(directory.getDomains())) {
       if (directory.getParent() != null) {
         Directory parent = Entity.getEntity(directory.getParent(), FIELD_DOMAINS, Include.ALL);
-        inheritDomains(directory, fields, parent);
+        InheritedReferences.apply(InheritedReferences.Field.DOMAINS, directory, fields, parent);
       } else {
         DriveService service = Entity.getEntity(directory.getService(), FIELD_DOMAINS, Include.ALL);
-        inheritDomains(directory, fields, service);
+        InheritedReferences.apply(InheritedReferences.Field.DOMAINS, directory, fields, service);
       }
     }
   }
@@ -187,7 +215,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       Directory directory, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
-
     // Calculate and set directory statistics
     if (fields.contains("children")
         || fields.contains("numberOfFiles")
@@ -195,13 +222,11 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         || fields.contains("totalSize")) {
       List<EntityReference> children = getChildrenRefs(directory);
       directory.withChildren(fields.contains("children") ? children : null);
-
       // Calculate statistics from children
       if (children != null && !children.isEmpty()) {
         int fileCount = 0;
         int dirCount = 0;
         long totalSize = 0L;
-
         for (EntityReference child : children) {
           if (FILE.equals(child.getType())) {
             fileCount++;
@@ -218,7 +243,8 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           } else if (DIRECTORY.equals(child.getType())) {
             dirCount++;
           } else if (SPREADSHEET.equals(child.getType())) {
-            fileCount++; // Count spreadsheets as files
+            // Count spreadsheets as files
+            fileCount++;
             try {
               org.openmetadata.schema.entity.data.Spreadsheet spreadsheet =
                   Entity.getEntity(child, "", Include.NON_DELETED);
@@ -230,7 +256,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
             }
           }
         }
-
         directory.withNumberOfFiles(fileCount);
         directory.withNumberOfSubDirectories(dirCount);
         // Convert long to Integer, checking for overflow
@@ -251,7 +276,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     }
     fetchAndSetServiceAndParent(entities);
     fetchAndSetStatistics(entities, fields);
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     for (Directory entity : entities) {
       clearFieldsInternal(entity, fields);
@@ -272,7 +297,9 @@ public class DirectoryRepository extends EntityRepository<Directory> {
    */
   private void fetchAndSetServiceAndParent(List<Directory> directories) {
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityListToStrings(directories), Relationship.CONTAINS.ordinal());
     Map<UUID, EntityReference> serviceMap = new HashMap<>();
@@ -366,7 +393,9 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   private void addChildRecords(
       Map<UUID, List<EntityReference>> childrenMap, List<String> parentIds, String childType) {
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 parentIds,
@@ -433,22 +462,22 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   }
 
   @Override
-  public EntityRepository<Directory>.EntityUpdater getUpdater(
-      Directory original, Directory updated, Operation operation) {
-    return new DirectoryUpdater(original, updated, operation);
+  public EntityUpdater<Directory> getUpdater(
+      Directory original, Directory updated, EntityOperation operation) {
+    return new DirectoryUpdater(original, updated, operation).mutation();
   }
 
   private EntityReference getParentDirectory(Directory directory) {
-    return getFromEntityRef(directory.getId(), Relationship.CONTAINS, DIRECTORY, false);
+    return relationships().singleFrom(directory.getId(), Relationship.CONTAINS, DIRECTORY, false);
   }
 
   private EntityReference getService(Directory directory) {
-    return getFromEntityRef(directory.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
+    return relationships()
+        .singleFrom(directory.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
   }
 
   private List<EntityReference> getChildrenRefs(Directory directory) {
     List<EntityReference> children = new ArrayList<>();
-
     // Get subdirectories - we stored parent as "from" and child as "to"
     // So to find children, we use findTo with parent as "from"
     List<CollectionDAO.EntityRelationshipRecord> subDirs =
@@ -464,7 +493,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         children.add(ref);
       }
     }
-
     // Get files
     List<CollectionDAO.EntityRelationshipRecord> files =
         Entity.getCollectionDAO()
@@ -476,7 +504,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         children.add(ref);
       }
     }
-
     // Get spreadsheets
     List<CollectionDAO.EntityRelationshipRecord> spreadsheets =
         Entity.getCollectionDAO()
@@ -489,7 +516,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
         children.add(ref);
       }
     }
-
     LOG.debug("Total children found for directory {}: {}", directory.getId(), children.size());
     return children;
   }
@@ -520,7 +546,9 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   }
 
   public static class DirectoryCsv extends EntityCsv<Directory> {
+
     public static final List<CsvHeader> HEADERS;
+
     public static final CsvDocumentation DOCUMENTATION;
 
     static {
@@ -540,11 +568,11 @@ public class DirectoryRepository extends EntityRepository<Directory> {
               new CsvHeader().withName("dataProducts"),
               new CsvHeader().withName("experts"),
               new CsvHeader().withName("reviewers"));
-
       DOCUMENTATION = new CsvDocumentation().withHeaders(HEADERS).withSummary("Directory");
     }
 
     private final Directory directory;
+
     private final boolean recursive;
 
     DirectoryCsv(Directory directory, String user, boolean recursive) {
@@ -556,19 +584,17 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-
       // For subdirectories, the FQN includes parent path
       String directoryName = csvRecord.get(0);
-      String parentFqn = csvRecord.get(3); // parent field
+      // parent field
+      String parentFqn = csvRecord.get(3);
       String directoryFqn;
-
       if (nullOrEmpty(parentFqn)) {
         directoryFqn =
             FullyQualifiedName.add(directory.getService().getFullyQualifiedName(), directoryName);
       } else {
         directoryFqn = FullyQualifiedName.add(parentFqn, directoryName);
       }
-
       Directory newDirectory;
       try {
         newDirectory = Entity.getEntityByName(DIRECTORY, directoryFqn, "*", Include.NON_DELETED);
@@ -579,7 +605,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                 .withService(directory.getService())
                 .withName(directoryName)
                 .withFullyQualifiedName(directoryFqn);
-
         if (!nullOrEmpty(parentFqn)) {
           // Use dependency resolution for parent directory lookup
           EntityReference parentRef = null;
@@ -594,7 +619,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           newDirectory.withParent(parentRef);
         }
       }
-
       // Update directory fields from CSV
       newDirectory
           .withDisplayName(csvRecord.get(1))
@@ -611,7 +635,6 @@ public class DirectoryRepository extends EntityRepository<Directory> {
                       Pair.of(9, TagLabel.TagSource.GLOSSARY))))
           .withDomains(getDomains(printer, csvRecord, 10, newDirectory.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 11));
-
       if (processRecord) {
         createEntity(printer, csvRecord, newDirectory, DIRECTORY);
       }
@@ -666,50 +689,87 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     }
   }
 
-  public class DirectoryUpdater extends EntityUpdater {
-    public DirectoryUpdater(Directory original, Directory updated, Operation operation) {
-      super(original, updated, operation);
+  public class DirectoryUpdater implements EntitySpecificMutation<Directory> {
+
+    public DirectoryUpdater(Directory original, Directory updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("parent", this::run);
-      compareAndUpdate(
+    public void update(EntityUpdater<Directory> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate("parent", this::run);
+      entityUpdate.compareAndUpdate(
           "directoryType",
           () ->
-              recordChange(
-                  "directoryType", original.getDirectoryType(), updated.getDirectoryType()));
-      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "directoryType",
+                  entityUpdate.getOriginal().getDirectoryType(),
+                  entityUpdate.getUpdated().getDirectoryType()));
+      entityUpdate.compareAndUpdate(
+          "path",
+          () ->
+              entityUpdate.recordChange(
+                  "path",
+                  entityUpdate.getOriginal().getPath(),
+                  entityUpdate.getUpdated().getPath()));
+      entityUpdate.compareAndUpdate(
           "isShared",
-          () -> recordChange("isShared", original.getIsShared(), updated.getIsShared()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "isShared",
+                  entityUpdate.getOriginal().getIsShared(),
+                  entityUpdate.getUpdated().getIsShared()));
+      entityUpdate.compareAndUpdate(
           "numberOfFiles",
           () ->
-              recordChange(
-                  "numberOfFiles", original.getNumberOfFiles(), updated.getNumberOfFiles()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "numberOfFiles",
+                  entityUpdate.getOriginal().getNumberOfFiles(),
+                  entityUpdate.getUpdated().getNumberOfFiles()));
+      entityUpdate.compareAndUpdate(
           "numberOfSubDirectories",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "numberOfSubDirectories",
-                  original.getNumberOfSubDirectories(),
-                  updated.getNumberOfSubDirectories()));
-      compareAndUpdate(
+                  entityUpdate.getOriginal().getNumberOfSubDirectories(),
+                  entityUpdate.getUpdated().getNumberOfSubDirectories()));
+      entityUpdate.compareAndUpdate(
           "totalSize",
-          () -> recordChange("totalSize", original.getTotalSize(), updated.getTotalSize()));
+          () ->
+              entityUpdate.recordChange(
+                  "totalSize",
+                  entityUpdate.getOriginal().getTotalSize(),
+                  entityUpdate.getUpdated().getTotalSize()));
     }
 
     private void run() {
-      updateFromRelationship(
-          "parent",
-          DIRECTORY,
-          original.getParent(),
-          updated.getParent(),
-          Relationship.CONTAINS,
-          DIRECTORY,
-          original.getId());
+      entityUpdate.updateFromRelationship(
+          new EntityRelationshipUpdates.Target(
+              "parent",
+              entityUpdate.getOriginal().getId(),
+              DIRECTORY,
+              DIRECTORY,
+              Relationship.CONTAINS),
+          entityUpdate.getOriginal().getParent(),
+          entityUpdate.getUpdated().getParent());
     }
+
+    private final EntityUpdater<Directory> entityUpdate;
+
+    public EntityUpdater<Directory> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<Directory> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Directory> context() {
+    return entityContext;
   }
 }

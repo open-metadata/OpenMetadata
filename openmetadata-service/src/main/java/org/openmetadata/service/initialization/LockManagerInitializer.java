@@ -2,7 +2,7 @@ package org.openmetadata.service.initialization;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
 import org.openmetadata.service.lock.HierarchicalLockManager;
 
 /**
@@ -21,32 +21,25 @@ public class LockManagerInitializer {
     if (initialized) {
       return;
     }
-
     synchronized (LockManagerInitializer.class) {
       if (initialized) {
         return;
       }
-
       try {
         LOG.info("Initializing hierarchical lock manager for entity deletion optimization");
-
         // Get the collection DAO
         var collectionDAO = Entity.getCollectionDAO();
         if (collectionDAO == null) {
           LOG.warn("CollectionDAO not available, skipping lock manager initialization");
           return;
         }
-
         // Initialize the lock manager
         HierarchicalLockManager lockManager =
             new HierarchicalLockManager(collectionDAO.deletionLockDAO());
-
         // Set it on EntityRepository
-        EntityRepository.setLockManager(lockManager);
-
+        EntityPolicySupport.setLockManager(lockManager);
         initialized = true;
         LOG.info("Hierarchical lock manager initialized successfully");
-
       } catch (Exception e) {
         LOG.error("Failed to initialize hierarchical lock manager: {}", e.getMessage(), e);
         // Continue without locking for backward compatibility
