@@ -3,7 +3,9 @@
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +15,7 @@
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, last } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
 import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
@@ -31,6 +33,10 @@ const IncidentTypeAreaChartWidget = ({
 }: IncidentTypeAreaChartWidgetProps) => {
   const [isChartLoading, setIsChartLoading] = useState(true);
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
+
+  // Guard against out-of-order (stale) responses: each request gets an
+  // incrementing id and only the latest request may update component state.
+  const latestRequestRef = useRef(0);
 
   const bodyElement = useMemo(() => {
     const latestValue = last(chartData)?.count ?? 0;
@@ -56,26 +62,44 @@ const IncidentTypeAreaChartWidget = ({
   }, [title, chartData, name, height]);
 
   const getCountOfIncidentStatus = async () => {
+    // mark this request as the latest
+    const requestId = ++latestRequestRef.current;
+
     setIsChartLoading(true);
+
     try {
       const { data } = await fetchCountOfIncidentStatusTypeByDays(
         incidentStatusType,
         chartFilter
       );
+
+      // If a newer request started after this one, ignore this (stale)
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
+
       const updatedData = data.map((item) => ({
         timestamp: +item.timestamp,
         count: +item.stateId,
       }));
       setChartData(updatedData);
     } catch {
+      // Only update state for the latest request
+      if (requestId !== latestRequestRef.current) {
+        return;
+      }
       setChartData([]);
     } finally {
-      setIsChartLoading(false);
+      // Ensure only the latest request can toggle the loading state
+      if (requestId === latestRequestRef.current) {
+        setIsChartLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     getCountOfIncidentStatus();
+    // We intentionally do not include latestRequestRef in deps - it's a ref.
   }, [chartFilter, incidentStatusType]);
 
   if (isChartLoading) {
