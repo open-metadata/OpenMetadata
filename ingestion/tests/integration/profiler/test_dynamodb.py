@@ -1,6 +1,12 @@
 import pytest
 
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    Constraint,
+    ConstraintType,
+    DataType,
+    Table,
+    TableConstraint,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     AutoClassificationConfigType,
@@ -48,6 +54,20 @@ def db_fqn(db_service: DatabaseService):
             "default",
         ]
     )
+
+
+def test_primary_key_from_key_schema(db_fqn, metadata):
+    """
+    test_table is created with a single HASH key `id` of type S. The server rejects a constraint
+    over an unknown column, so getting it back proves the key columns were ingested too.
+    """
+    table = metadata.get_by_name(entity=Table, fqn=f"{db_fqn}.test_table", fields=["tableConstraints"])
+
+    assert table.tableConstraints == [TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["id"])]
+    id_column = next(column for column in table.columns if column.name.root == "id")
+    assert id_column.constraint == Constraint.PRIMARY_KEY
+    # the ids are "1" and "2": inferred from the sample they would be INT, the table declares them S
+    assert id_column.dataType == DataType.STRING
 
 
 def test_sample_data(db_service, db_fqn, metadata):
