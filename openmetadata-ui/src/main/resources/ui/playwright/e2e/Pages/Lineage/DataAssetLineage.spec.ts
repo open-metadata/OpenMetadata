@@ -235,6 +235,11 @@ test.describe('Data asset lineage', () => {
       key
     )}`, async ({ page }) => {
       test.setTimeout(5 * 60 * 1000);
+      // The hierarchical lineage map lays the graph out wider than the default
+      // 1280x720 viewport, so fit-to-screen settles with edge markers outside
+      // the view and clickCanvasEdge's in-viewport assertion never passes. The
+      // sibling test above carries the same size for the same reason.
+      await page.setViewportSize({ height: 1600, width: 1920 });
       const lineageEntity = new EntityClass();
       sourceEntities.push(lineageEntity);
 
