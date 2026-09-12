@@ -15,6 +15,7 @@ import {
   Box,
   ButtonUtility,
   Owner,
+  PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
@@ -27,7 +28,6 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
@@ -351,7 +351,7 @@ const AlertDetailsPage = () => {
         <ObservabilityPageShell
           data-testid="alert-details-ai-page"
           header={
-            <HeaderShell
+            <PageLayout.PageHeader
               actions={headerActions}
               breadcrumb={
                 <HeaderBreadcrumb
@@ -364,7 +364,6 @@ const AlertDetailsPage = () => {
               data-testid="alerts-observability-ai-details-header"
               footer={headerFooter}
               meta={headerMetadata}
-              padding="comfortable"
               /* The subtitle should mirror the alert identifier from the route,
                * not the backend entity id returned in alertDetails. */
               subtitle={fqn}

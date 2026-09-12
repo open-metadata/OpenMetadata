@@ -35,6 +35,12 @@ const noRawTitleAttribute = {
           parent.type === 'JSXOpeningElement' &&
           node.name.name === 'title'
         ) {
+          // Member expressions such as PageLayout.PageHeader are components;
+          // only simple JSX identifiers can represent native HTML elements.
+          if (parent.name.type !== 'JSXIdentifier') {
+            return;
+          }
+
           const elementName = parent.name.name;
 
           // Only flag lowercase (native HTML) elements

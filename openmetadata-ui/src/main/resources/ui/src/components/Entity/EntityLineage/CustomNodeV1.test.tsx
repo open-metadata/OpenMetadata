@@ -13,6 +13,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { act, Fragment } from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import {
+  LineageBand,
+  LineageLevelKind,
+} from '../../../generated/api/lineage/lineageScene';
 import { ModelType } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import CustomNodeV1Component from './CustomNodeV1.component';
@@ -209,19 +213,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </div>
       );
     }),
-  Button: jest
-    .fn()
-    .mockImplementation(
-      ({ children, onClick, className, 'data-testid': testId }) => (
-        <button
-          className={className}
-          data-testid={testId}
-          type="button"
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+  Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   Typography: jest
     .fn()
     .mockImplementation(
@@ -340,6 +333,144 @@ describe('CustomNodeV1', () => {
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
     expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
+  });
+
+  it('renders scene drill action for expandable scene nodes', () => {
+    const onSceneDrill = jest.fn();
+    const sceneNode = {
+      id: 'scene-node',
+      label: 'dim_customer',
+      band: LineageBand.Asset,
+      levelKind: LineageLevelKind.Table,
+      isExpandable: true,
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component
+          {...{
+            ...mockNodeDataProps,
+            data: {
+              ...mockNodeDataProps.data,
+              sceneDrillLabel: 'label.zoom-in',
+              sceneNode,
+              onSceneDrill,
+            },
+          }}
+        />
+      </ReactFlowProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.zoom-in' }));
+
+    expect(onSceneDrill).toHaveBeenCalledWith(sceneNode);
+  });
+
+  it.each([undefined, ''])(
+    'names the drill action when its label is %s',
+    (sceneDrillLabel) => {
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component
+            {...mockNodeDataProps}
+            data={{
+              ...mockNodeDataProps.data,
+              sceneDrillLabel,
+              sceneNode: { isExpandable: true },
+              onSceneDrill: jest.fn(),
+            }}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(
+        screen.getByRole('button', { name: 'label.zoom-in' })
+      ).toBeVisible();
+    }
+  );
+
+  it('opens entity details from the title without drilling the scene', () => {
+    const onSceneNodeSelect = jest.fn();
+    const onSceneDrill = jest.fn();
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component
+          {...mockNodeDataProps}
+          data={{
+            ...mockNodeDataProps.data,
+            node: { ...mockNodeDataProps.data.node, displayName: 'Customers' },
+            sceneNode: { isExpandable: true },
+            onSceneNodeSelect,
+            onSceneDrill,
+          }}
+        />
+      </ReactFlowProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Customers' }));
+
+    expect(onSceneNodeSelect).toHaveBeenCalledWith(mockNodeDataProps.id);
+    expect(onSceneDrill).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the title when a scene reload changes an existing node', () => {
+    const { rerender } = render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps} />
+      </ReactFlowProvider>
+    );
+    rerender(
+      <ReactFlowProvider>
+        <CustomNodeV1Component
+          {...mockNodeDataProps}
+          data={{
+            ...mockNodeDataProps.data,
+            node: {
+              ...mockNodeDataProps.data.node,
+              displayName: 'Updated customers',
+            },
+          }}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('entity-header-display-name')).toHaveTextContent(
+      'Updated customers'
+    );
+  });
+
+  it('renders drill action for expandable ghost scene nodes', () => {
+    const onSceneDrill = jest.fn();
+    const sceneNode = {
+      id: 'scene-node',
+      label: 'dim_customer',
+      band: LineageBand.Asset,
+      levelKind: LineageLevelKind.Table,
+      isExpandable: true,
+      isGhost: true,
+    };
+
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component
+          {...{
+            ...mockNodeDataProps,
+            data: {
+              ...mockNodeDataProps.data,
+              sceneDrillLabel: 'label.zoom-in',
+              sceneNode,
+              onSceneDrill,
+            },
+          }}
+        />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.zoom-in' }));
+
+    expect(onSceneDrill).toHaveBeenCalledWith(sceneNode);
   });
 
   it('should render breadcrumb for node full path', () => {

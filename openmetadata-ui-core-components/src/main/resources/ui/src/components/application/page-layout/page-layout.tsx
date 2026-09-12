@@ -84,6 +84,7 @@ const PageLayoutRoot = forwardRef<HTMLDivElement, PageLayoutProps>(
       fullHeight = true,
       className,
       children,
+      'data-testid': dataTestId = 'page-layout',
       ...props
     },
     ref
@@ -103,7 +104,7 @@ const PageLayoutRoot = forwardRef<HTMLDivElement, PageLayoutProps>(
             className
           )}
           data-scroll={scroll}
-          data-testid="page-layout"
+          data-testid={dataTestId}
           style={{
             gridTemplateColumns: 'auto minmax(0, 1fr) auto',
             gridTemplateRows:
@@ -128,7 +129,7 @@ const PageLayoutHeader = ({
 }: PageLayoutHeaderProps) => (
   <header
     {...props}
-    className={cx('tw:min-w-0', className)}
+    className={cx('tw:w-full tw:min-w-0', className)}
     style={{ gridArea: 'header', ...style }}>
     {children}
   </header>
