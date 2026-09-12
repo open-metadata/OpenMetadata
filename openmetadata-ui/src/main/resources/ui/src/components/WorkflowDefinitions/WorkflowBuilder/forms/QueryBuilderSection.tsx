@@ -12,16 +12,12 @@
  */
 
 import { Registry } from '@rjsf/utils';
-import { ConfigProvider } from 'antd';
 import { noop } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
-import { getQueryBuilderPortalContainer } from '../../../../utils/queryBuilder/portal';
 import QueryBuilderWidget from '../../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
-
-const PORTAL_CONTAINER_ID = 'workflow-query-builder-portal';
 
 interface QueryBuilderSectionProps {
   entityTypes?: EntityType;
@@ -64,30 +60,25 @@ export const QueryBuilderSection: React.FC<QueryBuilderSectionProps> = ({
     <div
       className={readOnly ? 'tw:pointer-events-none' : ''}
       data-testid="query-builder-section">
-      <ConfigProvider
-        getPopupContainer={() =>
-          getQueryBuilderPortalContainer(PORTAL_CONTAINER_ID)
-        }>
-        <QueryBuilderWidget
-          data-testid="query-builder-widget"
-          id={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
-          label={label || ''}
-          name={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
-          options={{}}
-          registry={emptyRegistry}
-          schema={{
-            entityType: entityTypes,
-            showExploreLink,
-            ...(outputType === SearchOutputType.JSONLogic && {
-              outputType,
-            }),
-          }}
-          value={internalValue}
-          onBlur={noop}
-          onChange={handleChange}
-          onFocus={noop}
-        />
-      </ConfigProvider>
+      <QueryBuilderWidget
+        data-testid="query-builder-widget"
+        id={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
+        label={label || ''}
+        name={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
+        options={{}}
+        registry={emptyRegistry}
+        schema={{
+          entityType: entityTypes,
+          showExploreLink,
+          ...(outputType === SearchOutputType.JSONLogic && {
+            outputType,
+          }),
+        }}
+        value={internalValue}
+        onBlur={noop}
+        onChange={handleChange}
+        onFocus={noop}
+      />
     </div>
   );
 };
