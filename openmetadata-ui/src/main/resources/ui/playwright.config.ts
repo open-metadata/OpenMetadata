@@ -377,7 +377,13 @@ export default defineConfig({
     {
       name: 'Knowledge Graph',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
+      // ontology-rdf-setup is the only gate that proves the live projection is
+      // really writing — it round-trips a probe entity through SPARQL before
+      // letting dependents start. Without it this project builds its fixture
+      // table while the projection is still coming up, and the one test that
+      // reads the real /rdf/graph/explore sees that table as a bare node whose
+      // relationships never arrive, however long it waits.
+      dependencies: ['setup', 'entity-data-setup', 'ontology-rdf-setup'],
       grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
     },

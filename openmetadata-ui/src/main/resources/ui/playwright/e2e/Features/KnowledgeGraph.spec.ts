@@ -373,10 +373,11 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     // inside the predicate makes a failing explore call look like a call that
     // never happened, and the wait then times out without naming the HTTP error.
     //
-    // RdfLiveWriter projects on a bounded drain, so the table created in
-    // beforeAll reaches the store as a bare node first and its relationships
-    // land a moment later. Reopen until the projection has caught up instead of
-    // asserting on whichever half of it happened to exist on the first paint.
+    // The project waits on ontology-rdf-setup, so the projection is known to be
+    // writing by the time beforeAll builds the fixture table — but that table's
+    // own write still has to drain, and it reaches the store as a bare node
+    // before its relationships follow. Reopen until the drain has caught up
+    // rather than asserting on whichever half of it exists on the first paint.
     let graph!: GraphData;
     await expect
       .poll(
