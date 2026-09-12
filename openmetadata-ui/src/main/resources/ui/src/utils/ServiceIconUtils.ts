@@ -83,6 +83,7 @@ import ssrs from '../assets/img/service-icon-ssrs.webp';
 import superset from '../assets/img/service-icon-superset.webp';
 import tableau from '../assets/img/service-icon-tableau.webp';
 import hex from '../assets/svg/service-icon-hex.svg';
+import rill from '../assets/svg/service-icon-rill.svg';
 
 // Pipeline services
 import airbyte from '../assets/img/Airbyte.webp';
@@ -214,6 +215,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   microstrategy: microstrategy,
   grafana: grafana,
   hex: hex,
+  rill: rill,
   ssrs: ssrs,
   customdashboard: dashboarddefault,
 

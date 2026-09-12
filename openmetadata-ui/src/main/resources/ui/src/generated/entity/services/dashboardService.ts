@@ -230,6 +230,8 @@ export interface DashboardConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
  * Omni BI connector: models, topics, workbooks/dashboards and lineage
@@ -308,6 +310,8 @@ export interface Connection {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
@@ -451,6 +455,8 @@ export interface Connection {
      *
      * Client SSL verification.
      *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
+     *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
      */
@@ -552,6 +558,8 @@ export interface Connection {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * API token to authenticate with Rill.
      *
      * API token to authenticate with Omni.
      */
@@ -1551,6 +1559,7 @@ export enum DashboardServiceType {
     QlikSense = "QlikSense",
     QuickSight = "QuickSight",
     Redash = "Redash",
+    Rill = "Rill",
     SapS4Hana = "SapS4Hana",
     Sigma = "Sigma",
     Ssrs = "Ssrs",
