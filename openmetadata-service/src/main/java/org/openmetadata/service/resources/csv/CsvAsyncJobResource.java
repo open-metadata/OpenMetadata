@@ -32,6 +32,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvExportPayload;
@@ -128,6 +129,32 @@ public class CsvAsyncJobResource {
     }
     return Response.ok(CsvExportPayload.streamOf(() -> CsvExportSpool.openForRead(jobId)), CSV)
         .build();
+  }
+
+  @GET
+  @Path("/{jobId}/importResult")
+  @Operation(
+      operationId = "getCsvAsyncJobImportResult",
+      summary = "Get the validation result of a completed CSV import job")
+  public CsvImportResult getImportResult(
+      @Context SecurityContext securityContext, @PathParam("jobId") String jobId) {
+    SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+    CsvAsyncJob job = jobManager.getJob(jobId);
+    if (job == null) {
+      throw new NotFoundException("CSV job not found: " + jobId);
+    }
+    validateAccess(subjectContext, job);
+    if (job.getOperation() != CsvAsyncJob.Operation.IMPORT
+        || job.getStatus() != CsvAsyncJob.Status.COMPLETED) {
+      throw new BadRequestException(
+          "CSV job " + jobId + " is not a completed import; it has no import result.");
+    }
+    CsvImportResult result = jobManager.getImportResult(jobId);
+    if (result == null) {
+      throw new NotFoundException(
+          "The result of CSV import job " + jobId + " is no longer available.");
+    }
+    return result;
   }
 
   @PUT

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError, AxiosResponse } from 'axios';
+import { CSVImportResult } from '../generated/type/csvImportResult';
 import APIClient from './index';
 
 export interface CsvHeaderDocumentation {
@@ -129,6 +130,21 @@ export const getCsvAsyncJobResult = async (
       responseType: 'text',
       signal,
     }
+  );
+
+  return response.data;
+};
+
+// The validation result of a completed import is stored in the job row (like export payloads) and
+// omitted from the job status/list. Fetch it here once the job is COMPLETED so the import result is
+// reachable from any node, instead of relying on the websocket frame reaching the pod that ran it.
+export const getCsvAsyncImportResult = async (
+  jobId: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<CSVImportResult>(
+    `/csvAsyncJobs/${jobId}/importResult`,
+    { signal }
   );
 
   return response.data;

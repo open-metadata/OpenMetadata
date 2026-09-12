@@ -84,8 +84,11 @@ import {
   cancelCsvAsyncJob,
   CsvAsyncJob,
   CsvDocumentation,
+  getCsvAsyncImportResult,
+  getCsvAsyncJob,
   getCsvAsyncJobs,
   getCsvDocumentation,
+  isPollableCsvAsyncJobId,
 } from '../../../rest/csvAPI';
 import {
   getCsvHeaderKey,
@@ -204,6 +207,11 @@ const getTestCaseBreadcrumbList = (
 
   return undefined;
 };
+
+// Fallback poll cadence for the import job status while the websocket completion frame is
+// awaited. The frame is delivered by whichever pod ran the background job, so on a multi-pod
+// deployment it is often lost; polling the job row (reachable from any node) recovers the result.
+const CSV_IMPORT_STATUS_POLL_INTERVAL_MS = 4000;
 
 // Extracted so this check doesn't add to the cyclomatic complexity of the
 // websocket-response handler that calls it.
@@ -1196,6 +1204,65 @@ const BulkEntityImportPage = () => {
     ]
   );
   handleImportWebsocketResponseRef.current = handleImportWebsocketResponse;
+
+  // Reads the terminal state of the active import job over REST and drives the same completion
+  // handler the websocket would, so a dropped frame no longer strands the validation step.
+  const reconcileImportJobFromPoll = useCallback(
+    async (jobId: string, signal: AbortSignal) => {
+      const job = await getCsvAsyncJob(jobId, signal);
+
+      if (activeAsyncImportJobRef.current?.jobId !== jobId) {
+        return;
+      }
+
+      if (job.status === 'COMPLETED') {
+        const result = await getCsvAsyncImportResult(jobId, signal);
+
+        if (activeAsyncImportJobRef.current?.jobId !== jobId) {
+          return;
+        }
+
+        handleImportWebsocketResponseRef.current?.({
+          jobId,
+          result,
+          status: 'COMPLETED',
+        });
+      } else if (job.status === 'FAILED' || job.status === 'CANCELLED') {
+        handleImportWebsocketResponseRef.current?.({
+          error: job.error,
+          jobId,
+          status: 'FAILED',
+        });
+      }
+    },
+    [activeAsyncImportJobRef]
+  );
+
+  // The websocket is the primary completion signal, but WebSocketManager.sendToOne is node-local:
+  // on a multi-pod deployment the pod that ran the job is often not the one holding this browser's
+  // socket, so the frame is lost and validation would hang. Poll the job row as a fallback.
+  useEffect(() => {
+    const jobId = activeAsyncImportJob?.jobId;
+
+    if (!isValidating || !jobId || !isPollableCsvAsyncJobId(jobId)) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    const poll = () => {
+      reconcileImportJobFromPoll(jobId, abortController.signal).catch(() => {
+        // Transient poll failure: the interval retries and the websocket may still resolve.
+      });
+    };
+
+    poll();
+    const intervalId = setInterval(poll, CSV_IMPORT_STATUS_POLL_INTERVAL_MS);
+
+    return () => {
+      abortController.abort();
+      clearInterval(intervalId);
+    };
+  }, [isValidating, activeAsyncImportJob?.jobId, reconcileImportJobFromPoll]);
 
   useEffect(() => {
     fetchEntityData();
