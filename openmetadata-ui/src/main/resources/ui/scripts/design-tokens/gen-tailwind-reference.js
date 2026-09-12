@@ -29,7 +29,7 @@ const OUT = path.join(UI, 'specs/tokens/tailwind-utility-reference.md');
 const SEMANTIC = {
   Background: ['bg-page', 'bg-canvas', 'bg-surface', 'bg-raised', 'bg-overlay-surface', 'bg-primary', 'bg-secondary', 'bg-tertiary', 'bg-quaternary', 'bg-disabled', 'bg-overlay', 'bg-brand-primary', 'bg-brand-solid', 'bg-error-primary', 'bg-warning-primary', 'bg-success-primary'],
   Text: ['text-primary', 'text-secondary', 'text-tertiary', 'text-quaternary', 'text-disabled', 'text-placeholder', 'text-link', 'text-link-hover', 'text-white', 'text-brand-primary', 'text-error-primary', 'text-warning-primary', 'text-success-primary'],
-  Border: ['border-primary', 'border-secondary', 'border-tertiary', 'border-subtle', 'border-hover', 'border-disabled', 'border-error', 'border-brand', 'border-brand_subtle', 'border-warning_subtle', 'border-success_subtle'],
+  Border: ['border-primary', 'border-secondary', 'border-tertiary', 'border-subtle', 'border-hover', 'border-disabled', 'border-error', 'border-brand', 'border-brand-subtle', 'border-error-subtle', 'border-warning-subtle', 'border-success-subtle'],
   Foreground: ['text-fg-brand-primary', 'text-fg-error-primary', 'text-fg-warning-primary', 'text-fg-success-primary'],
   Elevation: ['shadow-card', 'shadow-raised', 'shadow-overlay'],
 };

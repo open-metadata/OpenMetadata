@@ -146,10 +146,13 @@ test('separates subtle and interactive border roles in both themes', () => {
     light.get('--color-border-hover'),
     'var(--color-border-hover, theme(--color-gray-400))'
   );
-  assert.equal(dark.get('--color-border-subtle'), 'rgb(255 255 255 / 0.08)');
+  assert.equal(
+    dark.get('--color-border-subtle'),
+    '--alpha(var(--color-white) / 8%)'
+  );
   assert.equal(
     dark.get('--color-border-secondary_alt'),
-    'rgb(255 255 255 / 0.08)'
+    '--alpha(var(--color-white) / 8%)'
   );
   assert.equal(dark.get('--color-border-primary'), 'theme(--color-gray-500)');
   assert.equal(dark.get('--color-border-hover'), 'theme(--color-gray-400)');
@@ -199,36 +202,41 @@ test('uses shared dark interaction and feedback recipes', () => {
   const light = declarations(extractBlock(css, '@theme static'));
   const dark = declarations(extractBlock(css, '.dark-mode'));
   const backgrounds = {
-    '--color-bg-primary_hover': 'rgb(255 255 255 / 0.06)',
-    '--color-bg-secondary_hover': 'rgb(255 255 255 / 0.06)',
-    '--color-bg-active': 'rgb(255 255 255 / 0.1)',
-    '--color-bg-brand-primary': 'rgb(46 144 250 / 0.16)',
-    '--color-bg-error-primary': 'rgb(240 68 56 / 0.16)',
-    '--color-bg-warning-primary': 'rgb(247 144 9 / 0.16)',
-    '--color-bg-success-primary': 'rgb(23 178 106 / 0.16)',
+    '--color-bg-primary_hover': '--alpha(var(--color-white) / 6%)',
+    '--color-bg-secondary_hover': '--alpha(var(--color-white) / 6%)',
+    '--color-bg-active': '--alpha(var(--color-white) / 10%)',
+    '--color-bg-brand-primary': '--alpha(var(--color-brand-500) / 16%)',
+    '--color-bg-error-primary': '--alpha(var(--color-error-500) / 16%)',
+    '--color-bg-warning-primary': '--alpha(var(--color-warning-500) / 16%)',
+    '--color-bg-success-primary': '--alpha(var(--color-success-500) / 16%)',
   };
   const borders = {
-    brand: ['brand-300', 'rgb(83 177 253 / 0.35)'],
-    error: ['error-300', 'rgb(249 112 102 / 0.35)'],
-    warning: ['warning-300', 'rgb(253 176 34 / 0.35)'],
-    success: ['success-300', 'rgb(71 205 137 / 0.35)'],
+    brand: ['brand-300', '--alpha(var(--color-brand-400) / 35%)'],
+    error: ['error-300', '--alpha(var(--color-error-400) / 35%)'],
+    warning: ['warning-300', '--alpha(var(--color-warning-400) / 35%)'],
+    success: ['success-300', '--alpha(var(--color-success-400) / 35%)'],
   };
 
   for (const [token, value] of Object.entries(backgrounds)) {
     assert.equal(dark.get(token), value);
   }
   for (const [status, [lightRole, darkValue]] of Object.entries(borders)) {
-    const token = `--color-border-${status}_subtle`;
+    const token = `--color-border-${status}-subtle`;
     assert.equal(
       light.get(token),
       `var(${token}, theme(--color-${lightRole}))`
     );
     assert.equal(dark.get(token), darkValue);
     assert.equal(
-      dark.get(`--tw-border-color-${status}_subtle`),
+      dark.get(`--tw-border-color-${status}-subtle`),
       `var(${token})`
     );
   }
+
+  assert.equal(
+    dark.get('--color-border-error_subtle'),
+    'var(--color-border-error-subtle)'
+  );
 });
 
 test('aliases semantic elevation roles to the existing shadow scale', () => {
@@ -253,11 +261,13 @@ test('exposes the approved roles through the legacy token bridge', () => {
     '--om-color-border-subtle': 'var(--color-border-subtle, rgb(0 0 0 / 0.08))',
     '--om-color-border-hover': 'var(--color-border-hover, #a4a7ae)',
     '--om-color-border-brand-subtle':
-      'var(--color-border-brand_subtle, #84caff)',
+      'var(--color-border-brand-subtle, #84caff)',
+    '--om-color-border-error-subtle':
+      'var(--color-border-error-subtle, #fda29b)',
     '--om-color-border-warning-subtle':
-      'var(--color-border-warning_subtle, #fec84b)',
+      'var(--color-border-warning-subtle, #fec84b)',
     '--om-color-border-success-subtle':
-      'var(--color-border-success_subtle, #75e0a7)',
+      'var(--color-border-success-subtle, #75e0a7)',
     '--om-color-link': 'var(--color-text-link, #1570ef)',
     '--om-color-link-hover': 'var(--color-text-link-hover, #175cd3)',
     '--om-shadow-card': 'var(--shadow-card, var(--shadow-xs))',
@@ -280,9 +290,10 @@ test('documents every approved go-forward utility', () => {
     'tw:bg-overlay-surface',
     'tw:border-subtle',
     'tw:border-hover',
-    'tw:border-brand_subtle',
-    'tw:border-warning_subtle',
-    'tw:border-success_subtle',
+    'tw:border-brand-subtle',
+    'tw:border-error-subtle',
+    'tw:border-warning-subtle',
+    'tw:border-success-subtle',
     'tw:text-link',
     'tw:text-link-hover',
     'tw:shadow-card',

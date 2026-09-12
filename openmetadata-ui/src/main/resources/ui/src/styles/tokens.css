@@ -202,9 +202,10 @@
   --om-color-border-disabled: var(--color-border-disabled, #d5d7da);
   --om-color-border-error: var(--color-border-error, #f04438);
   --om-color-border-brand: var(--color-border-brand, #2e90fa);
-  --om-color-border-brand-subtle: var(--color-border-brand_subtle, #84caff);
-  --om-color-border-warning-subtle: var(--color-border-warning_subtle, #fec84b);
-  --om-color-border-success-subtle: var(--color-border-success_subtle, #75e0a7);
+  --om-color-border-brand-subtle: var(--color-border-brand-subtle, #84caff);
+  --om-color-border-error-subtle: var(--color-border-error-subtle, #fda29b);
+  --om-color-border-warning-subtle: var(--color-border-warning-subtle, #fec84b);
+  --om-color-border-success-subtle: var(--color-border-success-subtle, #75e0a7);
 
   --om-color-fg-brand: var(--color-fg-brand-primary, #1570ef);
   --om-color-fg-error: var(--color-fg-error-primary, #d92d20);

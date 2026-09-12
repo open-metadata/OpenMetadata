@@ -50,14 +50,14 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 | `tw:bg-overlay-surface` | `--color-bg-overlay-surface` | Existing modal surface | `#222222` | Modal and drawer content |
 | `tw:bg-primary` | `--color-bg-primary` | `#ffffff` | `#141414` | Existing generic primary surface |
 | `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#191919` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |
-| `tw:bg-primary_hover` | `--color-bg-primary_hover` | `#fafafa` | `rgb(255 255 255 / 0.06)` | Hover state on a primary surface |
+| `tw:bg-primary_hover` | `--color-bg-primary_hover` | `#fafafa` | White at 6% | Hover state on a primary surface |
 | `tw:bg-secondary` | `--color-bg-secondary` | `#fafafa` | `#191919` | Existing generic secondary surface |
 | `tw:bg-secondary_alt` | `--color-bg-secondary_alt` | `#fafafa` | `#141414` (bg-primary) | Alternate secondary surface |
 | `tw:bg-secondary_subtle` | `--color-bg-secondary_subtle` | `#fdfdfd` | `#191919` | Subtle secondary background |
-| `tw:bg-secondary_hover` | `--color-bg-secondary_hover` | `#f5f5f5` | `rgb(255 255 255 / 0.06)` | Hover on a secondary surface |
+| `tw:bg-secondary_hover` | `--color-bg-secondary_hover` | `#f5f5f5` | White at 6% | Hover on a secondary surface |
 | `tw:bg-tertiary` | `--color-bg-tertiary` | `#f5f5f5` | `#222222` | Input backgrounds and code blocks |
 | `tw:bg-quaternary` | `--color-bg-quaternary` | `#e9eaeb` | `#2e2e2e` | Strongest neutral surface and skeleton loaders |
-| `tw:bg-active` | `--color-bg-active` | `#fafafa` | `rgb(255 255 255 / 0.1)` | Selected or active row/nav item |
+| `tw:bg-active` | `--color-bg-active` | `#fafafa` | White at 10% | Selected or active row/nav item |
 | `tw:bg-disabled` | `--color-bg-disabled` | `#f5f5f5` | `#222222` | Disabled input or button surface |
 | `tw:bg-disabled_subtle` | `--color-bg-disabled_subtle` | `#fafafa` | `#191919` | Subtler disabled surface |
 | `tw:bg-overlay` | `--color-bg-overlay` | `#0a0d12` | `#222222` | Modal backdrops, drawer overlays |
@@ -68,7 +68,7 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | `rgb(46 144 250 / 0.16)` | Light brand tint surface |
+| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | Brand 500 at 16% | Light brand tint surface |
 | `tw:bg-brand-primary_alt` | `--color-bg-brand-primary_alt` | `#eff8ff` | `#191919` | Alternate brand tint |
 | `tw:bg-brand-secondary` | `--color-bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand tint |
 | `tw:bg-brand-solid` | `--color-bg-brand-solid` | `#1570ef` | `#1570ef` | Primary CTA button fill |
@@ -80,13 +80,13 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 
 | Tailwind Class | Light | Dark | When to Use |
 |---|---|---|---|
-| `tw:bg-error-primary` | `#fef3f2` | `rgb(240 68 56 / 0.16)` | Error/alert container background |
+| `tw:bg-error-primary` | `#fef3f2` | Error 500 at 16% | Error/alert container background |
 | `tw:bg-error-secondary` | `#fee4e2` | `#d92d20` | Stronger error background |
 | `tw:bg-error-solid` | `#d92d20` | `#d92d20` | Solid error badge/button |
-| `tw:bg-warning-primary` | `#fffaeb` | `rgb(247 144 9 / 0.16)` | Warning container background |
+| `tw:bg-warning-primary` | `#fffaeb` | Warning 500 at 16% | Warning container background |
 | `tw:bg-warning-secondary` | `#fef0c7` | `#dc6803` | Stronger warning background |
 | `tw:bg-warning-solid` | `#dc6803` | `#dc6803` | Solid warning badge |
-| `tw:bg-success-primary` | `#ecfdf3` | `rgb(23 178 106 / 0.16)` | Success container background |
+| `tw:bg-success-primary` | `#ecfdf3` | Success 500 at 16% | Success container background |
 | `tw:bg-success-secondary` | `#dcfae6` | `#079455` | Stronger success background |
 | `tw:bg-success-solid` | `#079455` | `#079455` | Solid success badge |
 
@@ -94,7 +94,7 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 // ✅ Correct
 <div className="tw:bg-page">Page content</div>
 <div className="tw:bg-surface">Sidebar</div>
-<div className="tw:bg-error-primary tw:border tw:border-error_subtle">Error banner</div>
+<div className="tw:bg-error-primary tw:border tw:border-error-subtle">Error banner</div>
 
 // ❌ Wrong
 <div className="tw:bg-white">...</div>
@@ -174,17 +174,17 @@ Use border tokens for input outlines, card dividers, separators, and table borde
 |---|---|---|---|---|
 | `tw:border-primary` | `--color-border-primary` | `#d5d7da` (gray-300) | `#808080` (gray-500) | Default interactive control border |
 | `tw:border-hover` | `--color-border-hover` | `#a4a7ae` (gray-400) | `#a0a0a0` (gray-400) | Hovered interactive control border |
-| `tw:border-subtle` | `--color-border-subtle` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.08)` | Cards, panels, and dividers |
+| `tw:border-subtle` | `--color-border-subtle` | `rgba(0,0,0,0.08)` | White at 8% | Cards, panels, and dividers |
 | `tw:border-secondary` | `--color-border-secondary` | `#e9eaeb` (gray-200) | `#222222` (gray-800) | Existing subtle border |
-| `tw:border-secondary_alt` | `--color-border-secondary_alt` | `rgba(0,0,0,0.08)` | `rgba(255,255,255,0.08)` | Existing alpha-transparent border |
+| `tw:border-secondary_alt` | `--color-border-secondary_alt` | `rgba(0,0,0,0.08)` | White at 8% | Existing alpha-transparent border |
 | `tw:border-tertiary` | `--color-border-tertiary` | `#f5f5f5` (gray-100) | `#222222` | Very subtle dividers |
 | `tw:border-brand` | `--color-border-brand` | `#2e90fa` (brand-500) | `#53b1fd` (brand-400) | Focused inputs, selected states |
 | `tw:border-brand_alt` | `--color-border-brand_alt` | `#1570ef` (brand-600) | `#2e2e2e` | Alternate brand border |
-| `tw:border-brand_subtle` | `--color-border-brand_subtle` | `#84caff` | `rgba(83,177,253,0.35)` | Selected-state and info borders |
+| `tw:border-brand-subtle` | `--color-border-brand-subtle` | `#84caff` | Brand 400 at 35% | Selected-state and info borders |
 | `tw:border-error` | `--color-border-error` | `#f04438` (error-500) | `#f97066` (error-400) | Error state input/container border |
-| `tw:border-error_subtle` | `--color-border-error_subtle` | `#fda29b` (error-300) | `rgba(249,112,102,0.35)` | Subtle error border |
-| `tw:border-warning_subtle` | `--color-border-warning_subtle` | `#fec84b` | `rgba(253,176,34,0.35)` | Subtle warning border |
-| `tw:border-success_subtle` | `--color-border-success_subtle` | `#75e0a7` | `rgba(71,205,137,0.35)` | Subtle success border |
+| `tw:border-error-subtle` | `--color-border-error-subtle` | `#fda29b` (error-300) | Error 400 at 35% | Subtle error border |
+| `tw:border-warning-subtle` | `--color-border-warning-subtle` | `#fec84b` | Warning 400 at 35% | Subtle warning border |
+| `tw:border-success-subtle` | `--color-border-success-subtle` | `#75e0a7` | Success 400 at 35% | Subtle success border |
 | `tw:border-disabled` | `--color-border-disabled` | `#d5d7da` | `#2e2e2e` | Disabled input border |
 | `tw:border-disabled_subtle` | `--color-border-disabled_subtle` | `#e9eaeb` | `#222222` | Subtle disabled border |
 
@@ -382,7 +382,7 @@ Each status (error, warning, success) has three background variants with differe
 | Variant | Background Token | Text Token | Border Token | Use Case |
 |---|---|---|---|---|
 | `primary` | `tw:bg-error-primary` | `tw:text-error-primary` | `tw:border-error` | Inline alerts, banners |
-| `secondary` | `tw:bg-error-secondary` | `tw:text-error-primary` | `tw:border-error_subtle` | Badge backgrounds, row highlights |
+| `secondary` | `tw:bg-error-secondary` | `tw:text-error-primary` | `tw:border-error-subtle` | Badge backgrounds, row highlights |
 | `solid` | `tw:bg-error-solid` | `tw:text-white` | — | Filled badges, notification dots |
 
 The same pattern applies for `warning` and `success`. Always pair background + text + border tokens from the **same status family** — never mix `bg-error-*` with `tw:text-warning-*`.

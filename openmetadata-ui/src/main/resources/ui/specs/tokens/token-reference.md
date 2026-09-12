@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **803**.
+Total project tokens: **804**.
 
 ## Spacing (62)
 
@@ -268,7 +268,7 @@ transition / animation. See foundations/motion.md.
 | `--om-ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--om-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-## Semantic colors (51)
+## Semantic colors (52)
 
 Prefer these — they adapt to dark mode.
 
@@ -296,6 +296,7 @@ Prefer these — they adapt to dark mode.
 | `--om-color-border-brand-subtle` | `#84caff` |
 | `--om-color-border-disabled` | `#d5d7da` |
 | `--om-color-border-error` | `#f04438` |
+| `--om-color-border-error-subtle` | `#fda29b` |
 | `--om-color-border-hover` | `#a4a7ae` |
 | `--om-color-border-primary` | `#d5d7da` |
 | `--om-color-border-secondary` | `#e9eaeb` |

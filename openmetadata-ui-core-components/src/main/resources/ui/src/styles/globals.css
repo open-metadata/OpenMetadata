@@ -744,12 +744,13 @@
   --color-border-tertiary: var(--color-border-tertiary, theme(--color-gray-100));
   --color-border-error: var(--color-border-error, theme(--color-error-500));
   --color-border-error_subtle: var(--color-border-error_subtle, theme(--color-error-300));
-  --color-border-warning_subtle: var(--color-border-warning_subtle, theme(--color-warning-300));
-  --color-border-success_subtle: var(--color-border-success_subtle, theme(--color-success-300));
+  --color-border-error-subtle: var(--color-border-error-subtle, theme(--color-error-300));
+  --color-border-warning-subtle: var(--color-border-warning-subtle, theme(--color-warning-300));
+  --color-border-success-subtle: var(--color-border-success-subtle, theme(--color-success-300));
   --color-border-disabled: var(--color-border-disabled, theme(--color-gray-300));
   --color-border-disabled_subtle: var(--color-border-disabled_subtle, theme(--color-gray-200));
   --color-border-brand: var(--color-border-brand, theme(--color-brand-500));
-  --color-border-brand_subtle: var(--color-border-brand_subtle, theme(--color-brand-300));
+  --color-border-brand-subtle: var(--color-border-brand-subtle, theme(--color-brand-300));
   --color-border-brand_alt: var(--color-border-brand_alt, theme(--color-brand-600));
 
   /* FOREGROUND COLORS */
@@ -928,10 +929,11 @@
   --border-color-disabled_subtle: var(--border-color-disabled_subtle, theme(--color-border-disabled_subtle));
   --border-color-error: var(--border-color-error, theme(--color-border-error));
   --border-color-error_subtle: var(--border-color-error_subtle, theme(--color-border-error_subtle));
-  --border-color-warning_subtle: var(--border-color-warning_subtle, theme(--color-border-warning_subtle));
-  --border-color-success_subtle: var(--border-color-success_subtle, theme(--color-border-success_subtle));
+  --border-color-error-subtle: var(--border-color-error-subtle, theme(--color-border-error-subtle));
+  --border-color-warning-subtle: var(--border-color-warning-subtle, theme(--color-border-warning-subtle));
+  --border-color-success-subtle: var(--border-color-success-subtle, theme(--color-border-success-subtle));
   --border-color-brand: var(--border-color-brand, theme(--color-border-brand));
-  --border-color-brand_subtle: var(--border-color-brand_subtle, theme(--color-border-brand_subtle));
+  --border-color-brand-subtle: var(--border-color-brand-subtle, theme(--color-border-brand-subtle));
   --border-color-brand_alt: var(--border-color-brand_alt, theme(--color-border-brand_alt));
   --border-color-brand-solid: var(--border-color-brand-solid, theme(--color-bg-brand-solid));
   --border-color-brand-solid_hover: var(--border-color-brand-solid_hover, theme(--color-bg-brand-solid_hover));
@@ -1186,17 +1188,18 @@
     /* BORDER COLORS */
     --color-border-primary: theme(--color-gray-500);
     --color-border-secondary: theme(--color-gray-800);
-    --color-border-secondary_alt: rgb(255 255 255 / 0.08);
-    --color-border-subtle: rgb(255 255 255 / 0.08);
+    --color-border-secondary_alt: --alpha(var(--color-white) / 8%);
+    --color-border-subtle: --alpha(var(--color-white) / 8%);
     --color-border-hover: theme(--color-gray-400);
     --color-border-tertiary: theme(--color-gray-800);
     --color-border-brand: theme(--color-brand-400);
-    --color-border-brand_subtle: rgb(83 177 253 / 0.35);
+    --color-border-brand-subtle: --alpha(var(--color-brand-400) / 35%);
     --color-border-brand_alt: theme(--color-gray-700);
     --color-border-error: theme(--color-error-400);
-    --color-border-error_subtle: rgb(249 112 102 / 0.35);
-    --color-border-warning_subtle: rgb(253 176 34 / 0.35);
-    --color-border-success_subtle: rgb(71 205 137 / 0.35);
+    --color-border-error-subtle: --alpha(var(--color-error-400) / 35%);
+    --color-border-error_subtle: var(--color-border-error-subtle);
+    --color-border-warning-subtle: --alpha(var(--color-warning-400) / 35%);
+    --color-border-success-subtle: --alpha(var(--color-success-400) / 35%);
     --color-border-disabled: theme(--color-gray-700);
     --color-border-disabled_subtle: theme(--color-gray-800);
 
@@ -1227,28 +1230,28 @@
     --color-bg-primary: theme(--color-gray-950);
     --color-bg-primary-solid: theme(--color-bg-secondary);
     --color-bg-primary_alt: theme(--color-bg-secondary);
-    --color-bg-primary_hover: rgb(255 255 255 / 0.06);
+    --color-bg-primary_hover: --alpha(var(--color-white) / 6%);
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
     --color-bg-secondary_subtle: theme(--color-gray-900);
-    --color-bg-secondary_hover: rgb(255 255 255 / 0.06);
+    --color-bg-secondary_hover: --alpha(var(--color-white) / 6%);
     --color-bg-tertiary: theme(--color-gray-800);
     --color-bg-quaternary: theme(--color-gray-700);
     /* Translucent feedback roles preserve the owning page, canvas, or surface elevation. */
-    --color-bg-error-primary: rgb(240 68 56 / 0.16);
+    --color-bg-error-primary: --alpha(var(--color-error-500) / 16%);
     --color-bg-error-secondary: theme(--color-error-600);
     --color-bg-error-solid: theme(--color-error-600);
     --color-bg-error-solid_hover: theme(--color-error-500);
-    --color-bg-warning-primary: rgb(247 144 9 / 0.16);
+    --color-bg-warning-primary: --alpha(var(--color-warning-500) / 16%);
     --color-bg-warning-secondary: theme(--color-warning-600);
     --color-bg-warning-solid: theme(--color-warning-600);
-    --color-bg-success-primary: rgb(23 178 106 / 0.16);
+    --color-bg-success-primary: --alpha(var(--color-success-500) / 16%);
     --color-bg-success-secondary: theme(--color-success-600);
     --color-bg-success-solid: theme(--color-success-600);
-    --color-bg-active: rgb(255 255 255 / 0.1);
+    --color-bg-active: --alpha(var(--color-white) / 10%);
     --color-bg-disabled: theme(--color-gray-800);
     --color-bg-disabled_subtle: theme(--color-gray-900);
-    --color-bg-brand-primary: rgb(46 144 250 / 0.16);
+    --color-bg-brand-primary: --alpha(var(--color-brand-500) / 16%);
     --color-bg-brand-primary_alt: theme(--color-bg-secondary);
     --color-bg-brand-secondary: theme(--color-brand-600);
     --color-bg-secondary_alt: theme(--color-bg-primary);
@@ -1475,15 +1478,16 @@
     --tw-border-color-disabled_subtle: var(--color-border-disabled_subtle);
     --tw-border-color-error: var(--color-border-error);
     --tw-border-color-error_subtle: var(--color-border-error_subtle);
-    --tw-border-color-warning_subtle: var(--color-border-warning_subtle);
-    --tw-border-color-success_subtle: var(--color-border-success_subtle);
+    --tw-border-color-error-subtle: var(--color-border-error-subtle);
+    --tw-border-color-warning-subtle: var(--color-border-warning-subtle);
+    --tw-border-color-success-subtle: var(--color-border-success-subtle);
     --tw-border-color-primary: var(--color-border-primary);
     --tw-border-color-secondary: var(--color-border-secondary);
     --tw-border-color-secondary_alt: var(--color-border-secondary_alt);
     --tw-border-color-subtle: var(--color-border-subtle);
     --tw-border-color-hover: var(--color-border-hover);
     --tw-border-color-tertiary: var(--color-border-tertiary);
-    --tw-border-color-brand_subtle: var(--color-border-brand_subtle);
+    --tw-border-color-brand-subtle: var(--color-border-brand-subtle);
 
     /* --tw-outline-color-* — Tailwind utility layer (outline-*) */
     --tw-outline-color-brand-solid: var(--color-bg-brand-solid);

@@ -8,7 +8,7 @@
 
 **Text:** `tw:text-primary`, `tw:text-secondary`, `tw:text-tertiary`, `tw:text-quaternary`, `tw:text-disabled`, `tw:text-placeholder`, `tw:text-link`, `tw:text-link-hover`, `tw:text-white`, `tw:text-brand-primary`, `tw:text-error-primary`, `tw:text-warning-primary`, `tw:text-success-primary`
 
-**Border:** `tw:border-primary`, `tw:border-secondary`, `tw:border-tertiary`, `tw:border-subtle`, `tw:border-hover`, `tw:border-disabled`, `tw:border-error`, `tw:border-brand`, `tw:border-brand_subtle`, `tw:border-warning_subtle`, `tw:border-success_subtle`
+**Border:** `tw:border-primary`, `tw:border-secondary`, `tw:border-tertiary`, `tw:border-subtle`, `tw:border-hover`, `tw:border-disabled`, `tw:border-error`, `tw:border-brand`, `tw:border-brand-subtle`, `tw:border-error-subtle`, `tw:border-warning-subtle`, `tw:border-success-subtle`
 
 **Foreground:** `tw:text-fg-brand-primary`, `tw:text-fg-error-primary`, `tw:text-fg-warning-primary`, `tw:text-fg-success-primary`
 
