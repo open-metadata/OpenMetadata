@@ -28,15 +28,6 @@ export const getQueryBuilderColumnRatios = (fieldCells: number): string =>
 // Base testid of a row's Field control.
 export const QUERY_BUILDER_FIELD_TEST_ID = 'advanced-search-field-select';
 
-// Narrowest a lone Field control may get before its name reads as ellipses.
-export const QUERY_BUILDER_FIELD_MIN_WIDTH = 'tw:min-w-[140px]';
-
-// Control height, so the delete button sits level with the row's first line.
-export const QUERY_BUILDER_CONTROL_HEIGHT = 'tw:h-10';
-
-// Narrowest a value slot may get before a two-valued operator's slots wrap.
-export const QUERY_BUILDER_VALUE_MIN_WIDTH = 'tw:min-w-[130px]';
-
 // Explore: the only surface with user-created brackets.
 export const EXPLORE_BUTTON_PRESET: QueryBuilderButtonPreset = {
   addRuleLabel: () => t('label.add-new-entity', { entity: t('label.field') }),

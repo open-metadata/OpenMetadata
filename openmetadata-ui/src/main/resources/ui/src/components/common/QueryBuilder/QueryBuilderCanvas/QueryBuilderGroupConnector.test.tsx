@@ -14,6 +14,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import QueryBuilderGroupConnector from './QueryBuilderGroupConnector';
 
+interface StubBoxProps {
+  direction?: string;
+  align?: string;
+  children?: ReactNode;
+}
+
 interface StubSelectProps {
   items?: { id: string; label?: string }[];
   selectedKey?: string;
@@ -59,7 +65,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div data-testid="stub-divider" {...props} />
   );
 
-  return { Divider, Select };
+  // Layout-only props would land on the DOM node as unknown attributes.
+  const Box = ({ direction: _d, align: _a, ...rest }: StubBoxProps) => (
+    <div {...rest} />
+  );
+
+  return { Box, Divider, Select };
 });
 
 const onChange = jest.fn();

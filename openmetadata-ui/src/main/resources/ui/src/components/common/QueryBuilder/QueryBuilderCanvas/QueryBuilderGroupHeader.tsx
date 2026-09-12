@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   Tab,
   TabList,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Delete } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderGroupHeaderProps } from './QueryBuilderCanvas.types';
@@ -45,7 +46,7 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
   const hasConjunctionControl = showConjunction && conjunctions.length > 1;
 
   return (
-    <div className="tw:flex tw:items-center tw:gap-3">
+    <Box align="center" gap={3}>
       {hasConjunctionControl && (
         <Tabs
           className="tw:w-auto"
@@ -99,12 +100,12 @@ const QueryBuilderGroupHeader: FC<QueryBuilderGroupHeaderProps> = ({
           className="tw:ml-auto"
           color="link-destructive"
           data-testid={preset.testIds.delGroup}
-          iconLeading={Trash01}
+          iconLeading={Delete}
           size="sm"
           onClick={() => actions.removeGroup(path)}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

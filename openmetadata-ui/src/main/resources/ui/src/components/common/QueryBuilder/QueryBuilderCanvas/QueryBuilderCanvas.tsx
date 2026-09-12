@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { FC, Fragment, useMemo } from 'react';
 import QueryBuilderAddGroup from './QueryBuilderAddGroup';
@@ -88,7 +89,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
   };
 
   return (
-    <div className="tw:flex tw:flex-col" data-testid="query-builder">
+    <Box data-testid="query-builder" direction="col">
       {asSiblings ? (
         rootChildren.map((child, index) => (
           <Fragment key={child.id ?? index}>
@@ -127,7 +128,7 @@ const QueryBuilderCanvas: FC<QueryBuilderCanvasProps> = ({
           onAdd={addGroup}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

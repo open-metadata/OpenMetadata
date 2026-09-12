@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
 import { FC, PropsWithChildren } from 'react';
@@ -20,19 +20,18 @@ import type { QueryBuilderControlProps } from './QueryBuilderCanvas.types';
 export const QueryBuilderCell: FC<
   PropsWithChildren<{ label: string; className?: string }>
 > = ({ label, className, children }) => (
-  <div
-    className={classNames(
-      'tw:flex tw:min-w-0 tw:flex-col tw:gap-1.5',
-      className
-    )}>
+  <Box
+    className={classNames('tw:min-w-0 tw:gap-1.5', className)}
+    direction="col">
     <Typography
       as="span"
-      className="tw:font-medium tw:text-secondary"
-      size="text-sm">
+      className="tw:text-secondary"
+      size="text-sm"
+      weight="medium">
       {label}
     </Typography>
     {children}
-  </div>
+  </Box>
 );
 
 // A labelled field or operator control.

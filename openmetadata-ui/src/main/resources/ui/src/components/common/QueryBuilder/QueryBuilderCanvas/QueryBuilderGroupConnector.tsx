@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Select } from '@openmetadata/ui-core-components';
+import { Box, Divider, Select } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import type { QueryBuilderGroupConnectorProps } from './QueryBuilderCanvas.types';
 
@@ -30,9 +30,10 @@ const QueryBuilderGroupConnector: FC<QueryBuilderGroupConnectorProps> = ({
   );
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:items-start"
-      data-testid="query-builder-group-connector">
+    <Box
+      align="start"
+      data-testid="query-builder-group-connector"
+      direction="col">
       <Divider className={LINE_CLASS} orientation="vertical" />
 
       <Select
@@ -52,7 +53,7 @@ const QueryBuilderGroupConnector: FC<QueryBuilderGroupConnectorProps> = ({
       </Select>
 
       <Divider className={LINE_CLASS} orientation="vertical" />
-    </div>
+    </Box>
   );
 };
 

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import type {
   Actions,
   BuilderProps,
@@ -277,9 +277,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
   return (
     // No chrome here on purpose: the card belongs to each group, and anything around the builder belongs to the screen
     // embedding it.
-    <div
-      className="tw:flex tw:flex-col tw:gap-3"
-      data-testid="query-builder-form-field">
+    <Box data-testid="query-builder-form-field" direction="col" gap={3}>
       {isJsonLogic && label && (
         <>
           <Typography
@@ -309,7 +307,7 @@ const QueryBuilder: FC<QueryBuilderProps> = ({
           isLoading={isCountLoading}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

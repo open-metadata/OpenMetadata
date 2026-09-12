@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@untitledui/icons';
+import {
+  ChevronDown,
+  PlusCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QueryBuilderAddGroupProps } from './QueryBuilderCanvas.types';
@@ -30,7 +33,7 @@ const QueryBuilderAddGroup: FC<QueryBuilderAddGroupProps> = ({
       <Button
         className="tw:mt-5 tw:self-start"
         data-testid={testId}
-        iconLeading={Plus}
+        iconLeading={PlusCircle}
         size="sm"
         onClick={() => onAdd(conjunctions[0])}>
         {label}
@@ -43,7 +46,7 @@ const QueryBuilderAddGroup: FC<QueryBuilderAddGroupProps> = ({
       <Button
         className="tw:mt-5 tw:self-start"
         data-testid={testId}
-        iconLeading={Plus}
+        iconLeading={PlusCircle}
         iconTrailing={<ChevronDown className="tw:size-4" />}
         size="sm">
         {label}

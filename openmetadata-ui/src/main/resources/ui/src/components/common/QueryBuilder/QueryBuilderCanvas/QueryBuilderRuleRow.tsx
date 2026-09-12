@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Select } from '@openmetadata/ui-core-components';
+import { Box, Button, Select } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import { X } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -18,10 +18,7 @@ import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getQueryBuilderColumnRatios,
-  QUERY_BUILDER_CONTROL_HEIGHT,
-  QUERY_BUILDER_FIELD_MIN_WIDTH,
   QUERY_BUILDER_FIELD_TEST_ID,
-  QUERY_BUILDER_VALUE_MIN_WIDTH,
 } from './QueryBuilderCanvas.constants';
 import type { QueryBuilderRuleRowProps } from './QueryBuilderCanvas.types';
 import {
@@ -126,9 +123,10 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
   }, [config, field, operator, rule, actions, path, readonly]);
 
   return (
-    <div
-      className="tw:flex tw:items-start tw:gap-4"
-      data-testid={`query-builder-rule-${ruleIndexById[String(rule.id)] ?? 0}`}>
+    <Box
+      align="start"
+      data-testid={`query-builder-rule-${ruleIndexById[String(rule.id)] ?? 0}`}
+      gap={4}>
       <div
         className="tw:grid tw:min-w-0 tw:flex-1 tw:gap-3.5"
         style={{
@@ -141,7 +139,8 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
         {fieldControls.map((control) => (
           <QueryBuilderCell
             className={classNames({
-              [QUERY_BUILDER_FIELD_MIN_WIDTH]: fieldControls.length === 1,
+              // Narrowest a lone Field control may get before its name reads as ellipses.
+              'tw:min-w-[140px]': fieldControls.length === 1,
             })}
             key={control.key}
             label={t('label.field')}>
@@ -171,9 +170,11 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
         />
 
         <QueryBuilderCell label={t('label.value')}>
-          <div
-            className="tw:flex tw:min-w-0 tw:flex-wrap tw:gap-2"
-            data-testid="advanced-search-value">
+          <Box
+            className="tw:min-w-0"
+            data-testid="advanced-search-value"
+            gap={2}
+            wrap="wrap">
             {/* Until the field and operator name a widget there is nothing to
                 edit, but the column still reads as part of the row — an empty
                 gap where a control belongs looks like a rendering fault. */}
@@ -195,32 +196,25 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
               valueCells.map((cell) => (
                 // A two-valued operator keeps both slots readable: they share the column when it is wide enough and
                 // wrap when it is not.
-                <div
-                  className={classNames(
-                    'tw:flex-1',
-                    QUERY_BUILDER_VALUE_MIN_WIDTH
-                  )}
-                  key={cell.id}>
+                // `min-w` is the narrowest a value slot may get before a two-valued operator's slots wrap.
+                <div className="tw:min-w-[130px] tw:flex-1" key={cell.id}>
                   {cell.node}
                 </div>
               ))
             )}
-          </div>
+          </Box>
         </QueryBuilderCell>
       </div>
 
       {canRemoveRule && !readonly && (
         // The button removes the whole rule, so it stays on the row's first line even when the row wraps; the spacer
         // stands in for the label.
-        <div className="tw:flex tw:flex-col tw:gap-1.5">
+        <Box className="tw:gap-1.5" direction="col">
           <span aria-hidden className="tw:invisible tw:text-sm">
             &nbsp;
           </span>
-          <div
-            className={classNames(
-              'tw:flex tw:items-center',
-              QUERY_BUILDER_CONTROL_HEIGHT
-            )}>
+          {/* `h-10` matches the control height, so the button sits level with the row's first line. */}
+          <Box align="center" className="tw:h-10">
             <Button
               aria-label={t('label.remove')}
               color="link-destructive"
@@ -229,10 +223,10 @@ const QueryBuilderRuleRow: FC<QueryBuilderRuleRowProps> = ({
               size="sm"
               onClick={() => actions.removeRule(path)}
             />
-          </div>
-        </div>
+          </Box>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 

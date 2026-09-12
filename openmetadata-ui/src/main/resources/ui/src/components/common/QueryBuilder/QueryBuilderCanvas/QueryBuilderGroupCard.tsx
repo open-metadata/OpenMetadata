@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { PlusCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -55,13 +55,14 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
     QUERY_BUILDER_SURFACE_CLASS[getSurfaceForDepth(surface, depth)];
 
   return (
-    <div
+    <Box
       className={classNames(
         // `overflow-hidden` so the header strip takes the card's top corners
-        'tw:flex tw:flex-col tw:overflow-hidden tw:rounded-[10px]',
+        'tw:overflow-hidden tw:rounded-[10px]',
         surfaceClass.card
       )}
-      data-testid="query-builder-group-card">
+      data-testid="query-builder-group-card"
+      direction="col">
       <div className={classNames('tw:px-5 tw:py-3', surfaceClass.header)}>
         <QueryBuilderGroupHeader
           canRemove={canRemove}
@@ -72,7 +73,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
         />
       </div>
 
-      <div className="tw:flex tw:flex-col tw:gap-6 tw:px-5 tw:pt-4 tw:pb-5">
+      <Box className="tw:px-5 tw:pt-4 tw:pb-5" direction="col" gap={6}>
         {children.map((child, index) => {
           const childPath = [...path, String(child.id ?? index)];
           // A chain of drill levels is one row with a Field control per level; anything else holding rules is a group,
@@ -110,15 +111,15 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
             className="tw:self-start"
             color="link-color"
             data-testid={preset.testIds.addRule}
-            iconLeading={Plus}
+            iconLeading={PlusCircle}
             size="sm"
             onClick={() => actions.addRule(path)}>
             {preset.addRuleLabel?.() ??
               t('label.add-new-entity', { entity: t('label.field') })}
           </Button>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 
