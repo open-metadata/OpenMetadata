@@ -27,14 +27,16 @@ def read_config(self, path: str) -> dict:
 ```python
 MAX_METADATA_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
-def read_metadata_file(self, path: str) -> Optional[dict]:
+def read_metadata_file(self, path: str) -> dict | None:
     """Read a metadata/manifest file with size guard."""
     head = self.client.head_object(Bucket=self.bucket, Key=path)
     size = head["ContentLength"]
     if size > MAX_METADATA_FILE_SIZE:
         logger.warning(
-            f"Skipping {path}: file size {size} exceeds limit "
-            f"{MAX_METADATA_FILE_SIZE}"
+            "Skipping %s: file size %s exceeds limit %s",
+            path,
+            size,
+            MAX_METADATA_FILE_SIZE,
         )
         return None
     response = self.client.get_object(Bucket=self.bucket, Key=path)
