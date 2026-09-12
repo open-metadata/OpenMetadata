@@ -159,15 +159,8 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
 };
 
 const clickCanvasEdge = async (page: Page, marker: Locator) => {
-  // The scene streams in, and a late response resets the canvas to its default
-  // view: a failing run's trace shows the transform reach the fitted scale and
-  // then return to the default one. toBeInViewport retries the assertion but
-  // never re-fits, so a single fire-and-forget fit can never recover from that
-  // reset. Re-fit until the marker actually lands in the viewport.
-  await expect(async () => {
-    await fitToScreen(page);
-    await expect(marker).toBeInViewport({ timeout: 2_000 });
-  }).toPass({ timeout: 30_000 });
+  await fitToScreen(page);
+  await expect(marker).toBeInViewport();
   const viewport = page.locator('.react-flow__viewport');
   const getZoom = () =>
     viewport.evaluate(
