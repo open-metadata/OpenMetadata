@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Input } from '@openmetadata/ui-core-components';
+import { Button, Input, PageLayout } from '@openmetadata/ui-core-components';
 import { Plus, SearchMd } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getContextCenterHeaderPresentation } from '../../../utils/ContextCenterPureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 
 const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
@@ -35,8 +36,9 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   onSearch,
 }) => {
   const { t } = useTranslation();
-  const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+  const isAiMode = useIsAiMode();
+  const { breadcrumbInsideCard, isEmbedded } =
+    getContextCenterHeaderPresentation(isAiMode);
 
   const resolvedBreadcrumbs = [
     contextCenterClassBase.getContextCenterRootBreadcrumb(t),
@@ -93,11 +95,10 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   return (
     <div className="tw:mb-5" data-testid="context-center-header">
       {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
-      <HeaderShell
+      <PageLayout.PageHeader
         actions={actionsEl}
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
         className={className}
-        padding="comfortable"
         subtitle={subtitle}
         title={title}
         variant={isEmbedded ? 'gradient' : 'flat'}

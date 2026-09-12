@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import HeaderShell from '../../../../components/common/HeaderShell/HeaderShell.component';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -254,10 +253,9 @@ export const ExploreSearchCard = () => {
   );
 
   return (
-    <HeaderShell
+    <PageLayout.PageHeader
       className="tw:min-h-[108px] tw:w-full tw:overflow-hidden tw:rounded-xl"
       data-testid="explore-search-card"
-      padding="comfortable"
       title={headerLayout}
       variant="gradient"
     />
