@@ -260,10 +260,22 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     # Determine start_date based on schedule_interval using croniter
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
     if is_airflow_3_or_higher():
-        # Use timezone-aware `now` to avoid Airflow auto-scheduling an immediate first run.
-        # Setting the start_date in the past (previous cron) causes Airflow 3 to fire a run
-        # right after deployment even with catchup disabled.
-        start_date = timezone.utcnow()
+        # We want start_date to be close to "now" (not in the past) so Airflow 3
+        # doesn't immediately fire a catch-up run on creation even with catchup
+        # disabled. But `build_dag_configs` runs on every DAG-processor reparse,
+        # and `timezone.utcnow()` recomputes to a new "now" each time — so the
+        # cron interval measured from start_date never elapses and the DAG never
+        # fires on its own schedule (#32505). Anchor on the pipeline's own
+        # `updatedAt` instead: it only changes when the pipeline is actually
+        # (re)configured (a no-op redeploy leaves version/updatedAt untouched),
+        # so start_date stays stable across routine reparses/redeploys while
+        # still resetting close to "now" whenever the schedule is genuinely
+        # edited — preserving the original intent without the instability.
+        start_date = (
+            timezone.from_timestamp(ingestion_pipeline.updatedAt.root / 1000)
+            if ingestion_pipeline.updatedAt
+            else timezone.utcnow()
+        )
     else:
         now = datetime.now()
 
