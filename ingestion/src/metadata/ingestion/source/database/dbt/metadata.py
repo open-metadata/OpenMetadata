@@ -1424,6 +1424,11 @@ class DbtSource(DbtServiceSource):
         measure_name = getattr(measure_ref, "name", None) if measure_ref else None
         if measure_name:
             expression = MetricExpression(language=Language.SQL, code=measure_name)
+        else:
+            # dbt 1.12+ inline spec: measure ref is absent; use type_params.expr directly
+            expr = getattr(type_params, "expr", None)
+            if expr:
+                expression = MetricExpression(language=Language.SQL, code=expr)
         return expression, None
 
     @staticmethod
@@ -1535,6 +1540,20 @@ class DbtSource(DbtServiceSource):
                         aggregation=agg_value,
                         description=getattr(measure, "description", None),
                         expression=getattr(measure, "expr", None),
+                    )
+                )
+        # dbt 1.12+ inline spec: semantic model measures list is empty because the aggregation
+        # is defined directly on the metric. Fall back to type_params.expr on the metric node.
+        if not result:
+            type_params = getattr(metric_node, "type_params", None)
+            expr = getattr(type_params, "expr", None) if type_params else None
+            if expr:
+                result.append(
+                    MetricMeasure(
+                        name=getattr(metric_node, "name", ""),
+                        aggregation=None,
+                        description=None,
+                        expression=expr,
                     )
                 )
         return result
