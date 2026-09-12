@@ -39,6 +39,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -462,10 +463,11 @@ public abstract class SecretsManager {
                             fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
-                    // set new value
+                    // set new value. A null means the field was cleared, so there is nothing left
+                    // to encrypt and the entity must not keep a reference to a removed secret.
                     ReflectionUtil.setValueInMethod(
                         toEncryptObject,
-                        Fernet.isTokenized(newFieldValue)
+                        newFieldValue == null || Fernet.isTokenized(newFieldValue)
                             ? newFieldValue
                             : store ? fernet.encrypt(newFieldValue) : newFieldValue,
                         toSet);
@@ -473,6 +475,10 @@ public abstract class SecretsManager {
                 });
       }
       return toEncryptObject;
+    } catch (WebServiceException e) {
+      // Already classified with its own status and user-facing message — the reserved-value
+      // rejection in storeValue, for one. Re-wrapping would relabel a deliberate 400 as a 500.
+      throw e;
     } catch (Exception e) {
       String msg =
           String.format(
