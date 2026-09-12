@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
@@ -111,6 +112,7 @@ import org.openmetadata.service.search.indexes.McpServerIndex;
 import org.openmetadata.service.search.indexes.McpServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
+import org.openmetadata.service.search.indexes.MetricGroupIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
@@ -393,6 +395,8 @@ class SearchIndexFactoryTest {
         Arguments.of(Entity.USER, (Supplier<Object>) User::new, UserIndex.class),
         Arguments.of(Entity.TEAM, (Supplier<Object>) Team::new, TeamIndex.class),
         Arguments.of(Entity.METRIC, (Supplier<Object>) Metric::new, MetricIndex.class),
+        Arguments.of(
+            Entity.METRIC_GROUP, (Supplier<Object>) MetricGroup::new, MetricGroupIndex.class),
         Arguments.of(Entity.GLOSSARY, (Supplier<Object>) Glossary::new, GlossaryIndex.class),
         Arguments.of(
             Entity.GLOSSARY_TERM, (Supplier<Object>) GlossaryTerm::new, GlossaryTermIndex.class),

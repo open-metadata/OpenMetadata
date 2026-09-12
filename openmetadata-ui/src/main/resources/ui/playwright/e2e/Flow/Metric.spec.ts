@@ -18,9 +18,8 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
   redirectToHomePage,
-  waitForMetricsSearchResponse,
+  waitForMetricsListingResponse,
 } from '../../utils/common';
 import {
   addMetric,
@@ -50,6 +49,8 @@ const test = base.extend<{ page: Page }>({
     await adminPage.close();
   },
 });
+
+test.describe.configure({ mode: 'serial' });
 
 test.describe(
   'Metric Entity Special Test Cases',
@@ -86,16 +87,23 @@ test.describe(
     });
 
     test('Metric creation flow should work', async ({ page }) => {
-      const listAPIPromise = waitForMetricsSearchResponse(page);
+      const listAPIPromise = waitForMetricsListingResponse(page);
 
       await sidebarClick(page, SidebarItem.METRICS);
 
       await listAPIPromise;
 
-      await expect(page.getByTestId('heading')).toHaveText('Metrics');
-      await expect(page.getByTestId('sub-heading')).toHaveText(
-        'Define and catalog standardized metrics across your organization.'
-      );
+      const metricListHeader = page.getByTestId('metric-list-header');
+
+      await expect(
+        metricListHeader.getByRole('heading', { name: 'Metrics', level: 1 })
+      ).toBeVisible();
+      await expect(
+        metricListHeader.getByText(
+          'Define and catalog standardized metrics across your organization.',
+          { exact: true }
+        )
+      ).toBeVisible();
 
       await page.getByTestId('create-metric').click();
 
@@ -126,8 +134,8 @@ test.describe(
     });
 
     test('Verify Related Metrics Update', async ({ page }) => {
-      await updateRelatedMetric(page, metric2, metric1.entity.name, 'add');
-      await updateRelatedMetric(page, metric3, metric1.entity.name, 'update');
+      await updateRelatedMetric(page, metric2, 'add');
+      await updateRelatedMetric(page, metric3, 'update');
     });
 
     test('Dimensions and measures render and description is editable', async ({
@@ -155,11 +163,11 @@ test.describe(
 
       await page.getByTestId('edit-description-order_date').click();
 
-      await page
-        .locator(`[data-testid="markdown-editor"] ${descriptionBox}`)
-        .clear();
-      await page
-        .locator(`[data-testid="markdown-editor"] ${descriptionBox}`)
+      const editDimensionDialog = page.getByRole('dialog', {
+        name: /Edit Dimension/,
+      });
+      await editDimensionDialog
+        .getByRole('textbox', { name: 'Description' })
         .fill('Updated dimension description.');
 
       const patchPromise = page.waitForResponse(
@@ -169,8 +177,8 @@ test.describe(
           response.ok()
       );
 
-      await page
-        .locator(`[data-testid="markdown-editor"] [data-testid="save"]`)
+      await editDimensionDialog
+        .getByRole('button', { name: 'Save', exact: true })
         .click();
 
       await patchPromise;

@@ -578,6 +578,48 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(TaskResolutionType.Rejected, resolvedTask.getResolution().getType());
   }
 
+  /**
+   * A non-DAR task (here DescriptionUpdate on a table) whose reject transition declares {@code
+   * requiresComment=true} must still be rejectable without a comment — the flag is a UI hint, and
+   * backend comment enforcement is scoped to DataAccessRequest (TaskResource) + metric approvals.
+   * #30896 added a global guard that 400'd every non-metric commentless reject (tables, dashboards,
+   * incidents, suggestions); this test locks the commentless reject open.
+   */
+  @Test
+  void testResolveDescriptionUpdateRejectWithoutCommentSucceeds(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withCurrentDescription(table.getDescription())
+            .withNewDescription("Description rejected without a comment");
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("resolve-reject-no-comment"))
+                .withDescription("Non-DAR reject must not require a comment")
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.DescriptionUpdate)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withPayload(payload));
+    awaitTaskReadyForWorkflowResolution(task.getId());
+    ResolveTask resolveRequest = new ResolveTask().withResolutionType(TaskResolutionType.Rejected);
+
+    // Load-bearing: a commentless reject on a non-DAR task must NOT 400.
+    SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+
+    Awaitility.await("DescriptionUpdate reject without a comment reaches Rejected")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    TaskEntityStatus.Rejected,
+                    SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus()));
+  }
+
   @Test
   void testListTasksByStatus(TestNamespace ns) {
     CreateTask request1 =

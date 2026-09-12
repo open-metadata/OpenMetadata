@@ -13,9 +13,7 @@
 import { isNil, startCase } from 'lodash';
 import { create } from 'zustand';
 import { getLimitByResource } from '../../rest/limitsAPI';
-
-const ERROR_SUB_HEADER =
-  'You have used {{currentCount}} out of {{limit}} of the {{resource}} resource.';
+import i18n from '../../utils/i18next/LocalUtil';
 
 export interface ResourceLimit {
   featureLimitStatuses: Array<{
@@ -86,6 +84,18 @@ const buildDisabledResourceLimit = (
   },
 });
 
+const getLimitThresholdPercentage = (
+  limits: { softLimit: number; hardLimit: number },
+  hardLimitExceed: boolean
+) => {
+  if (limits.hardLimit <= 0) {
+    return 100;
+  }
+  const threshold = hardLimitExceed ? limits.hardLimit : limits.softLimit;
+
+  return Math.round((threshold / limits.hardLimit) * 100);
+};
+
 const maybeShowLimitBanner = (
   rLimit: ResourceLimit['featureLimitStatuses'][number],
   resource: string,
@@ -109,14 +119,17 @@ const maybeShowLimitBanner = (
     return;
   }
 
+  const resourceLabel =
+    resource === 'metric' ? i18n.t('label.metric') : startCase(resource);
+
   setBannerDetails({
-    header: `You have reached ${
-      hardLimitExceed ? '100%' : '75%'
-    } of your ${plan} Plan usage limit.`,
+    header: i18n.t('server.entity-limit-reached', {
+      entity: resourceLabel,
+    }),
     type: hardLimitExceed ? 'danger' : 'warning',
-    subheader: ERROR_SUB_HEADER.replace('{{currentCount}}', currentCount + '')
-      .replace('{{resource}}', startCase(resource))
-      .replace('{{limit}}', limits.hardLimit + ''),
+    subheader: `${currentCount}/${
+      limits.hardLimit
+    } (${plan}, ${getLimitThresholdPercentage(limits, hardLimitExceed)}%)`,
     softLimitExceed,
     hardLimitExceed,
   });

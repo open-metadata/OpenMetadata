@@ -29,9 +29,8 @@ import {
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import './related-metrics.less';
-import { RelatedMetricsForm } from './RelatedMetricsForm';
+import { RelatedMetricOption, RelatedMetricsForm } from './RelatedMetricsForm';
 
 // Extracted so the boolean short-circuits live in their own complexity scope
 // instead of RelatedMetrics's render body.
@@ -68,7 +67,7 @@ const RelatedMetrics: FC = () => {
   } = useMemo(() => {
     const relatedMetrics = metricDetails['relatedMetrics'] ?? [];
 
-    const initialOptions: DataAssetOption[] = relatedMetrics.map((item) => {
+    const initialOptions: RelatedMetricOption[] = relatedMetrics.map((item) => {
       return {
         displayName: getEntityName(item),
         reference: item,
@@ -141,7 +140,7 @@ const RelatedMetrics: FC = () => {
   );
 
   const handleRelatedMetricUpdate = useCallback(
-    async (updatedAssets: DataAssetOption[]) => {
+    async (updatedAssets: RelatedMetricOption[]) => {
       try {
         const updatedRelatedMetrics = updatedAssets.map(
           (item) => item.reference

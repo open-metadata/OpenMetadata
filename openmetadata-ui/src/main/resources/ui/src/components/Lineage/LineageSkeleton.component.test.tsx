@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render, screen } from '@testing-library/react';
+import { LineageSkeleton } from './LineageSkeleton.component';
 
-.lineage-skeleton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 320px;
-}
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 
-.lineage-skeleton-node {
-  padding: var(--om-space-16);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--om-radius-lg);
-  min-width: 180px;
-  background: var(--ant-color-bg-container);
-}
+describe('LineageSkeleton', () => {
+  it('renders an accessible Untitled UI graph placeholder', () => {
+    render(<LineageSkeleton />);
+
+    expect(screen.getByRole('status', { name: 'label.loading' })).toBeVisible();
+    expect(screen.getAllByTestId('lineage-skeleton-node')).toHaveLength(3);
+  });
+});

@@ -12,11 +12,44 @@
  */
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import metricDetailsClassBase from './MetricDetailsClassBase';
+import { MetricDetailsClassBase } from './MetricDetailsClassBase';
+
+jest.mock('./MetricUtils', () => ({
+  getMetricDetailsPageTabs: jest.fn(),
+  getMetricWidgetsFromKey: jest.fn(),
+}));
 
 describe('MetricDetailsClassBase', () => {
+  const metricDetails = new MetricDetailsClassBase();
+
+  it('exposes exactly the five primary Metric tabs', () => {
+    const tabs = metricDetails.getMetricDetailPageTabsIds();
+
+    expect(tabs.map(({ id }) => id)).toEqual([
+      EntityTabs.OVERVIEW,
+      EntityTabs.EXPRESSION,
+      EntityTabs.ACTIVITY_FEED,
+      EntityTabs.LINEAGE,
+      EntityTabs.CUSTOM_PROPERTIES,
+    ]);
+    expect(
+      tabs.find(({ id }) => id === EntityTabs.ACTIVITY_FEED)?.displayName
+    ).toBe('label.activity-feed-and-task-plural');
+  });
+
+  it('keeps custom properties inside the Overview layout', () => {
+    expect(
+      metricDetails
+        .getDefaultLayout(EntityTabs.OVERVIEW)
+        .some(({ i }) => i === DetailPageWidgetKeys.CUSTOM_PROPERTIES)
+    ).toBe(true);
+    expect(
+      metricDetails.getDefaultLayout(EntityTabs.CUSTOM_PROPERTIES)
+    ).toEqual([]);
+  });
+
   it('stacks dimensions and measures inside the wide left panel', () => {
-    const layout = metricDetailsClassBase.getDefaultLayout(EntityTabs.OVERVIEW);
+    const layout = metricDetails.getDefaultLayout(EntityTabs.OVERVIEW);
     const leftPanel = layout.find(
       (widget) => widget.i === DetailPageWidgetKeys.LEFT_PANEL
     );
@@ -27,13 +60,15 @@ describe('MetricDetailsClassBase', () => {
 
     expect(childKeys).toEqual([
       DetailPageWidgetKeys.DESCRIPTION,
+      DetailPageWidgetKeys.METRIC_HIERARCHY,
+      DetailPageWidgetKeys.METRIC_DEFINITION,
       DetailPageWidgetKeys.METRIC_DIMENSIONS,
       DetailPageWidgetKeys.METRIC_MEASURES,
     ]);
   });
 
   it('offers both widgets in the customization widget list', () => {
-    const widgetKeys = metricDetailsClassBase
+    const widgetKeys = metricDetails
       .getCommonWidgetList()
       .map((widget) => widget.fullyQualifiedName);
 
@@ -43,14 +78,10 @@ describe('MetricDetailsClassBase', () => {
 
   it('returns a configured height for both widgets', () => {
     expect(
-      metricDetailsClassBase.getWidgetHeight(
-        DetailPageWidgetKeys.METRIC_DIMENSIONS
-      )
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_DIMENSIONS)
     ).toBeGreaterThan(1);
     expect(
-      metricDetailsClassBase.getWidgetHeight(
-        DetailPageWidgetKeys.METRIC_MEASURES
-      )
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_MEASURES)
     ).toBeGreaterThan(1);
   });
 });
