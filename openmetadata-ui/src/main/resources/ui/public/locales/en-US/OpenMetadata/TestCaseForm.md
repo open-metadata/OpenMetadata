@@ -374,7 +374,10 @@ $$section
 
 **Description**: Tests that values in a column are not null. Empty strings don't count as null - values must be explicitly null.
 
-**Parameters**: None
+**Parameters**:
+- **Failure Threshold** (NUMBER, Optional) - How many failures to tolerate before the test is marked as failed (default is 0)
+- **Threshold Unit** (STRING, Optional) - How to read the threshold: `ABSOLUTE` (a raw count of failures) or `PERCENTAGE` (a share of the evaluated rows)
+- **Dimension Failure Policy** (STRING, Optional) - How dimensional results roll up: `OVERALL_ONLY` (only the overall result counts) or `ANY_DIMENSION` (one failing dimension fails the test)
 
 **Supported Data Types**: All data types supported
 
@@ -394,7 +397,10 @@ $$section
 
 **Description**: Tests that all values in a column are unique (no duplicates).
 
-**Parameters**: None
+**Parameters**:
+- **Failure Threshold** (NUMBER, Optional) - How many failures to tolerate before the test is marked as failed (default is 0)
+- **Threshold Unit** (STRING, Optional) - How to read the threshold: `ABSOLUTE` (a raw count of failures) or `PERCENTAGE` (a share of the evaluated rows)
+- **Dimension Failure Policy** (STRING, Optional) - How dimensional results roll up: `OVERALL_ONLY` (only the overall result counts) or `ANY_DIMENSION` (one failing dimension fails the test)
 
 **Supported Data Types**: All data types supported
 

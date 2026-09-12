@@ -41,12 +41,7 @@
   },
   "playwright/e2e/Features/AdvancedSearch.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 20
-    }
-  },
-  "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts": {
-    "om-playwright/no-positional-locator": {
-      "count": 1
+      "count": 3
     }
   },
   "playwright/e2e/Features/BulkEditEntity.spec.ts": {
@@ -124,7 +119,7 @@
   },
   "playwright/e2e/Features/CuratedAssets.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 16
+      "count": 7
     }
   },
   "playwright/e2e/Features/CustomizeDetailPage.spec.ts": {
@@ -555,7 +550,7 @@
   },
   "playwright/e2e/Flow/PersonaFlow.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 2
+      "count": 1
     }
   },
   "playwright/e2e/Flow/SchemaTable.spec.ts": {
@@ -615,7 +610,7 @@
   },
   "playwright/e2e/Pages/CustomProperties.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 3
+      "count": 1
     }
   },
   "playwright/e2e/Pages/DataContractInheritance.spec.ts": {
@@ -625,7 +620,7 @@
   },
   "playwright/e2e/Pages/DataContracts.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 22
+      "count": 4
     }
   },
   "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts": {
@@ -928,7 +923,7 @@
   },
   "playwright/utils/advancedSearch.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 10
+      "count": 6
     }
   },
   "playwright/utils/alert.ts": {
@@ -958,12 +953,12 @@
   },
   "playwright/utils/customProperty.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 16
+      "count": 15
     }
   },
   "playwright/utils/customPropertyAdvancedSearchUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/utils/customizeLandingPage.ts": {
