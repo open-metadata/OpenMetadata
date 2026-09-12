@@ -24,17 +24,18 @@ import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg'
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
 import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
+import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
-  getImageWithResolutionAndFallback,
-  ImageQuality,
+    getImageWithResolutionAndFallback,
+    ImageQuality
 } from '../../../../utils/ProfilerUtils';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
+    getTeamAndUserDetailsPath,
+    getUserPath
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
@@ -47,7 +48,7 @@ import './user-profile-icon.less';
 // the shared AI menu styling unchanged while matching the Classic mode row.
 const CLASSIC_THEME_SWITCHER_CLASS =
   'tw:w-full tw:pl-6 tw:[&>div>p]:text-xs tw:[&>div>p]:font-semibold';
-
+  
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -66,10 +67,9 @@ const renderLimitedListMenuItem = ({
   itemKey,
 }: ListMenuItemProps) => {
   const remainingCount =
-    listItems.length ?? 0 > sizeLimit
+    (listItems.length ?? 0) > sizeLimit
       ? (listItems.length ?? sizeLimit) - sizeLimit
       : 0;
-
   const items = listItems.slice(0, sizeLimit);
 
   return isEmpty(items)
@@ -86,23 +86,28 @@ const renderLimitedListMenuItem = ({
           key: item.id,
           disabled: ['roles', 'inheritedRoles'].includes(itemKey),
         })) ?? []),
-        ...[
-          remainingCount > 0
-            ? {
+        ...(remainingCount > 0
+          ? [
+              {
                 label: readMoreLabelRenderer(remainingCount),
                 key: readMoreKey ?? 'more-item',
-              }
-            : null,
-        ],
+              },
+            ]
+          : []),
       ];
 };
 
 export const UserProfileIcon = () => {
-  const { currentUser, selectedPersona, setSelectedPersona } =
-    useApplicationStore();
+  const {
+    currentUser,
+    selectedPersona,
+    setSelectedPersona,
+    timeFormat: globalTimeFormat,
+  } = useApplicationStore();
+  const { preferences, setPreference } = useCurrentUserPreferences();
+  const activeTimeFormat = preferences.timeFormat ?? globalTimeFormat;
   const defaultPersona = currentUser?.defaultPersona;
   const { onLogoutHandler } = useAuthProvider();
-
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
   const profilePicture = getImageWithResolutionAndFallback(
@@ -121,6 +126,13 @@ export const UserProfileIcon = () => {
   const handleSelectedPersonaChange = async (persona: EntityReference) => {
     setSelectedPersona(persona);
   };
+
+  const handleTimeFormatChange = useCallback(
+    (format: '12h' | '24h') => {
+      setPreference({ timeFormat: format });
+    },
+    [setPreference]
+  );
 
   useEffect(() => {
     if (profilePicture) {
@@ -147,12 +159,9 @@ export const UserProfileIcon = () => {
         const directPersonas = currentUser?.personas ?? [];
         const inheritedPersonas = currentUser?.inheritedPersonas ?? [];
         const allPersonas = [...directPersonas, ...inheritedPersonas];
-
         if (currentUser?.defaultPersona) {
           allPersonas.push(currentUser.defaultPersona);
         }
-
-        // Deduplicate by id
         const uniquePersonasMap = new Map();
         allPersonas.forEach((p) => uniquePersonasMap.set(p.id, p));
 
@@ -180,7 +189,6 @@ export const UserProfileIcon = () => {
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
             </Typography.Text>
-
             {isDefaultPersona && (
               <Tag
                 className="m-l-xs default-persona-tag"
@@ -189,7 +197,6 @@ export const UserProfileIcon = () => {
               </Tag>
             )}
           </div>
-
           <Radio checked={selectedPersona?.id === item.id} />
         </div>
       );
@@ -233,18 +240,28 @@ export const UserProfileIcon = () => {
     setIsDropdownOpen(false);
   }, []);
 
+  const timeFormatLabelRenderer = useCallback(
+    (format: '12h' | '24h', label: string) => (
+      <div
+        className="w-full d-flex items-center justify-between cursor-pointer"
+        data-testid={`time-format-${format}`}
+        onClick={() => handleTimeFormatChange(format)}>
+        <Typography.Text>{label}</Typography.Text>
+        <Radio checked={activeTimeFormat === format} />
+      </div>
+    ),
+    [activeTimeFormat, handleTimeFormatChange]
+  );
+
   const sortedPersonas = useMemo(() => {
     if (!personas?.length) {
       return [];
     }
-
     const defaultId = defaultPersona?.id;
     const selectedId = selectedPersona?.id;
-
     const others: typeof personas = [];
     let defaultMatch: typeof defaultPersona | undefined;
     let selectedMatch: typeof selectedPersona | undefined;
-
     for (const p of personas) {
       if (p.id === defaultId) {
         defaultMatch = p;
@@ -254,8 +271,6 @@ export const UserProfileIcon = () => {
         others.push(p);
       }
     }
-
-    // Sort remaining personas alphabetically
     const sortedOthers = orderBy(others, (p) => getEntityName(p), 'asc');
 
     return [
@@ -386,12 +401,35 @@ export const UserProfileIcon = () => {
         label: <InterfaceModeMenuItem />,
         type: 'group',
       },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'timeFormat',
+        icon: '',
+        children: [
+          {
+            key: 'time-format-12h',
+            label: timeFormatLabelRenderer('12h', t('label.12-hour')),
+          },
+          {
+            key: 'time-format-24h',
+            label: timeFormatLabelRenderer('24h', t('label.24-hour')),
+          },
+        ],
+        label: (
+          <div className="d-flex items-center gap-2">
+            <span className="font-medium text-grey-900">
+              {t('label.time-format')}
+            </span>
+          </div>
+        ),
+        type: 'group',
+      },
       ...navbarUtilClassBase.getUserProfileExtraItems(),
       {
         type: 'divider',
       },
-      // A group label keeps the embedded switch non-selectable so Ant Design
-      // does not close the dropdown while the user previews the new theme.
       {
         key: 'theme-mode',
         icon: '',
@@ -426,6 +464,8 @@ export const UserProfileIcon = () => {
       showAllPersona,
       sortedPersonas,
       inheritedRoles,
+      activeTimeFormat,
+      timeFormatLabelRenderer,
       t,
     ]
   );
@@ -434,7 +474,13 @@ export const UserProfileIcon = () => {
     <Dropdown
       menu={{
         items,
-        defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
+        defaultOpenKeys: [
+          'personas',
+          'roles',
+          'inheritedRoles',
+          'teams',
+          'timeFormat',
+        ],
         rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
       }}
       open={isDropdownOpen}
@@ -446,7 +492,6 @@ export const UserProfileIcon = () => {
         data-testid="dropdown-profile"
         icon={
           isImgUrlValid ? (
-            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
             <img
               alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"
@@ -473,7 +518,6 @@ export const UserProfileIcon = () => {
               {getEntityName(currentUser)}
             </Typography.Text>
           </Tooltip>
-
           <Typography.Text
             data-testid="default-persona"
             ellipsis={{ tooltip: true }}>

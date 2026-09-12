@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-  AuthenticationConfigurationWithScope,
-  IAuthContext,
+    AuthenticationConfigurationWithScope,
+    IAuthContext
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import {
-  EntityUnion,
-  ExploreSearchIndex,
+    EntityUnion,
+    ExploreSearchIndex
 } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
@@ -86,6 +86,8 @@ export interface ApplicationStore
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
   initializeAuthState: () => void;
+  timeFormat: '12h' | '24h';
+  setTimeFormat: (format: '12h' | '24h') => void;
 }
 
 export interface DomainStore {

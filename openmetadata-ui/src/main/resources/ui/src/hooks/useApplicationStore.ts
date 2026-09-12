@@ -22,9 +22,9 @@ import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
 import { isDomainRestrictedUser } from '../utils/DomainRestrictionUtils';
 import {
-  clearPersonaSession,
-  readPersonaSession,
-  writePersonaSession,
+    clearPersonaSession,
+    readPersonaSession,
+    writePersonaSession
 } from '../utils/PersonaSessionUtils';
 import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
@@ -105,6 +105,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   appPreferences: {},
   appVersion: undefined,
   rdfEnabled: false,
+  timeFormat: '12h',
 
   initializeAuthState: async () => {
     try {
@@ -271,5 +272,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setRdfEnabled: (enabled: boolean) => {
     set({ rdfEnabled: enabled });
+  },
+  setTimeFormat: (format: '12h' | '24h') => {
+    set({ timeFormat: format });
   },
 }));
