@@ -929,12 +929,13 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   // Open advanced search dialog
   await showAdvancedSearchDialog(page);
 
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-rule-0');
 
-  // Select "Custom Properties" from the field dropdown
+  // Select "Custom Properties" from the field dropdown. Each level below it
+  // gets its own control in the row, suffixed by depth.
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     'Custom Properties',
     true
   );
@@ -942,7 +943,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   if (entityType !== 'TableColumn') {
     await selectOption(
       page,
-      ruleLocator.locator('.rule--field'),
+      ruleLocator.getByTestId('advanced-search-field-select-1'),
       entityType,
       true
     );
@@ -950,26 +951,26 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     if (propertyType === 'Time Interval') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} (Start)`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} (End)`,
         true
       );
     } else if (propertyType === 'Hyperlink') {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} URL`,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         `${propertyName} Display Text`,
         true
       );
@@ -977,7 +978,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
       for (const column of propertyConfig ?? []) {
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field'),
+          ruleLocator.getByTestId('advanced-search-field-select-2'),
           `${propertyName} - ${column}`,
           true
         );
@@ -985,7 +986,7 @@ export const verifyCustomPropertyInAdvancedSearch = async (
     } else {
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         propertyName,
         true
       );

@@ -986,35 +986,35 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await sidebarClick(page, SidebarItem.EXPLORE);
           await showAdvancedSearchDialog(page);
 
-          const ruleLocator = page.locator('.rule').nth(0);
+          const ruleLocator = page.getByTestId('query-builder-rule-0');
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select'),
             'Custom Properties',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-1'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-2'),
             durationPropertyName,
             true
           );
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             CONDITIONS_MUST.equalTo.name
           );
 
           const inputElement = ruleLocator.locator(
-            '.rule--widget--TEXT input[type="text"]'
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
           );
           await inputElement.fill(durationPropertyValue);
 
@@ -1032,7 +1032,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             'Contains'
           );
           await inputElement.fill(partialSearchValue);
@@ -1280,37 +1280,39 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await showAdvancedSearchDialog(page);
 
-            const ruleLocator = page.locator('.rule').nth(0);
+            const ruleLocator = page.getByTestId('query-builder-rule-0');
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select'),
               'Custom Properties',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-1'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-2'),
               propertyName,
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--operator'),
+              ruleLocator.getByTestId('advanced-search-operator-select'),
               CONDITIONS_MUST.equalTo.name
             );
 
             await ruleLocator
-              .locator('.rule--widget--TEXT input[type="text"]')
+              .locator(
+                '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+              )
               .fill('updated value');
 
             await advanceSearchSaveFilter(page, 'updated value');

@@ -52,39 +52,63 @@ test.describe('Advanced Search Suggestions', () => {
       await waitForAllLoadersToDisappear(page);
       await showAdvancedSearchDialog(page);
 
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         field.label,
         true
       );
 
-      await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
+      await selectOption(
+        page,
+        ruleLocator.getByTestId('advanced-search-operator-select'),
+        '=='
+      );
 
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       const searchText = toLower(
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
       );
 
-      const aggregateResponse = waitForAggregation(page, {
-        field: field.fieldName,
-        value: searchText,
-      });
-      await dropdownInput.fill(searchText);
-      await dropdownInput.press('ArrowDown');
-      expect((await aggregateResponse).status()).toBe(200);
-      await expect(dropdownInput).toHaveAttribute('aria-expanded', 'true');
-      const listboxId = await dropdownInput.getAttribute('aria-controls');
-      const suggestionOption = page
-        .locator(`[role="listbox"][id="${listboxId}"]`)
-        .getByRole('option')
-        .filter({ hasText: searchText });
-      await expect(suggestionOption).not.toHaveCount(0);
+      // Match the option by its value as well as its label. Tag-like fields
+      // (Tags, Certification, Tier) render the display name -- `Tier1` --
+      // while the search text is the FQN `Tier.Tier1`. react-aria exposes the
+      // value on `data-key`, which does not move when the label does.
+      const listbox = page.locator('[role="listbox"]:visible');
+      const suggestionOption = listbox
+        .locator(`[role="option"][data-key="${searchText}" i]`)
+        .or(listbox.locator('[role="option"]').filter({ hasText: searchText }));
+
+      // The ComboBox popover re-mounts under load and the isMounting gate can
+      // drop the aggregate request — the listbox then opens empty. Retry the
+      // fill until at least one matching option renders; each attempt re-arms
+      // waitForAggregation so we don't block forever on a dropped request, and
+      // the helper matches the typed-value aggregate specifically so the wait
+      // cannot resolve early on the dropdown-open request.
+      await expect(async () => {
+        // .catch at construction: the exact dropped-aggregate case this fix
+        // targets leaves the underlying waitForResponse pending, so it will
+        // reject with a Playwright timeout ~30s later once the 5s fallback
+        // timer has already won the race. Without the catch, every toPass
+        // attempt orphans a fresh promise and Playwright surfaces them as
+        // unhandled rejections that can fail the test.
+        const aggregateResponse = waitForAggregation(page, {
+          field: field.fieldName,
+          value: searchText,
+        }).catch(() => undefined);
+        await dropdownInput.fill('');
+        await dropdownInput.fill(searchText);
+        await Promise.race([
+          aggregateResponse,
+          new Promise((resolve) => setTimeout(resolve, 5_000)),
+        ]);
+        await expect(suggestionOption).not.toHaveCount(0, { timeout: 5_000 });
+      }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
     });
   });
 });

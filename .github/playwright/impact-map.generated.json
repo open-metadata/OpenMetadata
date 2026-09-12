@@ -5097,15 +5097,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/ContextRuleEditor/RuleQueryBuilderField.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/PersonaAIContext.component.tsx"
       ],
       "specs": [
@@ -8087,6 +8078,21 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/ConditionBuilder/ConditionBuilder.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/DataAssetFormSection.tsx"
       ],
       "specs": [
@@ -8659,14 +8665,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataContracts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/TreeSelectWidget.tsx"
       ],
       "specs": [
@@ -8857,6 +8855,43 @@
       ],
       "specs": [
         "playwright/e2e/Pages/Users.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilder.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderGroupCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderGroupHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderRuleRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
@@ -11425,7 +11460,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts"
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
@@ -11496,6 +11532,15 @@
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/queryBuilderWidgets/OMConjs.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     }
   ],

@@ -48,17 +48,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   return commonAssets[searchIndex] || null;
 };
 
-/**
- * Resolves the display value of an aggregation bucket from a `_source` document.
- *
- * Terms aggregations on `lowercase_normalizer` keyword fields return lowercased
- * bucket keys, while `_source` keeps the original casing — so the label comes
- * from the `top_hits` sub-aggregation the `sourceFields` request parameter adds.
- * The path may cross arrays (`tags.tagFQN`, `columns.name`) or end on one
- * (`glossaryTags`, `ownerDisplayName`); in both cases the element that
- * case-insensitively equals the bucket key wins, since one document can carry
- * many values for the same field and only one of them belongs to this bucket.
- */
+// Resolves the display value of an aggregation bucket from a `_source` document.
 export const extractSourceValue = (
   src: Record<string, unknown>,
   path: string,
@@ -70,11 +60,8 @@ export const extractSourceValue = (
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     if (Array.isArray(val)) {
-      // Mid-traversal array: only the element whose resolved leaf value
-      // case-insensitively equals the bucket key belongs to this bucket. There
-      // is deliberately no positional fallback — a sibling value (the second
-      // tag of a doc carrying two) would be a wrong label, which is worse than
-      // the lowercased bucket key the caller falls back to.
+      // Mid-traversal array: only the element whose resolved leaf value case-insensitively equals the bucket key
+      // belongs to this bucket.
       const remainingPath = parts.slice(i).join('.');
       const match = (val as unknown[]).find((item) => {
         const leaf = extractSourceValue(
@@ -100,8 +87,8 @@ export const extractSourceValue = (
     }
   }
 
-  // Terminal value may be a string[] (e.g. ownerDisplayName: ["Aaron Johnson"]),
-  // where the same reasoning applies: match the bucket key or resolve nothing.
+  // Terminal value may be a string[] (e.g. `ownerDisplayName: ['Aaron Johnson']`): match the bucket key, or resolve
+  // nothing.
   if (Array.isArray(val)) {
     return (val as unknown[])
       .filter((item): item is string => typeof item === 'string')
@@ -134,10 +121,15 @@ export const parseBucketsData = (
         | undefined;
       const data = topHitsData?.hits?.hits?.[0]?._source;
 
-      return {
-        title: data?.[sourceFieldOptionType.label] as string,
-        value: data?.[sourceFieldOptionType.value] as string,
-      };
+      const value = (data?.[sourceFieldOptionType.value] ??
+        bucket.key) as string;
+
+      // displayName, then name, then the raw value.
+      const title = (data?.[sourceFieldOptionType.label] ??
+        data?.name ??
+        value) as string;
+
+      return { title, value };
     });
   }
 
@@ -291,3 +283,17 @@ export const getTermQuery = (
     },
   };
 };
+
+// One option shape for tag-like entities (tiers, tags, certifications).
+export const toTagSelectOptions = (
+  tags: Array<{
+    displayName?: string;
+    name?: string;
+    fullyQualifiedName?: string;
+  }>
+): Array<{ title: string; value: string }> =>
+  tags.map((tag) => {
+    const value = tag.fullyQualifiedName || tag.name || '';
+
+    return { title: tag.displayName || tag.name || value, value };
+  });
