@@ -206,11 +206,17 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const edgeDiv = page.getByTestId(
-    isPipeline
-      ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
-      : `edge-${fromNodeFqn}-${toNodeFqn}`
+  // computeEdgeDataTestId only names the marker `pipeline-label-*` once the
+  // edge's own details have loaded — the scene returns skeletal edges and each
+  // one's pipeline arrives later via getLineageEdge. Until then the same
+  // midpoint marker still carries the plain `edge-*` id. Either resolves to one
+  // marker for a given edge and opens the same toolbar, so accept both rather
+  // than racing the hydration.
+  const pipelineLabel = page.getByTestId(
+    `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
   );
+  const plainEdge = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
+  const edgeDiv = isPipeline ? pipelineLabel.or(plainEdge) : plainEdge;
   await clickCanvasEdge(page, edgeDiv);
 };
 
