@@ -13,6 +13,7 @@
 
 import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { getNameFromFQN } from '../../utils/FqnUtils';
 import {
   GraphFilters,
   OntologyGraphData,
@@ -26,6 +27,14 @@ export interface OntologyHealthSummary {
   connectedTermCount: number;
   isolatedTerms: OntologyNode[];
   totalTermCount: number;
+}
+
+export interface OntologyTermLabelSource {
+  displayName?: string;
+  fullyQualifiedName?: string;
+  id: string;
+  label?: string;
+  name?: string;
 }
 
 export interface OntologyTreeRow {
@@ -68,6 +77,25 @@ const RDF_NAMESPACES: Record<string, string> = {
   skos: 'http://www.w3.org/2004/02/skos/core#',
 };
 const MAX_ONTOLOGY_QUERY_SUGGESTIONS = 3;
+
+export function resolveOntologyTermLabel(
+  term: OntologyTermLabelSource
+): string {
+  const fullyQualifiedNameLabel = term.fullyQualifiedName
+    ? getNameFromFQN(term.fullyQualifiedName)
+    : undefined;
+  const candidates = [
+    term.displayName,
+    term.name,
+    term.label,
+    fullyQualifiedNameLabel,
+  ];
+  const resolved = candidates
+    .map((candidate) => candidate?.trim())
+    .find((candidate) => candidate && candidate !== term.id);
+
+  return resolved ?? term.id;
+}
 
 function escapeSparqlString(value: string): string {
   return value
