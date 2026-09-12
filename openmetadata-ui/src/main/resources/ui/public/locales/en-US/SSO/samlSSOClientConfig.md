@@ -145,6 +145,7 @@ $$section
 
 - **Definition:** Validity period (in seconds) for JWT tokens created from SAML response.
 - **Default:** 3600 (1 hour)
+- **Minimum:** 1 second
 - **Example:** 7200 (2 hours)
 - **Why it matters:** Controls how long users stay logged in after SAML authentication.
 - **Note:** This controls the OpenMetadata JWT token lifetime, not the SAML assertion lifetime
