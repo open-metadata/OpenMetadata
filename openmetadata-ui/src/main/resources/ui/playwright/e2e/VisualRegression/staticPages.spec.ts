@@ -64,12 +64,11 @@ const PAGES: {
   {
     name: 'database-services',
     route: '/settings/services/databases',
-    // Seeded database services carry per-run random name suffixes
-    // (pw-database-service-<hex>), so the Name column text differs every run
-    // (~2-3% of pixels) while the page chrome and the fixed sample services
-    // stay deterministic. A small ratio absorbs that name variance without
-    // re-minting the baseline each run.
-    maxDiffPixelRatio: 0.05,
+    // The services list contains playwright-seeded services with random name
+    // suffixes (pw-database-service-<hex>), so the table body is
+    // non-deterministic run-to-run. Mask the row body; the page chrome, search,
+    // and column headers stay under test.
+    mask: ['[data-testid="services-container"] tbody'],
   },
   { name: 'data-quality', route: '/data-quality' },
   {
@@ -85,10 +84,10 @@ const PAGES: {
     name: 'teams',
     route: '/settings/members/teams',
     // The Organization team list includes playwright-seeded teams with random
-    // name suffixes (PW Data Consumer Team <hex>), so the table body text and
-    // ordering shift every run while the header/chrome stay deterministic. A
-    // small ratio absorbs that name variance without re-minting the baseline.
-    maxDiffPixelRatio: 0.05,
+    // name suffixes (PW Data Consumer Team <hex>), so the table body is
+    // non-deterministic run-to-run. Mask the row body; the org header (owners,
+    // description), tabs, search, and column headers stay under test.
+    mask: ['[data-testid="team-hierarchy-table"] tbody'],
   },
   // 'roles' intentionally omitted: the roles listing renders seeded roles
   // with per-run random names, so it is non-deterministic run-to-run in CI
