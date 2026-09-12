@@ -8594,22 +8594,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/fields/CoreOneOfField.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/templates/CoreObjectFieldTemplate.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/GlossaryTermsSection/GlossaryTermsSection.tsx"
       ],
       "specs": [
