@@ -89,8 +89,10 @@ const mocks = {
     settings: { test: 'settings' },
   },
   treeInternal: {
-    type: 'group',
-    children1: {},
+    // A real JsonTree (literal `type`, an `id`, `children1` as an array) so the spread below still type-checks.
+    type: 'group' as const,
+    id: 'internal',
+    children1: [],
   },
 };
 

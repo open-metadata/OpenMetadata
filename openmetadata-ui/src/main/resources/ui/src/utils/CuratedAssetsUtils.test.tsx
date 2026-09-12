@@ -47,14 +47,6 @@ jest.mock('@react-awesome-query-builder/ui', () => ({
   },
 }));
 
-jest.mock('antd', () => ({
-  Alert: jest.fn().mockImplementation(({ message, className }) => (
-    <div className={className} data-testid="alert">
-      {message}
-    </div>
-  )),
-}));
-
 jest.mock('@ant-design/icons', () => ({
   InfoCircleOutlined: jest
     .fn()
@@ -86,27 +78,49 @@ describe('CuratedAssetsUtils', () => {
       render(<AlertMessage assetCount={5} href="/custom-explore" />);
 
       expect(screen.getByText('5 entities found')).toBeInTheDocument();
-      expect(screen.getByTestId('info-icon')).toBeInTheDocument();
-
-      const link = screen.getByText('View in Explore Page').closest('a');
-
-      expect(link).toHaveAttribute('href', '/custom-explore');
+      expect(screen.getByTestId('view-assets-banner-button')).toHaveAttribute(
+        'href',
+        '/custom-explore'
+      );
     });
 
-    it('renders alert message with default href', () => {
+    // The link must be a control *inside* the banner, not a wrapper around it:
+    // an anchor around the whole Alert puts the close button inside a link, so
+    // dismissing the banner would navigate instead of closing it.
+    it('does not turn the banner itself into a link', () => {
+      render(<AlertMessage assetCount={5} href="/custom-explore" />);
+
+      expect(
+        screen.getByTestId('view-assets-banner-count')
+      ).not.toHaveAttribute('href');
+    });
+
+    // A banner with nowhere to go must show the count alone rather than a link
+    // that goes nowhere.
+    it('renders the count with no link when there is no href', () => {
       render(<AlertMessage assetCount={3} />);
 
-      const link = screen.getByText('View in Explore Page');
-
-      expect(link).toHaveAttribute('href', '#');
+      expect(screen.getByText('3 entities found')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('view-assets-banner-button')
+      ).not.toBeInTheDocument();
     });
 
-    it('renders alert with correct CSS classes', () => {
-      render(<AlertMessage assetCount={7} />);
+    it('renders the count alone when the click-through is switched off', () => {
+      render(
+        <AlertMessage
+          assetCount={7}
+          href="/custom-explore"
+          showExploreLink={false}
+        />
+      );
 
-      const alert = screen.getByTestId('alert');
-
-      expect(alert).toHaveClass('bg-transparent border-none');
+      expect(
+        screen.getByTestId('view-assets-banner-count')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('view-assets-banner-button')
+      ).not.toBeInTheDocument();
     });
   });
 
