@@ -49,7 +49,6 @@ import {
   editLineageClick,
   fitToScreen,
   getEntityColumns,
-  performZoomOut,
   rearrangeNodes,
   removeColumnLineage,
   verifyColumnLineageInCSV,
@@ -235,8 +234,7 @@ test.describe('Data asset lineage', () => {
     test(`verify pipeline, export and removal for entity - ${startCase(
       key
     )}`, async ({ page }) => {
-      test.setTimeout(8 * 60 * 1000);
-      await page.setViewportSize({ height: 1600, width: 1920 });
+      test.setTimeout(5 * 60 * 1000);
       const lineageEntity = new EntityClass();
       sourceEntities.push(lineageEntity);
 
@@ -270,10 +268,6 @@ test.describe('Data asset lineage', () => {
 
         await page.getByTestId('fit-screen').click();
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-        // Fit-to-screen alone leaves the edge markers outside the viewport on
-        // the hierarchical lineage map, and clickCanvasEdge asserts the marker
-        // is in view before clicking it.
-        await performZoomOut(page, 8);
         await waitForAllLoadersToDisappear(page);
 
         for (const entity of entities) {
