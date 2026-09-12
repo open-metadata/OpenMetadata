@@ -135,6 +135,9 @@
     --shadow-3xl,
     0px 32px 64px -12px rgba(10, 13, 18, 0.14)
   );
+  --om-shadow-card: var(--shadow-card, var(--shadow-xs));
+  --om-shadow-raised: var(--shadow-raised, var(--shadow-lg));
+  --om-shadow-overlay: var(--shadow-overlay, var(--shadow-xl));
 
   /* -- z-index (semantic ladder; migration also emits exact --om-z-<n>) -- */
   --om-z-base: 0;
@@ -179,6 +182,11 @@
   --om-color-bg-quaternary: var(--color-bg-quaternary, #e9eaeb);
   --om-color-bg-disabled: var(--color-bg-disabled, #f5f5f5);
   --om-color-bg-overlay: var(--color-bg-overlay, #0a0d12);
+  --om-color-bg-page: var(--color-bg-page, #ffffff);
+  --om-color-bg-canvas: var(--color-bg-canvas, #fafafa);
+  --om-color-bg-surface: var(--color-bg-surface, #ffffff);
+  --om-color-bg-raised: var(--color-bg-raised, #ffffff);
+  --om-color-bg-overlay-surface: var(--color-bg-overlay-surface, #ffffff);
   --om-color-bg-error: var(--color-bg-error-primary, #fef3f2);
   --om-color-bg-warning: var(--color-bg-warning-primary, #fffaeb);
   --om-color-bg-success: var(--color-bg-success-primary, #ecfdf3);
@@ -189,9 +197,15 @@
   --om-color-border-primary: var(--color-border-primary, #d5d7da);
   --om-color-border-secondary: var(--color-border-secondary, #e9eaeb);
   --om-color-border-tertiary: var(--color-border-tertiary, #f5f5f5);
+  --om-color-border-subtle: var(--color-border-subtle, rgb(0 0 0 / 0.08));
+  --om-color-border-hover: var(--color-border-hover, #a4a7ae);
   --om-color-border-disabled: var(--color-border-disabled, #d5d7da);
   --om-color-border-error: var(--color-border-error, #f04438);
   --om-color-border-brand: var(--color-border-brand, #2e90fa);
+  --om-color-border-brand-subtle: var(--color-border-brand-subtle, #84caff);
+  --om-color-border-error-subtle: var(--color-border-error-subtle, #fda29b);
+  --om-color-border-warning-subtle: var(--color-border-warning-subtle, #fec84b);
+  --om-color-border-success-subtle: var(--color-border-success-subtle, #75e0a7);
 
   --om-color-fg-brand: var(--color-fg-brand-primary, #1570ef);
   --om-color-fg-error: var(--color-fg-error-primary, #d92d20);
@@ -199,8 +213,8 @@
   --om-color-fg-success: var(--color-fg-success-primary, #079455);
 
   /* Link + interactive states */
-  --om-color-link: var(--color-text-brand-tertiary, #1570ef);
-  --om-color-link-hover: var(--color-text-brand-secondary, #175cd3);
+  --om-color-link: var(--color-text-link, #1570ef);
+  --om-color-link-hover: var(--color-text-link-hover, #175cd3);
   --om-color-interactive-hover: var(--color-bg-secondary, #fafafa);
   --om-color-interactive-active: var(--color-bg-tertiary, #f5f5f5);
   --om-color-interactive-selected: var(--color-bg-brand-primary, #eff8ff);
@@ -588,15 +602,12 @@
   --om-legacy-color-101828: #101828;
   --om-legacy-color-102a72: #102a72;
   --om-legacy-color-107-114-128-0-15: rgba(107, 114, 128, 0.15);
-  --om-legacy-color-11-16-33-0-96: rgba(11, 16, 33, 0.96);
   --om-legacy-color-111827: #111827;
   --om-legacy-color-113-71-232-0-102: #7147e81a;
   --om-legacy-color-113-71-232-0-35: rgba(113, 71, 232, 0.35);
   --om-legacy-color-113-71-232-0-6: #7147e899;
   --om-legacy-color-117-117-117-0-2: #75757533;
   --om-legacy-color-117-117-117-0-3: rgba(117, 117, 117, 0.3);
-  --om-legacy-color-13-18-38-0-72: rgba(13, 18, 38, 0.72);
-  --om-legacy-color-13-18-38-0-85: rgba(13, 18, 38, 0.85);
   --om-legacy-color-13c2c2: #13c2c2;
   --om-legacy-color-15-15-15-0-1: rgba(15, 15, 15, 0.1);
   --om-legacy-color-15-23-42-0-06: rgba(15, 23, 42, 0.06);
@@ -623,10 +634,7 @@
   --om-legacy-color-255-193-67-0-15: rgba(255, 193, 67, 0.15);
   --om-legacy-color-255-243-205-0-867: #fff3cddd;
   --om-legacy-color-255-255-255-0: rgba(255, 255, 255, 0);
-  --om-legacy-color-255-255-255-0-07: rgba(255, 255, 255, 0.07);
-  --om-legacy-color-255-255-255-0-08: rgba(255, 255, 255, 0.08);
   --om-legacy-color-255-255-255-0-1: rgba(255, 255, 255, 0.1);
-  --om-legacy-color-255-255-255-0-14: rgba(255, 255, 255, 0.14);
   --om-legacy-color-255-255-255-0-302: #ffffff4d;
   --om-legacy-color-255-255-255-0-4: rgba(255, 255, 255, 0.4);
   --om-legacy-color-255-255-255-0-7: rgba(255, 255, 255, 0.7);
@@ -679,10 +687,8 @@
   --om-legacy-color-82-196-26-0-05: rgba(82, 196, 26, 0.05);
   --om-legacy-color-85-155-238-0-2: rgba(85, 155, 238, 0.2);
   --om-legacy-color-856404: #856404;
-  --om-legacy-color-8a93a8: #8a93a8;
   --om-legacy-color-8c8c8c: #8c8c8c;
   --om-legacy-color-9-80-197-0-05: rgba(9, 80, 197, 0.05);
-  --om-legacy-color-94a3b8: #94a3b8;
   --om-legacy-color-96-167-251-0-2: rgba(96, 167, 251, 0.2);
   --om-legacy-color-9933ff: #93f;
   --om-legacy-color-a84c3d: #a84c3d;
@@ -695,7 +701,6 @@
   --om-legacy-color-b4d5ff: #b4d5ff;
   --om-legacy-color-bbbbbb: #bbb;
   --om-legacy-color-bee5eb: #bee5eb;
-  --om-legacy-color-c2c9d6: #c2c9d6;
   --om-legacy-color-c3e6cb: #c3e6cb;
   --om-legacy-color-c45296: #c45296;
   --om-legacy-color-c6b5f6: #c6b5f6;
@@ -734,7 +739,6 @@
   --om-legacy-color-e8e8ed: #e8e8ed;
   --om-legacy-color-e8ecf5: #e8ecf5;
   --om-legacy-color-eaecf0: #eaecf0;
-  --om-legacy-color-eaf0fb: #eaf0fb;
   --om-legacy-color-ebeef1: #ebeef1;
   --om-legacy-color-ecedee: #ecedee;
   --om-legacy-color-eeeeee: #eeeeee;
@@ -754,7 +758,6 @@
   --om-legacy-color-f44336: #f44336;
   --om-legacy-color-f4f0fd: #f4f0fd;
   --om-legacy-color-f4f7f9: #f4f7f9;
-  --om-legacy-color-f4f7fc: #f4f7fc;
   --om-legacy-color-f4f7ff: #f4f7ff;
   --om-legacy-color-f4fbf7: #f4fbf7;
   --om-legacy-color-f59638: #f59638;

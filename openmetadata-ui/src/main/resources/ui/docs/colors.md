@@ -6,7 +6,7 @@ A guide for developers and AI agents on how to use colors safely across OpenMeta
 
 ## 1. Mental Model
 
-OpenMetadata uses **semantic color tokens** — named abstractions that map to specific values in light mode and automatically remap to different values in dark mode. A token like `tw:bg-primary` resolves to `#ffffff` in light mode and `#0c0e12` in dark mode without any extra code.
+OpenMetadata uses **semantic color tokens** — named abstractions that map to specific values in light mode and automatically remap to different values in dark mode. A token like `tw:bg-page` resolves to the existing light page color and `#141414` in dark mode without any extra code.
 
 ### How Dark Mode Works
 
@@ -16,7 +16,7 @@ Dark mode is controlled by a `.dark-mode` CSS class applied to a parent element 
 
 ```tsx
 // ✅ Correct — token handles both modes
-<div className="tw:bg-primary tw:text-primary">...</div>
+<div className="tw:bg-page tw:text-primary">...</div>
 
 // ✅ Also correct — explicit dark override for a deliberate design decision
 <div className="tw:bg-white tw:dark:bg-gray-900">Special surface with custom dark treatment</div>
@@ -43,53 +43,58 @@ Use background tokens for surfaces, containers, cards, modals, and page-level ba
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:bg-primary` | `--color-bg-primary` | `#ffffff` | `#0c0e12` | Default page, card, modal background |
-| `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#13161b` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |
-| `tw:bg-primary_hover` | `--color-bg-primary_hover` | `#fafafa` | `#22262f` | Hover state on primary surface |
-| `tw:bg-secondary` | `--color-bg-secondary` | `#fafafa` | `#13161b` | Secondary surface, sidebar, panel |
-| `tw:bg-secondary_alt` | `--color-bg-secondary_alt` | `#fafafa` | `#0c0e12` (bg-primary) | Alternate secondary surface |
-| `tw:bg-secondary_subtle` | `--color-bg-secondary_subtle` | `#fdfdfd` | `#13161b` | Subtle secondary background |
-| `tw:bg-secondary_hover` | `--color-bg-secondary_hover` | `#f5f5f5` | `#22262f` | Hover on secondary surface |
-| `tw:bg-tertiary` | `--color-bg-tertiary` | `#f5f5f5` | `#22262f` | Input backgrounds, code blocks, chips |
-| `tw:bg-quaternary` | `--color-bg-quaternary` | `#e9eaeb` | `#373a41` | Strongest neutral surface, skeleton loaders |
-| `tw:bg-active` | `--color-bg-active` | `#fafafa` | `#22262f` | Selected/active row or nav item |
-| `tw:bg-disabled` | `--color-bg-disabled` | `#f5f5f5` | `#22262f` | Disabled input or button surface |
-| `tw:bg-disabled_subtle` | `--color-bg-disabled_subtle` | `#fafafa` | `#13161b` | Subtler disabled surface |
-| `tw:bg-overlay` | `--color-bg-overlay` | `#0a0d12` | `#22262f` | Modal backdrops, drawer overlays |
-| `tw:bg-primary-solid` | `--color-bg-primary-solid` | `#0a0d12` | `#13161b` | High-contrast solid surface (rare) |
-| `tw:bg-secondary-solid` | `--color-bg-secondary-solid` | `#535862` | `#535862` | Solid secondary (e.g. dark tooltips) |
+| `tw:bg-page` | `--color-bg-page` | Existing page color | `#141414` | Application page background |
+| `tw:bg-canvas` | `--color-bg-canvas` | Existing canvas color | `#191919` | Main workspace or content canvas |
+| `tw:bg-surface` | `--color-bg-surface` | Existing card surface | `#222222` | Cards, panels, and sidebars |
+| `tw:bg-raised` | `--color-bg-raised` | Existing raised surface | `#2e2e2e` | Dropdowns, menus, and popovers |
+| `tw:bg-overlay-surface` | `--color-bg-overlay-surface` | Existing modal surface | `#222222` | Modal and drawer content |
+| `tw:bg-primary` | `--color-bg-primary` | `#ffffff` | `#141414` | Existing generic primary surface |
+| `tw:bg-primary_alt` | `--color-bg-primary_alt` | `#ffffff` | `#191919` (bg-secondary) | Alternate surface; pairs with `bg-primary` for subtle layering |
+| `tw:bg-primary_hover` | `--color-bg-primary_hover` | `#fafafa` | White at 6% | Hover state on a primary surface |
+| `tw:bg-secondary` | `--color-bg-secondary` | `#fafafa` | `#191919` | Existing generic secondary surface |
+| `tw:bg-secondary_alt` | `--color-bg-secondary_alt` | `#fafafa` | `#141414` (bg-primary) | Alternate secondary surface |
+| `tw:bg-secondary_subtle` | `--color-bg-secondary_subtle` | `#fdfdfd` | `#191919` | Subtle secondary background |
+| `tw:bg-secondary_hover` | `--color-bg-secondary_hover` | `#f5f5f5` | White at 6% | Hover on a secondary surface |
+| `tw:bg-tertiary` | `--color-bg-tertiary` | `#f5f5f5` | `#222222` | Input backgrounds and code blocks |
+| `tw:bg-quaternary` | `--color-bg-quaternary` | `#e9eaeb` | `#2e2e2e` | Strongest neutral surface and skeleton loaders |
+| `tw:bg-active` | `--color-bg-active` | `#fafafa` | White at 10% | Selected or active row/nav item |
+| `tw:bg-disabled` | `--color-bg-disabled` | `#f5f5f5` | `#222222` | Disabled input or button surface |
+| `tw:bg-disabled_subtle` | `--color-bg-disabled_subtle` | `#fafafa` | `#191919` | Subtler disabled surface |
+| `tw:bg-overlay` | `--color-bg-overlay` | `#0a0d12` | `#222222` | Modal backdrops, drawer overlays |
+| `tw:bg-primary-solid` | `--color-bg-primary-solid` | `#0a0d12` | `#191919` | High-contrast solid surface (rare) |
+| `tw:bg-secondary-solid` | `--color-bg-secondary-solid` | `#535862` | `#666666` | Solid secondary (e.g. dark tooltips) |
 
 **Brand backgrounds:**
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | `#2e90fa` | Light brand tint surface |
-| `tw:bg-brand-primary_alt` | `--color-bg-brand-primary_alt` | `#eff8ff` | `#13161b` | Alternate brand tint |
+| `tw:bg-brand-primary` | `--color-bg-brand-primary` | `#eff8ff` | Brand 500 at 16% | Light brand tint surface |
+| `tw:bg-brand-primary_alt` | `--color-bg-brand-primary_alt` | `#eff8ff` | `#191919` | Alternate brand tint |
 | `tw:bg-brand-secondary` | `--color-bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand tint |
 | `tw:bg-brand-solid` | `--color-bg-brand-solid` | `#1570ef` | `#1570ef` | Primary CTA button fill |
 | `tw:bg-brand-solid_hover` | `--color-bg-brand-solid_hover` | `#175cd3` | `#2e90fa` | CTA button hover |
-| `tw:bg-brand-section` | `--color-bg-brand-section` | `#1849a9` | `#13161b` | Full-width brand banner section |
-| `tw:bg-brand-section_subtle` | `--color-bg-brand-section_subtle` | `#175cd3` | `#0c0e12` | Subtle brand banner section |
+| `tw:bg-brand-section` | `--color-bg-brand-section` | `#1849a9` | `#191919` | Full-width brand banner section |
+| `tw:bg-brand-section_subtle` | `--color-bg-brand-section_subtle` | `#175cd3` | `#141414` | Subtle brand banner section |
 
 **Status backgrounds:**
 
 | Tailwind Class | Light | Dark | When to Use |
 |---|---|---|---|
-| `tw:bg-error-primary` | `#fef3f2` | `#55160c` | Error/alert container background |
+| `tw:bg-error-primary` | `#fef3f2` | Error 500 at 16% | Error/alert container background |
 | `tw:bg-error-secondary` | `#fee4e2` | `#d92d20` | Stronger error background |
 | `tw:bg-error-solid` | `#d92d20` | `#d92d20` | Solid error badge/button |
-| `tw:bg-warning-primary` | `#fffaeb` | `#4e1d09` | Warning container background |
+| `tw:bg-warning-primary` | `#fffaeb` | Warning 500 at 16% | Warning container background |
 | `tw:bg-warning-secondary` | `#fef0c7` | `#dc6803` | Stronger warning background |
 | `tw:bg-warning-solid` | `#dc6803` | `#dc6803` | Solid warning badge |
-| `tw:bg-success-primary` | `#ecfdf3` | `#053321` | Success container background |
+| `tw:bg-success-primary` | `#ecfdf3` | Success 500 at 16% | Success container background |
 | `tw:bg-success-secondary` | `#dcfae6` | `#079455` | Stronger success background |
 | `tw:bg-success-solid` | `#079455` | `#079455` | Solid success badge |
 
 ```tsx
 // ✅ Correct
-<div className="tw:bg-primary">Page content</div>
-<div className="tw:bg-secondary">Sidebar</div>
-<div className="tw:bg-error-primary tw:border tw:border-error">Error banner</div>
+<div className="tw:bg-page">Page content</div>
+<div className="tw:bg-surface">Sidebar</div>
+<div className="tw:bg-error-primary tw:border tw:border-error-subtle">Error banner</div>
 
 // ❌ Wrong
 <div className="tw:bg-white">...</div>
@@ -105,35 +110,37 @@ Use text tokens for all text content. Choose the hierarchy level that matches th
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:text-primary` | `--color-text-primary` | `#181d27` (gray-900) | `#fafafa` (gray-50) | Headings, primary body text |
-| `tw:text-secondary` | `--color-text-secondary` | `#414651` (gray-700) | `#d5d7da` (gray-300) | Secondary body, labels |
-| `tw:text-secondary_hover` | `--color-text-secondary_hover` | `#252b37` | `#e9eaeb` | Hover state on secondary text |
-| `tw:text-tertiary` | `--color-text-tertiary` | `#535862` (gray-600) | `#a4a7ae` (gray-400) | Captions, helper text, timestamps |
-| `tw:text-tertiary_hover` | `--color-text-tertiary_hover` | `#414651` | `#d5d7da` | Hover state on tertiary text |
-| `tw:text-quaternary` | `--color-text-quaternary` | `#717680` (gray-500) | `#a4a7ae` (gray-400) | Placeholder-level, very muted text |
-| `tw:text-disabled` | `--color-text-disabled` | `#717680` | `#717680` | Disabled text |
-| `tw:text-placeholder` | `--color-text-placeholder` | `#717680` | `#717680` | Input placeholder text |
-| `tw:text-placeholder_subtle` | `--color-text-placeholder_subtle` | `#d5d7da` | `#414651` | Ghosted placeholder |
+| `tw:text-primary` | `--color-text-primary` | `#181d27` (gray-900) | `#f0f0f0` (gray-50) | Headings, primary body text |
+| `tw:text-secondary` | `--color-text-secondary` | `#414651` (gray-700) | `#bfbfbf` (gray-300) | Secondary body, labels |
+| `tw:text-secondary_hover` | `--color-text-secondary_hover` | `#252b37` | `#d9d9d9` | Hover state on secondary text |
+| `tw:text-tertiary` | `--color-text-tertiary` | `#535862` (gray-600) | `#a0a0a0` (gray-400) | Captions, helper text, timestamps |
+| `tw:text-tertiary_hover` | `--color-text-tertiary_hover` | `#414651` | `#bfbfbf` | Hover state on tertiary text |
+| `tw:text-quaternary` | `--color-text-quaternary` | `#717680` (gray-500) | `#a0a0a0` (gray-400) | Very muted text |
+| `tw:text-disabled` | `--color-text-disabled` | `#717680` | `#808080` | Disabled text only |
+| `tw:text-placeholder` | `--color-text-placeholder` | `#717680` | `#a0a0a0` | Input placeholder text |
+| `tw:text-placeholder_subtle` | `--color-text-placeholder_subtle` | `#d5d7da` | `#2e2e2e` | Ghosted decorative placeholder |
+| `tw:text-link` | `--color-text-link` | `#1570ef` | `#84caff` | Links and link-style actions |
+| `tw:text-link-hover` | `--color-text-link-hover` | `#175cd3` | `#b2ddff` | Link hover state |
 | `tw:text-white` | `--color-text-white` | `#ffffff` | `#ffffff` | Text on dark/solid backgrounds only |
 
 **Brand text:**
 
 | Tailwind Class | Light | Dark | When to Use |
 |---|---|---|---|
-| `tw:text-brand-primary` | `#194185` (brand-900) | `#fafafa` | Strong brand text, page titles on brand surface |
-| `tw:text-brand-secondary` | `#175cd3` (brand-700) | `#d5d7da` | Brand links, secondary brand text |
-| `tw:text-brand-secondary_hover` | `#1849a9` | `#e9eaeb` | Hover on brand links |
-| `tw:text-brand-tertiary` | `#1570ef` (brand-600) | `#a4a7ae` | Lighter brand text |
-| `tw:text-brand-tertiary_alt` | `#1570ef` | `#fafafa` | Alternate lighter brand text |
+| `tw:text-brand-primary` | `#194185` (brand-900) | `#f0f0f0` | Strong brand text, page titles on brand surface |
+| `tw:text-brand-secondary` | `#175cd3` (brand-700) | `#bfbfbf` | Secondary brand text |
+| `tw:text-brand-secondary_hover` | `#1849a9` | `#d9d9d9` | Hover on secondary brand text |
+| `tw:text-brand-tertiary` | `#1570ef` (brand-600) | `#a0a0a0` | Lighter brand text |
+| `tw:text-brand-tertiary_alt` | `#1570ef` | `#f0f0f0` | Alternate lighter brand text |
 
 **On-brand text** (use inside brand-colored containers like CTAs or dark headers):
 
 | Tailwind Class | Light | Dark | When to Use |
 |---|---|---|---|
-| `tw:text-primary_on-brand` | `#ffffff` | `#fafafa` | Primary text on brand surface |
-| `tw:text-secondary_on-brand` | `#b2ddff` (brand-200) | `#d5d7da` | Secondary text on brand surface |
-| `tw:text-tertiary_on-brand` | `#b2ddff` | `#a4a7ae` | Tertiary text on brand surface |
-| `tw:text-quaternary_on-brand` | `#84caff` (brand-300) | `#a4a7ae` | Quaternary text on brand surface |
+| `tw:text-primary_on-brand` | `#ffffff` | `#f0f0f0` | Primary text on brand surface |
+| `tw:text-secondary_on-brand` | `#b2ddff` (brand-200) | `#bfbfbf` | Secondary text on brand surface |
+| `tw:text-tertiary_on-brand` | `#b2ddff` | `#a0a0a0` | Tertiary text on brand surface |
+| `tw:text-quaternary_on-brand` | `#84caff` (brand-300) | `#a0a0a0` | Quaternary text on brand surface |
 
 **Status text:**
 
@@ -165,16 +172,21 @@ Use border tokens for input outlines, card dividers, separators, and table borde
 
 | Tailwind Class | CSS Variable | Light | Dark | When to Use |
 |---|---|---|---|---|
-| `tw:border-primary` | `--color-border-primary` | `#d5d7da` (gray-300) | `#373a41` (gray-700) | Default card, input, and divider borders |
-| `tw:border-secondary` | `--color-border-secondary` | `#e9eaeb` (gray-200) | `#22262f` (gray-800) | Subtle borders, section separators |
-| `tw:border-secondary_alt` | `--color-border-secondary_alt` | `rgba(0,0,0,0.08)` | `#22262f` | Alpha-transparent borders |
-| `tw:border-tertiary` | `--color-border-tertiary` | `#f5f5f5` (gray-100) | `#22262f` | Very subtle dividers |
+| `tw:border-primary` | `--color-border-primary` | `#d5d7da` (gray-300) | `#808080` (gray-500) | Default interactive control border |
+| `tw:border-hover` | `--color-border-hover` | `#a4a7ae` (gray-400) | `#a0a0a0` (gray-400) | Hovered interactive control border |
+| `tw:border-subtle` | `--color-border-subtle` | `rgba(0,0,0,0.08)` | White at 8% | Cards, panels, and dividers |
+| `tw:border-secondary` | `--color-border-secondary` | `#e9eaeb` (gray-200) | `#222222` (gray-800) | Existing subtle border |
+| `tw:border-secondary_alt` | `--color-border-secondary_alt` | `rgba(0,0,0,0.08)` | White at 8% | Existing alpha-transparent border |
+| `tw:border-tertiary` | `--color-border-tertiary` | `#f5f5f5` (gray-100) | `#222222` | Very subtle dividers |
 | `tw:border-brand` | `--color-border-brand` | `#2e90fa` (brand-500) | `#53b1fd` (brand-400) | Focused inputs, selected states |
-| `tw:border-brand_alt` | `--color-border-brand_alt` | `#1570ef` (brand-600) | `#373a41` | Alternate brand border |
+| `tw:border-brand_alt` | `--color-border-brand_alt` | `#1570ef` (brand-600) | `#2e2e2e` | Alternate brand border |
+| `tw:border-brand-subtle` | `--color-border-brand-subtle` | `#84caff` | Brand 400 at 35% | Selected-state and info borders |
 | `tw:border-error` | `--color-border-error` | `#f04438` (error-500) | `#f97066` (error-400) | Error state input/container border |
-| `tw:border-error_subtle` | `--color-border-error_subtle` | `#fda29b` (error-300) | `#f04438` (error-500) | Subtle error border |
-| `tw:border-disabled` | `--color-border-disabled` | `#d5d7da` | `#373a41` | Disabled input border |
-| `tw:border-disabled_subtle` | `--color-border-disabled_subtle` | `#e9eaeb` | `#22262f` | Subtle disabled border |
+| `tw:border-error-subtle` | `--color-border-error-subtle` | `#fda29b` (error-300) | Error 400 at 35% | Subtle error border |
+| `tw:border-warning-subtle` | `--color-border-warning-subtle` | `#fec84b` | Warning 400 at 35% | Subtle warning border |
+| `tw:border-success-subtle` | `--color-border-success-subtle` | `#75e0a7` | Success 400 at 35% | Subtle success border |
+| `tw:border-disabled` | `--color-border-disabled` | `#d5d7da` | `#2e2e2e` | Disabled input border |
+| `tw:border-disabled_subtle` | `--color-border-disabled_subtle` | `#e9eaeb` | `#222222` | Subtle disabled border |
 
 **Outline tokens** follow the same naming (`tw:outline-primary`, `tw:outline-brand`, …) and
 resolve to the same values. **Ring tokens exist but must not be used to draw an edge** — see
@@ -331,18 +343,18 @@ Use foreground tokens for SVG icons and decorative graphic elements. These are d
 |---|---|---|---|---|
 | `tw:text-fg-white` | `--color-fg-white` | `#ffffff` | `#ffffff` | Icons on solid dark backgrounds |
 | `tw:text-fg-primary` | `--color-fg-primary` | `#181d27` | `#ffffff` | Primary/high-emphasis icons |
-| `tw:text-fg-secondary` | `--color-fg-secondary` | `#414651` | `#d5d7da` | Standard UI icons |
-| `tw:text-fg-secondary_hover` | `--color-fg-secondary_hover` | `#252b37` | `#e9eaeb` | Icon hover state |
-| `tw:text-fg-tertiary` | `--color-fg-tertiary` | `#535862` | `#a4a7ae` | Muted/supporting icons |
-| `tw:text-fg-tertiary_hover` | `--color-fg-tertiary_hover` | `#414651` | `#d5d7da` | Hover on muted icons |
-| `tw:text-fg-quaternary` | `--color-fg-quaternary` | `#a4a7ae` | `#535862` | Very muted icons, decorative only |
-| `tw:text-fg-quaternary_hover` | `--color-fg-quaternary_hover` | `#717680` | `#717680` | Hover on quaternary icons |
-| `tw:text-fg-disabled` | `--color-fg-disabled` | `#a4a7ae` | `#717680` | Disabled icon |
-| `tw:text-fg-disabled_subtle` | `--color-fg-disabled_subtle` | `#d5d7da` | `#535862` | Subtler disabled icon |
+| `tw:text-fg-secondary` | `--color-fg-secondary` | `#414651` | `#bfbfbf` | Standard UI icons |
+| `tw:text-fg-secondary_hover` | `--color-fg-secondary_hover` | `#252b37` | `#d9d9d9` | Icon hover state |
+| `tw:text-fg-tertiary` | `--color-fg-tertiary` | `#535862` | `#a0a0a0` | Muted/supporting icons |
+| `tw:text-fg-tertiary_hover` | `--color-fg-tertiary_hover` | `#414651` | `#bfbfbf` | Hover on muted icons |
+| `tw:text-fg-quaternary` | `--color-fg-quaternary` | `#a4a7ae` | `#666666` | Very muted icons, decorative only |
+| `tw:text-fg-quaternary_hover` | `--color-fg-quaternary_hover` | `#717680` | `#808080` | Hover on quaternary icons |
+| `tw:text-fg-disabled` | `--color-fg-disabled` | `#a4a7ae` | `#808080` | Disabled icon |
+| `tw:text-fg-disabled_subtle` | `--color-fg-disabled_subtle` | `#d5d7da` | `#666666` | Subtler disabled icon |
 | `tw:text-fg-brand-primary` | `--color-fg-brand-primary` | `#1570ef` | `#2e90fa` | Brand-colored icons |
-| `tw:text-fg-brand-primary_alt` | `--color-fg-brand-primary_alt` | `#1570ef` | `#d5d7da` | Alternate brand icon |
+| `tw:text-fg-brand-primary_alt` | `--color-fg-brand-primary_alt` | `#1570ef` | `#bfbfbf` | Alternate brand icon |
 | `tw:text-fg-brand-secondary` | `--color-fg-brand-secondary` | `#2e90fa` | `#2e90fa` | Secondary brand icons |
-| `tw:text-fg-brand-secondary_hover` | `--color-fg-brand-secondary_hover` | `#1570ef` | `#717680` | Hover on secondary brand icon |
+| `tw:text-fg-brand-secondary_hover` | `--color-fg-brand-secondary_hover` | `#1570ef` | `#808080` | Hover on secondary brand icon |
 | `tw:text-fg-error-primary` | `--color-fg-error-primary` | `#d92d20` | `#f04438` | Error icons |
 | `tw:text-fg-error-secondary` | `--color-fg-error-secondary` | `#f04438` | `#f97066` | Secondary error icons |
 | `tw:text-fg-warning-primary` | `--color-fg-warning-primary` | `#dc6803` | `#f79009` | Warning icons |
@@ -370,7 +382,7 @@ Each status (error, warning, success) has three background variants with differe
 | Variant | Background Token | Text Token | Border Token | Use Case |
 |---|---|---|---|---|
 | `primary` | `tw:bg-error-primary` | `tw:text-error-primary` | `tw:border-error` | Inline alerts, banners |
-| `secondary` | `tw:bg-error-secondary` | `tw:text-error-primary` | `tw:border-error_subtle` | Badge backgrounds, row highlights |
+| `secondary` | `tw:bg-error-secondary` | `tw:text-error-primary` | `tw:border-error-subtle` | Badge backgrounds, row highlights |
 | `solid` | `tw:bg-error-solid` | `tw:text-white` | — | Filled badges, notification dots |
 
 The same pattern applies for `warning` and `success`. Always pair background + text + border tokens from the **same status family** — never mix `bg-error-*` with `tw:text-warning-*`.
@@ -402,11 +414,11 @@ Brand tokens are for CTAs, highlighted navigation, brand-accented UI, and sectio
 | `tw:bg-brand-solid_hover` | `#175cd3` | `#2e90fa` | CTA button hover state |
 | `tw:bg-brand-primary` | `#eff8ff` | `#2e90fa` | Brand-tinted content area |
 | `tw:bg-brand-secondary` | `#d1e9ff` | `#1570ef` | Stronger brand-tinted area |
-| `tw:bg-brand-section` | `#1849a9` | `#13161b` | Full-width brand promo section |
-| `tw:bg-brand-section_subtle` | `#175cd3` | `#0c0e12` | Subtle brand promo section |
-| `tw:text-brand-primary` | `#194185` | `#fafafa` | Strong brand text |
-| `tw:text-brand-secondary` | `#175cd3` | `#d5d7da` | Brand links |
-| `tw:text-brand-tertiary` | `#1570ef` | `#a4a7ae` | Lighter brand text |
+| `tw:bg-brand-section` | `#1849a9` | `#191919` | Full-width brand promo section |
+| `tw:bg-brand-section_subtle` | `#175cd3` | `#141414` | Subtle brand promo section |
+| `tw:text-brand-primary` | `#194185` | `#f0f0f0` | Strong brand text |
+| `tw:text-brand-secondary` | `#175cd3` | `#bfbfbf` | Brand links |
+| `tw:text-brand-tertiary` | `#1570ef` | `#a0a0a0` | Lighter brand text |
 | `tw:border-brand` | `#2e90fa` | `#53b1fd` | Focused/selected border |
 | `tw:text-fg-brand-primary` | `#1570ef` | `#2e90fa` | Brand icons |
 
@@ -460,25 +472,25 @@ These tokens are for specific component internals. Use them when building or ext
 
 | Tailwind Class | CSS Variable | Light | Dark | Component |
 |---|---|---|---|---|
-| `tw:bg-avatar-bg` | `--color-avatar-bg` | `#f5f5f5` | `#22262f` | Avatar fallback background |
+| `tw:bg-avatar-bg` | `--color-avatar-bg` | `#f5f5f5` | `#222222` | Avatar fallback background |
 | `tw:text-button-primary-icon` | `--color-button-primary-icon` | `#84caff` | `#84caff` | Icon inside primary button |
 | `tw:text-button-primary-icon_hover` | `--color-button-primary-icon_hover` | `#b2ddff` | `#b2ddff` | Icon inside primary button (hover) |
 | `tw:text-button-destructive-primary-icon` | `--color-button-destructive-primary-icon` | `#fda29b` | `#fda29b` | Icon inside destructive button |
 | `tw:ring-focus-ring` | `--color-focus-ring` | `#2e90fa` | `#2e90fa` | Keyboard focus ring |
 | `tw:ring-focus-ring-error` | `--color-focus-ring-error` | `#f04438` | `#f04438` | Error-state focus ring |
 | `tw:bg-slider-handle-bg` | `--color-slider-handle-bg` | `#ffffff` | `#2e90fa` | Slider thumb background |
-| `tw:border-slider-handle-border` | `--color-slider-handle-border` | `#1570ef` | `#0c0e12` | Slider thumb border |
+| `tw:border-slider-handle-border` | `--color-slider-handle-border` | `#1570ef` | `#141414` | Slider thumb border |
 | `tw:border-toggle-border` | `--color-toggle-border` | `#d5d7da` | `transparent` | Toggle track border |
-| `tw:text-tooltip-supporting-text` | `--color-tooltip-supporting-text` | `#d5d7da` | `#d5d7da` | Tooltip secondary/supporting text |
-| `tw:text-text-editor-icon-fg` | `--color-text-editor-icon-fg` | `#a4a7ae` | `#a4a7ae` | Rich text editor toolbar icons |
+| `tw:text-tooltip-supporting-text` | `--color-tooltip-supporting-text` | `#d5d7da` | `#bfbfbf` | Tooltip secondary/supporting text |
+| `tw:text-text-editor-icon-fg` | `--color-text-editor-icon-fg` | `#a4a7ae` | `#a0a0a0` | Rich text editor toolbar icons |
 | `tw:text-text-editor-icon-fg_active` | `--color-text-editor-icon-fg_active` | `#717680` | `#ffffff` | Active rich text editor icon |
 | `tw:text-featured-icon-light-fg-brand` | `--color-featured-icon-light-fg-brand` | `#1570ef` | `#b2ddff` | Brand featured icon |
 | `tw:text-featured-icon-light-fg-error` | `--color-featured-icon-light-fg-error` | `#d92d20` | `#fecdca` | Error featured icon |
 | `tw:text-featured-icon-light-fg-success` | `--color-featured-icon-light-fg-success` | `#079455` | `#abefc6` | Success featured icon |
 | `tw:text-featured-icon-light-fg-warning` | `--color-featured-icon-light-fg-warning` | `#dc6803` | `#fedf89` | Warning featured icon |
-| `tw:text-featured-icon-light-fg-gray` | `--color-featured-icon-light-fg-gray` | `#717680` | `#e9eaeb` | Neutral featured icon |
-| `tw:text-icon-fg-brand` | `--color-icon-fg-brand` | `#1570ef` | `#a4a7ae` | Generic brand icon |
-| `tw:text-icon-fg-brand_on-brand` | `--color-icon-fg-brand_on-brand` | `#b2ddff` | `#a4a7ae` | Brand icon on brand background |
+| `tw:text-featured-icon-light-fg-gray` | `--color-featured-icon-light-fg-gray` | `#717680` | `#d9d9d9` | Neutral featured icon |
+| `tw:text-icon-fg-brand` | `--color-icon-fg-brand` | `#1570ef` | `#a0a0a0` | Generic brand icon |
+| `tw:text-icon-fg-brand_on-brand` | `--color-icon-fg-brand_on-brand` | `#b2ddff` | `#a0a0a0` | Brand icon on brand background |
 
 ---
 
@@ -488,8 +500,8 @@ Quick reference for the most common mistakes. When reviewing or writing code, sc
 
 | ❌ Don't use | ✅ Use instead | Why |
 |---|---|---|
-| `tw:bg-white` | `tw:bg-primary` | Breaks dark mode (stays white) |
-| `tw:bg-gray-50` | `tw:bg-secondary` | Hardcoded palette doesn't adapt |
+| `tw:bg-white` | `tw:bg-page` or `tw:bg-surface` | Breaks dark mode and hides the surface role |
+| `tw:bg-gray-50` | `tw:bg-canvas` | Hardcoded palette doesn't adapt |
 | `tw:bg-gray-100` | `tw:bg-tertiary` | Use semantic token |
 | `tw:bg-gray-200` | `tw:bg-quaternary` | Use semantic token |
 | `tw:bg-gray-900` or `tw:bg-gray-950` | `tw:bg-overlay` or `tw:bg-primary-solid` | Depends on context |
@@ -498,19 +510,19 @@ Quick reference for the most common mistakes. When reviewing or writing code, sc
 | `tw:text-gray-600` | `tw:text-tertiary` | Use semantic token |
 | `tw:text-gray-500` | `tw:text-quaternary` or `tw:text-placeholder` | Depends on context |
 | `tw:text-white` (on non-solid bg) | `tw:text-primary_on-brand` | Only use on brand/dark surfaces |
-| `tw:text-blue-600` | `tw:text-fg-brand-primary` or `tw:text-brand-tertiary` | Use brand tokens |
+| `tw:text-blue-600` | `tw:text-link` or `tw:text-fg-brand-primary` | Match link versus icon intent |
 | `tw:text-red-600` | `tw:text-error-primary` or `tw:text-fg-error-primary` | Use error tokens |
 | `tw:text-green-600` | `tw:text-success-primary` or `tw:text-fg-success-primary` | Use success tokens |
 | `tw:border-gray-300` | `tw:border-primary` | Hardcoded palette |
-| `tw:border-gray-200` | `tw:border-secondary` | Hardcoded palette |
+| `tw:border-gray-200` | `tw:border-subtle` | Hardcoded decorative border |
 | `tw:border-red-500` | `tw:border-error` | Use error token |
 | `tw:border-blue-500` | `tw:border-brand` | Use brand token |
 | `tw:bg-green-50 tw:text-green-700` | `tw:bg-utility-success-50 tw:text-utility-success-700` | Utility tokens invert in dark mode |
 | `tw:bg-purple-100 tw:text-purple-800` | `tw:bg-utility-purple-100 tw:text-utility-purple-700` | Use utility tokens for badges/chips |
-| `tw:dark:bg-gray-900` (redundant) | Use `tw:bg-primary` instead | If a token already handles it, the explicit override is noise — only keep `tw:dark:*` when overriding for a deliberate design reason |
+| `tw:dark:bg-gray-900` (redundant) | Use `tw:bg-page`, `tw:bg-canvas`, or `tw:bg-surface` | Pick the semantic role instead of an explicit theme override |
 | `tw:dark:text-white` (redundant) | Use `tw:text-primary` instead | Same — prefer the token unless the design specifically diverges |
 | `style={{ color: '#1570ef' }}` | `tw:text-fg-brand-primary` | Never hardcode hex values |
-| `style={{ backgroundColor: '#ffffff' }}` | `tw:bg-primary` | Never hardcode hex values |
+| `style={{ backgroundColor: '#ffffff' }}` | `tw:bg-page` or `tw:bg-surface` | Never hardcode hex values |
 | `tw:ring-1 tw:ring-inset tw:ring-primary` | `tw:outline-1 tw:-outline-offset-1 tw:outline-primary` | Rings are box-shadows; WebKit doesn't pixel-snap them, so they thin/vanish in Safari when zoomed. See §2.3.1 |
 | `tw:ring-1 tw:ring-secondary` (no `ring-inset`) | `tw:outline-1 tw:outline-secondary` | Same — but offset **0**, because a non-inset ring draws outward |
 | `tw:ring-2 tw:ring-brand` (focus) | `tw:outline-2 tw:-outline-offset-2 tw:outline-brand` | Same |
