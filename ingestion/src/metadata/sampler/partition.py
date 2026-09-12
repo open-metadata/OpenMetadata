@@ -112,22 +112,28 @@ def _handle_bigquery_partition(entity: Table, table_partition: TablePartition) -
         partition = column_partitions[0]
 
         if partition.intervalType == PartitionIntervalTypes.TIME_UNIT:
+            is_hourly = partition.interval == "HOUR"
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName=partition.columnName,
-                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
-                partitionInterval=1,
+                partitionIntervalUnit=PartitionIntervalUnit.HOUR if is_hourly else PartitionIntervalUnit.DAY,
+                # Use a wider default window so tables that are not updated every day/hour
+                # (e.g. GA4 exports with a ~2-day lag, or weekly aggregates) still produce
+                # non-empty samples without requiring per-table profiler config overrides.
+                # 24 h for hourly partitions; 3 days for daily/monthly/yearly.
+                partitionInterval=24 if is_hourly else 3,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
                 partitionIntegerRangeStart=None,
                 partitionIntegerRangeEnd=None,
             )
         if partition.intervalType == PartitionIntervalTypes.INGESTION_TIME:
+            is_hourly = partition.interval == "HOUR"
             return PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionColumnName="_PARTITIONDATE" if partition.interval == "DAY" else "_PARTITIONTIME",
-                partitionIntervalUnit=PartitionIntervalUnit.DAY if partition.interval != "HOUR" else partition.interval,
-                partitionInterval=1,
+                partitionIntervalUnit=PartitionIntervalUnit.HOUR if is_hourly else PartitionIntervalUnit.DAY,
+                partitionInterval=24 if is_hourly else 3,
                 partitionIntervalType=partition.intervalType.value,
                 partitionValues=None,
                 partitionIntegerRangeStart=None,
