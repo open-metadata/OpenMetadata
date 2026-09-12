@@ -141,7 +141,7 @@ class EntityBulkPreparationTest {
     final List<UUID> loaded = new ArrayList<>();
     final List<String> visited = new ArrayList<>();
     final EntityBulkPreparation<Chart> preparation;
-    int reads;
+    long reads;
     int clears;
     int maximumActive;
     boolean failRead;

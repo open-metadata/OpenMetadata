@@ -1,6 +1,6 @@
 # Entity module implementation status
 
-Checkpoint: integration with `main` at `15b542e735c`, 2026-09-12 UTC.
+Checkpoint: integration with `main` at `15b542e735c` and CI follow-up, 2026-09-12 UTC.
 **Verification is in progress.**
 
 The worktree no longer contains `EntityRepository.java`, originally 13,569 lines.
@@ -22,6 +22,8 @@ Removing the file does not establish correctness or latency improvement.
 | Architecture and Java extension migration guide | Available in [entity-module-migration.md](entity-module-migration.md) |
 | Final policy callers | Search/RDF offset readers and custom result pages migrated; 14 unused helpers and two migrated helpers removed |
 | Main merge validation | 1,406 service passes; 620 MCP passes and ten upstream dependency setup errors; 220 integration passes per database with Redis |
+| CI follow-up validation | Full service suite: 10,346 passes, one skip, zero failures/errors against CI's generated spec artifact |
+| Downstream Collate compilation | Open; Collate's repository families and callers still require migration to the composed Java APIs |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
 
@@ -57,6 +59,31 @@ page mutations and extracted-memory cleanup.
 
 The coverage and latency measurements below belong to the frozen pre-merge artifacts.
 They do not establish acceptance for the merged artifact; both gates remain open.
+
+## CI failure follow-up
+
+CI at `4b5a10a96e` found four failures in `EntityPreparationTest` and
+`EntitySummaryWriterTest`. The local generated models had null enum defaults,
+whereas CI's spec artifact applied the schema's `Unprocessed` and `Manual` defaults.
+Using the spec JAR from integration build `34704112158` reproduced all four failures
+locally before the fix. Its SHA-256 is
+`9078c39693bef59d9620cc417b3dfa3b537f53b8a3151d205bcc2fd57335e549`.
+
+The fixtures now set their initial state explicitly, and invalid-tag preparation is
+checked with every lifecycle status and an explicit null status. The attribution test
+preserves an existing source, author and timestamp. `EntityBulkPreparationTest` uses a
+`long` counter for stream counts, removing the narrowing conversion flagged by CodeQL.
+All 26 targeted cases pass against CI's spec artifact.
+The full service suite also passes: 10,346 passes, one skip, zero failures/errors
+across 1,157 suites, using Java 21 and CI's JaCoCo 0.8.10. Spotless and repository
+pre-commit checks pass. This follow-up changes only tests and this status document.
+
+The [Collate Maven build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34704141262)
+and [data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34704151401)
+fail during Java compilation, before their tests start. Collate `main` still has 13
+repository families extending `EntityRepository` and 47 source/test files directly
+referencing retired types. Those builds require a coordinated downstream migration
+using the [Java extension migration guide](entity-module-migration.md).
 
 ## Pre-merge verification provenance
 

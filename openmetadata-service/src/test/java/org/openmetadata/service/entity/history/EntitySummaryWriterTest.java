@@ -53,7 +53,8 @@ class EntitySummaryWriterTest {
         JsonUtils.readTree(
             """
         {"fieldsUpdated":[{"name":"displayName","oldValue":"old","newValue":"new"}],
-         "previousVersion":1.6,"changeSummary":{"columns.id.description":{"changedBy":"prior"}}}
+         "previousVersion":1.6,"changeSummary":{"columns.id.description":{
+           "changeSource":"Automated","changedBy":"prior","changedAt":1}}}
         """));
     final var previous = fixture.row.path(CHANGES).deepCopy();
     fixture.writer.update(attribution(DESCRIPTION));

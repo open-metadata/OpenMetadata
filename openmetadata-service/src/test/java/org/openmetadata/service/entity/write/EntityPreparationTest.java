@@ -6,8 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityStatus;
@@ -16,7 +17,8 @@ class EntityPreparationTest {
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
   void preparesNamesBeforeValidatingExtensionsAndApplyingDefaultStatus(boolean update) {
-    final Table entity = new Table().withId(UUID.randomUUID()).withName("table");
+    final Table entity =
+        new Table().withId(UUID.randomUUID()).withName("table").withEntityStatus(null);
     final AtomicInteger nameReads = new AtomicInteger();
     final EntityPrepares<Table> preparation =
         new EntityPreparation<>(
@@ -48,9 +50,11 @@ class EntityPreparationTest {
     assertEquals(EntityStatus.UNPROCESSED, entity.getEntityStatus());
   }
 
-  @Test
-  void invalidTagsStopParentResolutionAndDoNotAlterTheEntity() {
-    final Table entity = new Table().withName("invalid");
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(EntityStatus.class)
+  void invalidTagsStopParentResolutionAndDoNotAlterTheEntity(EntityStatus status) {
+    final Table entity = new Table().withName("invalid").withEntityStatus(status);
     final AtomicInteger parentReads = new AtomicInteger();
     final EntityPrepares<Table> preparation =
         new EntityPreparation<>(
@@ -66,6 +70,6 @@ class EntityPreparationTest {
     assertEquals(0, parentReads.get());
     assertNull(entity.getFullyQualifiedName());
     assertNull(entity.getDescription());
-    assertNull(entity.getEntityStatus());
+    assertEquals(status, entity.getEntityStatus());
   }
 }
