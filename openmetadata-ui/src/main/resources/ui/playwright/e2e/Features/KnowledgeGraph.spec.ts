@@ -372,13 +372,29 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     // Match on the request alone and assert the status after: filtering on 200
     // inside the predicate makes a failing explore call look like a call that
     // never happened, and the wait then times out without naming the HTTP error.
-    const response = page.waitForResponse((r) =>
-      r.url().includes('/rdf/graph/explore?')
-    );
-    await open(page);
-    const exploreResponse = await response;
-    expect(exploreResponse.status()).toBe(200);
-    const graph = (await exploreResponse.json()) as GraphData;
+    //
+    // RdfLiveWriter projects on a bounded drain, so the table created in
+    // beforeAll reaches the store as a bare node first and its relationships
+    // land a moment later. Reopen until the projection has caught up instead of
+    // asserting on whichever half of it happened to exist on the first paint.
+    let graph!: GraphData;
+    await expect
+      .poll(
+        async () => {
+          const response = page.waitForResponse((r) =>
+            r.url().includes('/rdf/graph/explore?')
+          );
+          await open(page);
+          const exploreResponse = await response;
+          expect(exploreResponse.status()).toBe(200);
+          graph = (await exploreResponse.json()) as GraphData;
+
+          return graph.edges.length;
+        },
+        { timeout: 40_000 }
+      )
+      .toBeGreaterThan(0);
+
     await chooseView(page, 'Every entity');
     await expect(page.locator('[data-node-id]')).toHaveCount(
       graph.nodes.length
@@ -386,7 +402,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(page.locator('[data-edge-id]')).toHaveCount(
       graph.edges.length
     );
-    expect(graph.edges.length).toBeGreaterThan(0);
     await expect.poll(() => paintedPixels(page)).toBeGreaterThan(100);
     await expect(page.getByTestId('graph-status')).toContainText(
       `${graph.nodes.length} entities`
