@@ -184,6 +184,34 @@ const clickCanvasEdge = async (page: Page, marker: Locator) => {
   }
 
   await expect(marker).toBeInViewport();
+
+  // The click below is by screen coordinate, so the midpoint has to stop moving
+  // first. React Flow re-lays the graph out after every deletion, and a box read
+  // while that is in flight puts the click on a NEIGHBOURING edge -- which still
+  // opens a toolbar and still deletes something, just not the edge asked for.
+  // Hold until two consecutive reads agree before taking the coordinates.
+  let previous: { x: number; y: number } | null = null;
+  await expect
+    .poll(
+      async () => {
+        const box = await marker.boundingBox();
+        if (!box) {
+          previous = null;
+
+          return false;
+        }
+        const settled =
+          previous !== null &&
+          Math.abs(box.x - previous.x) < 1 &&
+          Math.abs(box.y - previous.y) < 1;
+        previous = { x: box.x, y: box.y };
+
+        return settled;
+      },
+      { timeout: 15_000 }
+    )
+    .toBe(true);
+
   const bounds = await marker.boundingBox();
   if (!bounds) {
     throw new Error('The canvas edge midpoint has no bounds');
@@ -197,6 +225,26 @@ const clickCanvasEdge = async (page: Page, marker: Locator) => {
   );
 };
 
+// computeEdgeDataTestId only names the midpoint marker `pipeline-label-*` once
+// the edge's own details have loaded — the scene returns skeletal edges and each
+// pipeline arrives later via getLineageEdge. Until then the same marker still
+// carries the plain `edge-*` id. Exactly one is present for a given edge and
+// both open the same toolbar, so accept either rather than racing the hydration.
+const edgeMarker = (
+  page: Page,
+  fromNodeFqn: string | undefined,
+  toNodeFqn: string | undefined,
+  isPipeline: boolean
+) => {
+  const plainEdge = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
+
+  return isPipeline
+    ? page
+        .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
+        .or(plainEdge)
+    : plainEdge;
+};
+
 export const clickEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -206,18 +254,10 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  // computeEdgeDataTestId only names the marker `pipeline-label-*` once the
-  // edge's own details have loaded — the scene returns skeletal edges and each
-  // one's pipeline arrives later via getLineageEdge. Until then the same
-  // midpoint marker still carries the plain `edge-*` id. Either resolves to one
-  // marker for a given edge and opens the same toolbar, so accept both rather
-  // than racing the hydration.
-  const pipelineLabel = page.getByTestId(
-    `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
+  await clickCanvasEdge(
+    page,
+    edgeMarker(page, fromNodeFqn, toNodeFqn, isPipeline)
   );
-  const plainEdge = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
-  const edgeDiv = isPipeline ? pipelineLabel.or(plainEdge) : plainEdge;
-  await clickCanvasEdge(page, edgeDiv);
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -265,6 +305,15 @@ export const deleteEdge = async (
   await confirmation.getByTestId('confirm-button').click();
   expect((await deleteRes).ok()).toBe(true);
   await expect(confirmation).toBeHidden();
+
+  // Confirm THIS edge is the one that went. The canvas click is by coordinate,
+  // so a stale midpoint can select a neighbour: without this the run deletes
+  // some other edge, reports success, and only fails several iterations later
+  // when the edge it skipped is asked for and no longer exists.
+  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
+  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
+  await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, true)).toHaveCount(0);
+  await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, false)).toHaveCount(0);
 };
 
 export const deleteEdgeBetweenNodesViaAPI = (

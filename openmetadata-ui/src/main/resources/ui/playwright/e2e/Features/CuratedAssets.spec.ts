@@ -32,7 +32,6 @@ import {
   saveCustomizeLayoutPage,
   selectAssetTypes,
   setUserDefaultPersona,
-  toNameableEntity,
   waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import {
@@ -154,8 +153,17 @@ test.describe('Curated Assets Widget', () => {
         'Contains'
       );
 
-      const entityDisplayName =
-        getEntityDisplayName(toNameableEntity(testEntity)) || 'pw';
+      // entityTypeToTestEntity already yields the nameable response, so do not
+      // unwrap it again -- toNameableEntity would read .entityResponseData off
+      // something that has no such field and hand back undefined. The old 'pw'
+      // fallback then searched for a prefix every seeded entity shares, which
+      // passed by accident for most types and failed for Metric and Knowledge
+      // Page. Assert the name instead of guessing at it.
+      const entityDisplayName = getEntityDisplayName(testEntity);
+      expect(
+        entityDisplayName,
+        `Seeded display name for ${entityType.name}`
+      ).toBeTruthy();
       await ruleLocator
         .getByTestId('advanced-search-value')
         .locator('input')
