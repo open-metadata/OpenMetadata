@@ -25,6 +25,8 @@ public final class EntityCertificationUpdates<T extends EntityInterface> {
 
     boolean updatedByBot();
 
+    boolean isOverrideMetadata();
+
     <K> boolean recordChange(String field, K original, K updated, boolean jsonValue);
   }
 
@@ -55,7 +57,10 @@ public final class EntityCertificationUpdates<T extends EntityInterface> {
         "Updating certification - Original: {}, Updated: {}",
         original.getCertification(),
         updated.getCertification());
-    if (session.isPut() && !nullOrEmpty(original.getCertification()) && session.updatedByBot()) {
+    if (session.isPut()
+        && !nullOrEmpty(original.getCertification())
+        && session.updatedByBot()
+        && !session.isOverrideMetadata()) {
       updated.setCertification(original.getCertification());
     } else {
       apply(session, original.getCertification(), updated);
@@ -68,12 +73,30 @@ public final class EntityCertificationUpdates<T extends EntityInterface> {
       LOG.debug("Setting certification to null");
       persistence.delete().accept(updated.getFullyQualifiedName());
       session.recordChange(FIELD_CERTIFICATION, original, null, true);
-    } else if (Objects.equals(original, incoming)) {
+    } else if (hasSameTag(original, incoming)) {
       LOG.debug("Certification unchanged");
+      updated.setCertification(original);
     } else {
       setValidity(incoming);
       persistence.apply().accept(updated);
       session.recordChange(FIELD_CERTIFICATION, original, incoming, true);
+    }
+  }
+
+  private boolean hasSameTag(final AssetCertification original, final AssetCertification incoming) {
+    return original != null
+        && original.getTagLabel() != null
+        && incoming.getTagLabel() != null
+        && Objects.equals(original.getTagLabel().getTagFQN(), incoming.getTagLabel().getTagFQN());
+  }
+
+  public void prepare(final T entity) {
+    final AssetCertification certification = entity.getCertification();
+    if (supported
+        && certification != null
+        && certification.getTagLabel() != null
+        && !nullOrEmpty(certification.getTagLabel().getTagFQN())) {
+      setValidity(certification);
     }
   }
 

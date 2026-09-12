@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { ContentChangeState } from '../../../interface/knowledge-center.interface';
 import ArticleDetailHeader from './ArticleDetailHeader.component';
 
@@ -26,6 +27,10 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-article' })),
+}));
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -209,6 +214,38 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  PageLayout: {
+    PageHeader: jest.fn(
+      ({
+        actions,
+        badge,
+        breadcrumb,
+        footer,
+        meta,
+        title,
+        variant,
+        'data-testid': dataTestId,
+      }: {
+        actions?: React.ReactNode;
+        badge?: React.ReactNode;
+        breadcrumb?: React.ReactNode;
+        footer?: React.ReactNode;
+        meta?: React.ReactNode;
+        title: React.ReactNode;
+        variant?: string;
+        'data-testid'?: string;
+      }) => (
+        <div data-testid={dataTestId} data-variant={variant}>
+          {breadcrumb}
+          {title}
+          {badge}
+          {meta}
+          {actions}
+          {footer}
+        </div>
+      )
+    ),
+  },
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tabs: Object.assign(
     jest.fn(
@@ -294,6 +331,7 @@ const defaultProps = {
 describe('ArticleDetailHeader', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   it('renders the header with data-testid', () => {
@@ -306,6 +344,19 @@ describe('ArticleDetailHeader', () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
+  });
+
+  it('uses the embedded header presentation in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(<ArticleDetailHeader {...defaultProps} />);
+
+    expect(
+      screen.getByTestId('article-detail-header').lastElementChild
+    ).toHaveAttribute('data-variant', 'gradient');
+    expect(
+      screen.getByTestId('article-detail-header').lastElementChild
+    ).toContainElement(screen.getByTestId('breadcrumb'));
   });
 
   it('renders the article display name', () => {
@@ -350,6 +401,36 @@ describe('ArticleDetailHeader', () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
     expect(screen.getByTestId('manage-button')).toBeInTheDocument();
+  });
+
+  it('renders the edit-domain and edit-owner buttons when EditAll is granted', () => {
+    render(<ArticleDetailHeader {...defaultProps} />);
+
+    expect(screen.getByTestId('edit-domain-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-owner-btn')).toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 9): an
+  // explicit EditOwners: false must win over a bare EditAll: true grant (explicit-deny-wins)
+  // — the old raw `permissions.EditAll || permissions.EditOwners` OR let EditAll grant
+  // unconditionally, hiding this regression.
+  it('hides the edit-owner button when EditOwners is explicitly false, even with EditAll true', () => {
+    render(
+      <ArticleDetailHeader
+        {...defaultProps}
+        permissions={
+          {
+            ...mockPermissions,
+            EditAll: true,
+            EditOwners: false,
+          } as OperationPermission
+        }
+      />
+    );
+
+    // EditAll alone still grants the (non-field-specific) domain edit control.
+    expect(screen.getByTestId('edit-domain-btn')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-owner-btn')).not.toBeInTheDocument();
   });
 
   it('shows the skeleton when knowledgePage and tabs are both undefined', () => {

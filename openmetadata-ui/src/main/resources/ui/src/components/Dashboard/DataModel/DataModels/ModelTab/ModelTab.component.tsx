@@ -38,6 +38,7 @@ import {
 } from '../../../../../rest/dataModelsAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
@@ -51,8 +52,8 @@ import DisplayName from '../../../../common/DisplayName/DisplayName';
 import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../../common/Table/Table';
 import { ColumnsType } from '../../../../common/Table/Table.interface';
+import Table from '../../../../common/Table/TableV2';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
@@ -173,6 +174,19 @@ const ModelTab = () => {
     }),
     [dataModel]
   );
+  // Consumer via useGenericContext() (Task 8 rule 2). Two derivations, not one: the old code
+  // never gated description/tags/glossary-term edit on `deleted` (the columns that consume
+  // them separately receive `isReadOnly={isReadOnly}` and handle the deleted case there), but
+  // DID gate the display-name edit on it — folding all four into one `deleted`-gated
+  // derivation would regress the first three on a soft-deleted data model.
+  const ungatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+  const gatedFlags = useMemo(
+    () => getDerivedPermissionFlags(permissions, Boolean(deleted)),
+    [permissions, deleted]
+  );
   const {
     hasEditDescriptionPermission,
     hasEditTagsPermission,
@@ -180,15 +194,12 @@ const ModelTab = () => {
     editDisplayNamePermission,
   } = useMemo(() => {
     return {
-      hasEditDescriptionPermission:
-        permissions.EditAll || permissions.EditDescription,
-      hasEditTagsPermission: permissions.EditAll || permissions.EditTags,
-      hasEditGlossaryTermPermission:
-        permissions.EditAll || permissions.EditGlossaryTerms,
-      editDisplayNamePermission:
-        (permissions.EditDisplayName || permissions.EditAll) && !deleted,
+      hasEditDescriptionPermission: ungatedFlags.canEditDescription,
+      hasEditTagsPermission: ungatedFlags.canEditTags,
+      hasEditGlossaryTermPermission: ungatedFlags.canEditGlossaryTerms,
+      editDisplayNamePermission: gatedFlags.canEditDisplayName,
     };
-  }, [permissions]);
+  }, [ungatedFlags, gatedFlags]);
 
   const tagFilter = useMemo(() => {
     const tags = getAllTags(data ?? []);

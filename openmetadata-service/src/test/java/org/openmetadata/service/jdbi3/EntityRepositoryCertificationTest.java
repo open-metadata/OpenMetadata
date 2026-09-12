@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -18,6 +20,7 @@ import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,22 +29,33 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.EntityModuleDependencies;
 import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityCertificationUpdates;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class EntityRepositoryCertificationTest {
+
+  @RegisterExtension
+  private static final EntityLookupTestContext LOOKUPS = new EntityLookupTestContext();
 
   private CollectionDAO daoCollection;
 
@@ -110,6 +124,258 @@ class EntityRepositoryCertificationTest {
     Entity.setJobDAO(null);
     Entity.setSearchRepository(null);
     Entity.setEntityRelationshipRepository(null);
+    Entity.setSystemRepository(null);
+    Entity.cleanup();
+  }
+
+  private static EntityUpdater<Pipeline> newUpdater(
+      TestPipelineRepo repo, Pipeline original, Pipeline updated, EntityOperation op) {
+    EntityUpdater<Pipeline> updater = repo.getUpdater(original, updated, op, null);
+    updater.setChangeDescription(new ChangeDescription());
+    return updater;
+  }
+
+  private void invokeUpdateCertification(EntityUpdater<Pipeline> updater) {
+    EntityCertificationUpdates<Pipeline> updates =
+        new EntityCertificationUpdates<>(
+            true,
+            () -> Entity.getSystemRepository().getAssetCertificationSettingOrDefault(),
+            System::currentTimeMillis,
+            new EntityCertificationUpdates.Persistence<>(
+                repo.certification()::delete, repo.certification()::apply));
+    updates.update(updater, updater.getOriginal(), updater.getUpdated());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void registerBotUser(String botName) {
+    EntityPolicy<User> mockUserRepo = mock(EntityPolicy.class);
+    User bot = new User().withName(botName).withIsBot(true);
+    EntityDAO<User> userDao = LOOKUPS.attach(mockUserRepo, Entity.USER, User.class);
+    when(userDao.findEntityByName(anyString(), any()))
+        .thenAnswer(inv -> botName.equals(inv.getArgument(0)) ? bot : null);
+    Entity.registerEntity(User.class, Entity.USER, mockUserRepo);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void registerNoUsersFound() {
+    EntityPolicy<User> mockUserRepo = mock(EntityPolicy.class);
+    EntityDAO<User> userDao = LOOKUPS.attach(mockUserRepo, Entity.USER, User.class);
+    when(userDao.findEntityByName(anyString(), any())).thenReturn(null);
+    Entity.registerEntity(User.class, Entity.USER, mockUserRepo);
+  }
+
+  private static void registerSystemRepository() {
+    SystemRepository systemRepository = mock(SystemRepository.class);
+    when(systemRepository.getAssetCertificationSettingOrDefault())
+        .thenReturn(
+            new AssetCertificationSettings()
+                .withAllowedClassification("Certification")
+                .withValidityPeriod("P30D"));
+    Entity.setSystemRepository(systemRepository);
+  }
+
+  private static Pipeline pipelineWithCertification(String botName, AssetCertification cert) {
+    return new Pipeline()
+        .withId(UUID.randomUUID())
+        .withName("my-pipeline")
+        .withFullyQualifiedName("service.my-pipeline")
+        .withUpdatedBy(botName)
+        .withCertification(cert);
+  }
+
+  @Test
+  void updateCertificationBotPutOmittingCertificationPreservesExisting() throws Exception {
+    registerBotUser("ingestion-bot");
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", null);
+
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertNotNull(updated.getCertification());
+    assertEquals("Certification.Gold", updated.getCertification().getTagLabel().getTagFQN());
+  }
+
+  @Test
+  void updateCertificationBotPutWithExplicitDifferentCertificationPreservesStoredValue()
+      throws Exception {
+    // A stored certification beats anything a scheduled re-sync sends, matching the guard on
+    // description/owners. Ingestion overrides it via the bulk path with overrideMetadata=true.
+    registerBotUser("ingestion-bot");
+    registerSystemRepository();
+
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Bronze");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+    TagLabel newLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification newCert = new AssetCertification().withTagLabel(newLabel);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", newCert);
+
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertEquals("Certification.Bronze", updated.getCertification().getTagLabel().getTagFQN());
+  }
+
+  @Test
+  void updateCertificationBotPutWithOverrideMetadataAppliesExplicitCertification()
+      throws Exception {
+    registerBotUser("ingestion-bot");
+    registerSystemRepository();
+
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Bronze");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+    TagLabel newLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification newCert = new AssetCertification().withTagLabel(newLabel);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", newCert);
+
+    when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
+        .thenReturn(List.of());
+
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
+    updater.setOverrideMetadata(true);
+
+    invokeUpdateCertification(updater);
+
+    assertNotNull(updated.getCertification());
+    assertEquals("Certification.Gold", updated.getCertification().getTagLabel().getTagFQN());
+  }
+
+  @Test
+  void updateCertificationBotPutOmittingCertificationWithOverrideMetadataClearsIt()
+      throws Exception {
+    registerBotUser("ingestion-bot");
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+
+    Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
+    Pipeline updated = pipelineWithCertification("ingestion-bot", null);
+
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
+    updater.setOverrideMetadata(true);
+
+    invokeUpdateCertification(updater);
+
+    assertNull(updated.getCertification());
+  }
+
+  @Test
+  void updateCertificationHumanPutOmittingCertificationClearsIt() throws Exception {
+    registerNoUsersFound();
+    TagLabel origLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert = new AssetCertification().withTagLabel(origLabel);
+
+    Pipeline original = pipelineWithCertification("a-human", origCert);
+    Pipeline updated = pipelineWithCertification("a-human", null);
+
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertNull(updated.getCertification());
+  }
+
+  @Test
+  void updateCertificationSameTagLabelWithDifferentDatesIsNotReapplied() throws Exception {
+    // The server always recomputes appliedDate/expiryDate when a certification is applied, so a
+    // request that legitimately can't know the server's current dates (e.g. an ingestion
+    // connector re-sending the same certification every run) must not be treated as a change.
+    // Comparing the full AssetCertification object (including dates) would otherwise never
+    // compare equal, causing a spurious re-apply and version bump on every non-bulk PUT.
+    // Deliberately a human: a bot would short-circuit at the preserve-stored-value guard above and
+    // never reach the tagFQN comparison this test is about.
+    registerNoUsersFound();
+    TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
+    AssetCertification origCert =
+        new AssetCertification()
+            .withTagLabel(tagLabel)
+            .withAppliedDate(1700000000000L)
+            .withExpiryDate(1731536000000L);
+    AssetCertification updatedCert =
+        new AssetCertification()
+            .withTagLabel(tagLabel)
+            .withAppliedDate(4000000000000L)
+            .withExpiryDate(4100000000000L);
+
+    Pipeline original = pipelineWithCertification("a-human", origCert);
+    Pipeline updated = pipelineWithCertification("a-human", updatedCert);
+
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
+
+    invokeUpdateCertification(updater);
+
+    assertEquals(1700000000000L, updated.getCertification().getAppliedDate());
+    assertEquals(1731536000000L, updated.getCertification().getExpiryDate());
+    verify(tagUsageDAO, never())
+        .applyTag(
+            anyInt(),
+            anyString(),
+            anyString(),
+            anyString(),
+            anyInt(),
+            anyInt(),
+            nullable(String.class),
+            nullable(String.class),
+            nullable(TagLabelMetadata.class));
+  }
+
+  @Test
+  void validateAndStampCertificationRejectsTagOutsideAllowedClassification() {
+    registerSystemRepository();
+    AssetCertification certification =
+        new AssetCertification()
+            .withTagLabel(new TagLabel().withTagFQN("PersonalData.Personal"))
+            .withAppliedDate(1L)
+            .withExpiryDate(2L);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                repo.preparation()
+                    .prepare(
+                        new Pipeline()
+                            .withName("certification-probe")
+                            .withCertification(certification),
+                        false));
+
+    assertTrue(
+        thrown.getMessage().contains("not valid for Certification"),
+        () -> "unexpected message: " + thrown.getMessage());
+  }
+
+  @Test
+  void validateAndStampCertificationReplacesClientSuppliedDates() {
+    registerSystemRepository(); // Certification / P30D
+    long clientExpiryDate = 32503680000000L; // year 3000
+    AssetCertification certification =
+        new AssetCertification()
+            .withTagLabel(new TagLabel().withTagFQN("Certification.Gold"))
+            .withAppliedDate(1L)
+            .withExpiryDate(clientExpiryDate);
+
+    long beforeStamp = System.currentTimeMillis();
+    repo.preparation()
+        .prepare(
+            new Pipeline().withName("certification-probe").withCertification(certification), false);
+    long afterStamp = System.currentTimeMillis();
+
+    assertTrue(
+        certification.getAppliedDate() >= beforeStamp
+            && certification.getAppliedDate() <= afterStamp,
+        () -> "appliedDate was not replaced with the server clock: " + certification);
+    assertEquals(
+        30L,
+        Duration.ofMillis(certification.getExpiryDate() - certification.getAppliedDate()).toDays(),
+        "expiryDate does not reflect the configured P30D validity period");
   }
 
   @Test

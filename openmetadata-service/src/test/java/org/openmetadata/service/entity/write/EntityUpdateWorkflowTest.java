@@ -45,6 +45,7 @@ class EntityUpdateWorkflowTest {
     final var session = session("next", false);
     workflow.flush(session, false, importMode);
     assertEquals(List.of(importMode), session.importModes);
+    assertEquals(List.of("current -> next"), session.indexChanges);
     assertEquals(0.3, rows.getFirst().getVersion());
     assertEquals("next", rows.getFirst().getDescription());
     assertNotSame(session.getChangeDescription(), session.getIncrementalChangeDescription());
@@ -55,8 +56,9 @@ class EntityUpdateWorkflowTest {
     assertEquals(0.2, session.getIncrementalChangeDescription().getPreviousVersion());
   }
 
-  @Test
-  void importConsolidationRetainsBothRequestAndSessionBaselines() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void consolidationRetainsBothRequestAndSessionBaselines(boolean importMode) {
     final var session = session("next", true);
     final var previous =
         JsonUtils.deepCopy(session.getOriginal(), Table.class)
@@ -64,8 +66,9 @@ class EntityUpdateWorkflowTest {
             .withDescription("before session");
     when(extensions.getExtension(any(UUID.class), anyString()))
         .thenReturn(JsonUtils.pojoToJson(previous));
-    workflow.flush(session, false, true);
-    assertEquals(List.of(true, true, true, true), session.importModes);
+    workflow.flush(session, false, importMode);
+    assertEquals(List.of(importMode, importMode, importMode, importMode), session.importModes);
+    assertEquals(List.of("current -> next"), session.indexChanges);
     assertEquals("before session", session.getOriginal().getDescription());
     assertEquals("next", rows.getFirst().getDescription());
     assertEquals(0.2, rows.getFirst().getVersion());
@@ -86,6 +89,7 @@ class EntityUpdateWorkflowTest {
     when(extensions.getExtension(any(UUID.class), anyString())).thenReturn("null");
     workflow.flush(session, false, false);
     assertEquals(List.of(false, false), session.importModes);
+    assertEquals(List.of("current -> next"), session.indexChanges);
     assertEquals("current", session.getOriginal().getDescription());
     assertEquals(0.3, rows.getFirst().getVersion());
     assertNull(session.getPrevious());
@@ -103,6 +107,7 @@ class EntityUpdateWorkflowTest {
     assertEquals(changed ? 0.3 : 0.2, session.getUpdated().getVersion());
     assertEquals(changed ? "after" : "before", session.getUpdated().getUpdatedBy());
     assertEquals(List.of(false), session.importModes);
+    assertEquals(changed ? List.of("current -> next") : List.of(), session.indexChanges);
     assertTrue(rows.isEmpty());
   }
 
@@ -141,6 +146,7 @@ class EntityUpdateWorkflowTest {
       implements EntityUpdateWorkflow.Session<Table> {
     private final boolean consolidate;
     private final List<Boolean> importModes = new ArrayList<>();
+    private final List<String> indexChanges = new ArrayList<>();
 
     private Session(Table original, Table updated, boolean consolidate) {
       super(original, updated);
@@ -159,6 +165,9 @@ class EntityUpdateWorkflowTest {
       final String original = getOriginal().getDescription();
       final String updated = getUpdated().getDescription();
       if (!Objects.equals(original, updated)) {
+        if (isIndexBaselinePass()) {
+          indexChanges.add(original + " -> " + updated);
+        }
         EntityChangeRecorder.recordValue(
             getChangeDescription(), "description", original, updated, false);
         setEntityChanged(true);

@@ -92,6 +92,13 @@ public class TypeRepository implements EntityPolicy<Type> {
             EntityModuleDependencies.standard());
     EntityModuleFactory.initialize(this, true);
     Entity.setTypeRepository(this);
+    fieldLoading().register("customProperties", this::fetchAndSetCustomProperties);
+  }
+
+  private void fetchAndSetCustomProperties(List<Type> types, Fields fields) {
+    if (fields.contains("customProperties")) {
+      types.forEach(type -> type.setCustomProperties(getCustomProperties(type)));
+    }
   }
 
   @Override

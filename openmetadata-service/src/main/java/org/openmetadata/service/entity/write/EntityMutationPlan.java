@@ -61,6 +61,10 @@ public final class EntityMutationPlan<T extends EntityInterface> {
     pipeline.apply(session, new EntityMutationPipeline.Context(importing, consolidating));
   }
 
+  public void prepareCertification(final T entity) {
+    values.certification().prepare(entity);
+  }
+
   private List<EntityMutationPipeline.Step<EntityUpdater<T>>> steps() {
     return List.of(
         new EntityMutationPipeline.Step<>(

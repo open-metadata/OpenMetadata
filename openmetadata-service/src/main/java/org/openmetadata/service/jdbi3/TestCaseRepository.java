@@ -1628,19 +1628,6 @@ public class TestCaseRepository implements EntityPolicy<TestCase> {
     }
 
     @Override
-    public void reviewers(EntityUpdater<TestCase> entityUpdate) {
-      EntitySpecificMutation.super.reviewers(entityUpdate);
-      if (entityUpdate.getOriginal().getReviewers() != null
-          && entityUpdate.getUpdated().getReviewers() != null
-          && !entityUpdate
-              .getOriginal()
-              .getReviewers()
-              .equals(entityUpdate.getUpdated().getReviewers())) {
-        updateTaskWithNewReviewers(entityUpdate.getUpdated());
-      }
-    }
-
-    @Override
     public boolean consolidate(
         EntityUpdater<TestCase> entityUpdate,
         TestCase original,
@@ -1924,20 +1911,6 @@ public class TestCaseRepository implements EntityPolicy<TestCase> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(TestCase testCase) {
-    testCase =
-        Entity.getEntityByName(
-            Entity.TEST_CASE,
-            testCase.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        testCase.getFullyQualifiedName(),
-        new ArrayList<>(testCase.getReviewers()),
-        testCase.getUpdatedBy());
   }
 
   public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {

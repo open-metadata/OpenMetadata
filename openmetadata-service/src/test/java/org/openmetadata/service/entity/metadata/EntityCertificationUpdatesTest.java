@@ -166,6 +166,7 @@ class EntityCertificationUpdatesTest {
     private boolean supported = true;
     private boolean put = true;
     private boolean bot;
+    private boolean overrideMetadata;
     private int settingsReads;
     private int clockReads;
     private String deletedFqn;
@@ -207,6 +208,11 @@ class EntityCertificationUpdatesTest {
     @Override
     public boolean isPut() {
       return put;
+    }
+
+    @Override
+    public boolean isOverrideMetadata() {
+      return overrideMetadata;
     }
 
     @Override

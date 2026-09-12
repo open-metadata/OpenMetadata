@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
@@ -30,6 +30,8 @@ import {
 } from '../generated/type/personaContextDefinition';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
+import type { TreeNode } from './queryBuilder/url';
+import { withExploreFieldKeys } from './queryBuilder/url';
 import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
 import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
@@ -131,8 +133,15 @@ export const getRuleExplorePath = (
     ? searchClassBase.getTabsInfo()[searchIndex]?.path
     : undefined;
 
+  // Explore validates the deep-linked tree against its own config and silently resets when a field is unknown.
+  const exploreTree = tree
+    ? withExploreFieldKeys(tree as unknown as TreeNode, entityType)
+    : tree;
+
   return getExplorePath({
-    extraParameters: tree ? { queryFilter: JSON.stringify(tree) } : undefined,
+    extraParameters: exploreTree
+      ? { queryFilter: JSON.stringify(exploreTree) }
+      : undefined,
     isPersistFilters: false,
     tab,
   });
@@ -227,23 +236,24 @@ export const getRuleConditionParts = (
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
 
-/**
- * The one UI mirror of the backend's PersonaContextBuilder.isFilteredInSearch. The flag alone is not
- * enough: the backend ignores it on knowledge entity types, because a knowledge rule exists to be in
- * context and scoping it would drop its content from the document. Reading `rule.filteredInSearch`
- * directly anywhere in the UI will claim a rule scopes search when the server preloads it — which is
- * reachable, since the API accepts an explicit `true` on a knowledge rule and rules created before
- * the server-side guard were stamped regardless of type.
- */
+// The one UI mirror of the backend's PersonaContextBuilder.isFilteredInSearch.
 export const isSearchScopedRule = (rule: ContextRule): boolean =>
   Boolean(rule.filteredInSearch) && !isKnowledgeContextRule(rule);
 
-// Adds the enabled check on top: searchScope() skips disabled rules, so counting them would
-// overstate how much of the persona's search is actually narrowed. Deliberately not part of
-// isSearchScopedRule — a disabled rule still *is* in scoping mode, which is what the card displays.
-export const getScopedRuleCount = (rules: ContextRule[]): number =>
-  rules.filter((rule) => isSearchScopedRule(rule) && rule.enabled !== false)
-    .length;
+// Mirrors both of searchScope()'s gates, in the order the backend applies them: a definition that is switched off
+// serves an empty scope, so none of its rules narrow search however they are flagged, and within an enabled definition
+// a disabled rule is dropped too.
+export const getScopedRuleCount = (
+  definition?: PersonaContextDefinition
+): number => {
+  if (definition?.enabled === false) {
+    return 0;
+  }
+
+  return (definition?.rules ?? []).filter(
+    (rule) => isSearchScopedRule(rule) && rule.enabled !== false
+  ).length;
+};
 
 export interface PersonaContextVersionChange {
   key: string;
@@ -452,9 +462,8 @@ const describeVersionChanges = (
     return changes;
   }
 
-  // The version bumped but the AI context is byte-equal to the previous one —
-  // it came from an unrelated persona edit (name, users, default, …). Label it
-  // as such instead of implying the AI context changed.
+  // The version bumped but the AI context is byte-equal to the previous one — it came from an unrelated persona edit
+  // (name, users, default, …).
   return isEqual(currentComparable, previousComparable)
     ? [{ key: 'message.persona-context-history-metadata-only' }]
     : [{ key: 'message.persona-context-history-updated' }];

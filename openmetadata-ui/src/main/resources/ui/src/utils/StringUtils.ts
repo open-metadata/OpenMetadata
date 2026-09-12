@@ -12,6 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
+import DOMPurify from 'dompurify';
 import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
 import removeMarkdown from 'remove-markdown';
@@ -71,10 +72,20 @@ export const removeOuterEscapes = (input: string) => {
 };
 
 /**
+ * `btoa` alone treats every JS character as a Latin-1 byte, so non-ASCII input
+ * is silently corrupted (`\u00a3` -> `a3` instead of `c2 a3`) and input above
+ * U+00FF throws. Encode to UTF-8 bytes first, since consumers (the login API)
+ * decode the base64 as UTF-8. See issue #28694.
+ *
  * @param text plain text
- * @returns base64 encoded text
+ * @returns base64 encoding of the UTF-8 bytes of `text`
  */
-export const getBase64EncodedString = (text: string): string => btoa(text);
+export const getBase64EncodedString = (text: string): string =>
+  btoa(
+    Array.from(new TextEncoder().encode(text), (byte) =>
+      String.fromCharCode(byte)
+    ).join('')
+  );
 
 export const stringToSlug = (dataString: string, slugString = '') => {
   return dataString.toLowerCase().replaceAll(' ', slugString);
@@ -91,15 +102,18 @@ export const getQueryWithSlash = (query: string): string =>
   query.replaceAll(/["']/g, String.raw`\$&`);
 
 /**
- * Convert a template string into HTML DOM nodes
- * Same as React.createElement(type, options, children)
- * @param  {String} str The template string
- * @return {Node}       The template HTML
+ * Convert a template string into HTML DOM nodes.
+ * Input is sanitized with DOMPurify before being parsed to prevent stored
+ * XSS from stored user content (e.g. entity name/displayName) — see
+ * GHSA-59gm-6h39-397f. DOMPurify's default profile preserves the benign
+ * markup callers rely on (<span class>, <mark>, <em>, <ins>, <del>) while
+ * stripping <iframe>, <script>, event handler attributes, and
+ * javascript:/data: URLs.
  */
 export const stringToHTML = function (
   strHTML: string
 ): string | JSX.Element | JSX.Element[] {
-  return strHTML ? parse(strHTML) : strHTML;
+  return strHTML ? parse(DOMPurify.sanitize(strHTML)) : strHTML;
 };
 
 /**

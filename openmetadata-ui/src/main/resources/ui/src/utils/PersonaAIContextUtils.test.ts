@@ -18,6 +18,7 @@ import {
   getDefaultPersonaContextSections,
   getPersonaContextSections,
   getRuleConditionCount,
+  getRuleExplorePath,
   getRuleFilterTree,
   getScopedRuleCount,
   isKnowledgeContextRule,
@@ -194,23 +195,58 @@ describe('PersonaAIContextUtils', () => {
     // The backend drops disabled rules from the served scope, so counting them here would tell the
     // admin more of their search is narrowed than actually is.
     expect(
-      getScopedRuleCount([
-        { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
-        { entityType: EntityType.TABLE, filteredInSearch: false, name: 'Two' },
-        { entityType: EntityType.TABLE, name: 'Three' },
-        {
-          enabled: false,
-          entityType: EntityType.TABLE,
-          filteredInSearch: true,
-          name: 'Disabled',
-        },
-        {
-          entityType: EntityType.GLOSSARY_TERM,
-          filteredInSearch: true,
-          name: 'Knowledge',
-        },
-      ])
+      getScopedRuleCount({
+        rules: [
+          { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
+          {
+            entityType: EntityType.TABLE,
+            filteredInSearch: false,
+            name: 'Two',
+          },
+          { entityType: EntityType.TABLE, name: 'Three' },
+          {
+            enabled: false,
+            entityType: EntityType.TABLE,
+            filteredInSearch: true,
+            name: 'Disabled',
+          },
+          {
+            entityType: EntityType.GLOSSARY_TERM,
+            filteredInSearch: true,
+            name: 'Knowledge',
+          },
+        ],
+      })
     ).toBe(1);
+  });
+
+  it('counts no scoped rule when the definition itself is disabled', () => {
+    // searchScope() returns an empty scope before it ever looks at the rules, so a switched-off
+    // definition narrows nothing however its rules are flagged.
+    expect(
+      getScopedRuleCount({
+        enabled: false,
+        rules: [
+          {
+            enabled: true,
+            entityType: EntityType.TABLE,
+            filteredInSearch: true,
+            name: 'One',
+          },
+        ],
+      })
+    ).toBe(0);
+  });
+
+  it('counts scoped rules when enabled is left unset, matching the schema default', () => {
+    expect(
+      getScopedRuleCount({
+        rules: [
+          { entityType: EntityType.TABLE, filteredInSearch: true, name: 'One' },
+        ],
+      })
+    ).toBe(1);
+    expect(getScopedRuleCount(undefined)).toBe(0);
   });
 
   describe('buildPersonaContextVersionHistory', () => {
@@ -293,5 +329,51 @@ describe('PersonaAIContextUtils', () => {
         },
       ]);
     });
+  });
+});
+
+// Explore validates a deep-linked tree against its own config and silently
+// resets when a field is unknown. This editor is pinned to one entity type, so
+// its custom-property keys omit the entity segment Explore expects — without
+// the rewrite the link landed on the unfiltered estate with no filter chip.
+describe('getRuleExplorePath', () => {
+  const filterJsonTree = JSON.stringify({
+    id: 'root',
+    type: 'group',
+    properties: { conjunction: 'AND', not: false },
+    children1: {
+      r1: {
+        type: 'rule',
+        id: 'r1',
+        properties: {
+          field: 'extension.testCp.keyword',
+          operator: 'equal',
+          value: ['2026-09-03'],
+          valueSrc: ['value'],
+        },
+      },
+    },
+  });
+
+  const fieldsIn = (path: string) =>
+    decodeURIComponent(path).match(/"field":"[^"]+"/g) ?? [];
+
+  it('should deep link with the entity-segmented custom property key', () => {
+    const path = getRuleExplorePath(EntityType.TABLE, filterJsonTree);
+
+    expect(fieldsIn(path)).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
+  });
+
+  it('should not rewrite a key that already carries the segment', () => {
+    const already = filterJsonTree.replace(
+      'extension.testCp.keyword',
+      'extension.table.testCp.keyword'
+    );
+
+    expect(fieldsIn(getRuleExplorePath(EntityType.TABLE, already))).toContain(
+      '"field":"extension.table.testCp.keyword"'
+    );
   });
 });

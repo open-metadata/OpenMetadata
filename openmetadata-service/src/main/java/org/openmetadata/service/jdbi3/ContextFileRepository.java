@@ -14,6 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
@@ -36,6 +37,7 @@ import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityCursor;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
 import org.openmetadata.service.entity.write.EntityUpdateRequest;
@@ -94,11 +96,26 @@ public class ContextFileRepository implements EntityPolicy<ContextFile> {
   public void setFields(
       ContextFile file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.setFolder(fields.contains("folder") ? getFolder(file) : file.getFolder());
+    if (fields.contains("memoryCount")) {
+      file.setMemoryCount(
+          relationships()
+              .to(
+                  new EntityRelationshipReader.Selection(
+                      file.getId(),
+                      CONTEXT_FILE_ENTITY,
+                      Relationship.MENTIONED_IN,
+                      Entity.CONTEXT_MEMORY),
+                  Include.NON_DELETED)
+              .size());
+    }
   }
 
   @Override
   public void clearFields(ContextFile file, EntityUtil.Fields fields) {
     file.setFolder(fields.contains("folder") ? file.getFolder() : null);
+    if (!fields.contains("memoryCount")) {
+      file.setMemoryCount(null);
+    }
   }
 
   @Override
@@ -110,6 +127,15 @@ public class ContextFileRepository implements EntityPolicy<ContextFile> {
       var folderMap = batchReferences().singleIncoming(entities, Relationship.CONTAINS);
       entities.forEach(file -> file.setFolder(folderMap.get(file.getId())));
     }
+
+    if (fields.contains("memoryCount")) {
+      // Batched: the per-entity path in setFields would be one query per file here.
+      Map<UUID, Integer> countsByFileId =
+          MemoryCountFetcher.countByEntityId(
+              context().dependencies().daos(), entityListToStrings(entities), CONTEXT_FILE_ENTITY);
+      entities.forEach(file -> file.setMemoryCount(countsByFileId.getOrDefault(file.getId(), 0)));
+    }
+
     fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
@@ -167,6 +193,27 @@ public class ContextFileRepository implements EntityPolicy<ContextFile> {
               EntityRelationshipWriter.Value.EMPTY,
               false);
     }
+  }
+
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
+  // so a deleted file must leave none behind in either form. Mirrors KnowledgePageRepository.
+  @Override
+  @Transaction
+  public void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  @Override
+  @Transaction
+  public void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
   @Override
@@ -259,6 +306,15 @@ public class ContextFileRepository implements EntityPolicy<ContextFile> {
           "pageCount",
           entityUpdate.getOriginal().getPageCount(),
           entityUpdate.getUpdated().getPageCount());
+      entityUpdate.recordChange(
+          "processingError",
+          entityUpdate.getOriginal().getProcessingError(),
+          entityUpdate.getUpdated().getProcessingError());
+      entityUpdate.recordChange(
+          "extractionStats",
+          entityUpdate.getOriginal().getExtractionStats(),
+          entityUpdate.getUpdated().getExtractionStats(),
+          true);
       updateFolder();
     }
 

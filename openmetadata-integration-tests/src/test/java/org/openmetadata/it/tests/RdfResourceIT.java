@@ -342,7 +342,7 @@ public class RdfResourceIT {
         response.statusCode() == 200,
         "GET /v1/rdf/ontology should return 200, got " + response.statusCode());
     String body = response.body();
-    assertTrue(body.contains("1.1.0"), "Ontology document should declare the bumped version 1.1.0");
+    assertTrue(body.contains("2.0.2"), "Ontology document should declare version 2.0.2");
     assertTrue(
         body.contains("om:Column") && body.contains("om:TableConstraint"),
         "Ontology document should declare core om:Column and om:TableConstraint classes");

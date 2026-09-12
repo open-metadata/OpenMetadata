@@ -27,6 +27,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.FIELD_CHILDREN;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
@@ -265,6 +266,7 @@ public class TeamRepository implements EntityPolicy<Team> {
     for (Team team : teams) {
       List<EntityReference> roleRefs = teamToRoles.get(team.getId());
       team.setDefaultRoles(roleRefs != null ? roleRefs : new ArrayList<>());
+      team.setInheritedRoles(getInheritedRoles(team));
     }
   }
 
@@ -555,6 +557,12 @@ public class TeamRepository implements EntityPolicy<Team> {
   }
 
   @Override
+  public void setFieldsInBulk(Fields fields, List<Team> teams) {
+    EntityPolicy.super.setFieldsInBulk(fields, teams);
+    fetchAndSetTeamChildren(teams, fields);
+  }
+
+  @Override
   public void setFieldsInBulk(Fields fields, List<Team> teams, ListFilter filter) {
     if (fields.contains("owns")
         && filter != null
@@ -565,9 +573,25 @@ public class TeamRepository implements EntityPolicy<Team> {
       for (Team team : teams) {
         clearFieldsInternal(team, fields);
       }
+      fetchAndSetTeamChildren(teams, fields);
       return;
     }
-    EntityPolicy.super.setFieldsInBulk(fields, teams);
+    setFieldsInBulk(fields, teams);
+  }
+
+  private void fetchAndSetTeamChildren(List<Team> teams, Fields fields) {
+    if (!fields.contains(FIELD_CHILDREN) || nullOrEmpty(teams)) {
+      return;
+    }
+    // Common child hydration follows CONTAINS; teams use PARENT_OF and implicit Organization
+    // membership.
+    Map<UUID, List<UUID>> children = fetchChildTeams(teams.stream().map(Team::getId).toList());
+    Map<UUID, EntityReference> references =
+        batchResolveRefs(TEAM, children.values().stream().flatMap(List::stream).toList());
+    for (Team team : teams) {
+      team.setChildren(
+          children.getOrDefault(team.getId(), List.of()).stream().map(references::get).toList());
+    }
   }
 
   private List<EntityReference> getDomains(UUID teamId) {

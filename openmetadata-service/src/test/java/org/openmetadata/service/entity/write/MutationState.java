@@ -19,6 +19,7 @@ class MutationState<T extends EntityInterface> implements EntityMutationState<T>
   private boolean versionChanged;
   private boolean entityStored;
   private boolean majorVersionChange;
+  private boolean indexBaselinePass = true;
 
   MutationState(T original, T updated) {
     this.original = original;

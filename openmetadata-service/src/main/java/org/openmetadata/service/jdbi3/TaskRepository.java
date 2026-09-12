@@ -23,7 +23,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -66,9 +65,7 @@ import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityPagePolicy;
 import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
-import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityOperation;
-import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
 import org.openmetadata.service.entity.write.EntityUpdateRequest;
 import org.openmetadata.service.entity.write.EntityUpdater;
@@ -98,7 +95,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @Repository
@@ -1436,50 +1432,6 @@ public class TaskRepository implements EntityPolicy<Task> {
     if (task != null) {
       closeTask(task, user, comment);
     }
-  }
-
-  /**
-   * Update assignees on an open approval task for the given entity.
-   * Used when an entity's reviewers change while an approval task is in progress.
-   * Silently does nothing if no open task exists.
-   *
-   * @param entityFqn Fully qualified name of the target entity
-   * @param newAssignees The new list of assignees (typically entity reviewers)
-   * @param updatedBy The user making the change
-   */
-  public void updateApprovalTaskAssignees(
-      String entityFqn, List<EntityReference> newAssignees, String updatedBy) {
-    Task task = findOpenTaskByEntityAndCategory(entityFqn, TaskCategory.Approval);
-    if (task == null) {
-      return;
-    }
-    Task currentTask =
-        reads()
-            .byId(
-                task.getId(),
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
-    Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
-    updatedTask.setAssignees(newAssignees);
-    updatedTask.setUpdatedBy(updatedBy);
-    updatedTask.setUpdatedAt(System.currentTimeMillis());
-    JsonPatch patch = JsonUtils.getJsonPatch(currentTask, updatedTask);
-    if (patch.toJsonArray().isEmpty()) {
-      return;
-    }
-    Task patchedTask =
-        patches()
-            .patch(
-                new EntityPatchService.Target.Id(currentTask.getId()),
-                patch,
-                new EntityCommandActor(updatedBy, null),
-                null,
-                new EntityPatchService.Options(null, null))
-            .entity();
-    WebsocketNotificationHandler.handleTaskNotification(patchedTask);
   }
 
   @Override

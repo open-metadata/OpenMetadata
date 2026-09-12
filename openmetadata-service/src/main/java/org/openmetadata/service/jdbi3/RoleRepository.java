@@ -136,14 +136,15 @@ public class RoleRepository implements EntityPolicy<Role> {
             .dependencies()
             .daos()
             .relationshipDAO()
-            .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.ROLE, Entity.TEAM);
+            .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.TEAM, Entity.ROLE);
+
     // Create a map of role ID to team references
     Map<UUID, List<EntityReference>> roleToTeams = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
-      UUID roleId = UUID.fromString(record.getFromId());
+      UUID roleId = UUID.fromString(record.getToId());
       EntityReference teamRef =
           Entity.getEntityReferenceById(
-              Entity.TEAM, UUID.fromString(record.getToId()), Include.ALL);
+              Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
       roleToTeams.computeIfAbsent(roleId, k -> new ArrayList<>()).add(teamRef);
     }
     // Set teams on roles
@@ -161,14 +162,15 @@ public class RoleRepository implements EntityPolicy<Role> {
             .dependencies()
             .daos()
             .relationshipDAO()
-            .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.ROLE, Entity.USER);
+            .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.USER, Entity.ROLE);
+
     // Create a map of role ID to user references
     Map<UUID, List<EntityReference>> roleToUsers = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : userRecords) {
-      UUID roleId = UUID.fromString(record.getFromId());
+      UUID roleId = UUID.fromString(record.getToId());
       EntityReference userRef =
           Entity.getEntityReferenceById(
-              Entity.USER, UUID.fromString(record.getToId()), Include.ALL);
+              Entity.USER, UUID.fromString(record.getFromId()), Include.ALL);
       roleToUsers.computeIfAbsent(roleId, k -> new ArrayList<>()).add(userRef);
     }
     // Set users on roles

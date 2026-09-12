@@ -1440,19 +1440,6 @@ public class DataContractRepository implements EntityPolicy<DataContract> {
     }
 
     @Override
-    public void reviewers(EntityUpdater<DataContract> entityUpdate) {
-      EntitySpecificMutation.super.reviewers(entityUpdate);
-      if (entityUpdate.getOriginal().getReviewers() != null
-          && entityUpdate.getUpdated().getReviewers() != null
-          && !entityUpdate
-              .getOriginal()
-              .getReviewers()
-              .equals(entityUpdate.getUpdated().getReviewers())) {
-        updateTaskWithNewReviewers(entityUpdate.getUpdated());
-      }
-    }
-
-    @Override
     public void update(EntityUpdater<DataContract> entityUpdate, boolean consolidatingChanges) {
       preserveUnspecifiedODCSPassthrough();
       entityUpdate.compareAndUpdate(
@@ -1874,20 +1861,6 @@ public class DataContractRepository implements EntityPolicy<DataContract> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataContract dataContract) {
-    dataContract =
-        Entity.getEntityByName(
-            Entity.DATA_CONTRACT,
-            dataContract.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataContract.getFullyQualifiedName(),
-        new ArrayList<>(dataContract.getReviewers()),
-        dataContract.getUpdatedBy());
   }
 
   private final EntityPolicyContext<DataContract> entityContext;

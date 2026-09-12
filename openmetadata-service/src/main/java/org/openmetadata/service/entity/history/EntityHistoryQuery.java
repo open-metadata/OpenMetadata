@@ -9,17 +9,22 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 
+@Slf4j
 public final class EntityHistoryQuery<T extends EntityInterface> {
   public record Window(
       long startTimestamp, long endTimestamp, String after, String before, int limit) {}
 
   private record CountKey(
       String tableName, String entityType, long startTimestamp, long endTimestamp) {}
+
+  private record PageCursors(String first, String last) {}
 
   private static final Cache<CountKey, Integer> COUNTS =
       CacheBuilder.newBuilder()
@@ -50,8 +55,38 @@ public final class EntityHistoryQuery<T extends EntityInterface> {
     if (cursor.isBackward()) {
       Collections.reverse(entities);
     }
-    hydration.accept(entities);
-    return result(entities, cursor, hasMore, count(window));
+    // SQL page boundaries must survive a hard delete during hydration, even if every row vanishes.
+    final PageCursors boundaries =
+        entities.isEmpty()
+            ? new PageCursors(null, null)
+            : new PageCursors(cursor(entities.getFirst()), cursor(entities.getLast()));
+    return result(hydrate(entities), cursor, hasMore, count(window), boundaries);
+  }
+
+  private List<T> hydrate(final List<T> entities) {
+    try {
+      hydration.accept(entities);
+      return entities;
+    } catch (EntityNotFoundException exception) {
+      return hydrateIndividually(entities);
+    }
+  }
+
+  private List<T> hydrateIndividually(final List<T> entities) {
+    final List<T> hydrated = new ArrayList<>(entities.size());
+    for (final T entity : entities) {
+      try {
+        hydration.accept(new ArrayList<>(List.of(entity)));
+        hydrated.add(entity);
+      } catch (EntityNotFoundException exception) {
+        LOG.debug(
+            "Dropping {} {} from history page, deleted mid-request: {}",
+            type.name(),
+            entity.getId(),
+            exception.getMessage());
+      }
+    }
+    return hydrated;
   }
 
   private List<T> read(final Window window, final HistoryCursor cursor) {
@@ -88,17 +123,18 @@ public final class EntityHistoryQuery<T extends EntityInterface> {
   }
 
   private ResultList<T> result(
-      final List<T> entities, final HistoryCursor page, final boolean hasMore, final int total) {
-    if (entities.isEmpty()) {
+      final List<T> entities,
+      final HistoryCursor page,
+      final boolean hasMore,
+      final int total,
+      final PageCursors boundaries) {
+    if (boundaries.first() == null) {
       return new ResultList<>(entities, null, null, total);
     }
     final boolean hasNewer = page.isBackward() ? hasMore : !page.isFirstPage();
     final boolean hasOlder = page.isBackward() || hasMore;
     return new ResultList<>(
-        entities,
-        hasNewer ? cursor(entities.getFirst()) : null,
-        hasOlder ? cursor(entities.getLast()) : null,
-        total);
+        entities, hasNewer ? boundaries.first() : null, hasOlder ? boundaries.last() : null, total);
   }
 
   private String cursor(final T entity) {

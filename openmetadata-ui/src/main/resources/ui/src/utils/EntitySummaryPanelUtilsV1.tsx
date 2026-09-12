@@ -23,12 +23,12 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
-import TagChip from '../components/common/atoms/TagChip/TagChip';
 import { FieldCard } from '../components/common/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
+import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
@@ -1062,24 +1062,14 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'tags',
       key: 'tags',
       width: 200,
-      render: (tags: TagLabel[]) => (
-        <div className="d-flex flex-wrap gap-2">
-          {tags?.map((tag) => (
-            <TagChip
-              icon={tag.style?.iconURL}
-              key={tag.tagFQN}
-              label={tag.displayName || tag.name || tag.tagFQN}
-              size="small"
-              tagColor={tag.style?.color}
-              variant="blueGray"
-            />
-          )) || (
-            <span className="text-grey-muted">
-              {t('label.no-entity', { entity: t('label.tag-plural') })}
-            </span>
-          )}
-        </div>
-      ),
+      render: (tags: TagLabel[]) =>
+        isEmpty(tags) ? (
+          <Typography className="tw:text-secondary">
+            {t('label.no-entity', { entity: t('label.tag-plural') })}
+          </Typography>
+        ) : (
+          <TagsViewer maxWidth={120} tags={tags} />
+        ),
     },
   ];
 

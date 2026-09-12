@@ -16,6 +16,8 @@ public final class EntityUpdateWorkflow<T extends EntityInterface> {
     boolean canConsolidateChanges();
 
     void applyChanges(boolean importMode, boolean consolidatingChanges);
+
+    void setIndexBaselinePass(boolean indexBaselinePass);
   }
 
   private final EntityVersionStore<T> history;
@@ -59,6 +61,7 @@ public final class EntityUpdateWorkflow<T extends EntityInterface> {
       session.applyChanges(importMode, false);
       captureIncremental(session, false);
     }
+    session.setIndexBaselinePass(false);
     try (var ignored = phase(importMode ? "entityUpdateRevertImport" : "entityUpdateRevert")) {
       revert(session, importMode);
     }

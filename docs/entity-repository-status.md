@@ -1,15 +1,15 @@
 # Entity module implementation status
 
-Checkpoint: final policy callers and regression verification, 2026-09-12 UTC.
+Checkpoint: integration with `main` at `15b542e735c`, 2026-09-12 UTC.
 **Verification is in progress.**
 
 The worktree no longer contains `EntityRepository.java`, originally 13,569 lines.
-Its responsibilities now live in 209 focused components (23,110 lines), including seven startup
+Its responsibilities now live in 209 focused components (23,223 lines), including seven startup
 assemblies and entity policy interfaces. All 74 direct production subclasses use
 `EntityPolicy`. All 69 updater subclasses use composed mutation policies;
 13 service repositories implement `EntityServicePolicy` and share service components.
 `ServiceEntityRepository` and `ColumnEntityUpdater` are removed. The shared
-`EntityUpdater` is final and contains 493 lines, the largest extracted component.
+`EntityUpdater` is final and contains 496 lines, the largest extracted component.
 Removing the file does not establish correctness or latency improvement.
 
 | Deliverable | Status |
@@ -21,13 +21,46 @@ Removing the file does not establish correctness or latency improvement.
 | Entity policies and retirement of common repository and updater inheritance | Implemented; clean production compilation and packaged selection pass |
 | Architecture and Java extension migration guide | Available in [entity-module-migration.md](entity-module-migration.md) |
 | Final policy callers | Search/RDF offset readers and custom result pages migrated; 14 unused helpers and two migrated helpers removed |
-| Final service, MCP and database regressions | 2,405 selected service and 616 MCP passes; expanded final-artifact database checks pass after a MySQL failure-injection fixture correction; full service run retains the failures detailed below |
+| Main merge validation | 1,406 service passes; 620 MCP passes and ten upstream dependency setup errors; 220 integration passes per database with Redis |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
 
-## Verification provenance
+## Main integration checkpoint
 
-The current package, `policy-surface-v2-service.jar`, has SHA-256
+The merge incorporates 162 commits from `main` and resolves 28 conflicted paths.
+The retired repository stays removed. Upstream certification validation and server dates,
+history pagination during concurrent hard deletion, and nested column lineage reconciliation
+now live in the corresponding composed services. Consolidation replays reconcile lineage
+only against the persisted baseline, with search effects deferred until the owning commit.
+Context Center, RDF, role synchronization and bulk field consumers use the native ports.
+
+The merged service compiles all 2,291 production and 1,039 test sources with Java 21.
+The focused service selection passes 1,406 tests with one skip, including all 128 entity
+component test classes, certification, history, Context Center, lineage, RDF and role sync.
+The packaged service SHA-256 is
+`afd6ca053034a63b72d21fb284f3f011187b6c863ec43d41c9a87456b8d420b6`.
+
+MCP compiles cleanly and runs 630 tests: 620 pass, while ten
+`IdTokenValidatorTest` cases fail during `MockWebServer` construction. Upstream's
+OkHttp 4.12 test server encounters the OkHttp 5.5 `TaskRunner` from the logging
+interceptor dependency. A minimal probe reproduces the same `NoSuchMethodError`
+using only third-party JARs. The relevant POMs and authentication sources match
+`main`; this is an upstream dependency limitation of the merged build.
+The repository pre-commit checks pass.
+
+All 567 integration sources compile. The PostgreSQL/OpenSearch/Redis and
+MySQL/Elasticsearch/Redis merge selections each pass 220 tests with 18 skips or
+assumption aborts and no failures. They cover the
+owning transaction, deadlock replay and rollback, deferred cache publication, column
+lineage reconciliation, certification creation, history, role/team/type bulk fields,
+page mutations and extracted-memory cleanup.
+
+The coverage and latency measurements below belong to the frozen pre-merge artifacts.
+They do not establish acceptance for the merged artifact; both gates remain open.
+
+## Pre-merge verification provenance
+
+The frozen pre-merge package, `policy-surface-v2-service.jar`, has SHA-256
 `7c3bd8bbb349252fa5a7dee232a9dc7034c17e460f2634fe5bb292955ce8b866`.
 The service selection passed 2,405 tests with one skip across 246 classes;
 MCP passed all 616 tests. Both modules compile with Java 21, and service/integration

@@ -43,7 +43,6 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner.CleanupResult;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.ReindexingException;
@@ -299,9 +298,8 @@ class ReindexingOrchestratorTest {
     EntityDAO entityDao = mock(EntityDAO.class);
     String reportType =
         org.openmetadata.schema.analytics.ReportData.ReportDataType.ENTITY_REPORT_DATA.value();
-    when(searchRepository.getEntityIndexMap())
-        .thenReturn(
-            Map.of(Entity.TABLE, mock(IndexMapping.class), reportType, mock(IndexMapping.class)));
+
+    when(searchRepository.getIndexedEntityTypes()).thenReturn(Set.of(Entity.TABLE, reportType));
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any())).thenReturn(7);
     setField("jobData", jobData);

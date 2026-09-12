@@ -1,7 +1,10 @@
 package org.openmetadata.service.entity.write;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import org.openmetadata.schema.EntityInterface;
@@ -15,6 +18,17 @@ public final class EntityColumnUpdater<T extends EntityInterface>
     implements EntityColumnUpdates.Session {
   private final EntityUpdater<T> mutation;
   private final EntityColumnMutation<T> policy;
+  private LineageChanges lineageChanges;
+
+  private static final class LineageChanges {
+    private final Set<String> deleted = new LinkedHashSet<>();
+    private final HashMap<String, String> renamed = new HashMap<>();
+
+    private void include(final List<String> deletions, final HashMap<String, String> renames) {
+      deletions.stream().filter(Objects::nonNull).forEach(deleted::add);
+      renamed.putAll(renames);
+    }
+  }
 
   public EntityColumnUpdater(EntityUpdater<T> mutation, EntityColumnMutation<T> policy) {
     this.mutation = mutation;
@@ -56,7 +70,11 @@ public final class EntityColumnUpdater<T extends EntityInterface>
 
   @Override
   public void updateColumnLineage(List<String> deleted, HashMap<String, String> renamed) {
-    policy.lineage(mutation, deleted, renamed);
+    if (lineageChanges == null) {
+      policy.lineage(mutation, deleted, renamed);
+    } else {
+      lineageChanges.include(deleted, renamed);
+    }
   }
 
   @Override
@@ -65,7 +83,22 @@ public final class EntityColumnUpdater<T extends EntityInterface>
       List<Column> original,
       List<Column> updated,
       BiPredicate<Column, Column> match) {
-    mutation.context.columns().updates().update(this, field, original, updated, match);
+    final boolean root = lineageChanges == null;
+    if (root) {
+      lineageChanges = new LineageChanges();
+    }
+    try {
+      mutation.context.columns().updates().update(this, field, original, updated, match);
+      if (root) {
+        // Nested column levels form one lineage reconciliation against the persisted baseline.
+        policy.lineage(
+            mutation, List.copyOf(lineageChanges.deleted), new HashMap<>(lineageChanges.renamed));
+      }
+    } finally {
+      if (root) {
+        lineageChanges = null;
+      }
+    }
   }
 
   @Override

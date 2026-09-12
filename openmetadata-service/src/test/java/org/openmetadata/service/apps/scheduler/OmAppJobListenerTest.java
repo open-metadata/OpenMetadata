@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
 import java.lang.reflect.Field;
@@ -189,7 +190,7 @@ class OmAppJobListenerTest {
     App jobApp = new App().withId(appId).withName("SearchIndexingApplication");
 
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put("triggerType", "OnDemandJob");
+    dataMap.put(TRIGGER_TYPE_KEY, "OnDemandJob");
     dataMap.put(AppScheduler.APP_NAME, "SearchIndexingApplication");
 
     JobDataMap mergedMap = new JobDataMap();
@@ -234,7 +235,7 @@ class OmAppJobListenerTest {
   @Test
   void jobToBeExecuted_callsCleanupOnException() {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put("triggerType", "OnDemandJob");
+    dataMap.put(TRIGGER_TYPE_KEY, "OnDemandJob");
     dataMap.put(AppScheduler.APP_NAME, "NonExistentApp");
 
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);

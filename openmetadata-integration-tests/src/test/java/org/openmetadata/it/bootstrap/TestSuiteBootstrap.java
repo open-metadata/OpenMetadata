@@ -28,6 +28,7 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -83,6 +84,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -121,14 +123,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  // secoresearch/fuseki:5.5.0 over stain/jena-fuseki: stain's image is
-  // unmaintained (capped at 5.1.0) and missing the two 2025 admin-side CVE
-  // fixes that Jena shipped in 5.5.0 (CVE-2025-49656, CVE-2025-50151). The
-  // secoresearch image is maintained, exposes the same ADMIN_PASSWORD env
-  // var, and uses the standard Fuseki admin endpoints — JenaFusekiStorage's
-  // ensureDatasetExists() handles dataset creation via /$/datasets, so we
-  // don't need stain's `FUSEKI_DATASET_1` shortcut here.
-  private static final String DEFAULT_FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
+  private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
+  private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
+  // Three TDB2 datasets and compaction generations exceed the old single-dataset 256 MiB cap.
+  private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "8g";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -342,6 +340,13 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "work_mem=32MB");
       configureDatabaseStorage(postgres, "/var/lib/postgresql/data");
       postgres.withCreateContainerCmdModifier(
+          cmd -> {
+            final long memory = Long.getLong("dbContainerMemoryBytes", 0L);
+            final long nanoCpus = Long.getLong("dbContainerNanoCpus", 0L);
+            if (memory > 0) cmd.getHostConfig().withMemory(memory);
+            if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+          });
+      postgres.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
                   .withUlimits(
@@ -355,7 +360,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private void configureDatabaseStorage(JdbcDatabaseContainer<?> database, String dataDirectory) {
     // fsync on tmpfs measures RAM; durable benchmarks need the image's disk-backed data volume.
-    if (!Boolean.getBoolean("dbDurable")) {
+    if (!Boolean.getBoolean("dbDurable")
+        && Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
       database.withTmpFs(Map.of(dataDirectory, "rw,size=2g"));
     }
   }
@@ -482,23 +488,32 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         cacheConfig.redis.keyspace);
   }
 
+  private static String fusekiTmpfsSize() {
+    return System.getProperty(RDF_CONTAINER_TMPFS_SIZE_PROPERTY, DEFAULT_FUSEKI_TMPFS_SIZE);
+  }
+
   private void startFuseki() {
-    String image = System.getProperty("rdfContainerImage", DEFAULT_FUSEKI_IMAGE);
-    LOG.info("Starting Fuseki SPARQL container...");
-    // FUSEKI_DATASET_1 was a stain/jena-fuseki convenience env var to
-    // pre-create a dataset at container start. The maintained image we use
-    // now doesn't provide it; JenaFusekiStorage.ensureDatasetExists() creates
-    // the dataset via the /$/datasets admin endpoint on first connection
-    // instead, so the test path is fine without it.
-    FUSEKI_CONTAINER =
-        new GenericContainer<>(DockerImageName.parse(image))
+    LOG.info("Starting the configured OpenMetadata Fuseki image...");
+    FUSEKI_CONTAINER = createFusekiContainer();
+    FUSEKI_CONTAINER.start();
+
+    fusekiEndpoint =
+        String.format(
+            "http://%s:%d/%s",
+            FUSEKI_CONTAINER.getHost(),
+            FUSEKI_CONTAINER.getMappedPort(FUSEKI_PORT),
+            FUSEKI_DATASET);
+    LOG.info("Fuseki started: {}", fusekiEndpoint);
+  }
+
+  /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
+  public static GenericContainer<?> createFusekiContainer() {
+    final GenericContainer<?> container =
+        fusekiContainer()
             .withExposedPorts(FUSEKI_PORT)
             .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            // tmpfs the TDB2 dataset dir so each container start gets a clean
-            // store and a long IT run doesn't grow the container's writable
-            // layer. secoresearch/fuseki stores datasets under /fuseki/databases
-            // by default — mounting tmpfs there keeps writes off-disk entirely.
-            .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
+            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
+            .withEnv("JVM_ARGS", System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
             .waitingFor(
                 Wait.forHttp("/$/ping")
                     .forPort(FUSEKI_PORT)
@@ -512,15 +527,49 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                             java.util.List.of(
                                 new com.github.dockerjava.api.model.Ulimit(
                                     "nofile", 65536L, 65536L))));
-    FUSEKI_CONTAINER.start();
+    if (Boolean.parseBoolean(System.getProperty("rdfContainerTmpfs", "true"))) {
+      // Scale runs opt out so disk and page-cache measurements describe persistent TDB2 storage.
+      container.withTmpFs(
+          Map.of(
+              "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
+              "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
+    }
+    if (Boolean.getBoolean("rdfContainerStablePort")) {
+      // Docker can allocate a different ephemeral host port on restart.
+      try (ServerSocket socket = new ServerSocket(Integer.getInteger("rdfContainerHostPort", 0))) {
+        container.setPortBindings(List.of(socket.getLocalPort() + ":" + FUSEKI_PORT));
+      } catch (IOException exception) {
+        throw new IllegalStateException("Cannot reserve a stable Fuseki test port", exception);
+      }
+    }
+    final long memoryBytes = Long.getLong("rdfContainerMemoryBytes", 0L);
+    final long nanoCpus = Long.getLong("rdfContainerNanoCpus", 0L);
+    container.withCreateContainerCmdModifier(
+        cmd -> {
+          if (memoryBytes > 0) cmd.getHostConfig().withMemory(memoryBytes);
+          if (nanoCpus > 0) cmd.getHostConfig().withNanoCPUs(nanoCpus);
+        });
+    return container;
+  }
 
-    fusekiEndpoint =
-        String.format(
-            "http://%s:%d/%s",
-            FUSEKI_CONTAINER.getHost(),
-            FUSEKI_CONTAINER.getMappedPort(FUSEKI_PORT),
-            FUSEKI_DATASET);
-    LOG.info("Fuseki started: {}", fusekiEndpoint);
+  /** The isolated test container, for scale sampling and restart verification. */
+  public static GenericContainer<?> getFusekiContainer() {
+    return FUSEKI_CONTAINER;
+  }
+
+  /** The isolated metadata database, for scale resource sampling. */
+  public static GenericContainer<?> getDatabaseContainer() {
+    return DATABASE_CONTAINER;
+  }
+
+  private static GenericContainer<?> fusekiContainer() {
+    final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
+    if (image != null && !image.isBlank()) {
+      return new GenericContainer<>(DockerImageName.parse(image));
+    }
+    return new GenericContainer<>(
+        new ImageFromDockerfile()
+            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
@@ -785,6 +834,18 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     rdfConfig.setPassword(FUSEKI_ADMIN_PASSWORD);
     rdfConfig.setDataset(FUSEKI_DATASET);
     rdfConfig.setMaterializedInferenceEnabled(true);
+    final Integer lineageBatchSize = Integer.getInteger("rdfLineageEdgeBatchSize");
+    if (lineageBatchSize != null) {
+      rdfConfig.setBulkLineageEdgeBatchSize(lineageBatchSize);
+    }
+    final Integer appendPayloadBytes = Integer.getInteger("rdfAppendPayloadBytes");
+    if (appendPayloadBytes != null) {
+      rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
+    }
+    final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
+    if (appendEntityBatchSize != null) {
+      rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);
+    }
 
     LOG.info("RDF configuration complete");
   }
@@ -846,6 +907,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     try {
       if (FUSEKI_CONTAINER != null) {
+        if (!FUSEKI_CONTAINER.isRunning()) {
+          LOG.error("Fuseki exited during the test run:\n{}", FUSEKI_CONTAINER.getLogs());
+        }
         FUSEKI_CONTAINER.stop();
       }
     } catch (Exception e) {
@@ -894,9 +958,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
     LOG.info("Starting MinIO Testcontainer on-demand...");
     // Pin the MinIO image to a known-good release so a newly-published :latest tag
-    // cannot break integration tests without a code change.
+    // cannot break integration tests without a code change. Pull from quay.io: MinIO
+    // deleted the minio/minio repository from Docker Hub, and Docker Hub reports a
+    // removed repository as "pull access denied ... may require 'docker login'".
     MINIO_CONTAINER =
-        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+        new GenericContainer<>("quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z")
             .withExposedPorts(9000)
             .withEnv("MINIO_ROOT_USER", "minio")
             .withEnv("MINIO_ROOT_PASSWORD", "minio123")
@@ -1133,6 +1199,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static String getBaseUrl() {
     return "http://localhost:" + getApplicationPort();
+  }
+
+  public static RdfConfiguration getRdfConfiguration() {
+    return APP.getConfiguration().getRdfConfiguration();
   }
 
   /** Hostname of the running search engine container (OpenSearch or Elasticsearch). */

@@ -81,6 +81,8 @@ public final class EntityUpdater<T extends EntityInterface>
   @Setter boolean overrideMetadata;
   private final List<Runnable> deferredReactOperations = new ArrayList<>();
   private boolean deferredReactExecuted;
+  // Reverted consolidation baselines never existed in lineage storage or search.
+  @Getter @Setter private boolean indexBaselinePass = true;
 
   // Store the original FQN at construction time, before any modifications or revert.
   // This is needed because during change consolidation, revert() reassigns 'original' to
@@ -201,6 +203,7 @@ public final class EntityUpdater<T extends EntityInterface>
   public final void resetMutationAttempt() {
     deferredReactOperations.clear();
     deferredReactExecuted = false;
+    indexBaselinePass = true;
     resetForRetryAttempt();
   }
 

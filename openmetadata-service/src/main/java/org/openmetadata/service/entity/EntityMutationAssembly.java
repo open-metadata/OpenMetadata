@@ -154,7 +154,18 @@ final class EntityMutationAssembly {
             context.policy()::prepare,
             context.policy()::setFullyQualifiedName,
             (value0, value1) -> EntityWriteCallbacks.validateExtension(context, value0, value1),
-            context.policy()::setDefaultStatus));
+            (entity, update) -> {
+              context.policy().setDefaultStatus(entity, update);
+              // Unrelated PATCHes must tolerate a stored certification after settings change.
+              if (!update) {
+                context
+                    .services()
+                    .getUpdaterServices()
+                    .metadata()
+                    .plan()
+                    .prepareCertification(entity);
+              }
+            }));
   }
 
   static <T extends EntityInterface> EntityLifecyclePublisher<T> assembleLifecyclePublisher(

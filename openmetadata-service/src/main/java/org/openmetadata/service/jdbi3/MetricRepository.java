@@ -506,19 +506,6 @@ public class MetricRepository implements EntityPolicy<Metric> {
               this);
     }
 
-    @Override
-    public void reviewers(EntityUpdater<Metric> entityUpdate) {
-      EntitySpecificMutation.super.reviewers(entityUpdate);
-      if (entityUpdate.getOriginal().getReviewers() != null
-          && entityUpdate.getUpdated().getReviewers() != null
-          && !entityUpdate
-              .getOriginal()
-              .getReviewers()
-              .equals(entityUpdate.getUpdated().getReviewers())) {
-        updateTaskWithNewReviewers(entityUpdate.getUpdated());
-      }
-    }
-
     @Transaction
     @Override
     public void update(EntityUpdater<Metric> entityUpdate, boolean consolidatingChanges) {
@@ -762,20 +749,6 @@ public class MetricRepository implements EntityPolicy<Metric> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(Metric metric) {
-    metric =
-        Entity.getEntityByName(
-            Entity.METRIC,
-            metric.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        metric.getFullyQualifiedName(),
-        new ArrayList<>(metric.getReviewers()),
-        metric.getUpdatedBy());
   }
 
   private final EntityPolicyContext<Metric> entityContext;

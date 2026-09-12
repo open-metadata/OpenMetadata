@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder;
@@ -91,6 +92,9 @@ public class SearchSourceBuilderFactoryTest {
 
   @BeforeAll
   public static void loadShippedSearchSettings() throws IOException {
+    // HighlightFieldClassifier reads the index mappings; without this the flat_object guard is a
+    // no-op and the highlight assertions only pass when another test class initialized the loader.
+    IndexMappingLoader.init();
     List<String> jsonDataFiles =
         EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
     String json =

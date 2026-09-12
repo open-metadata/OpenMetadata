@@ -1035,19 +1035,6 @@ public class TagRepository implements EntityPolicy<Tag> {
       renameProcessed = false;
     }
 
-    @Override
-    public void reviewers(EntityUpdater<Tag> entityUpdate) {
-      EntitySpecificMutation.super.reviewers(entityUpdate);
-      if (entityUpdate.getOriginal().getReviewers() != null
-          && entityUpdate.getUpdated().getReviewers() != null
-          && !entityUpdate
-              .getOriginal()
-              .getReviewers()
-              .equals(entityUpdate.getUpdated().getReviewers())) {
-        updateTaskWithNewReviewers(entityUpdate.getUpdated());
-      }
-    }
-
     @Transaction
     @Override
     public void update(EntityUpdater<Tag> entityUpdate, boolean consolidatingChanges) {
@@ -1298,18 +1285,6 @@ public class TagRepository implements EntityPolicy<Tag> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(Tag tag) {
-    tag =
-        Entity.getEntityByName(
-            Entity.TAG,
-            tag.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        tag.getFullyQualifiedName(), new ArrayList<>(tag.getReviewers()), tag.getUpdatedBy());
   }
 
   public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {

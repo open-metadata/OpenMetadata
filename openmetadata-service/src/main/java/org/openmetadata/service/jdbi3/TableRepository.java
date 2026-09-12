@@ -2313,6 +2313,7 @@ public class TableRepository implements EntityPolicy<Table> {
                   "sourceUrl",
                   entityUpdate.getOriginal().getSourceUrl(),
                   entityUpdate.getUpdated().getSourceUrl()));
+      entityUpdate.compareAndUpdate("aliases", () -> updateAliases(origTable, updatedTable));
       entityUpdate.compareAndUpdate(
           "retentionPeriod",
           () ->
@@ -2376,6 +2377,16 @@ public class TableRepository implements EntityPolicy<Table> {
       }
     }
 
+    private void updateAliases(Table origTable, Table updatedTable) {
+      List<String> origAliases = listOrEmpty(origTable.getAliases());
+      List<String> updatedAliases = listOrEmpty(updatedTable.getAliases());
+
+      List<String> added = new ArrayList<>();
+      List<String> deleted = new ArrayList<>();
+      entityUpdate.recordListChange(
+          "aliases", origAliases, updatedAliases, added, deleted, EntityUtil.stringMatch);
+    }
+
     private void updateTableConstraints(
         Table origTable, Table updatedTable, EntityOperation operation) {
       // Detect columns that were removed (exist in original but not in updated).
@@ -2431,6 +2442,16 @@ public class TableRepository implements EntityPolicy<Table> {
       deleteConstraintRelationship(origTable, deleted);
     }
 
+    /**
+     * Reconcile stored and indexed column lineage with a column rename/delete.
+     *
+     * <p>Both stores mirror the persisted table, so the only diff pass that yields a delta they can
+     * apply is the one baselined on it. Session consolidation replays the diff up to three more
+     * times against reverted baselines: those renames name FQNs neither store holds, and — the
+     * destructive case — the revert pass diffs the persisted table against the pre-session version,
+     * so a column added by an earlier request in the same session reads as deleted and its lineage
+     * is dropped even though the column still exists.
+     */
     @Override
     public void lineage(
         EntityUpdater<Table> entityUpdate,
@@ -2438,38 +2459,32 @@ public class TableRepository implements EntityPolicy<Table> {
         HashMap<String, String> originalUpdatedColumnFqnMap) {
       boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
       boolean hasDeletes = !deletedColumns.isEmpty();
-      // Update lineage relationships stored in the database
-      if (hasRenames || hasDeletes) {
+
+      if (entityUpdate.isIndexBaselinePass() && (hasRenames || hasDeletes)) {
         LineageRepository lineageRepository = Entity.getLineageRepository();
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
               entityUpdate.getUpdated().getId(),
-              hasRenames ? originalUpdatedColumnFqnMap : Collections.emptyMap(),
-              hasDeletes ? deletedColumns : Collections.emptyList(),
+              originalUpdatedColumnFqnMap,
+              deletedColumns,
               entityUpdate.getUpdated().getSchemaDefinition(),
               entityUpdate.getUpdated().getUpdatedBy());
         }
-      }
-      if (hasRenames) {
-        HashMap<String, String> renames = new HashMap<>(originalUpdatedColumnFqnMap);
+        List<String> deletedColumnFqns = List.copyOf(deletedColumns);
+        HashMap<String, String> renamedColumnFqns = new HashMap<>(originalUpdatedColumnFqnMap);
         entityUpdate.deferReactOperation(
-            () ->
-                context()
-                    .dependencies()
-                    .search()
-                    .getSearchClient()
-                    .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, renames));
+            () -> flushColumnLineageSearchUpdates(deletedColumnFqns, renamedColumnFqns));
       }
-      if (hasDeletes) {
-        List<String> deletedColumnsCopy = List.copyOf(deletedColumns);
-        entityUpdate.deferReactOperation(
-            () ->
-                context()
-                    .dependencies()
-                    .search()
-                    .getSearchClient()
-                    .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, deletedColumnsCopy));
-      }
+    }
+
+    private void flushColumnLineageSearchUpdates(
+        List<String> deletedColumnFqns, HashMap<String, String> renamedColumnFqns) {
+      context()
+          .dependencies()
+          .search()
+          .getSearchClient()
+          .reconcileColumnsInUpstreamLineage(
+              GLOBAL_SEARCH_ALIAS, renamedColumnFqns, deletedColumnFqns);
     }
 
     private final EntityUpdater<Table> entityUpdate;

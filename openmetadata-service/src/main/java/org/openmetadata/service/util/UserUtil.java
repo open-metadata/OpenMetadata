@@ -395,9 +395,11 @@ public final class UserUtil {
     return references;
   }
 
+  // The raw accessor, not getUserRoles(): the latter normalizes null to an empty set, which would
+  // make "no roles claim in the token" indistinguishable from "the provider revoked every role".
   public static Set<String> getRolesFromAuthorizationToken(
       CatalogSecurityContext catalogSecurityContext) {
-    return catalogSecurityContext.getUserRoles();
+    return catalogSecurityContext.userRoles();
   }
 
   public static boolean isRolesSyncNeeded(Set<String> fromToken, Set<String> fromDB) {
@@ -416,11 +418,23 @@ public final class UserUtil {
     return false;
   }
 
+  /**
+   * Syncs a user's roles to what the identity provider reported. {@code rolesFromToken} is
+   * authoritative when non-null, including when empty - that is the provider revoking every role. A
+   * null set means the provider said nothing (no roles claim, or the feature is off) and the user's
+   * OpenMetadata roles are left alone.
+   *
+   * <p>Admin is promotion-only. Demoting on a missing admin role would lock out anyone who is an
+   * admin through the {@code adminPrincipals} configuration rather than through the provider.
+   */
   public static boolean reSyncUserRolesFromToken(
       UriInfo uriInfo, User user, Set<String> rolesFromToken) {
+    if (rolesFromToken == null) {
+      return false;
+    }
     boolean syncUser = false;
-    Set<String> mutableRolesFromToken =
-        rolesFromToken == null ? new HashSet<>() : new HashSet<>(rolesFromToken);
+    Set<String> mutableRolesFromToken = new HashSet<>(rolesFromToken);
+
     User updatedUser = JsonUtils.deepCopy(user, User.class);
     // Check if Admin User
     if (mutableRolesFromToken.contains(ADMIN_ROLE)) {
@@ -433,8 +447,7 @@ public final class UserUtil {
     }
     Set<String> rolesFromUser = getRoleListFromUser(user);
     // Check if roles are different
-    if (!nullOrEmpty(mutableRolesFromToken)
-        && isRolesSyncNeeded(mutableRolesFromToken, rolesFromUser)) {
+    if (isRolesSyncNeeded(mutableRolesFromToken, rolesFromUser)) {
       syncUser = true;
       List<EntityReference> rolesReferenceFromToken = validateAndGetRolesRef(mutableRolesFromToken);
       updatedUser.setRoles(rolesReferenceFromToken);

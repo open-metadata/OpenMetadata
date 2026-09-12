@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.lineage.openlineage.DatasetFacets;
@@ -2063,6 +2065,435 @@ class OpenLineageEntityResolverTest {
       resolverLogger.detachAppender(appender);
       appender.stop();
     }
+  }
+
+  @Test
+  void resolveTable_bareTokenWithNamespaceMapping_resolvesUniqueTable() {
+    OpenLineageEntityResolver resolver =
+        new OpenLineageEntityResolver(
+            false, "openlineage", Map.of("s3://data-dev-datalake", "aws_glue_catalog_dev"));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://data-dev-datalake")
+            .withName("retail_customers");
+
+    String expectedFqn = "aws_glue_catalog_dev.048372910264.data_dev_main.retail_customers";
+
+    @SuppressWarnings("unchecked")
+    EntityPolicy<Table> mockTableRepo = mock(EntityPolicy.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table table = new Table();
+    table.setId(UUID.randomUUID());
+    table.setName("retail_customers");
+    table.setFullyQualifiedName(expectedFqn);
+
+    EntityReference expectedRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(expectedFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+      doReturn(
+              new EntityCollectionFixture<>(
+                  null,
+                  (Fields selectedFields, ListFilter selectedFilter) ->
+                      matchLike(List.of(table), selectedFilter)))
+          .when(mockTableRepo)
+          .collections();
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(expectedFqn), eq(Include.NON_DELETED)))
+          .thenReturn(expectedRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(
+          result,
+          "A single bare token must resolve by table name alone when its namespace maps to a "
+              + "service and exactly one table matches");
+      assertEquals(expectedFqn, result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveTable_bareTokenAmbiguous_returnsNullAndWarns() {
+    Logger resolverLogger = (Logger) LoggerFactory.getLogger(OpenLineageEntityResolver.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    resolverLogger.addAppender(appender);
+
+    try {
+      OpenLineageEntityResolver resolver =
+          new OpenLineageEntityResolver(
+              false, "openlineage", Map.of("s3://data-dev-datalake", "aws_glue_catalog_dev"));
+
+      OpenLineageInputDataset dataset =
+          new OpenLineageInputDataset()
+              .withNamespace("s3://data-dev-datalake")
+              .withName("retail_customers");
+
+      String firstFqn = "aws_glue_catalog_dev.048372910264.data_dev_main.retail_customers";
+      String secondFqn = "aws_glue_catalog_dev.048372910264.data_dev_raw.retail_customers";
+
+      @SuppressWarnings("unchecked")
+      EntityPolicy<Table> mockTableRepo = mock(EntityPolicy.class);
+      Fields mockFields = mock(Fields.class);
+
+      Table first = new Table();
+      first.setId(UUID.randomUUID());
+      first.setName("retail_customers");
+      first.setFullyQualifiedName(firstFqn);
+
+      Table second = new Table();
+      second.setId(UUID.randomUUID());
+      second.setName("retail_customers");
+      second.setFullyQualifiedName(secondFqn);
+
+      try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+        mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+        when(mockTableRepo.fieldPolicy())
+            .thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+        doReturn(
+                new EntityCollectionFixture<>(
+                    null,
+                    (Fields selectedFields, ListFilter selectedFilter) -> List.of(first, second)))
+            .when(mockTableRepo)
+            .collections();
+
+        assertNull(
+            resolver.resolveTable(dataset),
+            "A bare token matching more than one table must be dropped, not guessed - picking one "
+                + "arbitrarily is the failure mode issue #31841 fixed");
+      }
+
+      String warnings =
+          appender.list.stream()
+              .filter(event -> event.getLevel() == Level.WARN)
+              .map(ILoggingEvent::getFormattedMessage)
+              .collect(Collectors.joining("\n"));
+
+      assertTrue(
+          warnings.contains(firstFqn) && warnings.contains(secondFqn),
+          "Dropping an ambiguous bare token must name the competing FQNs, got: " + warnings);
+    } finally {
+      resolverLogger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void resolveTable_bareTokenWithoutNamespaceMapping_neverSearchesCatalogWide() {
+    OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://data-dev-datalake")
+            .withName("retail_customers");
+
+    String someFqn = "some_other_service.db.schema.retail_customers";
+
+    @SuppressWarnings("unchecked")
+    EntityPolicy<Table> mockTableRepo = mock(EntityPolicy.class);
+    Fields mockFields = mock(Fields.class);
+
+    Table table = new Table();
+    table.setId(UUID.randomUUID());
+    table.setName("retail_customers");
+    table.setFullyQualifiedName(someFqn);
+
+    EntityReference ref =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(someFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+      // Any lookup at all would match, so a non-null result proves an unscoped search ran.
+      doReturn(
+              new EntityCollectionFixture<>(
+                  null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(table)))
+          .when(mockTableRepo)
+          .collections();
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(someFqn), eq(Include.NON_DELETED)))
+          .thenReturn(ref);
+
+      assertNull(
+          resolver.resolveTable(dataset),
+          "Without a namespace-to-service mapping, a bare token must not be matched against the "
+              + "whole catalog by table name");
+    }
+  }
+
+  @Test
+  void resolveTable_bareTokenWithUnderscore_doesNotMatchWildcardSibling() {
+    OpenLineageEntityResolver resolver =
+        new OpenLineageEntityResolver(
+            false, "openlineage", Map.of("s3://data-dev-datalake", "aws_glue_catalog_dev"));
+
+    OpenLineageInputDataset dataset =
+        new OpenLineageInputDataset()
+            .withNamespace("s3://data-dev-datalake")
+            .withName("retail_customers");
+
+    String expectedFqn = "aws_glue_catalog_dev.048372910264.data_dev_main.retail_customers";
+    String siblingFqn = "aws_glue_catalog_dev.048372910264.data_dev_main.retail-customers";
+
+    @SuppressWarnings("unchecked")
+    EntityPolicy<Table> mockTableRepo = mock(EntityPolicy.class);
+    Fields mockFields = mock(Fields.class);
+
+    List<Table> catalog = List.of(tableWithFqn(expectedFqn), tableWithFqn(siblingFqn));
+
+    EntityReference expectedRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table")
+            .withFullyQualifiedName(expectedFqn);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+      when(mockTableRepo.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+      doReturn(
+              new EntityCollectionFixture<>(
+                  null,
+                  (Fields selectedFields, ListFilter selectedFilter) ->
+                      matchLike(catalog, selectedFilter)))
+          .when(mockTableRepo)
+          .collections();
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityReferenceByName(
+                      eq(Entity.TABLE), eq(expectedFqn), eq(Include.NON_DELETED)))
+          .thenReturn(expectedRef);
+
+      EntityReference result = resolver.resolveTable(dataset);
+
+      assertNotNull(
+          result,
+          "Underscores in a bare table name are SQL LIKE wildcards unless escaped, so an "
+              + "unrelated sibling named retail-customers turns a unique match into an ambiguous "
+              + "one and silently drops a valid edge");
+      assertEquals(expectedFqn, result.getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void resolveTable_bareTokenAmbiguous_doesNotAdviseAddingAnExistingMapping() {
+    Logger resolverLogger = (Logger) LoggerFactory.getLogger(OpenLineageEntityResolver.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    resolverLogger.addAppender(appender);
+
+    try {
+      OpenLineageEntityResolver resolver =
+          new OpenLineageEntityResolver(
+              false, "openlineage", Map.of("s3://data-dev-datalake", "aws_glue_catalog_dev"));
+
+      OpenLineageInputDataset dataset =
+          new OpenLineageInputDataset()
+              .withNamespace("s3://data-dev-datalake")
+              .withName("customers");
+
+      @SuppressWarnings("unchecked")
+      EntityPolicy<Table> mockTableRepo = mock(EntityPolicy.class);
+      Fields mockFields = mock(Fields.class);
+
+      try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+        mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+        when(mockTableRepo.fieldPolicy())
+            .thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+        doReturn(
+                new EntityCollectionFixture<>(
+                    null,
+                    (Fields selectedFields, ListFilter selectedFilter) ->
+                        List.of(
+                            tableWithFqn("aws_glue_catalog_dev.048372910264.main.customers"),
+                            tableWithFqn("aws_glue_catalog_dev.048372910264.raw.customers"))))
+            .when(mockTableRepo)
+            .collections();
+
+        assertNull(resolver.resolveTable(dataset));
+      }
+
+      String warnings = warnMessages(appender);
+
+      assertEquals(
+          1,
+          appender.list.stream().filter(event -> event.getLevel() == Level.WARN).count(),
+          "An ambiguous mapped lookup must emit one actionable warning");
+      assertFalse(
+          warnings.contains("namespaceToServiceMapping"),
+          "The namespace is already mapped - telling the operator to map it contradicts the "
+              + "ambiguity warning emitted moments earlier, got: "
+              + warnings);
+      assertTrue(
+          warnings.contains("aws_glue_catalog_dev"),
+          "An ambiguous bare token must name the service that was searched, got: " + warnings);
+    } finally {
+      resolverLogger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void resolveTable_bareTokenMappedButMissing_warnsWithoutTheMappingRemedy() {
+    Logger resolverLogger = (Logger) LoggerFactory.getLogger(OpenLineageEntityResolver.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    resolverLogger.addAppender(appender);
+
+    try {
+      OpenLineageEntityResolver resolver =
+          new OpenLineageEntityResolver(
+              false, "openlineage", Map.of("s3://data-dev-datalake", "aws_glue_catalog_dev"));
+
+      OpenLineageInputDataset dataset =
+          new OpenLineageInputDataset()
+              .withNamespace("s3://data-dev-datalake")
+              .withName("customers");
+
+      @SuppressWarnings("unchecked")
+      EntityPolicy<Table> mockTableRepo = mock(EntityPolicy.class);
+      Fields mockFields = mock(Fields.class);
+
+      try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+        mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+        when(mockTableRepo.fieldPolicy())
+            .thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+        doReturn(
+                new EntityCollectionFixture<>(
+                    null, (Fields selectedFields, ListFilter selectedFilter) -> List.of()))
+            .when(mockTableRepo)
+            .collections();
+
+        assertNull(resolver.resolveTable(dataset));
+      }
+
+      String warnings = warnMessages(appender);
+
+      assertFalse(
+          warnings.contains("namespaceToServiceMapping"),
+          "The mapping exists and the lookup ran - the remedy hint is wrong here, got: "
+              + warnings);
+      assertTrue(
+          warnings.contains("aws_glue_catalog_dev") && warnings.contains("customers"),
+          "A mapped namespace with no matching table must report the table and service it "
+              + "searched, got: "
+              + warnings);
+    } finally {
+      resolverLogger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  @Test
+  void resolveTable_bareTokenWithoutMapping_advisesAddingAMapping() {
+    Logger resolverLogger = (Logger) LoggerFactory.getLogger(OpenLineageEntityResolver.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    resolverLogger.addAppender(appender);
+
+    try {
+      OpenLineageEntityResolver resolver = new OpenLineageEntityResolver(false, "openlineage");
+
+      OpenLineageInputDataset dataset =
+          new OpenLineageInputDataset()
+              .withNamespace("s3://data-dev-datalake")
+              .withName("customers");
+
+      @SuppressWarnings("unchecked")
+      EntityPolicy<Table> mockTableRepo = mock(EntityPolicy.class);
+      Fields mockFields = mock(Fields.class);
+
+      try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+        mockedEntity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(mockTableRepo);
+        when(mockTableRepo.fieldPolicy())
+            .thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+        doReturn(
+                new EntityCollectionFixture<>(
+                    null, (Fields selectedFields, ListFilter selectedFilter) -> List.of()))
+            .when(mockTableRepo)
+            .collections();
+
+        assertNull(resolver.resolveTable(dataset));
+      }
+
+      assertTrue(
+          warnMessages(appender).contains("namespaceToServiceMapping"),
+          "An unmapped bare token is only resolvable once the operator declares the namespace, so "
+              + "that remedy must stay in the log");
+    } finally {
+      resolverLogger.detachAppender(appender);
+      appender.stop();
+    }
+  }
+
+  private static Table tableWithFqn(String fqn) {
+    Table table = new Table();
+    table.setId(UUID.randomUUID());
+    table.setName(fqn.substring(fqn.lastIndexOf('.') + 1));
+    table.setFullyQualifiedName(fqn);
+    return table;
+  }
+
+  private static String warnMessages(ListAppender<ILoggingEvent> appender) {
+    return appender.list.stream()
+        .filter(event -> event.getLevel() == Level.WARN)
+        .map(ILoggingEvent::getFormattedMessage)
+        .collect(Collectors.joining("\n"));
+  }
+
+  /**
+   * Applies the SQL LIKE semantics the resolver relies on, so a test can tell an escaped literal
+   * from an accidental wildcard. Mirrors the {@code ESCAPE '!'} clause the resolver emits.
+   */
+  private static List<Table> matchLike(List<Table> catalog, ListFilter filter) {
+    String pattern = filter.getQueryParam("fqnPattern");
+    if (pattern == null) {
+      pattern = filter.getQueryParam("fqnSuffix");
+    }
+    if (pattern == null) {
+      return List.of();
+    }
+    boolean usesBangEscape = filter.getCondition("entity_table").contains(" ESCAPE '!'");
+    String regex = likePatternToRegex(pattern, usesBangEscape);
+    return catalog.stream()
+        .filter(table -> table.getFullyQualifiedName().matches(regex))
+        .collect(Collectors.toList());
+  }
+
+  private static String likePatternToRegex(String pattern, boolean usesBangEscape) {
+    StringBuilder regex = new StringBuilder();
+    boolean escaped = false;
+    for (char c : pattern.toCharArray()) {
+      if (escaped) {
+        regex.append(Pattern.quote(String.valueOf(c)));
+        escaped = false;
+      } else if (usesBangEscape && c == '!') {
+        escaped = true;
+      } else if (c == '%') {
+        regex.append(".*");
+      } else if (c == '_') {
+        regex.append('.');
+      } else {
+        regex.append(Pattern.quote(String.valueOf(c)));
+      }
+    }
+    return regex.toString();
   }
 
   // Helper method to test data type mapping

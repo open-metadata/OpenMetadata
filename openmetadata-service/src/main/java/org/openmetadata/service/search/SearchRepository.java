@@ -18,6 +18,8 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface.getStringWithClusterAlias;
+import static org.openmetadata.service.jdbi3.DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX;
 import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
@@ -61,6 +63,8 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -68,6 +72,7 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -185,7 +190,15 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class SearchRepository {
 
+  private static final int MAPPED_FIELD_CACHE_MAX_SIZE = 256;
+  private static final Duration MAPPED_FIELD_CACHE_TTL = Duration.ofMinutes(1);
+
   private volatile SearchClient searchClient;
+  private final Cache<String, Boolean> mappedFieldCache =
+      Caffeine.newBuilder()
+          .maximumSize(MAPPED_FIELD_CACHE_MAX_SIZE)
+          .expireAfterWrite(MAPPED_FIELD_CACHE_TTL)
+          .build();
 
   /**
    * Upper bound on parent ids packed into a single inherited-domain child-propagation terms query,
@@ -993,6 +1006,20 @@ public class SearchRepository {
   }
 
   /**
+   * Entity types that have a search index registered for this deployment, sorted. The registry is
+   * merged from the classpath at startup ({@code elasticsearch/indexMapping.json} plus
+   * {@code elasticsearch/collate/indexMapping.json} when present), so Collate-only indexes are
+   * included without the caller knowing which distribution it runs on.
+   *
+   * <p>This is the authoritative reindexing target list: {@code SearchIndexingApplication} expands
+   * {@code "all"} from it and {@code GET /v1/search/entityTypes} serves it to the entity picker, so
+   * the two cannot drift.
+   */
+  public Set<String> getIndexedEntityTypes() {
+    return Collections.unmodifiableSet(new TreeSet<>(entityIndexMap.keySet()));
+  }
+
+  /**
    * Register a staged index as the live-write target for {@code entityType} while a reindex
    * populates it. Must be paired with {@link #unregisterStagedIndex(String, String)} once the
    * alias swap is complete so writes go back through the canonical alias.
@@ -1131,7 +1158,7 @@ public class SearchRepository {
 
   /**
    * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
-   * query. Handles four shapes:
+   * query. Handles these shapes:
    *
    * <ul>
    *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
@@ -1151,6 +1178,8 @@ public class SearchRepository {
    *       the legacy behavior.
    *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
    *       internal code paths that hand back a resolved value don't double-prefix.
+   *   <li><b>Data Insights index or wildcard</b>: uses the hyphen-separated cluster prefix
+   *       used by DI data streams and aliases.
    * </ul>
    *
    * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
@@ -1174,8 +1203,13 @@ public class SearchRepository {
   }
 
   private String resolveSingleAliasToken(String token, String clusterPrefix) {
-    if (clusterPrefix != null && token.startsWith(clusterPrefix)) {
+    if (clusterPrefix != null
+        && (token.startsWith(clusterPrefix)
+            || token.startsWith(getStringWithClusterAlias(clusterAlias, DI_SEARCH_INDEX_PREFIX)))) {
       return token;
+    }
+    if (token.startsWith(DI_SEARCH_INDEX_PREFIX)) {
+      return getStringWithClusterAlias(clusterAlias, token);
     }
     IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
     if (mapping == null && aliasIndexMap != null) {
@@ -3760,7 +3794,7 @@ public class SearchRepository {
             JsonUtils.convertValue(
                 fieldChange.getNewValue(),
                 new TypeReference<List<LinkedHashMap<String, String>>>() {}));
-        fieldAddParams.put(FIELD_DOMAINS, entity.getDomains());
+        fieldAddParams.put(FIELD_DOMAINS, buildEntityRefListWithDisplayName(entity.getDomains()));
         scriptTxt.append("ctx._source.queryUsedIn = params.queryUsedIn;");
         scriptTxt.append("ctx._source.domains = params.domains;");
       }
@@ -4266,6 +4300,54 @@ public class SearchRepository {
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+  }
+
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  public boolean isFieldMappedInIndex(String index, String fieldPath) throws IOException {
+    String cacheKey = index + ":" + fieldPath;
+    Boolean cached = mappedFieldCache.getIfPresent(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    boolean mapped = searchClient.isFieldMappedInIndex(index, fieldPath);
+    mappedFieldCache.put(cacheKey, mapped);
+    return mapped;
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {

@@ -12,8 +12,10 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Edge, useReactFlow, useViewport } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
+import { useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
 import { useLineageEdgeColors } from '../../../hooks/useLineageEdgeColors';
@@ -28,17 +30,26 @@ import { CanvasButtonPopover } from './CanvasButtonPopover.component';
 export interface CanvasEdgeRendererProps {
   dqHighlightedEdges: Set<string>;
   hoverEdge: Edge | null;
+  edges?: Edge[];
+  nodes?: Node[];
+  pathHighlightedEdgeIds?: Set<string>;
+  isPathHighlightActive?: boolean;
   onEdgeClick?: (edge: Edge, event: MouseEvent) => void;
   onEdgeHover?: (edge: Edge | null) => void;
 }
 
 export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   dqHighlightedEdges,
+  edges: edgesOverride,
+  nodes: nodesOverride,
+  pathHighlightedEdgeIds,
+  isPathHighlightActive,
   onEdgeClick,
   onEdgeHover,
   hoverEdge,
 }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const edgeColors = useLineageEdgeColors();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,7 +61,9 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     tracedNodes,
     tracedColumns,
   } = useLineageStore();
-  const { edges, nodes } = useLineageProvider();
+  const { edges: providerEdges, nodes: providerNodes } = useLineageProvider();
+  const edges = edgesOverride ?? providerEdges;
+  const nodes = nodesOverride ?? providerNodes;
   const { getNode } = useReactFlow();
   const viewport = useViewport();
 
@@ -112,8 +125,11 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     dqHighlightedEdges,
     colors: edgeColors,
     hoverEdge,
+    pathHighlightedEdgeIds,
+    isPathHighlightActive,
     containerWidth: containerSize.width,
     containerHeight: containerSize.height,
+    theme,
   });
 
   useEffect(() => {
