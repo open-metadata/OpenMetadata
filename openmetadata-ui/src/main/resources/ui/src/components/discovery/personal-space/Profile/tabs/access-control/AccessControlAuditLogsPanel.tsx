@@ -420,7 +420,7 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
 
   const renderExportProgress = () =>
     exportJob?.status === 'IN_PROGRESS' ? (
-      <Box className="tw:flex tw:flex-col tw:gap-2">
+      <Box direction="col" gap={2}>
         <ProgressBarBase value={exportProgress} />
         <Typography as="p" className="tw:mt-2" size="text-md">
           {exportJob.message ?? t('message.exporting')}
@@ -440,16 +440,16 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
 
   return (
     <Box
-      className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6"
+      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6" direction="col"
       data-testid="audit-logs-page">
 
       {/* Card wrapping filters + log list */}
-      <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mb-3">
+      <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden tw:mb-3">
         {/* Filters row inside card */}
         <Box
           className="tw:shrink-0 tw:p-4 tw:border-b tw:border-secondary"
           direction="col">
-          <Box className="tw:flex tw:items-center tw:gap-4" direction="row">
+          <Box align="center" direction="row" gap={4}>
             <Box
               className="tw:shrink-0"
               data-testid="audit-log-search-container">
@@ -474,10 +474,10 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
 
           {hasActiveFilters && (
             <Box
-              className="tw:flex tw:items-center tw:w-full tw:mt-2"
+              className="tw:w-full tw:mt-2" align="center" direction="row"
               data-testid="filter-selection-container"
               direction="row">
-              <Box className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1" direction="row">
+              <Box className="tw:flex-wrap tw:flex-1" direction="row" gap={2}>
                 {activeFilters.map((filter) => (
                   <Badge
                     className="tw:outline-0 tw:gap-1"
@@ -486,7 +486,7 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
                     size="lg"
                     type="color">
                     <Box
-                      className="tw:flex tw:items-center tw:gap-1"
+                      align="center" direction="row" gap={1}
                       data-testid={`filter-chip-${filter.category}`}
                       direction="row">
                       <Typography
@@ -581,7 +581,7 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
               <Typography as="p" size="text-md">
                 {t('message.export-audit-logs-description')}
               </Typography>
-              <Box className="tw:flex tw:flex-col tw:gap-2">
+              <Box direction="col" gap={2}>
                 <Typography
                   as="p"
                   className="tw:text-gray-400"

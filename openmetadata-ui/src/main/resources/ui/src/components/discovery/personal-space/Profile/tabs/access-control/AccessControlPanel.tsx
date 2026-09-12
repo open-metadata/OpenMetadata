@@ -299,6 +299,11 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
         <AccessControlRoleDetail
           fqn={view.fqn}
           onNavigate={onNavigate}
+          onRename={(newName) =>
+            setView((prev) =>
+              prev.type === 'roles-detail' ? { ...prev, name: newName } : prev
+            )
+          }
           onSetHeaderActions={setDetailHeaderActions}
           onSetHeaderTitleInput={setDetailHeaderTitleInput}
           onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}
@@ -319,6 +324,11 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
         <AccessControlPolicyDetail
           fqn={view.fqn}
           onNavigate={onNavigate}
+          onRename={(newName) =>
+            setView((prev) =>
+              prev.type === 'policies-detail' ? { ...prev, name: newName } : prev
+            )
+          }
           onSetHeaderActions={setDetailHeaderActions}
           onSetHeaderTitleInput={setDetailHeaderTitleInput}
           onSetHeaderTitleSuffix={setDetailHeaderTitleSuffix}

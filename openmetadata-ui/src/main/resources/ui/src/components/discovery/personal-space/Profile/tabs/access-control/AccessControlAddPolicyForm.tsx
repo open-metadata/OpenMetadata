@@ -109,14 +109,15 @@ const AccessControlAddPolicyForm: React.FC<
   };
 
   return (
-    <Box className="tw:flex tw:flex-col tw:h-full tw:min-h-0" direction="col">
+    <Box className="tw:h-full tw:min-h-0" direction="col">
       {/* Scrollable form area */}
       <div className="tw:overflow-y-auto">
         <Box
-          className="tw:flex-1 tw:p-6 tw:flex tw:flex-col tw:gap-5 tw:max-w-[50%] tw:w-full tw:pt-0"
+          className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0"
           data-testid="add-policy-container"
-          direction="col">
-          <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
+          direction="col"
+          gap={5}>
+          <Box direction="col" gap={1}>
             <Typography
               className="tw:text-sm tw:font-medium tw:text-secondary"
               size="text-sm"
@@ -145,7 +146,7 @@ const AccessControlAddPolicyForm: React.FC<
             )}
           </Box>
 
-          <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
+          <Box direction="col" gap={1}>
             <Typography
               className="tw:text-sm tw:font-medium tw:text-secondary"
               size="text-sm"
@@ -161,10 +162,8 @@ const AccessControlAddPolicyForm: React.FC<
           </Box>
 
           {/* Rule section */}
-          <Box className="tw:flex tw:flex-col tw:gap-3" direction="col">
-            <Box
-              className="tw:border-t tw:border-secondary tw:pt-4"
-              direction="col">
+          <Box direction="col" gap={3}>
+            <Box className="tw:border-t tw:border-secondary tw:pt-4" direction="col">
               <Typography
                 className="tw:text-sm tw:font-semibold tw:text-primary"
                 size="text-sm"

@@ -37,6 +37,7 @@ import React, {
     useRef,
     useState
 } from 'react';
+import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
@@ -54,6 +55,10 @@ import {
     getRoleByName,
     patchRole
 } from '../../../../../../rest/rolesAPIV1';
+import {
+    getUserById,
+    updateUserDetail
+} from '../../../../../../rest/userAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
@@ -69,6 +74,7 @@ import type { AccessControlView } from './AccessControlPanel';
 
 type RoleTab = 'policies' | 'teams' | 'users';
 type DetailColumnId = 'name' | 'description' | 'actions';
+type DetailColumn = { id: DetailColumnId; label: string; className?: string };
 
 // ─── Description cell renderer ────────────────────────────────────────────────
 
@@ -93,9 +99,11 @@ const renderEntityCell = (
 ) => {
   if (colId === 'name') {
     return (
-      <Typography className="tw:text-sm tw:font-medium tw:text-primary">
-        {getEntityName(item)}
-      </Typography>
+      <Tooltip placement="top" title={getEntityName(item)}>
+        <Typography ellipses weight='medium'>
+          {getEntityName(item)}
+        </Typography>
+      </Tooltip>
     );
   }
 
@@ -128,7 +136,7 @@ const renderEntityCell = (
 interface EntityTableProps {
   ariaLabel: string;
   canEditAll: boolean;
-  columns: { id: DetailColumnId; label: string }[];
+  columns: DetailColumn[];
   emptyTitle: string;
   headerAction?: React.ReactNode;
   isLoadingOnSave: boolean;
@@ -158,16 +166,16 @@ const EntityTable: FC<EntityTableProps> = ({
         title=""
       />
     )}
-    <Table aria-label={ariaLabel} size="compact">
+    <Table className="tw:table-fixed" aria-label={ariaLabel} size="compact">
       <Table.Header columns={columns}>
         {(col) => (
-          <Table.Head id={col.id} key={col.id} label={col.label} />
+          <Table.Head className={col.className} id={col.id} key={col.id} label={col.label} />
         )}
       </Table.Header>
       <Table.Body
         items={items ?? []}
         renderEmptyState={() => (
-          <Box className="tw:min-h-32 tw:flex tw:items-center tw:justify-center tw:relative">
+          <Box className="tw:min-h-32 tw:relative" align="center" justify="center">
             <EmptyPlaceholder title={emptyTitle} />
           </Box>
         )}>
@@ -178,7 +186,7 @@ const EntityTable: FC<EntityTableProps> = ({
             id={item.fullyQualifiedName ?? item.name ?? item.id}
             key={item.fullyQualifiedName ?? item.name ?? item.id}>
             {(col) => (
-              <Table.Cell key={col.id}>
+              <Table.Cell className={col.className} key={col.id}>
                 {renderEntityCell(
                   item,
                   col.id as DetailColumnId,
@@ -249,7 +257,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
           initialValue={description ?? ''}
           ref={editorRef}
         />
-        <Box className="tw:flex tw:gap-2 tw:justify-end" direction="row">
+        <Box direction="row" gap={2} justify="end">
           <Button
             color="tertiary"
             isDisabled={isSaving}
@@ -298,7 +306,7 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
   }, []);
 
   return (
-    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+    <Box align="center" direction="row" gap={2}>
       <Input
         className="tw:text-lg tw:font-bold"
         data-testid="rename-input"
@@ -346,7 +354,7 @@ const RoleHeaderActions: FC<RoleHeaderActionsProps> = ({
   onRename,
   t,
 }) => (
-  <Box className="tw:flex tw:items-center tw:gap-1" direction="row">
+  <Box align="center" direction="row" gap={1}>
     <Tooltip
       placement="left"
       title={String(canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION))}>
@@ -379,6 +387,7 @@ const RoleHeaderActions: FC<RoleHeaderActionsProps> = ({
 interface AccessControlRoleDetailProps {
   fqn: string;
   onNavigate: (view: AccessControlView) => void;
+  onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
   onSetHeaderTitleSuffix?: (titleSuffix: React.ReactNode) => void;
@@ -387,12 +396,14 @@ interface AccessControlRoleDetailProps {
 const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   fqn,
   onNavigate,
+  onRename,
   onSetHeaderActions,
   onSetHeaderTitleInput,
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { contains } = useFilter({ sensitivity: 'base' });
 
   const [role, setRole] = useState<Role>();
   const [isLoading, setIsLoading] = useState(true);
@@ -424,11 +435,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
 
   const [removeKind, setRemoveKind] = useState<'policy' | 'user'>('policy');
 
-  const columns = useMemo(
+  const columns = useMemo<DetailColumn[]>(
     () => [
-      { id: 'name' as DetailColumnId, label: t('label.name') },
-      { id: 'description' as DetailColumnId, label: t('label.description') },
-      { id: 'actions' as DetailColumnId, label: t('label.action-plural') },
+      { id: 'name', label: t('label.name'), className: 'tw:w-60' },
+      { id: 'description', label: t('label.description') },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
     ],
     [t]
   );
@@ -468,8 +479,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
       const saved = await patchRole(compare(role, updatedRole), role.id);
       setRole(saved);
       setIsRenameOpen(false);
+      onRename?.(renameValue.trim());
       showSuccessToast(
-        t('server.entity-updated-successfully', { entity: t('label.role') })
+        t('server.entity-updated-success', { entity: t('label.role') })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -562,7 +574,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
       setRole(saved);
       setIsEditingDesc(false);
       showSuccessToast(
-        t('server.entity-updated-successfully', { entity: t('label.role') })
+        t('server.entity-updated-success', { entity: t('label.role') })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -608,7 +620,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         await patchRole(compare(role, updatedRole), role.id);
         setRole(updatedRole);
         showSuccessToast(
-          t('server.entity-updated-successfully', { entity: t('label.role') })
+          t('server.entity-updated-success', { entity: t('label.role') })
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -625,17 +637,18 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         return;
       }
 
-      const updatedRole = {
-        ...role,
-        users: (role.users ?? []).filter(
-          (u) => u.fullyQualifiedName !== userRef.fullyQualifiedName
-        ),
-      };
-
       setIsLoadingOnSave(true);
       try {
-        await patchRole(compare(role, updatedRole), role.id);
-        setRole(updatedRole);
+        const user = await getUserById(userRef.id!, { fields: 'roles' });
+        const updatedUser = {
+          ...user,
+          roles: (user.roles ?? []).filter((r) => r.id !== role.id),
+        };
+        await updateUserDetail(userRef.id!, compare(user, updatedUser));
+        setRole({
+          ...role,
+          users: (role.users ?? []).filter((u) => u.id !== userRef.id),
+        });
         showSuccessToast(
           t('server.entity-updated-successfully', { entity: t('label.role') })
         );
@@ -701,7 +714,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
       setIsAddingPolicy(false);
       setSelectedNewPolicies([]);
       showSuccessToast(
-        t('server.entity-updated-successfully', { entity: t('label.role') })
+        t('server.entity-updated-success', { entity: t('label.role') })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -762,7 +775,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
 
   return (
     <Box
-      className="tw:flex tw:flex-col tw:gap-4"
+      direction="col" gap={4}
       data-testid="role-detail-container"
       direction="col">
 
@@ -799,7 +812,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           <Box className="tw:w-full" direction="col" gap={3}>
             {isAddingPolicy && (
               <Box
-                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4 tw:flex tw:flex-col tw:gap-4"
+                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4" direction="col" gap={4}
                 direction="col">
                 <Typography
                   className="tw:text-sm tw:font-semibold tw:text-primary"
@@ -812,6 +825,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
                 ) : (
                   <Autocomplete
                     data-testid="add-policy-select"
+                    filterOption={(item, filterText) =>
+                      contains(item.label || '', filterText) ||
+                      contains(String(item.id), filterText)
+                    }
                     items={policyItems}
                     placeholder={t('label.select-a-policy')}
                     selectedItems={selectedPolicyItems}
@@ -825,7 +842,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
                   </Autocomplete>
                 )}
                 <Box
-                  className="tw:flex tw:gap-3 tw:justify-end"
+                  direction="row" gap={3} justify="end"
                   direction="row">
                   <Button
                     color="tertiary"

@@ -186,8 +186,8 @@ const AccessControlDebuggerPanel: React.FC = () => {
             {t('label.permission-evaluation-result')}
           </Typography>
         </Box>
-        <Box className="tw:p-6 tw:flex tw:flex-col tw:gap-4">
-          <Box className="tw:flex tw:flex-col tw:gap-2 tw:bg-tertiary tw:p-4 tw:rounded-lg">
+        <Box className="tw:p-6" direction="col" gap={4}>
+          <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="col" gap={2}>
             <Typography className="tw:text-lg tw:font-semibold tw:text-primary">
               {`${t('label.decision')}: ${evaluationInfo.finalDecision}`}
             </Typography>
@@ -234,7 +234,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
             </Box>
           )}
 
-          <Box className="tw:flex tw:flex-col tw:gap-2">
+          <Box direction="col" gap={2}>
             <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
               {`${t('label.evaluation-step-plural')}:`}
             </Typography>
@@ -246,9 +246,9 @@ const AccessControlDebuggerPanel: React.FC = () => {
 
               return (
                 <Card
-                  className="tw:p-4 tw:flex tw:flex-col tw:gap-2 tw: bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500"
+                  className="tw:p-4 tw:bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500" direction="col" gap={2}
                   key={step.stepNumber}>
-                  <Box className="tw:flex tw:flex-wrap tw:gap-2 tw:items-center" direction="row">
+                  <Box className="tw:flex-wrap" align="center" direction="row" gap={2}>
                     <Typography className="tw:text-sm tw:text-secondary">
                       {`${t('label.step')} ${step.stepNumber}: `}
                     </Typography>
@@ -276,13 +276,13 @@ const AccessControlDebuggerPanel: React.FC = () => {
                     {step.matchReason}
                   </Typography>
                   {step.conditionEvaluations.length > 0 && (
-                    <Box className="tw:flex tw:flex-col tw:gap-1">
+                    <Box direction="col" gap={1}>
                       <Typography className="tw:text-sm tw:text-secondary">
                         {`${t('label.condition-plural')}:`}
                       </Typography>
                       {step.conditionEvaluations.map((cond) => (
                         <Box
-                          className="tw:flex tw:gap-2 tw:items-center"
+                          align="center" direction="row" gap={2}
                           direction="row"
                           key={cond.condition}>
                           <Typography className="tw:text-xs tw:font-mono tw:bg-secondary tw:px-1 tw:rounded">
@@ -304,7 +304,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
           </Box>
 
           {evaluationInfo.summary?.reasonsForDecision && (
-            <Box className="tw:flex tw:flex-col tw:gap-2 tw:bg-tertiary tw:p-4 tw:rounded-lg">
+            <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="col" gap={2}>
               <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
                 {`${t('label.reasons-for-decision')}:`}
               </Typography>
@@ -325,13 +325,13 @@ const AccessControlDebuggerPanel: React.FC = () => {
 
   return (
     <Box
-      className="tw:flex tw:flex-col tw:gap-4 tw:pt-0"
+      className="tw:pt-0" direction="col" gap={4}
       data-testid="admin-permission-debugger"
       direction="col"
       gap={4}>
 
       {/* Card 1: Select a user */}
-      <Card className="tw:p-6 tw:flex tw:flex-col tw:gap-4">
+      <Card className="tw:p-6" direction="col" gap={4}>
         <Typography className="tw:text-sm tw:font-semibold tw:text-primary">
           {t('label.select-user-to-debug-permissions')}
         </Typography>
@@ -378,11 +378,11 @@ const AccessControlDebuggerPanel: React.FC = () => {
               {t('message.select-user-first')}
             </Typography>
           ) : (
-            <Box className="tw:flex tw:flex-col tw:gap-4">
+            <Box direction="col" gap={4}>
               <Box
-                className="tw:flex tw:flex-wrap tw:gap-4 tw:items-start"
+                className="tw:flex-wrap" align="start" direction="row" gap={4}
                 direction="row">
-                <Box className="tw:flex tw:flex-col tw:gap-1 tw:min-w-48">
+                <Box className="tw:min-w-48" direction="col" gap={1}>
                   <Typography className="tw:text-sm tw:font-medium tw:text-secondary">
                     {`${t('label.resource')} *`}
                   </Typography>
@@ -409,7 +409,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
                   )}
                 </Box>
 
-                <Box className="tw:flex tw:flex-col tw:gap-1 tw:min-w-48">
+                <Box className="tw:min-w-48" direction="col" gap={1}>
                   <Typography className="tw:text-sm tw:font-medium tw:text-secondary">
                     {`${t('label.operation')} *`}
                   </Typography>
@@ -436,7 +436,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
                   )}
                 </Box>
 
-                <Box className="tw:flex tw:flex-col tw:gap-1 tw:min-w-64">
+                <Box className="tw:min-w-64" direction="col" gap={1}>
                   <Typography className="tw:text-sm tw:font-medium tw:text-secondary">
                     {`${t('label.resource-fqn-or-id')} (${t('label.optional')})`}
                   </Typography>
@@ -475,7 +475,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
           </Box>
           <Box className="tw:p-6">
             {loadingPermissions ? (
-              <Box className="tw:flex tw:justify-center tw:py-8">
+              <Box className="tw:py-8" justify="center">
                 <Loader />
               </Box>
             ) : permissionInfo ? (

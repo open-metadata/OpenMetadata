@@ -135,25 +135,21 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   const handleResourceInserted = useCallback(
     (key: Key) => {
       const val = String(key);
-      // Selecting "All" fills in all non-All resources
       if (val === 'All') {
-        const allValues = policyResources
-          .filter((r) => !ALL_TYPE_RESOURCE_LIST.includes(r.name || ''))
-          .map((r) => r.name ?? '');
         setRuleData((prev: Rule) => ({
           ...prev,
-          resources: uniq([...(prev.resources ?? []), 'All', ...allValues]),
+          resources: ['All'],
           operations: [],
         }));
       } else {
         setRuleData((prev: Rule) => ({
           ...prev,
-          resources: uniq([...(prev.resources ?? []), val]),
+          resources: uniq([...(prev.resources ?? []).filter((r) => r !== 'All'), val]),
           operations: [],
         }));
       }
     },
-    [policyResources, setRuleData]
+    [setRuleData]
   );
 
   const handleResourceCleared = useCallback(
@@ -175,25 +171,21 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
     (key: Key) => {
       const val = String(key) as Operation;
       if (val === Operation.All) {
-        const allOps = operationItems
-          .filter((op) => op.id !== Operation.All)
-          .map((op) => op.id as Operation);
         setRuleData((prev: Rule) => ({
           ...prev,
-          operations: uniq([
-            ...(prev.operations ?? []),
-            Operation.All,
-            ...allOps,
-          ]),
+          operations: [Operation.All],
         }));
       } else {
         setRuleData((prev: Rule) => ({
           ...prev,
-          operations: uniq([...(prev.operations ?? []), val]),
+          operations: uniq([
+            ...(prev.operations ?? []).filter((op) => op !== Operation.All),
+            val,
+          ]),
         }));
       }
     },
-    [operationItems, setRuleData]
+    [setRuleData]
   );
 
   const handleOperationCleared = useCallback(
@@ -286,9 +278,9 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   }, [policyFunctions]);
 
   return (
-    <Box className="tw:flex tw:flex-col tw:gap-4">
+    <Box direction="col" gap={4}>
       {/* Rule name */}
-      <Box className="tw:flex tw:flex-col tw:gap-1">
+      <Box direction="col" gap={1}>
         <Typography
           className="tw:text-sm tw:font-medium tw:text-secondary"
           size="text-sm"
@@ -306,7 +298,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       </Box>
 
       {/* Description */}
-      <Box className="tw:flex tw:flex-col tw:gap-1">
+      <Box direction="col" gap={1}>
         <Typography
           className="tw:text-sm tw:font-medium tw:text-secondary"
           size="text-sm"
@@ -324,7 +316,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       </Box>
 
       {/* Resources */}
-      <Box className="tw:flex tw:flex-col tw:gap-1">
+      <Box direction="col" gap={1}>
         <Typography
           className="tw:text-sm tw:font-medium tw:text-secondary"
           size="text-sm"
@@ -349,7 +341,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       </Box>
 
       {/* Operations */}
-      <Box className="tw:flex tw:flex-col tw:gap-1">
+      <Box direction="col" gap={1}>
         <Typography
           className="tw:text-sm tw:font-medium tw:text-secondary"
           size="text-sm"
@@ -374,7 +366,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       </Box>
 
       {/* Effect */}
-      <Box className="tw:flex tw:flex-col tw:gap-1">
+      <Box direction="col" gap={1}>
         <Typography
           className="tw:text-sm tw:font-medium tw:text-secondary"
           size="text-sm"
@@ -404,7 +396,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       </Box>
 
       {/* Condition */}
-      <Box className="tw:flex tw:flex-col tw:gap-1">
+      <Box direction="col" gap={1}>
         <Typography
           className="tw:text-sm tw:font-medium tw:text-secondary"
           size="text-sm"

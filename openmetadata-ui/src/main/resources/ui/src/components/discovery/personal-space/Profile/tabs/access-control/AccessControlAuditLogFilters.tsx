@@ -340,7 +340,7 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
 
   return (
     <Box
-      className="tw:flex tw:flex-wrap tw:items-center tw:gap-2"
+      className="tw:flex-wrap" align="center" direction="row" gap={2}
       data-testid="audit-log-filters"
       direction="row">
       <DatePickerMenu

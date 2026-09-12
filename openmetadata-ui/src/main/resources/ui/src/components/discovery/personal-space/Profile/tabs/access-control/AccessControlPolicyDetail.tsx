@@ -20,7 +20,8 @@ import {
     TableCard,
     Tabs,
     Tooltip,
-    Typography
+    Typography, 
+    TooltipTrigger
 } from '@openmetadata/ui-core-components';
 import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -48,8 +49,11 @@ import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import {
     getPolicyByName,
-    patchPolicy
+    getRoleByName,
+    patchPolicy,
+    patchRole
 } from '../../../../../../rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../../../../rest/teamsAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
@@ -66,6 +70,7 @@ import AccessControlRuleForm from './AccessControlRuleForm';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
 type DetailColumnId = 'name' | 'description' | 'actions';
+type DetailColumn = { id: DetailColumnId; label: string; className?: string };
 
 const INITIAL_RULE: Rule = {
   name: '',
@@ -131,13 +136,13 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
       )}
     </Box>
     {isEditing ? (
-      <Box className="tw:flex tw:flex-col tw:gap-2" direction="col">
+      <Box direction="col" gap={2}>
         <RichTextEditor
           className="new-form-style"
           initialValue={description ?? ''}
           ref={editorRef}
         />
-        <Box className="tw:flex tw:gap-2 tw:justify-end" direction="row">
+        <Box direction="row" gap={2} justify="end">
           <Button
             color="tertiary"
             isDisabled={isSaving}
@@ -186,7 +191,7 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
   }, []);
 
   return (
-    <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+    <Box align="center" direction="row" gap={2}>
       <Input
         className="tw:text-lg tw:font-bold"
         data-testid="rename-input"
@@ -234,7 +239,7 @@ const PolicyHeaderActions: FC<PolicyHeaderActionsProps> = ({
   onRename,
   t,
 }) => (
-  <Box className="tw:flex tw:items-center tw:gap-1" direction="row">
+  <Box align="center" direction="row" gap={1}>
     <Tooltip
       placement="left"
       title={String(canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION))}>
@@ -286,11 +291,11 @@ const RuleCard: FC<RuleCardProps> = ({
 
   return (
     <Box
-      className="tw:border tw:border-secondary tw:rounded-xl tw:p-4 tw:flex tw:flex-col tw:gap-2"
+      className="tw:border tw:border-secondary tw:rounded-xl tw:p-4" direction="col" gap={2}
       data-testid={`rule-${rule.name}`}
       direction="col">
       <Box
-        className="tw:flex tw:items-center tw:justify-between"
+        align="center" direction="row" justify="between"
         direction="row">
         <Typography
           className="tw:text-sm tw:font-semibold tw:text-primary"
@@ -298,7 +303,7 @@ const RuleCard: FC<RuleCardProps> = ({
           weight="semibold">
           {rule.name}
         </Typography>
-        <Box className="tw:flex tw:gap-1" direction="row">
+        <Box direction="row" gap={1}>
           <Tooltip
             placement="left"
             title={String(canEditAll ? t('label.edit') : t(NO_PERMISSION_FOR_ACTION))}>
@@ -325,8 +330,8 @@ const RuleCard: FC<RuleCardProps> = ({
           </Tooltip>
         </Box>
       </Box>
-      <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
-        <Box className="tw:flex tw:gap-2" direction="row">
+      <Box direction="col" gap={1}>
+        <Box direction="row" gap={2}>
           <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
             {`${t('label.resource-plural')}:`}
           </Typography>
@@ -334,7 +339,7 @@ const RuleCard: FC<RuleCardProps> = ({
             {(rule.resources ?? []).join(', ') || '--'}
           </Typography>
         </Box>
-        <Box className="tw:flex tw:gap-2" direction="row">
+        <Box direction="row" gap={2}>
           <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
             {`${t('label.operation-plural')}:`}
           </Typography>
@@ -342,7 +347,7 @@ const RuleCard: FC<RuleCardProps> = ({
             {(rule.operations ?? []).join(', ') || '--'}
           </Typography>
         </Box>
-        <Box className="tw:flex tw:gap-2" direction="row">
+        <Box direction="row" gap={2}>
           <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
             {`${t('label.effect')}:`}
           </Typography>
@@ -354,7 +359,7 @@ const RuleCard: FC<RuleCardProps> = ({
           </Typography>
         </Box>
         {rule.description && (
-          <Box className="tw:flex tw:gap-2" direction="row">
+          <Box direction="row" gap={2}>
             <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
               {`${t('label.description')}:`}
             </Typography>
@@ -362,7 +367,7 @@ const RuleCard: FC<RuleCardProps> = ({
           </Box>
         )}
         {rule.condition && (
-          <Box className="tw:flex tw:gap-2" direction="row">
+          <Box direction="row" gap={2}>
             <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
               {`${t('label.condition')}:`}
             </Typography>
@@ -389,9 +394,9 @@ const renderRoleOrTeamCell = (
 ) => {
   if (colId === 'name') {
     return (
-      <Typography className="tw:text-sm tw:font-medium tw:text-primary">
-        {getEntityName(item)}
-      </Typography>
+        <Typography ellipses weight='medium'>
+          {getEntityName(item)}
+        </Typography>
     );
   }
 
@@ -423,7 +428,7 @@ const renderRoleOrTeamCell = (
 
 interface RoleOrTeamTableProps {
   canEditAll: boolean;
-  columns: { id: DetailColumnId; label: string }[];
+  columns: DetailColumn[];
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[];
@@ -446,16 +451,16 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
 }) => (
   <Box className="tw:w-full tw:overflow-x-auto tw:p-1" direction="col">
     <TableCard.Root className="tw:w-full" size="compact">
-      <Table aria-label={label} size="compact">
+      <Table className="tw:table-fixed" aria-label={label} size="compact">
         <Table.Header columns={columns}>
           {(col) => (
-            <Table.Head id={col.id} key={col.id} label={col.label} />
+            <Table.Head className={col.className} id={col.id} key={col.id} label={col.label} />
           )}
         </Table.Header>
         <Table.Body
           items={items}
           renderEmptyState={() => (
-            <Box className="tw:min-h-32 tw:flex tw:items-center tw:justify-center tw:relative">
+            <Box className="tw:min-h-32 tw:relative" align="center" justify="center">
               <EmptyPlaceholder title={emptyTitle} />
             </Box>
           )}>
@@ -466,7 +471,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
               id={item.fullyQualifiedName ?? item.name ?? item.id}
               key={item.fullyQualifiedName ?? item.name ?? item.id}>
               {(col) => (
-                <Table.Cell key={col.id}>
+                <Table.Cell className={col.className} key={col.id}>
                   {renderRoleOrTeamCell(
                     item,
                     col.id as DetailColumnId,
@@ -543,7 +548,7 @@ const usePolicyDetail = (fqn: string) => {
       setEditingRule(null);
       setRuleData(INITIAL_RULE);
       showSuccessToast(
-        t('server.entity-updated-successfully', { entity: t('label.policy') })
+        t('server.entity-updated-success', { entity: t('label.policy') })
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -568,7 +573,7 @@ const usePolicyDetail = (fqn: string) => {
       try {
         setPolicy(await patchPolicy(patch, policy.id));
         showSuccessToast(
-          t('server.entity-updated-successfully', { entity: t('label.rule') })
+          t('server.entity-updated-success', { entity: t('label.rule') })
         );
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -585,17 +590,25 @@ const usePolicyDetail = (fqn: string) => {
         return;
       }
 
-      const updated = {
-        ...policy,
-        roles: (policy.roles ?? []).filter(
-          (r) => r.fullyQualifiedName !== roleRef.fullyQualifiedName
-        ),
-      };
-      const patch = compare(policy, updated);
-
       setIsLoadingOnSave(true);
       try {
-        setPolicy(await patchPolicy(patch, policy.id));
+        const role = await getRoleByName(
+          roleRef.fullyQualifiedName ?? roleRef.name ?? '',
+          'policies'
+        );
+        const updatedPolicies = (role.policies ?? []).filter(
+          (p) => p.id !== policy.id
+        );
+        const patch = compare(role, { ...role, policies: updatedPolicies });
+        await patchRole(patch, role.id);
+        setPolicy((prev) =>
+          prev
+            ? {
+                ...prev,
+                roles: (prev.roles ?? []).filter((r) => r.id !== roleRef.id),
+              }
+            : prev
+        );
         showSuccessToast(
           t('server.entity-updated-successfully', { entity: t('label.policy') })
         );
@@ -615,17 +628,25 @@ const usePolicyDetail = (fqn: string) => {
         return;
       }
 
-      const updated = {
-        ...policy,
-        teams: (policy.teams ?? []).filter(
-          (r) => r.fullyQualifiedName !== teamRef.fullyQualifiedName
-        ),
-      };
-      const patch = compare(policy, updated);
-
       setIsLoadingOnSave(true);
       try {
-        setPolicy(await patchPolicy(patch, policy.id));
+        const team = await getTeamByName(
+          teamRef.fullyQualifiedName ?? teamRef.name ?? '',
+          { fields: 'policies' }
+        );
+        const updatedPolicies = (team.policies ?? []).filter(
+          (p) => p.id !== policy.id
+        );
+        const patch = compare(team, { ...team, policies: updatedPolicies });
+        await patchTeamDetail(team.id ?? '', patch);
+        setPolicy((prev) =>
+          prev
+            ? {
+                ...prev,
+                teams: (prev.teams ?? []).filter((t) => t.id !== teamRef.id),
+              }
+            : prev
+        );
         showSuccessToast(
           t('server.entity-updated-successfully', { entity: t('label.policy') })
         );
@@ -694,15 +715,16 @@ const usePolicyDetail = (fqn: string) => {
 interface AccessControlPolicyDetailProps {
   fqn: string;
   onNavigate: (view: AccessControlView) => void;
+  onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
   onSetHeaderTitleSuffix?: (titleSuffix: React.ReactNode) => void;
 }
 
- 
 const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   fqn,
   onNavigate,
+  onRename,
   onSetHeaderActions,
   onSetHeaderTitleInput,
   onSetHeaderTitleSuffix,
@@ -745,11 +767,11 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   const [isDeletePolicyOpen, setIsDeletePolicyOpen] = useState(false);
   const [isDeletingPolicy, setIsDeletingPolicy] = useState(false);
 
-  const detailColumns = useMemo(
+  const detailColumns = useMemo<DetailColumn[]>(
     () => [
-      { id: 'name' as DetailColumnId, label: t('label.name') },
-      { id: 'description' as DetailColumnId, label: t('label.description') },
-      { id: 'actions' as DetailColumnId, label: t('label.action-plural') },
+      { id: 'name', label: t('label.name'), className: 'tw:w-60' },
+      { id: 'description', label: t('label.description') },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
     ],
     [t]
   );
@@ -766,6 +788,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       const saved = await patchPolicy(compare(policy, updated), policy.id);
       setPolicy(saved);
       setIsRenameOpen(false);
+      onRename?.(renameValue.trim());
       showSuccessToast(
         t('server.entity-updated-successfully', { entity: t('label.policy') })
       );
@@ -899,7 +922,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
 
   return (
     <Box
-      className="tw:flex tw:flex-col tw:gap-4"
+      direction="col" gap={4}
       data-testid="policy-detail-container"
       direction="col">
 
@@ -948,7 +971,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
 
             {(isAddingRule || editingRule) && (
               <Box
-                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4 tw:flex tw:flex-col tw:gap-4"
+                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4" direction="col" gap={4}
                 direction="col">
                 <Typography
                   className="tw:text-sm tw:font-semibold tw:text-primary"
@@ -963,7 +986,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
                   setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
                 />
                 <Box
-                  className="tw:flex tw:gap-3 tw:justify-end"
+                  direction="row" gap={3} justify="end"
                   direction="row">
                   <Button
                     color="tertiary"

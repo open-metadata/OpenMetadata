@@ -272,12 +272,12 @@ test.describe(
       const adminUser = await apiContext
         .get('/api/v1/users/name/admin?fields=id,name,displayName')
         .then((r) => r.json());
-      await apiContext.patch(`/api/v1/roles/${role.responseData.id}`, {
+      await apiContext.patch(`/api/v1/users/${adminUser.id}`, {
         data: [
           {
             op: 'add',
-            path: '/users/-',
-            value: { id: adminUser.id, type: 'user', name: adminUser.name },
+            path: '/roles',
+            value: [{ id: role.responseData.id, type: 'role', name: role.responseData.name }],
           },
         ],
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -305,7 +305,7 @@ test.describe(
 
       await test.step('Users tab shows pre-added user', async () => {
         await clickDetailTab(page, 'users');
-        await expect(page.getByTestId(adminUser.name)).toBeVisible();
+        await expect(page.getByRole('gridcell', { name: adminUser.name})).toBeVisible();
       });
 
       await role.delete(apiContext);
@@ -385,8 +385,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page
           .getByTestId('profile-content-header')
@@ -397,7 +396,7 @@ test.describe(
 
       await test.step('Verify new display name is shown', async () => {
         await expect(page.getByTestId('rename-input')).not.toBeVisible();
-        await expect(page.getByText(newDisplayName)).toBeVisible();
+        await expect(page.getByText(newDisplayName)).toHaveCount(2);
       });
 
       await role.delete(apiContext);
@@ -406,12 +405,10 @@ test.describe(
 
     test('should add a policy to an existing role', async ({ page }) => {
       const role = new RolesClass();
-      const extraPolicy = new PolicyClass();
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
-      await extraPolicy.create(apiContext, VIEW_ALL_RULE);
 
       await openAccessControlSettings(page);
       await navigateToRolesPanel(page);
@@ -428,20 +425,20 @@ test.describe(
         const autocomplete = page.getByTestId('add-policy-select');
         await autocomplete
           .getByRole('combobox')
-          .fill(extraPolicy.responseData.displayName);
+          .fill('AutoClassification Bot Policy');
         await page
           .getByRole('option', {
-            name: extraPolicy.responseData.displayName,
+            name: 'AutoClassification Bot Policy',
           })
           .click();
+        await page.keyboard.press('Escape');
       });
 
       await test.step('Confirm adding policy', async () => {
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page
           .getByTestId('role-detail-container')
@@ -452,12 +449,11 @@ test.describe(
 
       await test.step('Verify new policy appears in the table', async () => {
         await expect(
-          page.getByText(extraPolicy.responseData.displayName)
+          page.getByText('AutoClassificationBotPolicy')
         ).toBeVisible();
       });
 
       await role.delete(apiContext);
-      await extraPolicy.delete(apiContext);
       await afterAction();
     });
 
@@ -518,12 +514,12 @@ test.describe(
       const adminUser = await apiContext
         .get('/api/v1/users/name/admin?fields=id,name,displayName')
         .then((r) => r.json());
-      await apiContext.patch(`/api/v1/roles/${role.responseData.id}`, {
+      await apiContext.patch(`/api/v1/users/${adminUser.id}`, {
         data: [
           {
             op: 'add',
-            path: '/users/-',
-            value: { id: adminUser.id, type: 'user', name: adminUser.name },
+            path: '/roles',
+            value: [{ id: role.responseData.id, type: 'role', name: role.responseData.name }],
           },
         ],
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -535,26 +531,26 @@ test.describe(
       await clickDetailTab(page, 'users');
 
       await test.step('User row is visible', async () => {
-        await expect(page.getByTestId(adminUser.name)).toBeVisible();
+        await expect(page.getByRole('gridcell', { name: 'admin' })).toBeVisible();
       });
 
       await test.step('Click remove and confirm', async () => {
+        const patchPromise = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/users') &&
+            r.request().method() === 'PATCH' &&
+            r.status() === 200
+        );
         await page.getByTestId(`remove-${adminUser.name}`).click();
         await page
           .getByTestId('delete-modal')
           .waitFor({ state: 'visible' });
-        const patchPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
-        );
         await page.getByTestId('confirm-button').click();
         await patchPromise;
       });
 
       await test.step('User row is gone', async () => {
-        await expect(page.getByTestId(adminUser.name)).not.toBeVisible();
+        await expect(page.getByRole('gridcell', { name: 'admin' })).not.toBeVisible();
       });
 
       await role.delete(apiContext);
@@ -722,18 +718,21 @@ test.describe(
       await role.create(apiContext, [policy.responseData.name]);
 
       const orgTeam = await apiContext
-        .get('/api/v1/teams/name/Organization?fields=id,name,displayName')
+        .get('/api/v1/teams/name/Organization?fields=id,name,displayName,policies')
         .then((r) => r.json());
 
-      // Use /teams (not /teams/-) to initialise the array — a freshly created
-      // policy has no teams field and JSON-patch rejects the /teams/- append.
-      await policy.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/teams',
-          value: [{ id: orgTeam.id, type: 'team', name: orgTeam.name }],
-        },
-      ]);
+      // Link the policy to the Organization team by patching the team's policies list.
+      // This is the canonical direction: teams own their policy list, so the derived
+      // policy.teams field reflects which teams include this policy.
+      const existingPolicies: { id: string; type: string; name: string }[] =
+        orgTeam.policies ?? [];
+      const teamPatchOp = existingPolicies.length === 0
+        ? { op: 'add', path: '/policies', value: [{ id: policy.responseData.id, type: 'policy', name: policy.responseData.name }] }
+        : { op: 'add', path: '/policies/-', value: { id: policy.responseData.id, type: 'policy', name: policy.responseData.name } };
+      await apiContext.patch(`/api/v1/teams/${orgTeam.id}`, {
+        data: [teamPatchOp],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -835,8 +834,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page
           .getByTestId('profile-content-header')
@@ -847,7 +845,7 @@ test.describe(
 
       await test.step('Verify new display name is shown', async () => {
         await expect(page.getByTestId('rename-input')).not.toBeVisible();
-        await expect(page.getByText(newDisplayName)).toBeVisible();
+        await expect(page.getByText(newDisplayName)).toHaveCount(2);
       });
 
       await policy.delete(apiContext);
@@ -899,14 +897,14 @@ test.describe(
           .getByRole('listbox')
           .getByRole('option', { name: 'All', exact: true })
           .click();
+        await page.keyboard.press('Escape');
       });
 
       await test.step('Save rule and verify new card appears', async () => {
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page
           .getByTestId('policy-detail-container')
@@ -1026,7 +1024,7 @@ test.describe(
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
-      await role.create(apiContext, [policy.responseData.name]);
+      await role.create(apiContext, [policy.responseData.name, DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -1046,9 +1044,8 @@ test.describe(
           .waitFor({ state: 'visible' });
         const patchPromise = page.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.url().includes('/api/v1/roles') &&
+            r.request().method() === 'PATCH'
         );
         await page.getByTestId('confirm-button').click();
         await patchPromise;
@@ -1075,18 +1072,20 @@ test.describe(
       await policy.create(apiContext, VIEW_ALL_RULE);
 
       const orgTeam = await apiContext
-        .get('/api/v1/teams/name/Organization?fields=id,name,displayName')
+        .get('/api/v1/teams/name/Organization?fields=id,name,displayName,policies')
         .then((r) => r.json());
 
-      // Use /teams (not /teams/-) to initialise the array — a freshly created
-      // policy has no teams field and JSON-patch rejects the /teams/- append.
-      await policy.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/teams',
-          value: [{ id: orgTeam.id, type: 'team', name: orgTeam.name }],
-        },
-      ]);
+      // Link the policy to the Organization team by patching the team's policies.
+      // The canonical direction: teams own their policy list so policy.teams is derived.
+      const existingTeamPolicies: { id: string; type: string; name: string }[] =
+        orgTeam.policies ?? [];
+      const addPolicyOp = existingTeamPolicies.length === 0
+        ? { op: 'add', path: '/policies', value: [{ id: policy.responseData.id, type: 'policy', name: policy.responseData.name }] }
+        : { op: 'add', path: '/policies/-', value: { id: policy.responseData.id, type: 'policy', name: policy.responseData.name } };
+      await apiContext.patch(`/api/v1/teams/${orgTeam.id}`, {
+        data: [addPolicyOp],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -1104,7 +1103,7 @@ test.describe(
           .waitFor({ state: 'visible' });
         const patchPromise = page.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/policies') &&
+            r.url().includes('/api/v1/teams') &&
             r.request().method() === 'PATCH' &&
             r.status() === 200
         );

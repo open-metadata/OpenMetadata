@@ -21,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +51,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   onNavigate,
 }) => {
   const { t } = useTranslation();
+  const { contains } = useFilter({ sensitivity: 'base' });
   const descEditorRef = useRef<EditorContentRef>(null);
 
   const {
@@ -150,13 +152,14 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   }
 
   return (
-    <Box className="tw:flex tw:flex-col tw:h-full tw:min-h-0" direction="col">
+    <Box className="tw:h-full tw:min-h-0" direction="col">
       {/* Scrollable form area */}
       <Box
-        className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0 tw:flex tw:flex-col tw:gap-5 tw:max-w-[50%] tw:w-full"
+        className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
         data-testid="add-role-container"
-        direction="col">
-        <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
+        direction="col"
+        gap={5}>
+        <Box direction="col" gap={1}>
           <Typography
             className="tw:text-sm tw:font-medium tw:text-secondary"
             size="text-sm"
@@ -183,7 +186,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
           )}
         </Box>
 
-        <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
+        <Box direction="col" gap={1}>
           <Typography
             className="tw:text-sm tw:font-medium tw:text-secondary"
             size="text-sm"
@@ -198,7 +201,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
           />
         </Box>
 
-        <Box className="tw:flex tw:flex-col tw:gap-1" direction="col">
+        <Box direction="col" gap={1}>
           <Typography
             className="tw:text-sm tw:font-medium tw:text-secondary"
             size="text-sm"
@@ -207,6 +210,10 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
           </Typography>
           <Autocomplete
             data-testid="role-policies-select"
+            filterOption={(item, filterText) =>
+              contains(item.label || '', filterText) ||
+              contains(String(item.id), filterText)
+            }
             items={policyItems}
             placeholder={t('label.select-a-policy')}
             selectedItems={selectedPolicyItems}

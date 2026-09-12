@@ -33,8 +33,8 @@ dotenv.config();
  */
 const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 const defaultBaseURL = isH2Mode
-  ? 'https://localhost:3001'
-  : 'http://localhost:3001';
+  ? 'https://localhost:8585'
+  : 'http://localhost:8585';
 
 const shardPlan = process.env.PW_SHARD_PLAN
   ? JSON.parse(readFileSync(process.env.PW_SHARD_PLAN, 'utf8'))
@@ -211,7 +211,9 @@ export default defineConfig({
    * without them `?? CI ? 1 : 0` collapses every override to 1. */
   retries: Number(process.env.PLAYWRIGHT_RETRIES ?? (process.env.CI ? 1 : 0)),
   /* Opt out of parallel tests on CI. */
-  workers: 3,
+  workers: process.env.CI
+    ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
+    : undefined,
   // Stop catastrophically broken shards after enough failures to establish
   // that the run cannot be useful. Healthy runs never approach this limit.
   maxFailures: 50,

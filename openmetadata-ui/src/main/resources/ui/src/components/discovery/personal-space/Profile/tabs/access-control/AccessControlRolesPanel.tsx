@@ -18,6 +18,7 @@ import {
     PaginationCardWithControls,
     Popover,
     PopoverTrigger,
+    Skeleton,
     Table,
     TableCard,
     Tooltip
@@ -54,11 +55,11 @@ import {
 } from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
-import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControlPanel';
 
 type RoleColumnId = 'name' | 'description' | 'policies' | 'actions';
+type RoleColumn = { id: RoleColumnId; label: string; className?: string };
 
 interface AccessControlRolesPanelProps {
   onNavigate?: (view: AccessControlView) => void;
@@ -97,12 +98,12 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     [permissions]
   );
 
-  const columns = useMemo(
+  const columns = useMemo<RoleColumn[]>(
     () => [
-      { id: 'name' as RoleColumnId, label: t('label.name') },
-      { id: 'description' as RoleColumnId, label: t('label.description') },
-      { id: 'policies' as RoleColumnId, label: t('label.policy-plural') },
-      { id: 'actions' as RoleColumnId, label: t('label.action-plural') },
+      { id: 'name', label: t('label.name'), className: 'tw:w-70' },
+      { id: 'description', label: t('label.description') },
+      { id: 'policies', label: t('label.policy-plural'), className: 'tw:w-60' },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
     ],
     [t]
   );
@@ -184,7 +185,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (!viewPolicyPermission) {
       return (
         <Tooltip key={key} title={t(NO_PERMISSION_TO_VIEW)}>
-          <Box className="tw:text-sm">{getEntityName(policy)}</Box>
+          <Box className="tw:text-sm tw:truncate tw:block">{getEntityName(policy)}</Box>
         </Tooltip>
       );
     }
@@ -192,6 +193,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (onNavigate) {
       return (
         <Button
+          className='tw:truncate tw:block'
           color="link-color"
           key={key}
           size="sm"
@@ -210,6 +212,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     return (
       <Link
         key={key}
+        className='tw:truncate tw:block'
         to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
         {getEntityName(policy)}
       </Link>
@@ -227,19 +230,22 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     return (
       <Box
-        className="tw:flex tw:flex-wrap tw:gap-1"
+        className="tw:flex-wrap"
         data-testid="policy-link"
-        direction="row">
+        direction="row"
+        gap={1}>
         {policies.slice(0, LIST_CAP).map(renderPolicyItem)}
         {hasMore && (
           <PopoverTrigger>
-            <Box
-              className="tw:cursor-pointer tw:rounded tw:bg-secondary tw:px-1.5 tw:py-0.5 tw:text-xs tw:text-tertiary"
-              data-testid="plus-more-count">
+            <Button
+              color="tertiary"
+              className='tw:py-0'
+              data-testid="plus-more-count"
+              size="xs">
               {`+${listLength - LIST_CAP} more`}
-            </Box>
-            <Popover>
-              <Box className="tw:flex tw:flex-col tw:gap-1 tw:p-3">
+            </Button>
+            <Popover className='tw:max-h-80! tw:overflow-scroll'>
+              <Box className="tw:p-3" direction="col" gap={1}>
                 {policies.slice(LIST_CAP).map(renderPolicyItem)}
               </Box>
             </Popover>
@@ -253,20 +259,25 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     switch (colId) {
       case 'name':
         return onNavigate ? (
-          <Button
-            color="link-color"
-            data-testid="role-name"
-            size="sm"
-            onPress={() => handleRoleClick(role)}>
-            {getEntityName(role)}
-          </Button>
+          <Tooltip placement="top" title={getEntityName(role)}>
+            <Button
+              className="tw:max-w-full tw:truncate tw:block tw:text-left"
+              color="link-color"
+              data-testid="role-name"
+              size="sm"
+              onPress={() => handleRoleClick(role)}>
+              {getEntityName(role)}
+            </Button>
+          </Tooltip>
         ) : (
-          <Link
-            className="link-hover"
-            data-testid="role-name"
-            to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
-            {getEntityName(role)}
-          </Link>
+          <Tooltip placement="top" title={getEntityName(role)} triggerClassName="tw:block tw:w-full">
+            <Link
+              className="tw:block tw:truncate link-hover"
+              data-testid="role-name"
+              to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+              {getEntityName(role)}
+            </Link>
+          </Tooltip>
         );
 
       case 'description':
@@ -304,38 +315,54 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     }
   };
 
+  const renderEmptyState = useCallback(
+    () =>
+      isLoading ? (
+        <Box className="tw:p-3" direction="col" gap={2}>
+          {Array.from({ length: pageSize }, (_, i) => (
+            <Skeleton height={28} key={i} variant="rounded" />
+          ))}
+        </Box>
+      ) : (
+        <Box className="tw:min-h-32 tw:relative" align="center" justify="center">
+          <EmptyPlaceholder
+            title={t('label.no-entity-found', {
+              entity: t('label.role-plural'),
+            })}
+          />
+        </Box>
+      ),
+    [isLoading, pageSize, t]
+  );
+
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 
   return (
     <Box
-      className="tw:flex tw:flex-col tw:gap-4 tw:pt-1"
-      data-testid="roles-list-container">
+      className="tw:pt-1"
+      data-testid="roles-list-container"
+      direction="col"
+      gap={4}>
       <TableCard.Root size="compact">
-        {isLoading ? (
-          <Box className="tw:flex tw:justify-center tw:p-8">
-            <Loader />
-          </Box>
-        ) : (
+        <div className="tw:overflow-y-auto tw:max-h-[480px]">
           <Table
+            className="tw:table-fixed"
             aria-label={t('label.role-plural')}
             data-testid="roles-list-table"
             size="compact">
             <Table.Header columns={columns}>
               {(col) => (
-                <Table.Head id={col.id} key={col.id} label={col.label} />
+                <Table.Head
+                  className={col.className}
+                  id={col.id}
+                  key={col.id}
+                  label={col.label}
+                />
               )}
             </Table.Header>
             <Table.Body
-              items={roles}
-              renderEmptyState={() => (
-                <Box className="tw:min-h-32 tw:flex tw:items-center tw:justify-center tw:relative">
-                  <EmptyPlaceholder
-                    title={t('label.no-entity-found', {
-                      entity: t('label.role-plural'),
-                    })}
-                  />
-                </Box>
-              )}>
+              items={isLoading ? [] : roles}
+              renderEmptyState={renderEmptyState}>
               {(role) => (
                 <Table.Row
                   columns={columns}
@@ -343,7 +370,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
                   id={role.id ?? role.name}
                   key={role.id ?? role.name}>
                   {(col) => (
-                    <Table.Cell key={col.id}>
+                    <Table.Cell className={col.className} key={col.id}>
                       {renderCell(role, col.id as RoleColumnId)}
                     </Table.Cell>
                   )}
@@ -351,7 +378,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
               )}
             </Table.Body>
           </Table>
-        )}
+        </div>
         {showPagination && (
           <PaginationCardWithControls
             page={currentPage}

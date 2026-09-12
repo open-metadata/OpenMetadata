@@ -87,13 +87,13 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
             <Card.Content>
               <Box
                 align="start"
-                className="tw:flex tw:gap-4"
+                direction="row" gap={4}
                 data-testid={`access-control-card-${card.id}`}
                 direction="row">
-                <Box className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10 tw:flex tw:items-center tw:justify-center">
+                <Box className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10" align="center" justify="center">
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>
-                <Box className="tw:flex tw:flex-col tw:gap-1 tw:min-w-0" direction="col">
+                <Box className="tw:min-w-0" direction="col" gap={1}>
                   <Typography
                     className="tw:text-primary"
                     size="text-sm"
