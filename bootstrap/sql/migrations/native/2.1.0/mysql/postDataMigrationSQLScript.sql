@@ -121,3 +121,106 @@ UPDATE entity_extension
 SET json = JSON_INSERT(json, '$.appConfiguration.activityCommentsRetentionPeriod', 0)
 WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'DataRetentionApplication';
+
+-- Data Quality failure thresholds: declare the `threshold` / `thresholdUnit` parameters on the
+-- in-scope system test definitions, plus `dimensionFailurePolicy` on the ones that support
+-- dimensional analysis. Seeding only covers fresh installs (initializeEntity returns early when the
+-- entity exists) and TestCaseRepository rejects parameters that the definition does not declare, so
+-- existing installs need this backfill. Every statement is guarded on the parameter being absent,
+-- which keeps re-runs a no-op.
+
+-- Definitions that ship without any parameter need the array before we can append to it.
+UPDATE test_definition
+SET json = JSON_SET(json, '$.parameterDefinition', JSON_ARRAY())
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.parameterDefinition');
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'threshold',
+        'displayName', 'Failure Threshold',
+        'description', 'Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).',
+        'dataType', 'NUMBER',
+        'required', false
+    )
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"threshold"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'thresholdUnit',
+        'displayName', 'Threshold Unit',
+        'description', 'How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', JSON_ARRAY('ABSOLUTE', 'PERCENTAGE')
+    )
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"thresholdUnit"'
+  );
+
+UPDATE test_definition
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.parameterDefinition',
+    JSON_OBJECT(
+        'name', 'dimensionFailurePolicy',
+        'displayName', 'Dimension Failure Policy',
+        'description', 'How dimensional results roll up into the overall test status: `OVERALL_ONLY` only looks at the overall result, `ANY_DIMENSION` fails the test as soon as one dimension fails (defaults to OVERALL_ONLY).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', JSON_ARRAY('OVERALL_ONLY', 'ANY_DIMENSION')
+    )
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT JSON_CONTAINS(
+    COALESCE(JSON_EXTRACT(json, '$.parameterDefinition[*].name'), JSON_ARRAY()),
+    '"dimensionFailurePolicy"'
+  );
