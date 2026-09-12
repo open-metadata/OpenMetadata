@@ -23,6 +23,7 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
+import { clickFeedReaction } from '../../utils/activityFeed';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
   createNewPage,
@@ -1493,7 +1494,7 @@ test.describe('Context Center Articles', () => {
               `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
             ) && response.request().method() === 'PUT'
       );
-      await page.locator('[title="rocket"]:visible').click();
+      await clickFeedReaction(page, 'rocket');
       await reactionResponse;
       await mainMessage.getByTestId('emoji-button').hover();
       await expect(

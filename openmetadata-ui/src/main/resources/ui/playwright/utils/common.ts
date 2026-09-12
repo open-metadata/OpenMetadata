@@ -1938,13 +1938,26 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
   );
   const control = (await nestedControl.count()) === 1 ? nestedControl : trigger;
   await control.focus();
-  if ((await control.getAttribute('aria-expanded')) !== 'true') {
-    if ((await control.getAttribute('role')) === 'combobox') {
-      await control.press('ArrowDown');
-    } else {
-      await control.click();
+
+  // The listbox popup is a non-modal react-aria popover, and that is exactly
+  // what wires useCloseOnScroll: while it is open, ANY capture-phase scroll
+  // whose target contains the trigger closes it — a drawer body, a scrollable
+  // form panel, the document, or the scroll Playwright performs itself as part
+  // of a click's actionability checks. A one-shot open-then-click therefore
+  // dismisses the popup as often as it selects from it, and nothing reopens
+  // it, so the option click waits out the entire test timeout on a node that
+  // was detached mid-click. Reopening converges rather than looping: the
+  // dismissed attempt leaves the page scrolled where the option already sits
+  // in view, so the retry's click needs no scroll and cannot close the popup.
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      if ((await control.getAttribute('role')) === 'combobox') {
+        await control.press('ArrowDown');
+      } else {
+        await control.click({ timeout: 5_000 });
+      }
     }
-  }
-  await expect(option).toBeVisible();
-  await option.click();
+    await expect(option).toBeVisible({ timeout: 5_000 });
+    await option.click({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
 };

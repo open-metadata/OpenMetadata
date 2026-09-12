@@ -13,7 +13,7 @@
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
-import { waitForReactionResponse } from './activityFeed';
+import { clickFeedReaction, waitForReactionResponse } from './activityFeed';
 import { createAdminApiContext } from './admin';
 import { fullUuid, getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -392,13 +392,10 @@ export const toggleThumbsUpReaction = async (feedItem: Locator, page: Page) => {
   await expect(addReactionButton).toBeVisible();
   await expect(addReactionButton).toBeEnabled();
   await addReactionButton.click();
-  await expect(page.locator('.ant-popover-feed-reactions')).toBeVisible();
 
   const reactionResponse = waitForReactionResponse(page, THUMBS_UP_REACTION);
 
-  await page
-    .locator(`[data-testid="reaction-button"][title="${THUMBS_UP_REACTION}"]`)
-    .click();
+  await clickFeedReaction(page, THUMBS_UP_REACTION);
 
   const response = await reactionResponse;
 

@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { chooseSelectOption } from '../../../utils/common';
 import {
   openProfilerForm,
   selectSampleConfigType,
@@ -72,11 +73,15 @@ test.describe('Profiler ingestion form — profile sample config', () => {
         .locator('input')
         .fill('25');
 
-      await page.getByTestId('profile-sample-type-select').click();
-      await page.locator('[data-key="ROWS"]').click();
+      await chooseSelectOption(
+        page.getByTestId('profile-sample-type-select'),
+        page.getByRole('listbox').locator('[data-key="ROWS"]')
+      );
 
-      await page.getByTestId('sampling-method-type-select').click();
-      await page.locator('[data-key="SYSTEM"]').click();
+      await chooseSelectOption(
+        page.getByTestId('sampling-method-type-select'),
+        page.getByRole('listbox').locator('[data-key="SYSTEM"]')
+      );
 
       const profileSampleConfig = await submitAndCaptureCreatePayload(page);
 
@@ -245,8 +250,10 @@ test.describe('Profiler ingestion form — profile sample config', () => {
         .locator('input')
         .fill('70');
 
-      await page.getByTestId('profile-sample-type-select').click();
-      await page.locator('[data-key="PERCENTAGE"]').click();
+      await chooseSelectOption(
+        page.getByTestId('profile-sample-type-select'),
+        page.getByRole('listbox').locator('[data-key="PERCENTAGE"]')
+      );
 
       await selectSampleConfigType(page, 'DYNAMIC');
       await expect(page.getByTestId('smart-sampling-toggle')).toBeVisible();

@@ -470,11 +470,16 @@ test.describe.serial('Persona AI Context', () => {
       await entityTypeOption.scrollIntoViewIfNeeded();
       await expect(entityTypeOption).toBeVisible();
     }
-    await entityTypePopup.getByText('Data Product', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Data Product', { exact: true })
+    );
     await expect(adminPage.getByText(/every asset it contains/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Article', { exact: true })
+    );
 
     await expect(adminPage.getByText(/Generic content/)).toBeVisible();
     await expect(

@@ -21,7 +21,11 @@ import {
   FEED_ITEM_TIMEOUT,
   insertActivityEventForTest,
 } from '../../utils/activityAPI';
-import { REACTION_EMOJIS, reactOnFeedCard } from '../../utils/activityFeed';
+import {
+  clickFeedReaction,
+  REACTION_EMOJIS,
+  reactOnFeedCard,
+} from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
@@ -754,7 +758,7 @@ test.describe('Mention notifications in Notification Box', () => {
         .filter({ has: user1Page.locator('[data-testid="reply-button"]') })
         .locator('[data-testid="add-reactions"]')
         .click();
-      await user1Page.locator('[title="rocket"]').click();
+      await clickFeedReaction(user1Page, 'rocket');
       await reactionResponse;
 
       const emojiButton = message
@@ -1290,18 +1294,13 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await expect(panel).toBeVisible();
 
     await panel.locator('[data-testid="add-reactions"]').first().click();
-    await adminPage
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
 
     // The picker button's title is the ReactionType value (🎉 == "hooray"); it
     // fires PUT /api/v1/activity/{id}/reaction/hooray.
     const reactionResponse = adminPage.waitForResponse((response) =>
       /\/api\/v1\/activity\/[^/]+\/reaction\//.test(response.url())
     );
-    await adminPage
-      .locator('[data-testid="reaction-button"][title="hooray"]')
-      .click();
+    await clickFeedReaction(adminPage, 'hooray');
     await reactionResponse;
 
     // The right panel must reflect the toggled reaction immediately (the fix:

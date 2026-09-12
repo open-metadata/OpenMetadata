@@ -110,6 +110,27 @@ export const waitForReactionResponse = (page: Page, reaction: string) =>
   );
 
 /**
+ * Click a reaction inside the feed-reactions popover.
+ *
+ * rc-motion plays the popover's zoom-big entry over several frames, and
+ * Playwright's two-frame stability check can land inside a lull in that
+ * transform: it then presses coordinates the popover has already moved on
+ * from, the press hits dead space, and no reaction request is ever sent — so
+ * the caller's hoisted waitForResponse waits out the whole test. rc-motion
+ * strips the `-appear`/`-enter` classes on `animationend`, which makes their
+ * absence the deterministic "the popover has settled" signal.
+ */
+export const clickFeedReaction = async (page: Page, reaction: string) => {
+  const popup = page.locator('.ant-popover-feed-reactions:visible');
+  await expect(popup).toBeVisible();
+  await expect(popup).not.toHaveClass(/ant-zoom-big-(appear|enter|leave)/);
+
+  await popup
+    .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
+    .click();
+};
+
+/**
  * Cycles every reaction on a specific card. Callers that react twice (add, then
  * toggle off) must pass the same `Locator` both times — the list re-renders
  * between calls, so an index would not resolve to the same card.
@@ -234,10 +255,6 @@ export const reactOnActivity = async (
     await expect(addReactionButton).toBeVisible();
     await addReactionButton.click();
 
-    await page
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
-
     // Activity API uses /api/v1/activity/*/reaction/* endpoint
     const waitForReactionResponse = page.waitForResponse(
       (response) =>
@@ -245,9 +262,7 @@ export const reactOnActivity = async (
         response.url().includes('/reaction')
     );
 
-    await page
-      .locator(`[data-testid="reaction-button"][title="${reaction}"]`)
-      .click();
+    await clickFeedReaction(page, reaction);
     await waitForReactionResponse;
   }
 };

@@ -14,7 +14,7 @@
 import { Checkbox, Form, Modal } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -54,6 +54,16 @@ const ChangeParentHierarchy = ({
   const [selectedParent, setSelectedParent] =
     useState<DefaultOptionType | null>(null);
   const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
+  // The move channel is addressed to the user, not to this modal: the server
+  // sends every completed move to every session that user has open. Acting on
+  // a stray COMPLETED navigates whoever has this dialog open away to somebody
+  // else's term, so remember the job we started and ignore the rest. A ref,
+  // not state, so the socket handler never reads a stale job id.
+  const startedJobIdRef = useRef<string>();
+  // A single slot for an update that arrives before the 202 has told us our own
+  // job id. Replayed once the id is known, and still id-checked then, so it can
+  // never turn into a stray navigation.
+  const pendingUpdateRef = useRef<MoveGlossaryTermWebsocketResponse>();
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
@@ -85,6 +95,7 @@ const ChangeParentHierarchy = ({
     (response: MoveGlossaryTermWebsocketResponse) => {
       setLoadingState((prev) => ({ ...prev, isSaving: false }));
       setMoveJob(undefined);
+      startedJobIdRef.current = undefined;
 
       // Redirect to the new fully qualified name path if available
       if (response.fullyQualifiedName) {
@@ -99,6 +110,16 @@ const ChangeParentHierarchy = ({
 
   const handleMoveJobUpdate = useCallback(
     (response: MoveGlossaryTermWebsocketResponse) => {
+      if (!startedJobIdRef.current) {
+        pendingUpdateRef.current = response;
+
+        return;
+      }
+
+      if (response.jobId !== startedJobIdRef.current) {
+        return;
+      }
+
       setMoveJob(response);
 
       if (response.status === 'COMPLETED') {
@@ -133,7 +154,14 @@ const ChangeParentHierarchy = ({
         status: 'COMPLETED',
       };
 
+      startedJobIdRef.current = response.jobId;
       setMoveJob(jobData);
+
+      const pendingUpdate = pendingUpdateRef.current;
+      pendingUpdateRef.current = undefined;
+      if (pendingUpdate) {
+        handleMoveJobUpdate(pendingUpdate);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
       setLoadingState((prev) => ({ ...prev, isSaving: false }));

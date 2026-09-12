@@ -20,6 +20,7 @@ import {
 import { env } from 'process';
 import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
+  chooseSelectOption,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -184,8 +185,10 @@ class MysqlIngestionClass extends ServiceBaseClass {
         'sample-config-type-select'
       );
       await expect(sampleConfigTypeSelect).toBeVisible();
-      await sampleConfigTypeSelect.click();
-      await page.locator('[data-key="STATIC"]').click();
+      await chooseSelectOption(
+        sampleConfigTypeSelect,
+        page.getByRole('listbox').locator('[data-key="STATIC"]')
+      );
 
       await page.getByTestId('profile-sample-input').waitFor();
       await page
