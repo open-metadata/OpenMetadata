@@ -31,6 +31,13 @@ const requirePresentation = (node?: GraphNode) => {
   return node.presentation;
 };
 
+const edge = (from: string, to: string, relationType: string) => ({
+  from,
+  to,
+  label: relationType,
+  relationType,
+});
+
 const graph: GraphData = {
   nodes: [
     { id: 'root', label: 'Customers', type: 'table' },
@@ -521,12 +528,6 @@ it('groups a shared relationship even when members have different structural par
 });
 
 describe('restrictToEntityLevel', () => {
-  const edge = (from: string, to: string, relationType: string) => ({
-    from,
-    to,
-    label: relationType,
-    relationType,
-  });
   const profile: GraphData = {
     nodes: [
       { id: 'root', label: 'Customers', type: 'table' },
@@ -621,12 +622,6 @@ describe('restrictToEntityLevel', () => {
 });
 
 describe('concept docking', () => {
-  const edge = (from: string, to: string, relationType: string) => ({
-    from,
-    to,
-    label: relationType,
-    relationType,
-  });
   const ontology: GraphData = {
     nodes: [
       { id: 'concept', label: 'Customer', type: 'glossaryTerm' },
