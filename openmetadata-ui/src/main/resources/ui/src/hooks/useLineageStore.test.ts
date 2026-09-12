@@ -14,6 +14,7 @@ import { act, renderHook } from '@testing-library/react';
 import { Edge, Node } from 'reactflow';
 import { ZOOM_VALUE } from '../constants/Lineage.constants';
 import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
+import { LineageBand } from '../generated/api/lineage/lineageScene';
 import { LineageLayer, PipelineViewMode } from '../generated/settings/settings';
 import { useLineageStore } from './useLineageStore';
 
@@ -43,6 +44,8 @@ describe('useLineageStore', () => {
     expect(result.current.isPlatformLineage).toBe(false);
     expect(result.current.columnsInCurrentPages).toEqual(new Map());
     expect(result.current.nodeFilterState).toEqual(new Map());
+    expect(result.current.lineageMutationTick).toBe(0);
+    expect(result.current.sceneBand).toBeUndefined();
   });
 
   it('sets lineage config', () => {
@@ -68,6 +71,7 @@ describe('useLineageStore', () => {
     expect(result.current.isEditMode).toBe(false);
 
     act(() => {
+      result.current.setSceneBand(LineageBand.Field);
       result.current.toggleEditMode();
     });
 
@@ -84,6 +88,40 @@ describe('useLineageStore', () => {
     expect(result.current.activeLayer).toContain(
       LineageLayer.ColumnLevelLineage
     );
+  });
+
+  it('does not force column expansion when editing an asset scene', () => {
+    const { result } = renderHook(() => useLineageStore());
+
+    act(() => {
+      result.current.setSceneBand(LineageBand.Asset);
+      result.current.toggleEditMode();
+    });
+
+    expect(result.current.isEditMode).toBe(true);
+    expect(result.current.activeLayer).not.toContain(
+      LineageLayer.ColumnLevelLineage
+    );
+  });
+
+  it('tracks scene mutations and resets scene state', () => {
+    const { result } = renderHook(() => useLineageStore());
+
+    act(() => {
+      result.current.setSceneBand(LineageBand.Asset);
+      result.current.bumpLineageMutationTick();
+      result.current.bumpLineageMutationTick();
+    });
+
+    expect(result.current.lineageMutationTick).toBe(2);
+    expect(result.current.sceneBand).toBe(LineageBand.Asset);
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.lineageMutationTick).toBe(0);
+    expect(result.current.sceneBand).toBeUndefined();
   });
 
   it('sets isEditMode directly', () => {

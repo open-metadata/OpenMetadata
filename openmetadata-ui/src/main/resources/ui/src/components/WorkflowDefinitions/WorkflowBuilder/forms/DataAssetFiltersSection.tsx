@@ -13,6 +13,7 @@
 
 import { Button, Card, Typography } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus, XClose } from '@untitledui/icons';
+import { upperFirst } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
@@ -79,8 +80,7 @@ export const DataAssetFiltersSection: React.FC<
                     className="tw:text-secondary"
                     size="text-xs"
                     weight="semibold">
-                    {dataAssetFilter.dataAsset.charAt(0).toUpperCase() +
-                      dataAssetFilter.dataAsset.slice(1)}
+                    {upperFirst(dataAssetFilter.dataAsset)}
                   </Typography>
                   <Button
                     color="tertiary"
@@ -94,9 +94,7 @@ export const DataAssetFiltersSection: React.FC<
                 {dataAssetFilter.dataAsset && (
                   <div className="tw:mt-4">
                     <QueryBuilderSection
-                      entityTypes={
-                        dataAssetFilter.dataAsset.toLowerCase() as EntityType
-                      }
+                      entityTypes={dataAssetFilter.dataAsset as EntityType}
                       forceReadOnly={lockFields}
                       label={`Filter for ${dataAssetFilter.dataAsset}`}
                       outputType={SearchOutputType.ElasticSearch}

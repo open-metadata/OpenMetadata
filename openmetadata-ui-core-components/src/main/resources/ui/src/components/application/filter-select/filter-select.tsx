@@ -249,18 +249,19 @@ const OptionRow = ({
       {(state) => (
         <span
           className={cx(
-            'tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:font-normal',
+            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:font-normal',
             state.isSelected ? 'tw:text-primary' : 'tw:text-secondary'
           )}>
-          {/* The E2E suite reads each row's checked state off a real input,
-              as rendered by the component this replaces. The visible checkbox
-              is presentational, so mirror the selection into a hidden input
-              that `toBeChecked()` accepts. */}
+          {/* The E2E suite reads each row's checked state off a real input
+              (the visible checkbox is presentational) and also `.check()`s it,
+              which clicks the input's box. Stretch it invisibly across the row
+              so that click has an unobstructed target; it bubbles to the menu
+              item, so pointer behaviour is identical for real users. */}
           <input
             readOnly
             aria-hidden="true"
             checked={state.isSelected}
-            className="tw:sr-only"
+            className="tw:absolute tw:inset-0 tw:m-0 tw:h-full tw:w-full tw:cursor-pointer tw:appearance-none tw:opacity-0"
             data-testid={
               inputTestId ??
               `${option.value}-${showCheckbox ? 'checkbox' : 'radio'}`
