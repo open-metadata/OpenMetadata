@@ -65,7 +65,7 @@ $$
 $$section
 ### Supported Data Types $(id="supportedDataTypes")
 
-Select the column data types where this definition is valid. This is used for column-level OpenMetadata tests so users only see applicable rules for the selected column.
+Select the column data types where this definition is valid. This is used for column-level OpenMetadata tests so users only see applicable rules for the selected column. Leave this empty when the definition can be used for all data types.
 $$
 
 $$section

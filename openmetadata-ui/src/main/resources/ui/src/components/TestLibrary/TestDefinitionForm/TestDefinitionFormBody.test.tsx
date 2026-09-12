@@ -188,54 +188,26 @@ describe('TestDefinitionFormBody', () => {
     });
   });
 
-  describe('supportedDataTypes conditional required', () => {
-    it('flags supportedDataTypes required when testPlatforms includes OpenMetadata and it is empty', async () => {
-      render(<Harness />);
+  // An empty supportedDataTypes means "all data types", so it must stay valid on every
+  // platform — including OpenMetadata, where it used to be flagged as required. See #27718.
+  it('accepts empty supportedDataTypes when testPlatforms includes OpenMetadata', async () => {
+    render(<Harness />);
 
-      await act(async () => {
-        formRef?.setValue('testPlatforms', [
-          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
-        ]);
-        formRef?.setValue('supportedDataTypes', []);
-      });
-
-      let isValid = true;
-      await act(async () => {
-        isValid = await (
-          formRef as UseFormReturn<TestDefinitionFormValues>
-        ).trigger('supportedDataTypes');
-      });
-
-      expect(isValid).toBe(false);
-
-      await waitFor(() => {
-        expect(
-          formRef?.getFieldState('supportedDataTypes').error?.message
-        ).toBeDefined();
-      });
+    await act(async () => {
+      formRef?.setValue('testPlatforms', [
+        { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+      ]);
+      formRef?.setValue('supportedDataTypes', []);
     });
 
-    it('does not flag supportedDataTypes when testPlatforms excludes OpenMetadata', async () => {
-      render(<Harness />);
-
-      await act(async () => {
-        formRef?.setValue('testPlatforms', [
-          { id: TestPlatform.Soda, label: TestPlatform.Soda },
-        ]);
-        formRef?.setValue('supportedDataTypes', []);
-      });
-
-      let isValid = false;
-      await act(async () => {
-        isValid = await (
-          formRef as UseFormReturn<TestDefinitionFormValues>
-        ).trigger('supportedDataTypes');
-      });
-
-      expect(isValid).toBe(true);
-      expect(
-        formRef?.getFieldState('supportedDataTypes').error
-      ).toBeUndefined();
+    let isValid = false;
+    await act(async () => {
+      isValid = await (
+        formRef as UseFormReturn<TestDefinitionFormValues>
+      ).trigger('supportedDataTypes');
     });
+
+    expect(isValid).toBe(true);
+    expect(formRef?.getFieldState('supportedDataTypes').error).toBeUndefined();
   });
 });
