@@ -21,15 +21,7 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { AccessControlView } from './AccessControlPanel';
-
-interface LandingCard {
-  id: string;
-  icon: FC<{ className?: string }>;
-  titleKey: string;
-  descriptionKey: string;
-  view: AccessControlView;
-}
+import type { AccessControlView, LandingCard } from './AccessControl.types';
 
 const LANDING_CARDS: LandingCard[] = [
   {
@@ -87,9 +79,9 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
             <Card.Content>
               <Box
                 align="start"
-                direction="row" gap={4}
                 data-testid={`access-control-card-${card.id}`}
-                direction="row">
+                direction="row"
+                gap={4}>
                 <Box className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10" align="center" justify="center">
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>

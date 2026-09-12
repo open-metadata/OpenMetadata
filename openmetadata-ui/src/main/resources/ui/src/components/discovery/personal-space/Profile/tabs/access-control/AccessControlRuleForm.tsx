@@ -20,7 +20,7 @@ import {
     Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { capitalize, startCase, uniq, uniqBy } from 'lodash';
+import { startCase, uniq } from 'lodash';
 import React, {
     FC,
     useCallback,
@@ -46,17 +46,14 @@ import { ALL_TYPE_RESOURCE_LIST } from '../../../../../../utils/PermissionsUtils
 import { getErrorText } from '../../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
+import { EFFECT_ITEMS } from './AccessControl.constants';
+import { buildConditionOptions } from './AccessControl.utils';
 
 export interface AccessControlRuleFormProps {
   ruleData: Rule;
   setRuleData: (value: React.SetStateAction<Rule>) => void;
   description?: string;
 }
-
-const EFFECT_ITEMS: SelectItemType[] = [
-  { id: Effect.Allow, label: capitalize(Effect.Allow) },
-  { id: Effect.Deny, label: capitalize(Effect.Deny) },
-];
 
 const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   ruleData,
@@ -204,14 +201,6 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
     [setRuleData]
   );
 
-  const buildConditionOptions = (fns: Function[]): SelectItemType[] =>
-    uniqBy(
-      fns.flatMap((fn) =>
-        (fn.examples ?? []).map((ex: string) => ({ id: ex, label: ex }))
-      ),
-      'id'
-    );
-
   const handleConditionSearch = (value: string) => {
     if (value) {
       setConditionOptions((prev) =>
@@ -282,7 +271,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       {/* Rule name */}
       <Box direction="col" gap={1}>
         <Typography
-          className="tw:text-sm tw:font-medium tw:text-secondary"
+          className="tw:text-secondary"
           size="text-sm"
           weight="medium">
           {`${t('label.rule-name')} *`}
@@ -300,7 +289,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       {/* Description */}
       <Box direction="col" gap={1}>
         <Typography
-          className="tw:text-sm tw:font-medium tw:text-secondary"
+          className="tw:text-secondary"
           size="text-sm"
           weight="medium">
           {t('label.description')}
@@ -318,7 +307,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       {/* Resources */}
       <Box direction="col" gap={1}>
         <Typography
-          className="tw:text-sm tw:font-medium tw:text-secondary"
+          className="tw:text-secondary"
           size="text-sm"
           weight="medium">
           {`${t('label.resource-plural')} *`}
@@ -343,7 +332,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       {/* Operations */}
       <Box direction="col" gap={1}>
         <Typography
-          className="tw:text-sm tw:font-medium tw:text-secondary"
+          className="tw:text-secondary"
           size="text-sm"
           weight="medium">
           {`${t('label.operation-plural')} *`}
@@ -368,7 +357,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       {/* Effect */}
       <Box direction="col" gap={1}>
         <Typography
-          className="tw:text-sm tw:font-medium tw:text-secondary"
+          className="tw:text-secondary"
           size="text-sm"
           weight="medium">
           {`${t('label.effect')} *`}
@@ -398,7 +387,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       {/* Condition */}
       <Box direction="col" gap={1}>
         <Typography
-          className="tw:text-sm tw:font-medium tw:text-secondary"
+          className="tw:text-secondary"
           size="text-sm"
           weight="medium">
           {t('label.condition')}
@@ -432,20 +421,22 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
         </Select.ComboBox>
         {validationError && (
           <Typography
-            className="tw:text-xs tw:text-red-500"
-            data-testid="condition-error">
+            className="tw:text-red-500"
+            data-testid="condition-error"
+            size="text-xs">
             {`❌ ${t('label.invalid-condition')}: ${validationError}`}
           </Typography>
         )}
         {isValidatingCondition && (
-          <Typography className="tw:text-xs tw:text-secondary">
+          <Typography className="tw:text-secondary" size="text-xs">
             {t('label.validating-condition')}
           </Typography>
         )}
         {isValidCondition && !isValidatingCondition && !validationError && (
           <Typography
-            className="tw:text-xs tw:text-green-600"
-            data-testid="condition-success">
+            className="tw:text-green-600"
+            data-testid="condition-success"
+            size="text-xs">
             {`✅ ${t('label.valid-condition')}`}
           </Typography>
         )}

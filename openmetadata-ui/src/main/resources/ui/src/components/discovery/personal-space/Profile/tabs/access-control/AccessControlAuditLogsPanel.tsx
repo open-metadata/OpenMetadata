@@ -62,22 +62,13 @@ import {
 import { buildParamsFromFilters } from '../../../../../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
 import { showErrorToast, showSuccessToast } from '../../../../../../utils/ToastUtils';
+import { EXPORT_POLL_INTERVAL_MS } from './AccessControl.constants';
+import type { ExportJob } from './AccessControl.types';
 import AccessControlAuditLogFilters from './AccessControlAuditLogFilters';
-
-const EXPORT_POLL_INTERVAL_MS = 5000;
 
 const INITIAL_PAGING: Paging = {
   total: 0,
 };
-
-interface ExportJob {
-  jobId: string;
-  message?: string;
-  error?: string;
-  status?: string;
-  progress?: number;
-  total?: number;
-}
 
 interface AccessControlAuditLogsPanelProps {
   /** Callback to inject action buttons into the page header. */
@@ -477,7 +468,7 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
               className="tw:w-full tw:mt-2" align="center" direction="row"
               data-testid="filter-selection-container"
               direction="row">
-              <Box className="tw:flex-wrap tw:flex-1" direction="row" gap={2}>
+              <Box className="tw:flex-1" direction="row" gap={2} wrap="wrap">
                 {activeFilters.map((filter) => (
                   <Badge
                     className="tw:outline-0 tw:gap-1"

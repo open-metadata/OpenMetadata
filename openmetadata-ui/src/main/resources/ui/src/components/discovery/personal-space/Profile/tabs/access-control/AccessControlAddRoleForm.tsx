@@ -37,7 +37,7 @@ import {
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import type { AccessControlView } from './AccessControlPanel';
+import type { AccessControlView } from './AccessControl.types';
 
 interface FormValues {
   name: string;
@@ -161,7 +161,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
         gap={5}>
         <Box direction="col" gap={1}>
           <Typography
-            className="tw:text-sm tw:font-medium tw:text-secondary"
+            className="tw:text-secondary"
             size="text-sm"
             weight="medium">
             {`${t('label.name')} *`}
@@ -180,7 +180,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
             rules={{ required: t('label.field-required', { field: t('label.name') }) }}
           />
           {errors.name && (
-            <Typography className="tw:text-xs tw:text-red-500">
+            <Typography className="tw:text-red-500" size="text-xs">
               {errors.name.message}
             </Typography>
           )}
@@ -188,7 +188,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
 
         <Box direction="col" gap={1}>
           <Typography
-            className="tw:text-sm tw:font-medium tw:text-secondary"
+            className="tw:text-secondary"
             size="text-sm"
             weight="medium">
             {t('label.description')}
@@ -203,7 +203,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
 
         <Box direction="col" gap={1}>
           <Typography
-            className="tw:text-sm tw:font-medium tw:text-secondary"
+            className="tw:text-secondary"
             size="text-sm"
             weight="medium">
             {t('label.select-a-policy')}

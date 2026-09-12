@@ -36,74 +36,10 @@ import {
     getAuditLogCategoryLabel
 } from '../../../../../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
-import { EntityIconSize } from '../../../../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { getCanonicalEntityType } from '../../../../../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../../../../../utils/i18next/LocalUtil';
-import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
-
-interface EntityTypeOption {
-  label: string;
-  value: string;
-}
-
-const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = [
-  { label: 'Table', value: 'table' },
-  { label: 'Topic', value: 'topic' },
-  { label: 'Dashboard', value: 'dashboard' },
-  { label: 'Pipeline', value: 'pipeline' },
-  { label: 'ML Model', value: 'mlmodel' },
-  { label: 'Container', value: 'container' },
-  { label: 'Search Index', value: 'searchIndex' },
-  { label: 'Stored Procedure', value: 'storedProcedure' },
-  { label: 'Dashboard Data Model', value: 'dashboardDataModel' },
-  { label: 'Chart', value: 'chart' },
-  { label: 'Database', value: 'database' },
-  { label: 'Database Schema', value: 'databaseSchema' },
-  { label: 'Query', value: 'query' },
-  { label: 'API Collection', value: 'apiCollection' },
-  { label: 'API Endpoint', value: 'apiEndpoint' },
-  { label: 'Metric', value: 'metric' },
-  { label: 'Glossary', value: 'glossary' },
-  { label: 'Glossary Term', value: 'glossaryTerm' },
-  { label: 'Classification', value: 'classification' },
-  { label: 'Tag', value: 'tag' },
-  { label: 'Domain', value: 'domain' },
-  { label: 'Data Product', value: 'dataProduct' },
-  { label: 'User', value: 'user' },
-  { label: 'Team', value: 'team' },
-  { label: 'Bot', value: 'bot' },
-  { label: 'Persona', value: 'persona' },
-  { label: 'Role', value: 'role' },
-  { label: 'Policy', value: 'policy' },
-  { label: 'Database Service', value: 'databaseService' },
-  { label: 'Messaging Service', value: 'messagingService' },
-  { label: 'Dashboard Service', value: 'dashboardService' },
-  { label: 'Pipeline Service', value: 'pipelineService' },
-  { label: 'ML Model Service', value: 'mlmodelService' },
-  { label: 'Storage Service', value: 'storageService' },
-  { label: 'Search Service', value: 'searchService' },
-  { label: 'API Service', value: 'apiService' },
-  { label: 'Metadata Service', value: 'metadataService' },
-  { label: 'Ingestion Pipeline', value: 'ingestionPipeline' },
-  { label: 'Test Suite', value: 'testSuite' },
-  { label: 'Test Case', value: 'testCase' },
-  { label: 'Event Subscription', value: 'eventsubscription' },
-  { label: 'Application', value: 'app' },
-  { label: 'KPI', value: 'kpi' },
-];
-
-const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
-  ENTITY_TYPE_OPTIONS.map((o) => ({
-    key: o.value,
-    label: o.label,
-    icon:
-      searchClassBase.getEntityIconWithBg(
-        getCanonicalEntityType(o.value),
-        EntityIconSize.Size14
-      ) ?? undefined,
-  }));
+import { ENTITY_TYPE_SEARCH_OPTIONS } from './AccessControl.constants';
 
 const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
   activeFilters,
@@ -340,9 +276,11 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
 
   return (
     <Box
-      className="tw:flex-wrap" align="center" direction="row" gap={2}
+      align="center"
       data-testid="audit-log-filters"
-      direction="row">
+      direction="row"
+      gap={2}
+      wrap="wrap">
       <DatePickerMenu
         showSelectedCustomRange
         defaultDateRange={timeDefaultDateRange}

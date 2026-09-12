@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import {
     CreatePolicy,
-    Effect,
     Rule
 } from '../../../../../../generated/api/policies/createPolicy';
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
@@ -36,7 +35,8 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import type { AccessControlView } from './AccessControlPanel';
+import type { AccessControlView } from './AccessControl.types';
+import { INITIAL_RULE } from './AccessControl.constants';
 import AccessControlRuleForm from './AccessControlRuleForm';
 
 interface FormValues {
@@ -46,15 +46,6 @@ interface FormValues {
 interface AccessControlAddPolicyFormProps {
   onNavigate: (view: AccessControlView) => void;
 }
-
-const INITIAL_RULE: Rule = {
-  name: '',
-  description: '',
-  resources: [],
-  operations: [],
-  condition: '',
-  effect: Effect.Allow,
-};
 
 const AccessControlAddPolicyForm: React.FC<
   AccessControlAddPolicyFormProps
@@ -119,7 +110,7 @@ const AccessControlAddPolicyForm: React.FC<
           gap={5}>
           <Box direction="col" gap={1}>
             <Typography
-              className="tw:text-sm tw:font-medium tw:text-secondary"
+              className="tw:text-secondary"
               size="text-sm"
               weight="medium">
               {`${t('label.name')} *`}
@@ -140,7 +131,7 @@ const AccessControlAddPolicyForm: React.FC<
               }}
             />
             {errors.name && (
-              <Typography className="tw:text-xs tw:text-red-500">
+              <Typography className="tw:text-red-500" size="text-xs">
                 {errors.name.message}
               </Typography>
             )}
@@ -148,7 +139,7 @@ const AccessControlAddPolicyForm: React.FC<
 
           <Box direction="col" gap={1}>
             <Typography
-              className="tw:text-sm tw:font-medium tw:text-secondary"
+              className="tw:text-secondary"
               size="text-sm"
               weight="medium">
               {t('label.description')}
@@ -165,7 +156,7 @@ const AccessControlAddPolicyForm: React.FC<
           <Box direction="col" gap={3}>
             <Box className="tw:border-t tw:border-secondary tw:pt-4" direction="col">
               <Typography
-                className="tw:text-sm tw:font-semibold tw:text-primary"
+                className="tw:text-primary"
                 size="text-sm"
                 weight="semibold">
                 {t('label.add-entity', { entity: t('label.rule') })}

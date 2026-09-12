@@ -567,7 +567,7 @@ const AuditLogsPage = () => {
           </div>
 
           {/* List */}
-          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto">
+          <div className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:relative">
             <AuditLogList
               hasActiveFilters={hasActiveFiltersOnly}
               hasActiveSearch={hasActiveSearch}

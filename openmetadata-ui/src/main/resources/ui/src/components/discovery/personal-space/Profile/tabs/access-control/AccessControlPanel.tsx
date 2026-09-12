@@ -22,6 +22,7 @@ import { ResourceEntity } from '../../../../../../context/PermissionProvider/Per
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
+import type { AccessControlView } from './AccessControl.types';
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';
 import AccessControlAddRoleForm from './AccessControlAddRoleForm';
 import AccessControlAuditLogsPanel from './AccessControlAuditLogsPanel';
@@ -32,16 +33,7 @@ import AccessControlPolicyDetail from './AccessControlPolicyDetail';
 import AccessControlRoleDetail from './AccessControlRoleDetail';
 import AccessControlRolesPanel from './AccessControlRolesPanel';
 
-export type AccessControlView =
-  | { type: 'landing' }
-  | { type: 'roles' }
-  | { type: 'roles-add' }
-  | { type: 'roles-detail'; fqn: string; name: string }
-  | { type: 'policies' }
-  | { type: 'policies-add' }
-  | { type: 'policies-detail'; fqn: string; name: string }
-  | { type: 'permission-debugger' }
-  | { type: 'audit-logs' };
+export type { AccessControlView };
 
 interface AccessControlPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;

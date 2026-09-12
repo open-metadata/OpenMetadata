@@ -65,21 +65,13 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import type { AccessControlView } from './AccessControlPanel';
+import type { AccessControlView } from './AccessControl.types';
+import { INITIAL_RULE } from './AccessControl.constants';
 import AccessControlRuleForm from './AccessControlRuleForm';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
 type DetailColumnId = 'name' | 'description' | 'actions';
 type DetailColumn = { id: DetailColumnId; label: string; className?: string };
-
-const INITIAL_RULE: Rule = {
-  name: '',
-  description: '',
-  resources: [],
-  operations: [],
-  condition: '',
-  effect: Effect.Allow,
-};
 
 // ─── Description cell ─────────────────────────────────────────────────────────
 
@@ -88,7 +80,7 @@ const DescriptionCell: FC<{ value: string | undefined }> = ({ value }) => {
     return <RichTextEditorPreviewerV1 markdown={value} />;
   }
 
-  return <Typography className="tw:text-sm tw:text-tertiary">--</Typography>;
+  return <Typography className="tw:text-tertiary" size="text-sm">--</Typography>;
 };
 
 // ─── Inline description editor ────────────────────────────────────────────────
@@ -291,14 +283,16 @@ const RuleCard: FC<RuleCardProps> = ({
 
   return (
     <Box
-      className="tw:border tw:border-secondary tw:rounded-xl tw:p-4" direction="col" gap={2}
+      className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
       data-testid={`rule-${rule.name}`}
-      direction="col">
+      direction="col"
+      gap={2}>
       <Box
-        align="center" direction="row" justify="between"
-        direction="row">
+        align="center"
+        direction="row"
+        justify="between">
         <Typography
-          className="tw:text-sm tw:font-semibold tw:text-primary"
+          className="tw:text-primary"
           size="text-sm"
           weight="semibold">
           {rule.name}
@@ -332,27 +326,27 @@ const RuleCard: FC<RuleCardProps> = ({
       </Box>
       <Box direction="col" gap={1}>
         <Box direction="row" gap={2}>
-          <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
+          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
             {`${t('label.resource-plural')}:`}
           </Typography>
-          <Typography className="tw:text-sm tw:text-primary">
+          <Typography className="tw:text-primary" size="text-sm">
             {(rule.resources ?? []).join(', ') || '--'}
           </Typography>
         </Box>
         <Box direction="row" gap={2}>
-          <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
+          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
             {`${t('label.operation-plural')}:`}
           </Typography>
-          <Typography className="tw:text-sm tw:text-primary">
+          <Typography className="tw:text-primary" size="text-sm">
             {(rule.operations ?? []).join(', ') || '--'}
           </Typography>
         </Box>
         <Box direction="row" gap={2}>
-          <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
+          <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
             {`${t('label.effect')}:`}
           </Typography>
           <Typography
-            className={`tw:text-sm tw:font-medium ${effectClass}`}
+            className={effectClass}
             size="text-sm"
             weight="medium">
             {rule.effect}
@@ -360,7 +354,7 @@ const RuleCard: FC<RuleCardProps> = ({
         </Box>
         {rule.description && (
           <Box direction="row" gap={2}>
-            <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
+            <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
               {`${t('label.description')}:`}
             </Typography>
             <RichTextEditorPreviewerV1 markdown={rule.description} />
@@ -368,7 +362,7 @@ const RuleCard: FC<RuleCardProps> = ({
         )}
         {rule.condition && (
           <Box direction="row" gap={2}>
-            <Typography className="tw:text-sm tw:text-secondary tw:shrink-0">
+            <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
               {`${t('label.condition')}:`}
             </Typography>
             <code className="tw:font-mono tw:text-xs tw:bg-secondary tw:px-1 tw:rounded">
@@ -610,7 +604,7 @@ const usePolicyDetail = (fqn: string) => {
             : prev
         );
         showSuccessToast(
-          t('server.entity-updated-successfully', { entity: t('label.policy') })
+          t('server.entity-updated-success', { entity: t('label.policy') })
         );
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -648,7 +642,7 @@ const usePolicyDetail = (fqn: string) => {
             : prev
         );
         showSuccessToast(
-          t('server.entity-updated-successfully', { entity: t('label.policy') })
+          t('server.entity-updated-success', { entity: t('label.policy') })
         );
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -790,7 +784,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       setIsRenameOpen(false);
       onRename?.(renameValue.trim());
       showSuccessToast(
-        t('server.entity-updated-successfully', { entity: t('label.policy') })
+        t('server.entity-updated-success', { entity: t('label.policy') })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -882,7 +876,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       setPolicy(saved);
       setIsEditingDesc(false);
       showSuccessToast(
-        t('server.entity-updated-successfully', { entity: t('label.policy') })
+        t('server.entity-updated-success', { entity: t('label.policy') })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -971,10 +965,11 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
 
             {(isAddingRule || editingRule) && (
               <Box
-                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4" direction="col" gap={4}
-                direction="col">
+                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+                direction="col"
+                gap={4}>
                 <Typography
-                  className="tw:text-sm tw:font-semibold tw:text-primary"
+                  className="tw:text-primary"
                   size="text-sm"
                   weight="semibold">
                   {editingRule
@@ -986,8 +981,9 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
                   setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
                 />
                 <Box
-                  direction="row" gap={3} justify="end"
-                  direction="row">
+                  direction="row"
+                  gap={3}
+                  justify="end">
                   <Button
                     color="tertiary"
                     size="sm"

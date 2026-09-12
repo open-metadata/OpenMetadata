@@ -617,7 +617,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   }, [log.userName, userName]);
 
   return (
-    <div className="audit-log-list-item" data-testid="audit-log-list-item">
+    <div className="audit-log-list-item tw:hover:bg-secondary" data-testid="audit-log-list-item">
       <div className="item-avatar" data-testid="item-avatar">
         <ProfilePicture
           displayName={userName}

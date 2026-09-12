@@ -70,7 +70,7 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import type { AccessControlView } from './AccessControlPanel';
+import type { AccessControlView } from './AccessControl.types';
 
 type RoleTab = 'policies' | 'teams' | 'users';
 type DetailColumnId = 'name' | 'description' | 'actions';
@@ -83,7 +83,7 @@ const DescriptionCell: FC<{ value: string | undefined }> = ({ value }) => {
     return <RichTextEditorPreviewerV1 markdown={value} />;
   }
 
-  return <Typography className="tw:text-sm tw:text-tertiary">--</Typography>;
+  return <Typography className="tw:text-tertiary" size="text-sm">--</Typography>;
 };
 
 // ─── Cell renderer (outside component to keep component complexity low) ────────
@@ -650,7 +650,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           users: (role.users ?? []).filter((u) => u.id !== userRef.id),
         });
         showSuccessToast(
-          t('server.entity-updated-successfully', { entity: t('label.role') })
+          t('server.entity-updated-success', { entity: t('label.role') })
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -775,9 +775,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
 
   return (
     <Box
-      direction="col" gap={4}
       data-testid="role-detail-container"
-      direction="col">
+      direction="col"
+      gap={4}>
 
       <InlineDescriptionEditor
         canEdit={canEditAll}
@@ -812,10 +812,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           <Box className="tw:w-full" direction="col" gap={3}>
             {isAddingPolicy && (
               <Box
-                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4" direction="col" gap={4}
-                direction="col">
+                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+                direction="col"
+                gap={4}>
                 <Typography
-                  className="tw:text-sm tw:font-semibold tw:text-primary"
+                  className="tw:text-primary"
                   size="text-sm"
                   weight="semibold">
                   {t('label.add-entity', { entity: t('label.policy') })}
@@ -842,8 +843,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
                   </Autocomplete>
                 )}
                 <Box
-                  direction="row" gap={3} justify="end"
-                  direction="row">
+                  direction="row"
+                  gap={3}
+                  justify="end">
                   <Button
                     color="tertiary"
                     size="sm"

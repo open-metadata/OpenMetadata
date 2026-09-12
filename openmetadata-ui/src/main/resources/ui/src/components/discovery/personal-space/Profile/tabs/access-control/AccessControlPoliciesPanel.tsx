@@ -58,7 +58,7 @@ import {
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import type { AccessControlView } from './AccessControlPanel';
+import type { AccessControlView } from './AccessControl.types';
 
 type PolicyColumnId = 'name' | 'description' | 'roles' | 'actions';
 type PolicyColumn = { id: PolicyColumnId; label: string; className?: string };
@@ -231,10 +231,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     return (
       <Box
-        className="tw:flex-wrap"
         data-testid="role-link"
         direction="row"
-        gap={1}>
+        gap={1}
+        wrap="wrap">
         {roles.slice(0, LIST_CAP).map(renderRoleItem)}
         {hasMore && (
           <PopoverTrigger>
