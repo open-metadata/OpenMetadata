@@ -120,7 +120,7 @@ for (const entity of searchRBACEntities) {
     test(`User with permission`, async ({ browser }) => {
       const userWithPermissionPage = await newStrippedPage(browser);
 
-      await user1.login(userWithPermissionPage);
+      await user1.signIn(userWithPermissionPage);
 
       await searchForEntityShouldWork(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
@@ -135,7 +135,7 @@ for (const entity of searchRBACEntities) {
     test(`User without permission`, async ({ browser }) => {
       const userWithoutPermissionPage = await newStrippedPage(browser);
 
-      await user2.login(userWithoutPermissionPage);
+      await user2.signIn(userWithoutPermissionPage);
 
       await searchForEntityShouldWorkShowNoResult(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
@@ -247,7 +247,7 @@ test.describe(`Table Column`, () => {
     const userWithPermissionPage = await newStrippedPage(browser);
     const column = table.entityResponseData?.columns?.[0];
 
-    await user1.login(userWithPermissionPage);
+    await user1.signIn(userWithPermissionPage);
 
     await searchForEntityShouldWork(
       column.fullyQualifiedName ?? '',
@@ -261,7 +261,7 @@ test.describe(`Table Column`, () => {
     const userWithoutPermissionPage = await newStrippedPage(browser);
     const column = table.entityResponseData?.columns?.[0];
 
-    await user2.login(userWithoutPermissionPage);
+    await user2.signIn(userWithoutPermissionPage);
 
     await searchForEntityShouldWorkShowNoResult(
       column.fullyQualifiedName ?? '',
@@ -381,7 +381,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
   }) => {
     test.slow();
     const page = await newStrippedPage(browser);
-    await userAll.login(page);
+    await userAll.signIn(page);
 
     await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
     await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), true);
@@ -394,7 +394,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
   }) => {
     test.slow();
     const page = await newStrippedPage(browser);
-    await userTableOnly.login(page);
+    await userTableOnly.signIn(page);
 
     await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
     await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), false);
@@ -407,7 +407,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
   }) => {
     test.slow();
     const page = await newStrippedPage(browser);
-    await userDashboardOnly.login(page);
+    await userDashboardOnly.signIn(page);
 
     await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), true);
     await exploreShouldShowEntity(page, tableFqn(), tableName(), false);
@@ -420,7 +420,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
   }) => {
     test.slow();
     const page = await newStrippedPage(browser);
-    await userDenied.login(page);
+    await userDenied.signIn(page);
 
     await exploreShouldShowEntity(page, tableFqn(), tableName(), false);
     await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), false);
@@ -436,7 +436,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
     // A table-scoped user's tree has Databases but never Dashboards — the
     // Dashboards count is RBAC-filtered to zero, so the category drops out.
     const tablePage = await newStrippedPage(browser);
-    await userTableOnly.login(tablePage);
+    await userTableOnly.signIn(tablePage);
     await exploreTreeCategories(tablePage, {
       visible: ['Databases'],
       hidden: ['Dashboards'],
@@ -445,7 +445,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
 
     // A dashboard-scoped user sees the mirror image — no Databases category.
     const dashboardPage = await newStrippedPage(browser);
-    await userDashboardOnly.login(dashboardPage);
+    await userDashboardOnly.signIn(dashboardPage);
     await exploreTreeCategories(dashboardPage, {
       visible: ['Dashboards'],
       hidden: ['Databases'],

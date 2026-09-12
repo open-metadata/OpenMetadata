@@ -83,7 +83,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('assignee should be able to add comment to task', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -134,7 +134,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('non-assignee should be able to add comment', async ({ page }) => {
-    await commentingUser.login(page);
+    await commentingUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -175,7 +175,7 @@ test.describe('Task Comments - Add Comment', () => {
   });
 
   test('admin should be able to add comment to any task', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -266,7 +266,7 @@ test.describe('Task Comments - @Mention', () => {
   });
 
   test('typing @ should show user suggestion dropdown', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -312,7 +312,7 @@ test.describe('Task Comments - @Mention', () => {
   test('selecting user from @ dropdown should add mention', async ({
     page,
   }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -426,7 +426,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 
   test('comment author should see edit/delete options', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -467,7 +467,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 
   test('should be able to edit own comment', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -521,7 +521,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 
   test('should be able to delete own comment', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -573,7 +573,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   });
 
   test('non-author should not see edit/delete options', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();

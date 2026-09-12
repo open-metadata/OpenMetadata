@@ -97,7 +97,7 @@ test.describe('Team Activity - Membership Changes', () => {
 
     // Login as existing team member
     const page = await browser.newPage();
-    await teamMember.login(page);
+    await teamMember.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -144,7 +144,7 @@ test.describe('Team Activity - Membership Changes', () => {
 
     // Login as existing team member and check feed
     const page = await browser.newPage();
-    await teamMember.login(page);
+    await teamMember.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -240,7 +240,7 @@ test.describe('Team Activity - Team Owned Entities', () => {
 
     // Login as team member and check they can see the change
     const page = await browser.newPage();
-    await teamMember1.login(page);
+    await teamMember1.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -254,7 +254,7 @@ test.describe('Team Activity - Team Owned Entities', () => {
   test('non-team member should not see team-only activity', async ({
     page,
   }) => {
-    await nonTeamMember.login(page);
+    await nonTeamMember.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -351,7 +351,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
   test('team member should see tasks assigned to their team', async ({
     page,
   }) => {
-    await teamMember1.login(page);
+    await teamMember1.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -373,7 +373,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
   test('different team member should also see team-assigned task', async ({
     page,
   }) => {
-    await teamMember2.login(page);
+    await teamMember2.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -394,7 +394,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
   test('non-team member should NOT see team-assigned task in their tasks', async ({
     page,
   }) => {
-    await nonTeamMember.login(page);
+    await nonTeamMember.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 
@@ -423,7 +423,7 @@ test.describe('Team Activity - Tasks Assigned to Team', () => {
   test('team member should be able to resolve team-assigned task', async ({
     page,
   }) => {
-    await teamMember1.login(page);
+    await teamMember1.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -513,7 +513,7 @@ test.describe('Team Activity - Team Page Feed', () => {
   });
 
   test('team page should show activity feed for team', async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     // Navigate to team page
     await page.goto(`/settings/members/teams/${team.responseData.name}`);
@@ -592,7 +592,7 @@ test.describe('Team Activity - Notifications', () => {
   test('team member should receive notification for team-assigned task', async ({
     page,
   }) => {
-    await teamMember.login(page);
+    await teamMember.signIn(page);
     await redirectToHomePage(page);
     await waitForPageLoaded(page);
 

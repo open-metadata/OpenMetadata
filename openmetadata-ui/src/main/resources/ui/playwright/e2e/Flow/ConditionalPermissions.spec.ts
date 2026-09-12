@@ -32,13 +32,13 @@ const test = base.extend<{
 }>({
   user1Page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await userWithOwnerPermission.login(page);
+    await userWithOwnerPermission.signIn(page);
     await use(page);
     await page.close();
   },
   user2Page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await userWithTagPermission.login(page);
+    await userWithTagPermission.signIn(page);
     await use(page);
     await page.close();
   },

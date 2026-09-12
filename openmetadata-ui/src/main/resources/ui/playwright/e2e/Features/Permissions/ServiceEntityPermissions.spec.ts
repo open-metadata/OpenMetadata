@@ -38,7 +38,7 @@ const test = baseTest.extend<{
   testUserPage: async ({ browser }: { browser: Browser }, use) => {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await testUser.login(page);
+    await testUser.signIn(page);
     await use(page);
     await context.close();
   },

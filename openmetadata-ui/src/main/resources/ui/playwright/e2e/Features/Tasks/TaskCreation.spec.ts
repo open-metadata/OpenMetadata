@@ -68,7 +68,7 @@ test.describe('Task Creation - Request Description', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create request description task for table', async ({ page }) => {
@@ -253,7 +253,7 @@ test.describe('Task Creation - Request Tags', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create request tags task for table', async ({ page }) => {
@@ -324,7 +324,7 @@ test.describe('Task Creation - Suggest Description', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create suggest description task with suggested value', async ({
@@ -399,7 +399,7 @@ test.describe('Task Creation - Suggest Tags', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('should create suggest tags task with suggested tags', async ({

@@ -635,6 +635,7 @@ export default [
       // rather than error while the remaining 27 call sites are migrated to
       // playwright/utils/searchAggregation.ts.
       'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
+      'openmetadata-playwright/prefer-role-page-fixture': 'error',
 
       // Playwright rules — promoted to error behind the suppressions ratchet
       // (see eslint-suppressions.json): existing violations are snapshotted,

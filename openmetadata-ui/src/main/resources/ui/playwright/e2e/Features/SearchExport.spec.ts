@@ -138,7 +138,7 @@ test.describe(
     });
 
     test.beforeEach(async ({ page }) => {
-      await searchExportUser.login(page);
+      await searchExportUser.signIn(page);
       await redirectToExplorePage(page);
     });
 

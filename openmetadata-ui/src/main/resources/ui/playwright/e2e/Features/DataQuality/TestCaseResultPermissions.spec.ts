@@ -61,37 +61,37 @@ const test = base.extend<{
   },
   viewResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewResultsUser.login(page);
+    await viewResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   editResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editResultsUser.login(page);
+    await editResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableEditResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableEditResultsUser.login(page);
+    await tableEditResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   deleteResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await deleteResultsUser.login(page);
+    await deleteResultsUser.signIn(page);
     await use(page);
     await page.close();
   },
   partialDeleteTcPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await partialDeleteTcUser.login(page);
+    await partialDeleteTcUser.signIn(page);
     await use(page);
     await page.close();
   },
   partialDeleteTablePage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await partialDeleteTableUser.login(page);
+    await partialDeleteTableUser.signIn(page);
     await use(page);
     await page.close();
   },

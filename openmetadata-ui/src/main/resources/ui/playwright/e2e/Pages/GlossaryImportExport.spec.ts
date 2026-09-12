@@ -134,7 +134,7 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await glossaryExportUser.login(page);
+    await glossaryExportUser.signIn(page);
     await redirectToHomePage(page);
   });
 

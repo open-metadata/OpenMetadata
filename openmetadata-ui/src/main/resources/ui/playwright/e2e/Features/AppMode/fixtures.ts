@@ -110,6 +110,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
+      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
       await isolatedAdmin.login(page);
       await use(page);
     } finally {
@@ -129,6 +130,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
+      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
       await dataConsumer.login(page);
       await use(page);
     } finally {

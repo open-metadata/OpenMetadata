@@ -311,7 +311,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
     const userContext = await browser.newContext({ storageState: undefined });
     const userPage = await userContext.newPage();
 
-    await user1.login(userPage);
+    await user1.signIn(userPage);
 
     test.slow(true);
 

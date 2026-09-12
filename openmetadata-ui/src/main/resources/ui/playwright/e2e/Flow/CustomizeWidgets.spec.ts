@@ -125,7 +125,7 @@ const test = base.extend<WidgetTestFixtures>({
     void persona;
 
     const page = await browser.newPage();
-    await testUser.login(page);
+    await testUser.signIn(page);
     await use(page);
     await page.close();
   },
