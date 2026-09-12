@@ -511,12 +511,18 @@ test.describe(
         // completed and auto-opened by the useEffect) is in the DOM.
         await expect(launcherButton.or(trayPopover)).toBeVisible();
 
-        // Open the tray only if it has not already been auto-opened.
-        // When the job finished fast, the tray is already visible and the
-        // launcher is gone from the DOM — clicking it would throw.
-        if (!(await trayPopover.isVisible())) {
-          await launcherButton.click();
-        }
+        // Open the tray only if it has not already been auto-opened. Reading
+        // isVisible() and then clicking is not enough: the tray can auto-open in
+        // between, and the launcher unmounts the moment it does, so the click
+        // waits out the test on an element that is gone. Retry the pair and let
+        // the popover being open end it however it got there.
+        await expect(async () => {
+          if (await trayPopover.isVisible()) {
+            return;
+          }
+          await launcherButton.click({ timeout: 5_000 });
+          await expect(trayPopover).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 30_000 });
 
         await expect(
           page.getByText(/Exporting|Exported/).first()

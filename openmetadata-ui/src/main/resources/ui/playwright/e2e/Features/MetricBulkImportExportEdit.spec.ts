@@ -1083,11 +1083,18 @@ test.describe(
           timeout: 30000,
         });
 
-        if (await trayLauncher.isVisible()) {
-          await trayLauncher.click();
-        }
-
-        await expect(trayPopover).toBeVisible();
+        // Checking isVisible() and then clicking leaves a window the tray can
+        // open itself in, and the launcher unmounts the moment it does -- the
+        // click then waits out the test on an element that is gone. Retry the
+        // pair instead, and treat the popover being open as the finish line
+        // however it got there.
+        await expect(async () => {
+          if (await trayPopover.isVisible()) {
+            return;
+          }
+          await trayLauncher.click({ timeout: 5_000 });
+          await expect(trayPopover).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 30_000 });
         // Verify the export job appears in the tray. Each test uses a dedicated
         // user session so only this test's own job is visible — checking the
         // label is sufficient.
