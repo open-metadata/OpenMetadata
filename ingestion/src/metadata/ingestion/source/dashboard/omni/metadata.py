@@ -51,13 +51,16 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.omni.client import canonical_ref
 from metadata.ingestion.source.dashboard.omni.models import (
     OmniDashboardDocument,
     OmniDocument,
     OmniField,
     OmniTopic,
+    QueryPresentation,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
@@ -69,12 +72,16 @@ from metadata.utils.filters import (
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
 # Project name for documents that don't live in a folder. Must be non-null so the
 # base class does not filter folderless dashboards out via projectFilterPattern.
 DEFAULT_PROJECT = "default"
+
+# Classification holding the labels Omni documents carry.
+OMNI_TAG_CATEGORY = "OmniLabels"
 
 # Bound the data model entity cache so it cannot grow unbounded on large catalogs.
 DATAMODEL_CACHE_SIZE = 1000
@@ -97,6 +104,11 @@ OMNI_DATATYPE_MAP = {
     "datetime": DataType.DATETIME,
     "timestamp": DataType.TIMESTAMP,
 }
+
+
+def _fold_display_name(name: str | None) -> str:
+    """Fold a user display name for matching between the two Omni directories."""
+    return (name or "").strip().casefold()
 
 
 class OmniDashboardDetails(BaseModel):
@@ -125,10 +137,16 @@ class OmniSource(DashboardServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         self.topics: list[OmniTopic] = []
-        # Maps a tile reference (view or topic name) -> list of matching topics.
-        # A list, not a single value, so we can detect cross-model name collisions
-        # and avoid silently misrouting lineage to the wrong model's data model.
-        self._topic_index: dict = defaultdict(list)
+        # Maps a tile reference -> list of matching topics. A list, not a single
+        # value, so we can detect cross-model name collisions and avoid silently
+        # misrouting lineage to the wrong model's data model. The two indexes are
+        # kept apart so a reference that names a data model outright wins over one
+        # that only matches another data model's base view.
+        self._topic_name_index: dict = defaultdict(list)
+        self._topic_alias_index: dict = defaultdict(list)
+        # Owner email by folded display name, and the resolved owner references.
+        self._owner_email_by_name: dict = {}
+        self._owner_ref_cache: dict = {}
         # Track which db-service prefixes have had table lineage emitted, so each
         # configured dbServicePrefix is attempted exactly once.
         self._datamodel_table_lineage_prefixes: set = set()
@@ -149,40 +167,42 @@ class OmniSource(DashboardServiceSource):
                     self.status.filter(datamodel_name, "Data model (Topic) filtered out.")
                     continue
                 self.topics.append(topic)
-                for key in self._topic_index_keys(topic):
-                    self._topic_index[key].append(topic)
+                for key in self._topic_name_keys(topic):
+                    self._topic_name_index[key].append(topic)
+                for key in self._topic_alias_keys(topic):
+                    self._topic_alias_index[key].append(topic)
         logger.info("Fetched %d Omni topics across models", len(self.topics))
-
-    @staticmethod
-    def _normalize_ref(ref: str) -> str:
-        """Canonicalize a reference's qualifier separator.
-
-        Omni qualifies references with ``.``, ``/`` or ``__`` (see the data-lineage
-        integration docs), so collapse them to a single ``.`` form. A single
-        underscore is a valid identifier character, so only the double underscore
-        is treated as a separator.
-        """
-        return ref.replace("__", ".").replace("/", ".")
+        if self.source_config.includeOwners:
+            self._load_owner_emails()
 
     @classmethod
-    def _topic_index_keys(cls, topic: OmniTopic) -> set[str]:
-        """Reference keys a tile/base-view may use to point at this topic.
+    def _topic_name_keys(cls, topic: OmniTopic) -> set[str]:
+        """Reference keys that name this topic/view itself.
 
-        Includes the bare view/topic name and, when the base schema is known, the
-        canonical schema-qualified form (``schema.name``). Indexing the qualified
-        form lets a qualified reference resolve to the correct schema's topic
-        instead of being stripped to a bare leaf that could match an unrelated
-        model/schema. Callers normalize the reference separator before lookup.
+        Includes the bare name and, when the base schema is known, the
+        schema-qualified form (``schema.name``). Indexing the qualified form lets a
+        qualified reference resolve to the correct schema's topic instead of being
+        stripped to a bare leaf that could match an unrelated model/schema.
         """
-        keys: set[str] = set()
-        names = {topic.name}
-        if topic.base_view:
-            names.add(topic.base_view)
-        for name in names:
-            keys.add(name)
-            if topic.base_schema:
-                keys.add(cls._normalize_ref(f"{topic.base_schema}.{name}"))
+        keys = {canonical_ref(topic.name)}
+        if topic.base_schema:
+            keys.add(canonical_ref(f"{topic.base_schema}.{topic.name}"))
         return keys
+
+    @classmethod
+    def _topic_alias_keys(cls, topic: OmniTopic) -> set[str]:
+        """Reference keys that point at this topic's base view rather than itself.
+
+        A curated topic and the physical view it sits on are both ingested as data
+        models, so a reference naming that view must not be treated as ambiguous
+        between the two -- it belongs to the view.
+        """
+        if not topic.base_view:
+            return set()
+        keys = {canonical_ref(topic.base_view)}
+        if topic.base_schema:
+            keys.add(canonical_ref(f"{topic.base_schema}.{topic.base_view}"))
+        return keys - cls._topic_name_keys(topic)
 
     # -- data models (topics) ----------------------------------------------
 
@@ -210,25 +230,23 @@ class OmniSource(DashboardServiceSource):
         """
         if not table_ref:
             return None
-        # Try the reference as given, then with the qualifier separator swapped
-        # (Omni may use ``.`` or ``/``). Both bare and schema-qualified forms are
-        # indexed in prepare(), so a qualified reference matches the correct
-        # schema's topic. We deliberately do NOT strip a qualifier down to its
-        # bare leaf: that could match an unrelated topic and misroute lineage, so
-        # an unmatched qualified reference is left unresolved instead.
-        matches: list[OmniTopic] = []
-        for candidate in (table_ref, self._normalize_ref(table_ref)):
-            matches = self._topic_index.get(candidate) or []
-            if matches:
-                break
-        if len(matches) == 1:
-            return matches[0]
-        if len(matches) > 1:
-            logger.warning(
-                "Ambiguous tile reference %r across %d models; skipping lineage",
-                table_ref,
-                len(matches),
-            )
+        # Both bare and schema-qualified forms are indexed in prepare(), so a
+        # qualified reference matches the correct schema's topic. We deliberately do
+        # NOT strip a qualifier down to its bare leaf: that could match an unrelated
+        # topic and misroute lineage, so an unmatched qualified reference is left
+        # unresolved instead.
+        key = canonical_ref(table_ref)
+        for index in (self._topic_name_index, self._topic_alias_index):
+            matches: list[OmniTopic] = index.get(key) or []
+            if len(matches) == 1:
+                return matches[0]
+            if len(matches) > 1:
+                logger.warning(
+                    "Ambiguous tile reference %r across %d models; skipping lineage",
+                    table_ref,
+                    len(matches),
+                )
+                return None
         return None
 
     def _get_columns(self, fields: list[OmniField]) -> list[Column]:
@@ -367,6 +385,12 @@ class OmniSource(DashboardServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(document.url) if document.url else None,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=document.label_names,
+                    classification_name=OMNI_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
+                ),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -383,6 +407,7 @@ class OmniSource(DashboardServiceSource):
         if not dashboard_details:
             return
         document = dashboard_details.document
+        owners = self.get_owner_ref(dashboard_details=dashboard_details)
         for idx, tile in enumerate(dashboard_details.dashboard.queryPresentations or []):
             try:
                 chart_display = tile.name or f"Tile {idx}"
@@ -395,6 +420,7 @@ class OmniSource(DashboardServiceSource):
                     chartType=get_standard_chart_type(tile.chartType) if tile.chartType else None,
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     sourceUrl=SourceUrl(document.url) if document.url else None,
+                    owners=owners,
                 )
                 yield Either(right=chart_request)
                 self.register_record_chart(chart_request=chart_request)
@@ -406,6 +432,20 @@ class OmniSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    # -- tags ---------------------------------------------------------------
+
+    def yield_tags(self, dashboard_details: OmniDashboardDetails) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Yield the classification and tags for a document's labels."""
+        if not dashboard_details or not self.source_config.includeTags:
+            return
+        yield from get_ometa_tag_and_classification(
+            tags=dashboard_details.document.label_names,
+            classification_name=OMNI_TAG_CATEGORY,
+            tag_description="Omni Label",
+            classification_description="Labels associated with Omni documents",
+            include_tags=self.source_config.includeTags,
+        )
 
     # -- lineage ------------------------------------------------------------
 
@@ -477,35 +517,87 @@ class OmniSource(DashboardServiceSource):
         # for the tiles of this dashboard.
         seen_topics = set()
         for tile in dashboard_details.dashboard.queryPresentations or []:
-            table_ref = tile.query.table if tile.query else None
-            topic = self._resolve_topic(table_ref)
-            if not topic or self._datamodel_name(topic) in seen_topics:
-                continue
-            seen_topics.add(self._datamodel_name(topic))
-            try:
-                datamodel_entity = self._get_datamodel_entity(topic)
-                if datamodel_entity and dashboard_entity:
-                    lineage = self._get_add_lineage_request(to_entity=dashboard_entity, from_entity=datamodel_entity)
-                    if lineage:
-                        yield lineage
-            except Exception as exc:  # pylint: disable=broad-except
-                yield Either(
-                    left=StackTraceError(
-                        name=f"{dashboard_details.document.identifier} Lineage",
-                        error=f"Error yielding lineage for topic {topic.name}: {exc}",
-                        stackTrace=traceback.format_exc(),
+            for topic in self._tile_topics(tile):
+                if self._datamodel_name(topic) in seen_topics:
+                    continue
+                seen_topics.add(self._datamodel_name(topic))
+                try:
+                    datamodel_entity = self._get_datamodel_entity(topic)
+                    if datamodel_entity and dashboard_entity:
+                        lineage = self._get_add_lineage_request(
+                            to_entity=dashboard_entity, from_entity=datamodel_entity
+                        )
+                        if lineage:
+                            yield lineage
+                except Exception as exc:  # pylint: disable=broad-except
+                    yield Either(
+                        left=StackTraceError(
+                            name=f"{dashboard_details.document.identifier} Lineage",
+                            error=f"Error yielding lineage for topic {topic.name}: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
-                )
+
+    def _tile_topics(self, tile: QueryPresentation) -> Iterable[OmniTopic]:
+        """Resolve every data model a tile reads.
+
+        A tile's ``query.table`` can name a workbook-local query view that is absent
+        from the shared model, while the tile's field references
+        (``<schema>__<view>.<field>``) still name real views. Reading both keeps a
+        dashboard connected to the views it queries through joins, as the Looker
+        connector does when it walks an explore's joins.
+        """
+        if not tile.query:
+            return
+        refs = [tile.query.table]
+        refs.extend(field.split(".")[0] for field in tile.query.fields or [] if "." in field)
+        # Distinct references can resolve to the same data model (a bare view name
+        # and its schema-qualified handle), so dedupe on what they resolve to.
+        seen: set[str] = set()
+        for ref in refs:
+            topic = self._resolve_topic(ref) if ref else None
+            if not topic or self._datamodel_name(topic) in seen:
+                continue
+            seen.add(self._datamodel_name(topic))
+            yield topic
 
     # -- owners -------------------------------------------------------------
 
+    def _load_owner_emails(self) -> None:
+        """Index user emails by display name, dropping names shared by several users.
+
+        The document payload identifies an owner by ``id`` and ``name`` only, and
+        that ``id`` is not the SCIM user id, so the display name is the only key
+        the two directories share.
+        """
+        emails: dict[str, str | None] = {}
+        for user in self.client.get_users() or []:
+            name = _fold_display_name(user.displayName)
+            email = user.primary_email
+            if not name or not email:
+                continue
+            if name in emails and emails[name] != email:
+                emails[name] = None
+                logger.debug("Omni display name %r maps to several users; ignoring it", user.displayName)
+                continue
+            emails[name] = email
+        self._owner_email_by_name = {name: email for name, email in emails.items() if email}
+        logger.info("Resolved %d Omni owner emails", len(self._owner_email_by_name))
+
     def get_owner_ref(self, dashboard_details: OmniDashboardDetails) -> EntityReferenceList | None:
         try:
-            if not self.source_config.includeOwners:
+            if not self.source_config.includeOwners or not dashboard_details:
                 return None
             owner = dashboard_details.document.owner
-            if owner and owner.email:
-                return self.metadata.get_reference_by_email(owner.email)
+            if not owner:
+                return None
+            email = self._owner_email_by_name.get(_fold_display_name(owner.name))
+            if not email:
+                logger.debug("No email found for Omni owner %r", owner.name)
+                return None
+            if email not in self._owner_ref_cache:
+                self._owner_ref_cache[email] = self.metadata.get_reference_by_email(email)
+            return self._owner_ref_cache[email]
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning("Could not fetch owner: %s", exc)
