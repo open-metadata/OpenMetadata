@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { User01 } from '@untitledui/icons';
 import { forwardRef, type HTMLAttributes } from 'react';
+import { Owners as OwnersIcon } from '../../../icons/Owners';
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import { cx } from '@/utils/cx';
 import { Avatar } from '../../base/avatar/avatar';
@@ -65,7 +65,7 @@ export const OwnerChip = forwardRef<
       owner.name ??
       owner.id;
     const isTeam = owner.type === 'team';
-    const PlaceholderIcon = owner.icon ?? (isTeam ? TeamsIcon : User01);
+    const PlaceholderIcon = owner.icon ?? (isTeam ? TeamsIcon : OwnersIcon);
     const nameStr =
       typeof displayName === 'string' ? displayName : owner.name ?? '';
     const hue = nameToHue(nameStr);

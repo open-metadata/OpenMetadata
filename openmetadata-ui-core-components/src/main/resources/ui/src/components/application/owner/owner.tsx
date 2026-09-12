@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, User01 } from '@untitledui/icons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
+import { Edit } from '../../../icons/Edit';
+import { Owners } from '../../../icons/Owners';
 import { Popover, PopoverTrigger } from '../popover/popover';
 import { OwnerAvatarStack } from './owner-avatar-stack';
 import { OwnerChip } from './owner-chip';
@@ -101,7 +102,7 @@ export const Owner = ({
         data-testid={dataTestId}>
         {/* Matches the legacy NoOwnerFound placeholder: a user glyph the app
             asserts on (data-testid="no-owner-icon") for the empty compact state. */}
-        <User01
+        <Owners
           className="tw:size-4 tw:shrink-0 tw:text-quaternary"
           data-testid="no-owner-icon"
         />
@@ -144,7 +145,7 @@ export const Owner = ({
               className="tw:flex tw:items-center tw:text-secondary hover:tw:text-primary"
               type="button"
               onClick={onEditClick}>
-              <Edit01 className="tw:size-3.5" />
+              <Edit className="tw:size-3.5" />
             </button>
           )}
         </div>
