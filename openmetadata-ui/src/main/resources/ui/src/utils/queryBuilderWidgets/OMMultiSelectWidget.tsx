@@ -37,9 +37,6 @@ const toSelectItems = (
   }));
 };
 
-// `tw:contents` keeps this wrapper out of layout entirely, so it is a test handle and nothing else.
-const VALUE_TEST_ID_WRAPPER = 'tw:contents';
-
 const OMMultiSelectWidget = ({
   value,
   setValue,
@@ -140,8 +137,9 @@ const OMMultiSelectWidget = ({
   );
 
   return (
+    // `tw:contents` keeps the wrapper out of layout: it is a test handle and nothing else.
     <div
-      className={VALUE_TEST_ID_WRAPPER}
+      className="tw:contents"
       data-testid="advanced-search-value-multiselect">
       <Autocomplete
         isDisabled={readonly}
@@ -150,8 +148,8 @@ const OMMultiSelectWidget = ({
         selectedItems={selectedItems}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}
-        // Results are filtered server-side, so keep the built-in client filter off (filterOption: () => true) — the
-        // option label need not literally contain the raw query (e.g.
+        // Filtered server-side, so keep the client filter off: a label need not contain the raw query (an owner's
+        // display name vs the typed value), and client-filtering would hide valid server matches.
         {...(isAsync
           ? { filterOption: () => true, onSearchChange: loadAsync }
           : {})}>

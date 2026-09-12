@@ -29,10 +29,10 @@ export const getScopedQueryFilter = (
     entityType
   );
 
-// How many entities the current filter matches.
+// How many entities the current filter matches, or undefined when the search could not answer.
 export const fetchQueryBuilderCount = async (
   scopedFilter: QueryFilterInterface
-): Promise<number> => {
+): Promise<number | undefined> => {
   try {
     const res = await searchQuery({
       query: '',
@@ -47,6 +47,8 @@ export const fetchQueryBuilderCount = async (
 
     return res.hits.total.value ?? 0;
   } catch {
-    return 0;
+    // A stale count reads as a narrowing that never happened, and 0 reads as a filter that matched nothing — both
+    // assert something the failed search never established. Claim nothing and let the banner hide.
+    return undefined;
   }
 };

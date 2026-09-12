@@ -110,11 +110,13 @@ describe('fetchQueryBuilderCount', () => {
     );
   });
 
-  it('should report 0 rather than a stale count when the search fails', async () => {
+  it('should report no count at all when the search fails', async () => {
     searchQuery.mockRejectedValue(new Error('boom'));
 
-    // A stale count reads as a successful narrowing that never happened.
-    await expect(fetchQueryBuilderCount(filterWithTerm())).resolves.toBe(0);
+    // Neither a stale number nor 0 — both would assert a result the search never returned.
+    await expect(
+      fetchQueryBuilderCount(filterWithTerm())
+    ).resolves.toBeUndefined();
   });
 
   it('should treat a missing total as 0', async () => {

@@ -22,10 +22,8 @@ import type { QueryBuilderSurface } from '../../../../utils/queryBuilder/types';
 // The controls the canvas renders.
 type QueryBuilderButtonKind = 'addRule' | 'delRule' | 'addGroup' | 'delGroup';
 
-// Per-surface button labelling and the testids Playwright locates by.
+// The testids Playwright locates each surface's buttons by.
 export interface QueryBuilderButtonPreset {
-  // Omit for an icon-only add button.
-  addRuleLabel?: () => string;
   testIds: Record<QueryBuilderButtonKind, string>;
 }
 

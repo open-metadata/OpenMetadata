@@ -21,8 +21,6 @@ export const QUERY_BUILDER_GROUP_MODE = {
 export type GroupMode =
   (typeof QUERY_BUILDER_GROUP_MODE)[keyof typeof QUERY_BUILDER_GROUP_MODE];
 
-// How the AND/OR control behaves.
-// The conjunction values RAQB itself uses as tree keys.
 // Which ground the group card sits on.
 export const QUERY_BUILDER_SURFACE = {
   // White — for a card sitting on a tinted or grouped background.
@@ -49,11 +47,13 @@ export const QUERY_BUILDER_SURFACE_CLASS: Record<
   },
 };
 
+// The conjunction values RAQB itself uses as tree keys.
 export const QUERY_BUILDER_CONJUNCTION = {
   AND: 'AND',
   OR: 'OR',
 } as const;
 
+// How the AND/OR control behaves.
 export const QUERY_BUILDER_CONJUNCTION_MODE = {
   EDITABLE: 'editable',
   AND: 'and',
@@ -63,7 +63,7 @@ export const QUERY_BUILDER_CONJUNCTION_MODE = {
 export type ConjunctionMode =
   (typeof QUERY_BUILDER_CONJUNCTION_MODE)[keyof typeof QUERY_BUILDER_CONJUNCTION_MODE];
 
-// The four jobs `isExplorePage` used to do, as separate inputs.
+// The jobs `isExplorePage` used to conflate, as separate inputs.
 export interface QueryBuilderConfigModes {
   // Renders the "Fields:" / "Condition:" / "Criteria:" column labels.
   showLabels?: boolean;

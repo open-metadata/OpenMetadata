@@ -23,7 +23,7 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
   const externalStr =
     value !== null && value !== undefined ? String(value) : '';
   const [localValue, setLocalValue] = useState(externalStr);
-  // Prevent external value sync from overwriting the user's in-progress input (e.g.
+  // Without this, typing "1." rounds to 1, resets the display to "1" and makes a decimal impossible to type.
   const isFocusedRef = useRef(false);
 
   useEffect(() => {

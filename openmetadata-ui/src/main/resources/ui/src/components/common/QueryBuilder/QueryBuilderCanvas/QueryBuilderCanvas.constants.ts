@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from '../../../../utils/i18next/LocalUtil';
 import type { QueryBuilderButtonPreset } from './QueryBuilderCanvas.types';
 
 // Figma gives the three columns 320 / 164 / 320 at a 901px modal — so not equal thirds.
@@ -30,7 +29,6 @@ export const QUERY_BUILDER_FIELD_TEST_ID = 'advanced-search-field-select';
 
 // Explore: the only surface with user-created brackets.
 export const EXPLORE_BUTTON_PRESET: QueryBuilderButtonPreset = {
-  addRuleLabel: () => t('label.add-new-entity', { entity: t('label.field') }),
   testIds: {
     addRule: 'advanced-search-add-rule',
     delRule: 'advanced-search-delete-rule',
@@ -41,7 +39,6 @@ export const EXPLORE_BUTTON_PRESET: QueryBuilderButtonPreset = {
 
 // Every form-embedded builder.
 export const CONDITION_BUTTON_PRESET: QueryBuilderButtonPreset = {
-  addRuleLabel: EXPLORE_BUTTON_PRESET.addRuleLabel,
   testIds: {
     addRule: 'add-condition-button',
     delRule: 'delete-condition-button',

@@ -87,7 +87,8 @@ export const extractSourceValue = (
     }
   }
 
-  // Terminal value may be a string[] (e.g.
+  // Terminal value may be a string[] (e.g. `ownerDisplayName: ['Aaron Johnson']`): match the bucket key, or resolve
+  // nothing.
   if (Array.isArray(val)) {
     return (val as unknown[])
       .filter((item): item is string => typeof item === 'string')

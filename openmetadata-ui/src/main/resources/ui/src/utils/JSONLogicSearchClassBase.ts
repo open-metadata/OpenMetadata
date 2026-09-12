@@ -808,7 +808,8 @@ class JSONLogicSearchClassBase {
     };
   };
 
-  // Custom handling for array_not_contains and is_null (Is Not Set) operators on group/some fields (e.g.
+  // RAQB emits `{some: [var, cond]}` for group/some fields (Owners, Domain, Data Product), and JsonLogic's `some` is
+  // vacuously false on an empty array — so "Is Not Set" would never match. Rewrite it as `!some(field != null)`.
   getNegativeQueryForNotContainsReverserOperation = (
     logic: Record<string, unknown>
   ) => {

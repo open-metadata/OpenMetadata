@@ -114,8 +114,7 @@ const QueryBuilderGroupCard: FC<QueryBuilderGroupCardProps> = ({
             iconLeading={PlusCircle}
             size="sm"
             onClick={() => actions.addRule(path)}>
-            {preset.addRuleLabel?.() ??
-              t('label.add-new-entity', { entity: t('label.field') })}
+            {t('label.add-new-entity', { entity: t('label.field') })}
           </Button>
         )}
       </Box>

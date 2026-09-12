@@ -627,25 +627,6 @@ describe('QueryBuilderCanvas – component contracts', () => {
     );
   });
 
-  it('should fall back to a generic add-field label when the preset carries none', () => {
-    render(
-      <QueryBuilderGroupCard
-        canRemove
-        context={{
-          ...context,
-          preset: { ...EXPLORE_BUTTON_PRESET, addRuleLabel: undefined },
-        }}
-        depth={0}
-        group={{}}
-        path={['root']}
-      />
-    );
-
-    expect(screen.getByTestId('advanced-search-add-rule')).toHaveTextContent(
-      'label.add-new-entity'
-    );
-  });
-
   it('should render a card even for a config that declares no conjunctions', () => {
     render(
       <QueryBuilderGroupCard

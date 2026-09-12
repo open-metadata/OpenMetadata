@@ -61,7 +61,7 @@ function pickButtonPreset(isNested: boolean): QueryBuilderButtonPreset {
   return isNested ? EXPLORE_BUTTON_PRESET : CONDITION_BUTTON_PRESET;
 }
 
-// The only component in the codebase that renders a RAQB `<Query>`.
+// The canonical query builder. `QueryBuilderWidgetV1` still renders its own `<Query>`, but nothing in OSS uses it.
 const QueryBuilder: FC<QueryBuilderProps> = ({
   value,
   tree,
