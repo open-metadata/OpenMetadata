@@ -161,7 +161,7 @@ public final class Dashboards {
     }
 
     public DashboardFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 
