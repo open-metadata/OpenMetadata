@@ -77,6 +77,35 @@ export const waitForWidgetsToRender = async (page: Page, timeout = 30000) => {
   ).toHaveCount(0, { timeout });
 };
 
+/**
+ * Await a navigation's own "get by name" call and assert it actually returned
+ * the entity.
+ *
+ * `waitForResponse` resolves on *any* response, 404 and 500 included, so used
+ * bare it synchronises on "the server said something" rather than on "the page
+ * has what the test needs". A missing or unauthorised entity then satisfies the
+ * wait, the test walks on to the "<Entity> instance for <fqn> not found"
+ * placeholder, and the next click waits out the entire test timeout — surfacing
+ * as a bare `Test timeout of 60000ms exceeded` with no location, three
+ * interactions away from the request that actually failed.
+ *
+ * Use this wherever a helper navigates somewhere and the rest of the test
+ * assumes the destination loaded.
+ */
+export const expectNavigationResponseOk = async (
+  responsePromise: Promise<Response>,
+  what: string
+): Promise<Response> => {
+  const response = await responsePromise;
+
+  expect(
+    response.status(),
+    `${what}: ${response.url()} returned ${response.status()} — the entity is missing, deleted, or not visible to this user`
+  ).toBe(200);
+
+  return response;
+};
+
 export const visitEntityPage = async (data: {
   page: Page;
   searchTerm: string;
@@ -168,7 +197,11 @@ export const visitEntityPageByFqn = async (data: {
   await page.goto(`/${routeSegment}/${encodedFqn}`, {
     waitUntil: 'domcontentloaded',
   });
-  await entityDetailsResponse;
+  await expectNavigationResponseOk(
+    entityDetailsResponse,
+    `visit ${endpoint} ${fqn}`
+  );
+
   await waitForAllLoadersToDisappear(page);
   await waitForWidgetsToRender(page);
 };

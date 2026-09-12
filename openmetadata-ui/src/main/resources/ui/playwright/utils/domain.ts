@@ -403,6 +403,57 @@ export const validateDomainForm = async (page: Page) => {
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
 
+/**
+ * Report where a domain the UI could not list actually is: present in the
+ * repository, present in the search index, both, or neither.
+ */
+const describeDomainVisibility = async (
+  page: Page,
+  domain: Domain['data']
+): Promise<string> => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    const byName = await apiContext.get(
+      `/api/v1/domains/name/${encodeURIComponent(domain.name)}`
+    );
+    const inRepository = byName.status() === 200;
+
+    const search = await apiContext.get(
+      `/api/v1/search/query?q=${encodeURIComponent(
+        domain.name
+      )}&index=domain&from=0&size=10`
+    );
+    const hits = search.ok()
+      ? ((await search.json())?.hits?.hits ?? []).map(
+          (hit: { _source?: { name?: string } }) => hit._source?.name
+        )
+      : [];
+    const inIndex = hits.includes(domain.name);
+
+    return [
+      `Diagnostics for "${domain.name}":`,
+      `  GET /api/v1/domains/name/... -> ${byName.status()} (${
+        inRepository
+          ? 'the domain exists'
+          : 'the domain is NOT in the repository'
+      })`,
+      `  search index=domain -> ${search.status()}, ${
+        inIndex ? 'the domain IS indexed' : 'the domain is NOT indexed'
+      }; hits: ${JSON.stringify(hits)}`,
+      inRepository && inIndex
+        ? '  => written and indexed, so the listing UI or the search box is at fault, not eventual consistency.'
+        : inRepository
+        ? '  => written but not indexed: search read-after-write lag or a failed index write.'
+        : '  => never written: the fixture create failed or something deleted it.',
+    ].join('\n');
+  } catch (diagnosticError) {
+    return `Diagnostics unavailable: ${(diagnosticError as Error).message}`;
+  } finally {
+    await afterAction();
+  }
+};
+
 export const selectDomain = async (page: Page, domain: Domain['data']) => {
   const searchBox = page
     .getByTestId('page-layout-v1')
@@ -417,31 +468,44 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
   // is only clicked once it is actually there; otherwise the click auto-waits
   // against a list that will never contain it and burns the test timeout.
   let hasSearched = false;
-  await expect
-    .poll(
-      async () => {
-        if (hasSearched) {
-          await page.reload();
-          await waitForAllLoadersToDisappear(page);
+  try {
+    await expect
+      .poll(
+        async () => {
+          if (hasSearched) {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+          }
+          hasSearched = true;
+
+          await Promise.all([
+            searchBox.fill(domain.name),
+            page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
+          ]);
+
+          await waitForSearchDebounce(page);
+
+          return domainRow.isVisible();
+        },
+        {
+          message: `Wait for domain "${domain.name}" to appear in the domain listing`,
+          timeout: 60_000,
+          intervals: [2_000, 3_000, 5_000],
         }
-        hasSearched = true;
-
-        await Promise.all([
-          searchBox.fill(domain.name),
-          page.waitForResponse('/api/v1/search/query?q=*&index=domain*'),
-        ]);
-
-        await waitForSearchDebounce(page);
-
-        return domainRow.isVisible();
-      },
-      {
-        message: `Wait for domain "${domain.name}" to appear in the domain listing`,
-        timeout: 60_000,
-        intervals: [2_000, 3_000, 5_000],
-      }
-    )
-    .toBe(true);
+      )
+      .toBe(true);
+  } catch (error) {
+    // "It never showed up" is not a diagnosis. Ask the API the two questions
+    // that separate the candidate causes — was the domain ever written, and did
+    // the search index pick it up — so the failure names the layer that broke
+    // instead of costing another round of blob-artifact archaeology.
+    throw new Error(
+      `${(error as Error).message}\n\n${await describeDomainVisibility(
+        page,
+        domain
+      )}`
+    );
+  }
 
   // Click the domain name cell, not the row center — the row's center column is
   // the glossary-terms cell whose tags are their own links, so a row-center

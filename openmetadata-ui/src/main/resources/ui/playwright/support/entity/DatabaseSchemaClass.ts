@@ -20,6 +20,7 @@ import {
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
+import { expectNavigationResponseOk } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   EntityTypeEndpoint,
@@ -163,7 +164,10 @@ export class DatabaseSchemaClass extends EntityClass {
       `/api/v1/databases/name/*${this.database.name}?**`
     );
     await page.getByTestId(this.database.name).click();
-    await databaseResponse;
+    await expectNavigationResponseOk(
+      databaseResponse,
+      `visit database ${this.database.name}`
+    );
 
     // Wait for page to fully load after navigation
 
@@ -176,7 +180,10 @@ export class DatabaseSchemaClass extends EntityClass {
       `/api/v1/databaseSchemas/name/*${this.entity.name}?*`
     );
     await schemaLocator.click();
-    await databaseSchemaResponse;
+    await expectNavigationResponseOk(
+      databaseSchemaResponse,
+      `visit databaseSchema ${this.entity.name}`
+    );
   }
 
   async delete(apiContext: APIRequestContext) {
