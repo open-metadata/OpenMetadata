@@ -34,7 +34,10 @@ import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
+import type { QueryBuilderConfigModes } from './queryBuilder/types';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
+import { toTagSelectOptions } from './SearchPureUtils';
 
 type DropdownItem = { key: string; label: JSX.Element };
 const renderSearchLabel = (label: string, searchKey: string) => {
@@ -216,17 +219,14 @@ export const getTierOptions = async (): Promise<ListValues> => {
       limit: 50,
     });
 
-    const tierFields = tiers.map((tier) => ({
-      title: tier.fullyQualifiedName, // tier.name,
-      value: tier.fullyQualifiedName,
-    }));
-
-    return tierFields as ListValues;
+    return toTagSelectOptions(tiers) as ListValues;
   } catch {
     return [];
   }
 };
 
+// Legacy entry point: translates the single `isExplorePage` boolean into the explicit mode inputs the class bases now
+// take.
 export const getTreeConfig = ({
   searchOutputType,
   searchIndex,
@@ -237,19 +237,27 @@ export const getTreeConfig = ({
   isExplorePage: boolean;
 }) => {
   const index = isArray(searchIndex) ? searchIndex : [searchIndex];
+  const modes: QueryBuilderConfigModes = isExplorePage
+    ? {}
+    : {
+        showLabels: false,
+        useFriendlyOperatorLabels: true,
+        renderButton: renderQueryBuilderFilterButtons,
+      };
 
-  return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(index, isExplorePage)
-    : jsonLogicSearchClassBase.getQbConfigs(index, isExplorePage);
+  if (searchOutputType === SearchOutputType.ElasticSearch) {
+    return advancedSearchClassBase.getQbConfigs(index, modes);
+  }
+
+  // JSONLogic keeps its own icon-only renderer; only label visibility varies.
+  return jsonLogicSearchClassBase.getQbConfigs(index, {
+    showLabels: isExplorePage,
+  });
 };
 
-/**
- * Process a custom property field and add it to the subfields
- * @param field - The custom property field to process
- * @param resEntityType - The entity type containing the field
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
+// Process a custom property field and add it to the subfields @param field - The custom property field to process
+// @param resEntityType - The entity type containing the field @param subfields - The subfields record to update @param
+// entityType - Optional specific entity type to filter for
 export const processCustomPropertyField = (
   field: CustomPropertySummary,
   resEntityType: string,
@@ -299,13 +307,9 @@ export const processCustomPropertyField = (
   });
 };
 
-/**
- * Process all custom property fields for a specific entity type
- * @param resEntityType - The entity type to process
- * @param fields - Array of custom property fields
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
+// Process all custom property fields for a specific entity type @param resEntityType - The entity type to process
+// @param fields - Array of custom property fields @param subfields - The subfields record to update @param entityType -
+// Optional specific entity type to filter for
 export const processEntityTypeFields = (
   resEntityType: string,
   fields: CustomPropertySummary[],
