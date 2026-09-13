@@ -179,6 +179,7 @@
   --om-color-bg: var(--color-bg-primary, #ffffff);
   --om-color-bg-primary: var(--color-bg-primary, #ffffff);
   --om-color-bg-secondary: var(--color-bg-secondary, #fafafa);
+  --om-color-bg-secondary-hover: var(--color-bg-secondary_hover, #f5f5f5);
   --om-color-bg-tertiary: var(--color-bg-tertiary, #f5f5f5);
   --om-color-bg-quaternary: var(--color-bg-quaternary, #e9eaeb);
   --om-color-bg-disabled: var(--color-bg-disabled, #f5f5f5);
@@ -841,13 +842,14 @@
   --om-space-290: 290px;
 
   /* Extended radius — off-scale values in use. */
+  --om-radius-10: 10px;
+  --om-radius-2xl: 16px;
   --om-radius-1: 1px;
   --om-radius-3: 3px;
   --om-radius-3_2: 3.2px;
   --om-radius-5: 5px;
   --om-radius-7: 7px;
   --om-radius-9: 9px;
-  --om-radius-10: 10px;
   --om-radius-13: 13px;
   --om-radius-14: 14px;
   --om-radius-15: 15px;
@@ -876,6 +878,7 @@
 
   /* z-index — exact values preserved to keep stacking order identical.
      For new work prefer the semantic ladder documented in specs. */
+  --om-z-n1: -1;
   --om-z-0: 0;
   --om-z-1: 1;
   --om-z-2: 2;
