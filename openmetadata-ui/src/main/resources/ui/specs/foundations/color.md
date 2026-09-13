@@ -17,12 +17,16 @@ only to hold migrated one-off values until they can be re-expressed).
 | Muted / disabled / placeholder text | `--om-color-text-quaternary`, `--om-color-text-disabled`, `--om-color-text-placeholder` |
 | Text on a dark/brand fill | `--om-color-text-inverse` |
 | Status text | `--om-color-text-error` / `-warning` / `-success` |
-| Page / card background | `--om-color-bg-primary` |
-| Subtle / raised surface | `--om-color-bg-secondary`, `--om-color-bg-tertiary` |
+| Page background | `--om-color-bg-page` |
+| Main workspace | `--om-color-bg-canvas` |
+| Card / panel / sidebar | `--om-color-bg-surface` |
+| Dropdown / menu / popover | `--om-color-bg-raised` |
+| Modal / drawer content | `--om-color-bg-overlay-surface` |
 | Status surface | `--om-color-bg-error` / `-warning` / `-success` |
 | Brand surface / solid | `--om-color-bg-brand`, `--om-color-bg-brand-solid` |
 | Modal / drawer scrim | `--om-color-bg-overlay` |
-| Default border / divider | `--om-color-border` (= primary), `--om-color-border-secondary` |
+| Interactive control border | `--om-color-border-primary`, `--om-color-border-hover` |
+| Card / panel / divider border | `--om-color-border-subtle` |
 | Error / brand border | `--om-color-border-error`, `--om-color-border-brand` |
 | Link | `--om-color-link`, `--om-color-link-hover` |
 | Hover / active / selected row | `--om-color-interactive-hover` / `-active` / `-selected` |
@@ -54,18 +58,35 @@ system: `brand`, `error`, `warning`, `success`, `gray`, `gray-blue`,
 
 Semantic tokens flip automatically: the upstream `--color-*` custom properties
 are redefined under `.dark-mode` in `globals.css`, and `--om-color-*` inherit
-that by referencing `--color-*` directly. **This is the reason to use semantic
-tokens** — a palette
-token like `--om-color-gray-900` is a fixed color and will not adapt. See
+that by referencing `--color-*` directly. Light-mode primitive values remain
+unchanged; the approved neutral scale is scoped to `.dark-mode`. **This is the
+reason to use semantic tokens** — a palette token like `--om-color-gray-900`
+does not communicate whether the caller needs the page, canvas, or surface
+role. See
 [`../../docs/colors.md`](../../docs/colors.md) for the full dark-mode guide.
+
+### Dark surface hierarchy
+
+| Role | Dark value |
+| --- | --- |
+| `--om-color-bg-page` | Gray 950 — `#141414` |
+| `--om-color-bg-canvas` | Gray 900 — `#191919` |
+| `--om-color-bg-surface` | Gray 800 — `#222222` |
+| `--om-color-bg-raised` | Gray 700 — `#2e2e2e` |
+| `--om-color-bg-overlay-surface` | Gray 800 — `#222222` |
+
+Cards and dividers use the 8% alpha `--om-color-border-subtle`; interactive
+controls use `--om-color-border-primary` and `--om-color-border-hover`.
+Status surfaces use the shared 16% fill and 35% subtle-border recipes rather
+than component-specific banner or chip colors.
 
 ## Do / Don't
 
 ```less
 /* DO */
 color: var(--om-color-text-primary);
-background: var(--om-color-bg-secondary);
-border: 1px solid var(--om-color-border);
+background: var(--om-color-bg-surface);
+border: 1px solid var(--om-color-border-subtle);
 
 /* DON'T — flagged as errors by token-audit */
 color: #292a2e;
