@@ -65,11 +65,11 @@ const test = base.extend<{ adminPage: Page }>({
 // Select.ComboBox (OMFieldSelect). The default "owners" rule leaves an empty,
 // hidden `<div class="rule--field">` first in the DOM, so scope to the
 // container that actually holds a combobox — the pre-migration
-// `.rule--field .ant-select` selector filtered these out implicitly.
-const comboboxField = (scope: Page | Locator, className: string): Locator =>
-  scope
-    .locator(className)
-    .filter({ has: scope.locator('input[role="combobox"]') });
+// `[data-testid=advanced-search-field-select] .ant-select` selector filtered these out implicitly.
+// The filter this used to carry excluded RAQB's non-combobox field markup.
+// The canvas renders one combobox per control, so the testid is exact.
+const comboboxField = (scope: Page | Locator, testId: string): Locator =>
+  scope.getByTestId(testId);
 
 const openPersonaContext = async (page: Page) =>
   openPersonaAIContext(page, persona.data.name);
@@ -228,7 +228,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
       });
 
       await test.step('click Save Rule — must be blocked', async () => {
@@ -272,7 +274,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add a condition row', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
       });
 
       await test.step('select the Description field (text type, no async fetch)', async () => {
@@ -280,7 +284,7 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
         // "owners" rule leaves an empty hidden .rule--field first in the DOM.
         await selectOption(
           page,
-          comboboxField(page, '.rule--field').first(),
+          comboboxField(page, 'advanced-search-field-select').first(),
           'Description',
           true
         );
@@ -289,14 +293,19 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('select Contains operator (required before text widget appears)', async () => {
         // Description field uses match_phrase operators; text widget only renders
         // after an operator is chosen — select "Contains" (match_phrase)
-        const operatorLocator = comboboxField(page, '.rule--operator').first();
+        const operatorLocator = comboboxField(
+          page,
+          'advanced-search-operator-select'
+        ).first();
         await expect(operatorLocator).toBeVisible({ timeout: 5000 });
         await selectOption(page, operatorLocator, 'Contains', false);
       });
 
       await test.step('type a value in the text widget', async () => {
         const textInput = page
-          .locator('.rule--widget--TEXT input[type="text"]')
+          .locator(
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+          )
           .first();
         await textInput.waitFor({ state: 'visible' });
         await textInput.fill('important data asset');
@@ -329,7 +338,9 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await test.step('add an empty condition — save must be blocked', async () => {
         await page.getByTestId('add-context-condition').click();
         // Wait for the condition row's field selector to appear instead of a fixed delay
-        await expect(comboboxField(page, '.rule--field').first()).toBeVisible();
+        await expect(
+          comboboxField(page, 'advanced-search-field-select').first()
+        ).toBeVisible();
         await page.getByRole('button', { name: 'Save Rule' }).click();
         await expect(
           page.getByTestId('context-rule-filter-error')
@@ -445,35 +456,38 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
       await page.keyboard.press('Escape');
     });
 
-    test(
-      'knowledge entity type forces Fully rendered on and disables it',
-      { tag: '@quarantine' },
-      async ({ adminPage: page }) => {
-        await openPersonaContext(page);
-        await openAddRuleDrawer(page);
+    test('knowledge entity type forces Fully rendered on and disables it', async ({
+      adminPage: page,
+    }) => {
+      await openPersonaContext(page);
+      await openAddRuleDrawer(page);
 
-        await test.step('switch to a knowledge entity type', async () => {
-          await page.getByTestId('context-rule-entity-type').click();
-          await page
-            .getByRole('listbox')
-            .getByText(/knowledge/i)
-            .first()
-            .click();
-        });
+      await test.step('switch to a knowledge entity type', async () => {
+        // The popover can close on its own right after opening, while the drawer
+        // is still settling (the match preview and filter builder re-render as
+        // their requests land). The pending option click then waits out the test
+        // budget for a listbox that never comes back. selectOptionWithRetry
+        // reopens the popover and retries, as the entity-type switch test does.
+        // Each option carries its EntityType as data-key. Matching the
+        // "Knowledge" supporting text instead would match all three knowledge
+        // types and leave DOM order to decide which one the test exercises.
+        await selectOptionWithRetry(
+          page.getByTestId('context-rule-entity-type'),
+          page.getByRole('listbox').locator('[data-key="glossaryTerm"]')
+        );
+      });
 
-        await test.step('Fully rendered switch must be checked and disabled', async () => {
-          const fullyRenderedSwitch = page
-            .getByTestId('context-rule-fully-rendered')
-            .getByRole('switch')
-            .first();
-          // toBeChecked() reads the checkbox `checked` property — react-aria Switch
-          // does not always set the aria-checked attribute, so attribute checks fail
-          await expect(fullyRenderedSwitch).toBeChecked();
-          await expect(fullyRenderedSwitch).toBeDisabled();
-        });
+      await test.step('Fully rendered switch must be checked and disabled', async () => {
+        const fullyRenderedSwitch = page
+          .getByTestId('context-rule-fully-rendered')
+          .getByRole('switch');
+        // toBeChecked() reads the checkbox `checked` property — react-aria Switch
+        // does not always set the aria-checked attribute, so attribute checks fail
+        await expect(fullyRenderedSwitch).toBeChecked();
+        await expect(fullyRenderedSwitch).toBeDisabled();
+      });
 
-        await page.keyboard.press('Escape');
-      }
-    );
+      await page.keyboard.press('Escape');
+    });
   });
 });

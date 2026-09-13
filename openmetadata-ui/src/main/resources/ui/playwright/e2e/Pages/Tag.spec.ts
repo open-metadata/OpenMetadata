@@ -171,7 +171,7 @@ test.describe('Tag Page with Admin Roles', () => {
       .getByRole('button', { name: 'Cube01', exact: true })
       .click();
     await adminPage
-      .getByRole('button', { name: 'Select color #F14C75' })
+      .getByRole('button', { name: 'Select color #B93815' })
       .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);

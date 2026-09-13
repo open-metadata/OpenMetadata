@@ -22,6 +22,7 @@ import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
@@ -41,17 +42,13 @@ const TableQueryRightPanel = ({
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.TABLE);
-  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
-
-  const canEditOwners = useMemo(
-    () => EditAll || EditOwners,
-    [EditAll, EditOwners]
+  // Derive named flags instead of destructuring raw EditAll/EditOwners/etc.
+  // off `permission` — canEditOwners/canEditDescription/canEditTags already
+  // fold the "field permission wins over EditAll" prioritization in.
+  const { canEditOwners, canEditDescription, canEditTags } = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
   );
-  const canEditDescription = useMemo(
-    () => EditDescription || EditAll,
-    [EditDescription, EditAll]
-  );
-  const canEditTags = useMemo(() => EditAll || EditTags, [EditAll, EditTags]);
 
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
