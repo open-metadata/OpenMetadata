@@ -32,6 +32,7 @@ import {
   startCsvPreviewAndWaitForGrid,
   suppressCsvJobsTray,
 } from './importUtils';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -141,46 +142,54 @@ export const submitTestCaseForm = async (page: Page) => {
 };
 
 export const waitForPermissionsResponse = (page: Page) =>
-  page.waitForResponse((res) => {
-    const url = res.url();
-    return (
-      url.includes('/api/v1/permissions') &&
-      !url.includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
-    );
-  });
+  waitForResponseWithStatus(
+    page,
+    (res) => {
+      const url = res.url();
+      return (
+        url.includes('/api/v1/permissions') &&
+        !url.includes('/api/v1/permissions/table/name/') &&
+        res.request().method() === 'GET'
+      );
+    },
+    200
+  );
 
 export const waitForTableEntityPermissionsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestCaseListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testCases/search/list'),
+    200
   );
 
 export const waitForTestCaseDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestSuiteListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       (res.url().includes('/api/v1/dataQuality/testSuites') ||
         res.url().includes('/api/v1/dataQuality/testSuites/search/list')) &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 /**
@@ -210,15 +219,19 @@ export const confirmIngestionPipelineHardDelete = async (page: Page) => {
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
-  await page.goto('/data-quality/test-suites');
+  await page.goto('/data-quality/test-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await listPromise;
 };
 
 export const waitForTestSuiteDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/'),
+    200
   );
 
 export const visitTestSuiteDetailsPage = async (
@@ -226,16 +239,19 @@ export const visitTestSuiteDetailsPage = async (
   suiteFqn: string
 ) => {
   const detailsPromise = waitForTestSuiteDetailsResponse(page);
-  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`);
+  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await detailsPromise;
 };
 
 export const waitForFailedRowsSampleResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/failedRowsSample') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
@@ -297,11 +313,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
 
   await page.keyboard.press('Escape');
 
-  const tableResponsePromise = page.waitForResponse(
+  const tableResponsePromise = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/tables/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.url().includes('/api/v1/tables/') && res.request().method() === 'GET',
+    200
   );
   const testCaseResponsePromise = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -317,7 +333,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       response.request().method() === 'GET'
   );
 
-  await page.goto('/test-library');
+  await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
   let response = await responsePromise;
   let data = await response.json();
 
@@ -381,7 +397,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
   const testCaseListResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.goto(`/test-suites/${testSuiteFqn}`);
+  await page.goto(`/test-suites/${testSuiteFqn}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await testCaseListResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').waitFor({
@@ -394,7 +412,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
  * @param page - Playwright page object
  */
 export const navigateToGlobalDataQuality = async (page: Page) => {
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await page.getByTestId('manage-button').waitFor();
 };
 
@@ -498,7 +518,7 @@ export const verifyPageAccess = async (
   const permissionResponse = page.waitForResponse((response) =>
     response.url().includes('api/v1/permissions')
   );
-  await page.goto(url);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   await permissionResponse;
   await waitForAllLoadersToDisappear(page);
 
@@ -926,7 +946,8 @@ export const openTestCaseDetailsPage = async (
   await page.goto(
     `/observability/test-case/${encodeURIComponent(
       testCaseFqn
-    )}/test-case-results`
+    )}/test-case-results`,
+    { waitUntil: 'domcontentloaded' }
   );
   await waitForAllLoadersToDisappear(page);
 

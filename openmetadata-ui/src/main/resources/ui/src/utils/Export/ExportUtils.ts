@@ -17,6 +17,7 @@ import { ExportData } from '../../components/Entity/EntityExportModalProvider/En
 import { ExportTypes } from '../../constants/Export.constants';
 import i18n from '../i18next/LocalUtil';
 import { showErrorToast } from '../ToastUtils';
+import { getExportStyleProperties } from './exportStyles.utils';
 
 // Caps that keep the exported PNG within Chrome's canvas backend limits and
 // V8's max string length. A 16K-square canvas (~64MP) compresses to ~25–50MB
@@ -192,6 +193,7 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       width: fullLogicalWidth,
       height: fullLogicalHeight,
       pixelRatio,
+      includeStyleProperties: getExportStyleProperties(exportElement),
       quality: 1.0,
       // Prune non-visual subtrees before html-to-image clones them —
       // biggest lever we have for cutting DOM-clone time on large exports.

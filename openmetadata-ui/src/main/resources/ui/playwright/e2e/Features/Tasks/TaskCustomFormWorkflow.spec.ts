@@ -393,7 +393,9 @@ test.describe.serial(
               );
 
               if (!resolvedSchemaResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${resolvedSchemaResponse.status()} querying ${resolvedSchemaResponse.url()}`
+                );
               }
 
               const resolvedSchemaPayload = await resolvedSchemaResponse.json();
@@ -480,11 +482,12 @@ test.describe.serial(
         await proposedTextField.fill(updatedDescription);
         await reviewNotesField.fill(updatedReviewNotes);
 
-        const resolveTaskResponse = page.waitForResponse(
+        const resolveTaskResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.url().includes(`/api/v1/tasks/${taskId}/resolve`) &&
-            response.request().method() === 'POST' &&
-            response.ok()
+            response.request().method() === 'POST',
+          'ok'
         );
 
         await visibleModal.getByRole('button', { name: /^ok$/i }).click();
@@ -498,7 +501,9 @@ test.describe.serial(
               );
 
               if (!updatedTableResponse.ok()) {
-                return null;
+                throw new Error(
+                  `HTTP ${updatedTableResponse.status()} querying ${updatedTableResponse.url()}`
+                );
               }
 
               const updatedTable = await updatedTableResponse.json();
@@ -555,3 +560,5 @@ test.describe.serial(
     });
   }
 );
+
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';

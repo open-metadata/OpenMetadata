@@ -13,7 +13,9 @@
 import { expect, test } from '../../support/fixtures/base';
 import {
   gotoForScreenshot,
+  gotoVisualGlossary,
   SCREENSHOT_OPTS,
+  VISUAL_GLOSSARY_NAME,
 } from '../../utils/visualRegression';
 
 test('add-service connector config form (RJSF) matches baseline', async ({
@@ -45,38 +47,19 @@ test('add-service connector config form (RJSF) matches baseline', async ({
 });
 
 test('delete confirmation modal matches baseline', async ({ page }) => {
-  // `/glossary` auto-redirects to the first seeded glossary
-  // (GlossaryPage.component.tsx navigates to `glossaries[0]` when no fqn is
-  // present in the route) — the same stable seed data the `glossary`
-  // static-page baseline (staticPages.spec.ts) already relies on, so no
-  // name masking is required here either.
-  await gotoForScreenshot(page, '/glossary');
-  // The bare `/glossary` route client-side redirects to
-  // `/glossary/<first-glossary-fqn>`, remounting GlossaryHeader in the
-  // process. A click landed before that remount opens the dropdown on a
-  // component instance that is about to be thrown away, leaving the menu
-  // permanently closed — so wait for the redirected URL first, then retry
-  // the open until the menu actually shows.
-  await page.waitForURL('**/glossary/**');
-  await page.getByTestId('entity-header-display-name').waitFor({
-    state: 'visible',
-  });
+  await gotoVisualGlossary(page);
 
-  await expect(async () => {
-    await page.getByTestId('manage-button').click();
+  await page.getByTestId('manage-button').click();
+  await expect(page.getByTestId('delete-button')).toBeVisible();
 
-    await expect(page.getByTestId('delete-button')).toBeVisible({
-      timeout: 2000,
-    });
-  }).toPass();
-
-  // FREEZE_CSS (applied by gotoForScreenshot) sets `animation: none`, so
-  // rc-motion never receives its animationend event and leaves the dropdown
-  // overlay stuck with `pointer-events: none` — a trusted click falls
-  // through to the element underneath. Dispatch the click directly on the
-  // menu item instead (same pattern as playwright/utils/lineage.ts).
-  await page.getByTestId('delete-button').dispatchEvent('click');
-  await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
+  await page.getByTestId('delete-button').click();
+  const modal = page.getByTestId('delete-modal');
+  await expect(modal).toBeVisible();
+  await expect(page.getByTestId('delete-button')).toBeHidden();
+  await expect(page.getByRole('tooltip')).toBeHidden();
+  await expect(modal.getByTestId('modal-header')).toContainText(
+    `Delete ${VISUAL_GLOSSARY_NAME}`
+  );
 
   await expect(page).toHaveScreenshot('delete-modal.png', {
     ...SCREENSHOT_OPTS,

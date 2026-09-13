@@ -24,7 +24,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -69,7 +69,9 @@ const AsyncSelectList: FC<
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
-  const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
+  const [selectedTags, setSelectedTags] = useState<SelectOption[]>(
+    initialOptions ?? []
+  );
   const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
   const form = Form.useFormInstance();
@@ -186,7 +188,9 @@ const AsyncSelectList: FC<
           <Button
             className="update-btn"
             data-testid="saveAssociatedTag"
-            disabled={isEmpty(tagOptions)}
+            disabled={
+              isEmpty(props.value ?? selectedTags) && isEmpty(initialOptions)
+            }
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
@@ -205,9 +209,7 @@ const AsyncSelectList: FC<
   );
 
   const customTagRender = (data: CustomTagProps) => {
-    const selectedTag = selectedTagsRef.current.find(
-      (tag) => tag.value === data.label
-    );
+    const selectedTag = selectedTags.find((tag) => tag.value === data.label);
 
     const { label, onClose } = data;
     const tag = {
@@ -283,7 +285,7 @@ const AsyncSelectList: FC<
         }
       );
     });
-    selectedTagsRef.current = selectedValues;
+    setSelectedTags(selectedValues);
     onChange?.(selectedValues);
   };
 

@@ -94,7 +94,9 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     await page.getByTestId('save-button').click();
     await patchResponse;
 
-    await page.waitForURL(`**/dataProduct/${newName}/**`);
+    await page.waitForURL(`**/dataProduct/${newName}/**`, {
+      waitUntil: 'domcontentloaded',
+    });
     // Wait for the page to fully load after rename navigation
     // Ensure the data product header is visible with the new name
     await expect(page.getByTestId('entity-header-name')).toBeVisible();

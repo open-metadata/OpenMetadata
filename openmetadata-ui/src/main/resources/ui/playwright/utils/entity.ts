@@ -47,6 +47,10 @@ import {
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
+import {
+  waitForAntOverlayToOpen,
+  waitForResponseWithStatus,
+} from './waitHelpers';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
@@ -163,12 +167,16 @@ export const visitEntityPageByFqn = async (data: {
 
   const encodedFqn = encodeURIComponent(fqn);
   const entityDetailsResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/name/${encodedFqn}?**`
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/${endpoint}/name/${encodedFqn}`
   );
   await page.goto(`/${routeSegment}/${encodedFqn}`, {
     waitUntil: 'domcontentloaded',
   });
-  await entityDetailsResponse;
+  const response = await entityDetailsResponse;
+  expect(response.status(), `Load ${endpoint} ${fqn}`).toBe(200);
   await waitForAllLoadersToDisappear(page);
   await waitForWidgetsToRender(page);
 };
@@ -188,6 +196,17 @@ export const addOwner = async ({
   dataTestId?: string;
   initiatorId?: string;
 }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      owner,
+      type === 'Users' ? 'user' : 'team',
+      { matchBy: 'nameOrDisplayName' }
+    );
+  } finally {
+    await afterAction();
+  }
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
@@ -201,25 +220,7 @@ export const addOwner = async ({
   const ownerSearchInput = page.getByTestId(
     `owner-select-${lowerCase(type)}-search-bar`
   );
-  await expect
-    .poll(
-      async () => {
-        const searchBarVisible = await ownerSearchInput
-          .isVisible()
-          .catch(() => false);
-        if (!searchBarVisible) {
-          await page.getByRole('tab', { name: type }).click();
-        }
-
-        return await ownerSearchInput.isVisible().catch(() => false);
-      },
-      {
-        timeout: 60000,
-        intervals: [500, 1000, 2000],
-        message: `Timed out waiting for ${type} owner search input`,
-      }
-    )
-    .toBe(true);
+  await expect(ownerSearchInput).toBeVisible();
   await ownerSearchInput.scrollIntoViewIfNeeded();
 
   const searchUser = page.waitForResponse(
@@ -235,33 +236,7 @@ export const addOwner = async ({
   } else {
     const ownerItem = page.getByRole('listitem', { name: owner });
 
-    await expect
-      .poll(
-        async () => {
-          const visible = await ownerItem.isVisible().catch(() => false);
-          if (visible) {
-            return true;
-          }
-
-          const searchRetry = page.waitForResponse(
-            (response) =>
-              response.url().includes('/api/v1/search/query') &&
-              response.url().includes(encodeURIComponent(owner))
-          );
-          await ownerSearchInput.fill('');
-          await ownerSearchInput.fill(owner);
-          await searchRetry;
-          await waitForAllLoadersToDisappear(page);
-
-          return await ownerItem.isVisible().catch(() => false);
-        },
-        {
-          timeout: 60000,
-          intervals: [2000, 3000, 5000],
-          message: `Timed out waiting for owner ${owner} to appear`,
-        }
-      )
-      .toBe(true);
+    await expect(ownerItem).toBeVisible();
     await ownerItem.click();
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -292,11 +267,13 @@ export const addOwnerWithoutValidation = async ({
 
     if (!isTabAlreadySelected) {
       // The call with size > 0 only fires after the tab click.
-      const userListResponse = page.waitForResponse(
+      const userListResponse = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query?q=&index=user') &&
-          !response.url().includes('size=0') &&
-          response.status() === 200
+          !response.url().includes('size=0'),
+        200
       );
       await usersTab.click();
       await expect(usersTab).toHaveAttribute('aria-selected', 'true');
@@ -384,19 +361,31 @@ export const removeOwnersFromList = async ({
   dataTestId?: string;
 }) => {
   await page.getByTestId('edit-owner').click();
-  await waitForAllLoadersToDisappear(page);
+  const ownerTabs = page.getByTestId('select-owner-tabs');
+  const usersTab = ownerTabs.getByRole('tab', { name: /^Users/ });
+  await usersTab.click();
+  await expect(usersTab).toHaveAttribute('aria-selected', 'true');
+  const usersPanel = ownerTabs.getByRole('tabpanel', { name: /^Users/ });
+  await expect(usersPanel.getByTestId('loader')).toHaveCount(0);
 
   for (const ownerName of ownerNames) {
-    const ownerItem = page.getByRole('listitem', {
+    const ownerItem = usersPanel.getByRole('listitem', {
       name: ownerName,
       exact: true,
     });
 
     await ownerItem.click();
   }
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.click('[data-testid="selectable-list-update-btn"]');
+  const patchRequest = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname.startsWith(`/api/v1/${endpoint}/`),
+    200
+  );
+  await usersPanel.getByTestId('selectable-list-update-btn').click();
   await patchRequest;
+  await expect(ownerTabs).toBeHidden();
 
   for (const ownerName of ownerNames) {
     await expect(
@@ -420,19 +409,36 @@ export const removeOwner = async ({
   dataTestId?: string;
 }) => {
   await page.getByTestId('edit-owner').click();
-  await waitForAllLoadersToDisappear(page);
+  const ownerTabs = page.getByTestId('select-owner-tabs');
+  const ownerTab = ownerTabs.getByRole('tab', {
+    name: new RegExp(`^${type}`),
+  });
+  await ownerTab.click();
+  await expect(ownerTab).toHaveAttribute('aria-selected', 'true');
+  const ownerPanel = ownerTabs.getByRole('tabpanel', {
+    name: new RegExp(`^${type}`),
+  });
+  await expect(ownerPanel.getByTestId('loader')).toHaveCount(0);
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  const patchRequest = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      new URL(response.url()).pathname.startsWith(`/api/v1/${endpoint}/`),
+    200
+  );
   if (type === 'Teams') {
-    await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
-
-    await page.getByTestId('remove-owner').locator('svg').click();
+    await ownerPanel.getByTestId('remove-owner').click();
   } else {
-    await page.click('[data-testid="clear-all-button"]');
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    await ownerPanel.getByTestId('clear-all-button').click();
+    await expect(
+      ownerPanel.locator('.selectable-list-item.active')
+    ).toHaveCount(0);
+    await ownerPanel.getByTestId('selectable-list-update-btn').click();
   }
 
   await patchRequest;
+  await expect(ownerTabs).toBeHidden();
 
   await page
     .getByTestId(dataTestId ?? 'owner-link')
@@ -590,7 +596,9 @@ export const assignTier = async (
   await editButton.waitFor({ state: 'visible' });
   await editButton.click();
 
-  // Wait for all loaders to disappear
+  await waitForAntOverlayToOpen(
+    page.locator('.tier-card-popover').filter({ visible: true })
+  );
   await waitForAllLoadersToDisappear(page);
 
   // Wait for the tier selection radio buttons to be visible
@@ -627,6 +635,9 @@ export const assignTier = async (
 
 export const removeTier = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-tier').click();
+  await waitForAntOverlayToOpen(
+    page.locator('.tier-card-popover').filter({ visible: true })
+  );
   await waitForAllLoadersToDisappear(page);
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -757,9 +768,10 @@ export const updateDescription = async (
   // Always wait for the PATCH request, not just when endpoint is provided
   const patchRequest = endpoint
     ? page.waitForResponse(`/api/v1/${endpoint}/*`)
-    : page.waitForResponse(
-        (response) =>
-          response.request().method() === 'PATCH' && response.status() === 200
+    : waitForResponseWithStatus(
+        page,
+        (response) => response.request().method() === 'PATCH',
+        200
       );
 
   await saveButton.click();
@@ -886,20 +898,28 @@ export const assignTag = async (
   await expect(tagButton).toBeVisible();
   await tagButton.click();
 
-  await expect(page.locator('#tagsForm_tags')).toBeVisible();
+  const tagInput = page.locator('#tagsForm_tags');
+  await expect(tagInput).toBeVisible();
+  await tagInput.click();
 
-  const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
-  );
-
-  await page.locator('#tagsForm_tags').fill(tag);
-
-  await searchTags;
-
-  await page
+  const tagOption = page
     .getByTestId(`tag-${tagFqn ? `${tagFqn}` : tag}`)
-    .first()
-    .click();
+    .first();
+
+  // Wait for the tag search response as a deterministic signal that the
+  // dropdown has settled with its final options, then click. The response
+  // listener must be registered before fill so a response fired between the
+  // two cannot slip past the wait.
+  const tagSearchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      /[?&]index=tag(&|$)/.test(response.url()),
+    { timeout: 15_000 }
+  );
+  await tagInput.fill(tag);
+  await tagSearchResponse;
+  await expect(tagOption).toBeVisible({ timeout: 15_000 });
+  await tagOption.click();
 
   await page
     .locator('.ant-select-dropdown')
@@ -948,15 +968,23 @@ export const assignTagToChildren = async ({
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+  const tagInput = page.locator('#tagsForm_tags');
+  await expect(tagInput).toBeVisible();
+  await tagInput.click();
+  const tagOption = page.getByTestId(`tag-${tag}`);
+
+  // Wait for the tag search response as a deterministic signal that the
+  // dropdown has settled with its final options, then click.
+  const tagSearchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      /[?&]index=tag(&|$)/.test(response.url()),
+    { timeout: 15_000 }
   );
-
-  await page.locator('#tagsForm_tags').fill(tag);
-
-  await searchTags;
-
-  await page.getByTestId(`tag-${tag}`).click();
+  await tagInput.fill(tag);
+  await tagSearchResponse;
+  await expect(tagOption).toBeVisible({ timeout: 15_000 });
+  await tagOption.click();
   const patchRequest =
     entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse('/api/v1/columns/name/*')
@@ -1204,6 +1232,26 @@ export const openColumnDetailPanel = async ({
 
   // Wait for the panel content to be loaded
   await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
+
+  // Ant slides this drawer in on a transform transition and toBeVisible is
+  // satisfied while it is still moving. A press begun then puts mousedown on a
+  // control and mouseup where that control used to be, so no click is
+  // dispatched -- which is how `edit-icon-tags` reports a successful click and
+  // its selectable list never opens. Two consecutive reads agreeing means the
+  // drawer has stopped.
+  let previousBox = '';
+  await expect
+    .poll(async () => {
+      const box = await panelContainer.boundingBox();
+      const current = box
+        ? `${Math.round(box.x)}x${Math.round(box.width)}`
+        : '';
+      const settled = current !== '' && current === previousBox;
+      previousBox = current;
+
+      return settled;
+    })
+    .toBe(true);
 
   return panelContainer;
 };
@@ -1512,7 +1560,7 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
 
     return;
   } catch {
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page).catch(() => undefined);
     await expect(page.getByTestId('entity-follow-button')).toContainText(
       expectedText,
@@ -1579,20 +1627,60 @@ export const validateFollowedEntityToWidget = async (
   entity: string | undefined,
   isFollowing: boolean
 ): Promise<Locator> => {
+  if (entity) {
+    // The widget fetches followers on mount via a search-query filter on
+    // `followers: <userId>`. Poll the same API to ensure the entity's
+    // followers array in ES has caught up with the follow/unfollow action
+    // before we reload the widget, so the fetch on mount returns the
+    // authoritative state and the assertion below is deterministic.
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      const meResponse = await apiContext.get('/api/v1/users/loggedInUser');
+      const me = await meResponse.json();
+      const userId = me?.id;
+      if (userId) {
+        const start = Date.now();
+        const timeout = 30_000;
+        while (Date.now() - start < timeout) {
+          const params = new URLSearchParams({
+            q: `followers:${userId} AND (name:"${entity}" OR displayName:"${entity}")`,
+            index: 'all',
+            from: '0',
+            size: '5',
+          });
+          const searchResponse = await apiContext.get(
+            `/api/v1/search/query?${params.toString()}`
+          );
+          if (searchResponse.ok()) {
+            const searchBody = await searchResponse.json();
+            const hitCount = searchBody?.hits?.hits?.length ?? 0;
+            if (isFollowing ? hitCount > 0 : hitCount === 0) {
+              break;
+            }
+          }
+          await new Promise((r) => setTimeout(r, 1_000));
+        }
+      }
+    } finally {
+      await afterAction();
+    }
+  }
+
   const followingWidget = await loadFollowingWidget(page);
 
   if (!entity) {
     return followingWidget;
   }
 
+  await expect(followingWidget).toBeVisible();
   if (isFollowing) {
-    await followingWidget.isVisible();
-    await followingWidget.getByTestId(`following-${entity}`).isVisible();
-  } else {
-    await followingWidget.isVisible();
     await expect(
-      followingWidget.getByTestId(`following-${entity}`)
-    ).not.toBeVisible();
+      followingWidget.getByTestId(`Following-${entity}`)
+    ).toBeVisible({ timeout: 15_000 });
+  } else {
+    await expect(followingWidget.getByTestId(`Following-${entity}`)).toBeHidden(
+      { timeout: 15_000 }
+    );
   }
 
   return followingWidget;
@@ -1681,7 +1769,7 @@ export const createAnnouncement = async (
   );
 
   await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
@@ -1761,7 +1849,7 @@ export const replyAnnouncement = async (page: Page) => {
     page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
   ).toHaveText('Reply message edited');
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -1789,7 +1877,7 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.click('[data-testid="save-button"]');
   await deleteAnnouncementResponse;
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
@@ -2264,18 +2352,25 @@ export const restoreEntity = async (page: Page) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="restore-button"]');
 
+  const restoreDialog = page.getByRole('dialog', { name: /^Restore / });
+  await expect(restoreDialog).toBeVisible();
+  await expect(restoreDialog).not.toHaveClass(/ant-zoom-(appear|enter|leave)/);
+
   const restoreResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/restore') &&
       response.request().method() === 'PUT'
   );
 
-  await page.click('button:has-text("Restore")');
+  await restoreDialog
+    .getByRole('button', { name: 'Restore', exact: true })
+    .click();
 
   const response = await restoreResponse;
 
   expect(response.status()).toBe(200);
 
+  await expect(restoreDialog).toBeHidden();
   await expect(page.locator('[data-testid="deleted-badge"]')).toBeHidden();
 };
 
@@ -2311,7 +2406,7 @@ export const softDeleteEntity = async (
     BIG_ENTITY_DELETE_TIMEOUT
   );
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
   // Retry mechanism for checking deleted badge
   await expect
@@ -2366,7 +2461,7 @@ export const softDeleteEntity = async (
   }
 
   await restoreEntity(page);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
   await deletedEntityCommonChecks({
     page,
@@ -2516,6 +2611,12 @@ export const checkExploreSearchFilter = async (
   searchEntityType = false
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
+  const clearFilters = page.getByTestId('clear-all-chips');
+  if (await clearFilters.isVisible()) {
+    await clearFilters.click();
+    await expect(clearFilters).toBeHidden();
+    await waitForAllLoadersToDisappear(page);
+  }
   if (entity?.type && searchEntityType) {
     const entityTypeId = (
       getEntityTypeSearchIndexMapping(entity.type) ?? entity.type
@@ -2604,17 +2705,26 @@ export const checkExploreSearchFilter = async (
   await queryRes;
   await waitForAllLoadersToDisappear(page);
 
+  const resultCard = page.getByTestId(
+    `table-data-card_${
+      (entity as TableClass)?.entityResponseData?.fullyQualifiedName
+    }`
+  );
+  await expect(resultCard).toBeVisible();
+  const entityLink = resultCard.getByTestId('entity-link');
   await expect(
-    page.getByTestId(
-      `table-data-card_${
-        (entity as TableClass)?.entityResponseData?.fullyQualifiedName
-      }`
-    )
-  ).toBeVisible();
-
-  await page.click('[data-testid="clear-all-chips"]');
-
-  await entity?.visitEntityPage(page);
+    entityLink,
+    'search result must link to its entity'
+  ).toHaveAttribute('href', /.+/);
+  const href = await entityLink.getAttribute('href');
+  if (!href) {
+    throw new Error('Search result lost its entity link before navigation');
+  }
+  const entityUrl = new URL(href, page.url()).toString();
+  await entityLink.click();
+  await expect(page).toHaveURL(entityUrl);
+  await waitForAllLoadersToDisappear(page);
+  await waitForWidgetsToRender(page);
 };
 
 export const getEntityDataTypeDisplayPatch = (entity: EntityClass) => {
@@ -2831,3 +2941,6 @@ export const fillDeleteConfirmationIfPresent = async (page: Page) => {
     await confirmInput.fill('DELETE');
   }
 };
+
+import { getApiContext } from './common';
+import { waitForSearchIndexed } from './polling';

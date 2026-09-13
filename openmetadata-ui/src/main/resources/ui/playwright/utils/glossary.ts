@@ -33,6 +33,7 @@ import { ClassificationClass } from '../support/tag/ClassificationClass';
 import { TagClass } from '../support/tag/TagClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
+import { okJson } from './apiResponse';
 import {
   clickOutside,
   closeFirstPopupAlert,
@@ -57,6 +58,7 @@ import {
   waitForTaskListResponse,
   waitForTaskResolveResponse,
 } from './task';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
@@ -118,7 +120,9 @@ export const getGlossaryApprovalWorkflowSnapshot = async (
   );
 
   if (!instancesResponse.ok()) {
-    return { instancesHttpStatus: instancesResponse.status(), instances: [] };
+    throw new Error(
+      `Glossary workflow for ${glossaryTermFqn}: HTTP ${instancesResponse.status()} fetching instances`
+    );
   }
 
   const instancesBody = await instancesResponse.json();
@@ -132,9 +136,14 @@ export const getGlossaryApprovalWorkflowSnapshot = async (
     const statesResponse = await apiContext.get(
       `/api/v1/governance/workflowInstanceStates/${GLOSSARY_TERM_APPROVAL_WORKFLOW}/${instance.id}?startTs=${startTs}&endTs=${endTs}&limit=100`
     );
-    const statesBody = statesResponse.ok()
-      ? await statesResponse.json()
-      : undefined;
+    if (!statesResponse.ok()) {
+      throw new Error(
+        `Glossary workflow ${
+          instance.id
+        }: HTTP ${statesResponse.status()} fetching states`
+      );
+    }
+    const statesBody = await statesResponse.json();
 
     instances.push({
       id: instance.id,
@@ -512,11 +521,12 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
     glossary.displayName
   );
 
-  const deleteGlossary = page.waitForResponse(
+  const deleteGlossary = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/glossaries/') &&
-      response.request().method() === 'DELETE' &&
-      response.status() === 200
+      response.request().method() === 'DELETE',
+    200
   );
 
   await page.click('[data-testid="confirm-button"]');
@@ -672,29 +682,44 @@ export const verifyTaskCreated = async (
 ) => {
   const { apiContext } = await getApiContext(page);
 
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/tasks?aboutEntity=${encodeURIComponent(
-              glossaryTermFqn
-            )}&status=Open&category=Approval&limit=100&fields=about,assignees`
-          )
-          .then((res) => res.json());
+  try {
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext
+            .get(
+              `/api/v1/tasks?aboutEntity=${encodeURIComponent(
+                glossaryTermFqn
+              )}&status=Open&category=Approval&limit=100&fields=about,assignees`
+            )
+            .then((res) =>
+              okJson<{ data: Array<{ about?: { name?: string } }> }>(
+                res,
+                `Approval tasks for ${glossaryTermFqn}`
+              )
+            );
 
-        const arr = (response.data ?? [])
-          .map((item: { about?: { name?: string } }) => item.about?.name)
-          .filter(Boolean);
+          if (!Array.isArray(response.data)) {
+            throw new Error(
+              `Invalid approval task response for ${glossaryTermFqn}`
+            );
+          }
 
-        return arr;
-      },
-      {
-        message: `an Open Approval task for "${glossaryTermData}" on ${glossaryTermFqn}`,
-        ...WORKFLOW_POLL,
-      }
-    )
-    .toContain(glossaryTermData);
+          const arr = response.data
+            .map((item) => item.about?.name)
+            .filter(Boolean);
+
+          return arr;
+        },
+        {
+          message: `an Open Approval task for "${glossaryTermData}" on ${glossaryTermFqn}`,
+          ...WORKFLOW_POLL,
+        }
+      )
+      .toContain(glossaryTermData);
+  } finally {
+    await apiContext.dispose();
+  }
 };
 
 export const verifyWorkflowInstanceExists = async (
@@ -702,12 +727,13 @@ export const verifyWorkflowInstanceExists = async (
   glossaryTermFqn: string
 ) => {
   const { apiContext } = await getApiContext(page);
+  let snapshot: GlossaryApprovalSnapshot | undefined;
 
   try {
     await expect
       .poll(
         async () => {
-          const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+          snapshot = await getGlossaryApprovalWorkflowSnapshot(
             apiContext,
             glossaryTermFqn
           );
@@ -721,19 +747,15 @@ export const verifyWorkflowInstanceExists = async (
       )
       .toBeGreaterThan(0);
   } catch (error) {
-    // Re-read at failure time and surface it: a bare poll timeout cannot tell "the workflow never
-    // ran" apart from "we stopped waiting too early", and that ambiguity is what kept this test
-    // mislabelled as flaky.
-    const snapshot = await getGlossaryApprovalWorkflowSnapshot(
-      apiContext,
-      glossaryTermFqn
-    );
-
     throw new Error(
-      `No ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance for ${glossaryTermFqn}. ${describeGlossaryApprovalSnapshot(
+      `No ${GLOSSARY_TERM_APPROVAL_WORKFLOW} instance for ${glossaryTermFqn}. ${
         snapshot
-      )}. Original error: ${(error as Error).message}`
+          ? describeGlossaryApprovalSnapshot(snapshot)
+          : 'No workflow response'
+      }. Original error: ${(error as Error).message}`
     );
+  } finally {
+    await apiContext.dispose();
   }
 };
 
@@ -742,12 +764,13 @@ export const verifyGlossaryWorkflowReviewerCase = async (
   glossaryTermFqn: string
 ) => {
   const { apiContext } = await getApiContext(page);
+  let snapshot: GlossaryApprovalSnapshot | undefined;
 
   try {
     await expect
       .poll(
         async () => {
-          const snapshot = await getGlossaryApprovalWorkflowSnapshot(
+          snapshot = await getGlossaryApprovalWorkflowSnapshot(
             apiContext,
             glossaryTermFqn
           );
@@ -763,18 +786,15 @@ export const verifyGlossaryWorkflowReviewerCase = async (
       )
       .toContain(AUTO_APPROVED_BY_REVIEWER_STAGE);
   } catch (error) {
-    const snapshot = await getGlossaryApprovalWorkflowSnapshot(
-      apiContext,
-      glossaryTermFqn
-    );
-
     throw new Error(
-      `Glossary term ${glossaryTermFqn} never reached "${AUTO_APPROVED_BY_REVIEWER_STAGE}". ${describeGlossaryApprovalSnapshot(
+      `Glossary term ${glossaryTermFqn} never reached "${AUTO_APPROVED_BY_REVIEWER_STAGE}". ${
         snapshot
-      )}. A newest run still parked on an approval task means the reviewer's edit did not take the CheckIfGlossaryTermUpdatedByIsReviewer=true branch. Original error: ${
-        (error as Error).message
-      }`
+          ? describeGlossaryApprovalSnapshot(snapshot)
+          : 'No workflow response'
+      }. Original error: ${(error as Error).message}`
     );
+  } finally {
+    await apiContext.dispose();
   }
 };
 
@@ -782,7 +802,7 @@ export const approveGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   const approveButton = page.getByTestId(`${term.name}-approve-btn`);
@@ -2054,7 +2074,7 @@ export const setupGlossaryDenyPermissionTest = async (
   await glossaryTerm1.create(apiContext);
 
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({

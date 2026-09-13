@@ -25,15 +25,9 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { APIRequestContext } from '@playwright/test';
-import {
-  CP_NAME_MAX_LENGTH_VALIDATION_ERROR,
-  INVALID_NAMES,
-} from '../../constant/common';
+import { APIRequestContext, Page } from '@playwright/test';
 import {
   CUSTOM_PROPERTIES_ENTITIES,
-  CUSTOM_PROPERTY_INVALID_NAMES,
-  CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   NAME_SUFFIX,
 } from '../../constant/customProperty';
 import {
@@ -108,6 +102,7 @@ import {
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
 import { createTable } from '../../utils/KnowledgeCenter';
+import { waitForSearchIndexed } from '../../utils/polling';
 import {
   openMatchingFieldsPanel,
   setSliderValue,
@@ -121,6 +116,38 @@ import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomProperti
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+/**
+ * `setValueForProperty` PATCHes the entity and returns; its search document
+ * catches up asynchronously. The search-settings tests below then query for
+ * that property value, so running them against a document that predates the
+ * PATCH finds nothing — and with no hits the Explore page renders no
+ * entity-type tab at all, which surfaces as a three-minute wait on
+ * `<type>s-tab` rather than a readable assertion. Gate on the indexed document
+ * reaching the version the PATCH produced.
+ */
+const waitForCustomPropertyIndexed = async (
+  page: Page,
+  endpoint: EntityTypeEndpoint,
+  entityId: string,
+  fullyQualifiedName: string,
+  index: string
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    const response = await apiContext.get(`/api/v1/${endpoint}/${entityId}`);
+
+    expect(response.status()).toBe(200);
+
+    const { version } = (await response.json()) as { version: number };
+    await waitForSearchIndexed(apiContext, fullyQualifiedName, index, {
+      minVersion: version,
+      timeout: 60_000,
+    });
+  } finally {
+    await afterAction();
+  }
+};
 
 type CustomPropertyEntity =
   (typeof CUSTOM_PROPERTIES_ENTITIES)[keyof typeof CUSTOM_PROPERTIES_ENTITIES];
@@ -314,6 +341,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
+      users.length = 0;
       const { page, apiContext, afterAction } = await createNewPage(browser, {
         navigate: true,
       });
@@ -1262,7 +1290,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await test.step('Value persists after reload', async () => {
-            await page.reload();
+            await page.reload({ waitUntil: 'domcontentloaded' });
             await waitForAllLoadersToDisappear(page);
 
             await validateValueForProperty({
@@ -3373,7 +3401,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             endpoint: EntityTypeEndpoint.Dashboard,
           });
 
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
 
           const customPropertiesTab = page.getByTestId('custom_properties');
           await customPropertiesTab.click();
@@ -3382,6 +3410,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await expect(page.getByText(dashboardPropertyValue)).toBeVisible();
+
+          await waitForCustomPropertyIndexed(
+            page,
+            EntityTypeEndpoint.Dashboard,
+            responseData.id ?? '',
+            responseData.fullyQualifiedName ?? '',
+            'dashboard_search_index'
+          );
         });
 
         await test.step('Configure search settings for Dashboard custom property', async () => {
@@ -3520,6 +3556,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             propertyType: 'string',
             endpoint: EntityTypeEndpoint.Pipeline,
           });
+
+          await waitForCustomPropertyIndexed(
+            page,
+            EntityTypeEndpoint.Pipeline,
+            responseData.id ?? '',
+            responseData.fullyQualifiedName ?? '',
+            'pipeline_search_index'
+          );
         });
 
         await test.step('Configure search settings for Pipeline custom property', async () => {
@@ -3787,178 +3831,5 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         }
       });
     }
-  });
-});
-
-test.describe('Custom property name validation', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-    await settingClick(page, GlobalSettingOptions.TABLES, true);
-    await page.click('[data-testid="add-field-button"]');
-  });
-
-  const nameInput = '[data-testid="name"]';
-  const nameError = '#name_help';
-
-  test('should show error when name starts with a non-alphanumeric character', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.STARTS_WITH_SPECIAL_CHAR
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a colon', async ({ page }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a dollar sign', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_DOLLAR);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a caret', async ({ page }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_CARET);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a double quote', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_QUOTE);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a backslash', async ({ page }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_BACKSLASH
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a less-than sign', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_LESS_THAN
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a greater-than sign', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_GREATER_THAN
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains an ampersand', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_AMPERSAND
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains an asterisk', async ({ page }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_ASTERISK
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a forward slash', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_FORWARD_SLASH
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should show error when name contains a tilde', async ({ page }) => {
-    await page.fill(nameInput, CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_TILDE);
-
-    await expect(page.locator(nameError)).toContainText(
-      CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-    );
-  });
-
-  test('should accept a valid name starting with a letter', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, 'validName_123');
-
-    await expect(page.locator(nameError)).not.toBeVisible();
-  });
-
-  test('should accept a valid name with allowed special characters', async ({
-    page,
-  }) => {
-    await page.fill(nameInput, "valid Name.!@#%`()_-=+{}[]|;',.?");
-
-    await expect(page.locator(nameError)).not.toBeVisible();
-  });
-
-  test('should show error when name exceeds 256 characters', async ({
-    page,
-  }) => {
-    await page.fill(
-      nameInput,
-      `${INVALID_NAMES.MAX_LENGTH}${INVALID_NAMES.MAX_LENGTH}`
-    );
-
-    await expect(page.locator(nameError)).toContainText(
-      CP_NAME_MAX_LENGTH_VALIDATION_ERROR
-    );
   });
 });

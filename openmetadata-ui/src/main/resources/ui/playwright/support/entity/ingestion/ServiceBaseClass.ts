@@ -19,17 +19,13 @@ import {
   TestType,
 } from '@playwright/test';
 import { startCase } from 'lodash';
-import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
-import {
-  descriptionBox,
-  executeWithRetry,
-  getApiContext,
-  selectOptionWithRetry,
-} from '../../../utils/common';
+import { okJson } from '../../../utils/apiResponse';
+import { descriptionBox, getApiContext } from '../../../utils/common';
 import {
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { waitForIngestionResult } from '../../../utils/ingestionExecution';
 import {
   selectOnDemandSchedule,
   selectScheduleDayOfWeek,
@@ -45,7 +41,6 @@ import {
   deleteService,
   getAgentCard,
   getServiceCategoryFromService,
-  makeRetryRequest,
   selectServiceConnector,
   Services,
   testConnection,
@@ -106,12 +101,6 @@ class ServiceBaseClass {
   }
 
   async createService(page: Page) {
-    // Handle create service here
-    // intercept the service requirement md file fetch request
-    await page.route('**/en-US/*/' + this.serviceType + '.md', (route) => {
-      route.continue();
-    });
-
     await page.click('[data-testid="add-service-button"]');
 
     // Select Service in step 1
@@ -138,8 +127,11 @@ class ServiceBaseClass {
         .locator('.core-select-widget-popover')
         .getByRole('option', { name: runnerLabel, exact: true });
 
-      await selectOptionWithRetry(trigger, option);
-      await expect(runnerSelector).toContainText(runnerLabel);
+      await trigger.focus();
+      await trigger.click();
+      await expect(option).toBeVisible();
+      await option.click();
+      await expect(trigger).toContainText(runnerLabel);
     }
 
     if (this.shouldTestConnection) {
@@ -252,24 +244,19 @@ class ServiceBaseClass {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-    await page.waitForTimeout(3000);
-
     const triggerPipeline = page.waitForResponse(
       (response) =>
         response
           .url()
           .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-        response.status() === 200
+        response.request().method() === 'POST'
     );
+    const startedAfter = Date.now();
     await page.getByTestId('run-agent-button').first().click();
 
-    await triggerPipeline;
+    expect((await triggerPipeline).status(), 'trigger ingestion').toBe(200);
 
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-    await page.waitForTimeout(2000);
-
-    await this.handleIngestionRetry('metadata', page);
+    await this.waitForIngestion(page, startedAfter);
   }
 
   async submitService(page: Page) {
@@ -344,130 +331,56 @@ class ServiceBaseClass {
     );
   }
 
-  executeIngestionRetrySteps = async (
+  waitForIngestion = async (
     page: Page,
-    workflowData: { fullyQualifiedName: string; name: string },
-    ingestionType: string
-  ) => {
-    let consecutiveErrors = 0;
-    let terminalState: string | undefined;
-    const PIPELINE_SUCCESS_STATE = 'success';
-    const TERMINAL_PIPELINE_STATES = new Set([
-      PIPELINE_SUCCESS_STATE,
-      'failed',
-      'partialSuccess',
-    ]);
-
-    // Poll until the pipeline reaches a terminal state, then assert success.
-    // Matching any terminal state as poll-satisfying let a failed pipeline
-    // pass this loop and only surface at the downstream `toContainText('Success')`
-    // check — reading as though the UI was broken. Fail fast on the real cause.
-    await expect
-      .poll(
-        async () => {
-          try {
-            const response = await makeRetryRequest({
-              url: `/api/v1/services/ingestionPipelines/${encodeURIComponent(
-                workflowData.fullyQualifiedName
-              )}/pipelineStatus?limit=1`,
-              page,
-            });
-            consecutiveErrors = 0; // Reset error counter on success
-
-            const state = response.data[0]?.pipelineState;
-            if (state && TERMINAL_PIPELINE_STATES.has(state)) {
-              terminalState = state;
-
-              return true;
-            }
-
-            return false;
-          } catch (error) {
-            consecutiveErrors++;
-            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-              throw new Error(
-                `Failed to get pipeline status after ${MAX_CONSECUTIVE_ERRORS} consecutive attempts`
-              );
-            }
-
-            return false;
-          }
-        },
-        {
-          message: `Wait for pipeline "${workflowData.name}" (${ingestionType}) to reach a terminal state`,
-          timeout: 750_000,
-          intervals: [30_000, 15_000, 5_000],
-        }
-      )
-      .toBe(true);
-
-    expect(
-      terminalState,
-      `Ingestion pipeline "${workflowData.name}" (${ingestionType}) ended in "${terminalState}" instead of "${PIPELINE_SUCCESS_STATE}" — the ingestion actually failed; check the pipeline's logs in the backend for the underlying error.`
-    ).toBe(PIPELINE_SUCCESS_STATE);
-
-    const pipelinePromise = page.waitForRequest(
-      `/api/v1/services/ingestionPipelines?**`
-    );
-    const statusPromise = page.waitForRequest(
-      `/api/v1/services/ingestionPipelines?fields=**pipelineStatuses**`
-    );
-
-    await page.reload();
-
-    await page.getByTestId('data-assets-header').waitFor();
-
-    await pipelinePromise;
-    await statusPromise;
-
-    await page.getByTestId('agents').waitFor();
-    await page.click('[data-testid="agents"]');
-    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
-    if (await metadataTab2.isVisible()) {
-      await metadataTab2.click();
-    }
-    await expect(
-      getAgentCard(page, workflowData.name).getByTestId('pipeline-type')
-    ).toContainText(startCase(ingestionType), { ignoreCase: true });
-
-    await expect(
-      getAgentCard(page, workflowData.name).getByTestId('pipeline-status')
-    ).toContainText('Success');
-  };
-
-  handleIngestionRetryWithWorkflow = async (
-    page: Page,
-    workflowDetails: { fullyQualifiedName: string; name: string },
+    startedAfter: number,
     ingestionType = 'metadata'
   ) => {
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-    await page.waitForTimeout(2000);
-    await this.executeIngestionRetrySteps(page, workflowDetails, ingestionType);
-  };
-
-  handleIngestionRetry = async (ingestionType = 'metadata', page: Page) => {
     const { apiContext } = await getApiContext(page);
-
-    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
-    // Queued status are not stored in DB. cc: @ulixius9
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- ingestion state propagation delay
-    await page.waitForTimeout(2000);
-
-    const response = await apiContext
-      .get(
-        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
-          this.serviceName
-        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
-          this.category
-        )}`
-      )
-      .then((res) => res.json());
-
-    const workflowData = response.data.find(
-      (d: { pipelineType: string }) => d.pipelineType === ingestionType
+    const response = await apiContext.get(
+      '/api/v1/services/ingestionPipelines',
+      {
+        params: {
+          service: this.serviceName,
+          pipelineType: ingestionType,
+          serviceType: getServiceCategoryFromService(this.category),
+        },
+      }
+    );
+    const body = await okJson<{
+      data: Array<{
+        fullyQualifiedName: string;
+        name: string;
+        pipelineType: string;
+      }>;
+    }>(response, 'Find ingestion pipeline');
+    const workflows = body.data.filter(
+      (pipeline) => pipeline.pipelineType === ingestionType
+    );
+    expect(
+      workflows,
+      'exactly one pipeline must match the triggered ingestion'
+    ).toHaveLength(1);
+    const workflow = workflows[0];
+    await waitForIngestionResult(
+      apiContext,
+      workflow.fullyQualifiedName,
+      startedAfter
     );
 
-    await this.executeIngestionRetrySteps(page, workflowData, ingestionType);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('data-assets-header')).toBeVisible();
+    await page.getByTestId('agents').click();
+    const metadataTab = page.getByTestId('metadata-sub-tab');
+    if (await metadataTab.isVisible()) {
+      await metadataTab.click();
+    }
+    const card = getAgentCard(page, workflow.name);
+    await expect(card.getByTestId('pipeline-type')).toContainText(
+      startCase(ingestionType),
+      { ignoreCase: true }
+    );
+    await expect(card.getByTestId('pipeline-status')).toHaveText('Success');
   };
 
   async updateService(page: Page) {
@@ -639,25 +552,20 @@ class ServiceBaseClass {
       .waitFor({ state: 'detached' });
     await page.getByTestId('logs-button').first().waitFor({ state: 'visible' });
 
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-    await page.waitForTimeout(3000);
-
     const triggerPipeline = page.waitForResponse(
       (response) =>
         response
           .url()
           .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-        response.status() === 200
+        response.request().method() === 'POST'
     );
 
+    const startedAfter = Date.now();
     await page.getByTestId('run-agent-button').first().click();
-    await triggerPipeline;
-
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-    await page.waitForTimeout(2000);
+    expect((await triggerPipeline).status(), 'trigger ingestion').toBe(200);
 
     // Wait for success
-    await this.handleIngestionRetry('metadata', page);
+    await this.waitForIngestion(page, startedAfter);
 
     // Navigate to table name
     await visitEntityPage({
@@ -693,17 +601,23 @@ class ServiceBaseClass {
 
   async deleteServiceByAPI(apiContext: APIRequestContext) {
     if (this.serviceResponseData.fullyQualifiedName) {
-      await executeWithRetry(async () => {
-        await apiContext.delete(
-          `/api/v1/services/${getServiceCategoryFromService(
-            this.category
-          )}s/name/${encodeURIComponent(
-            this.serviceResponseData.fullyQualifiedName
-          )}?recursive=true&hardDelete=true`
-        );
-      }, 'delete service');
+      const response = await deleteFixtureEntity(
+        apiContext,
+        `/api/v1/services/${getServiceCategoryFromService(
+          this.category
+        )}s/name/${encodeURIComponent(
+          this.serviceResponseData.fullyQualifiedName
+        )}?recursive=true&hardDelete=true`
+      );
+
+      expect(
+        [200, 404],
+        `delete ingestion service: ${await response.text()}`
+      ).toContain(response.status());
     }
   }
 }
 
 export default ServiceBaseClass;
+
+import { deleteFixtureEntity } from '../../../utils/apiResponse';

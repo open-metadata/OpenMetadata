@@ -45,6 +45,10 @@ def trigger(
     # In Airflow 3.x and 2.2+, execution_date was replaced with logical_date
     # Check the function signature to determine which parameter to use
     trigger_sig = inspect.signature(trigger_dag)
+    if "replace_microseconds" in trigger_sig.parameters:
+        # Rounding down can put the trigger before a newly deployed task's start
+        # date, producing a run with no task instances and no ingestion callback.
+        trigger_params["replace_microseconds"] = False
     if "logical_date" in trigger_sig.parameters:
         trigger_params["logical_date"] = timezone.utcnow()
     else:

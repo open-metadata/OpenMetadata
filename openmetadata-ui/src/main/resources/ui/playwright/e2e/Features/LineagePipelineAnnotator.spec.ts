@@ -162,7 +162,9 @@ test.describe('Lineage Pipeline Annotator', () => {
 
   test('entity lineage does not include service nodes', async ({ page }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
     await page.click('[data-testid="lineage"]');
@@ -183,7 +185,9 @@ test.describe('Lineage Pipeline Annotator', () => {
     page,
   }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+    await page.goto(`/table/${encodeURIComponent(tableFqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     const lineageResponsePromise = page.waitForResponse(LINEAGE_API);
     await page.click('[data-testid="lineage"]');

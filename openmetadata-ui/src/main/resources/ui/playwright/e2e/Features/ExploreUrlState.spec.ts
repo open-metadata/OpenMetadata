@@ -54,11 +54,6 @@ const ownerPatch = (): Operation => ({
   },
 });
 
-/**
- * Facet options are aggregated once when the dropdown opens, so a freshly
- * indexed fixture can miss the first fetch. Retry by closing and reopening
- * the dropdown (each open re-fetches the facet aggregation).
- */
 const ensureFilterOptionVisible = async (
   page: Page,
   label: string,
@@ -66,24 +61,12 @@ const ensureFilterOptionVisible = async (
   searchText?: string
 ) => {
   const menu = page.getByTestId('drop-down-menu');
-  const option = menu.getByTestId(optionKey);
-
-  await expect(async () => {
-    const isMenuOpen = await menu.isVisible().catch(() => false);
-    if (!isMenuOpen) {
-      await page.getByTestId(`search-dropdown-${label}`).click();
-      await menu.waitFor({ state: 'visible' });
-    }
-    if (searchText) {
-      await menu.getByTestId('search-input').fill(searchText);
-    }
-    try {
-      await option.waitFor({ state: 'visible', timeout: 5_000 });
-    } catch (error) {
-      await page.keyboard.press('Escape');
-      throw error;
-    }
-  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
+  if (!(await menu.isVisible())) {
+    await page.getByTestId(`search-dropdown-${label}`).click();
+  }
+  await expect(menu).toBeVisible();
+  if (searchText) await menu.getByTestId('search-input').fill(searchText);
+  await expect(menu.getByTestId(optionKey)).toBeVisible();
 };
 
 const selectOptionAndWaitForQuery = async (
@@ -168,6 +151,16 @@ test.beforeAll('Setup url-state fixtures', async ({ browser }) => {
     patchData: [classificationTagPatch('Tier.Tier2')],
   });
 
+  await Promise.all(
+    [tier1Table, tier2Dashboard].map((entity) =>
+      waitForSearchIndexed(
+        apiContext,
+        entity.entityResponseData.fullyQualifiedName,
+        'dataAsset',
+        { minVersion: entity.entityResponseData.version }
+      )
+    )
+  );
   await afterAction();
 });
 
@@ -204,7 +197,7 @@ test('a deep-linked filter URL restores chips and filtered results', async ({
 
   await test.step('Open the URL in a fresh navigation — state is restored', async () => {
     await redirectToHomePage(page);
-    await page.goto(capturedUrl);
+    await page.goto(capturedUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -236,7 +229,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
     page.getByTestId('query-chip-entityType.keyword-table')
   ).toBeVisible();
 
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(
@@ -271,7 +264,7 @@ test('a browse-location deep link highlights the tree and clears on chip removal
 
   await test.step('Reopening the browse URL re-highlights the node', async () => {
     await redirectToHomePage(page);
-    await page.goto(browseUrl);
+    await page.goto(browseUrl, { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
@@ -366,7 +359,9 @@ test('an impossible filter combination shows the no-results placeholder and reco
         query: { bool: { must: [...ownerMust, ...topicMust] } },
       })
     );
-    await page.goto(impossibleUrl.pathname + impossibleUrl.search);
+    await page.goto(impossibleUrl.pathname + impossibleUrl.search, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('no-search-results')).toBeVisible();
@@ -389,7 +384,9 @@ test('applying a filter from a deep page preserves pagination params', async ({
   test.slow();
 
   await test.step('Navigate to an explore page beyond the first', async () => {
-    await page.goto('/explore/tables?currentPage=2&pageSize=25');
+    await page.goto('/explore/tables?currentPage=2&pageSize=25', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
     expect(page.url()).toContain('currentPage=2');
     expect(page.url()).toContain('pageSize=25');
@@ -443,3 +440,5 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     await searchAndExpectEntityVisible(page, tier1Table);
   });
 });
+
+import { waitForSearchIndexed } from '../../utils/polling';

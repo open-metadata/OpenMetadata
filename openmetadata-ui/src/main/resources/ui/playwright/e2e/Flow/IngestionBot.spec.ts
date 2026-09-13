@@ -14,6 +14,7 @@ import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { expect, test as base } from '../../support/fixtures/base';
+import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
@@ -51,7 +52,8 @@ const test = base.extend<{
       .then((response) => response.json());
 
     const page = await browser.newPage();
-    await page.goto('/signin');
+    await installServerLoadReducers(page.context());
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     // Only localhost/HTTPS are secure contexts, so on the AUT deployments that serve
     // http:// on a hostname `navigator.serviceWorker` is undefined and the app never
     // registers a SW -- there is no clients.claim() race to wait out there.
@@ -75,131 +77,94 @@ const test = base.extend<{
   },
 });
 
-test.describe('Ingestion Bot ', () => {
-  const domain1 = new Domain();
-  const domain2 = new Domain();
-  const domain3 = new Domain();
+test.describe('Ingestion Bot', () => {
+  const domains = [new Domain(), new Domain()];
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  test.beforeAll('Create domains', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.all([
-      domain1.create(apiContext),
-      domain2.create(apiContext),
-      domain3.create(apiContext),
-    ]);
-
-    await afterAction();
+    try {
+      await Promise.all(domains.map((domain) => domain.create(apiContext)));
+    } finally {
+      await afterAction();
+    }
   });
 
-  test.beforeEach('Visit entity details page', async ({ page }) => {
-    await redirectToHomePage(page);
+  test.afterAll('Delete domains', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await Promise.all(domains.map((domain) => domain.delete(apiContext)));
+    } finally {
+      await afterAction();
+    }
   });
 
-  test('Ingestion bot should be able to access domain specific domain', async ({
-    ingestionBotPage,
-    page,
-  }) => {
-    test.slow();
-    const { assets: domainAsset1, assetCleanup: assetCleanup1 } =
-      await setupAssetsForDomain(page);
-    const { assets: domainAsset2, assetCleanup: assetCleanup2 } =
-      await setupAssetsForDomain(page);
+  for (const [index, domain] of domains.entries()) {
+    test(`Ingestion bot can access assets and services in domain ${
+      index + 1
+    }`, async ({ ingestionBotPage, page }) => {
+      test.slow();
+      const { assets, assetCleanup } = await setupAssetsForDomain(page);
+      try {
+        const { apiContext, afterAction } = await getApiContext(page);
+        try {
+          await Promise.all(
+            assets.map((asset) =>
+              waitForSearchIndexed(
+                apiContext,
+                asset.entityResponseData.fullyQualifiedName,
+                'all'
+              )
+            )
+          );
+        } finally {
+          await afterAction();
+        }
 
-    // setupAssetsForDomain creates these assets over the REST API, and their
-    // Elasticsearch indexing is eventually consistent. addAssetsToDomain drives
-    // the search-backed asset-selection modal, so gate on indexing first —
-    // otherwise the modal search returns no rows and the row check() waits out
-    // the whole test timeout, ejecting the test from the merge queue.
-    const { apiContext, afterAction: disposeApiContext } = await getApiContext(
-      page
-    );
-    await Promise.all(
-      [...domainAsset1, ...domainAsset2].map((asset) =>
-        waitForSearchIndexed(
-          apiContext,
-          asset.entityResponseData.fullyQualifiedName,
-          'all'
-        )
-      )
-    );
+        await test.step('Assign assets to the domain', async () => {
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await waitForAllLoadersToDisappear(page);
+          await selectDomain(page, domain.data);
+          await addAssetsToDomain(page, domain, assets, true, true);
+        });
 
-    await test.step('Assign assets to domains', async () => {
-      // Add assets to domain 1
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, domain1.data);
-      await addAssetsToDomain(page, domain1, domainAsset1, true, true);
+        await test.step('Ingestion bot can access every domain asset', async () => {
+          for (const asset of assets) {
+            await asset.visitEntityPage(ingestionBotPage);
+            await expect(
+              ingestionBotPage.getByTestId('permission-error-placeholder')
+            ).toBeHidden();
+            await expect(
+              ingestionBotPage.getByTestId('domain-link')
+            ).toHaveText(domain.data.displayName);
+          }
+        });
 
-      // Add assets to domain 2
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await waitForAllLoadersToDisappear(page);
-      await selectDomain(page, domain2.data);
-      await addAssetsToDomain(page, domain2, domainAsset2, true, true);
-    });
+        const service = assets[0].get().service;
+        const serviceCategory = assets[0].serviceCategory;
+        if (!serviceCategory) {
+          throw new Error(`Service category is missing for ${service.name}`);
+        }
+        await test.step('Assign the service to the domain', async () => {
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await waitForAllLoadersToDisappear(page);
+          await addServicesToDomain(page, domain.data, [service]);
+        });
 
-    await test.step('Ingestion bot should access domain assigned assets', async () => {
-      // Check if entity page is accessible & it has domain
-      for (const asset of domainAsset1) {
-        await redirectToHomePage(ingestionBotPage);
-        await asset.visitEntityPage(ingestionBotPage);
-
-        await expect(
-          ingestionBotPage.getByTestId('permission-error-placeholder')
-        ).not.toBeVisible();
-
-        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-          domain1.data.displayName
-        );
+        await test.step('Ingestion bot can access the domain service', async () => {
+          await visitServiceDetailsPage(ingestionBotPage, {
+            name: service.name,
+            type: serviceCategory,
+          });
+          await expect(
+            ingestionBotPage.getByTestId('permission-error-placeholder')
+          ).toBeHidden();
+          await expect(
+            ingestionBotPage.getByTestId('domain-link').first()
+          ).toHaveText(domain.data.displayName);
+        });
+      } finally {
+        await assetCleanup();
       }
-      // Check if entity page is accessible & it has domain
-      for (const asset of domainAsset2) {
-        await redirectToHomePage(ingestionBotPage);
-        await asset.visitEntityPage(ingestionBotPage);
-
-        await expect(
-          ingestionBotPage.getByTestId('permission-error-placeholder')
-        ).not.toBeVisible();
-
-        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-          domain2.data.displayName
-        );
-      }
     });
-
-    await test.step('Assign services to domains', async () => {
-      // Add assets to domain 1
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await waitForAllLoadersToDisappear(page);
-      await addServicesToDomain(page, domain1.data, [
-        domainAsset1[0].get().service,
-      ]);
-
-      // Add assets to domain 2
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await waitForAllLoadersToDisappear(page);
-      await addServicesToDomain(page, domain2.data, [
-        domainAsset2[0].get().service,
-      ]);
-    });
-
-    await test.step('Ingestion bot should access domain assigned services', async () => {
-      await redirectToHomePage(ingestionBotPage);
-
-      // Check if services is searchable and accessible or not
-      await visitServiceDetailsPage(ingestionBotPage, {
-        name: domainAsset1[0].get().service.name,
-        type: domainAsset1[0].serviceCategory,
-      });
-
-      // check if service has domain or not
-      await expect(
-        ingestionBotPage.getByTestId('domain-link').first()
-      ).toHaveText(domain1.data.displayName);
-    });
-
-    await assetCleanup1();
-    await assetCleanup2();
-    await disposeApiContext();
-  });
+  }
 });

@@ -73,6 +73,7 @@ import {
 import { getEntityMissingMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
+import { getGlossaryCatalogState } from '../../../utils/GlossaryPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -312,16 +313,12 @@ const GlossaryPage = () => {
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
 
-  const isRightPanelLoading = useMemo(() => {
-    if (!glossaries.length) {
-      return true;
-    }
-    if (isTermView) {
-      return glossaryTermFetching;
-    }
-
-    return false;
-  }, [glossaries.length, isTermView, glossaryTermFetching]);
+  const isRightPanelLoading = isTermView && glossaryTermFetching;
+  const { isCatalogEmpty, isGlossaryNotFound } = getGlossaryCatalogState(
+    glossaries,
+    glossaryFqn,
+    isGlossaryActive
+  );
 
   const isTermNotFound = useMemo(
     () =>
@@ -526,7 +523,7 @@ const GlossaryPage = () => {
     );
   };
 
-  if (glossaries.length === 0 && !isLoading) {
+  if (isCatalogEmpty) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         <EmptyPlaceholder
@@ -563,12 +560,12 @@ const GlossaryPage = () => {
     if (isRightPanelLoading) {
       return <Loader />;
     }
-    if (isTermNotFound) {
+    if (isTermNotFound || isGlossaryNotFound) {
       return (
         <div className="content-height-with-resizable-panel tw:relative">
           <NoDataPlaceholder
             description={getEntityMissingMessage(
-              t('label.glossary-term'),
+              t(isGlossaryNotFound ? 'label.glossary' : 'label.glossary-term'),
               glossaryFqn
             )}
           />

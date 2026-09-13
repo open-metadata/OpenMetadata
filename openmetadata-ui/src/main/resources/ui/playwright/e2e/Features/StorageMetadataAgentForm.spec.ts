@@ -16,6 +16,7 @@ import { StorageServiceClass } from '../../support/entity/service/StorageService
 import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -123,11 +124,12 @@ test.describe(
       await test.step('Edited manifest is persisted on save', async () => {
         await page.getByTestId('next-button').click();
 
-        const updateResponse = page.waitForResponse(
+        const updateResponse = waitForResponseWithStatus(
+          page,
           (response) =>
             response.request().method() === 'PATCH' &&
-            response.url().includes('/services/ingestionPipelines/') &&
-            response.status() === 200
+            response.url().includes('/services/ingestionPipelines/'),
+          200
         );
 
         await page.getByTestId('next-button').click();

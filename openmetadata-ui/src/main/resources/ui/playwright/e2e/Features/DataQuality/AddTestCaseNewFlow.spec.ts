@@ -157,8 +157,15 @@ test.describe(
       if (expectSchedulerCard) {
         const ingestionPipeline = page.waitForResponse(
           (response: Response) =>
-            response.url().includes('/api/v1/services/ingestionPipelines') &&
+            new URL(response.url()).pathname ===
+              '/api/v1/services/ingestionPipelines' &&
             response.request().method() === 'POST'
+        );
+        const pipelineDeployment = page.waitForResponse(
+          (response: Response) =>
+            new URL(response.url()).pathname.startsWith(
+              '/api/v1/services/ingestionPipelines/deploy/'
+            ) && response.request().method() === 'POST'
         );
 
         await page.getByTestId('create-btn').click();
@@ -174,22 +181,34 @@ test.describe(
         );
         expect(response.status()).toBe(201);
         expect(ingestionPipelineResponse.status()).toBe(201);
+        const pipeline = await ingestionPipelineResponse.json();
+        const deploymentResponse = await pipelineDeployment;
+        expect(new URL(deploymentResponse.url()).pathname).toBe(
+          `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+        );
+        expect(deploymentResponse.status()).toBe(200);
+        await expect(page.getByTestId('test-case-form-v1')).toBeHidden();
       } else {
-        // Track if ingestion pipeline API is called
-        page.on('response', (response: Response) => {
+        const trackPipelineCreation = (response: Response) => {
           if (
-            response.url().includes('/api/v1/services/ingestionPipelines') &&
+            new URL(response.url()).pathname ===
+              '/api/v1/services/ingestionPipelines' &&
             response.request().method() === 'POST'
           ) {
             ingestionPipelineCalled = true;
           }
-        });
+        };
+        page.on('response', trackPipelineCreation);
 
-        await page.getByTestId('create-btn').click();
-        const response = await tableTestCaseResponse;
-
-        expect(response.status()).toBe(201);
-        expect(ingestionPipelineCalled).toBe(false);
+        try {
+          await page.getByTestId('create-btn').click();
+          const response = await tableTestCaseResponse;
+          expect(response.status()).toBe(201);
+          await expect(page.getByTestId('test-case-form-v1')).toBeHidden();
+          expect(ingestionPipelineCalled).toBe(false);
+        } finally {
+          page.off('response', trackPipelineCreation);
+        }
       }
     };
 
@@ -211,7 +230,9 @@ test.describe(
     };
 
     const visitDataQualityPage = async (page: Page) => {
-      await page.goto('/data-quality/test-cases');
+      await page.goto('/data-quality/test-cases', {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
     };
 

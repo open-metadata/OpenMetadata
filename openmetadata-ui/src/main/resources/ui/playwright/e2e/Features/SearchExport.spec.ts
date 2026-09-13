@@ -28,6 +28,7 @@ import {
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // Dedicated admin user so that completed search-export background jobs
 // accumulate in this user's tray instead of the shared admin session,
@@ -35,10 +36,12 @@ import {
 let searchExportUser: UserClass;
 
 const startAsyncExport = async (page: Page) => {
-  const exportAsyncPromise = page.waitForResponse(
+  const exportAsyncPromise = waitForResponseWithStatus(
+    page,
     (response) =>
-      response.url().includes('/api/v1/search/export/async') &&
-      response.status() === 202
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/search/export/async'),
+    202
   );
 
   await getExportModalContent(page)
@@ -207,13 +210,17 @@ test.describe(
     }) => {
       test.slow();
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=sample_data', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
 
-      const countApiPromise = page.waitForResponse(
+      const countApiPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/search/query'),
+        200
       );
 
       await openExportScopeModal(page);
@@ -242,14 +249,17 @@ test.describe(
     test('Search mode visible export count matches the first result tab count', async ({
       page,
     }) => {
-      const countApiPromise = page.waitForResponse(
+      const countApiPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/search/query'),
+        200
       );
 
       await page.goto(
-        '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer'
+        '/explore/tables?search=sample_data.ecommerce_db.shopify.dim_customer',
+        { waitUntil: 'domcontentloaded' }
       );
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await countApiPromise;
@@ -285,13 +295,17 @@ test.describe(
     }) => {
       test.slow();
 
-      const searchResultsPromise = page.waitForResponse(
+      const searchResultsPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/search/query'),
+        200
       );
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=sample_data', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await searchResultsPromise;
       await waitForAllLoadersToDisappear(page);
@@ -299,19 +313,23 @@ test.describe(
       await test.step('Apply Service filter from the Explore page', async () => {
         await page.getByTestId('search-dropdown-Service').click();
 
-        const serviceAggregatePromise = page.waitForResponse(
+        const serviceAggregatePromise = waitForResponseWithStatus(
+          page,
           (response) =>
+            response.request().method() === 'GET' &&
             response.url().includes('/api/v1/search/aggregate') &&
-            response.url().includes('sample_data') &&
-            response.status() === 200
+            response.url().includes('sample_data'),
+          200
         );
 
         await page.getByTestId('search-input').fill('sample_data');
         await serviceAggregatePromise;
-        const filteredQueryPromise = page.waitForResponse(
+        const filteredQueryPromise = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes('/api/v1/search/query'),
+          200
         );
 
         await page.getByTestId('sample_data').click();
@@ -367,14 +385,16 @@ test.describe(
       // Browse mode (no search term) queries the unified `dataAsset` index
       // regardless of the tab in the URL, so wait for that rather than a
       // per-entity `index=topic` request (which only fires for a tab search).
-      const browseQueryPromise = page.waitForResponse(
+      const browseQueryPromise = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=dataAsset') &&
-          response.status() === 200
+          response.url().includes('index=dataAsset'),
+        200
       );
 
-      await page.goto('/explore/topics');
+      await page.goto('/explore/topics', { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await browseQueryPromise;
       await waitForAllLoadersToDisappear(page);
@@ -451,13 +471,17 @@ test.describe(
     }) => {
       test.slow();
 
-      const countApiPromise = page.waitForResponse(
+      const countApiPromise = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/api/v1/search/query'),
+        200
       );
 
-      await page.goto('/explore/tables?search=stored_procedures');
+      await page.goto('/explore/tables?search=stored_procedures', {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await countApiPromise;
 
@@ -487,12 +511,18 @@ test.describe(
         // completed and auto-opened by the useEffect) is in the DOM.
         await expect(launcherButton.or(trayPopover)).toBeVisible();
 
-        // Open the tray only if it has not already been auto-opened.
-        // When the job finished fast, the tray is already visible and the
-        // launcher is gone from the DOM — clicking it would throw.
-        if (!(await trayPopover.isVisible())) {
-          await launcherButton.click();
-        }
+        // Open the tray only if it has not already been auto-opened. Reading
+        // isVisible() and then clicking is not enough: the tray can auto-open in
+        // between, and the launcher unmounts the moment it does, so the click
+        // waits out the test on an element that is gone. Retry the pair and let
+        // the popover being open end it however it got there.
+        await expect(async () => {
+          if (await trayPopover.isVisible()) {
+            return;
+          }
+          await launcherButton.click({ timeout: 5_000 });
+          await expect(trayPopover).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 30_000 });
 
         await expect(
           page.getByText(/Exporting|Exported/).first()
@@ -524,10 +554,12 @@ test.describe(
         const downloadButton = jobRow.getByRole('button', { name: 'Download' });
         await expect(downloadButton).toBeVisible();
 
-        const resultResponsePromise = page.waitForResponse(
+        const resultResponsePromise = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`),
+          200
         );
         const downloadPromise = page.waitForEvent('download');
 

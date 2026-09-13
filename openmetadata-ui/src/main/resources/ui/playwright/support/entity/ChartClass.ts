@@ -14,16 +14,9 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import {
-  createOrFetch,
-  okJson,
-  withNotFoundRetry,
-} from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
-import {
-  visitEntityPageByFqn,
-  visitEntityPageWithCustomSearchBox,
-} from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
   ResponseDataType,
@@ -121,16 +114,14 @@ export class ChartClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/charts/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-        {
-          data: patchData,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const response = await apiContext.patch(
+      `/api/v1/charts/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     this.entityResponseData = await okJson(response, 'ChartClass.patch');
@@ -163,16 +154,9 @@ export class ChartClass extends EntityClass {
     });
   }
 
-  async visitEntityPageWithCustomSearchBox(page: Page, searchTerm?: string) {
-    await visitEntityPageWithCustomSearchBox({
-      page,
-      searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
-    });
-  }
-
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/dashboardServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
@@ -184,3 +168,5 @@ export class ChartClass extends EntityClass {
     };
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

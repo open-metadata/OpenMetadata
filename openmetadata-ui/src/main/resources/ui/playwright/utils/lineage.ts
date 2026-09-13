@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
+import { readFile } from 'fs/promises';
 import { get, isEmpty } from 'lodash';
 import type { LineageScene } from '../../src/generated/api/lineage/lineageScene';
 import { SidebarItem } from '../constant/sidebar';
@@ -33,11 +34,12 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import {
+  chooseSelectOption,
   clickOutside,
   getApiContext,
   getEntityTypeSearchIndexMapping,
-  selectOptionWithRetry,
   toastNotification,
+  waitForAntdPopupToSettle,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';
@@ -157,6 +159,93 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
   }
 };
 
+const clickCanvasEdge = async (page: Page, marker: Locator) => {
+  await fitToScreen(page);
+  await expect(marker).toBeInViewport();
+  const viewport = page.locator('.react-flow__viewport');
+  const getZoom = () =>
+    viewport.evaluate(
+      (element) => new DOMMatrix(getComputedStyle(element).transform).a
+    );
+  const zoom = await getZoom();
+  const initialBounds = await marker.boundingBox();
+  if (!initialBounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // At overview scale neighbouring curves collapse into the same screen pixel.
+  // Zoom around this edge before clicking, using React Flow's wheel interaction.
+  if (zoom < 1) {
+    await page.mouse.move(
+      initialBounds.x + initialBounds.width / 2,
+      initialBounds.y + initialBounds.height / 2
+    );
+    await page.mouse.wheel(0, -500 * Math.log2(1 / zoom));
+    await expect.poll(getZoom).toBeGreaterThanOrEqual(0.99);
+  }
+
+  await expect(marker).toBeInViewport();
+
+  // The click below is by screen coordinate, so the midpoint has to stop moving
+  // first. React Flow re-lays the graph out after every deletion, and a box read
+  // while that is in flight puts the click on a NEIGHBOURING edge -- which still
+  // opens a toolbar and still deletes something, just not the edge asked for.
+  // Hold until two consecutive reads agree before taking the coordinates.
+  let previous: { x: number; y: number } | null = null;
+  await expect
+    .poll(
+      async () => {
+        const box = await marker.boundingBox();
+        if (!box) {
+          previous = null;
+
+          return false;
+        }
+        const settled =
+          previous !== null &&
+          Math.abs(box.x - previous.x) < 1 &&
+          Math.abs(box.y - previous.y) < 1;
+        previous = { x: box.x, y: box.y };
+
+        return settled;
+      },
+      { timeout: 15_000 }
+    )
+    .toBe(true);
+
+  const bounds = await marker.boundingBox();
+  if (!bounds) {
+    throw new Error('The canvas edge midpoint has no bounds');
+  }
+
+  // Canvas edges receive real pointer events through the React Flow pane above
+  // the test-only midpoint marker, rather than through the marker's DOM button.
+  await page.mouse.click(
+    bounds.x + bounds.width / 2,
+    bounds.y + bounds.height / 2
+  );
+};
+
+// computeEdgeDataTestId only names the midpoint marker `pipeline-label-*` once
+// the edge's own details have loaded — the scene returns skeletal edges and each
+// pipeline arrives later via getLineageEdge. Until then the same marker still
+// carries the plain `edge-*` id. Exactly one is present for a given edge and
+// both open the same toolbar, so accept either rather than racing the hydration.
+const edgeMarker = (
+  page: Page,
+  fromNodeFqn: string | undefined,
+  toNodeFqn: string | undefined,
+  isPipeline: boolean
+) => {
+  const plainEdge = page.getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`);
+
+  return isPipeline
+    ? page
+        .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
+        .or(plainEdge)
+    : plainEdge;
+};
+
 export const clickEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,
@@ -166,14 +255,10 @@ export const clickEdgeBetweenNodes = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const edgeDiv = page.getByTestId(
-    isPipeline
-      ? `pipeline-label-${fromNodeFqn}-${toNodeFqn}`
-      : `edge-${fromNodeFqn}-${toNodeFqn}`
+  await clickCanvasEdge(
+    page,
+    edgeMarker(page, fromNodeFqn, toNodeFqn, isPipeline)
   );
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
 };
 
 export const clickEdgeBetweenColumns = async (
@@ -183,9 +268,7 @@ export const clickEdgeBetweenColumns = async (
 ) => {
   const edgeDiv = page.getByTestId(`column-edge-${fromNodeFqn}-${toNodeFqn}`);
 
-  await expect(edgeDiv).toBeVisible();
-
-  await edgeDiv.dispatchEvent('click');
+  await clickCanvasEdge(page, edgeDiv);
 };
 
 export const deleteEdge = async (
@@ -194,38 +277,91 @@ export const deleteEdge = async (
   toNode: EntityClass
 ) => {
   const addPipeline = page.getByTestId('add-pipeline');
+  const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
+  const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  // `clickEdgeBetweenNodes` dispatches a synthetic click on a react-flow edge
-  // label. `dispatchEvent` takes no actionability wait, so if the graph re-lays
-  // out between resolving the label and firing the event — which it does while
-  // nodes are still settling — the click lands on a node that is no longer wired
-  // up, the toolbar never opens, and the wait for `add-pipeline` below burns the
-  // whole test timeout on an action that silently did nothing. Retry the pair
-  // until the toolbar is actually there.
+  // clickEdgeBetweenNodes fires a synthetic click on a react-flow edge label,
+  // and that takes no actionability wait: when the graph re-lays out between
+  // resolving the label and firing the event the click lands on a node that is
+  // no longer wired up, the toolbar never opens, and the wait below burns the
+  // whole test timeout on an action that silently did nothing. main carries the
+  // same guard; this branch lost it. Retry the pair until the toolbar is there.
   await expect(async () => {
     await clickEdgeBetweenNodes(page, fromNode, toNode, true);
     await expect(addPipeline).toBeVisible({ timeout: 5_000 });
+
+    // EdgeInteractionOverlay renders from the context's selectedEdge and pins
+    // its button to that edge's midpoint; nothing else in the DOM names the
+    // selection. Overlapping curves can hand a coordinate click to a neighbour,
+    // so check the toolbar came up on the marker we aimed at -- otherwise the
+    // delete below removes an edge this call never named and the loop only
+    // finds out several iterations later. Compared against every marker rather
+    // than a pixel budget, so it does not depend on a tuned threshold.
+    const nearestToToolbar = await page.evaluate(() => {
+      const toolbar = document.querySelector('[data-testid="add-pipeline"]');
+      if (!toolbar) {
+        return '';
+      }
+      const bounds = toolbar.getBoundingClientRect();
+      const toolbarX = bounds.x + bounds.width / 2;
+      const toolbarY = bounds.y + bounds.height / 2;
+      let nearest = '';
+      let shortest = Number.POSITIVE_INFINITY;
+      for (const marker of Array.from(
+        document.querySelectorAll<HTMLElement>('[data-edge-state]')
+      )) {
+        const box = marker.getBoundingClientRect();
+        const distance = Math.hypot(
+          box.x + box.width / 2 - toolbarX,
+          box.y + box.height / 2 - toolbarY
+        );
+        if (distance < shortest) {
+          shortest = distance;
+          nearest = marker.getAttribute('data-testid') ?? '';
+        }
+      }
+
+      return nearest;
+    });
+    expect(
+      [
+        `pipeline-label-${fromNodeFqn}-${toNodeFqn}`,
+        `edge-${fromNodeFqn}-${toNodeFqn}`,
+      ],
+      'the edge toolbar opened on a different edge'
+    ).toContain(nearestToToolbar);
   }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 3_000] });
 
-  await addPipeline.dispatchEvent('click');
+  await addPipeline.click();
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  const edgeDialog = page.getByTestId('add-edge-modal').getByRole('dialog');
+  await expect(edgeDialog).toBeVisible();
+  // Ant zooms the dialog in, and toBeVisible is satisfied on the first scaled
+  // frame. A press begun then can put mousedown on the button and mouseup past
+  // it once the dialog settles, which focuses the button without ever
+  // dispatching a click -- the screenshot of this failure is exactly that:
+  // "Remove edge" wearing its focus ring, no confirmation behind it.
+  await expect(edgeDialog).not.toHaveClass(/ant-zoom-(appear|enter)/);
+  await edgeDialog.getByTestId('remove-edge-button').click();
 
-  await page
-    .locator(
-      '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
-    )
-    .dispatchEvent('click');
+  const confirmation = page.getByTestId('delete-edge-confirmation-modal');
+  await expect(confirmation).toBeVisible();
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  const deleteRes = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'DELETE' &&
+      new URL(response.url()).pathname.startsWith('/api/v1/lineage/')
+  );
+  await confirmation.getByTestId('confirm-button').click();
+  expect((await deleteRes).ok()).toBe(true);
+  await expect(confirmation).toBeHidden();
 
-  const deleteRes = page.waitForResponse('/api/v1/lineage/**');
-  await page
-    .locator(
-      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
-    )
-    .click();
-  await deleteRes;
+  // Confirm THIS edge is the one that went. The canvas click is by coordinate,
+  // so a stale midpoint can select a neighbour: without this the run deletes
+  // some other edge, reports success, and only fails several iterations later
+  // when the edge it skipped is asked for and no longer exists.
+  await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, true)).toHaveCount(0);
+  await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, false)).toHaveCount(0);
 };
 
 export const deleteEdgeBetweenNodesViaAPI = (
@@ -299,6 +435,14 @@ export const fitToScreen = async (page: Page) => {
   const fitToScreenItem = page.getByRole('menuitem', { name: 'Fit to screen' });
 
   await page.getByTestId('fit-screen').click();
+  await expect(fitToScreenItem).toBeVisible();
+  // Ant grows this menu scaleY(0.8) -> scaleY(1), so a click computed against
+  // the scaled menu lands beside the item. The menu closes anyway, so the
+  // detach wait below still passes and the whole call becomes a silent no-op --
+  // which is how a lineage node stays outside the viewport through a dozen
+  // re-fits and verifyNodePresent waits out its retry on a node React Flow
+  // never rendered.
+  await waitForAntdPopupToSettle(page);
   await fitToScreenItem.click();
 
   // The menu closes with an exit animation, so without this it lingers in the
@@ -343,34 +487,14 @@ export const connectEdgeBetweenNodes = async (
       response.request().method() === 'PUT' &&
       new URL(response.url()).pathname.endsWith('/api/v1/lineage')
   );
-  const sceneRefresh = page.waitForResponse(async (response) => {
-    if (
-      response.request().method() !== 'GET' ||
-      !new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') ||
-      !response.ok()
-    ) {
-      return false;
-    }
-
-    const scene = (await response.json()) as LineageScene;
-    const sourceSceneNode = scene.nodes.find(
-      (node) =>
-        (node.sourceEntity as { id?: string } | undefined)?.id === fromNodeId
-    );
-    const targetSceneNode = scene.nodes.find(
-      (node) =>
-        (node.sourceEntity as { id?: string } | undefined)?.id === toNodeId
-    );
-
-    return Boolean(
-      sourceSceneNode &&
-        targetSceneNode &&
-        scene.edges.some(
-          (edge) =>
-            edge.from === sourceSceneNode.id && edge.to === targetSceneNode.id
-        )
-    );
-  });
+  // Match the refresh on method and path alone. Filtering it on a healthy
+  // payload would swallow a failed scene fetch into a wait timeout instead of
+  // the status assertion below, which is what actually names the failure.
+  const sceneRefresh = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene')
+  );
 
   await dragConnection(
     page,
@@ -383,6 +507,23 @@ export const connectEdgeBetweenNodes = async (
   ]);
   expect(lineageResponse.ok()).toBeTruthy();
   expect(sceneResponse.ok()).toBeTruthy();
+
+  const scene = (await sceneResponse.json()) as LineageScene;
+  const sceneNodeId = (entityId: string | undefined) =>
+    scene.nodes.find(
+      (node) =>
+        (node.sourceEntity as { id?: string } | undefined)?.id === entityId
+    )?.id;
+  const sourceSceneNodeId = sceneNodeId(fromNodeId);
+  const targetSceneNodeId = sceneNodeId(toNodeId);
+
+  expect(sourceSceneNodeId).toBeDefined();
+  expect(targetSceneNodeId).toBeDefined();
+  expect(
+    scene.edges.some(
+      (edge) => edge.from === sourceSceneNodeId && edge.to === targetSceneNodeId
+    )
+  ).toBeTruthy();
 };
 
 export const connectEntityEdgeBetweenNodesViaAPI = (
@@ -411,7 +552,20 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
     '';
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
-  await lineageNode.waitFor({ state: 'attached' });
+  // LineageMap renders with React Flow's onlyRenderVisibleElements, so a node
+  // outside the current viewport is not merely off-screen -- it is absent from
+  // the DOM, and scrollIntoViewIfNeeded cannot reveal what was never rendered.
+  // Verifying several nodes in a row pans the canvas as it goes, so the later
+  // ones can end up outside the viewport that the last fit established; re-fit
+  // until this node renders instead of waiting out the test on one the canvas
+  // has moved away from.
+  await expect(async () => {
+    if ((await lineageNode.count()) === 0) {
+      await fitToScreen(page);
+    }
+    await expect(lineageNode).toBeAttached({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
+
   await lineageNode.scrollIntoViewIfNeeded();
 
   await expect(lineageNode).toBeVisible();
@@ -595,7 +749,7 @@ export const editPipelineEdgeDescription = async (
   await page.click(
     `[data-testid="pipeline-label-${fromNodeFqn}-${toNodeFqn}"]`
   );
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.locator('.edge-info-drawer')).toBeVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
   await page.locator('.ProseMirror').first().click();
@@ -681,7 +835,15 @@ export const applyPipelineFromModal = async (
 
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await saveButton.click();
-  await saveRes;
+  const saved = await saveRes;
+  expect(saved.status()).toBe(200);
+  expect(saved.request().postDataJSON()).toMatchObject({
+    edge: {
+      fromEntity: { id: get(fromNode, 'entityResponseData.id') },
+      toEntity: { id: get(toNode, 'entityResponseData.id') },
+      lineageDetails: { pipeline: { id: pipelineItem?.entityResponseData.id } },
+    },
+  });
 
   await page.getByTestId('add-edge-modal').waitFor({
     state: 'detached',
@@ -778,7 +940,7 @@ export const removeColumnLineage = async (
   // Only a fresh /api/v1/lineage/scene response proves the removal
   // actually persisted.
   const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await lineageRes;
 
   await waitForAllLoadersToDisappear(page);
@@ -1028,7 +1190,7 @@ export const verifyExportLineagePNG = async (
     });
 
   if (!isPNGSelected) {
-    await selectOptionWithRetry(
+    await chooseSelectOption(
       page.getByTestId('export-type-select'),
       page.getByRole('option', { name: 'PNG' })
     );
@@ -1047,8 +1209,6 @@ export const verifyExportLineagePNG = async (
 
   try {
     const [download] = await Promise.all([
-      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
-      // render enough headroom before the download event fires.
       page.waitForEvent('download', { timeout: 120_000 }),
       page.click(
         '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
@@ -1058,6 +1218,12 @@ export const verifyExportLineagePNG = async (
     const filePath = await download.path();
 
     expect(filePath).not.toBeNull();
+    const png = await readFile(filePath!);
+    expect(png.subarray(0, 8)).toEqual(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    );
+    expect(png.readUInt32BE(16)).toBeGreaterThan(0);
+    expect(png.readUInt32BE(20)).toBeGreaterThan(0);
   } catch (error) {
     // Only the download wait is ambiguous about its cause. A click or selector
     // failure already says what went wrong, so a stray page error must never
@@ -1264,9 +1430,11 @@ export const verifyPlatformLineageForEntity = async (
       new URL(response.url()).searchParams.get('focusFqn') === fromFqn
   );
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
-  await expect(page).toHaveURL((url) =>
-    url.pathname.endsWith(`/${encodeURIComponent(fromFqn)}`)
-  );
+  await expect
+    .poll(() =>
+      new URL(page.url()).pathname.endsWith(`/${encodeURIComponent(fromFqn)}`)
+    )
+    .toBe(true);
   expect((await focusSceneResponse).ok()).toBeTruthy();
 
   await page.getByTestId('lineage-layer-btn').click();

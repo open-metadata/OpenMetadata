@@ -41,11 +41,16 @@ import org.openmetadata.service.util.PostCommitActionQueue;
 public class EntityLifecycleEventDispatcher {
 
   private static volatile EntityLifecycleEventDispatcher instance;
-  private final List<EntityLifecycleEventHandler> handlers;
+
+  // Immutable snapshot swapped under the registration lock. Readers dispatch on
+  // request threads without synchronizing, so a mutable list here lets a
+  // registration racing a dispatch surface as ConcurrentModificationException
+  // out of getApplicableHandlers -- a 500 on whatever entity was being written.
+  private volatile List<EntityLifecycleEventHandler> handlers;
   private final OrderedLaneExecutor orderedLaneExecutor;
 
   private EntityLifecycleEventDispatcher() {
-    this.handlers = new ArrayList<>();
+    this.handlers = List.of();
     this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
   }
 
@@ -79,9 +84,14 @@ public class EntityLifecycleEventDispatcher {
       return;
     }
 
-    handlers.add(handler);
+    // Build the next snapshot off to the side and publish it in one write, so a
+    // concurrent dispatch sees either the old list or the new sorted one, never
+    // an intermediate append or a partially sorted array.
+    List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
+    updated.add(handler);
     // Sort handlers by priority (lower priority values first)
-    handlers.sort(Comparator.comparingInt(EntityLifecycleEventHandler::getPriority));
+    updated.sort(Comparator.comparingInt(EntityLifecycleEventHandler::getPriority));
+    handlers = List.copyOf(updated);
 
     LOG.info(
         "Registered entity lifecycle handler: {} with priority {}",
@@ -93,8 +103,10 @@ public class EntityLifecycleEventDispatcher {
    * Unregister a lifecycle event handler by name.
    */
   public synchronized boolean unregisterHandler(String handlerName) {
-    boolean removed = handlers.removeIf(h -> h.getHandlerName().equals(handlerName));
+    List<EntityLifecycleEventHandler> updated = new ArrayList<>(handlers);
+    boolean removed = updated.removeIf(h -> h.getHandlerName().equals(handlerName));
     if (removed) {
+      handlers = List.copyOf(updated);
       LOG.info("Unregistered entity lifecycle handler: {}", handlerName);
     }
     return removed;
@@ -106,7 +118,7 @@ public class EntityLifecycleEventDispatcher {
    * @return Unmodifiable list of handlers
    */
   public List<EntityLifecycleEventHandler> getHandlers() {
-    return List.copyOf(handlers);
+    return handlers;
   }
 
   /**

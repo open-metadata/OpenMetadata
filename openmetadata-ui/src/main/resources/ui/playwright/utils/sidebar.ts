@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import {
   SETTINGS_OPTIONS_PATH,
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
 import { waitForAllLoadersToDisappear } from './entity';
+import { waitForAntOverlayToOpen } from './waitHelpers';
 
 export type SettingOptionsType =
   | keyof typeof SETTINGS_OPTIONS_PATH
@@ -27,26 +28,48 @@ export const clickOnLogo = async (page: Page) => {
   await page.mouse.move(1280, 0); // Move mouse to top right corner
 };
 
+export const clickSidebarLink = async (page: Page, testId: string) => {
+  const navigation = page
+    .getByTestId('left-sidebar')
+    .or(page.locator('.ant-menu-submenu-popup'));
+  const targetElement = navigation
+    .getByTestId(testId)
+    .filter({ visible: true });
+  await expect(targetElement).toBeVisible();
+  const popup = page
+    .locator('.ant-menu-submenu-popup')
+    .filter({ has: page.getByTestId(testId) });
+  if (await popup.count()) {
+    await waitForAntOverlayToOpen(popup);
+  }
+  await targetElement.focus();
+  const href = await targetElement.getAttribute('href');
+  await targetElement.click();
+  if (href) {
+    const pathname = new URL(href, page.url()).pathname;
+    // Sections such as Glossary immediately select a child route on entry.
+    await expect
+      .poll(() => {
+        const currentPathname = new URL(page.url()).pathname;
+
+        return (
+          currentPathname === pathname ||
+          currentPathname.startsWith(`${pathname}/`)
+        );
+      })
+      .toBe(true);
+  }
+};
+
 export const sidebarClick = async (page: Page, id: string) => {
   const items = SIDEBAR_LIST_ITEMS[id as keyof typeof SIDEBAR_LIST_ITEMS];
   if (items) {
     await page.mouse.move(0, 0); // Dismiss any open tooltips before interacting with sidebar
     await page.hover('[data-testid="left-sidebar"]');
     await page.click(`[data-testid="${items[0]}"]`);
-
-    const targetElement = page
-      .locator(`[data-testid="app-bar-item-${items[1]}"]`)
-      .first();
-    await targetElement.waitFor({ state: 'visible' });
-    await targetElement.click();
-  } else {
-    const targetElement = page
-      .locator(`[data-testid="app-bar-item-${id}"]`)
-      .first();
-    await targetElement.waitFor({ state: 'visible' });
-    await targetElement.click();
   }
 
+  await clickSidebarLink(page, `app-bar-item-${items ? items[1] : id}`);
   await page.mouse.move(1280, 0); // Move mouse to top right corner
 };
 

@@ -40,6 +40,10 @@ export async function suggestions(
   searchTerm: string,
   mentionChar: string
 ): Promise<MentionSuggestionsItem[]> {
+  // Alphabetical ordering can fill the first page with weaker fuzzy matches.
+  const sortField = searchTerm?.trim() ? '_score' : 'displayName.keyword';
+  const sortOrder = sortField === '_score' ? 'desc' : 'asc';
+
   if (mentionChar === '@') {
     let atValues = [];
 
@@ -48,8 +52,8 @@ export async function suggestions(
       pageNumber: 1,
       pageSize: 5,
       queryFilter: getTermQuery({ isBot: 'false' }),
-      sortField: 'displayName.keyword',
-      sortOrder: 'asc',
+      sortField,
+      sortOrder,
       searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
     });
     const hits = data.hits.hits;
@@ -84,8 +88,8 @@ export async function suggestions(
       query: searchTerm ?? '',
       pageNumber: 1,
       pageSize: 5,
-      sortField: 'displayName.keyword',
-      sortOrder: 'asc',
+      sortField,
+      sortOrder,
       searchIndex: SearchIndex.DATA_ASSET,
     });
     const hits = data.hits.hits;

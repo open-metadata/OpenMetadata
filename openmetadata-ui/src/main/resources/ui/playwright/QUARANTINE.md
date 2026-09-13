@@ -27,14 +27,13 @@ coverage, a retried one looks green.
 
 ## Entries
 
-5 tests. Most evidence is failures observed across 11 merge_group runs sampled on
+4 tests. Most evidence is failures observed across 11 merge_group runs sampled on
 2026-09-04; the threshold for quarantining is **2 or more**, counted per
 generated variant rather than per source line.
 
 | Spec | Test | Seen | Symptom |
 |---|---|---|---|
 | `e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts` | Should remove user owner for knowledgeCenter | 1/1 | Re-quarantined 2026-09-10 on fresh evidence, not the 2026-09-04 sample. The 11/11 failure it was first tagged for was real and is fixed (`openEntitySummaryPanel` waited for the NavBar `searchBox` on a page that renders `ExploreSearchInput`), but releasing it surfaced a second cause underneath. In PR #33054 it failed its first attempt and passed on retry: `expectOwnerInPanel` polled for the owner chip for the full 60s, re-navigating between attempts, and never saw it — even though `addOwnerInKCPanel` had already awaited the PATCH, so the owner was persisted. That is the *original* recorded symptom (owner chip not found), so the panel's read path lags the write rather than the navigation being wrong. A longer poll is not the fix; find what the panel reads and wait on that. |
-| `e2e/Pages/DataContracts.spec.ts` | Create Data Contract and validate for Table | 2/2 | Quarantined 2026-09-11 (BE bug, not a test flake). On both merge_group attempts of run 34588697338 the contract's quality/test-suite run finished without writing a result: `GET /dataContracts/{id}/results/{resultId}` shows `schemaValidation` (5/5) and `semanticsValidation` (1/1) populated but **`qualityValidation` absent**, so the aggregate `contractExecutionStatus` hangs on `Running` and never reaches a terminal state. The test suite + DQ ingestion pipeline were created and deployed fine (`POST …/ingestionPipelines/deploy` → 200), but the triggered Airflow DagRun completed in ~0.03s executing zero test cases, so no test-case result came back. `waitForDataContractExecution` then polls the full 600s and the fallback derives `suiteStatus = 'Running'`, failing `expect(...).toMatch(/^(Aborted\|Success\|Failed)$/)`. Fix is in BE: reap contract validation to a terminal state (`Aborted`/`Failed`) when the quality run fails to trigger or returns no result, instead of hanging on `Running`; plus BE/Ingestion should confirm test cases are attached before the pipeline is triggered so the run isn't empty. Owner: BE team. |
 | `e2e/Pages/TestSuiteDetailsPage.spec.ts` | Add test case modal — filters and select | 3/11 | `waitForResponse` on the test-case search never resolves. |
 | `e2e/Features/Glossary/GlossaryHierarchy.spec.ts` | should move term to root of different glossary | 2/11 | Drag-and-drop. |
 | `e2e/Features/DataQuality/TableLevelTests.spec.ts` | Table Difference | 2/11 | |
@@ -72,9 +71,9 @@ projects, so filtering them would make every quarantined test fail for want of
 `admin.json` instead of for its flake.
 
 Re-run `npx playwright test --list` after changing this file and update the
-default-lane count here. It is **4575 of 4580** with these 5 entries; the
-quarantined lane lists 12, which is the 5 plus the 7 fixture projects above.
-(It was 4576 of 4580 with 4 entries, and 4543 of 4555 when the list held 13.)
+default-lane count here. It is **4576 of 4580** with these 4 entries; the
+quarantined lane lists 11, which is the 4 plus the 7 fixture projects above.
+(It was 4543 of 4555 when the list held 13.)
 
 ## Not quarantined — fixed instead
 

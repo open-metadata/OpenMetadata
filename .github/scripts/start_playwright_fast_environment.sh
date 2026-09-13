@@ -38,6 +38,7 @@ export PW_SERVER_CAPTURE_PID_FILE="$runtime_root/openmetadata-server-capture.pid
 export PW_SERVER_OUTPUT_PIPE="$runtime_root/openmetadata-server.pipe"
 export PW_REQUEST_METRICS="$runtime_root/logs/request-metrics.json"
 export PW_AIRFLOW_CONTAINER=""
+export PW_AUTOPILOT_MYSQL_CONTAINER=""
 export PW_AUTH_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/.auth"
 export PW_ENTITY_STATE_LINK="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright/output/entity-response-data.json"
 
@@ -46,7 +47,7 @@ cleanup_failed_start() {
   local exit_code=$?
   trap - EXIT
   if [[ "$startup_complete" != "true" ]]; then
-    "$workspace_root/.github/scripts/stop_playwright_fast_environment.sh" || true
+    PW_STARTUP_FAILED=true "$workspace_root/.github/scripts/stop_playwright_fast_environment.sh" || true
   fi
   exit "$exit_code"
 }
@@ -310,7 +311,6 @@ for _ in $(seq 1 90); do
     break
   fi
   if ! kill -0 "$server_pid" 2>/dev/null; then
-    tail -n 500 "$PW_SERVER_LOG" >&2
     echo "OpenMetadata exited before becoming healthy" >&2
     exit 1
   fi
@@ -318,7 +318,6 @@ for _ in $(seq 1 90); do
 done
 
 if ! curl -fsS http://127.0.0.1:8586/healthcheck >/dev/null; then
-  tail -n 500 "$PW_SERVER_LOG" >&2
   echo "OpenMetadata did not become healthy" >&2
   exit 1
 fi
@@ -363,6 +362,8 @@ rm -f "$seed_search_response"
 if [[ -n "$ingestion_image_path" ]]; then
   PW_AIRFLOW_CONTAINER=openmetadata_ingestion
   export PW_AIRFLOW_CONTAINER
+  export PW_AUTOPILOT_MYSQL_CONTAINER=openmetadata_autopilot_mysql
+  bash "$workspace_root/.github/scripts/start_playwright_autopilot_mysql.sh"
   airflow_seed_container="${PW_AIRFLOW_CONTAINER}_seed"
   docker create --name "$airflow_seed_container" "$ingestion_image" >/dev/null
   docker cp \
@@ -432,6 +433,12 @@ fi
   echo "PW_SERVER_CAPTURE_PID_FILE=$PW_SERVER_CAPTURE_PID_FILE"
   echo "PW_REQUEST_METRICS=$PW_REQUEST_METRICS"
   echo "PW_AIRFLOW_CONTAINER=$PW_AIRFLOW_CONTAINER"
+  echo "PW_AUTOPILOT_MYSQL_CONTAINER=$PW_AUTOPILOT_MYSQL_CONTAINER"
+  if [[ -n "$PW_AUTOPILOT_MYSQL_CONTAINER" ]]; then
+    echo "PLAYWRIGHT_AUTOPILOT_MYSQL_HOST_PORT=$PW_AUTOPILOT_MYSQL_CONTAINER:3306"
+    echo "PLAYWRIGHT_AUTOPILOT_MYSQL_USERNAME=playwright"
+    echo "PLAYWRIGHT_AUTOPILOT_MYSQL_PASSWORD=playwright-fixture-only"
+  fi
   echo "PW_AUTH_LINK=$PW_AUTH_LINK"
   echo "PW_ENTITY_STATE_LINK=$PW_ENTITY_STATE_LINK"
   echo "PW_POSTGRES_IMAGE=$PW_POSTGRES_IMAGE"

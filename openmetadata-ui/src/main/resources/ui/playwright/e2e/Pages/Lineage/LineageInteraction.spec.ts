@@ -112,7 +112,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test.afterEach(async ({ page }) => {
-    await page.goto('about:blank');
+    await page.goto('about:blank', { waitUntil: 'domcontentloaded' });
   });
 
   test.describe('Lineage Layers Toggle', () => {
@@ -243,6 +243,10 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await editLineageClick(page);
         await addColumnLineage(page, sourceColName, targetColName);
 
+        // No reload here. The column edge only exists in the layer that
+        // addColumnLineage just rendered; reloading drops it, and re-activating
+        // the column layer does not bring that specific edge back. The pane
+        // above the marker swallows a trusted click, so dispatch it directly.
         await page
           .locator(
             `[data-testid="column-edge-${sourceColName}-${targetColName}"]`
@@ -916,7 +920,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // Reload to prove the server actually dropped the edge, not just
         // that local state was optimistically updated.
         const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await lineageRes;
 
         await expect(

@@ -14,10 +14,10 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
+  chooseSelectOption,
   createNewPage,
   getApiContext,
   redirectToHomePage,
-  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import {
@@ -73,6 +73,7 @@ test.describe(
     const PAGINATION_COUNT = 11;
 
     test.beforeAll(async ({ browser }) => {
+      globalMemoryIds.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       await linkedTable.create(apiContext);
@@ -189,6 +190,33 @@ test.describe(
       globalMemoryIds.push(entityMemoryId);
 
       await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        const results = await Promise.allSettled(
+          globalMemoryIds.map(async (id) => {
+            const response = await apiContext.delete(
+              `${MEMORIES_API}/${id}?hardDelete=true`
+            );
+            expect(
+              [200, 404],
+              `memory fixture cleanup: ${await response.text()}`
+            ).toContain(response.status());
+          })
+        );
+        await linkedTable.delete(apiContext);
+        const errors = results
+          .filter((result) => result.status === 'rejected')
+          .map((result) => (result as PromiseRejectedResult).reason);
+        if (errors.length) {
+          throw new AggregateError(errors, 'Memory fixture cleanup failed');
+        }
+      } finally {
+        globalMemoryIds.length = 0;
+        await afterAction();
+      }
     });
 
     test.beforeEach(async ({ page }) => {
@@ -448,7 +476,7 @@ test.describe(
           .fill('This memory has all optional fields populated.');
 
         // Select type: Note
-        await selectOptionWithRetry(
+        await chooseSelectOption(
           dialog.getByTestId('memory-type-select'),
           page.getByRole('option', { name: /note/i })
         );
@@ -1000,7 +1028,9 @@ test.describe(
       }) => {
         test.slow();
 
-        await page.goto(`${MEMORIES_URL}?memory=${sharedMemoryName}`);
+        await page.goto(`${MEMORIES_URL}?memory=${sharedMemoryName}`, {
+          waitUntil: 'domcontentloaded',
+        });
         await page
           .getByTestId('context-center-memories-page')
           .waitFor({ state: 'visible' });
@@ -1289,9 +1319,11 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        await dialog.getByTestId('memory-type-select').click();
         const faqOption = page.getByRole('option', { name: /faq/i });
-        await faqOption.click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-type-select'),
+          faqOption
+        );
         await faqOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
@@ -1328,9 +1360,11 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await dialog.getByTestId('memory-visibility-select').click();
         const privateOption = page.getByRole('option', { name: /private/i });
-        await privateOption.click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-visibility-select'),
+          privateOption
+        );
         await privateOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
@@ -1382,14 +1416,20 @@ test.describe(
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
-        await searchResPromise;
+        expect((await searchResPromise).ok()).toBe(true);
         await waitForAllLoadersToDisappear(page);
 
-        const option = page.getByRole('option', {
+        const option = page.getByTestId('picker-popover').getByRole('option', {
           name: table.displayName ?? table.name,
         });
         await expect(option).toBeVisible();
@@ -1526,7 +1566,7 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await selectOptionWithRetry(
+        await chooseSelectOption(
           dialog.getByTestId('memory-visibility-select'),
           page.getByRole('option', { name: /private/i })
         );
@@ -1710,9 +1750,15 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
         await searchResPromise;
 
@@ -1745,9 +1791,15 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
         await searchResPromise;
 
@@ -1857,9 +1909,15 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse((res) =>
-          res.url().includes('/search/query')
-        );
+        const searchResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            res.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('q') === `*${table.name}*`
+          );
+        });
         await assetSearch.fill(table.name);
         await searchResPromise;
 

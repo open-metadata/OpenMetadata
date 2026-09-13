@@ -20,9 +20,40 @@ import {
   DrawerQuickFilterContext,
   toDrawerAsset,
 } from './assetDrawerQuickFilter';
-import { waitForAllLoadersToDisappear } from './entity';
+import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
+import {
+  waitForAntOverlayToOpen,
+  waitForResponseWithStatus,
+} from './waitHelpers';
 
 type PortAssetType = 'table' | 'topic' | 'dashboard';
+
+export const confirmPortRemoval = async (
+  page: Page,
+  dataProductFqn: string | undefined,
+  portType: 'input' | 'output'
+) => {
+  if (!dataProductFqn) {
+    throw new Error(
+      'Cannot remove a port without the created data product FQN'
+    );
+  }
+
+  const dialog = page.getByRole('dialog', { name: 'Remove Port', exact: true });
+  await waitForAntOverlayToOpen(dialog);
+  const response = waitForResponseWithStatus(
+    page,
+    (res) =>
+      res.request().method() === 'PUT' &&
+      new URL(res.url()).pathname ===
+        `/api/v1/dataProducts/${getEncodedFqn(
+          dataProductFqn
+        )}/${portType}Ports/remove`,
+    200
+  );
+  await dialog.getByRole('button', { name: 'Remove', exact: true }).click();
+  await response;
+};
 
 export interface SeededFilterAssets {
   dataProduct: DataProduct;

@@ -203,7 +203,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist current page', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify', {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
@@ -220,10 +222,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const firstLinkInColumn = getFirstRowColumnLink(page);
     await firstLinkInColumn.click();
 
-    await page.waitForURL('**/table/**');
+    await page.waitForURL('**/table/**', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -236,10 +238,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const secondLinkInColumn = getFirstRowColumnLink(page);
     await secondLinkInColumn.click();
 
-    await page.waitForURL('**/table/**');
+    await page.waitForURL('**/table/**', { waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -250,33 +252,55 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist page size', async ({ dataConsumerPage: page }) => {
-    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    // Scroll inside the retry: the schema's tables keep rendering after the
+    // loaders clear, and a row growing above the pagination pushes it back out
+    // of the viewport, so a single scroll settles on a position the layout then
+    // abandons. The assertion is unchanged — the control still has to end up on
+    // screen before the hover below can open its menu.
+    await expect(async () => {
+      await pageSizeDropdown.scrollIntoViewIfNeeded();
+      await expect(pageSizeDropdown).toBeInViewport();
+    }).toPass({ timeout: 30_000 });
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
+    await expect(pageSizeDropdown).toHaveText('15 / Page');
 
-    // NextPrevious wraps the button in an Ant Dropdown with the default hover
-    // trigger, so a bare click only fires preventDefault. Open and pick inside
-    // one retry: the menu can close between a visibility check and the click,
-    // and a click left outside the loop then waits on a hidden option for the
-    // rest of the test. Asserting the trigger's new label retries the whole
-    // open-and-pick when it did not take.
-    const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
-    await expect(async () => {
-      await pageSizeDropdown.hover();
-      if (!(await pageSizeOption.isVisible())) {
-        await pageSizeDropdown.click();
-      }
-      await expect(pageSizeOption).toBeVisible({ timeout: 2_000 });
-      await pageSizeOption.click({ timeout: 5_000 });
+    // NextPrevious opens this menu on hover. Wait for its animation to finish
+    // before clicking the option so the target stays under the pointer.
+    const pageSizeMenu = page.getByRole('menu').filter({ hasText: '/ Page' });
+    const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
+      name: '25 / Page',
+    });
+    await pageSizeDropdown.hover();
+    await expect(pageSizeMenu).toBeVisible();
+    await waitForAntdPopupToSettle(page);
+    const resizedTableList = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
 
-      await expect(pageSizeDropdown).toContainText('15 / Page');
-    }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/tables' &&
+          url.searchParams.get('databaseSchema') ===
+            'sample_data.ecommerce_db.shopify' &&
+          url.searchParams.get('limit') === '25'
+        );
+      },
+      200
+    );
+    await pageSizeOption.click();
+    await resizedTableList;
+    await expect(pageSizeDropdown).toHaveText('25 / Page');
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);
@@ -288,14 +312,14 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await entityApiResponse;
     await waitForAllLoadersToDisappear(page);
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     await page
       .getByTestId('page-size-selection-dropdown')
       .scrollIntoViewIfNeeded();
 
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-      '15 / Page'
+      '25 / Page'
     );
   });
 });
@@ -305,7 +329,9 @@ test.describe('Table & Data Model columns table pagination', () => {
     page,
   }) => {
     test.slow();
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -386,7 +412,8 @@ test.describe('Table & Data Model columns table pagination', () => {
     page,
   }) => {
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -452,9 +479,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
 
     await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
-    await waitForAllLoadersToDisappear(page).catch(() => undefined);
-    await page.locator(glossaryRowSelector).waitFor({ state: 'visible' });
-
+    await expect(page.locator(glossaryRowSelector)).toBeVisible({
+      timeout: 30_000,
+    });
     const glossaryTagsCell = page.locator(
       `${glossaryRowSelector} [data-testid*="glossary-tags"]`
     );
@@ -488,11 +515,12 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .getByTestId(`tag-${glossaryTerm.responseData.fullyQualifiedName}`)
       .click();
     await Promise.all([
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/columns/name/') &&
-          ['PUT', 'PATCH'].includes(response.request().method()) &&
-          response.ok()
+          ['PUT', 'PATCH'].includes(response.request().method()),
+        'ok'
       ),
       page.getByTestId('saveAssociatedTag').click(),
     ]);
@@ -547,11 +575,12 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       .click();
 
     await Promise.all([
-      page.waitForResponse(
+      waitForResponseWithStatus(
+        page,
         (response) =>
           response.url().includes('/api/v1/columns/name/') &&
-          ['PUT', 'PATCH'].includes(response.request().method()) &&
-          response.ok()
+          ['PUT', 'PATCH'].includes(response.request().method()),
+        'ok'
       ),
       page.getByTestId('saveAssociatedTag').click(),
     ]);
@@ -572,7 +601,9 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
     );
 
-    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer');
+    await page.goto('/table/sample_data.ecommerce_db.shopify.dim_customer', {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Wait for page to be fully loaded
     await columnsResponse;
@@ -620,7 +651,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(
@@ -738,7 +769,9 @@ test.describe('Large Table Column Search & Copy Link', () => {
       `/api/v1/tables/name/${createdTable.fullyQualifiedName}/columns?*`
     );
     // 1. Visit the table page directly
-    await page.goto(`/table/${createdTable.fullyQualifiedName}`);
+    await page.goto(`/table/${createdTable.fullyQualifiedName}`, {
+      waitUntil: 'domcontentloaded',
+    });
     await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -790,7 +823,7 @@ test.describe('Large Table Column Search & Copy Link', () => {
           'tags,customMetrics,extension,profile'
       );
     });
-    await page.goto(clipboardText);
+    await page.goto(clipboardText, { waitUntil: 'domcontentloaded' });
     const columnGetResponse = await columnGetResponsePromise;
 
     expect(columnGetResponse.status()).toBe(200);
@@ -998,7 +1031,13 @@ test.describe('Table open-task header stat', () => {
 
     await openTaskStat.click();
 
-    await page.waitForURL('**/activity_feed/tasks');
+    await page.waitForURL('**/activity_feed/tasks', {
+      waitUntil: 'domcontentloaded',
+    });
     await expect(page).toHaveURL(/\/activity_feed\/tasks/);
   });
 });
+
+import { waitForAntdPopupToSettle } from '../../utils/common';
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

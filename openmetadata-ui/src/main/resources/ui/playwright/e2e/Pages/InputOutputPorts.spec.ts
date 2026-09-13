@@ -40,10 +40,15 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   buildPortDrawerContext,
   cleanupDrawerFilterAssets,
+  confirmPortRemoval,
   createAssetRef,
   seedDrawerFilterAssets,
 } from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
+import {
+  waitForAntOverlayToOpen,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -55,6 +60,9 @@ test.describe('Input Output Ports', () => {
   const dashboards: DashboardClass[] = [];
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    tables.length = 0;
+    topics.length = 0;
+    dashboards.length = 0;
     const { apiContext } = await performAdminLogin(browser);
 
     await domain.create(apiContext);
@@ -904,13 +912,11 @@ test.describe('Input Output Ports', () => {
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();
 
-        const removeRes = page.waitForResponse(
-          (res) =>
-            res.url().includes('/inputPorts/remove') &&
-            res.request().method() === 'PUT'
-        );
-        await page.getByRole('button', { name: 'Remove' }).click();
-        await removeRes;
+        await confirmPortRemoval(page, dataProduct.getFqn(), 'input');
+        await expect(page.getByTestId(`port-actions-${portId}`)).toBeHidden();
+        await expect(
+          page.getByTestId(`port-actions-${tables[1].entityResponseData.id}`)
+        ).toBeVisible();
       });
 
       await test.step('Verify port was removed', async () => {
@@ -949,13 +955,13 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        const removeRes = page.waitForResponse(
-          (res) =>
-            res.url().includes('/outputPorts/remove') &&
-            res.request().method() === 'PUT'
-        );
-        await page.getByRole('button', { name: 'Remove' }).click();
-        await removeRes;
+        await confirmPortRemoval(page, dataProduct.getFqn(), 'output');
+        await expect(page.getByTestId(`port-actions-${portId}`)).toBeHidden();
+        await expect(
+          page.getByTestId(
+            `port-actions-${dashboards[1].entityResponseData.id}`
+          )
+        ).toBeVisible();
       });
 
       await test.step('Verify port was removed', async () => {
@@ -991,9 +997,14 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
-
-        await page.getByRole('button', { name: 'Cancel' }).click();
+        const dialog = page.getByRole('dialog', {
+          name: 'Remove Port',
+          exact: true,
+        });
+        await waitForAntOverlayToOpen(dialog);
+        await dialog
+          .getByRole('button', { name: 'Cancel', exact: true })
+          .click();
 
         await expect(page.getByRole('dialog')).not.toBeVisible();
       });
@@ -1033,13 +1044,7 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        const removeRes = page.waitForResponse(
-          (res) =>
-            res.url().includes('/inputPorts/remove') &&
-            res.request().method() === 'PUT'
-        );
-        await page.getByRole('button', { name: 'Remove' }).click();
-        await removeRes;
+        await confirmPortRemoval(page, dataProduct.getFqn(), 'input');
       });
 
       await test.step('Verify empty state appears', async () => {
@@ -1824,12 +1829,16 @@ test.describe('Input Output Ports', () => {
         // Confirmation modal with output port warning should appear
         await expect(page.locator('.ant-alert-warning')).toBeVisible();
 
-        const removeRes = page.waitForResponse(
+        const dialog = page.getByRole('dialog');
+        await waitForAntOverlayToOpen(dialog);
+        const removeRes = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes('/assets/remove') &&
-            res.request().method() === 'PUT'
+            res.request().method() === 'PUT',
+          200
         );
-        await page.getByTestId('save-button').click();
+        await dialog.getByTestId('save-button').click();
         await removeRes;
 
         await expect

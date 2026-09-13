@@ -33,6 +33,11 @@ jest.mock('../rest/miscAPI', () => ({
   ),
 }));
 
+const mockGetAggregateFieldOptions =
+  getAggregateFieldOptions as jest.MockedFunction<
+    typeof getAggregateFieldOptions
+  >;
+
 jest.mock('./JSONLogicSearchClassBase', () => ({
   getQueryBuilderFields: jest.fn(),
 }));
@@ -44,6 +49,93 @@ jest.mock('./EntityNameUtils', () => ({
 jest.mock('./AdvancedSearchPureUtils', () => ({
   getCustomPropertyAdvanceSearchEnumOptions: jest.fn(),
 }));
+
+describe('autocomplete request ordering', () => {
+  type AggregateResponse = Awaited<ReturnType<typeof getAggregateFieldOptions>>;
+
+  const deferredResponse = () => {
+    let resolve!: (response: AggregateResponse) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<AggregateResponse>(
+      (resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+      }
+    );
+
+    return { promise, resolve, reject };
+  };
+
+  const responseFor = (value: string): AggregateResponse => ({
+    data: {
+      hits: { total: { value: 1 }, hits: [] },
+      aggregations: {
+        [`sterms#${EntityFields.NAME_KEYWORD}`]: {
+          buckets: [{ key: value, doc_count: 1 }],
+        },
+      },
+    },
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockGetAggregateFieldOptions.mockReset();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it.each(['older first', 'newer first', 'older fails', 'newer fails'])(
+    'keeps each response associated with its search when %s',
+    async (order) => {
+      const older = deferredResponse();
+      const newer = deferredResponse();
+      mockGetAggregateFieldOptions
+        .mockReturnValueOnce(older.promise)
+        .mockReturnValueOnce(newer.promise);
+      const search = new AdvancedSearchClassBase().autocomplete({
+        searchIndex: SearchIndex.TABLE,
+        entityField: EntityFields.NAME_KEYWORD,
+      });
+      if (!search) {
+        throw new Error('Autocomplete must provide an async fetch function');
+      }
+
+      const olderResult = search('old');
+      jest.advanceTimersByTime(300);
+      const newerResult = search('new');
+      jest.advanceTimersByTime(300);
+
+      if (order === 'older first') {
+        older.resolve(responseFor('old'));
+      } else if (order === 'older fails') {
+        older.reject(new Error('Older request failed'));
+      } else if (order === 'newer fails') {
+        newer.reject(new Error('Newer request failed'));
+      } else {
+        newer.resolve(responseFor('new'));
+      }
+      await Promise.resolve();
+      await Promise.resolve();
+      newer.resolve(responseFor('new'));
+      older.resolve(responseFor('old'));
+
+      await expect(olderResult).resolves.toEqual({
+        values: order === 'older fails' ? [] : [{ value: 'old', title: 'old' }],
+        hasMore: false,
+      });
+      await expect(newerResult).resolves.toEqual({
+        values: order === 'newer fails' ? [] : [{ value: 'new', title: 'new' }],
+        hasMore: false,
+      });
+    }
+  );
+});
 
 describe('AdvancedSearchClassBase', () => {
   let advancedSearchClassBase: AdvancedSearchClassBase;
@@ -121,7 +213,7 @@ describe('autocomplete', () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.mocked(getAggregateFieldOptions).mockReset();
+    mockGetAggregateFieldOptions.mockReset();
   });
 
   afterEach(() => {
@@ -130,9 +222,7 @@ describe('autocomplete', () => {
   });
 
   it('settles superseded searches while debouncing the latest request', async () => {
-    jest
-      .mocked(getAggregateFieldOptions)
-      .mockResolvedValue(responseFor('table'));
+    mockGetAggregateFieldOptions.mockResolvedValue(responseFor('table'));
     const autocomplete = createAutocomplete();
     const previous = autocomplete('ta');
     const latest = autocomplete('table');
@@ -148,44 +238,39 @@ describe('autocomplete', () => {
     expect(getAggregateFieldOptions).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    ['older first', [0, 1]],
-    ['newer first', [1, 0]],
-  ] as const)(
-    'keeps overlapping responses with their own search: %s',
-    async (_, order) => {
-      const requests = [deferredResponse(), deferredResponse()];
-      jest
-        .mocked(getAggregateFieldOptions)
-        .mockReturnValueOnce(requests[0].promise)
-        .mockReturnValueOnce(requests[1].promise);
-      const autocomplete = createAutocomplete();
-      const previous = autocomplete('');
-      await jest.advanceTimersByTimeAsync(300);
-      const latest = autocomplete('table');
-      await jest.advanceTimersByTimeAsync(300);
+  it('cancels only debounced searches while an earlier request is in flight', async () => {
+    const earlierResponse = deferredResponse();
+    mockGetAggregateFieldOptions
+      .mockReturnValueOnce(earlierResponse.promise)
+      .mockResolvedValueOnce(responseFor('table'));
+    const autocomplete = createAutocomplete();
+    const earlier = autocomplete('old');
+    await jest.advanceTimersByTimeAsync(300);
+    const superseded = autocomplete('ta');
+    await jest.advanceTimersByTimeAsync(150);
+    const latest = autocomplete('table');
 
-      const names = ['default', 'table'];
-      for (const index of order) {
-        requests[index].resolve(responseFor(names[index]));
-        await jest.advanceTimersByTimeAsync(0);
-      }
+    await expect(superseded).resolves.toEqual({ values: [], hasMore: false });
 
-      await expect(previous).resolves.toEqual({
-        values: [{ value: 'default', title: 'default' }],
-        hasMore: false,
-      });
-      await expect(latest).resolves.toEqual({
-        values: [{ value: 'table', title: 'table' }],
-        hasMore: false,
-      });
-    }
-  );
+    earlierResponse.resolve(responseFor('old'));
+
+    await expect(earlier).resolves.toEqual({
+      values: [{ value: 'old', title: 'old' }],
+      hasMore: false,
+    });
+
+    await jest.advanceTimersByTimeAsync(300);
+
+    await expect(latest).resolves.toEqual({
+      values: [{ value: 'table', title: 'table' }],
+      hasMore: false,
+    });
+    expect(getAggregateFieldOptions).toHaveBeenCalledTimes(2);
+  });
 
   it('does not clear a newer search when an earlier request fails', async () => {
     const previousResponse = deferredResponse();
-    jest
-      .mocked(getAggregateFieldOptions)
+    mockGetAggregateFieldOptions
       .mockReturnValueOnce(previousResponse.promise)
       .mockResolvedValueOnce(responseFor('table'));
     const autocomplete = createAutocomplete();
@@ -203,9 +288,7 @@ describe('autocomplete', () => {
   });
 
   it('returns empty options when the current request fails', async () => {
-    jest
-      .mocked(getAggregateFieldOptions)
-      .mockRejectedValue(new Error('Search failed'));
+    mockGetAggregateFieldOptions.mockRejectedValue(new Error('Search failed'));
     const result = createAutocomplete()('table');
     await jest.advanceTimersByTimeAsync(300);
 

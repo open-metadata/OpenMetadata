@@ -11,699 +11,406 @@
  *  limitations under the License.
  */
 
-import { TableClass } from '../../../support/entity/TableClass';
-import { expect, test } from '../../../support/fixtures/base';
+import { Page } from '@playwright/test';
+import { Task, TaskComment } from '../../../../src/generated/entity/tasks/task';
+import { TaskClass } from '../../../support/entity/TaskClass';
+import {
+  createActivityTask,
+  expect,
+  TaskActivityData,
+  test,
+} from '../../../support/fixtures/taskActivity';
 import { UserClass } from '../../../support/user/UserClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { waitForPageLoaded } from '../../../utils/polling';
+import {
+  assertFulfilled,
+  deleteFixtureEntity,
+  okJson,
+} from '../../../utils/apiResponse';
+import { getApiContext, uuid } from '../../../utils/common';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
-/**
- * Task Comments Tests
- *
- * Tests all task comment scenarios including:
- * - Adding comments to tasks
- * - Editing comments
- * - Deleting comments
- * - @mention functionality in comments
- * - Comment notifications
- * - Permission to comment (anyone vs assignee only)
- */
+const openInboxTask = async (
+  page: Page,
+  data: TaskActivityData,
+  task: TaskClass,
+  user: UserClass
+) => {
+  await user.login(page);
+  await okJson(
+    await data.apiContext.put(
+      `/api/v1/users/${user.responseData.id}/preferences/appMode`,
+      { data: { type: 'appMode', config: { value: 'ai' } } }
+    ),
+    'Set the isolated comment user’s app mode'
+  );
+  await page.goto('/inbox/tasks', { waitUntil: 'domcontentloaded' });
+  await page.getByTestId(`inbox-task-${task.responseData!.id}`).click();
+  const panel = page.getByTestId('task-detail-panel');
+  await expect(panel).toContainText(`#${task.responseData!.taskId}`);
+  return panel;
+};
 
-test.describe('Task Comments - Add Comment', () => {
-  const adminUser = new UserClass();
-  const assigneeUser = new UserClass();
-  const commentingUser = new UserClass();
-  const table = new TableClass();
+const getPersistedComments = async (
+  data: TaskActivityData,
+  task: TaskClass
+) => {
+  const stored = await okJson<Task>(
+    await data.apiContext.get(`/api/v1/tasks/${task.responseData!.id}`, {
+      params: { fields: 'comments' },
+    }),
+    'Read saved task comments'
+  );
+  return stored.comments ?? [];
+};
 
-  let taskId: string;
+const addComment = async (page: Page, task: TaskClass, message: string) => {
+  const composer = page
+    .getByTestId('task-detail-panel')
+    .getByTestId('inbox-comment-composer');
+  await composer.locator('.ql-editor[contenteditable="true"]').fill(message);
+  return submitComment(page, task);
+};
 
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await assigneeUser.create(apiContext);
-      await commentingUser.create(apiContext);
-
-      await table.create(apiContext);
-      await table.setOwner(apiContext, {
-        id: assigneeUser.responseData.id,
-        type: 'user',
-      });
-
-      // Create a task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          name: `Test Task - ${Date.now()}`,
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeUser.responseData.name],
-        },
-      });
-      const task = await taskResponse.json();
-      taskId = task.id;
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await commentingUser.delete(apiContext);
-      await assigneeUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('assignee should be able to add comment to task', async ({ page }) => {
-    await assigneeUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    // Click on task to open detail drawer
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      // Find comment input in drawer
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
-        );
-
-        if (await commentInput.isVisible()) {
-          await commentInput.fill('This is a test comment from assignee');
-
-          // Submit comment
-          const sendBtn = drawer.getByTestId('send-comment');
-          if (await sendBtn.isVisible()) {
-            const commentResponse = page.waitForResponse(
-              (response) =>
-                response.url().includes('/api/v1/tasks/') &&
-                response.url().includes('/comments')
-            );
-            await sendBtn.click();
-            await commentResponse;
-
-            // Verify comment appears
-            await expect(
-              drawer.getByText('This is a test comment from assignee')
-            ).toBeVisible();
-          }
-        }
-      }
-    }
-  });
-
-  test('non-assignee should be able to add comment', async ({ page }) => {
-    await commentingUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
-        );
-
-        if (await commentInput.isVisible()) {
-          await commentInput.fill('Comment from non-assignee user');
-
-          const sendBtn = drawer.getByTestId('send-comment');
-          if (await sendBtn.isVisible()) {
-            await sendBtn.click();
-            await waitForPageLoaded(page);
-
-            // Comment should be added or access denied
-            // (depends on permission model)
-          }
-        }
-      }
-    }
-  });
-
-  test('admin should be able to add comment to any task', async ({ page }) => {
-    await adminUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
-        );
-
-        if (await commentInput.isVisible()) {
-          await commentInput.fill('Admin comment on task');
-
-          const sendBtn = drawer.getByTestId('send-comment');
-          if (await sendBtn.isVisible()) {
-            await sendBtn.click();
-            await waitForPageLoaded(page);
-
-            await expect(
-              drawer.getByText('Admin comment on task')
-            ).toBeVisible();
-          }
-        }
-      }
-    }
-  });
-});
-
-test.describe('Task Comments - @Mention', () => {
-  const adminUser = new UserClass();
-  const assigneeUser = new UserClass();
-  const mentionedUser = new UserClass();
-  const table = new TableClass();
-
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await assigneeUser.create(apiContext);
-      await mentionedUser.create(apiContext);
-
-      await table.create(apiContext);
-      await table.setOwner(apiContext, {
-        id: assigneeUser.responseData.id,
-        type: 'user',
-      });
-
-      await apiContext.post('/api/v1/tasks', {
-        data: {
-          name: `Test Task - ${Date.now()}`,
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [assigneeUser.responseData.name],
-        },
-      });
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await mentionedUser.delete(apiContext);
-      await assigneeUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('typing @ should show user suggestion dropdown', async ({ page }) => {
-    await adminUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [contenteditable="true"]'
-        );
-
-        if (await commentInput.isVisible()) {
-          await commentInput.click();
-          await page.keyboard.type('@');
-          await waitForPageLoaded(page);
-
-          // Should show mention dropdown
-          const mentionDropdown = page.locator(
-            '.mention-dropdown, .ql-mention-list-container, [data-testid="mention-suggestions"]'
-          );
-
-          await mentionDropdown
-            .first()
-            .waitFor({ state: 'visible', timeout: 2000 })
-            .catch(() => undefined);
-        }
-      }
-    }
-  });
-
-  test('selecting user from @ dropdown should add mention', async ({
+const submitComment = async (page: Page, task: TaskClass) => {
+  const response = waitForResponseWithStatus(
     page,
+    (result) =>
+      result.request().method() === 'POST' &&
+      new URL(result.url()).pathname ===
+        `/api/v1/tasks/${task.responseData!.id}/comments`,
+    200
+  );
+  await page
+    .getByTestId('inbox-comment-composer')
+    .getByTestId('send-button')
+    .click();
+  return okJson<Task>(await response, 'Save task comment');
+};
+
+const commentWithMessage = (
+  comments: TaskComment[] | undefined,
+  message: string
+) => {
+  const comment = comments?.find((item) =>
+    item.message.replaceAll('\u00a0', ' ').includes(message)
+  );
+  expect(comment, `Comment containing ${message}`).toBeDefined();
+  return comment!;
+};
+
+for (const actor of ['member', 'outsider', 'teammate'] as const) {
+  const role = {
+    member: 'assignee',
+    outsider: 'non-assignee',
+    teammate: 'admin',
+  }[actor];
+  test(`${role} can add a comment that persists after reload`, async ({
+    page,
+    activityData: data,
   }) => {
-    await adminUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        const commentInput = drawer.locator(
-          '[data-testid="comment-input"], .ql-editor, [contenteditable="true"]'
-        );
-
-        if (await commentInput.isVisible()) {
-          await commentInput.click();
-
-          // Type @ and part of username
-          await page.keyboard.type(`@${mentionedUser.responseData.name}`);
-
-          // Select from dropdown if visible
-          const mentionItem = page.locator(
-            `.mention-item, .ql-mention-list-item:has-text("${mentionedUser.responseData.displayName}")`
-          );
-          await mentionItem
-            .first()
-            .waitFor({ state: 'visible', timeout: 2000 })
-            .catch(() => undefined);
-
-          if (await mentionItem.isVisible()) {
-            await mentionItem.click();
-
-            // Continue typing and submit
-            await page.keyboard.type(' please review this task');
-
-            const sendBtn = drawer.getByTestId('send-comment');
-            if (await sendBtn.isVisible()) {
-              await sendBtn.click();
-              await waitForPageLoaded(page);
-            }
-          }
-        }
-      }
-    }
+    if (actor === 'teammate') await data.teammate.setAdminRole(data.apiContext);
+    const task = await createActivityTask(data, data.member.responseData.name);
+    const panel = await openInboxTask(page, data, task, data[actor]);
+    const message = `Comment from ${role} ${uuid()}`;
+    const saved = await addComment(page, task, message);
+    const comment = commentWithMessage(saved.comments, message);
+    expect(comment.author?.name).toBe(data[actor].responseData.name);
+    await expect(
+      panel.getByTestId('task-comment-card').filter({ hasText: message })
+    ).toBeVisible();
+    expect(await getPersistedComments(data, task)).toContainEqual(
+      expect.objectContaining({ id: comment.id, message: comment.message })
+    );
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByTestId(`inbox-task-${task.responseData!.id}`).click();
+    await expect(
+      panel.getByTestId('task-comment-card').filter({ hasText: message })
+    ).toBeVisible();
   });
+}
+
+test('typing a mention shows the matching user suggestion', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const panel = await openInboxTask(page, data, task, data.member);
+  const editor = panel
+    .getByTestId('inbox-comment-composer')
+    .locator('.ql-editor[contenteditable="true"]');
+  await editor.pressSequentially(
+    `@${data.outsider.responseData.name.slice(0, 12)}`
+  );
+  await expect(
+    page.locator(`[data-value="@${data.outsider.responseData.name}"]`)
+  ).toBeVisible();
+  expect(await getPersistedComments(data, task)).toHaveLength(0);
 });
 
-test.describe('Task Comments - Edit/Delete', () => {
-  const adminUser = new UserClass();
-  const assigneeUser = new UserClass();
-  const table = new TableClass();
+test('mention suggestions retain the closest match among alphabetical fuzzy matches', async ({
+  page,
+  activityData: data,
+}) => {
+  const names = [
+    'bright2e46f9c8.koalaf1acea3d',
+    'calm83fdc6d3.zebraf148de17',
+    'lively1b7cf3e8.fox2c76ab9d',
+    'nobled9733f8d.zebra03bdfcbe',
+    'pwteam1803d8d3d',
+    'sillyadaa0d14.zebra5e979e91',
+  ];
+  const suffix = uuid();
+  const users: Array<{ id: string; name: string }> = [];
 
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await assigneeUser.create(apiContext);
-
-      await table.create(apiContext);
-      await table.setOwner(apiContext, {
-        id: assigneeUser.responseData.id,
-        type: 'user',
-      });
-
-      // Create task with comment
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: {
-            type: 'table',
-            id: table.entityResponseData?.id,
-            fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
-          },
-          type: 'RequestDescription',
-          assignees: [{ id: assigneeUser.responseData.id, type: 'user' }],
-        },
-      });
-      const task = await taskResponse.json();
-
-      // Add a comment
-      await apiContext.post(`/api/v1/tasks/${task.id}/comments`, {
-        data: {
-          message: 'Initial comment for edit/delete test',
-        },
-      });
-    } finally {
-      await afterAction();
+  try {
+    for (const name of names) {
+      users.push(
+        await okJson<{ id: string; name: string }>(
+          await data.apiContext.post('/api/v1/users', {
+            data: {
+              name: `${name}.${suffix}`,
+              email: `${name}.${suffix}@example.com`,
+              displayName: name.replaceAll('.', ''),
+              isBot: false,
+              isAdmin: false,
+            },
+          }),
+          'Create competing mention candidates'
+        )
+      );
     }
-  });
+    const target = users[users.length - 1];
+    const task = await createActivityTask(data, data.member.responseData.name);
+    const panel = await openInboxTask(page, data, task, data.member);
+    const editor = panel
+      .getByTestId('inbox-comment-composer')
+      .locator('.ql-editor[contenteditable="true"]');
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await table.delete(apiContext);
-      await assigneeUser.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('comment author should see edit/delete options', async ({ page }) => {
-    await adminUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        // Find comment
-        const comment = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
-
-        if (await comment.first().isVisible()) {
-          // Hover to show actions
-          await comment.first().hover();
-
-          // Look for edit/delete buttons
-          const editBtn = comment.first().getByTestId('edit-comment');
-          const deleteBtn = comment.first().getByTestId('delete-comment');
-
-          // Author should see these buttons
-          // (depends on UI implementation)
-        }
-      }
-    }
-  });
-
-  test('should be able to edit own comment', async ({ page }) => {
-    await adminUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        const comment = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
-
-        if (await comment.first().isVisible()) {
-          await comment.first().hover();
-
-          const editBtn = comment.first().getByTestId('edit-comment');
-
-          if (await editBtn.isVisible()) {
-            await editBtn.click();
-
-            // Edit comment text
-            const editInput = drawer.locator(
-              '[data-testid="edit-comment-input"]'
-            );
-            if (await editInput.isVisible()) {
-              await editInput.fill('Updated comment text');
-
-              const saveBtn = drawer.getByTestId('save-comment');
-              await saveBtn.click();
-              await waitForPageLoaded(page);
-
-              await expect(
-                drawer.getByText('Updated comment text')
-              ).toBeVisible();
-            }
-          }
-        }
-      }
-    }
-  });
-
-  test('should be able to delete own comment', async ({ page }) => {
-    await adminUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        const comments = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
-        const initialCount = await comments.count();
-
-        if (initialCount > 0) {
-          await comments.first().hover();
-
-          const deleteBtn = comments.first().getByTestId('delete-comment');
-
-          if (await deleteBtn.isVisible()) {
-            await deleteBtn.click();
-
-            // Confirm deletion
-            const confirmBtn = page.getByRole('button', {
-              name: /confirm|yes|delete/i,
-            });
-            if (await confirmBtn.isVisible()) {
-              await confirmBtn.click();
-              await waitForPageLoaded(page);
-
-              // Comment count should decrease
-              const newCount = await comments.count();
-              expect(newCount).toBeLessThan(initialCount);
-            }
-          }
-        }
-      }
-    }
-  });
-
-  test('non-author should not see edit/delete options', async ({ page }) => {
-    await assigneeUser.login(page);
-    await table.visitEntityPage(page);
-
-    await page.getByTestId('activity_feed').click();
-    await waitForPageLoaded(page);
-
-    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
-
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
-
-      const drawer = page.locator('.ant-drawer-content');
-
-      if (await drawer.isVisible()) {
-        // Find comment from admin (not assignee)
-        const comment = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
-
-        if (await comment.first().isVisible()) {
-          await comment.first().hover();
-
-          // Non-author should NOT see edit/delete buttons for others' comments
-          const editBtn = comment.first().getByTestId('edit-comment');
-          const deleteBtn = comment.first().getByTestId('delete-comment');
-
-          // These should not be visible (or should be for own comments only)
-        }
-      }
-    }
-  });
+    await editor.pressSequentially('@sillyadaa0d1');
+    await expect(page.locator(`[data-value="@${target.name}"]`)).toBeVisible();
+    expect(await getPersistedComments(data, task)).toHaveLength(0);
+  } finally {
+    assertFulfilled(
+      await Promise.allSettled(
+        users.map(({ id }) =>
+          deleteFixtureEntity(data.apiContext, `/api/v1/users/${id}`)
+        )
+      )
+    );
+  }
 });
 
-test.describe('Task Comments - API Validation', () => {
-  const adminUser = new UserClass();
-  const table = new TableClass();
-  let taskId: string;
+test('selecting a mention saves the intended user and comment', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const panel = await openInboxTask(page, data, task, data.member);
+  const editor = panel
+    .getByTestId('inbox-comment-composer')
+    .locator('.ql-editor[contenteditable="true"]');
+  await editor.pressSequentially(
+    `@${data.outsider.responseData.name.slice(0, 12)}`
+  );
+  await page
+    .locator(`[data-value="@${data.outsider.responseData.name}"]`)
+    .click();
+  const message = `Please review ${uuid()}`;
+  await editor.pressSequentially(` ${message}`);
+  const saved = await submitComment(page, task);
+  const comment = commentWithMessage(saved.comments, message);
+  const card = panel
+    .getByTestId('task-comment-card')
+    .filter({ hasText: message });
+  await expect(card).toContainText(data.outsider.responseData.name);
+  await expect(
+    card.getByRole('link', { name: `@${data.outsider.responseData.name}` })
+  ).toHaveAttribute(
+    'href',
+    new RegExp(
+      `/users/${data.outsider.responseData.name.replaceAll('.', '\\.')}$`
+    )
+  );
+  expect(await getPersistedComments(data, task)).toContainEqual(
+    expect.objectContaining({ id: comment.id, message: comment.message })
+  );
+});
 
-  test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+test('comment author can edit and cancel without saving', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const panel = await openInboxTask(page, data, task, data.member);
+  const message = `Unchanged comment ${uuid()}`;
+  const saved = await addComment(page, task, message);
+  const comment = commentWithMessage(saved.comments, message);
+  const card = panel
+    .getByTestId('task-comment-card')
+    .filter({ hasText: message });
+  await card.hover();
+  await expect(card.getByTestId('delete-task-comment')).toBeVisible();
+  await card.getByTestId('edit-task-comment').click();
+  const editor = panel.getByTestId('edit-task-comment-editor');
+  await editor
+    .locator('.ql-editor[contenteditable="true"]')
+    .fill('Discard this edit');
+  await editor.getByTestId('cancel-edit-task-comment').click();
+  await expect(card).toContainText(message);
+  expect(await getPersistedComments(data, task)).toContainEqual(
+    expect.objectContaining({ id: comment.id, message: comment.message })
+  );
+});
 
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
+test('comment author edits the saved comment through the inbox', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const panel = await openInboxTask(page, data, task, data.member);
+  const original = `Original ${uuid()}`;
+  const saved = await addComment(page, task, original);
+  const comment = commentWithMessage(saved.comments, original);
+  const card = panel
+    .getByTestId('task-comment-card')
+    .filter({ hasText: original });
+  await card.hover();
+  await card.getByTestId('edit-task-comment').click();
+  const editor = panel.getByTestId('edit-task-comment-editor');
+  const message = `Edited ${uuid()}`;
+  await editor.locator('.ql-editor[contenteditable="true"]').fill(message);
+  const response = waitForResponseWithStatus(
+    page,
+    (result) =>
+      result.request().method() === 'PATCH' &&
+      new URL(result.url()).pathname ===
+        `/api/v1/tasks/${task.responseData!.id}/comments/${comment.id}`,
+    200
+  );
+  await editor.getByTestId('send-button').click();
+  await response;
+  await expect(
+    panel.getByTestId('task-comment-card').filter({ hasText: message })
+  ).toBeVisible();
+  await expect(
+    panel.getByTestId('task-comment-card').filter({ hasText: original })
+  ).toHaveCount(0);
+  expect(
+    commentWithMessage(await getPersistedComments(data, task), message).id
+  ).toBe(comment.id);
+});
 
-      await table.create(apiContext);
+test('comment author deletes only the selected comment', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const panel = await openInboxTask(page, data, task, data.member);
+  const remove = `Remove ${uuid()}`;
+  const keep = `Keep ${uuid()}`;
+  const saved = await addComment(page, task, remove);
+  const comment = commentWithMessage(saved.comments, remove);
+  await addComment(page, task, keep);
+  const card = panel
+    .getByTestId('task-comment-card')
+    .filter({ hasText: remove });
+  await card.hover();
+  await card.getByTestId('delete-task-comment').click();
+  const response = waitForResponseWithStatus(
+    page,
+    (result) =>
+      result.request().method() === 'DELETE' &&
+      new URL(result.url()).pathname ===
+        `/api/v1/tasks/${task.responseData!.id}/comments/${comment.id}`,
+    200
+  );
+  await page.getByTestId('delete-modal').getByTestId('confirm-button').click();
+  await response;
+  await expect(card).toHaveCount(0);
+  await expect(
+    panel.getByTestId('task-comment-card').filter({ hasText: keep })
+  ).toBeVisible();
+  const comments = await getPersistedComments(data, task);
+  expect(comments).toHaveLength(1);
+  expect(comments[0].message.replaceAll('\u00a0', ' ')).toBe(keep);
+});
 
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          name: `API Validation Test Task - ${Date.now()}`,
-          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          priority: 'Medium',
-          assignees: [adminUser.responseData.name],
-          payload: {
-            suggestedValue: 'Test description for API validation',
-            currentValue: '',
-            field: 'description',
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      taskId = task.id;
-    } finally {
-      await afterAction();
-    }
-  });
+test('non-author has no edit or delete controls and both API mutations are forbidden', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const message = `Admin authored ${uuid()}`;
+  const saved = await okJson<Task>(
+    await data.apiContext.post(
+      `/api/v1/tasks/${task.responseData!.id}/comments`,
+      { data: { message } }
+    ),
+    'Seed another author’s comment'
+  );
+  const comment = commentWithMessage(saved.comments, message);
+  const panel = await openInboxTask(page, data, task, data.member);
+  const card = panel
+    .getByTestId('task-comment-card')
+    .filter({ hasText: message });
+  await expect(card).toBeVisible();
+  await card.hover();
+  await expect(card.getByTestId('edit-task-comment')).toHaveCount(0);
+  await expect(card.getByTestId('delete-task-comment')).toHaveCount(0);
+  const user = await getApiContext(page);
+  try {
+    const path = `/api/v1/tasks/${task.responseData!.id}/comments/${
+      comment.id
+    }`;
+    expect(
+      (
+        await user.apiContext.patch(path, {
+          data: { message: 'Forbidden change' },
+        })
+      ).status()
+    ).toBe(403);
+    expect((await user.apiContext.delete(path)).status()).toBe(403);
+    expect(await getPersistedComments(data, task)).toContainEqual(
+      expect.objectContaining({ id: comment.id, message: comment.message })
+    );
+  } finally {
+    await user.afterAction();
+  }
+});
 
-  test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+test('comments from separate authors retain their identities', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const adminMessage = `Admin ${uuid()}`;
+  await okJson<Task>(
+    await data.apiContext.post(
+      `/api/v1/tasks/${task.responseData!.id}/comments`,
+      { data: { message: adminMessage } }
+    ),
+    'Seed admin comment'
+  );
+  const panel = await openInboxTask(page, data, task, data.member);
+  const message = `Assignee ${uuid()}`;
+  await addComment(page, task, message);
+  await expect(panel.getByTestId('task-comment-card')).toHaveCount(2);
+  const comments = await getPersistedComments(data, task);
+  expect(commentWithMessage(comments, message).author?.name).toBe(
+    data.member.responseData.name
+  );
+  expect(commentWithMessage(comments, adminMessage).author?.name).toBe('admin');
+});
 
-    try {
-      await table.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('POST /tasks/{id}/comments should add comment', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      const response = await apiContext.post(
-        `/api/v1/tasks/${taskId}/comments`,
-        {
-          data: {
-            message: 'API test comment',
-          },
-        }
-      );
-
-      expect(response.ok()).toBe(true);
-
-      // Verify comment was added
-      const getResponse = await apiContext.get(
-        `/api/v1/tasks/${taskId}?fields=comments`
-      );
-      const task = await getResponse.json();
-
-      expect(task.comments).toBeDefined();
-      expect(task.comments.length).toBeGreaterThan(0);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('GET /tasks/{id}?fields=comments should return comments', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      const response = await apiContext.get(
-        `/api/v1/tasks/${taskId}?fields=comments`
-      );
-
-      expect(response.ok()).toBe(true);
-      const task = await response.json();
-
-      expect(task).toHaveProperty('comments');
-      expect(Array.isArray(task.comments)).toBe(true);
-    } finally {
-      await afterAction();
-    }
-  });
+test('empty comment cannot be submitted', async ({
+  page,
+  activityData: data,
+}) => {
+  const task = await createActivityTask(data, data.member.responseData.name);
+  const panel = await openInboxTask(page, data, task, data.member);
+  const composer = panel.getByTestId('inbox-comment-composer');
+  await expect(composer.getByTestId('send-button')).toBeDisabled();
+  await composer.locator('.ql-editor[contenteditable="true"]').fill('   ');
+  await expect(composer.getByTestId('send-button')).toBeDisabled();
+  expect(await getPersistedComments(data, task)).toHaveLength(0);
 });

@@ -47,12 +47,13 @@ test.use({
 
 test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe('Pagination tests for Users page', () => {
+    let paginationUsers: UserClass[] = [];
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
       // Created concurrently: 20 sequential round-trips accumulate enough
       // latency under load to blow the 60s beforeAll budget on their own.
-      const paginationUsers = Array.from({ length: 20 }, () => {
+      paginationUsers = Array.from({ length: 20 }, () => {
         const uniqueId = uuid();
 
         return new UserClass({
@@ -68,9 +69,27 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await afterAction();
     });
 
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        await Promise.all(
+          paginationUsers.map((user) => user.delete(apiContext))
+        );
+      } finally {
+        await afterAction();
+      }
+    });
+
     test('should test pagination on Users page', async ({ page }) => {
-      await page.goto('/settings/members/users');
-      await testPaginationNavigation(page, '/api/v1/users', 'table');
+      await testPaginationNavigation(
+        page,
+        () =>
+          page.goto('/settings/members/users', {
+            waitUntil: 'domcontentloaded',
+          }),
+        '/api/v1/users',
+        'table'
+      );
     });
 
     test('should test Users complete flow with search', async ({ page }) => {
@@ -129,9 +148,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test Database Schema Tables normal pagination', async ({
       page,
     }) => {
-      await page.goto(`/databaseSchema/${schemaFqn}?pageSize=15`);
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(`/databaseSchema/${schemaFqn}?pageSize=15`, {
+            waitUntil: 'domcontentloaded',
+          }),
         '/api/v1/tables',
         '[data-testid="databaseSchema-tables"]'
       );
@@ -193,9 +215,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test pagination on Table columns', async ({ page }) => {
-      await page.goto(`/table/${tableFqn}?pageSize=15`);
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(`/table/${tableFqn}?pageSize=15`, {
+            waitUntil: 'domcontentloaded',
+          }),
         '/columns',
         '[data-testid="entity-table"]',
         false
@@ -250,9 +275,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Service Databases page', async ({
       page,
     }) => {
-      await page.goto(`/service/databaseServices/${databaseFqn}/databases`);
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(`/service/databaseServices/${databaseFqn}/databases`, {
+            waitUntil: 'domcontentloaded',
+          }),
         '/api/v1/databases',
         '[data-testid="service-children-table"]'
       );
@@ -342,9 +370,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Classification Tags page', async ({
       page,
     }) => {
-      await page.goto(`/tags/${classification.responseData.name}`);
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(`/tags/${classification.responseData.name}`, {
+            waitUntil: 'domcontentloaded',
+          }),
         '/api/v1/tags',
         '[data-testid="table"]'
       );
@@ -355,6 +386,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const metrics: MetricClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      metrics.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
@@ -383,6 +415,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const notificationAlerts: AlertClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      notificationAlerts.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
@@ -423,10 +456,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Notification Alerts page', async ({
       page,
     }) => {
-      await page.goto('/settings/notifications/alerts');
       // Skip row count validation because ActivityFeedAlert system alert is added on page 1
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto('/settings/notifications/alerts', {
+            waitUntil: 'domcontentloaded',
+          }),
         '/api/v1/events/subscriptions',
         'table',
         true,
@@ -439,6 +475,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const observabilityAlerts: AlertClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      observabilityAlerts.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       for (let i = 1; i <= 20; i++) {
@@ -479,10 +516,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Observability Alerts page', async ({
       page,
     }) => {
-      await page.goto('/observability/alerts?pageSize=15');
-
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto('/observability/alerts?pageSize=15', {
+            waitUntil: 'domcontentloaded',
+          }),
         '/api/v1/events/subscriptions',
         'table'
       );
@@ -522,9 +561,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test API Collection normal pagination', async ({ page }) => {
-      await page.goto(`/apiCollection/${apiCollectionFqn}?pageSize=15`);
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(`/apiCollection/${apiCollectionFqn}?pageSize=15`, {
+            waitUntil: 'domcontentloaded',
+          }),
         '/api/v1/apiEndpoints',
         '[data-testid="databaseSchema-tables"]'
       );
@@ -582,11 +624,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test Stored Procedures normal pagination', async ({
       page,
     }) => {
-      await page.goto(
-        `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`
-      );
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(
+            `/databaseSchema/${schemaFqn}/stored_procedure?pageSize=15`,
+            { waitUntil: 'domcontentloaded' }
+          ),
         '/api/v1/storedProcedures',
         '[data-testid="stored-procedure-table"]'
       );
@@ -658,9 +702,12 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Database Schemas normal pagination', async ({ page }) => {
-      await page.goto(`/database/${databaseFqn}?pageSize=15`);
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(`/database/${databaseFqn}?pageSize=15`, {
+            waitUntil: 'domcontentloaded',
+          }),
         '/api/v1/databaseSchemas',
         '[data-testid="database-databaseSchemas"]'
       );
@@ -724,16 +771,20 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Data Models normal pagination', async ({ page }) => {
-      await page.goto(
-        `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`
-      );
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(
+            `/service/dashboardServices/${serviceFqn}/data-model?pageSize=15`,
+            { waitUntil: 'domcontentloaded' }
+          ),
         '/api/v1/dashboard/datamodels',
         '[data-testid="data-models-table"]'
       );
-      const responsePromise = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/dashboard/datamodels')
+      const responsePromise = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/dashboards' &&
+          response.request().method() === 'GET'
       );
       await page.getByTestId('dashboards').click();
       const response = await responsePromise;
@@ -799,11 +850,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Directories normal pagination', async ({ page }) => {
-      await page.goto(
-        `/service/driveServices/${serviceFqn}/directories?pageSize=15`
-      );
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(
+            `/service/driveServices/${serviceFqn}/directories?pageSize=15`,
+            { waitUntil: 'domcontentloaded' }
+          ),
         '/api/v1/drives/directories',
         '[data-testid="service-children-table"]'
       );
@@ -865,8 +918,15 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Files normal pagination', async ({ page }) => {
-      await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
-      await testPaginationNavigation(page, '/api/v1/drives/files', 'table');
+      await testPaginationNavigation(
+        page,
+        () =>
+          page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`, {
+            waitUntil: 'domcontentloaded',
+          }),
+        '/api/v1/drives/files',
+        'table'
+      );
     });
 
     test('should test Files complete flow with search', async ({ page }) => {
@@ -888,7 +948,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     }) => {
       test.slow(true);
 
-      await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
+      await page.goto(
+        `/service/driveServices/${serviceFqn}/files?pageSize=15`,
+        { waitUntil: 'domcontentloaded' }
+      );
       await page.locator('table').first().waitFor({ state: 'visible' });
 
       let paginationText = page
@@ -964,7 +1027,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         (response) => response.url().includes('/api/v1/drives/spreadsheets')
       );
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       const directoriesResponse = await directoriesResponsePromise;
       const reloadSpreadsheetsResponse =
@@ -1024,11 +1087,13 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Spreadsheets normal pagination', async ({ page }) => {
-      await page.goto(
-        `/service/driveServices/${serviceFqn}/spreadsheets?pageSize=15`
-      );
       await testPaginationNavigation(
         page,
+        () =>
+          page.goto(
+            `/service/driveServices/${serviceFqn}/spreadsheets?pageSize=15`,
+            { waitUntil: 'domcontentloaded' }
+          ),
         '/api/v1/drives/spreadsheets',
         'table'
       );
@@ -1056,6 +1121,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const roles: RolesClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      roles.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       policy = new PolicyClass();
@@ -1090,8 +1156,15 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test pagination on Roles page', async ({ page }) => {
-      await page.goto('/settings/access/roles?pageSize=15');
-      await testPaginationNavigation(page, '/api/v1/roles', 'table');
+      await testPaginationNavigation(
+        page,
+        () =>
+          page.goto('/settings/access/roles?pageSize=15', {
+            waitUntil: 'domcontentloaded',
+          }),
+        '/api/v1/roles',
+        'table'
+      );
     });
   });
 
@@ -1099,6 +1172,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const policies: PolicyClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      policies.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       // Create Policies
@@ -1127,8 +1201,15 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test pagination on Policies page', async ({ page }) => {
-      await page.goto('/settings/access/policies?pageSize=15');
-      await testPaginationNavigation(page, '/api/v1/policies', 'table');
+      await testPaginationNavigation(
+        page,
+        () =>
+          page.goto('/settings/access/policies?pageSize=15', {
+            waitUntil: 'domcontentloaded',
+          }),
+        '/api/v1/policies',
+        'table'
+      );
     });
   });
 
@@ -1136,6 +1217,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     const bots: BotClass[] = [];
 
     test.beforeAll(async ({ browser }) => {
+      bots.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
 
       // Create Bots
@@ -1157,8 +1239,15 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test pagination on Bots page', async ({ page }) => {
-      await page.goto('/settings/bots?pageSize=15');
-      await testPaginationNavigation(page, '/api/v1/bots', 'table');
+      await testPaginationNavigation(
+        page,
+        () =>
+          page.goto('/settings/bots?pageSize=15', {
+            waitUntil: 'domcontentloaded',
+          }),
+        '/api/v1/bots',
+        'table'
+      );
     });
   });
 
@@ -1195,7 +1284,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test Pipeline Tasks normal pagination', async ({ page }) => {
-      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testClientSidePaginationNavigation(
         page,
         '[data-testid="task-table"]'
@@ -1205,7 +1296,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should display at most pageSize rows on each page and total matches task count', async ({
       page,
     }) => {
-      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`);
+      await page.goto(`/pipeline/${pipelineFqn}?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await page.locator('[data-testid="task-table"]').waitFor({
         state: 'visible',
       });
@@ -1265,7 +1358,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test pagination on Table version page columns', async ({
       page,
     }) => {
-      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testClientSidePaginationNavigation(
         page,
         '[data-testid="entity-table"]'
@@ -1275,7 +1370,9 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test('should test search on Table version page columns', async ({
       page,
     }) => {
-      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`, {
+        waitUntil: 'domcontentloaded',
+      });
       await page.locator('[data-testid="entity-table"]').waitFor({
         state: 'visible',
       });
@@ -1324,10 +1421,17 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     test('should test pagination on Service version page', async ({ page }) => {
       // Go to version 0.1 of the dashboard service
-      await page.goto(
-        `/service/dashboardServices/${serviceFqn}/versions/0.1?pageSize=15`
+
+      await testPaginationNavigation(
+        page,
+        () =>
+          page.goto(
+            `/service/dashboardServices/${serviceFqn}/versions/0.1?pageSize=15`,
+            { waitUntil: 'domcontentloaded' }
+          ),
+        '/api/v1/dashboards',
+        'table'
       );
-      await testPaginationNavigation(page, '/api/v1/dashboards', 'table');
     });
   });
 
@@ -1386,7 +1490,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         sourceFqn
       )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
 
-      await page.goto(impactAnalysisUrl);
+      await page.goto(impactAnalysisUrl, { waitUntil: 'domcontentloaded' });
       await page
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });
@@ -1439,7 +1543,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         sourceFqn
       )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
 
-      await page.goto(impactAnalysisUrl);
+      await page.goto(impactAnalysisUrl, { waitUntil: 'domcontentloaded' });
       await page
         .locator('[data-testid="lineage-card-table"]')
         .waitFor({ state: 'visible' });

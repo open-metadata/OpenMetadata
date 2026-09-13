@@ -23,6 +23,8 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
+import { clickFeedReaction } from '../../utils/activityFeed';
+import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import {
   createNewPage,
   getApiContext,
@@ -343,6 +345,57 @@ test.describe('Context Center Articles', () => {
         .locator('[data-testid^="knowledge-card-"]')
         .first()
     ).toBeVisible();
+  });
+
+  test('Article listing paginates search results', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    // The search analyzer splits mixed letters/digits into additional tokens,
+    // which can match unrelated fixtures and change the number of pages.
+    const prefix = `pagination${uuid().replace(/\d/g, (digit) =>
+      String.fromCharCode(103 + Number(digit))
+    )}`;
+    const articles: Awaited<ReturnType<typeof createArticleViaApi>>[] = [];
+    try {
+      for (let index = 0; index < 26; index++) {
+        articles.push(
+          await createArticleViaApi(apiContext, {
+            name: `${prefix}_${index}`,
+            displayName: `${prefix} ${index}`,
+          })
+        );
+      }
+      await navigateToArticles(page);
+      await verifyArticleSearch(page, prefix);
+      const listing = page.getByTestId('knowledge-page-listing');
+      await expect(listing.getByTestId('knowledge-card-title')).toHaveCount(25);
+      const nextPage = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('q') === prefix &&
+          url.searchParams.get('from') === '25'
+        );
+      });
+      await listing
+        .locator('..')
+        .getByTestId('observer-element')
+        .scrollIntoViewIfNeeded();
+      expect((await nextPage).status()).toBe(200);
+      await expect(listing.getByTestId('knowledge-card-title')).toHaveCount(26);
+      for (const article of articles) {
+        await expect(
+          listing.getByTestId(`knowledge-card-${article.displayName}`)
+        ).toBeVisible();
+      }
+    } finally {
+      try {
+        for (const article of articles)
+          await deleteArticleByFqn(apiContext, article.fullyQualifiedName);
+      } finally {
+        await afterAction();
+      }
+    }
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -855,14 +908,15 @@ test.describe('Context Center Articles', () => {
     await expect(card.getByTestId('updated-at')).toBeVisible();
 
     await verifyArticleSearch(page, articleEntity.responseData.displayName);
-    const viewedCard = page
-      .getByTestId('knowledge-page-listing')
-      .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
-    await expect(viewedCard).toBeVisible();
+    const viewedCard = await scrollListingToCard(
+      page,
+      articleEntity.responseData.displayName
+    );
 
     await viewedCard.getByTestId('knowledge-page-link').first().click();
-    await page.waitForURL((url) =>
-      url.pathname.includes('/context-center/articles/')
+    await page.waitForURL(
+      (url) => url.pathname.includes('/context-center/articles/'),
+      { waitUntil: 'domcontentloaded' }
     );
     await waitForAllLoadersToDisappear(page);
     await waitForRecentlyViewed(
@@ -880,8 +934,9 @@ test.describe('Context Center Articles', () => {
     await recentlyViewedItem.scrollIntoViewIfNeeded();
     await expect(recentlyViewedItem).toBeVisible();
     await recentlyViewedItem.click();
-    await page.waitForURL((url) =>
-      url.pathname.includes('/context-center/articles/')
+    await page.waitForURL(
+      (url) => url.pathname.includes('/context-center/articles/'),
+      { waitUntil: 'domcontentloaded' }
     );
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
@@ -933,65 +988,95 @@ test.describe('Context Center Articles', () => {
 
     const parent = listKnowledgeCenter.knowledgePages[0];
     const { apiContext, afterAction } = await getApiContext(page);
-    const child = await createArticleViaApi(apiContext, {
-      displayName: `CC Hierarchy Child ${uuid()}`,
-      name: `cc_hierarchy_child_${uuid()}`,
-    });
+    let child: KnowledgeCenterResponseDataType | undefined;
+    try {
+      child = await createArticleViaApi(apiContext, {
+        displayName: `CC Hierarchy Child ${uuid()}`,
+        name: `cc_hierarchy_child_${uuid()}`,
+      });
 
-    await apiContext.patch(`/api/v1/contextCenter/pages/${child.id}`, {
-      data: [
-        {
-          op: 'add',
-          path: '/parent',
-          value: {
-            id: parent.id,
-            type: 'page',
-            fullyQualifiedName: parent.fullyQualifiedName,
-            displayName: parent.displayName,
+      const updated = await okJson<KnowledgeCenterResponseDataType>(
+        await apiContext.patch(`/api/v1/contextCenter/pages/${child.id}`, {
+          data: [
+            {
+              op: 'add',
+              path: '/parent',
+              value: {
+                id: parent.id,
+                type: 'page',
+                fullyQualifiedName: parent.fullyQualifiedName,
+                displayName: parent.displayName,
 
-            name: parent.name,
-          },
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    });
-    await afterAction();
+                name: parent.name,
+              },
+            },
+          ],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }),
+        'reparent hierarchy article'
+      );
+      expect(updated.fullyQualifiedName).toBe(
+        `${parent.fullyQualifiedName}.${child.name}`
+      );
+      const indexedChildren = await okJson<{
+        data: { id: string; fullyQualifiedName: string }[];
+      }>(
+        await apiContext.get('/api/v1/contextCenter/pages/search/hierarchy', {
+          params: { parent: parent.fullyQualifiedName },
+        }),
+        'read indexed article hierarchy after reparenting'
+      );
+      expect(
+        indexedChildren.data,
+        'Reparented child must be searchable before expanding the tree'
+      ).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: child.id,
+            fullyQualifiedName: updated.fullyQualifiedName,
+          }),
+        ])
+      );
 
-    await navigateToArticles(page);
-    await scrollHierarchyToNode(page, parent.displayName);
-    const ExpandIcon = page.getByRole('button', {
-      name: `Expand ${parent.displayName}`,
-    });
-    await expect(ExpandIcon).toBeVisible();
-    await ExpandIcon.click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).toBeVisible();
-    const collapseIcon = page.getByRole('button', {
-      name: `Collapse ${parent.displayName}`,
-    });
-    await collapseIcon.click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).not.toBeVisible();
+      await navigateToArticles(page);
+      await scrollHierarchyToNode(page, parent.displayName);
+      const ExpandIcon = page.getByRole('button', {
+        name: `Expand ${parent.displayName}`,
+      });
+      await expect(ExpandIcon).toBeVisible();
+      await ExpandIcon.click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).toBeVisible();
+      const collapseIcon = page.getByRole('button', {
+        name: `Collapse ${parent.displayName}`,
+      });
+      await collapseIcon.click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).not.toBeVisible();
 
-    await page.getByLabel('Expand All').click();
-    await expect(page.getByLabel('Collapse All')).toBeVisible();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).toBeVisible();
-    await page.getByLabel('Collapse All').click();
-    await expect(
-      page.getByTestId(`page-node-${child.displayName}`)
-    ).not.toBeVisible();
-
-    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-      await getApiContext(page);
-    await deleteArticleByFqn(
-      cleanupContext,
-      `${parent.fullyQualifiedName}.${child.name}`
-    );
-    await cleanupAfterAction();
+      await page.getByLabel('Expand All').click();
+      await expect(page.getByLabel('Collapse All')).toBeVisible();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).toBeVisible();
+      await page.getByLabel('Collapse All').click();
+      await expect(
+        page.getByTestId(`page-node-${child.displayName}`)
+      ).not.toBeVisible();
+    } finally {
+      try {
+        if (child) {
+          await deleteFixtureEntity(
+            apiContext,
+            `/api/v1/contextCenter/pages/${child.id}?hardDelete=true&recursive=true`
+          );
+        }
+      } finally {
+        await afterAction();
+      }
+    }
   });
 
   test('Expanding a multi-level hierarchy does not throw and renders no duplicate nodes', async ({
@@ -1199,7 +1284,7 @@ test.describe('Context Center Articles', () => {
     await navigateToArticle(page, article.fullyQualifiedName);
     const titleInput = page.getByTestId('entity-header-display-name');
     await titleInput.fill(`${updatedTitle} Unsaved`);
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     await verifyArticleSearch(page, updatedTitle);
     await expect(
@@ -1409,7 +1494,7 @@ test.describe('Context Center Articles', () => {
               `/api/v1/conversations/${createdConversation.id}/reaction/rocket`
             ) && response.request().method() === 'PUT'
       );
-      await page.locator('[title="rocket"]:visible').click();
+      await clickFeedReaction(page, 'rocket');
       await reactionResponse;
       await mainMessage.getByTestId('emoji-button').hover();
       await expect(
@@ -1834,7 +1919,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Reload the page (simulates browser refresh before auto-save)', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
       });
 
@@ -1972,7 +2057,7 @@ test.describe('Context Center Articles', () => {
       });
 
       await test.step('Reload Article B — its own draft should be synced', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
 
         const editor = page

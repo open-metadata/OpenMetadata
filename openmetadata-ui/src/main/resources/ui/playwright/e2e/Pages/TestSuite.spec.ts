@@ -129,7 +129,9 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
     }
   );
 
-  await page.goto('/data-quality/test-suites/table-suites');
+  await page.goto('/data-quality/test-suites/table-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await tableSuiteRequestReceived.promise;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
@@ -187,7 +189,9 @@ test(
     };
     const testCaseName1 = table.testCasesResponseData?.[0]?.['name'];
     const testCaseName2 = table.testCasesResponseData?.[1]?.['name'];
-    await page.goto('/data-quality/test-suites/bundle-suites');
+    await page.goto('/data-quality/test-suites/bundle-suites', {
+      waitUntil: 'domcontentloaded',
+    });
 
     const loggedInUserRequest = ownerPage.waitForResponse(
       `/api/v1/users/loggedInUser*`

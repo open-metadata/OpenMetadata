@@ -325,7 +325,7 @@ test.describe('Glossary Asset Operations', () => {
       // Navigate to the topic entity page using URL
       const topicFqn = topicEntity.entityResponseData?.fullyQualifiedName;
 
-      await page.goto(`/topic/${topicFqn}`);
+      await page.goto(`/topic/${topicFqn}`, { waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       // Verify entity page is loaded

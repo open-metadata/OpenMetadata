@@ -29,8 +29,23 @@ import { installServerLoadReducers } from './serverLoad';
 export const test = playwrightTest.extend({
   context: async ({ context }, use) => {
     await installServerLoadReducers(context);
+    let closed = false;
+    const onClose = () => {
+      closed = true;
+    };
+    context.on('close', onClose);
 
-    await use(context);
+    try {
+      await use(context);
+    } finally {
+      try {
+        if (!closed) {
+          await context.unrouteAll({ behavior: 'wait' });
+        }
+      } finally {
+        context.off('close', onClose);
+      }
+    }
   },
 });
 

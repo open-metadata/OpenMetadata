@@ -75,13 +75,16 @@ class EntityLifecycleEventDispatcherTest {
   }
 
   private void clearHandlers() {
-    // Clear handlers by accessing the private handlers field
+    // The dispatcher publishes an immutable snapshot, so replace the field rather
+    // than mutating what it points at. Let failures surface: swallowing them here
+    // leaves handlers from the previous test registered, and every later
+    // assertion fails somewhere far from the actual cause.
     try {
       var handlersField = EntityLifecycleEventDispatcher.class.getDeclaredField("handlers");
       handlersField.setAccessible(true);
-      ((java.util.List<?>) handlersField.get(dispatcher)).clear();
-    } catch (Exception e) {
-      // Ignore - this is just cleanup
+      handlersField.set(dispatcher, List.of());
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError("Could not reset the dispatcher's handlers", e);
     }
   }
 

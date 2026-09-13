@@ -14,11 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import {
-  createOrFetch,
-  okJson,
-  withNotFoundRetry,
-} from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -109,16 +105,14 @@ export class DatabaseSchemaClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const serviceResponse = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
-        {
-          data: patchData,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     const entity = await okJson(serviceResponse, 'DatabaseSchemaClass.patch');
@@ -180,7 +174,8 @@ export class DatabaseSchemaClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
@@ -192,3 +187,5 @@ export class DatabaseSchemaClass extends EntityClass {
     };
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

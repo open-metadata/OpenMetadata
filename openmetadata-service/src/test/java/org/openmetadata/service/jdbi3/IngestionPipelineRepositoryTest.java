@@ -66,6 +66,15 @@ class IngestionPipelineRepositoryTest {
   }
 
   @Test
+  void deleteUndeployedPipelineDoesNotRequireRunner() {
+    IngestionPipeline pipeline = createBasicPipeline().withDeployed(false);
+    IngestionPipelineRepository cleanupRepository =
+        repositoryWithClient(unavailableRunnerClient(pipeline));
+
+    assertFalse(cleanupRepository.deleteDeployedPipeline(pipeline, false));
+  }
+
+  @Test
   void deleteDeployedPipelineReportsSkippedCleanupForUnavailableRunner() {
     IngestionPipeline pipeline = createBasicPipeline();
     IngestionPipelineRepository cleanupRepository =
@@ -614,6 +623,7 @@ class IngestionPipelineRepositoryTest {
   private static IngestionPipeline createBasicPipeline() {
     IngestionPipeline pipeline = new IngestionPipeline();
     pipeline.setName("test-pipeline");
+    pipeline.setDeployed(true);
     pipeline.setFullyQualifiedName("test-service.test-pipeline");
 
     EntityReference serviceRef = new EntityReference();

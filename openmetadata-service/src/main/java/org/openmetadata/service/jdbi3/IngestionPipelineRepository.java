@@ -815,6 +815,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   protected boolean deleteDeployedPipeline(
       IngestionPipeline entity, boolean allowUnavailableRunner) {
+    // A metadata-only pipeline has no deployed workflow to remove from the runner.
+    if (Boolean.FALSE.equals(entity.getDeployed())) {
+      return false;
+    }
     boolean wasRunnerCleanupSkipped = false;
     if (pipelineServiceClient != null) {
       try {

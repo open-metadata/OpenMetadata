@@ -29,6 +29,18 @@ import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getGlossaryPath } from './RouterUtils';
 
+export const getGlossaryCatalogState = (
+  glossaries: Glossary[],
+  glossaryFqn: string,
+  isGlossaryActive: boolean
+) => ({
+  isCatalogEmpty: glossaries.length === 0 && !glossaryFqn,
+  isGlossaryNotFound:
+    isGlossaryActive &&
+    Boolean(glossaryFqn) &&
+    !glossaries.some((glossary) => glossary.fullyQualifiedName === glossaryFqn),
+});
+
 export interface TreeNodeLike {
   id?: string;
   value?: string | number;

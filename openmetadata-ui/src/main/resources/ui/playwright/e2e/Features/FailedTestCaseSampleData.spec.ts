@@ -27,6 +27,7 @@ import {
   verifyTestCaseLastRunBanner,
   visitDataQualityTab,
 } from '../../utils/testCases';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({
@@ -208,10 +209,12 @@ test.describe('Failed rows sample fetch gating', () => {
           await route.continue();
         });
 
-        const testCaseDetails = page.waitForResponse(
+        const testCaseDetails = waitForResponseWithStatus(
+          page,
           (res) =>
-            res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-            res.status() === 200
+            res.request().method() === 'GET' &&
+            res.url().includes('/api/v1/dataQuality/testCases/name/'),
+          200
         );
         // The results tab loads its own testCaseResults on the same mount that
         // would have fired the sample fetch — awaiting it is a deterministic
@@ -224,7 +227,8 @@ test.describe('Failed rows sample fetch gating', () => {
         await page.goto(
           `test-case/${encodeURIComponent(
             passingTestCaseFqn
-          )}/test-case-results`
+          )}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetails;
         await testCaseResults;
@@ -242,7 +246,10 @@ test.describe('Failed rows sample fetch gating', () => {
           res.url().includes('/failedRowsSample')
         );
         await page.goto(
-          `test-case/${encodeURIComponent(failedTestCaseFqn)}/test-case-results`
+          `test-case/${encodeURIComponent(
+            failedTestCaseFqn
+          )}/test-case-results`,
+          { waitUntil: 'domcontentloaded' }
         );
         const response = await failedRowsSample;
         expect(response.status()).toBe(404);

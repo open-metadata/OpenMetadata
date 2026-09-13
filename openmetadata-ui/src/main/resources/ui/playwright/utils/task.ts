@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { clickOutside, fillDescriptionBox, toastNotification } from './common';
 
@@ -26,6 +26,23 @@ export type TaskDetails = {
 const tag = 'PII.None';
 
 export const TASK_OPEN_FETCH_LINK = '/api/v1/tasks**';
+
+export const getTaskDisplayId = (taskId: string) => {
+  expect(taskId).toMatch(/^TASK-\d+$/);
+
+  return `#${Number(taskId.replace('TASK-', ''))}`;
+};
+
+export const getTaskCard = (
+  page: Page,
+  taskId: string,
+  scope: Page | Locator = page
+) =>
+  scope.getByTestId('task-feed-card').filter({
+    has: page
+      .locator('.task-details-id')
+      .filter({ hasText: new RegExp(`^${getTaskDisplayId(taskId)}\\s*$`) }),
+  });
 
 const isTaskCreateRequest = (url: string) =>
   /\/api\/v1\/tasks(?:\?|$)/.test(url) &&

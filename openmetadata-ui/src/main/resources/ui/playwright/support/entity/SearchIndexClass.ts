@@ -19,11 +19,7 @@ import {
 } from '../../../src/generated/entity/data/searchIndex';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import {
-  createOrFetch,
-  okJson,
-  withNotFoundRetry,
-} from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -186,16 +182,14 @@ export class SearchIndexClass extends EntityClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/searchIndexes/name/${this.entityResponseData?.fullyQualifiedName}`,
-        {
-          data: patchData,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const response = await apiContext.patch(
+      `/api/v1/searchIndexes/name/${this.entityResponseData?.fullyQualifiedName}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     this.entityResponseData = await okJson(response, 'SearchIndexClass.patch');
@@ -226,7 +220,8 @@ export class SearchIndexClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/searchServices/name/${encodeURIComponent(
         this.serviceResponseData?.fullyQualifiedName ?? ''
       )}?recursive=true&hardDelete=true`
@@ -238,3 +233,5 @@ export class SearchIndexClass extends EntityClass {
     };
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

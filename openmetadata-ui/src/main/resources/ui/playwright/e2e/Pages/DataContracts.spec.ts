@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ContractExecutionStatus } from '../../../src/generated/entity/datacontract/dataContractResult';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
@@ -75,7 +76,6 @@ import {
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
-  waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
 import {
   addOwner,
@@ -140,12 +140,8 @@ test.describe('Data Contracts', () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
-    // Quarantined: for the Table variant the contract's quality/test-suite run
-    // can finish without producing a result, so `qualityValidation` never
-    // populates and `contractExecutionStatus` hangs on `Running` — the poll
-    // then times out. See playwright/QUARANTINE.md.
     const testDetails = entitySupportsQuality(entityType)
-      ? { tag: [PLAYWRIGHT_INGESTION_TAG_OBJ.tag, '@quarantine'] }
+      ? PLAYWRIGHT_INGESTION_TAG_OBJ
       : {};
     const testTitle = `Create Data Contract and validate for ${entityType}`;
 
@@ -356,7 +352,8 @@ test.describe('Data Contracts', () => {
         // below is reliable even when the backend is slow.
         const contractData = await saveAndTriggerDataContractValidation(
           page,
-          true
+          true,
+          ContractExecutionStatus.Failed
         );
         const contractId = (contractData as { id?: string })?.id;
 
@@ -391,7 +388,7 @@ test.describe('Data Contracts', () => {
         await triggerContractValidation(page, contractId);
         await toastPromise;
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await waitForAllLoadersToDisappear(page);
 
@@ -492,33 +489,16 @@ test.describe('Data Contracts', () => {
           ).toBeChecked();
 
           // save and trigger contract validation
-          const response = await saveAndTriggerDataContractValidation(page);
+          const response = await saveAndTriggerDataContractValidation(
+            page,
+            false,
+            ContractExecutionStatus.Failed
+          );
 
-          // The test suite results may be available before the contract's latestResult is
-          // updated. If waitForDataContractExecution times out, fall back to the DataQuality
-          // page to verify the test suite ran successfully.
-          if (
-            typeof response === 'object' &&
-            response !== null &&
-            'id' in response
-          ) {
-            const { id: contractId } = response as { id: string };
-
-            if (contractId) {
-              const contractResultVisible =
-                await waitForContractExecutionWithFallback(
-                  page,
-                  contractId,
-                  DATA_CONTRACT_DETAILS.name
-                );
-
-              if (contractResultVisible) {
-                await expect(
-                  page.getByTestId('data-contract-latest-result-btn')
-                ).toBeVisible();
-              }
-            }
-          }
+          expect(response).toHaveProperty('id');
+          await expect(
+            page.getByTestId('data-contract-latest-result-btn')
+          ).toBeVisible();
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
@@ -762,7 +742,9 @@ test.describe('Data Contracts', () => {
     try {
       await test.step('Redirect to Home Page and visit entity', async () => {
         await redirectToHomePage(page);
-        await page.goto(`/table/${entityFQN}`);
+        await page.goto(`/table/${entityFQN}`, {
+          waitUntil: 'domcontentloaded',
+        });
 
         await waitForAllLoadersToDisappear(page);
       });
@@ -979,7 +961,9 @@ test.describe('Data Contracts', () => {
     } finally {
       await test.step('Delete contract', async () => {
         await redirectToHomePage(page);
-        await page.goto(`/table/${entityFQN}`);
+        await page.goto(`/table/${entityFQN}`, {
+          waitUntil: 'domcontentloaded',
+        });
 
         await waitForAllLoadersToDisappear(page);
 
@@ -1140,7 +1124,8 @@ test.describe('Data Contracts', () => {
     // below is reliable even when the backend is slow.
     const contractData1104 = await saveAndTriggerDataContractValidation(
       page,
-      true
+      true,
+      ContractExecutionStatus.Failed
     );
     const contractId1104 = (contractData1104 as { id?: string })?.id;
 
@@ -1185,7 +1170,7 @@ test.describe('Data Contracts', () => {
     await triggerContractValidation(page, contractId1104);
     await toastPromise;
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -1376,10 +1361,14 @@ test.describe('Data Contracts', () => {
 
     // Pass contractId so the utility polls for the terminal state before
     // returning, making the 'Failed' assertion below reliable.
-    await triggerContractValidation(page, contractId1289);
+    await triggerContractValidation(
+      page,
+      contractId1289,
+      ContractExecutionStatus.Failed
+    );
     await toastPromise;
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -1543,7 +1532,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-run-now-button').click();
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await waitForAllLoadersToDisappear(page);
 
@@ -2390,13 +2379,16 @@ entitiesWithDataContracts.forEach((EntityClass) => {
                 DATA_CONTRACT_DETAILS.description
               );
 
-              await page.getByTestId('select-owners').click();
-              await page
-                .locator('.rc-virtual-list-holder-inner li')
-                .first()
-                .click();
+              await addOwnerWithoutValidation({
+                page,
+                owner: adminUser.getUserDisplayName(),
+                type: 'Users',
+                initiatorId: 'select-owners',
+              });
 
-              await expect(page.getByTestId('user-tag')).toBeVisible();
+              await expect(page.getByTestId('user-tag')).toContainText(
+                adminUser.getUserDisplayName()
+              );
 
               // Fill Contract Semantics form
               await page.getByRole('tab', { name: 'Semantics' }).click();
@@ -2441,7 +2433,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               ).toContainText(DATA_CONTRACT_SEMANTICS1.name);
 
               // Save contract and validate for semantics - should fail initially
-              await saveAndTriggerDataContractValidation(page, true);
+              await saveAndTriggerDataContractValidation(
+                page,
+                true,
+                ContractExecutionStatus.Failed
+              );
 
               await expect(
                 page.getByTestId('contract-status-card-item-semantics-status')

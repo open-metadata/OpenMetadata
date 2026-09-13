@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { preloadTourTableTabs } from '../../utils/TableTabsUtils';
 import TourPage from './TourPage.component';
 
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
@@ -52,10 +53,15 @@ const createReadyFeedWidget = () => {
 };
 
 const waitForTourReadyCheck = async (time = 80) => {
+  await act(async () => undefined);
   await act(async () => {
     jest.advanceTimersByTime(time);
   });
 };
+
+jest.mock('../../utils/TableTabsUtils', () => ({
+  preloadTourTableTabs: jest.fn().mockResolvedValue([]),
+}));
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => mockUseTourProvider),
@@ -111,6 +117,24 @@ describe('TourPage component', () => {
     await waitForTourReadyCheck();
 
     expect(await screen.findByText('Tour.component')).toBeInTheDocument();
+  });
+
+  it('waits for the table chunks before starting on a ready page', async () => {
+    let finishLoading: () => void = () => undefined;
+    (preloadTourTableTabs as jest.Mock).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishLoading = resolve;
+      })
+    );
+    render(<TourPage />);
+    await waitForTourReadyCheck(1000);
+
+    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+
+    await act(async () => finishLoading());
+    await waitForTourReadyCheck();
+
+    expect(screen.getByText('Tour.component')).toBeInTheDocument();
   });
 
   it('clear search term should work correctly', async () => {

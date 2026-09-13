@@ -38,7 +38,7 @@ import {
 const MOCK_OIDC_URL = process.env.MOCK_OIDC_URL || 'http://localhost:9090';
 
 const performOidcLogin = async (page: Page): Promise<void> => {
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   const ssoButton = page.locator('button.signin-button');
   await ssoButton.waitFor({ state: 'visible', timeout: 30000 });
@@ -48,7 +48,7 @@ const performOidcLogin = async (page: Page): Promise<void> => {
   await page.waitForURL(
     (url) =>
       !url.pathname.includes('signin') && !url.pathname.includes('callback'),
-    { timeout: 60000 }
+    { waitUntil: 'domcontentloaded', timeout: 60000 }
   );
 };
 
@@ -172,7 +172,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
     test('should show SSO login button and authenticate on click', async ({
       page,
     }) => {
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       const ssoButton = page.locator('button.signin-button');
       await expect(ssoButton).toBeVisible({ timeout: 30000 });
@@ -184,7 +184,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         (url) =>
           !url.pathname.includes('signin') &&
           !url.pathname.includes('callback'),
-        { timeout: 60000 }
+        { waitUntil: 'domcontentloaded', timeout: 60000 }
       );
       await verifyAuthenticated(page);
     });
@@ -236,7 +236,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await setTokenExpiry(request, 10);
 
       // Navigate again — app should stay authenticated with original token
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       await verifyAuthenticated(page);
     });
 
@@ -247,7 +247,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await verifyAuthenticated(page);
 
       // Navigate again — the app should handle any renewal internally
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       await verifyAuthenticated(page);
     });
   });
@@ -264,7 +264,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await forceInteractionRequired(request);
 
       // Navigate again — app should handle the error gracefully
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       // The app rendering while still authenticated is the positive signal that
       // it handled the failure; assert the URL only once that has happened.
       await verifyAuthenticated(page);
@@ -286,7 +286,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Open a second tab — it should share the auth state via localStorage
       const page2 = await context.newPage();
-      await page2.goto('/');
+      await page2.goto('/', { waitUntil: 'domcontentloaded' });
 
       // Check that the second tab can access the stored token
       const token = await getStoredToken(page2);
@@ -308,7 +308,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         localStorage.setItem('refreshInProgress', 'true');
       });
 
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       await expect
         .poll(
           () => page.evaluate(() => localStorage.getItem('refreshInProgress')),
@@ -327,7 +327,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         localStorage.setItem('refreshInProgress', 'true');
       });
 
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       // The app rendering while still authenticated is the positive signal that
       // it handled the failure; assert the URL only once that has happened.
       await verifyAuthenticated(page);
@@ -384,11 +384,14 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         }
       });
 
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       // The interceptor detects the 401, attempts renewal, and when renewal
       // returns null, forces a logout redirect to /signin
-      await page.waitForURL('**/signin*', { timeout: 30000 });
+      await page.waitForURL('**/signin*', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
 
       expect(intercepted).toBe(true);
       expect(page.url()).toContain('/signin');
@@ -424,7 +427,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       });
 
       // Navigate to a page that makes multiple parallel API calls
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       // Poll until the renewal count has STOPPED changing, not merely started:
       // asserting the instant the first refresh lands would miss a duplicate
       // arriving milliseconds later, which is exactly the regression this test
@@ -483,10 +486,13 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         });
       });
 
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       // The app should redirect to /signin after renewal failure
-      await page.waitForURL('**/signin*', { timeout: 30000 });
+      await page.waitForURL('**/signin*', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
       const url = page.url();
 
       expect(url).toContain('/signin');
@@ -513,7 +519,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Navigate — app should not crash even if silent renewal cannot use
       // a refresh token (it falls back to iframe/popup)
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       // The app rendering while still authenticated is the positive signal that
       // it handled the failure; assert the URL only once that has happened.
       await verifyAuthenticated(page);
@@ -552,7 +558,10 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await confirmLogout.click();
 
       // Wait for redirect to signin
-      await page.waitForURL('**/signin*', { timeout: 30000 });
+      await page.waitForURL('**/signin*', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
 
       // Allow async IndexedDB cleanup to complete (WebKit needs more time
       // because the OIDC logout redirect chain can interrupt pending writes)
@@ -588,7 +597,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
 
       // Open a second tab
       const page2 = await context.newPage();
-      await page2.goto('/');
+      await page2.goto('/', { waitUntil: 'domcontentloaded' });
       await expect
         .poll(() => getStoredToken(page2), { timeout: 30_000 })
         .toBe(originalToken);
@@ -614,7 +623,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       });
 
       // Trigger the 401 in tab 1
-      await page.goto('/activity-feed');
+      await page.goto('/activity-feed', { waitUntil: 'domcontentloaded' });
       // The renewal reaching the mock is the observable signal for the 401 retry.
       await expect
         .poll(() => getMetrics(request).then((m) => m.refreshAttempts), {
@@ -623,7 +632,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         .toBeGreaterThanOrEqual(1);
 
       // Check that tab 2 can still access the app
-      await page2.goto('/');
+      await page2.goto('/', { waitUntil: 'domcontentloaded' });
       // Tab 2 should have a valid token (either same or refreshed)
       await expect
         .poll(() => getStoredToken(page2).then((t) => t.length), {
@@ -670,7 +679,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
         .toBeGreaterThanOrEqual(1);
 
       // Hard reload — this forces the app to read from IndexedDB (no in-memory cache)
-      await page.reload({ waitUntil: 'networkidle' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await verifyAuthenticated(page);
 
       const url = page.url();
@@ -728,7 +737,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       );
 
       // Navigate to trigger API calls
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       const apiRequest = await requestPromise;
       const authHeader = apiRequest.headers()['authorization'] || '';
@@ -896,7 +905,7 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await page.waitForTimeout(10000);
 
       // Navigate to a different page
-      await page.goto('/explore/tables');
+      await page.goto('/explore/tables', { waitUntil: 'domcontentloaded' });
       await verifyAuthenticated(page);
 
       // Should still be authenticated

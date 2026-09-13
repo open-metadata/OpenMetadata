@@ -14,7 +14,7 @@ import os
 import re
 import sys
 import traceback
-from multiprocessing import Process
+from multiprocessing import get_context
 
 from airflow import settings
 from airflow.models import DagBag
@@ -153,7 +153,9 @@ def get_dagbag():
     return dagbag
 
 
-class ScanDagsTask(Process):
+# Deployment requests can run while other threads own file locks or database connections.
+# A fresh interpreter keeps the scanner from inheriting that unsafe state through fork.
+class ScanDagsTask(get_context("spawn").Process):
     def run(self):
         airflow_server = version.parse(airflow_version)
         if airflow_server >= version.parse("3.0.0"):
@@ -221,10 +223,12 @@ class ScanDagsTask(Process):
         return scheduler_job
 
 
-def scan_dags_job_background():
+def scan_dags_job_background() -> ScanDagsTask:
     """
-    Runs the scheduler scan in another thread
+    Runs the scheduler scan in another process
     to not block the API call
     """
     process = ScanDagsTask()
     process.start()
+
+    return process

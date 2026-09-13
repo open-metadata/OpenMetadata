@@ -32,6 +32,7 @@ import {
   waitForRecentEventsToFinishExecution,
 } from './alert';
 import {
+  chooseSelectOption,
   clickOutside,
   fillDescriptionBox,
   getDescriptionBox,
@@ -170,27 +171,23 @@ export const addInternalDestination = async ({
         `[data-testid="${searchText}-option-label"]`
       );
 
-      await expect(async () => {
-        if (!(await resultsDropdown.isVisible())) {
-          await dropdownTrigger.click();
-        }
-
-        const searchInput = resultsDropdown.getByTestId('search-input-field');
-        await expect(searchInput).toBeVisible();
-
-        // The controlled portal clears its search when React Aria closes it.
-        // Repeat the query after reopening so a late close cannot strand this
-        // helper waiting on an option from an already unmounted popup.
-        if ((await searchInput.inputValue()) !== searchText) {
-          const getSearchResult = page.waitForResponse(
-            '/api/v1/search/query?q=*'
-          );
-          await searchInput.fill(searchText);
-          await getSearchResult;
-        }
-
-        await option.click({ timeout: 3_000 });
-      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+      await dropdownTrigger.focus();
+      await dropdownTrigger.click();
+      const searchInput = resultsDropdown.getByTestId('search-input-field');
+      await expect(searchInput).toBeFocused();
+      const getSearchResult = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('q') === searchText &&
+          url.searchParams.get('index') ===
+            (category === 'Teams' ? 'team' : 'user')
+        );
+      });
+      await searchInput.fill(searchText);
+      expect((await getSearchResult).status()).toBe(200);
+      await option.click();
 
       await expect(
         dropdownTrigger.getByTestId('placeholder-text')
@@ -246,12 +243,17 @@ export const editSingleFilterAlert = async ({
   await getDescriptionBox(page).clear();
   await fillDescriptionBox(page, ALERT_UPDATED_DESCRIPTION);
 
-  // Update source
-  await page.click('[data-testid="source-select"]');
-  await page
-    .getByTestId(`${sourceName}-option`)
-    .getByText(sourceDisplayName)
-    .click();
+  const source = page.getByTestId('source-select');
+  await chooseSelectOption(
+    source,
+    page
+      .locator('.ant-select-dropdown:visible')
+      .getByTestId(`${sourceName}-option`)
+      .getByText(sourceDisplayName, { exact: true })
+  );
+  await expect(source.locator('.ant-select-selection-item')).toHaveText(
+    sourceDisplayName
+  );
 
   // Filters should reset after source change
   await expect(page.getByTestId('filter-select-0')).not.toBeAttached();

@@ -53,7 +53,7 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .fill('incorrect url');
 
     // Check for validation error
-    await page.getByText(config.logoError).isVisible();
+    await expect(page.getByText(config.logoError)).toBeVisible();
 
     // Clear and type the correct logo URL
     await page.locator('[data-testid="customLogoUrlPath"]').fill(config.logo);
@@ -64,7 +64,7 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .fill('incorrect url');
 
     // Check for validation error
-    await page.getByText(config.monogramError).isVisible();
+    await expect(page.getByText(config.monogramError)).toBeVisible();
 
     // Clear and type the correct monogram URL
     await page

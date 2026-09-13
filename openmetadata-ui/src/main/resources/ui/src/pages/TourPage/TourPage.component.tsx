@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
@@ -29,6 +30,8 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { SearchResponse } from '../../interface/search.interface';
+import { preloadTourTableTabs } from '../../utils/TableTabsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
@@ -115,6 +118,28 @@ const TourPage = () => {
   } = useTourProvider();
   const { t } = useTranslation();
   const [isTourReady, setIsTourReady] = useState(false);
+  const [areTourTabsLoaded, setAreTourTabsLoaded] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+    // react-tour advances on a fixed timer and closes when its target is absent.
+    // Load the tour's lazy tabs before starting so chunk latency cannot end it.
+    preloadTourTableTabs()
+      .then(() => {
+        if (isActive) {
+          setAreTourTabsLoaded(true);
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (isActive) {
+          showErrorToast(error);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const clearSearchTerm = useCallback(() => {
     updateTourSearch('');
@@ -140,6 +165,9 @@ const TourPage = () => {
   }, [updateTourPage, updateActiveTab]);
 
   useEffect(() => {
+    if (!areTourTabsLoaded) {
+      return;
+    }
     let tourMountFrameId = 0;
     const cancelFeedWidgetWait = waitForTourFeedWidget(() => {
       updateIsTourOpen(true);
@@ -152,7 +180,7 @@ const TourPage = () => {
       cancelFeedWidgetWait();
       window.cancelAnimationFrame(tourMountFrameId);
     };
-  }, [updateIsTourOpen]);
+  }, [areTourTabsLoaded, updateIsTourOpen]);
 
   const isExplorePage = currentTourPage === CurrentTourPageType.EXPLORE_PAGE;
   // Pre-mount Explore (hidden) during the MyData phase so it stays mounted into

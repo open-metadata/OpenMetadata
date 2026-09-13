@@ -93,7 +93,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.describe('Tag Page with Admin Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -232,7 +232,8 @@ test.describe('Tag Page with Admin Roles', () => {
       `/tags/${encodeURIComponent(
         classification.responseData.fullyQualifiedName ??
           classification.responseData.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -252,11 +253,12 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await fillTagForm(adminPage, domain);
 
-    const createTagResponse = adminPage.waitForResponse(
+    const createTagResponse = waitForResponseWithStatus(
+      adminPage,
       (response) =>
         response.url().includes('/api/v1/tags') &&
-        response.request().method() === 'POST' &&
-        response.ok()
+        response.request().method() === 'POST',
+      'ok'
     );
 
     await submitForm(adminPage);
@@ -267,7 +269,8 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.goto(
       `/tag/${encodeURIComponent(
         createdTagData.fullyQualifiedName ?? NEW_TAG.name
-      )}`
+      )}`,
+      { waitUntil: 'domcontentloaded' }
     );
     await adminPage
       .getByTestId('tags-container')
@@ -415,7 +418,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
@@ -440,7 +443,7 @@ test.describe('Tag Page with Admin Roles', () => {
         }
       );
 
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await expect(
         adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
@@ -456,7 +459,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
 test.describe('Tag Page with Data Consumer Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -533,7 +536,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 
 test.describe('Tag Page with Data Steward Roles', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -586,7 +589,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
 test.describe('Tag Page with Limited EditTag Permission', () => {
   const classification = new ClassificationClass({
-    provider: 'system',
+    provider: 'user',
     mutuallyExclusive: true,
   });
   const tag = new TagClass({
@@ -660,3 +663,5 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     }
   });
 });
+
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';

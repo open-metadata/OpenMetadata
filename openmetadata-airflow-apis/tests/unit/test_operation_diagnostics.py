@@ -23,23 +23,12 @@ class FakeDagModel:
         return SimpleNamespace(get_task_instances=lambda: [SimpleNamespace(task_id="task", try_number=1)])
 
 
-class FakeQuery:
-    def filter(self, *_args):
-        return self
-
-    def delete(self):
-        return 0
-
-
 class FakeSession:
     def __enter__(self):
         return self
 
     def __exit__(self, *_args):
         return None
-
-    def query(self, *_args):
-        return FakeQuery()
 
     def commit(self):
         return None
@@ -71,6 +60,7 @@ def test_partial_dag_deletion_is_logged(monkeypatch, tmp_path, caplog):
     monkeypatch.setattr(delete, "AIRFLOW_DAGS_FOLDER", str(tmp_path / "dags"))
     monkeypatch.setattr(delete, "DAG_GENERATED_CONFIGS", str(tmp_path / "configs"))
     monkeypatch.setattr(delete.settings, "Session", FakeSession)
+    monkeypatch.setattr(delete, "airflow_delete_dag", lambda *_args, **_kwargs: 0)
 
     with (
         Flask(__name__).app_context(),

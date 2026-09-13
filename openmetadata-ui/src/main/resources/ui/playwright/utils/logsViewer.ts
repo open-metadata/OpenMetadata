@@ -301,7 +301,7 @@ const readLatestPipelineStatus = async (
   );
 
   if (!response.ok()) {
-    return undefined;
+    throw new Error(`HTTP ${response.status()} querying ${response.url()}`);
   }
 
   const body = await response.json();
@@ -428,7 +428,7 @@ export const navigateToBundleSuiteWithPagination = async (
 
 export async function waitForFirstPipelineStatusNotQueued(page: Page) {
   await expect(async () => {
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await page.getByTestId('pipeline').click();

@@ -118,18 +118,15 @@ test.describe('SSO Configuration Tests', () => {
       await expect(confidentialRadio).toBeChecked();
 
       // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS, [
+        'Client ID',
+        'Callback URL',
+      ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
       await page.getByText(/advanced config/i).click();
 
-      for (const field of OIDC_COMMON_FIELDS) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, OIDC_COMMON_FIELDS);
     });
 
     test('should show correct fields for Auth0 provider with confidential client', async ({
@@ -145,20 +142,19 @@ test.describe('SSO Configuration Tests', () => {
       await expect(confidentialRadio).toBeChecked();
 
       // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS, [
+        'Client ID',
+        'Callback URL',
+      ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      // The OIDC fields now sit behind this toggle, so they are not on screen
+      // until it is expanded. OIDC Tenant stays hidden: it is Azure-specific and
+      // this provider has no such field. main asserted it visible but guarded on
+      // `count() > 0`, which skipped the check here rather than making it.
       await page.getByText(/advanced config/i).click();
 
-      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-      for (const field of oidcFields) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, OIDC_COMMON_FIELDS, ['OIDC Tenant']);
     });
 
     test('should show correct fields for Okta provider with confidential client', async ({
@@ -174,20 +170,19 @@ test.describe('SSO Configuration Tests', () => {
       await expect(confidentialRadio).toBeChecked();
 
       // Verify common fields are visible
-      await verifyProviderFields(page, SSO_COMMON_FIELDS);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS, [
+        'Client ID',
+        'Callback URL',
+      ]);
 
       // Verify OIDC specific fields with OIDC prefix in labels
+      // The OIDC fields now sit behind this toggle, so they are not on screen
+      // until it is expanded. OIDC Tenant stays hidden: it is Azure-specific and
+      // this provider has no such field. main asserted it visible but guarded on
+      // `count() > 0`, which skipped the check here rather than making it.
       await page.getByText(/advanced config/i).click();
 
-      const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
-
-      for (const field of oidcFields) {
-        const fieldElement = page.getByLabel(field);
-        const fieldCount = await fieldElement.count();
-        if (fieldCount > 0) {
-          await expect(fieldElement.first()).toBeVisible();
-        }
-      }
+      await verifyProviderFields(page, OIDC_COMMON_FIELDS, ['OIDC Tenant']);
     });
   });
 
@@ -226,6 +221,7 @@ test.describe('SSO Configuration Tests', () => {
       await selectSSOProvider(page, 'ldap');
 
       await verifyProviderFields(page, LDAP_VISIBLE_FIELDS);
+      await expect(page.getByTestId('add-mapping-btn')).toBeVisible();
 
       const hiddenFields = [
         'OIDC Client ID',
@@ -233,9 +229,6 @@ test.describe('SSO Configuration Tests', () => {
         'Allowed Email Registration Domains',
         'Use Roles From Provider',
         'Username Attribute Name',
-        'Auth Roles Mapping',
-        'Allowed Email Registration Domains',
-        'Use Roles From Provider',
       ];
 
       await verifyProviderFields(page, [], hiddenFields);
@@ -255,6 +248,8 @@ test.describe('SSO Configuration Tests', () => {
       // Verify public client fields are visible
       await verifyProviderFields(page, [
         ...SSO_COMMON_FIELDS,
+        'Client ID',
+        'Callback URL',
         'Public Key URLs',
       ]);
 
@@ -282,6 +277,8 @@ test.describe('SSO Configuration Tests', () => {
       // Verify public client fields are visible
       await verifyProviderFields(page, [
         ...SSO_COMMON_FIELDS,
+        'Client ID',
+        'Callback URL',
         'Public Key URLs',
       ]);
 
@@ -318,6 +315,8 @@ test.describe('SSO Configuration Tests', () => {
       // Verify public client fields are visible
       await verifyProviderFields(page, [
         ...SSO_COMMON_FIELDS,
+        'Client ID',
+        'Callback URL',
         'Public Key URLs',
       ]);
 
@@ -471,12 +470,11 @@ test.describe('SSO Configuration Tests', () => {
       ];
 
       for (const fieldName of advancedFields) {
-        const field = page.locator(`[id*="${fieldName}"]`);
-        const fieldCount = await field.count();
-
-        if (fieldCount > 0) {
-          await expect(field.first()).toBeVisible();
-        }
+        await expect(
+          page.locator(
+            `[id="root/authenticationConfiguration/oidcConfiguration/${fieldName}"]`
+          )
+        ).toBeVisible();
       }
     });
 
@@ -616,11 +614,7 @@ test.describe('SSO Configuration Tests', () => {
       const clientAuthMethodField = page.locator(
         '[id*="clientAuthenticationMethod"]'
       );
-      const fieldCount = await clientAuthMethodField.count();
-
-      if (fieldCount > 0) {
-        await expect(clientAuthMethodField.first()).toBeVisible();
-      }
+      await expect(clientAuthMethodField).toBeVisible();
     });
 
     test('should hide tenant field for Auth0 provider', async ({ page }) => {
@@ -704,14 +698,18 @@ test.describe('SSO Configuration Tests', () => {
       );
 
       // Open the roles dropdown — options are loaded from the API
-      await rolesSelects.first().click();
-      const roleOptions = page.locator('.ant-select-item-option');
-
-      if ((await roleOptions.count()) > 0) {
-        await expect(roleOptions.first()).toBeVisible();
-      }
-
-      await page.keyboard.press('Escape');
+      const roleInput = rolesSelects.getByRole('combobox');
+      await roleInput.focus();
+      await roleInput.press('ArrowDown');
+      const roleOption = page
+        .locator('.ant-select-dropdown:visible')
+        .getByTitle('Data Consumer', { exact: true });
+      await expect(roleOption).toBeVisible();
+      await roleOption.click();
+      await roleInput.press('Escape');
+      await expect(
+        rolesSelects.getByTitle('Data Consumer', { exact: true })
+      ).toBeVisible();
 
       // Add a second mapping with a duplicate DN — both rows show an error
       await addMappingButton.click();
@@ -955,16 +953,18 @@ test.describe('SSO Back Navigation', () => {
     });
 
     // Establish /settings as the history entry just before /settings/sso
-    await page.goto('/settings');
-    await page.goto('/settings/sso');
+    await page.goto('/settings', { waitUntil: 'domcontentloaded' });
+    await page.goto('/settings/sso', { waitUntil: 'domcontentloaded' });
 
     // Component detects existing Okta config and replaces /settings/sso with /settings/sso?provider=okta
-    await page.waitForURL('**/settings/sso?provider=okta');
+    await page.waitForURL('**/settings/sso?provider=okta', {
+      waitUntil: 'domcontentloaded',
+    });
 
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     // Should land on /settings, skipping /settings/sso entirely
-    await page.waitForURL(/\/settings$/);
+    await page.waitForURL(/\/settings$/, { waitUntil: 'domcontentloaded' });
 
     expect(page.url()).not.toContain('/settings/sso');
   });
@@ -1010,13 +1010,13 @@ test.describe('SSO Back Navigation', () => {
         response.request().method() === 'GET'
     );
 
-    await page.goto('/settings/sso');
+    await page.goto('/settings/sso', { waitUntil: 'domcontentloaded' });
     const response = await configResponse;
 
     expect(response.status()).toBe(200);
 
     // With basic config, URL stays at /settings/sso and shows provider selector
-    await page.waitForURL('**/settings/sso');
+    await page.waitForURL('**/settings/sso', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.provider-selector-container')).toBeVisible();
 

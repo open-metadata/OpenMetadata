@@ -34,7 +34,7 @@
  * delete is still the ultimate guarantee).
  */
 
-import { Browser, Page, test as base } from '@playwright/test';
+import { Browser, expect, Page, test as base } from '@playwright/test';
 import { UserClass } from '../../../support/user/UserClass';
 import {
   createNewPage,
@@ -51,23 +51,18 @@ type TestFixtures = {
   dataConsumerPage: Page;
 };
 
-/**
- * Best-effort DELETE of a user's server-side `appMode` preference via the
- * default super-admin's API context. Used between tests so state that one
- * test intentionally writes cannot leak into the next test on the same
- * worker's fixture user.
- */
 const deleteAppModePreferenceFor = async (
   browser: Browser,
   userId: string
 ): Promise<void> => {
   const admin = await getDefaultAdminAPIContext(browser);
   try {
-    await admin.apiContext.delete(
+    const response = await admin.apiContext.delete(
       `/api/v1/users/${userId}/preferences/appMode`
     );
-  } catch {
-    // Cleanup is best-effort — a missing pref is a 404, not a fatal error.
+    expect([200, 404], `Reset app mode: ${await response.text()}`).toContain(
+      response.status()
+    );
   } finally {
     await admin.afterAction();
   }
@@ -84,8 +79,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       await use(admin);
 
       const teardown = await createNewPage(browser);
-      await admin.delete(teardown.apiContext).catch(() => undefined);
-      await teardown.afterAction();
+      try {
+        await admin.delete(teardown.apiContext);
+      } finally {
+        await teardown.afterAction();
+      }
     },
     { scope: 'worker' },
   ],
@@ -100,8 +98,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       await use(user);
 
       const teardown = await createNewPage(browser);
-      await user.delete(teardown.apiContext).catch(() => undefined);
-      await teardown.afterAction();
+      try {
+        await user.delete(teardown.apiContext);
+      } finally {
+        await teardown.afterAction();
+      }
     },
     { scope: 'worker' },
   ],
@@ -118,10 +119,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       // next test on this worker starts from a clean baseline. The
       // worker-scope user delete still guarantees zero cross-run leak;
       // this just keeps intra-worker ordering irrelevant.
-      await deleteAppModePreferenceFor(
-        browser,
-        isolatedAdmin.responseData.id
-      ).catch(() => undefined);
+      await deleteAppModePreferenceFor(browser, isolatedAdmin.responseData.id);
     }
   },
 

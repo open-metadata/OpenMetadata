@@ -13,10 +13,11 @@
 
 import { Domain } from '../../../support/domain/Domain';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { TaskClass } from '../../../support/entity/TaskClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { getTaskCard } from '../../../utils/task';
 
 /**
  * Task Tests for Dashboard Entities
@@ -443,60 +444,29 @@ test.describe('Dashboard Task UI Flow', () => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser, {
       navigate: true,
     });
-
+    const task = new TaskClass({
+      about: `<#E::dashboard::${dashboard.entityResponseData.fullyQualifiedName}>`,
+      assignees: [ownerUser.responseData.name],
+      payload: {
+        field: 'description',
+        suggestedValue: 'Description suggestion for UI test',
+      },
+    });
     try {
-      // Create task via API
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DescriptionUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            fieldPath: 'description',
-            newDescription: 'Description suggestion for UI test',
-          },
-        },
-      });
-      expect(taskResponse.ok()).toBe(true);
-      const task = await taskResponse.json();
-
-      // Navigate directly to dashboard entity page with activity tab
-      const dashboardFQN = dashboard.entityResponseData?.fullyQualifiedName;
-      await page.goto(
-        `/dashboard/${dashboardFQN}?activeTab=activity_feed&feedFilter=TASK`,
-        { waitUntil: 'domcontentloaded' }
+      const created = await task.create(apiContext);
+      await dashboard.visitEntityPage(page);
+      await page.getByTestId('activity_feed').click();
+      await page.getByRole('menuitem', { name: /^Tasks/ }).click();
+      await expect(getTaskCard(page, created.taskId)).toBeVisible();
+      await expect(page.getByTestId('entity-header-name')).toHaveText(
+        dashboard.entityResponseData.name
       );
-      await waitForAllLoadersToDisappear(page);
-
-      // Wait for the activity feed content to load
-      await page
-        .waitForSelector('[data-testid="activity-feed-tab"]', {
-          state: 'visible',
-          timeout: 10000,
-        })
-        .catch(() => {
-          // Tab might already be active, continue
-        });
-
-      // Verify the task is visible - check for any task card
-      const taskCards = page.locator(
-        '[data-testid="task-feed-card"], [data-testid="activity-feed"] [data-testid="message-container"]'
-      );
-
-      await expect
-        .poll(async () => taskCards.count(), {
-          message: 'Waiting for task cards to appear in activity feed',
-          timeout: 30000,
-          intervals: [2000, 3000, 5000],
-        })
-        .toBeGreaterThanOrEqual(0);
-
-      // Verify task was created (API verification as backup)
-      const verifyTask = await apiContext.get(`/api/v1/tasks/${task.id}`);
-      expect(verifyTask.ok()).toBe(true);
     } finally {
-      await afterAction();
+      try {
+        await task.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     }
   });
 });

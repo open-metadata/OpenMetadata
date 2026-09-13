@@ -256,7 +256,7 @@ test.describe('Glossary Term — Related Terms', () => {
       const reloadRes = page.waitForResponse(
         `/api/v1/glossaryTerms/name/*${encodeURIComponent(termA.data.name)}*`
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadRes;
 
       await expect(page.getByTestId(termBName)).toBeVisible();
@@ -318,7 +318,7 @@ test.describe('Glossary Term — Related Terms', () => {
           termBalance.data.name
         )}*`
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadRes;
 
       await expect(page.getByTestId(relatedName)).toHaveCount(3);

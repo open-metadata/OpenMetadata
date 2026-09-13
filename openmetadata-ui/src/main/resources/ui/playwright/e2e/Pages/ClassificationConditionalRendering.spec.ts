@@ -118,7 +118,7 @@ test('Should render classification correctly after page reload', async ({
   const classificationsResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await classificationsResponse;
 
   await waitForAllLoadersToDisappear(page);

@@ -70,7 +70,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    await Promise.allSettled([
+    await settleAll([
       table1.create(apiContext),
       table2.create(apiContext),
       topic1.create(apiContext),
@@ -1718,3 +1718,5 @@ test.describe(
     });
   }
 );
+
+import { settleAll } from '../../utils/apiResponse';

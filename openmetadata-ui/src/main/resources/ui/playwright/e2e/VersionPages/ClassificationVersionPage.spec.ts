@@ -43,7 +43,11 @@ test.beforeAll(async ({ browser }) => {
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   await tag.delete(apiContext);
-  await classification.delete(apiContext);
+  // System classifications cannot be deleted or downgraded. Disable this
+  // mutable fixture until the shard's isolated database is discarded.
+  await classification.patch(apiContext, [
+    { op: 'add', path: '/disabled', value: true },
+  ]);
   await afterAction();
 });
 

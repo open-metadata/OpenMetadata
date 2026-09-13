@@ -132,4 +132,31 @@ describe('Test ChangeParentHierarchy modal component', () => {
       expect.any(Function)
     );
   });
+
+  it('should ignore a move completion for a job it did not start', async () => {
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    const [, onMoveUpdate] = mockSocket.on.mock.calls.find(
+      ([channel]) => channel === 'moveGlossaryTermChannel'
+    ) as [string, (message: string) => void];
+
+    // The server addresses this channel to the user, so a move finished in any
+    // other session of theirs lands here too. Honouring it would navigate this
+    // dialog away to a term the user never asked for.
+    await act(async () => {
+      onMoveUpdate(
+        JSON.stringify({
+          jobId: 'a-job-this-modal-never-started',
+          status: 'COMPLETED',
+          message: 'Move completed',
+          fullyQualifiedName: 'someone.elses.term',
+        })
+      );
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockOnCancel).not.toHaveBeenCalled();
+  });
 });

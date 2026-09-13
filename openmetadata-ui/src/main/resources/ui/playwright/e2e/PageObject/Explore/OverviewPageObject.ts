@@ -232,20 +232,30 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tag selection modal to be visible
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use semantic search bar selector
-    await this.tagSearchBar.fill(tagName);
+    // Use getByTitle to target the outer .selectable-list-item wrapper, which
+    // carries the 'active' CSS class when the tag is already selected.
+    const tagItem = this.selectableList.getByTitle(tagName);
 
+    // Wait for the ES search response as a deterministic signal that the
+    // list has settled with its final options.
+    const tagSearchResponse = this.page.waitForResponse(
+      (response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') && /[?&]index=tag(&|$)/.test(url)
+        );
+      },
+      { timeout: 20_000 }
+    );
+    await this.tagSearchBar.fill(tagName);
+    await tagSearchResponse;
     // Scope loader to the selectable-list to avoid strict-mode violations when
-    // multiple [data-testid="loader"] elements coexist on the page during
-    // parallel test runs (e.g. one inside lineage section, one inside the popover).
+    // multiple [data-testid="loader"] elements coexist on the page.
     await this.selectableList
       .getByTestId('loader')
       .waitFor({ state: 'hidden' });
-
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
-    // 'active' CSS class when the tag is already selected.
-    const tagItem = this.selectableList.getByTitle(tagName);
-    await tagItem.waitFor({ state: 'visible' });
+    await expect(tagItem).toBeVisible({ timeout: 15_000 });
 
     // Only click if not already active — in parallel test runs another test may have added
     // this tag already. Clicking an already-active item would deselect (remove) it.
@@ -280,19 +290,32 @@ export class OverviewPageObject extends RightPanelBase {
 
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use semantic search bar selector
-    await this.glossaryTermSearchBar.fill(termName);
+    // Use getByTitle to target the outer .selectable-list-item wrapper, which
+    // carries the 'active' CSS class when the term is already selected.
+    const termItem = this.selectableList.getByTitle(termName);
 
+    // Wait for the ES search response as a deterministic signal that the
+    // list has settled with its final options.
+    const termSearchResponse = this.page.waitForResponse(
+      (response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') &&
+          /[?&]index=glossaryTerm(&|$)/.test(url)
+        );
+      },
+      { timeout: 20_000 }
+    );
+    await this.glossaryTermSearchBar.fill(termName);
+    await termSearchResponse;
     // Scope loader to selectableList to avoid strict-mode violations when a
-    // parallel test has a lineage or other section loader visible at the same time.
+    // parallel test has a lineage or other section loader visible at the
+    // same time.
     await this.selectableList
       .getByTestId('loader')
       .waitFor({ state: 'hidden' });
-
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which carries the
-    // 'active' CSS class when the term is already selected.
-    const termItem = this.selectableList.getByTitle(termName);
-    await termItem.waitFor({ state: 'visible' });
+    await expect(termItem).toBeVisible({ timeout: 15_000 });
     await termItem.scrollIntoViewIfNeeded();
 
     // Only click if not already active — parallel tests may have added this term already.
@@ -391,26 +414,13 @@ export class OverviewPageObject extends RightPanelBase {
     await this.openOwnerSelector();
 
     if (type === 'Users') {
-      await expect
-        .poll(
-          async () => {
-            const isAlreadyActive =
-              (await this.selectOwnerUsersTab.getAttribute('aria-selected')) ===
-              'true';
-            if (!isAlreadyActive) {
-              await this.selectOwnerUsersTab.click();
-            }
-
-            return await this.userSearchBar.isVisible().catch(() => false);
-          },
-          {
-            timeout: 120000,
-            intervals: [500, 1000, 2000],
-            message:
-              'Timed out waiting for owner search input to become visible',
-          }
-        )
-        .toBe(true);
+      if (
+        (await this.selectOwnerUsersTab.getAttribute('aria-selected')) !==
+        'true'
+      ) {
+        await this.selectOwnerUsersTab.click();
+      }
+      await expect(this.userSearchBar).toBeVisible();
     }
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);

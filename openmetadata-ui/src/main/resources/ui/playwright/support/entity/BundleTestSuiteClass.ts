@@ -13,10 +13,8 @@
 
 import { APIRequestContext } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { triggerIngestionPipeline } from '../../utils/ingestionExecution';
 import { ResponseDataType } from './Entity.interface';
-
-const PIPELINE_TRIGGER_MAX_ATTEMPTS = 3;
-const PIPELINE_TRIGGER_RETRY_DELAY_MS = 10_000;
 
 export class BundleTestSuiteClass {
   bundleTestSuiteResponseData: ResponseDataType = {} as ResponseDataType;
@@ -75,35 +73,14 @@ export class BundleTestSuiteClass {
     apiContext: APIRequestContext,
     pipelineId: string
   ) {
-    await apiContext.post(
+    const response = await apiContext.post(
       `/api/v1/services/ingestionPipelines/deploy/${pipelineId}`
     );
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    let lastTriggerStatus: number | undefined;
-    let lastTriggerBody = '';
-
-    for (let attempt = 1; attempt <= PIPELINE_TRIGGER_MAX_ATTEMPTS; attempt++) {
-      const triggerResponse = await apiContext.post(
-        `/api/v1/services/ingestionPipelines/trigger/${pipelineId}`
+    if (!response.ok()) {
+      throw new Error(
+        `Deploy pipeline ${pipelineId} failed (${response.status()}): ${await response.text()}`
       );
-      lastTriggerStatus = triggerResponse.status();
-
-      if (triggerResponse.status() === 200) {
-        return;
-      }
-
-      lastTriggerBody = await triggerResponse.text();
-
-      if (attempt < PIPELINE_TRIGGER_MAX_ATTEMPTS) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, PIPELINE_TRIGGER_RETRY_DELAY_MS)
-        );
-      }
     }
-
-    throw new Error(
-      `Failed to trigger pipeline ${pipelineId} after ${PIPELINE_TRIGGER_MAX_ATTEMPTS} attempts: ${lastTriggerStatus} ${lastTriggerBody}`
-    );
+    await triggerIngestionPipeline(apiContext, pipelineId);
   }
 }
