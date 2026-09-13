@@ -326,16 +326,19 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
                 inference: 'none',
               },
             });
-            expect(response.ok()).toBe(true);
-
-            return (await response.json()).boolean;
+            return {
+              status: response.status(),
+              body: response.ok()
+                ? await response.json()
+                : await response.text(),
+            };
           },
           {
             message: 'Table relationships must reach the RDF projection',
             timeout: 60_000,
           }
         )
-        .toBe(true);
+        .toMatchObject({ status: 200, body: { boolean: true } });
     } finally {
       await afterAction();
     }
