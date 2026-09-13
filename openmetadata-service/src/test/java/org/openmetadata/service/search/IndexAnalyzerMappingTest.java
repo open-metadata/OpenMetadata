@@ -52,6 +52,31 @@ class IndexAnalyzerMappingTest {
   }
 
   @Test
+  void dataAssetDescriptionsSupportPhraseQueries() {
+    final List<String> offenders = new ArrayList<>();
+    for (final String language : List.of(ENGLISH, "ru", "jp", "zh")) {
+      for (final IndexMapping index : IndexMappingLoader.getInstance().getIndexMapping().values()) {
+        if (!index.getParentAliases(null).contains("dataAsset")) {
+          continue;
+        }
+        final JsonNode mapping = readMapping("/" + index.getIndexMappingFile(language));
+        final String options =
+            mapping
+                .path("mappings")
+                .path("properties")
+                .path("description")
+                .path("index_options")
+                .asText("positions");
+        if (List.of("docs", "freqs").contains(options)) {
+          offenders.add(language + "/" + index.getIndexName());
+        }
+      }
+    }
+    assertTrue(
+        offenders.isEmpty(), "Description Contains requires indexed positions: " + offenders);
+  }
+
+  @Test
   void wordDelimiterRunsBeforeLowercaseSoCamelCaseSplits() {
     // word_delimiter's split_on_case_change can only fire while the token still has its case.
     // Lowercasing first turns CustomerAddress into one opaque token that no single-word query

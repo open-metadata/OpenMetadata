@@ -105,14 +105,17 @@ public interface SearchClient
    * tag-mutating painless almost never carry Tier in {@code tags[]}. Unconditionally assigning
    * {@code tier = null} when no Tier was seen would wipe the live-indexed dedicated field —
    * caught by {@code GlossaryRenameCascade.spec.ts}.
+   *
+   * <p>Keep local variables block-scoped: a tag replacement composes both removal and addition
+   * scripts, each of which includes this snippet.
    */
   String TAG_RESEPARATION_SCRIPT =
       """
-      def newTags = new ArrayList();
-      def tier = null;
-      def classTags = new ArrayList();
-      def glossTags = new ArrayList();
       if (ctx._source.containsKey('tags') && ctx._source.tags != null) {
+        def newTags = new ArrayList();
+        def tier = null;
+        def classTags = new ArrayList();
+        def glossTags = new ArrayList();
         for (def t : ctx._source.tags) {
           if (t == null || !t.containsKey('tagFQN') || t.tagFQN == null) { continue; }
           if (t.tagFQN.startsWith('Tier.')) {
