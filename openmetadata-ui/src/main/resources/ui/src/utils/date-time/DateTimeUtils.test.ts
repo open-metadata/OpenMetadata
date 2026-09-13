@@ -17,6 +17,11 @@ import {
   convertSecondsToHumanReadableFormat,
   customFormatDateTime,
   DATE_TIME_12_HOUR_FORMAT,
+  getActiveTimeFormat,
+  getMappedTimeFormat,
+  DATE_TIME_WITH_OFFSET_FORMAT,
+  DATE_TIME_WEEKDAY_WITH_ORDINAL,
+  DATE_TIME_WITH_OFFSET_SHORT,
   formatDate,
   formatDateTime,
   formatDateTimeLong,
@@ -26,6 +31,27 @@ import {
   getScheduleDescriptionTexts,
   isValidDateFormat,
 } from './DateTimeUtils';
+
+// ✅ CORRECTED MOCKS: Provide default return values so destructuring doesn't fail
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: {
+    getState: jest.fn().mockReturnValue({
+      currentUser: null,
+      timeFormat: undefined,
+    }),
+  },
+}));
+
+jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  usePersistentStorage: {
+    getState: jest.fn().mockReturnValue({
+      preferences: {},
+    }),
+  },
+}));
+
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
 
 const systemLocale = Settings.defaultLocale;
 const systemZoneName = Settings.defaultZone;
@@ -65,9 +91,7 @@ describe('DateTimeUtils tests', () => {
   });
 
   it(`formatDateShort should formate date and time both`, () => {
-    expect(formatDateTimeLong(0)).toBe(
-      `January 01, 1970, 12:00 AM (UTC+00:00)`
-    );
+    expect(formatDateTimeLong(0)).toBe(`January 01, 1970, 12:00 AM (UTC+00:00)`);
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
@@ -114,7 +138,6 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = 1710831125922;
     const result = calculateInterval(startTime, endTime);
-
     expect(result).toBe('0 Days, 0 Hours');
   });
 
@@ -122,7 +145,6 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = 1710831125924;
     const result = calculateInterval(startTime, endTime);
-
     expect(result).toBe('0 Days, 0 Hours');
   });
 
@@ -130,7 +152,6 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = startTime + 24 * 60 * 60 * 1000; // 24 hours later
     const result = calculateInterval(startTime, endTime);
-
     expect(result).toBe('1 Days, 0 Hours');
   });
 
@@ -138,7 +159,6 @@ describe('calculateInterval', () => {
     const startTime = 1710831125922;
     const endTime = startTime + 56 * 60 * 60 * 1000; // 56 hours later
     const result = calculateInterval(startTime, endTime);
-
     expect(result).toBe('2 Days, 8 Hours');
   });
 
@@ -146,7 +166,6 @@ describe('calculateInterval', () => {
     const startTime = NaN;
     const endTime = NaN;
     const result = calculateInterval(startTime, endTime);
-
     expect(result).toBe('Invalid interval');
   });
 
@@ -154,7 +173,6 @@ describe('calculateInterval', () => {
     const startTimeInSeconds = 1710831125;
     const endTimeInSeconds = startTimeInSeconds + 56 * 60 * 60; // 56 hours later
     const result = calculateInterval(startTimeInSeconds, endTimeInSeconds);
-
     expect(result).toBe('0 Days, 0 Hours');
   });
 });
@@ -195,13 +213,7 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
   ];
 
   testCases.forEach(
-    ({
-      input,
-      expected,
-      length,
-      showMilliseconds,
-      prependForNegativeValue,
-    }) => {
+    ({ input, expected, length, showMilliseconds, prependForNegativeValue }) => {
       it(`should return "${expected}" for ${input} milliseconds`, () => {
         expect(
           convertMillisecondsToHumanReadableFormat(
@@ -236,24 +248,19 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     },
     { input: 3600000, expected: '1h', expectedWithLength: '1h', length: 4 }, // length > number of parts
   ];
-  testCasesWithLength.forEach(
-    ({ input, expected, expectedWithLength, length }) => {
-      it(`should return "${expected}" for ${input} milliseconds`, () => {
-        expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
-        expect(convertMillisecondsToHumanReadableFormat(input, length)).toBe(
-          expectedWithLength
-        );
-      });
-    }
-  );
+
+  testCasesWithLength.forEach(({ input, expected, expectedWithLength, length }) => {
+    it(`should return "${expected}" for ${input} milliseconds`, () => {
+      expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
+      expect(convertMillisecondsToHumanReadableFormat(input, length)).toBe(
+        expectedWithLength
+      );
+    });
+  });
 
   it('should return the correct value for the input value', () => {
     const inputValue = 224813364.39; // input in seconds
-    // Note: This test was using the old buggy logic. With fixed units:
-    // 224813364.39s = 7Y 1M 15d 6h 9m 24s (not 7Y 2M 22d 9m 24s)
     const result = convertMillisecondsToHumanReadableFormat(inputValue * 1000);
-
-    // Verify it has the major components
     expect(result).toContain('7Y');
     expect(result).toContain('M');
     expect(result).toContain('d');
@@ -303,19 +310,17 @@ describe('convertSecondsToHumanReadableFormat', () => {
       },
     ];
 
-    negativeTestCases.forEach(
-      ({ input, expected, prependForNegativeValue }) => {
-        it(`should return "${expected}" for ${input} seconds`, () => {
-          expect(
-            convertSecondsToHumanReadableFormat(
-              input,
-              undefined,
-              prependForNegativeValue
-            )
-          ).toBe(expected);
-        });
-      }
-    );
+    negativeTestCases.forEach(({ input, expected, prependForNegativeValue }) => {
+      it(`should return "${expected}" for ${input} seconds`, () => {
+        expect(
+          convertSecondsToHumanReadableFormat(
+            input,
+            undefined,
+            prependForNegativeValue
+          )
+        ).toBe(expected);
+      });
+    });
   });
 
   describe('Combined time units', () => {
@@ -367,9 +372,7 @@ describe('convertSecondsToHumanReadableFormat', () => {
 
     lengthTestCases.forEach(({ input, length, expected }) => {
       it(`should return "${expected}" for ${input}s with length=${length}`, () => {
-        expect(convertSecondsToHumanReadableFormat(input, length)).toBe(
-          expected
-        );
+        expect(convertSecondsToHumanReadableFormat(input, length)).toBe(expected);
       });
     });
   });
@@ -377,29 +380,23 @@ describe('convertSecondsToHumanReadableFormat', () => {
   describe('Edge cases and boundary conditions', () => {
     it('should handle exactly 1 year (360 days: 12 months × 30 days)', () => {
       const oneYear = 12 * 30 * 24 * 3600; // 31,104,000 seconds
-
       expect(convertSecondsToHumanReadableFormat(oneYear)).toBe('1Y');
     });
 
     it('should handle exactly 1 month (30 days)', () => {
       const oneMonth = 30 * 24 * 3600; // 2,592,000 seconds
-
       expect(convertSecondsToHumanReadableFormat(oneMonth)).toBe('1M');
     });
 
     it('should handle 12 months and show as 1 year', () => {
       const twelveMonths = 12 * 30 * 24 * 3600; // 31,104,000 seconds
       const result = convertSecondsToHumanReadableFormat(twelveMonths);
-
-      // With 360-day year: 12 months = exactly 1 year
       expect(result).toBe('1Y');
     });
 
     it('should handle 13 months correctly', () => {
       const thirteenMonths = 13 * 30 * 24 * 3600; // 33,696,000 seconds
       const result = convertSecondsToHumanReadableFormat(thirteenMonths);
-
-      // With 360-day year: 13 months = 1 year + 1 month
       expect(result).toBe('1Y 1M');
     });
 
@@ -410,13 +407,11 @@ describe('convertSecondsToHumanReadableFormat', () => {
 
     it('should handle very large values', () => {
       const tenYears = 10 * 12 * 30 * 24 * 3600; // 311,040,000 seconds (10 years × 360 days)
-
       expect(convertSecondsToHumanReadableFormat(tenYears)).toBe('10Y');
     });
   });
 
   describe('Production data test cases (actual freshness values)', () => {
-    // These are real values from the production bug report
     const productionTestCases = [
       {
         input: -33835208,
@@ -452,47 +447,37 @@ describe('convertSecondsToHumanReadableFormat', () => {
         input: -31329605,
         expectedDays: 362.6,
         expectedOutput: 'late by 1Y 2d 14h 40m 5s',
-        description:
-          'Value #30: 362.6 days - original bug report showing as "2d 14h"',
+        description: 'Value #30: 362.6 days - original bug report showing as "2d 14h"',
       },
     ];
 
-    productionTestCases.forEach(
-      ({ input, expectedDays, expectedOutput, description }) => {
-        it(`should correctly format ${description} (${expectedDays} days)`, () => {
-          const result = convertSecondsToHumanReadableFormat(
-            input,
-            undefined,
-            'late by '
-          );
-
-          expect(result).toBe(expectedOutput);
-
-          // Verify no invalid values like 12M or 30+ days
-          expect(result).not.toContain('12M');
-
-          // Validate days are within bounds if present
-          const dayMatch = result.match(/(\d+)d/);
-          if (dayMatch) {
-            const days = parseInt(dayMatch[1]);
-
-            expect(days).toBeLessThanOrEqual(30);
-          }
-        });
-      }
-    );
+    productionTestCases.forEach(({ input, expectedDays, expectedOutput, description }) => {
+      it(`should correctly format ${description} (${expectedDays} days)`, () => {
+        const result = convertSecondsToHumanReadableFormat(
+          input,
+          undefined,
+          'late by '
+        );
+        expect(result).toBe(expectedOutput);
+        expect(result).not.toContain('12M');
+        const dayMatch = result.match(/(\d+)d/);
+        if (dayMatch) {
+          const days = parseInt(dayMatch[1]);
+          expect(days).toBeLessThanOrEqual(30);
+        }
+      });
+    });
   });
 
   describe('Validation: months and days stay within bounds', () => {
-    // Test a range of values to ensure months < 12 and days <= 30
     const validationTestCases = [
-      { seconds: -32280001, days: 373.6 }, // 1Y 13d (360 + 13.6 days)
-      { seconds: -32193603, days: 372.6 }, // 1Y 12d (360 + 12.6 days)
-      { seconds: -32107200, days: 371.6 }, // 1Y 11d (360 + 11.6 days)
-      { seconds: -31934399, days: 369.6 }, // 1Y 9d (360 + 9.6 days)
-      { seconds: -31847998, days: 368.6 }, // 1Y 8d (360 + 8.6 days)
-      { seconds: -31761665, days: 367.6 }, // 1Y 7d (360 + 7.6 days)
-      { seconds: -31675203, days: 366.6 }, // 1Y 6d (360 + 6.6 days)
+      { seconds: -32280001, days: 373.6 },
+      { seconds: -32193603, days: 372.6 },
+      { seconds: -32107200, days: 371.6 },
+      { seconds: -31934399, days: 369.6 },
+      { seconds: -31847998, days: 368.6 },
+      { seconds: -31761665, days: 367.6 },
+      { seconds: -31675203, days: 366.6 },
     ];
 
     validationTestCases.forEach(({ seconds, days }) => {
@@ -502,24 +487,16 @@ describe('convertSecondsToHumanReadableFormat', () => {
           undefined,
           'late by '
         );
-
-        // Check for months - should always be < 12
         const monthMatch = result.match(/(\d+)M/);
         if (monthMatch) {
           const months = parseInt(monthMatch[1]);
-
           expect(months).toBeLessThan(12);
         }
-
-        // Check for days - should always be <= 30
         const dayMatch = result.match(/(\d+)d/);
         if (dayMatch) {
           const daysValue = parseInt(dayMatch[1]);
-
           expect(daysValue).toBeLessThanOrEqual(30);
         }
-
-        // Should always have year component for these values
         expect(result).toContain('1Y');
       });
     });
@@ -527,31 +504,24 @@ describe('convertSecondsToHumanReadableFormat', () => {
 
   describe('Comparison with original buggy behavior', () => {
     it('should NOT lose days like the original modulo bug', () => {
-      // Original bug: 362 days % 30 = 2, losing 360 days
       const seconds = -31329605; // 362.6 days
       const result = convertSecondsToHumanReadableFormat(
         seconds,
         undefined,
         'late by '
       );
-
-      // Should show year component, not just "2d"
       expect(result).toContain('1Y');
       expect(result).toContain('2d');
-      // Should NOT be just "late by 2d 14h"
       expect(result).not.toBe('late by 2d 14h');
     });
 
     it('should show consistent years based on 360-day year', () => {
-      // With 360-day year: 364.6 days = 1 year (360d) + 4.6 days
       const seconds = -31502412; // 364.6 days
       const result = convertSecondsToHumanReadableFormat(
         seconds,
         undefined,
         'late by '
       );
-
-      // With 360-day year calculation: consistently shows 1Y 4d 14h 40m 12s
       expect(result).toContain('1Y');
       expect(result).toContain('4d');
     });
@@ -588,18 +558,15 @@ describe('convertSecondsToHumanReadableFormat', () => {
   describe('Consistency with fixed time units', () => {
     it('should use 360 days per year (12 months × 30 days)', () => {
       const oneYear = 12 * 30 * 24 * 3600; // 31,104,000 seconds
-
       expect(convertSecondsToHumanReadableFormat(oneYear)).toBe('1Y');
     });
 
     it('should use 30 days per month', () => {
       const oneMonth = 30 * 24 * 3600; // 2,592,000 seconds
-
       expect(convertSecondsToHumanReadableFormat(oneMonth)).toBe('1M');
     });
 
     it('should maintain consistency across different inputs', () => {
-      // These should all be consistent multiples
       expect(convertSecondsToHumanReadableFormat(86400 * 30)).toBe('1M');
       expect(convertSecondsToHumanReadableFormat(86400 * 60)).toBe('2M');
       expect(convertSecondsToHumanReadableFormat(86400 * 360)).toBe('1Y');
@@ -608,10 +575,8 @@ describe('convertSecondsToHumanReadableFormat', () => {
 
   describe('Monotonic ordering validation', () => {
     it('should show increasing time values for consecutive dates (Nov 15-30 scenario)', () => {
-      // Sample data representing consecutive dates getting further from a threshold
-      // Simulating: Nov 30, Nov 29, Nov 28, Nov 27, Nov 26, Nov 25, ..., Nov 15
       const consecutiveDateScenarios = [
-        { date: 'Nov 30', seconds: -31104000, days: 360.0 }, // Exactly 1 year
+        { date: 'Nov 30', seconds: -31104000, days: 360.0 },
         { date: 'Nov 29', seconds: -31190400, days: 361.0 },
         { date: 'Nov 28', seconds: -31276800, days: 362.0 },
         { date: 'Nov 27', seconds: -31329605, days: 362.6 },
@@ -622,14 +587,13 @@ describe('convertSecondsToHumanReadableFormat', () => {
         { date: 'Nov 22', seconds: -31536000, days: 365.0 },
         { date: 'Nov 21', seconds: -31588801, days: 365.6 },
         { date: 'Nov 20', seconds: -31622400, days: 366.0 },
-        { date: 'Nov 19', seconds: -31675203, days: 366.6 }, // Original bug report value
+        { date: 'Nov 19', seconds: -31675203, days: 366.6 },
         { date: 'Nov 18', seconds: -31708800, days: 367.0 },
         { date: 'Nov 17', seconds: -31761600, days: 367.6 },
         { date: 'Nov 16', seconds: -31795200, days: 368.0 },
         { date: 'Nov 15', seconds: -31848002, days: 368.6 },
       ];
 
-      // Convert each to human-readable format
       const formattedResults = consecutiveDateScenarios.map((scenario) => ({
         ...scenario,
         formatted: convertSecondsToHumanReadableFormat(
@@ -639,68 +603,43 @@ describe('convertSecondsToHumanReadableFormat', () => {
         ),
       }));
 
-      // Verify monotonic ordering: each date should show more time than the previous
       for (let i = 0; i < formattedResults.length - 1; i++) {
         const current = formattedResults[i];
         const next = formattedResults[i + 1];
-
-        // Verify absolute seconds increase (more late)
         expect(Math.abs(current.seconds)).toBeLessThan(Math.abs(next.seconds));
-
-        // Verify formatted strings are different (no precision loss)
         expect(current.formatted).not.toBe(next.formatted);
       }
 
-      // Verify specific case from original bug: 362.6 days < 366.6 days
       const nov27 = formattedResults.find(
         (r) => r.days === 362.6
       ) as (typeof formattedResults)[number];
       const nov19 = formattedResults.find(
         (r) => r.days === 366.6
       ) as (typeof formattedResults)[number];
-
       expect(Math.abs(nov27.seconds)).toBeLessThan(Math.abs(nov19.seconds));
-
-      // Verify we have 16 consecutive days
       expect(formattedResults).toHaveLength(16);
     });
 
     it('should maintain strict monotonic ordering across a range of values', () => {
-      // Test a range of values to ensure consistent ordering
       const testValues = [
-        -31104000, // Exactly 1 year (360 days)
-        -31190400, // 361 days
-        -31276800, // 362 days
-        -31363200, // 363 days
-        -31449600, // 364 days
-        -31536000, // 365 days
-        -31622400, // 366 days
-        -31708800, // 367 days
-        -31795200, // 368 days
-        -31881600, // 369 days
-        -31968000, // 370 days
+        -31104000, -31190400, -31276800, -31363200, -31449600,
+        -31536000, -31622400, -31708800, -31795200, -31881600, -31968000,
       ];
 
       const formattedValues = testValues.map((seconds) =>
         convertSecondsToHumanReadableFormat(seconds, undefined, 'late by ')
       );
 
-      // Verify each value produces a unique formatted string
       const uniqueFormatted = new Set(formattedValues);
-
       expect(uniqueFormatted.size).toBe(testValues.length);
 
-      // Verify ordering: each successive value should show more time
       for (let i = 0; i < testValues.length - 1; i++) {
-        expect(Math.abs(testValues[i])).toBeLessThan(
-          Math.abs(testValues[i + 1])
-        );
+        expect(Math.abs(testValues[i])).toBeLessThan(Math.abs(testValues[i + 1]));
         expect(formattedValues[i]).not.toBe(formattedValues[i + 1]);
       }
     });
 
     it('should handle edge cases around year boundaries correctly', () => {
-      // Test values around the 360-day year boundary
       const edgeCases = [
         { seconds: -31017600, description: '359 days (1d before 1 year)' },
         { seconds: -31104000, description: '360 days (exactly 1 year)' },
@@ -718,19 +657,14 @@ describe('convertSecondsToHumanReadableFormat', () => {
         ),
       }));
 
-      // Verify each is unique and increases
       for (let i = 0; i < results.length - 1; i++) {
-        expect(Math.abs(results[i].seconds)).toBeLessThan(
-          Math.abs(results[i + 1].seconds)
-        );
+        expect(Math.abs(results[i].seconds)).toBeLessThan(Math.abs(results[i + 1].seconds));
         expect(results[i].formatted).not.toBe(results[i + 1].formatted);
       }
 
-      // Verify 361 days shows as 1Y 1d (not wrapping incorrectly)
       const day361 = results.find((r) =>
         r.description.includes('361 days')
       ) as (typeof results)[number];
-
       expect(day361.formatted).toContain('1Y');
       expect(day361.formatted).toContain('1d');
     });
@@ -740,17 +674,14 @@ describe('convertSecondsToHumanReadableFormat', () => {
 describe('getScheduleDescriptionTexts', () => {
   it('should parse daily cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 0 * * *');
-
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
-    // The function should either parse successfully or return empty strings
     expect(typeof result.descriptionFirstPart).toBe('string');
     expect(typeof result.descriptionSecondPart).toBe('string');
   });
 
   it('should parse hourly cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 * * * *');
-
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
     expect(typeof result.descriptionFirstPart).toBe('string');
@@ -759,7 +690,6 @@ describe('getScheduleDescriptionTexts', () => {
 
   it('should parse weekly cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('0 0 * * 1');
-
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
     expect(typeof result.descriptionFirstPart).toBe('string');
@@ -768,7 +698,6 @@ describe('getScheduleDescriptionTexts', () => {
 
   it('should parse custom interval cron schedule correctly', () => {
     const result = getScheduleDescriptionTexts('*/15 * * * *');
-
     expect(result).toHaveProperty('descriptionFirstPart');
     expect(result).toHaveProperty('descriptionSecondPart');
     expect(typeof result.descriptionFirstPart).toBe('string');
@@ -777,14 +706,12 @@ describe('getScheduleDescriptionTexts', () => {
 
   it('should handle invalid cron expression gracefully', () => {
     const result = getScheduleDescriptionTexts('invalid cron');
-
     expect(result.descriptionFirstPart).toBe('');
     expect(result.descriptionSecondPart).toBe('');
   });
 
   it('should handle empty string gracefully', () => {
     const result = getScheduleDescriptionTexts('');
-
     expect(result.descriptionFirstPart).toBe('');
     expect(result.descriptionSecondPart).toBe('');
   });
@@ -792,7 +719,6 @@ describe('getScheduleDescriptionTexts', () => {
   it('should return consistent structure for valid cron expressions', () => {
     const result1 = getScheduleDescriptionTexts('0 12 * * *');
     const result2 = getScheduleDescriptionTexts('30 8 * * 1-5');
-
     expect(result1).toHaveProperty('descriptionFirstPart');
     expect(result1).toHaveProperty('descriptionSecondPart');
     expect(result2).toHaveProperty('descriptionFirstPart');
@@ -801,5 +727,136 @@ describe('getScheduleDescriptionTexts', () => {
     expect(typeof result1.descriptionSecondPart).toBe('string');
     expect(typeof result2.descriptionFirstPart).toBe('string');
     expect(typeof result2.descriptionSecondPart).toBe('string');
+  });
+});
+
+describe('DateTimeUtils', () => {
+  describe('getMappedTimeFormat', () => {
+    const testCases = [
+      {
+        name: 'maps DATE_TIME_12_HOUR_FORMAT to 24h',
+        input: DATE_TIME_12_HOUR_FORMAT,
+        timeFormat: '24h' as const,
+        expected: 'MMM dd, yyyy, HH:mm',
+      },
+      {
+        name: 'maps DATE_TIME_WITH_OFFSET_FORMAT to 24h',
+        input: DATE_TIME_WITH_OFFSET_FORMAT,
+        timeFormat: '24h' as const,
+        expected: "MMMM dd, yyyy, H:mm '(UTC'ZZ')'",
+      },
+      {
+        name: 'maps DATE_TIME_WEEKDAY_WITH_ORDINAL to 24h',
+        input: DATE_TIME_WEEKDAY_WITH_ORDINAL,
+        timeFormat: '24h' as const,
+        expected: "ccc d'th' MMMM, yyyy, HH:mm",
+      },
+      {
+        name: 'maps DATE_TIME_WITH_OFFSET_SHORT to 24h',
+        input: DATE_TIME_WITH_OFFSET_SHORT,
+        timeFormat: '24h' as const,
+        expected: "MMM dd, yyyy, HH:mm '(UTC'ZZ')'",
+      },
+      {
+        name: 'maps DATE_TIME_12_HOUR_FORMAT to 12h (unchanged)',
+        input: DATE_TIME_12_HOUR_FORMAT,
+        timeFormat: '12h' as const,
+        expected: DATE_TIME_12_HOUR_FORMAT,
+      },
+      {
+        name: 'does not incorrectly map 12h format with seconds',
+        input: 'hh:mm:ss a',
+        timeFormat: '24h' as const,
+        expected: 'hh:mm:ss a',
+      },
+      {
+        name: 'does not incorrectly map 24h format with seconds (HH:mm:ss)',
+        input: 'HH:mm:ss',
+        timeFormat: '12h' as const,
+        expected: 'HH:mm:ss',
+      },
+      {
+        name: 'does not incorrectly map 24h format with seconds in full datetime',
+        input: 'yyyy-MM-dd HH:mm:ss',
+        timeFormat: '12h' as const,
+        expected: 'yyyy-MM-dd HH:mm:ss',
+      },
+      {
+        name: 'leaves date-only formats unchanged (24h)',
+        input: 'yyyy-MM-dd',
+        timeFormat: '24h' as const,
+        expected: 'yyyy-MM-dd',
+      },
+      {
+        name: 'leaves date-only formats unchanged (12h)',
+        input: 'yyyy-MM-dd',
+        timeFormat: '12h' as const,
+        expected: 'yyyy-MM-dd',
+      },
+    ];
+
+    testCases.forEach(({ name, input, timeFormat, expected }) => {
+      it(name, () => {
+        expect(getMappedTimeFormat(input, timeFormat)).toBe(expected);
+      });
+    });
+  });
+
+  describe('getActiveTimeFormat', () => {
+    const mockGetAppState = useApplicationStore.getState as jest.Mock;
+    const mockGetPersistState = usePersistentStorage.getState as jest.Mock;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    const testCases = [
+      {
+        name: 'returns user 24h preference over global 12h preference',
+        global: '12h',
+        user: '24h',
+        expected: '24h',
+      },
+      {
+        name: 'returns user 12h preference over global 24h preference',
+        global: '24h',
+        user: '12h',
+        expected: '12h',
+      },
+      {
+        name: 'returns global 24h preference when user preference is unset',
+        global: '24h',
+        user: undefined,
+        expected: '24h',
+      },
+      {
+        name: 'returns global 12h preference when user preference is unset',
+        global: '12h',
+        user: undefined,
+        expected: '12h',
+      },
+      {
+        name: 'returns 12h default when neither user nor global is set',
+        global: undefined,
+        user: undefined,
+        expected: '12h',
+      },
+    ];
+
+    testCases.forEach(({ name, global, user, expected }) => {
+      it(name, () => {
+        mockGetAppState.mockReturnValue({
+          currentUser: { name: 'testUser' },
+          timeFormat: global,
+        });
+        mockGetPersistState.mockReturnValue({
+          preferences: {
+            testUser: user ? { timeFormat: user } : {},
+          },
+        });
+
+        expect(getActiveTimeFormat()).toBe(expected as '12h' | '24h');
+      });
+    });
   });
 });
