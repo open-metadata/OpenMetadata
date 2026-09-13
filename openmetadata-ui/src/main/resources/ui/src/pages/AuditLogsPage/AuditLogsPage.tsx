@@ -12,12 +12,12 @@
  */
 
 import {
-  Badge,
-  Button,
-  ButtonUtility,
-  Card,
-  Input,
-  Typography,
+    Badge,
+    Button,
+    ButtonUtility,
+    Card,
+    Input,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { SearchLg, XClose } from '@untitledui/icons';
 import { Modal, Progress } from 'antd';
@@ -38,10 +38,10 @@ import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExport
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-  SOCKET_EVENTS,
+    PAGE_SIZE_BASE,
+    PAGE_SIZE_LARGE,
+    PAGE_SIZE_MEDIUM,
+    SOCKET_EVENTS
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -49,16 +49,16 @@ import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocket
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
 import {
-  exportAuditLogs,
-  getAuditLogExportJob,
-  getAuditLogExportResult,
-  getAuditLogs,
+    exportAuditLogs,
+    getAuditLogExportJob,
+    getAuditLogExportResult,
+    getAuditLogs
 } from '../../rest/auditLogAPI';
 import {
-  AuditLogActiveFilter,
-  AuditLogEntry,
-  AuditLogListParams,
-  AuditLogListResponse,
+    AuditLogActiveFilter,
+    AuditLogEntry,
+    AuditLogListParams,
+    AuditLogListResponse
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';

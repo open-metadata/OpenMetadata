@@ -14,7 +14,10 @@
 import {
     Autocomplete,
     Box,
-    Input,
+    FieldProp,
+    FieldTypes,
+    FormFields,
+    HookForm,
     Select,
     SelectItemType,
     Typography
@@ -29,6 +32,7 @@ import React, {
     useState
 } from 'react';
 import type { Key } from 'react-aria-components';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
     Effect,
@@ -60,6 +64,31 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   setRuleData,
 }) => {
   const { t } = useTranslation();
+
+  const nameForm = useForm<{ name: string }>({
+    defaultValues: { name: ruleData.name ?? '' },
+  });
+
+  const nameFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.rule-name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      placeholder: t('label.rule-name'),
+      props: { 'data-testid': 'rule-name' },
+      rules: { required: t('label.field-required', { field: t('label.rule-name') }) },
+    },
+  ];
+
+  useEffect(() => {
+    const subscription = nameForm.watch((values) =>
+      setRuleData((prev: Rule) => ({ ...prev, name: values.name ?? '' }))
+    );
+
+    return () => subscription.unsubscribe();
+  }, [nameForm, setRuleData]);
+
   const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
     []
   );
@@ -269,22 +298,9 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   return (
     <Box direction="col" gap={4}>
       {/* Rule name */}
-      <Box direction="col" gap={1}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {`${t('label.rule-name')} *`}
-        </Typography>
-        <Input
-          data-testid="rule-name"
-          placeholder={t('label.rule-name')}
-          value={ruleData.name ?? ''}
-          onChange={(value) =>
-            setRuleData((prev: Rule) => ({ ...prev, name: value }))
-          }
-        />
-      </Box>
+      <HookForm form={nameForm}>
+        <FormFields fields={nameFields} />
+      </HookForm>
 
       {/* Description */}
       <Box direction="col" gap={1}>

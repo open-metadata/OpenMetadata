@@ -86,7 +86,7 @@ const renderRule = (rule: RuleInfo, index: number) => (
         <Typography className="tw:text-secondary" size="text-sm">
           Condition:
         </Typography>
-        <code className="tw:font-mono tw:bg-secondary tw:px-1 tw:rounded tw:text-sm">
+        <code className="tw:bg-secondary tw:px-1 tw:rounded tw:text-sm">
           {rule.condition}
         </code>
       </Box>

@@ -431,8 +431,8 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
 
   return (
     <Box
-      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6" direction="col"
-      data-testid="audit-logs-page">
+      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6" data-testid="audit-logs-page"
+      direction="col">
 
       {/* Card wrapping filters + log list */}
       <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden tw:mb-3">
@@ -446,8 +446,7 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
               data-testid="audit-log-search-container">
               <Input
                 className="tw:max-w-86"
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                icon={SearchLg as any}
+                icon={SearchLg as React.FC}
                 inputDataTestId="audit-log-search"
                 placeholder={t('label.search-audit-logs')}
                 value={searchInputValue}
@@ -465,7 +464,8 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
 
           {hasActiveFilters && (
             <Box
-              className="tw:w-full tw:mt-2" align="center" direction="row"
+              align="center"
+              className="tw:w-full tw:mt-2"
               data-testid="filter-selection-container"
               direction="row">
               <Box className="tw:flex-1" direction="row" gap={2} wrap="wrap">
@@ -477,9 +477,10 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
                     size="lg"
                     type="color">
                     <Box
-                      align="center" direction="row" gap={1}
+                      align="center"
                       data-testid={`filter-chip-${filter.category}`}
-                      direction="row">
+                      direction="row"
+                      gap={1}>
                       <Typography
                         className="tw:text-tertiary"
                         weight="medium">
@@ -579,12 +580,17 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
                   size="text-md">
                   {`${t('label.date-range')} *`}
                 </Typography>
+                {/* maxValue/value/onChange bridge two separate instances of @internationalized/date
+                    (app vs. core-components bundled). Structurally identical but nominal mismatch. */}
                 <DateRangePicker
                   data-testid="export-date-range-picker"
                   isDisabled={isExporting}
-                  maxValue={today(getLocalTimeZone()) as any} // eslint-disable-line @typescript-eslint/no-explicit-any
-                  value={exportDateRange as any} // eslint-disable-line @typescript-eslint/no-explicit-any
-                  onChange={(range: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  maxValue={today(getLocalTimeZone()) as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  value={exportDateRange as any}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  onChange={(range: any) =>
                     setExportDateRange(
                       range
                         ? { start: range.start as DateValue, end: range.end as DateValue }

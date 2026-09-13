@@ -14,13 +14,16 @@
 import {
     Box,
     Button,
-    Input,
+    FieldProp,
+    FieldTypes,
+    FormFields,
+    HookForm,
     Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import React, { Dispatch, SetStateAction, useRef, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import {
@@ -30,13 +33,13 @@ import {
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import type { AccessControlView } from './AccessControl.types';
 import { INITIAL_RULE } from './AccessControl.constants';
+import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
 
 interface FormValues {
@@ -53,13 +56,22 @@ const AccessControlAddPolicyForm: React.FC<
   const { t } = useTranslation();
   const descEditorRef = useRef<EditorContentRef>(null);
 
-  const {
-    control,
-    formState: { errors },
-    handleSubmit,
-  } = useForm<FormValues>({
+  const form = useForm<FormValues>({
     defaultValues: { name: '' },
   });
+  const { handleSubmit } = form;
+
+  const nameFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      placeholder: t('label.policy-name'),
+      props: { 'data-testid': 'policy-name-input' },
+      rules: { required: t('label.field-required', { field: t('label.name') }) },
+    },
+  ];
 
   const [ruleData, setRuleData] = useState<Rule>(INITIAL_RULE);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
@@ -103,71 +115,46 @@ const AccessControlAddPolicyForm: React.FC<
     <Box className="tw:h-full tw:min-h-0" direction="col">
       {/* Scrollable form area */}
       <div className="tw:overflow-y-auto">
-        <Box
-          className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0"
-          data-testid="add-policy-container"
-          direction="col"
-          gap={5}>
-          <Box direction="col" gap={1}>
-            <Typography
-              className="tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {`${t('label.name')} *`}
-            </Typography>
-            <Controller
-              control={control}
-              name="name"
-              render={({ field }) => (
-                <Input
-                  data-testid="policy-name-input"
-                  placeholder={t('label.policy-name')}
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              )}
-              rules={{
-                required: t('label.field-required', { field: t('label.name') }),
-              }}
-            />
-            {errors.name && (
-              <Typography className="tw:text-red-500" size="text-xs">
-                {errors.name.message}
-              </Typography>
-            )}
-          </Box>
+        <HookForm form={form}>
+          <Box
+            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0"
+            data-testid="add-policy-container"
+            direction="col"
+            gap={5}>
+            <FormFields fields={nameFields} />
 
-          <Box direction="col" gap={1}>
-            <Typography
-              className="tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {t('label.description')}
-            </Typography>
-            <RichTextEditor
-              className="new-form-style"
-              data-testid="policy-description-input"
-              placeHolder={t('message.write-your-description')}
-              ref={descEditorRef}
-            />
-          </Box>
-
-          {/* Rule section */}
-          <Box direction="col" gap={3}>
-            <Box className="tw:border-t tw:border-secondary tw:pt-4" direction="col">
+            <Box direction="col" gap={1}>
               <Typography
-                className="tw:text-primary"
+                className="tw:text-secondary"
                 size="text-sm"
-                weight="semibold">
-                {t('label.add-entity', { entity: t('label.rule') })}
+                weight="medium">
+                {t('label.description')}
               </Typography>
+              <RichTextEditor
+                className="new-form-style"
+                data-testid="policy-description-input"
+                placeHolder={t('message.write-your-description')}
+                ref={descEditorRef}
+              />
             </Box>
-            <AccessControlRuleForm
-              ruleData={ruleData}
-              setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
-            />
+
+            {/* Rule section */}
+            <Box direction="col" gap={3}>
+              <Box className="tw:border-t tw:border-secondary tw:pt-4" direction="col">
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {t('label.add-entity', { entity: t('label.rule') })}
+                </Typography>
+              </Box>
+              <AccessControlRuleForm
+                ruleData={ruleData}
+                setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
+              />
+            </Box>
           </Box>
-        </Box>
+        </HookForm>
       </div>
 
       {/* Fixed footer */}

@@ -15,7 +15,10 @@ import {
     Autocomplete,
     Box,
     Button,
-    Input,
+    FieldProp,
+    FieldTypes,
+    FormFields,
+    HookForm,
     SelectItemType,
     Typography
 } from '@openmetadata/ui-core-components';
@@ -23,7 +26,7 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
@@ -31,8 +34,8 @@ import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { addRole, getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import {
-  showErrorToast,
-  showSuccessToast,
+    showErrorToast,
+    showSuccessToast
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -54,13 +57,22 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   const { contains } = useFilter({ sensitivity: 'base' });
   const descEditorRef = useRef<EditorContentRef>(null);
 
-  const {
-    control,
-    formState: { errors },
-    handleSubmit,
-  } = useForm<FormValues>({
+  const form = useForm<FormValues>({
     defaultValues: { name: '' },
   });
+  const { handleSubmit } = form;
+
+  const nameFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      placeholder: t('label.role-name'),
+      props: { 'data-testid': 'role-name-input' },
+      rules: { required: t('label.field-required', { field: t('label.name') }) },
+    },
+  ];
 
   const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -154,79 +166,56 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   return (
     <Box className="tw:h-full tw:min-h-0" direction="col">
       {/* Scrollable form area */}
-      <Box
-        className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
-        data-testid="add-role-container"
-        direction="col"
-        gap={5}>
-        <Box direction="col" gap={1}>
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {`${t('label.name')} *`}
-          </Typography>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field }) => (
-              <Input
-                data-testid="role-name-input"
-                placeholder={t('label.role-name')}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-            rules={{ required: t('label.field-required', { field: t('label.name') }) }}
-          />
-          {errors.name && (
-            <Typography className="tw:text-red-500" size="text-xs">
-              {errors.name.message}
+      <HookForm form={form}>
+        <Box
+          className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
+          data-testid="add-role-container"
+          direction="col"
+          gap={5}>
+          <FormFields fields={nameFields} />
+
+          <Box direction="col" gap={1}>
+            <Typography
+              className="tw:text-secondary"
+              size="text-sm"
+              weight="medium">
+              {t('label.description')}
             </Typography>
-          )}
-        </Box>
+            <RichTextEditor
+              className="new-form-style"
+              data-testid="role-description-input"
+              placeHolder={t('message.write-your-description')}
+              ref={descEditorRef}
+            />
+          </Box>
 
-        <Box direction="col" gap={1}>
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.description')}
-          </Typography>
-          <RichTextEditor
-            className="new-form-style"
-            data-testid="role-description-input"
-            placeHolder={t('message.write-your-description')}
-            ref={descEditorRef}
-          />
+          <Box direction="col" gap={1}>
+            <Typography
+              className="tw:text-secondary"
+              size="text-sm"
+              weight="medium">
+              {t('label.select-a-policy')}
+            </Typography>
+            <Autocomplete
+              data-testid="role-policies-select"
+              filterOption={(item, filterText) =>
+                contains(item.label || '', filterText) ||
+                contains(String(item.id), filterText)
+              }
+              items={policyItems}
+              placeholder={t('label.select-a-policy')}
+              selectedItems={selectedPolicyItems}
+              onItemCleared={handleItemCleared}
+              onItemInserted={handleItemInserted}>
+              {(item) => (
+                <Autocomplete.Item id={item.id} key={item.id}>
+                  {item.label}
+                </Autocomplete.Item>
+              )}
+            </Autocomplete>
+          </Box>
         </Box>
-
-        <Box direction="col" gap={1}>
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.select-a-policy')}
-          </Typography>
-          <Autocomplete
-            data-testid="role-policies-select"
-            filterOption={(item, filterText) =>
-              contains(item.label || '', filterText) ||
-              contains(String(item.id), filterText)
-            }
-            items={policyItems}
-            placeholder={t('label.select-a-policy')}
-            selectedItems={selectedPolicyItems}
-            onItemCleared={handleItemCleared}
-            onItemInserted={handleItemInserted}>
-            {(item) => (
-              <Autocomplete.Item id={item.id} key={item.id}>
-                {item.label}
-              </Autocomplete.Item>
-            )}
-          </Autocomplete>
-        </Box>
-      </Box>
+      </HookForm>
 
       {/* Fixed footer */}
       <Box

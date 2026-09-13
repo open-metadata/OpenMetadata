@@ -211,8 +211,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     return (
       <Link
-        key={key}
         className='tw:truncate tw:block'
+        key={key}
         to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
         {getEntityName(policy)}
       </Link>
@@ -238,8 +238,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
         {hasMore && (
           <PopoverTrigger>
             <Button
-              color="secondary"
               className='tw:py-0.5 tw:bg-tertiary'
+              color="secondary"
               data-testid="plus-more-count"
               size="xs">
               {`+${listLength - LIST_CAP} more`}
@@ -259,16 +259,16 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     switch (colId) {
       case 'name':
         return onNavigate ? (
-          <Tooltip placement="top" title={getEntityName(role)}>
-            <Button
-              className="tw:max-w-full tw:truncate tw:block tw:text-left"
-              color="link-color"
-              data-testid="role-name"
-              size="sm"
-              onPress={() => handleRoleClick(role)}>
-              {getEntityName(role)}
-            </Button>
-          </Tooltip>
+          <Button
+            className="tw:max-w-full tw:truncate tw:block tw:text-left"
+            color="link-color"
+            data-testid="role-name"
+            size="sm"
+            tooltip={getEntityName(role)}
+            tooltipPlacement="top"
+            onPress={() => handleRoleClick(role)}>
+            {getEntityName(role)}
+          </Button>
         ) : (
           <Tooltip placement="top" title={getEntityName(role)} triggerClassName="tw:block tw:w-full">
             <Link
@@ -282,7 +282,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       case 'description':
         return role.description ? (
-          <RichTextEditorPreviewerV1 maxLength={200} markdown={role.description} />
+          <RichTextEditorPreviewerV1 markdown={role.description} maxLength={200} />
         ) : (
           <span className="tw:text-sm tw:text-secondary">--</span>
         );
@@ -324,7 +324,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           ))}
         </Box>
       ) : (
-        <Box className="tw:min-h-32 tw:relative" align="center" justify="center">
+        <Box align="center" className="tw:min-h-32 tw:relative" justify="center">
           <EmptyPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.role-plural'),
@@ -346,8 +346,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       <TableCard.Root className='tw:flex tw:flex-col' size="compact">
         <div className="tw:overflow-y-auto">
           <Table
-            className="tw:table-fixed"
             aria-label={t('label.role-plural')}
+            className="tw:table-fixed"
             data-testid="roles-list-table"
             size="compact">
             <Table.Header columns={columns}>

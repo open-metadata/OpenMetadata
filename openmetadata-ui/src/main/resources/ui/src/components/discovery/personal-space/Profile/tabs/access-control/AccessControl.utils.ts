@@ -16,10 +16,10 @@ import { uniqBy } from 'lodash';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Function } from '../../../../../../generated/type/function';
 import {
-  getEntityDetailsPath,
-  getPolicyWithFqnPath,
-  getRoleWithFqnPath,
-  getTeamsWithFqnPath,
+    getEntityDetailsPath,
+    getPolicyWithFqnPath,
+    getRoleWithFqnPath,
+    getTeamsWithFqnPath
 } from '../../../../../../utils/RouterUtils';
 
 export const buildConditionOptions = (fns: Function[]): SelectItemType[] =>

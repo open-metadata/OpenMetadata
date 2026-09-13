@@ -20,8 +20,7 @@ import {
     TableCard,
     Tabs,
     Tooltip,
-    Typography, 
-    TooltipTrigger
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -65,8 +64,8 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import type { AccessControlView } from './AccessControl.types';
 import { INITIAL_RULE } from './AccessControl.constants';
+import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
 
 type PolicyTab = 'rules' | 'roles' | 'teams';
@@ -114,17 +113,15 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         {t('label.description')}
       </Typography>
       {canEdit && !isEditing && (
-        <Tooltip
-          placement="right"
-          title={t('label.edit-entity', { entity: t('label.description') })}>
-          <Button
-            color="tertiary"
-            data-testid="edit-description-btn"
-            size="xs"
-            onPress={onStartEdit}>
-            <Edit name={t('label.edit')} width="14px" />
-          </Button>
-        </Tooltip>
+        <Button
+          color="tertiary"
+          data-testid="edit-description-btn"
+          size="xs"
+          tooltip={t('label.edit-entity', { entity: t('label.description') })}
+          tooltipPlacement="right"
+          onPress={onStartEdit}>
+          <Edit name={t('label.edit')} width="14px" />
+        </Button>
       )}
     </Box>
     {isEditing ? (
@@ -209,55 +206,6 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
     </Box>
   );
 };
-
-// ─── Header actions ───────────────────────────────────────────────────────────
-
-interface PolicyHeaderActionsProps {
-  canDelete: boolean;
-  canEditAll: boolean;
-  displayName: string;
-  name: string;
-  onDelete: () => void;
-  onRename: (initial: string) => void;
-  t: ReturnType<typeof useTranslation>['t'];
-}
-
-const PolicyHeaderActions: FC<PolicyHeaderActionsProps> = ({
-  canDelete,
-  canEditAll,
-  displayName,
-  name,
-  onDelete,
-  onRename,
-  t,
-}) => (
-  <Box align="center" direction="row" gap={1}>
-    <Tooltip
-      placement="left"
-      title={String(canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION))}>
-      <Button
-        color="tertiary"
-        data-testid="rename-policy-btn"
-        isDisabled={!canEditAll}
-        size="sm"
-        onPress={() => onRename(displayName || name)}>
-        <Edit name={t('label.rename')} width="16px" />
-      </Button>
-    </Tooltip>
-    <Tooltip
-      placement="left"
-      title={String(canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION))}>
-      <Button
-        color="tertiary"
-        data-testid="delete-policy-btn"
-        isDisabled={!canDelete}
-        size="sm"
-        onPress={onDelete}>
-        <Delete name={t('label.delete')} width="16px" />
-      </Button>
-    </Tooltip>
-  </Box>
-);
 
 // ─── Rule card ────────────────────────────────────────────────────────────────
 
@@ -365,7 +313,7 @@ const RuleCard: FC<RuleCardProps> = ({
             <Typography className="tw:text-secondary tw:shrink-0" size="text-sm">
               {`${t('label.condition')}:`}
             </Typography>
-            <code className="tw:font-mono tw:text-xs tw:bg-secondary tw:px-1 tw:rounded">
+            <code className="tw:text-xs tw:bg-secondary tw:px-1 tw:rounded">
               {rule.condition}
             </code>
           </Box>
@@ -388,7 +336,7 @@ const renderRoleOrTeamCell = (
 ) => {
   if (colId === 'name') {
     return (
-        <Typography ellipses weight='medium'>
+        <Typography ellipsis weight="medium">
           {getEntityName(item)}
         </Typography>
     );
@@ -445,7 +393,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
 }) => (
   <Box className="tw:w-full tw:overflow-x-auto tw:p-1" direction="col">
     <TableCard.Root className="tw:w-full" size="compact">
-      <Table className="tw:table-fixed" aria-label={label} size="compact">
+      <Table aria-label={label} className="tw:table-fixed" size="compact">
         <Table.Header columns={columns}>
           {(col) => (
             <Table.Head className={col.className} id={col.id} key={col.id} label={col.label} />
@@ -454,7 +402,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
         <Table.Body
           items={items}
           renderEmptyState={() => (
-            <Box className="tw:min-h-32 tw:relative" align="center" justify="center">
+            <Box align="center" className="tw:min-h-32 tw:relative" justify="center">
               <EmptyPlaceholder title={emptyTitle} />
             </Box>
           )}>
@@ -916,9 +864,9 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
 
   return (
     <Box
-      direction="col" gap={4}
       data-testid="policy-detail-container"
-      direction="col">
+      direction="col"
+      gap={4}>
 
       <InlineDescriptionEditor
         canEdit={canEditAll}

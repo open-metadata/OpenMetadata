@@ -82,7 +82,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
                 data-testid={`access-control-card-${card.id}`}
                 direction="row"
                 gap={4}>
-                <Box className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10" align="center" justify="center">
+                <Box align="center" className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10" justify="center">
                   <Icon className="tw:size-6 tw:text-secondary" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>

@@ -166,7 +166,7 @@ const EntityTable: FC<EntityTableProps> = ({
         title=""
       />
     )}
-    <Table className="tw:table-fixed" aria-label={ariaLabel} size="compact">
+    <Table aria-label={ariaLabel} className="tw:table-fixed" size="compact">
       <Table.Header columns={columns}>
         {(col) => (
           <Table.Head className={col.className} id={col.id} key={col.id} label={col.label} />
@@ -175,7 +175,7 @@ const EntityTable: FC<EntityTableProps> = ({
       <Table.Body
         items={items ?? []}
         renderEmptyState={() => (
-          <Box className="tw:min-h-32 tw:relative" align="center" justify="center">
+          <Box align="center" className="tw:min-h-32 tw:relative" justify="center">
             <EmptyPlaceholder title={emptyTitle} />
           </Box>
         )}>

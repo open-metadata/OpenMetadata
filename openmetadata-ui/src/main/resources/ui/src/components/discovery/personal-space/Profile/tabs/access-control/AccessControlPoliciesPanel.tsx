@@ -212,8 +212,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     return (
       <Link
-        key={key}
         className='tw:truncate tw:block'
+        key={key}
         to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
         {getEntityName(role)}
       </Link>
@@ -239,8 +239,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         {hasMore && (
           <PopoverTrigger>
             <Button
-              color="secondary"
               className='tw:py-0.5 tw:bg-tertiary'
+              color="secondary"
               data-testid="plus-more-count"
               size="xs">
               {`+${listLength - LIST_CAP} more`}
@@ -287,7 +287,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
       case 'description':
         return policy.description ? (
-          <RichTextEditorPreviewerV1 maxLength={200} markdown={policy.description} />
+          <RichTextEditorPreviewerV1 markdown={policy.description} maxLength={200} />
         ) : (
           <span className="tw:text-sm tw:text-secondary">--</span>
         );
@@ -329,7 +329,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
           ))}
         </Box>
       ) : (
-        <Box className="tw:min-h-32 tw:relative" align="center" justify="center">
+        <Box align="center" className="tw:min-h-32 tw:relative" justify="center">
           <EmptyPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.policy-plural'),
@@ -351,8 +351,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
       <TableCard.Root className='tw:flex tw:flex-col' size="compact">
         <div className="tw:overflow-y-auto">
           <Table
-            className="tw:table-fixed"
             aria-label={t('label.policy-plural')}
+            className="tw:table-fixed"
             data-testid="policies-list-table"
             size="compact">
             <Table.Header columns={columns}>

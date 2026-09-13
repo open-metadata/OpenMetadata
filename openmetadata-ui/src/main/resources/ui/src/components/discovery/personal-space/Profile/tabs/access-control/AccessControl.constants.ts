@@ -14,13 +14,15 @@
 import { SelectItemType } from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import { SearchDropdownOption } from '../../../../../../components/SearchDropdown/SearchDropdown.interface';
+import { EntityType } from '../../../../../../enums/entity.enum';
 import { Effect, Rule } from '../../../../../../generated/api/policies/createPolicy';
 import { EntityIconSize } from '../../../../../../utils/EntityIconUtils';
+import { getEntityNameLabel } from '../../../../../../utils/EntityNameUtils';
 import { getCanonicalEntityType } from '../../../../../../utils/ExplorePureUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import {
-  PERMISSION_OPERATIONS,
-  PERMISSION_RESOURCES,
+    PERMISSION_OPERATIONS,
+    PERMISSION_RESOURCES
 } from '../../../../../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.constants';
 import { EntityTypeOption } from './AccessControl.types';
 
@@ -40,51 +42,56 @@ export const EFFECT_ITEMS: SelectItemType[] = [
 
 export const EXPORT_POLL_INTERVAL_MS = 5000;
 
-export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = [
-  { label: 'Table', value: 'table' },
-  { label: 'Topic', value: 'topic' },
-  { label: 'Dashboard', value: 'dashboard' },
-  { label: 'Pipeline', value: 'pipeline' },
-  { label: 'ML Model', value: 'mlmodel' },
-  { label: 'Container', value: 'container' },
-  { label: 'Search Index', value: 'searchIndex' },
-  { label: 'Stored Procedure', value: 'storedProcedure' },
-  { label: 'Dashboard Data Model', value: 'dashboardDataModel' },
-  { label: 'Chart', value: 'chart' },
-  { label: 'Database', value: 'database' },
-  { label: 'Database Schema', value: 'databaseSchema' },
-  { label: 'Query', value: 'query' },
-  { label: 'API Collection', value: 'apiCollection' },
-  { label: 'API Endpoint', value: 'apiEndpoint' },
-  { label: 'Metric', value: 'metric' },
-  { label: 'Glossary', value: 'glossary' },
-  { label: 'Glossary Term', value: 'glossaryTerm' },
-  { label: 'Classification', value: 'classification' },
-  { label: 'Tag', value: 'tag' },
-  { label: 'Domain', value: 'domain' },
-  { label: 'Data Product', value: 'dataProduct' },
-  { label: 'User', value: 'user' },
-  { label: 'Team', value: 'team' },
-  { label: 'Bot', value: 'bot' },
-  { label: 'Persona', value: 'persona' },
-  { label: 'Role', value: 'role' },
-  { label: 'Policy', value: 'policy' },
-  { label: 'Database Service', value: 'databaseService' },
-  { label: 'Messaging Service', value: 'messagingService' },
-  { label: 'Dashboard Service', value: 'dashboardService' },
-  { label: 'Pipeline Service', value: 'pipelineService' },
-  { label: 'ML Model Service', value: 'mlmodelService' },
-  { label: 'Storage Service', value: 'storageService' },
-  { label: 'Search Service', value: 'searchService' },
-  { label: 'API Service', value: 'apiService' },
-  { label: 'Metadata Service', value: 'metadataService' },
-  { label: 'Ingestion Pipeline', value: 'ingestionPipeline' },
-  { label: 'Test Suite', value: 'testSuite' },
-  { label: 'Test Case', value: 'testCase' },
-  { label: 'Event Subscription', value: 'eventsubscription' },
-  { label: 'Application', value: 'app' },
-  { label: 'KPI', value: 'kpi' },
-];
+const POLICY_ENTITY_TYPES = [
+  EntityType.TABLE,
+  EntityType.TOPIC,
+  EntityType.DASHBOARD,
+  EntityType.PIPELINE,
+  EntityType.MLMODEL,
+  EntityType.CONTAINER,
+  EntityType.SEARCH_INDEX,
+  EntityType.STORED_PROCEDURE,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.CHART,
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.QUERY,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
+  EntityType.METRIC,
+  EntityType.GLOSSARY,
+  EntityType.GLOSSARY_TERM,
+  EntityType.CLASSIFICATION,
+  EntityType.TAG,
+  EntityType.DOMAIN,
+  EntityType.DATA_PRODUCT,
+  EntityType.USER,
+  EntityType.TEAM,
+  EntityType.BOT,
+  EntityType.PERSONA,
+  EntityType.ROLE,
+  EntityType.POLICY,
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.API_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.INGESTION_PIPELINE,
+  EntityType.TEST_SUITE,
+  EntityType.TEST_CASE,
+  EntityType.EVENT_SUBSCRIPTION,
+  EntityType.APPLICATION,
+  EntityType.KPI,
+] as const;
+
+export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = POLICY_ENTITY_TYPES.map((et) => ({
+  value: et,
+  label: getEntityNameLabel(et),
+}));
 
 export const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
   ENTITY_TYPE_OPTIONS.map((o) => ({
