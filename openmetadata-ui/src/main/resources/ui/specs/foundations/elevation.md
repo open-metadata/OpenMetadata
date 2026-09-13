@@ -18,6 +18,17 @@ Box-shadow scale, mirroring the upstream `--shadow-*` tokens. Shadow *colors*
 Each references the upstream `--shadow-*` (from `globals.css`) with a raw
 fallback so it resolves even in isolation.
 
+## Semantic roles
+
+Use semantic elevation for new component work. These roles alias the existing
+scale, so adopting them does not change current light-mode shadows.
+
+| Token | Tailwind utility | Scale alias | Use |
+| --- | --- | --- | --- |
+| `--om-shadow-card` | `tw:shadow-card` | `--shadow-xs` | Cards and contained panels |
+| `--om-shadow-raised` | `tw:shadow-raised` | `--shadow-lg` | Menus, dropdowns, and popovers |
+| `--om-shadow-overlay` | `tw:shadow-overlay` | `--shadow-xl` | Modals and drawers |
+
 ## Bespoke shadows
 
 Some components need one-off shadows (drawer footers, sticky headers, highlight
@@ -37,7 +48,7 @@ When a bespoke shadow matches a scale step, prefer the token
 
 ```less
 /* DO */
-box-shadow: var(--om-shadow-sm);
+box-shadow: var(--om-shadow-card);
 
 /* DON'T introduce a raw rgba color in a shadow */
 box-shadow: 0px 1px 2px rgba(10, 13, 18, 0.05); /* rgba flagged as a color error */
