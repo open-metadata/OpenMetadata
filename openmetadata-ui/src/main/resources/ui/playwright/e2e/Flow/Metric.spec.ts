@@ -18,6 +18,7 @@ import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  descriptionBox,
   redirectToHomePage,
   waitForMetricsListingResponse,
 } from '../../utils/common';
@@ -167,7 +168,7 @@ test.describe(
         name: /Edit Dimension/,
       });
       await editDimensionDialog
-        .getByRole('textbox', { name: 'Description' })
+        .locator(descriptionBox)
         .fill('Updated dimension description.');
 
       const patchPromise = page.waitForResponse(
