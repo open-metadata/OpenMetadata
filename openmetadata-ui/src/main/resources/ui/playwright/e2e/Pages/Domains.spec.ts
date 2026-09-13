@@ -850,12 +850,22 @@ test.describe('Domains', () => {
         const assetCountElement = page
           .getByTestId('assets')
           .getByTestId('count');
-        const countText = await assetCountElement.textContent();
-        const displayedCount = Number.parseInt(countText ?? '0', 10);
         const totalCount = domainAssets.length + subDomainAssets.length;
         const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
-        expect(displayedCount).toBe(totalCount);
+        // The badge is a search aggregation over the domain and renders 0 until
+        // that query returns, so reading it once can capture the placeholder
+        // rather than the answer — which is how this reported 0 against 6.
+        await expect
+          .poll(
+            async () =>
+              Number.parseInt(
+                (await assetCountElement.textContent()) ?? '0',
+                10
+              ),
+            { timeout: 60_000 }
+          )
+          .toBe(totalCount);
         await expect(assetCards).toHaveCount(totalCount);
       });
 
@@ -888,12 +898,18 @@ test.describe('Domains', () => {
         const assetCountElement = page
           .getByTestId('assets')
           .getByTestId('count');
-        const countText = await assetCountElement.textContent();
-        const displayedCount = Number.parseInt(countText ?? '0', 10);
-
         const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
-        expect(displayedCount).toBe(subDomainAssets.length);
+        await expect
+          .poll(
+            async () =>
+              Number.parseInt(
+                (await assetCountElement.textContent()) ?? '0',
+                10
+              ),
+            { timeout: 60_000 }
+          )
+          .toBe(subDomainAssets.length);
         await expect(assetCards).toHaveCount(subDomainAssets.length);
       });
     } finally {
