@@ -1233,6 +1233,26 @@ export const openColumnDetailPanel = async ({
   // Wait for the panel content to be loaded
   await expect(panelContainer.getByTestId('entity-link')).toBeVisible();
 
+  // Ant slides this drawer in on a transform transition and toBeVisible is
+  // satisfied while it is still moving. A press begun then puts mousedown on a
+  // control and mouseup where that control used to be, so no click is
+  // dispatched -- which is how `edit-icon-tags` reports a successful click and
+  // its selectable list never opens. Two consecutive reads agreeing means the
+  // drawer has stopped.
+  let previousBox = '';
+  await expect
+    .poll(async () => {
+      const box = await panelContainer.boundingBox();
+      const current = box
+        ? `${Math.round(box.x)}x${Math.round(box.width)}`
+        : '';
+      const settled = current !== '' && current === previousBox;
+      previousBox = current;
+
+      return settled;
+    })
+    .toBe(true);
+
   return panelContainer;
 };
 
