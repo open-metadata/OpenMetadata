@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mockito;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
@@ -167,10 +169,16 @@ class IngestionPipelineRepositoryTest {
 
   private IngestionPipelineRepository repositoryWithClient(
       PipelineServiceClientInterface pipelineServiceClient) {
-    IngestionPipelineRepository cleanupRepository =
-        mock(IngestionPipelineRepository.class, Mockito.CALLS_REAL_METHODS);
-    cleanupRepository.setPipelineServiceClient(pipelineServiceClient);
-    return cleanupRepository;
+    CollectionDAO collection = mock(CollectionDAO.class);
+    when(collection.ingestionPipelineDAO())
+        .thenReturn(mock(CollectionDAO.IngestionPipelineDAO.class));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getCollectionDAO).thenReturn(collection);
+      entities.when(() -> Entity.getEntityFields(IngestionPipeline.class)).thenCallRealMethod();
+      IngestionPipelineRepository cleanupRepository = new IngestionPipelineRepository(null);
+      cleanupRepository.setPipelineServiceClient(pipelineServiceClient);
+      return cleanupRepository;
+    }
   }
 
   @Test

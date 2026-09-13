@@ -195,7 +195,7 @@ public class TypeResourceIT {
 
     final TypeRepository repository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
     final Type batch = repository.getDao().findEntityById(topicType.getId());
-    repository.setFieldsInBulk(repository.getFields("customProperties"), List.of(batch));
+    repository.setFieldsInBulk(repository.fieldPolicy().parse("customProperties"), List.of(batch));
     assertNotNull(batch.getCustomProperties());
     final CustomProperty indexedProperty =
         batch.getCustomProperties().stream()

@@ -37,7 +37,11 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { mockTablePermission } from '../../constants/mockTourData.constants';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -113,6 +117,7 @@ const TableDetailsPageV1: React.FC = () => {
     isTourPage,
     tourMockDatasetData,
   } = useTourProvider();
+  const isTourDataset = isTourOpen || isTourPage;
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const queryClient = useQueryClient();
@@ -175,7 +180,7 @@ const TableDetailsPageV1: React.FC = () => {
   // two costs an extra derivation, not an extra fetch — never diverges into two fetches as
   // long as both pass the identical (resource, identifier) pair.
   const {
-    permissions: tablePermissions, // children consume the raw OperationPermission prop
+    permissions: fetchedTablePermissions,
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic: viewBasicPermission,
@@ -186,7 +191,17 @@ const TableDetailsPageV1: React.FC = () => {
     canViewDataProfile: viewProfilerPermission,
     canViewUsage: viewUsagePermission,
     canViewTests: viewTestCasePermission,
-  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn);
+  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
+    enabled: !isTourDataset,
+  });
+  // The tour renders demo metadata; its grants must stay outside the real permission cache.
+  const tablePermissions = useMemo(
+    () =>
+      isTourDataset
+        ? (mockTablePermission as OperationPermission)
+        : fetchedTablePermissions,
+    [isTourDataset, fetchedTablePermissions]
+  );
   // Same value as viewBasicPermission above, named for what it means at its one call site
   // (the entity useQuery's `enabled` a few lines down) rather than re-destructured.
   const canViewTableInQuery = viewBasicPermission;
@@ -438,6 +453,7 @@ const TableDetailsPageV1: React.FC = () => {
     canEditLineage: editLineagePermission,
   } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
     deleted: Boolean(deleted),
+    enabled: !isTourDataset,
   });
 
   // Permission fetching itself now lives in useEntityPermissions (called above, twice). This
@@ -923,7 +939,7 @@ const TableDetailsPageV1: React.FC = () => {
     return <TableDetailsPageSkeleton />;
   }
 
-  if (!(isTourOpen || isTourPage) && !viewBasicPermission) {
+  if (!isTourDataset && !viewBasicPermission) {
     return (
       <ErrorPlaceHolder
         className="border-none"

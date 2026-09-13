@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -60,6 +59,18 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.InheritedReferences;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityColumnMutation;
+import org.openmetadata.service.entity.write.EntityColumnUpdater;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.WorksheetResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -67,27 +78,33 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class WorksheetRepository extends EntityRepository<Worksheet> {
+@Repository()
+public class WorksheetRepository implements EntityPolicy<Worksheet> {
+
   static final String PATCH_FIELDS = "columns";
+
   static final String UPDATE_FIELDS = "columns";
+
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("description", "owners", "columns.description");
 
   public WorksheetRepository() {
-    super(
-        WorksheetResource.COLLECTION_PATH,
-        Entity.WORKSHEET,
-        Worksheet.class,
-        Entity.getCollectionDAO().worksheetDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS,
-        CHANGE_SUMMARY_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                WorksheetResource.COLLECTION_PATH,
+                Entity.WORKSHEET,
+                Worksheet.class,
+                Entity.getCollectionDAO().worksheetDAO()),
+            new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, CHANGE_SUMMARY_FIELDS),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix (FQNs are service-nested). See
     // EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
+    context().options().setDescendantsCoveredByAncestorCascade(true);
   }
 
   @Override
@@ -104,7 +121,6 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     Spreadsheet spreadsheet =
         Entity.getEntity(worksheet.getSpreadsheet(), "service", Include.NON_DELETED);
     worksheet.setSpreadsheet(spreadsheet.getEntityReference());
-
     // If service is not set or is incorrect, get it from the spreadsheet
     if (worksheet.getService() == null
         || !Entity.DRIVE_SERVICE.equals(worksheet.getService().getType())) {
@@ -115,7 +131,6 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       DriveService driveService = Entity.getEntity(worksheet.getService(), "", Include.NON_DELETED);
       worksheet.setService(driveService.getEntityReference());
       worksheet.setServiceType(driveService.getServiceType());
-
       // Ensure the spreadsheet belongs to the same service
       if (!spreadsheet.getService().getId().equals(driveService.getId())) {
         throw new IllegalArgumentException(
@@ -124,13 +139,11 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                 spreadsheet.getFullyQualifiedName(), driveService.getFullyQualifiedName()));
       }
     }
-
     // During updates, ensure FQN is set if not already present
     if (update && worksheet.getFullyQualifiedName() == null) {
       worksheet.setFullyQualifiedName(
           FullyQualifiedName.add(spreadsheet.getFullyQualifiedName(), worksheet.getName()));
     }
-
     // Set column FQNs if columns are present (important for patch operations)
     if (worksheet.getColumns() != null && worksheet.getFullyQualifiedName() != null) {
       ColumnUtil.setColumnFQN(worksheet.getFullyQualifiedName(), worksheet.getColumns());
@@ -138,13 +151,13 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service", "spreadsheet");
   }
 
   @Override
-  protected ObjectNode storageJsonNode(Worksheet worksheet) {
-    ObjectNode node = super.storageJsonNode(worksheet);
+  public ObjectNode storageJsonNode(Worksheet worksheet) {
+    ObjectNode node = EntityPolicy.super.storageJsonNode(worksheet);
     stripColumnTags(node.get("columns"));
     return node;
   }
@@ -164,16 +177,16 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   @Override
   public void storeEntity(Worksheet worksheet, boolean update) {
-    store(worksheet, update);
+    persistence().store(worksheet, update);
   }
 
   @Override
   public void storeEntities(List<Worksheet> worksheets) {
-    storeMany(worksheets);
+    persistence().insertMany(worksheets);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<Worksheet> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<Worksheet> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Worksheet::getId).toList();
     deleteToMany(ids, Entity.WORKSHEET, Relationship.CONTAINS, Entity.SPREADSHEET);
@@ -185,12 +198,16 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       LOG.error("Spreadsheet is null for worksheet {}", worksheet.getId());
       return;
     }
-    addRelationship(
-        worksheet.getSpreadsheet().getId(),
-        worksheet.getId(),
-        SPREADSHEET,
-        WORKSHEET,
-        Relationship.CONTAINS);
+    relationshipWrites()
+        .add(
+            new EntityRelationshipWriter.Edge(
+                worksheet.getSpreadsheet().getId(),
+                worksheet.getId(),
+                SPREADSHEET,
+                WORKSHEET,
+                Relationship.CONTAINS),
+            EntityRelationshipWriter.Value.EMPTY,
+            false);
     LOG.info(
         "Added CONTAINS relationship from spreadsheet {} to worksheet {}",
         worksheet.getSpreadsheet().getId(),
@@ -214,7 +231,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     if (fields.contains(COLUMN_FIELD) && worksheet.getColumns() != null) {
       ColumnUtil.setColumnFQN(worksheet.getFullyQualifiedName(), worksheet.getColumns());
       Entity.populateEntityFieldTags(
-          entityType,
+          context().schema().entityType(),
           worksheet.getColumns(),
           worksheet.getFullyQualifiedName(),
           fields.contains(FIELD_TAGS));
@@ -228,18 +245,17 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       Spreadsheet spreadsheet =
           Entity.getEntity(
               SPREADSHEET, worksheet.getSpreadsheet().getId(), "owners,domains", Include.ALL);
-      inheritOwners(worksheet, fields, spreadsheet);
-      inheritDomains(worksheet, fields, spreadsheet);
+      InheritedReferences.apply(InheritedReferences.Field.OWNERS, worksheet, fields, spreadsheet);
+      InheritedReferences.apply(InheritedReferences.Field.DOMAINS, worksheet, fields, spreadsheet);
     }
   }
 
   @Override
-  protected void setInheritedFields(List<Worksheet> worksheets, EntityUtil.Fields fields) {
+  public void setInheritedFields(List<Worksheet> worksheets, EntityUtil.Fields fields) {
     // Only fetch spreadsheets if we need to inherit owners or domains
     if (!fields.contains(FIELD_OWNERS) && !fields.contains(FIELD_DOMAINS)) {
       return;
     }
-
     // Collect unique spreadsheet IDs
     Set<UUID> spreadsheetIds =
         worksheets.stream()
@@ -247,11 +263,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
             .filter(Objects::nonNull)
             .map(EntityReference::getId)
             .collect(Collectors.toSet());
-
     if (spreadsheetIds.isEmpty()) {
       return;
     }
-
     // Batch fetch spreadsheets with owners and domains
     SpreadsheetRepository spreadsheetRepo =
         (SpreadsheetRepository) Entity.getEntityRepository(SPREADSHEET);
@@ -259,18 +273,18 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
         spreadsheetRepo.getDao().findEntitiesByIds(new ArrayList<>(spreadsheetIds), Include.ALL);
     spreadsheetRepo.setFieldsInBulk(
         new EntityUtil.Fields(Set.of("owners", "domains"), "owners,domains"), spreadsheets);
-
     // Create a map for quick lookup
     Map<UUID, Spreadsheet> spreadsheetMap =
         spreadsheets.stream().collect(Collectors.toMap(Spreadsheet::getId, s -> s));
-
     // Inherit fields for each worksheet
     for (Worksheet worksheet : worksheets) {
       if (worksheet.getSpreadsheet() != null) {
         Spreadsheet spreadsheet = spreadsheetMap.get(worksheet.getSpreadsheet().getId());
         if (spreadsheet != null) {
-          inheritOwners(worksheet, fields, spreadsheet);
-          inheritDomains(worksheet, fields, spreadsheet);
+          InheritedReferences.apply(
+              InheritedReferences.Field.OWNERS, worksheet, fields, spreadsheet);
+          InheritedReferences.apply(
+              InheritedReferences.Field.DOMAINS, worksheet, fields, spreadsheet);
         }
       }
     }
@@ -284,8 +298,12 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
       return;
     }
     EntityReference service =
-        getFromEntityRef(
-            spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, Entity.DRIVE_SERVICE, false);
+        relationships()
+            .singleFrom(
+                new EntityRelationshipReader.Selection(
+                    spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, Entity.DRIVE_SERVICE),
+                false,
+                true);
     if (service == null) {
       LOG.warn(
           "Missing driveService relationship for spreadsheet {} linked to worksheet {}",
@@ -300,20 +318,17 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   public void setFieldsInBulk(EntityUtil.Fields fields, List<Worksheet> worksheets) {
     // Always set default fields (spreadsheet and service) - they're part of the base entity
     worksheets.forEach(this::setDefaultFields);
-
     // Fetch and set standard fields (owners, tags, domains, etc.) using parent's batch fetchers
-    fetchAndSetFields(worksheets, fields);
-
+    fieldLoading().populate(worksheets, fields);
     // Set inherited fields (owners, domains) if requested
     setInheritedFields(worksheets, fields);
-
     // Handle worksheet-specific fields based on what was requested
     worksheets.forEach(
         worksheet -> {
           if (fields.contains(COLUMN_FIELD) && worksheet.getColumns() != null) {
             ColumnUtil.setColumnFQN(worksheet.getFullyQualifiedName(), worksheet.getColumns());
             Entity.populateEntityFieldTags(
-                entityType,
+                context().schema().entityType(),
                 worksheet.getColumns(),
                 worksheet.getFullyQualifiedName(),
                 fields.contains(FIELD_TAGS));
@@ -330,21 +345,21 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      Worksheet original, Worksheet updated, Operation operation, ChangeSource changeSource) {
-    return new WorksheetUpdater(original, updated, operation, changeSource);
+  public EntityUpdater<Worksheet> getUpdater(
+      Worksheet original, Worksheet updated, EntityOperation operation, ChangeSource changeSource) {
+    return new WorksheetUpdater(original, updated, operation, changeSource).mutation();
   }
 
   @Override
   public void applyTags(Worksheet worksheet) {
     // Add worksheet level tags by adding tag to worksheet relationship
-    super.applyTags(worksheet);
+    EntityPolicy.super.applyTags(worksheet);
     // Apply tags to columns
-    applyColumnTags(worksheet.getColumns());
+    tagWrites().addColumns(worksheet.getColumns());
   }
 
   private EntityReference getSpreadsheet(Worksheet worksheet) {
-    return getFromEntityRef(worksheet.getId(), Relationship.CONTAINS, SPREADSHEET, false);
+    return relationships().singleFrom(worksheet.getId(), Relationship.CONTAINS, SPREADSHEET, false);
   }
 
   @Override
@@ -369,7 +384,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   public static class WorksheetCsv extends EntityCsv<Worksheet> {
+
     public static final List<CsvHeader> HEADERS;
+
     public static final CsvDocumentation DOCUMENTATION;
 
     static {
@@ -390,7 +407,6 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
               new CsvHeader().withName("glossaryTerms"),
               new CsvHeader().withName("domain"),
               new CsvHeader().withName("dataProducts"));
-
       DOCUMENTATION = new CsvDocumentation().withHeaders(HEADERS).withSummary("Worksheet");
     }
 
@@ -404,18 +420,16 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-
       // Get worksheet name and spreadsheet FQN
       String worksheetName = csvRecord.get(0);
-      String spreadsheetFqn = csvRecord.get(3); // spreadsheet field
+      // spreadsheet field
+      String spreadsheetFqn = csvRecord.get(3);
       String worksheetFqn = FullyQualifiedName.add(spreadsheetFqn, worksheetName);
-
       Worksheet newWorksheet;
       try {
         newWorksheet = Entity.getEntityByName(WORKSHEET, worksheetFqn, "*", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         LOG.warn("Worksheet not found: {}, it will be created with Import.", worksheetFqn);
-
         // Get spreadsheet reference
         EntityReference spreadsheetRef = getEntityReference(printer, csvRecord, 3, SPREADSHEET);
         if (spreadsheetRef == null) {
@@ -423,11 +437,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
               printer, "Spreadsheet not found for worksheet: " + worksheetName, csvRecord);
           return;
         }
-
         // Get service from spreadsheet
         Spreadsheet spreadsheet =
             Entity.getEntity(SPREADSHEET, spreadsheetRef.getId(), "service", Include.NON_DELETED);
-
         newWorksheet =
             new Worksheet()
                 .withService(spreadsheet.getService())
@@ -435,7 +447,6 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                 .withName(worksheetName)
                 .withFullyQualifiedName(worksheetFqn);
       }
-
       // Update worksheet fields from CSV
       newWorksheet
           .withDisplayName(csvRecord.get(1))
@@ -457,7 +468,6 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                       Pair.of(12, TagLabel.TagSource.GLOSSARY))))
           .withDomains(getDomains(printer, csvRecord, 13, newWorksheet.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 14));
-
       if (processRecord) {
         createEntity(printer, csvRecord, newWorksheet, WORKSHEET);
       }
@@ -532,44 +542,100 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
 
   public static final String COLUMN_FIELD = "columns";
 
-  public class WorksheetUpdater extends ColumnEntityUpdater {
+  public class WorksheetUpdater implements EntityColumnMutation<Worksheet> {
+
     public WorksheetUpdater(
-        Worksheet original, Worksheet updated, Operation operation, ChangeSource changeSource) {
-      super(original, updated, operation, changeSource);
+        Worksheet original,
+        Worksheet updated,
+        EntityOperation operation,
+        ChangeSource changeSource) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, changeSource, false),
+              this);
+      this.columnUpdate = new EntityColumnUpdater<>(entityUpdate, this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<Worksheet> entityUpdate, boolean consolidatingChanges) {
       LOG.info("WorksheetUpdater.entitySpecificUpdate called");
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "worksheetId",
-          () -> recordChange("worksheetId", original.getWorksheetId(), updated.getWorksheetId()));
-      compareAndUpdate(
-          "index", () -> recordChange("index", original.getIndex(), updated.getIndex()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "worksheetId",
+                  entityUpdate.getOriginal().getWorksheetId(),
+                  entityUpdate.getUpdated().getWorksheetId()));
+      entityUpdate.compareAndUpdate(
+          "index",
+          () ->
+              entityUpdate.recordChange(
+                  "index",
+                  entityUpdate.getOriginal().getIndex(),
+                  entityUpdate.getUpdated().getIndex()));
+      entityUpdate.compareAndUpdate(
           "rowCount",
-          () -> recordChange("rowCount", original.getRowCount(), updated.getRowCount()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "rowCount",
+                  entityUpdate.getOriginal().getRowCount(),
+                  entityUpdate.getUpdated().getRowCount()));
+      entityUpdate.compareAndUpdate(
           "columnCount",
-          () -> recordChange("columnCount", original.getColumnCount(), updated.getColumnCount()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "columnCount",
+                  entityUpdate.getOriginal().getColumnCount(),
+                  entityUpdate.getUpdated().getColumnCount()));
+      entityUpdate.compareAndUpdate(
           "columns",
           () -> {
             // Use updateColumns for proper column handling including tags
             LOG.info(
                 "Calling updateColumns with original columns: {} and updated columns: {}",
-                original.getColumns() != null ? original.getColumns().size() : "null",
-                updated.getColumns() != null ? updated.getColumns().size() : "null");
-            updateColumns(
-                COLUMN_FIELD, original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+                entityUpdate.getOriginal().getColumns() != null
+                    ? entityUpdate.getOriginal().getColumns().size()
+                    : "null",
+                entityUpdate.getUpdated().getColumns() != null
+                    ? entityUpdate.getUpdated().getColumns().size()
+                    : "null");
+            columnUpdate.updateColumns(
+                COLUMN_FIELD,
+                entityUpdate.getOriginal().getColumns(),
+                entityUpdate.getUpdated().getColumns(),
+                EntityUtil.columnMatch);
           });
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "isHidden",
-          () -> recordChange("isHidden", original.getIsHidden(), updated.getIsHidden()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "isHidden",
+                  entityUpdate.getOriginal().getIsHidden(),
+                  entityUpdate.getUpdated().getIsHidden()));
+      entityUpdate.compareAndUpdate(
           "sampleData",
-          () -> recordChange("sampleData", original.getSampleData(), updated.getSampleData()));
+          () ->
+              entityUpdate.recordChange(
+                  "sampleData",
+                  entityUpdate.getOriginal().getSampleData(),
+                  entityUpdate.getUpdated().getSampleData()));
     }
+
+    private final EntityUpdater<Worksheet> entityUpdate;
+
+    public EntityUpdater<Worksheet> mutation() {
+      return entityUpdate;
+    }
+
+    private final EntityColumnUpdater<Worksheet> columnUpdate;
+  }
+
+  private final EntityPolicyContext<Worksheet> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Worksheet> context() {
+    return entityContext;
   }
 }

@@ -10,29 +10,57 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.service.EntityServiceAssembly;
+import org.openmetadata.service.entity.service.EntityServiceOperations;
+import org.openmetadata.service.entity.service.EntityServicePolicy;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
 
 @Slf4j
+@Repository()
 public class MlModelServiceRepository
-    extends ServiceEntityRepository<MlModelService, MlModelConnection> {
+    implements EntityServicePolicy<MlModelService, MlModelConnection> {
+
   private static final String UPDATE_FIELDS = "owners,connection";
 
   public MlModelServiceRepository() {
-    super(
-        MlModelServiceResource.COLLECTION_PATH,
-        Entity.MLMODEL_SERVICE,
-        Entity.getCollectionDAO().mlModelServiceDAO(),
-        MlModelConnection.class,
-        UPDATE_FIELDS,
-        ServiceType.ML_MODEL);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                MlModelServiceResource.COLLECTION_PATH,
+                Entity.MLMODEL_SERVICE,
+                MlModelService.class,
+                Entity.getCollectionDAO().mlModelServiceDAO()),
+            new EntityPolicyContext.WriteFields("", UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    this.serviceOperations =
+        EntityServiceAssembly.create(this, MlModelConnection.class, ServiceType.ML_MODEL);
+    context().options().setQuoteFqn(true);
+    context().options().setSupportsSearch(true);
+  }
+
+  private final EntityPolicyContext<MlModelService> entityContext;
+
+  private final EntityServiceOperations<MlModelService, MlModelConnection> serviceOperations;
+
+  @Override
+  public final EntityPolicyContext<MlModelService> context() {
+    return entityContext;
+  }
+
+  @Override
+  public final EntityServiceOperations<MlModelService, MlModelConnection> serviceOperations() {
+    return serviceOperations;
   }
 }

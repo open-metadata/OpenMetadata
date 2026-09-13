@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -35,6 +34,17 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
@@ -52,9 +62,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 @Repository(name = "ContextMemoryRepository")
-public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
+public class ContextMemoryRepository implements EntityPolicy<ContextMemory> {
 
   static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
+
   static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_SOURCE_FILE = "sourceFile";
   static final String FIELD_SOURCE_ENTITY = "sourceEntity";
@@ -80,18 +91,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   public ContextMemoryRepository() {
-    super(
-        ContextMemoryResource.COLLECTION_PATH,
-        Entity.CONTEXT_MEMORY,
-        ContextMemory.class,
-        Entity.getCollectionDAO().contextMemoryDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                ContextMemoryResource.COLLECTION_PATH,
+                Entity.CONTEXT_MEMORY,
+                ContextMemory.class,
+                Entity.getCollectionDAO().contextMemoryDAO()),
+            new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
-  protected void setFields(ContextMemory entity, Fields fields, RelationIncludes relationIncludes) {
+  public void setFields(ContextMemory entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains(FIELD_PRIMARY_ENTITY)) {
       entity.setPrimaryEntity(getPrimaryEntity(entity));
     }
@@ -110,7 +124,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   @Override
-  protected void clearFields(ContextMemory entity, Fields fields) {
+  public void clearFields(ContextMemory entity, Fields fields) {
     if (!fields.contains(FIELD_PRIMARY_ENTITY)) {
       entity.setPrimaryEntity(null);
     }
@@ -133,7 +147,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     fetchAndSetPrimaryEntities(entities, fields);
     fetchAndSetRelatedEntities(entities, fields);
     fetchAndSetSources(entities, fields);
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     for (ContextMemory entity : entities) {
       clearFieldsInternal(entity, fields);
@@ -150,7 +164,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private Map<UUID, EntityReference> batchFetchPrimaryEntities(List<ContextMemory> entities) {
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatchWithRelations(
                 entityListToStrings(entities),
@@ -198,7 +214,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   private Map<UUID, List<EntityReference>> batchFetchRelatedEntities(List<ContextMemory> entities) {
     Map<UUID, List<EntityReference>> relatedById = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(entities),
@@ -242,12 +260,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   private EntityReference getPrimaryEntity(ContextMemory entity) {
     List<EntityReference> refs =
-        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.APPLIED_TO, null);
+        relationships()
+            .from(
+                new EntityRelationshipReader.Selection(
+                    entity.getId(), Entity.CONTEXT_MEMORY, Relationship.APPLIED_TO, null),
+                Include.NON_DELETED);
     if (nullOrEmpty(refs)) {
       // Fallback for data written before the APPLIED_TO migration. Filter out domain refs
       // because domains use the same HAS relationship type (domain --HAS--> contextMemory).
       refs =
-          findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.HAS, null).stream()
+          relationships()
+              .from(
+                  new EntityRelationshipReader.Selection(
+                      entity.getId(), Entity.CONTEXT_MEMORY, Relationship.HAS, null),
+                  Include.NON_DELETED)
+              .stream()
               .filter(r -> !Entity.DOMAIN.equals(r.getType()))
               .toList();
     }
@@ -255,13 +282,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private List<EntityReference> getRelatedEntities(ContextMemory entity) {
-    return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(
+                entity.getId(), Entity.CONTEXT_MEMORY, Relationship.RELATED_TO, null),
+            Include.NON_DELETED);
   }
 
   /** The single Context Center source (file or page) a memory was extracted from, via MENTIONED_IN. */
   private EntityReference getSourceEntity(ContextMemory entity) {
     List<EntityReference> refs =
-        findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
+        relationships()
+            .from(
+                new EntityRelationshipReader.Selection(
+                    entity.getId(), Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null),
+                Include.NON_DELETED);
     return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
@@ -289,7 +324,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   private Map<UUID, EntityReference> batchFetchSources(List<ContextMemory> entities) {
     Map<UUID, EntityReference> sourceById = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(entities),
@@ -336,7 +373,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.getEntityReference(entity.getSourceEntity(), Include.NON_DELETED));
     }
     entity.setRelatedEntities(EntityUtil.populateEntityReferences(entity.getRelatedEntities()));
-
     if (entity.getRootMemory() != null) {
       ContextMemory rootMemory = Entity.getEntity(entity.getRootMemory(), "", Include.NON_DELETED);
       validateNotSelfReference(entity, rootMemory.getId(), "rootMemory");
@@ -395,7 +431,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   @Override
   public void storeEntity(ContextMemory entity, boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
@@ -405,51 +441,68 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     // which deletes only the specific changed refs. A blanket deleteTo here would also wipe
     // the framework's domain --HAS--> memory edge (storeDomains runs before storeRelationships).
     if (entity.getPrimaryEntity() != null) {
-      addRelationship(
-          entity.getPrimaryEntity().getId(),
-          entity.getId(),
-          entity.getPrimaryEntity().getType(),
-          Entity.CONTEXT_MEMORY,
-          Relationship.APPLIED_TO);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  entity.getPrimaryEntity().getId(),
+                  entity.getId(),
+                  entity.getPrimaryEntity().getType(),
+                  Entity.CONTEXT_MEMORY,
+                  Relationship.APPLIED_TO),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
-
     for (var relatedEntity : listOrEmpty(entity.getRelatedEntities())) {
-      addRelationship(
-          relatedEntity.getId(),
-          entity.getId(),
-          relatedEntity.getType(),
-          Entity.CONTEXT_MEMORY,
-          Relationship.RELATED_TO);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  relatedEntity.getId(),
+                  entity.getId(),
+                  relatedEntity.getType(),
+                  Entity.CONTEXT_MEMORY,
+                  Relationship.RELATED_TO),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
-
     // Distinct relationship types (CONTAINS for root-ancestor, PARENT_OF for direct parent)
     // so the two hierarchies resolve independently and neither collides with the framework's
     // HAS edges (domains).
     if (entity.getRootMemory() != null) {
-      addRelationship(
-          entity.getRootMemory().getId(),
-          entity.getId(),
-          Entity.CONTEXT_MEMORY,
-          Entity.CONTEXT_MEMORY,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  entity.getRootMemory().getId(),
+                  entity.getId(),
+                  Entity.CONTEXT_MEMORY,
+                  Entity.CONTEXT_MEMORY,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
-
     if (entity.getParentMemory() != null) {
-      addRelationship(
-          entity.getParentMemory().getId(),
-          entity.getId(),
-          Entity.CONTEXT_MEMORY,
-          Entity.CONTEXT_MEMORY,
-          Relationship.PARENT_OF);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  entity.getParentMemory().getId(),
+                  entity.getId(),
+                  Entity.CONTEXT_MEMORY,
+                  Entity.CONTEXT_MEMORY,
+                  Relationship.PARENT_OF),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
 
     if (entity.getSourceEntity() != null) {
-      addRelationship(
-          entity.getSourceEntity().getId(),
-          entity.getId(),
-          entity.getSourceEntity().getType(),
-          Entity.CONTEXT_MEMORY,
-          Relationship.MENTIONED_IN);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  entity.getSourceEntity().getId(),
+                  entity.getId(),
+                  entity.getSourceEntity().getType(),
+                  Entity.CONTEXT_MEMORY,
+                  Relationship.MENTIONED_IN),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
@@ -460,7 +513,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   // ------------------------------------------------------------------
   // Lifecycle enforcement
   // ------------------------------------------------------------------
-
   /**
    * Valid status transitions:
    *   DRAFT → ACTIVE
@@ -475,14 +527,19 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   private static final Map<ContextMemoryStatus, Set<ContextMemoryStatus>> VALID_TRANSITIONS =
       Map.of(
           ContextMemoryStatus.DRAFT,
-              Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ACTIVE, Set.of(ContextMemoryStatus.ARCHIVED),
-          ContextMemoryStatus.ARCHIVED, Set.of(ContextMemoryStatus.ACTIVE));
+          Set.of(ContextMemoryStatus.ACTIVE, ContextMemoryStatus.ARCHIVED),
+          ContextMemoryStatus.ACTIVE,
+          Set.of(ContextMemoryStatus.ARCHIVED),
+          ContextMemoryStatus.ARCHIVED,
+          Set.of(ContextMemoryStatus.ACTIVE));
 
-  /** Validate that a status transition is allowed. */
+  /**
+   * Validate that a status transition is allowed.
+   */
   public static void validateStatusTransition(ContextMemoryStatus from, ContextMemoryStatus to) {
     if (from == to) {
-      return; // No change
+      // No change
+      return;
     }
     Set<ContextMemoryStatus> allowed = VALID_TRANSITIONS.get(from);
     if (allowed == null) {
@@ -498,88 +555,125 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      ContextMemory original, ContextMemory updated, Operation operation, ChangeSource source) {
-    return new ContextMemoryUpdater(original, updated, operation);
+  public EntityUpdater<ContextMemory> getUpdater(
+      ContextMemory original,
+      ContextMemory updated,
+      EntityOperation operation,
+      ChangeSource source) {
+    return new ContextMemoryUpdater(original, updated, operation).mutation();
   }
 
-  public class ContextMemoryUpdater extends EntityUpdater {
+  public class ContextMemoryUpdater implements EntitySpecificMutation<ContextMemory> {
+
     public ContextMemoryUpdater(
-        ContextMemory original, ContextMemory updated, Operation operation) {
-      super(original, updated, operation);
+        ContextMemory original, ContextMemory updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<ContextMemory> entityUpdate, boolean consolidatingChanges) {
       flipToManualOnUserEdit();
-      recordChange("title", original.getTitle(), updated.getTitle());
-      recordChange("summary", original.getSummary(), updated.getSummary());
-      recordChange("question", original.getQuestion(), updated.getQuestion());
-      recordChange("answer", original.getAnswer(), updated.getAnswer());
-      recordChange("memoryType", original.getMemoryType(), updated.getMemoryType());
-      recordChange("memoryScope", original.getMemoryScope(), updated.getMemoryScope());
-      recordChange("sourceType", original.getSourceType(), updated.getSourceType());
-      recordChange("pinned", original.getPinned(), updated.getPinned());
-      recordChange(
-          "sourceConversation", original.getSourceConversation(), updated.getSourceConversation());
-      recordChange(
-          "sourceHumanMessage", original.getSourceHumanMessage(), updated.getSourceHumanMessage());
-      recordChange(
+      entityUpdate.recordChange(
+          "title", entityUpdate.getOriginal().getTitle(), entityUpdate.getUpdated().getTitle());
+      entityUpdate.recordChange(
+          "summary",
+          entityUpdate.getOriginal().getSummary(),
+          entityUpdate.getUpdated().getSummary());
+      entityUpdate.recordChange(
+          "question",
+          entityUpdate.getOriginal().getQuestion(),
+          entityUpdate.getUpdated().getQuestion());
+      entityUpdate.recordChange(
+          "answer", entityUpdate.getOriginal().getAnswer(), entityUpdate.getUpdated().getAnswer());
+      entityUpdate.recordChange(
+          "memoryType",
+          entityUpdate.getOriginal().getMemoryType(),
+          entityUpdate.getUpdated().getMemoryType());
+      entityUpdate.recordChange(
+          "memoryScope",
+          entityUpdate.getOriginal().getMemoryScope(),
+          entityUpdate.getUpdated().getMemoryScope());
+      entityUpdate.recordChange(
+          "sourceType",
+          entityUpdate.getOriginal().getSourceType(),
+          entityUpdate.getUpdated().getSourceType());
+      entityUpdate.recordChange(
+          "pinned", entityUpdate.getOriginal().getPinned(), entityUpdate.getUpdated().getPinned());
+      entityUpdate.recordChange(
+          "sourceConversation",
+          entityUpdate.getOriginal().getSourceConversation(),
+          entityUpdate.getUpdated().getSourceConversation());
+      entityUpdate.recordChange(
+          "sourceHumanMessage",
+          entityUpdate.getOriginal().getSourceHumanMessage(),
+          entityUpdate.getUpdated().getSourceHumanMessage());
+      entityUpdate.recordChange(
           "sourceAssistantMessage",
-          original.getSourceAssistantMessage(),
-          updated.getSourceAssistantMessage());
-      recordChange(
+          entityUpdate.getOriginal().getSourceAssistantMessage(),
+          entityUpdate.getUpdated().getSourceAssistantMessage());
+      entityUpdate.recordChange(
           "machineRepresentation",
-          original.getMachineRepresentation(),
-          updated.getMachineRepresentation());
-
+          entityUpdate.getOriginal().getMachineRepresentation(),
+          entityUpdate.getUpdated().getMachineRepresentation());
       // Validate lifecycle transition before recording status change
-      if (original.getStatus() != null
-          && updated.getStatus() != null
-          && original.getStatus() != updated.getStatus()) {
-        validateStatusTransition(original.getStatus(), updated.getStatus());
+      if (entityUpdate.getOriginal().getStatus() != null
+          && entityUpdate.getUpdated().getStatus() != null
+          && entityUpdate.getOriginal().getStatus() != entityUpdate.getUpdated().getStatus()) {
+        validateStatusTransition(
+            entityUpdate.getOriginal().getStatus(), entityUpdate.getUpdated().getStatus());
       }
-      recordChange("status", original.getStatus(), updated.getStatus());
-
-      recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig());
-
+      entityUpdate.recordChange(
+          "status", entityUpdate.getOriginal().getStatus(), entityUpdate.getUpdated().getStatus());
+      entityUpdate.recordChange(
+          "shareConfig",
+          entityUpdate.getOriginal().getShareConfig(),
+          entityUpdate.getUpdated().getShareConfig());
       // Relationship-backed fields: these helpers record the version change and delete only
       // the specific changed refs (never a blanket delete), so the framework's
       // domain --HAS--> memory edge is left intact.
-      updateFromRelationships(
-          FIELD_PRIMARY_ENTITY,
-          Entity.CONTEXT_MEMORY,
-          asRefList(original.getPrimaryEntity()),
-          asRefList(updated.getPrimaryEntity()),
-          Relationship.APPLIED_TO,
-          Entity.CONTEXT_MEMORY,
-          original.getId());
-      updateFromRelationships(
-          FIELD_RELATED_ENTITIES,
-          Entity.CONTEXT_MEMORY,
-          listOrEmpty(original.getRelatedEntities()),
-          listOrEmpty(updated.getRelatedEntities()),
-          Relationship.RELATED_TO,
-          Entity.CONTEXT_MEMORY,
-          original.getId());
-      updateFromRelationship(
-          "rootMemory",
-          Entity.CONTEXT_MEMORY,
-          original.getRootMemory(),
-          updated.getRootMemory(),
-          Relationship.CONTAINS,
-          Entity.CONTEXT_MEMORY,
-          original.getId());
-      updateFromRelationship(
-          "parentMemory",
-          Entity.CONTEXT_MEMORY,
-          original.getParentMemory(),
-          updated.getParentMemory(),
-          Relationship.PARENT_OF,
-          Entity.CONTEXT_MEMORY,
-          original.getId());
+      entityUpdate.updateFromRelationships(
+          new EntityRelationshipUpdates.Target(
+              FIELD_PRIMARY_ENTITY,
+              entityUpdate.getOriginal().getId(),
+              Entity.CONTEXT_MEMORY,
+              Entity.CONTEXT_MEMORY,
+              Relationship.APPLIED_TO),
+          new EntityRelationshipUpdates.References(
+              asRefList(entityUpdate.getOriginal().getPrimaryEntity()),
+              asRefList(entityUpdate.getUpdated().getPrimaryEntity())));
+      entityUpdate.updateFromRelationships(
+          new EntityRelationshipUpdates.Target(
+              FIELD_RELATED_ENTITIES,
+              entityUpdate.getOriginal().getId(),
+              Entity.CONTEXT_MEMORY,
+              Entity.CONTEXT_MEMORY,
+              Relationship.RELATED_TO),
+          new EntityRelationshipUpdates.References(
+              listOrEmpty(entityUpdate.getOriginal().getRelatedEntities()),
+              listOrEmpty(entityUpdate.getUpdated().getRelatedEntities())));
+      entityUpdate.updateFromRelationship(
+          new EntityRelationshipUpdates.Target(
+              "rootMemory",
+              entityUpdate.getOriginal().getId(),
+              Entity.CONTEXT_MEMORY,
+              Entity.CONTEXT_MEMORY,
+              Relationship.CONTAINS),
+          entityUpdate.getOriginal().getRootMemory(),
+          entityUpdate.getUpdated().getRootMemory());
+      entityUpdate.updateFromRelationship(
+          new EntityRelationshipUpdates.Target(
+              "parentMemory",
+              entityUpdate.getOriginal().getId(),
+              Entity.CONTEXT_MEMORY,
+              Entity.CONTEXT_MEMORY,
+              Relationship.PARENT_OF),
+          entityUpdate.getOriginal().getParentMemory(),
+          entityUpdate.getUpdated().getParentMemory());
       updateSourceEntityRelationship();
-
       // usageCount and lastUsedAt are AI-retrieval telemetry, intentionally excluded from
       // version history so routine retrieval does not churn the entity version.
     }
@@ -593,17 +687,18 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
      * the pill under engine management.
      */
     private void flipToManualOnUserEdit() {
-      if (operation == Operation.PATCH
-          && updated.getSourceType() == original.getSourceType()
-          && isAutomatedSource(original.getSourceType())
+      if (entityUpdate.getOperation() == EntityOperation.PATCH
+          && entityUpdate.getUpdated().getSourceType() == entityUpdate.getOriginal().getSourceType()
+          && isAutomatedSource(entityUpdate.getOriginal().getSourceType())
           && extractionManagedFieldChanged()) {
-        updated.setSourceType(ContextMemorySourceType.MANUAL);
+        entityUpdate.getUpdated().setSourceType(ContextMemorySourceType.MANUAL);
       }
     }
 
     /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
     private boolean extractionManagedFieldChanged() {
-      return ContextMemoryRepository.extractionManagedFieldChanged(original, updated);
+      return ContextMemoryRepository.extractionManagedFieldChanged(
+          entityUpdate.getOriginal(), entityUpdate.getUpdated());
     }
 
     private void updateSourceEntityRelationship() {
@@ -613,21 +708,29 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       // that links the pill to its source file/page -- orphaning it from memoryCount, the
       // sourceEntityId listing, and the article's derived ontologies. A genuine re-parent still
       // works: it supplies a non-null ref, so this guard does not fire.
-      if (updated.getSourceEntity() == null) {
-        updated.setSourceEntity(original.getSourceEntity());
+      if (entityUpdate.getUpdated().getSourceEntity() == null) {
+        entityUpdate.getUpdated().setSourceEntity(entityUpdate.getOriginal().getSourceEntity());
       }
       // Plural form with single-element lists so the stale edge is removed under its OWN entity
       // type and the new one added under its own. The singular updateFromRelationship took one
       // fromType for both delete and add, which orphaned the old edge when the source changed type
       // (e.g. ContextFile -> Page). Mirrors how primaryEntity is reconciled above.
-      updateFromRelationships(
-          FIELD_SOURCE_ENTITY,
-          Entity.CONTEXT_MEMORY,
-          asRefList(original.getSourceEntity()),
-          asRefList(updated.getSourceEntity()),
-          Relationship.MENTIONED_IN,
-          Entity.CONTEXT_MEMORY,
-          original.getId());
+      entityUpdate.updateFromRelationships(
+          new EntityRelationshipUpdates.Target(
+              FIELD_SOURCE_ENTITY,
+              entityUpdate.getOriginal().getId(),
+              Entity.CONTEXT_MEMORY,
+              Entity.CONTEXT_MEMORY,
+              Relationship.MENTIONED_IN),
+          new EntityRelationshipUpdates.References(
+              asRefList(entityUpdate.getOriginal().getSourceEntity()),
+              asRefList(entityUpdate.getUpdated().getSourceEntity())));
+    }
+
+    private final EntityUpdater<ContextMemory> entityUpdate;
+
+    public EntityUpdater<ContextMemory> mutation() {
+      return entityUpdate;
     }
   }
 
@@ -648,14 +751,18 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   /** Loads the knowledge pills currently linked to a Context Center source (file or page). */
   public List<ContextMemory> listExtractedMemories(UUID sourceId, String sourceType) {
     List<EntityReference> refs =
-        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
+        relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY),
+                Include.NON_DELETED);
     if (refs.isEmpty()) {
       return new ArrayList<>();
     }
     // Batch-load in one query instead of a get() per ref (avoids N+1). Reconciliation only reads
     // stored fields (question/status/answer/...), so the relationship-free fetch is sufficient.
     List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
-    return find(ids, Include.NON_DELETED);
+    return lookup().byIds(ids, Include.NON_DELETED);
   }
 
   /**
@@ -670,9 +777,20 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
    */
   public void deleteExtractedMemories(UUID sourceId, String sourceType) {
     List<EntityReference> refs =
-        findTo(sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY, Include.ALL);
+        relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    sourceId, sourceType, Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY),
+                Include.ALL);
     for (EntityReference ref : refs) {
-      delete(Entity.ADMIN_USER_NAME, ref.getId(), false, true);
+      deletes().byId(Entity.ADMIN_USER_NAME, ref.getId(), false, true);
     }
+  }
+
+  private final EntityPolicyContext<ContextMemory> entityContext;
+
+  @Override
+  public final EntityPolicyContext<ContextMemory> context() {
+    return entityContext;
   }
 }

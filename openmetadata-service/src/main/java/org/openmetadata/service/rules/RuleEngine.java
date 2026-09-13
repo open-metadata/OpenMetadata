@@ -18,15 +18,16 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public class RuleEngine {
 
   @Getter private static final RuleEngine instance = new RuleEngine();
+
   private final ThreadLocal<JsonLogic> jsonLogicThreadLocal;
 
   private RuleEngine() {
@@ -63,7 +64,6 @@ public class RuleEngine {
   public void evaluateUpdate(EntityInterface original, EntityInterface updated) {
     List<SemanticsRule> originalErrors = evaluateAndReturn(original, null, true, false);
     List<SemanticsRule> updatedErrors = evaluateAndReturn(updated, null, true, false);
-
     // If the updated entity is not fixing anything, throw a validation exception
     if (!nullOrEmpty(updatedErrors) && updatedErrors.size() >= originalErrors.size()) {
       raiseErroredRules(updatedErrors);
@@ -108,7 +108,6 @@ public class RuleEngine {
             }
           }
         });
-
     return erroredRules;
   }
 
@@ -132,16 +131,17 @@ public class RuleEngine {
     if (!nullOrEmpty(rules)) {
       rulesToEvaluate.addAll(rules);
     }
-
     if (nullOrEmpty(rulesToEvaluate)) {
-      return List.of(); // No rules to evaluate
+      // No rules to evaluate
+      return List.of();
     }
     return rulesToEvaluate;
   }
 
   public Boolean shouldApplyRule(EntityInterface facts, SemanticsRule rule) {
     if (!rule.getEnabled()) {
-      return false; // If the rule is not enabled, skip it
+      // If the rule is not enabled, skip it
+      return false;
     }
     // If the rule is not entity-specific, apply it
     if (rule.getEntityType() == null && nullOrEmpty(rule.getIgnoredEntities())) {
@@ -156,11 +156,12 @@ public class RuleEngine {
       List<? extends Class<? extends EntityInterface>> ignoredEntities =
           rule.getIgnoredEntities().stream()
               .map(Entity::getEntityRepository)
-              .map(EntityRepository::getEntityClass)
+              .map(EntityPolicy::getEntityClass)
               .toList();
       return !ignoredEntities.contains(facts.getClass());
     }
-    return true; // Default case, apply the rule
+    // Default case, apply the rule
+    return true;
   }
 
   private List<SemanticsRule> getEnabledEntitySemantics() {

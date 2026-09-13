@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +29,15 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.apis.APICollectionResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -36,22 +45,26 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class APICollectionRepository extends EntityRepository<APICollection> {
+@Repository()
+public class APICollectionRepository implements EntityPolicy<APICollection> {
 
   public APICollectionRepository() {
-    super(
-        APICollectionResource.COLLECTION_PATH,
-        Entity.API_COLLECTION,
-        APICollection.class,
-        Entity.getCollectionDAO().apiCollectionDAO(),
-        "",
-        "");
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                APICollectionResource.COLLECTION_PATH,
+                Entity.API_COLLECTION,
+                APICollection.class,
+                Entity.getCollectionDAO().apiCollectionDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent API service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by the root
     // cleanup() FQN prefix (FQNs are service-nested). See
     // EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
+    context().options().setDescendantsCoveredByAncestorCascade(true);
   }
 
   @Override
@@ -67,25 +80,25 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service");
   }
 
   @Override
   public void storeEntity(APICollection apiCollection, boolean update) {
-    store(apiCollection, update);
+    persistence().store(apiCollection, update);
   }
 
   @Override
   public void storeEntities(List<APICollection> entities) {
-    storeMany(entities);
+    persistence().insertMany(entities);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<APICollection> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<APICollection> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(APICollection::getId).toList();
-    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteToMany(ids, context().schema().entityType(), Relationship.CONTAINS, null);
   }
 
   @Override
@@ -94,7 +107,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
-  protected void storeEntitySpecificRelationshipsForMany(List<APICollection> entities) {
+  public void storeEntitySpecificRelationshipsForMany(List<APICollection> entities) {
     List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
     for (APICollection apiCollection : entities) {
       EntityReference service = apiCollection.getService();
@@ -106,7 +119,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
               service.getId(),
               apiCollection.getId(),
               service.getType(),
-              entityType,
+              context().schema().entityType(),
               Relationship.CONTAINS));
     }
     bulkInsertRelationships(relationships);
@@ -115,15 +128,18 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   private List<EntityReference> getAPIEndpoints(APICollection apiCollection) {
     return apiCollection == null
         ? null
-        : findTo(
-            apiCollection.getId(),
-            Entity.API_COLLECTION,
-            Relationship.CONTAINS,
-            Entity.API_ENDPOINT);
+        : relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    apiCollection.getId(),
+                    Entity.API_COLLECTION,
+                    Relationship.CONTAINS,
+                    Entity.API_ENDPOINT),
+                Include.NON_DELETED);
   }
 
   @Override
-  protected EntityReference getParentReference(APICollection entity) {
+  public EntityReference getParentReference(APICollection entity) {
     return entity.getService();
   }
 
@@ -139,7 +155,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   public void setFields(
       APICollection apiCollection, Fields fields, RelationIncludes relationIncludes) {
     if (apiCollection.getService() == null) {
-      apiCollection.setService(getContainer(apiCollection.getId()));
+      apiCollection.setService(relationships().container(apiCollection.getId(), null));
     }
     apiCollection.setApiEndpoints(
         fields.contains("apiEndpoints")
@@ -154,25 +170,21 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     }
     // Bulk fetch and set service for all API collections first
     fetchAndSetServices(entities);
-
     // Then call parent's implementation which handles standard fields
-    super.setFieldsInBulk(fields, entities);
+    EntityPolicy.super.setFieldsInBulk(fields, entities);
   }
 
   private void fetchAndSetServices(List<APICollection> apiCollections) {
     if (apiCollections == null || apiCollections.isEmpty()) {
       return;
     }
-
     List<APICollection> collectionsMissingService =
         apiCollections.stream().filter(collection -> collection.getService() == null).toList();
     if (collectionsMissingService.isEmpty()) {
       return;
     }
-
     // Batch fetch service references for all API collections
     Map<UUID, EntityReference> serviceRefs = batchFetchServices(collectionsMissingService);
-
     // Set service field for all API collections
     for (APICollection apiCollection : collectionsMissingService) {
       EntityReference serviceRef = serviceRefs.get(apiCollection.getId());
@@ -187,30 +199,27 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     if (apiCollections == null || apiCollections.isEmpty()) {
       return serviceMap;
     }
-
     // Batch query to get all services that contain these API collections
     // findFromBatch finds relationships where the provided IDs are in the "to" position
     // So this finds: API_SERVICE (from) -> CONTAINS -> API_COLLECTION (to)
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(apiCollections),
                 Relationship.CONTAINS.ordinal(),
                 Entity.API_SERVICE,
                 Include.ALL);
-
     if (records.isEmpty()) {
       return serviceMap;
     }
-
     List<UUID> serviceIds =
         records.stream().map(record -> UUID.fromString(record.getFromId())).distinct().toList();
-
     Map<UUID, EntityReference> serviceRefMap =
         Entity.getEntityReferencesByIds(Entity.API_SERVICE, serviceIds, Include.ALL).stream()
             .collect(Collectors.toMap(EntityReference::getId, ref -> ref));
-
     for (CollectionDAO.EntityRelationshipObject record : records) {
       // We're looking for records where API Service contains API Collection
       UUID apiCollectionId = UUID.fromString(record.getToId());
@@ -220,7 +229,6 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         serviceMap.put(apiCollectionId, serviceRef);
       }
     }
-
     return serviceMap;
   }
 
@@ -232,17 +240,17 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   @Override
   public void restorePatchAttributes(APICollection original, APICollection updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
   }
 
   @Override
-  public EntityRepository<APICollection>.EntityUpdater getUpdater(
+  public EntityUpdater<APICollection> getUpdater(
       APICollection original,
       APICollection updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new APICollectionUpdater(original, updated, operation);
+    return new APICollectionUpdater(original, updated, operation).mutation();
   }
 
   private void populateService(APICollection apiCollection) {
@@ -252,25 +260,43 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
     apiCollection.setServiceType(service.getServiceType());
   }
 
-  public class APICollectionUpdater extends EntityUpdater {
+  public class APICollectionUpdater implements EntitySpecificMutation<APICollection> {
+
     public APICollectionUpdater(
-        APICollection original, APICollection updated, Operation operation) {
-      super(original, updated, operation);
+        APICollection original, APICollection updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<APICollection> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "sourceHash",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "sourceHash",
-                  original.getSourceHash(),
-                  updated.getSourceHash(),
+                  entityUpdate.getOriginal().getSourceHash(),
+                  entityUpdate.getUpdated().getSourceHash(),
                   false,
                   EntityUtil.objectMatch,
                   false));
     }
+
+    private final EntityUpdater<APICollection> entityUpdate;
+
+    public EntityUpdater<APICollection> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<APICollection> entityContext;
+
+  @Override
+  public final EntityPolicyContext<APICollection> context() {
+    return entityContext;
   }
 }

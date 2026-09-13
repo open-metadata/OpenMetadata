@@ -43,7 +43,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
@@ -141,7 +141,7 @@ class AlertUtilFilterIsolationTest {
 
   /** The deliverable event resolves its domain; the poison one fails the way a matcher bug does. */
   private static void stubStore(MockedStatic<Entity> entityMock) {
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> repository = mock(EntityPolicy.class);
     when(repository.isSupportsDomains()).thenReturn(true);
     entityMock.when(() -> Entity.getEntityClassFromType(Entity.TABLE)).thenReturn(Table.class);
     entityMock.when(() -> Entity.getEntityClassFromType(Entity.DOMAIN)).thenReturn(Domain.class);

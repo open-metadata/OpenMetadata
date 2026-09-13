@@ -49,10 +49,10 @@ import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
@@ -92,16 +92,21 @@ import org.quartz.JobExecutionContext;
  */
 @Slf4j
 public class CacheWarmupApp extends AbstractNativeApplication {
+
   private static final String ALL = "all";
+
   private static final int DEFAULT_BATCH_SIZE = 1000;
+
   private static final Set<String> LEGACY_APP_CONFIG_FIELDS =
       Set.of("consumerThreads", "queueSize");
+
   // Built per-instance from cacheConfig.redis.keyspace so multi-environment deployments sharing
   // one Redis with different keyspaces don't collide on warmup metadata. TTL is one day for
   // checkpoints (long enough for ops staff to notice and resume a stuck warmup, short enough
   // that abandoned checkpoints self-clean). Claim TTL is short enough to limit the
   // stop-the-world hold if an instance dies mid-warm.
   private static final Duration CHECKPOINT_TTL = Duration.ofDays(1);
+
   private static final Duration CLAIM_TTL = Duration.ofMinutes(10);
 
   // Bound how long we wait for a flapping cache before declaring the warmup partial. Each retry
@@ -110,33 +115,47 @@ public class CacheWarmupApp extends AbstractNativeApplication {
   // {@code break} on first {@code !available}, which combined with a 300ms-timeout cache flipping
   // unavailable on the very first hiccup left 84% of entities cold while the run reported SUCCESS.
   private static final int MAX_UNAVAILABLE_RETRIES = 30;
+
   private static final long UNAVAILABLE_BACKOFF_MS = 1_000L;
 
   // Runtime state used for the AppRunRecord broadcast. We keep an EventPublisherJob here purely
   // because that's what the AppRunRecord serialization expects in the success/failure contexts;
   // it is NOT parsed from the user-supplied JSON. User configuration lives on {@link #appConfig}.
   @Getter private EventPublisherJob jobData;
+
   private CacheWarmupAppConfig appConfig;
 
   private CacheProvider cacheProvider;
+
   private CacheKeys keys;
+
   private CacheConfig cacheConfig;
+
   private BundleWarmupBatcher bundleBatcher;
+
   // Set during initCacheComponents from cacheConfig.redis.keyspace.
   private String checkpointKeyPrefix;
+
   private String claimKeyPrefix;
+
   private final String instanceId = generateInstanceId();
 
   private JobExecutionContext jobExecutionContext;
+
   private volatile boolean stopped = false;
+
   private final Stats stats = new Stats().withEntityStats(new EntityStats());
+
   private volatile boolean partiallyWarmed = false;
+
   // Per-entity-type bail-out reasons collected during warmEntity. Surfaced through
   // jobData.failure → AppRunRecord.failureContext when the run finishes in ACTIVE_ERROR /
   // FAILED so operators can see which entity types and offsets bailed without trawling logs.
   private final java.util.Map<String, String> partialWarmupFailures =
       new java.util.concurrent.ConcurrentHashMap<>();
+
   private volatile long lastWebSocketUpdate = 0;
+
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
 
   public CacheWarmupApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
@@ -263,24 +282,30 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     return Boolean.parseBoolean(System.getProperty("om.cache.warmup.distributedClaim", "false"));
   }
 
-  /** When true, this run warms every entity type even if another instance has already
+  /**
+   * When true, this run warms every entity type even if another instance has already
    *  claimed it. Use sparingly — concurrent warmers race on the same Redis keys, which is
-   *  idempotent but wastes work and may briefly serve mixed-version reads. */
+   *  idempotent but wastes work and may briefly serve mixed-version reads.
+   */
   private boolean forceWarmup() {
     return appConfig != null
         && appConfig.getForce() != null
         && Boolean.TRUE.equals(appConfig.getForce());
   }
 
-  /** Stash a per-entity-type bail-out reason. We append rather than replace so a single
-   *  entity type that hits multiple failure paths during one run keeps the full picture. */
+  /**
+   * Stash a per-entity-type bail-out reason. We append rather than replace so a single
+   *  entity type that hits multiple failure paths during one run keeps the full picture.
+   */
   private void recordPartialFailure(String entityType, String reason) {
     partialWarmupFailures.merge(entityType, reason, (a, b) -> a + "; " + b);
   }
 
-  /** Compose an {@link IndexingError} summarising every entity-type partial failure for
+  /**
+   * Compose an {@link IndexingError} summarising every entity-type partial failure for
    *  display in the AppRunRecord's failureContext. The message is bounded so it doesn't blow
-   *  up the websocket payload on degenerate runs. */
+   *  up the websocket payload on degenerate runs.
+   */
   private IndexingError buildPartialWarmupFailure() {
     if (partialWarmupFailures.isEmpty()) {
       return new IndexingError()
@@ -367,7 +392,6 @@ public class CacheWarmupApp extends AbstractNativeApplication {
     }
     stats.setJobStats(new StepStats().withTotalRecords((int) totalTargetCount));
     sendUpdates(jobExecutionContext, true);
-
     int batchSize = jobData.getBatchSize();
     Duration ttl = Duration.ofSeconds(cacheConfig.entityTtlSeconds);
     partiallyWarmed = false;
@@ -409,7 +433,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
           "Force warmup enabled for {} — bypassing distributed claim (operator override)",
           entityType);
     }
-    EntityRepository<?> repository;
+    EntityPolicy<?> repository;
     EntityDAO<?> dao;
     Class<? extends EntityInterface> entityClass;
     try {
@@ -420,7 +444,6 @@ public class CacheWarmupApp extends AbstractNativeApplication {
       LOG.debug("Unknown entity type {}, skipping", entityType);
       return;
     }
-
     int offset = readCheckpoint(entityType);
     if (offset > 0) {
       LOG.info("Resuming {} warmup from checkpoint offset {}", entityType, offset);
@@ -479,7 +502,6 @@ public class CacheWarmupApp extends AbstractNativeApplication {
         break;
       }
       if (page.isEmpty()) break;
-
       Map<String, Map<String, String>> hsetBatch = new HashMap<>(page.size() * 2);
       Map<String, String> setBatch = new HashMap<>(page.size());
       List<EntityInterface> parsedEntities = new ArrayList<>(page.size());

@@ -299,22 +299,18 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
               .withSpreadsheet(spreadsheet2.getFullyQualifiedName()));
     }
 
-    ListParams params = new ListParams();
-    params.setLimit(100);
-    ListResponse<Worksheet> allWorksheets = listEntities(params);
-    assertNotNull(allWorksheets);
-
-    long spreadsheet1Count =
-        allWorksheets.getData().stream()
-            .filter(w -> w.getSpreadsheet().getId().equals(spreadsheet1.getId()))
-            .count();
-    assertTrue(spreadsheet1Count >= 3);
-
-    long spreadsheet2Count =
-        allWorksheets.getData().stream()
-            .filter(w -> w.getSpreadsheet().getId().equals(spreadsheet2.getId()))
-            .count();
-    assertTrue(spreadsheet2Count >= 3);
+    for (final Spreadsheet spreadsheet : List.of(spreadsheet1, spreadsheet2)) {
+      final ListParams params =
+          new ListParams()
+              .withLimit(100)
+              .addFilter("spreadsheet", spreadsheet.getFullyQualifiedName());
+      final ListResponse<Worksheet> worksheets = listEntities(params);
+      assertEquals(3, worksheets.getData().size());
+      assertTrue(
+          worksheets.getData().stream()
+              .allMatch(
+                  worksheet -> worksheet.getSpreadsheet().getId().equals(spreadsheet.getId())));
+    }
   }
 
   @Test

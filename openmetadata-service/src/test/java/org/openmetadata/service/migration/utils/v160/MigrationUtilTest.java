@@ -4,9 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -21,6 +23,7 @@ import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.Update;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Table;
@@ -33,12 +36,20 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter.Edge;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.read.EntityRelationshipFixture;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 
 class MigrationUtilTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
   private static final String TABLE_CONSTRAINT_FETCH_MY_SQL =
       "SELECT id, json FROM table_entity "
           + "WHERE JSON_LENGTH(JSON_EXTRACT(json, '$.tableConstraints')) > 0 "
@@ -58,6 +69,7 @@ class MigrationUtilTest {
   @Test
   void addViewAllRuleToOrgPolicyAddsMissingRuleAndPersists() {
     PolicyRepository repository = mock(PolicyRepository.class);
+    EntityDAO<Policy> policyRows = lookups.attach(repository, Entity.POLICY, Policy.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class, RETURNS_DEEP_STUBS);
     Policy policy =
         new Policy()
@@ -65,7 +77,7 @@ class MigrationUtilTest {
             .withFullyQualifiedName("OrganizationPolicy")
             .withRules(new ArrayList<>(List.of(new Rule().withName("ExistingRule"))));
 
-    when(repository.findByName("OrganizationPolicy", Include.NON_DELETED)).thenReturn(policy);
+    when(policyRows.findEntityByName("OrganizationPolicy", Include.NON_DELETED)).thenReturn(policy);
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(repository);
@@ -88,6 +100,7 @@ class MigrationUtilTest {
   @Test
   void addViewAllRuleToOrgPolicySkipsExistingRuleAndMissingPolicies() {
     PolicyRepository repository = mock(PolicyRepository.class);
+    EntityDAO<Policy> policyRows = lookups.attach(repository, Entity.POLICY, Policy.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class, RETURNS_DEEP_STUBS);
     Policy policy =
         new Policy()
@@ -96,7 +109,7 @@ class MigrationUtilTest {
             .withRules(
                 new ArrayList<>(List.of(new Rule().withName("OrganizationPolicy-ViewAll-Rule"))));
 
-    when(repository.findByName("OrganizationPolicy", Include.NON_DELETED))
+    when(policyRows.findEntityByName("OrganizationPolicy", Include.NON_DELETED))
         .thenReturn(policy)
         .thenThrow(EntityNotFoundException.byName("OrganizationPolicy"));
 
@@ -113,6 +126,7 @@ class MigrationUtilTest {
   @Test
   void addViewAllRuleToOrgPolicyInitializesNullRuleLists() {
     PolicyRepository repository = mock(PolicyRepository.class);
+    EntityDAO<Policy> policyRows = lookups.attach(repository, Entity.POLICY, Policy.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class, RETURNS_DEEP_STUBS);
     Policy policy =
         new Policy()
@@ -120,7 +134,7 @@ class MigrationUtilTest {
             .withFullyQualifiedName("OrganizationPolicy")
             .withRules(null);
 
-    when(repository.findByName("OrganizationPolicy", Include.NON_DELETED)).thenReturn(policy);
+    when(policyRows.findEntityByName("OrganizationPolicy", Include.NON_DELETED)).thenReturn(policy);
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(repository);
@@ -137,13 +151,15 @@ class MigrationUtilTest {
   @Test
   void addEditGlossaryTermsToDataConsumerPolicyUpdatesBothPolicies() {
     PolicyRepository repository = mock(PolicyRepository.class);
+    EntityDAO<Policy> policyRows = lookups.attach(repository, Entity.POLICY, Policy.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class, RETURNS_DEEP_STUBS);
     Policy consumerPolicy = editPolicy("DataConsumerPolicy");
     Policy stewardPolicy = editPolicy("DataStewardPolicy");
 
-    when(repository.findByName("DataConsumerPolicy", Include.NON_DELETED))
+    when(policyRows.findEntityByName("DataConsumerPolicy", Include.NON_DELETED))
         .thenReturn(consumerPolicy);
-    when(repository.findByName("DataStewardPolicy", Include.NON_DELETED)).thenReturn(stewardPolicy);
+    when(policyRows.findEntityByName("DataStewardPolicy", Include.NON_DELETED))
+        .thenReturn(stewardPolicy);
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(repository);
@@ -173,6 +189,7 @@ class MigrationUtilTest {
   @Test
   void addOperationsToPolicyRuleHandlesMissingRulesAndUnexpectedErrors() {
     PolicyRepository repository = mock(PolicyRepository.class);
+    EntityDAO<Policy> policyRows = lookups.attach(repository, Entity.POLICY, Policy.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class, RETURNS_DEEP_STUBS);
     Policy noRulesPolicy =
         new Policy()
@@ -180,9 +197,9 @@ class MigrationUtilTest {
             .withFullyQualifiedName("PolicyWithoutRules")
             .withRules(null);
 
-    when(repository.findByName("PolicyWithoutRules", Include.NON_DELETED))
+    when(policyRows.findEntityByName("PolicyWithoutRules", Include.NON_DELETED))
         .thenReturn(noRulesPolicy);
-    when(repository.findByName("BrokenPolicy", Include.NON_DELETED))
+    when(policyRows.findEntityByName("BrokenPolicy", Include.NON_DELETED))
         .thenThrow(new IllegalStateException("repository broken"));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
@@ -210,6 +227,7 @@ class MigrationUtilTest {
   @Test
   void addOperationsToPolicyRuleSkipsMissingRulesAndAlreadyAppliedPolicies() {
     PolicyRepository repository = mock(PolicyRepository.class);
+    EntityDAO<Policy> policyRows = lookups.attach(repository, Entity.POLICY, Policy.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class, RETURNS_DEEP_STUBS);
     Policy missingEditRulePolicy =
         new Policy()
@@ -232,9 +250,10 @@ class MigrationUtilTest {
                                         MetadataOperation.EDIT_TIER,
                                         MetadataOperation.EDIT_TAGS))))));
 
-    when(repository.findByName("MissingEditRulePolicy", Include.NON_DELETED))
+    when(policyRows.findEntityByName("MissingEditRulePolicy", Include.NON_DELETED))
         .thenReturn(missingEditRulePolicy);
-    when(repository.findByName("CompletePolicy", Include.NON_DELETED)).thenReturn(completePolicy);
+    when(policyRows.findEntityByName("CompletePolicy", Include.NON_DELETED))
+        .thenReturn(completePolicy);
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(repository);
@@ -261,6 +280,7 @@ class MigrationUtilTest {
   void addRelationsForTableConstraintsAddsOnlyMissingRelationships() {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     TableRepository tableRepository = mock(TableRepository.class);
+    final List<Edge> inserted = recordRelationships(tableRepository);
     UUID tableId = UUID.randomUUID();
     UUID existingRelatedId = UUID.randomUUID();
     UUID newRelatedId = UUID.randomUUID();
@@ -291,13 +311,15 @@ class MigrationUtilTest {
             .mapToMap()
             .list())
         .thenReturn(List.of());
-    when(tableRepository.findTo(tableId, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE))
-        .thenReturn(
-            List.of(
-                new EntityReference()
-                    .withId(existingRelatedId)
-                    .withType(Entity.TABLE)
-                    .withFullyQualifiedName("service.db.schema.alreadyRelated")));
+    EntityRelationshipFixture.outgoing(
+        tableRepository,
+        new EntityRelationshipReader.Selection(
+            tableId, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE),
+        List.of(
+            new EntityReference()
+                .withId(existingRelatedId)
+                .withType(Entity.TABLE)
+                .withFullyQualifiedName("service.db.schema.alreadyRelated")));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepository);
@@ -325,18 +347,17 @@ class MigrationUtilTest {
       assertDoesNotThrow(() -> MigrationUtil.addRelationsForTableConstraints(handle, false));
     }
 
-    verify(tableRepository)
-        .addRelationship(
-            tableId, newRelatedId, Entity.TABLE, Entity.TABLE, Relationship.RELATED_TO);
-    verify(tableRepository, never())
-        .addRelationship(
-            tableId, existingRelatedId, Entity.TABLE, Entity.TABLE, Relationship.RELATED_TO);
+    assertEquals(
+        List.of(
+            new Edge(tableId, newRelatedId, Entity.TABLE, Entity.TABLE, Relationship.RELATED_TO)),
+        inserted);
   }
 
   @Test
   void addRelationsForTableConstraintsSwallowsMissingRelatedTables() {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     TableRepository tableRepository = mock(TableRepository.class);
+    final List<Edge> inserted = recordRelationships(tableRepository);
     UUID tableId = UUID.randomUUID();
     Table table =
         new Table()
@@ -362,8 +383,11 @@ class MigrationUtilTest {
             .mapToMap()
             .list())
         .thenReturn(List.of());
-    when(tableRepository.findTo(tableId, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE))
-        .thenReturn(List.of());
+    EntityRelationshipFixture.outgoing(
+        tableRepository,
+        new EntityRelationshipReader.Selection(
+            tableId, Entity.TABLE, Relationship.RELATED_TO, Entity.TABLE),
+        List.of());
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(tableRepository);
@@ -377,9 +401,32 @@ class MigrationUtilTest {
       assertDoesNotThrow(() -> MigrationUtil.addRelationsForTableConstraints(handle, true));
     }
 
-    verify(tableRepository, never())
-        .addRelationship(
-            any(), any(), eq(Entity.TABLE), eq(Entity.TABLE), eq(Relationship.RELATED_TO));
+    assertTrue(inserted.isEmpty());
+  }
+
+  private List<Edge> recordRelationships(TableRepository repository) {
+    final List<Edge> inserted = new ArrayList<>();
+    final EntityRelationshipDAO rows = mock(EntityRelationshipDAO.class);
+    doAnswer(
+            invocation -> {
+              inserted.add(
+                  new Edge(
+                      invocation.getArgument(0),
+                      invocation.getArgument(1),
+                      invocation.getArgument(2),
+                      invocation.getArgument(3),
+                      Relationship.values()[invocation.getArgument(4, Integer.class)]));
+              return null;
+            })
+        .when(rows)
+        .insert(any(), any(), anyString(), anyString(), anyInt(), anyString(), any());
+    when(repository.relationshipWrites())
+        .thenReturn(
+            new EntityRelationshipWriter(
+                () -> rows,
+                new EntityRelationshipWriter.Effects(
+                    ignored -> {}, ignored -> {}, (type, id) -> {})));
+    return inserted;
   }
 
   @Test

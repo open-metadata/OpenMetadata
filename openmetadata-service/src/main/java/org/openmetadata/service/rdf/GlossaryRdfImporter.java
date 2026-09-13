@@ -73,6 +73,7 @@ import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.schema.type.SemanticReference;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -431,7 +432,8 @@ public class GlossaryRdfImporter {
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
     glossary.setFullyQualifiedName(name);
-    PutResponse<Glossary> response = repository.createOrUpdate(uriInfo, glossary, user);
+    PutResponse<Glossary> response =
+        repository.creates().upsert(uriInfo, glossary, new EntityCommandActor(user, null), false);
     if (Response.Status.CREATED.equals(response.getStatus())) {
       result.setGlossariesCreated(result.getGlossariesCreated() + 1);
     }
@@ -871,8 +873,9 @@ public class GlossaryRdfImporter {
         (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
     int added = 0;
     for (RelationshipType type : newTypes) {
-      repository.prepareInternal(type, false);
-      PutResponse<RelationshipType> response = repository.createOrUpdate(uriInfo, type, user);
+      repository.preparation().prepare(type, false);
+      PutResponse<RelationshipType> response =
+          repository.creates().upsert(uriInfo, type, new EntityCommandActor(user, null), false);
       if (Response.Status.CREATED.equals(response.getStatus())) {
         added++;
       }
@@ -1008,8 +1011,9 @@ public class GlossaryRdfImporter {
   }
 
   private void commitTerm(GlossaryTermRepository repository, GlossaryTerm term, TermIntent intent) {
-    repository.prepareInternal(term, true);
-    PutResponse<GlossaryTerm> response = repository.createOrUpdate(uriInfo, term, user);
+    repository.preparation().prepare(term, true);
+    PutResponse<GlossaryTerm> response =
+        repository.creates().upsert(uriInfo, term, new EntityCommandActor(user, null), false);
     GlossaryTerm saved = response.getEntity();
     termRefByIri.put(intent.iri, saved.getEntityReference());
     termFqnByIri.put(intent.iri, saved.getFullyQualifiedName());

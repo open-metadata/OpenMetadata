@@ -1,6 +1,12 @@
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
@@ -42,11 +48,11 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO.UsageDetailsWithId;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -54,18 +60,18 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class EntityUtilTest {
+
   @Test
   void test_isDescriptionRequired() {
-    assertFalse(
-        EntityUtil.isDescriptionRequired(Table.class)); // Table entity does not require description
-    assertTrue(
-        EntityUtil.isDescriptionRequired(
-            GlossaryTerm.class)); // GlossaryTerm entity requires description
+    // Table entity does not require description
+    assertFalse(EntityUtil.isDescriptionRequired(Table.class));
+    assertTrue( // GlossaryTerm entity requires description
+        EntityUtil. // GlossaryTerm entity requires description
+            isDescriptionRequired(GlossaryTerm.class));
   }
 
   @Test
   void test_entityLinkParser() {
-
     // Valid entity links
     Map<String, String> expected = new HashMap<>();
     expected.put("entityLink", "<#E::table::users>");
@@ -78,7 +84,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table");
     expected.put("fullyQualifiedFieldValue", "users");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::users.foo.\"bar.baz\">");
     expected.put("arrayFieldName", null);
@@ -90,7 +95,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table");
     expected.put("fullyQualifiedFieldValue", "users.foo.\"bar.baz\"");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::db::customers>");
     expected.put("arrayFieldName", null);
@@ -102,7 +106,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "db");
     expected.put("fullyQualifiedFieldValue", "customers");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::users::column::id>");
     expected.put("arrayFieldName", "id");
@@ -114,7 +117,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table.column.member");
     expected.put("fullyQualifiedFieldValue", "users.id");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::orders::column::status::type::enum>");
     expected.put("arrayFieldName", "status");
@@ -126,7 +128,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table.column.member");
     expected.put("fullyQualifiedFieldValue", "orders.status.type::enum");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::db::schema::table::view::column>");
     expected.put("arrayFieldName", "view");
@@ -138,7 +139,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "db.table.member");
     expected.put("fullyQualifiedFieldValue", "schema.view.column");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::foo@bar>");
     expected.put("arrayFieldName", null);
@@ -150,7 +150,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table");
     expected.put("fullyQualifiedFieldValue", "foo@bar");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::foo[bar]>");
     expected.put("arrayFieldName", null);
@@ -162,7 +161,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table");
     expected.put("fullyQualifiedFieldValue", "foo[bar]");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::special!@#$%^&*()_+[]{};:\\'\",./?>");
     expected.put("arrayFieldName", null);
@@ -174,7 +172,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table");
     expected.put("fullyQualifiedFieldValue", "special!@#$%^&*()_+[]{};:\\'\",./?");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::special!@#$%^&*()_+[]{}|;\\'\",./?>");
     expected.put("entityType", "table");
@@ -183,7 +180,6 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldType", "table");
     expected.put("fullyQualifiedFieldValue", "special!@#$%^&*()_+[]{}|;\\'\",./?");
     verifyEntityLinkParser(expected);
-
     expected.clear();
     expected.put("entityLink", "<#E::table::special!@:#$%^&*()_+[]{}|;\\'\",./?>");
     expected.put("entityType", "table");
@@ -193,23 +189,19 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldValue", "special!@:#$%^&*()_+[]{}|;\\'\",./?");
     verifyEntityLinkParser(expected);
     expected.clear();
-
     expected.put("entityLink", "<#E::table::spec::>ial!@:#$%^&*()_+[]{}|;\\'\",./?>");
-
     org.opentest4j.AssertionFailedError exception =
         assertThrows(
             org.opentest4j.AssertionFailedError.class, () -> verifyEntityLinkParser(expected));
     assertEquals(
         "expected: <<#E::table::spec::>ial!@:#$%^&*()_+[]{}|;\\'\",./?>> but was: <<#E::table::spec::>>",
         exception.getMessage());
-
     expected.clear();
     expected.put("entityLink", "<#E::table::user<name>::column>");
     IllegalArgumentException argException =
         assertThrows(IllegalArgumentException.class, () -> verifyEntityLinkParser(expected));
     assertEquals(
         "Entity link was not found in <#E::table::user<name>::column>", argException.getMessage());
-
     expected.clear();
     expected.put("entityLink", "<#E::table::user>name::column>");
     exception =
@@ -218,7 +210,6 @@ class EntityUtilTest {
     assertEquals(
         "expected: <<#E::table::user>name::column>> but was: <<#E::table::user>>",
         exception.getMessage());
-
     expected.clear();
     expected.put("entityLink", "<#E::table::foo<>bar::baz>");
     argException =
@@ -245,23 +236,18 @@ class EntityUtilTest {
   @Test
   void testFieldsAndRelationIncludesHelpers() {
     Set<String> allowedFields = Set.of("owners", "tags", "domains");
-
     EntityUtil.Fields fields = new EntityUtil.Fields(allowedFields, "owners, tags");
     assertTrue(fields.contains("owners"));
     assertTrue(fields.contains("tags"));
     assertFalse(fields.contains("domains"));
-
     fields.addField(allowedFields, "domains");
     assertTrue(fields.contains("domains"));
-
     EntityUtil.Fields excluded = EntityUtil.Fields.createWithExcludedFields(allowedFields, "tags");
     assertTrue(excluded.contains("owners"));
     assertFalse(excluded.contains("tags"));
-
     assertThrows(
         IllegalArgumentException.class,
         () -> new EntityUtil.Fields(allowedFields, "owners,missing"));
-
     EntityUtil.RelationIncludes relationIncludes =
         new EntityUtil.RelationIncludes(
             Include.NON_DELETED, "owners:all,followers:deleted,reviewers:non-deleted");
@@ -274,7 +260,6 @@ class EntityUtilTest {
     assertEquals(
         Include.DELETED,
         EntityUtil.RelationIncludes.fromInclude(Include.DELETED).getDefaultInclude());
-
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
@@ -294,7 +279,6 @@ class EntityUtilTest {
         new SearchIndexField().withFullyQualifiedName("service.search.keyword.raw");
     Rule rule = new Rule().withName("maskPII");
     CustomProperty property = new CustomProperty().withName("retention");
-
     assertEquals("table.version", EntityUtil.getVersionExtensionPrefix("table"));
     assertEquals("table.version.1.2", EntityUtil.getVersionExtension("table", 1.2));
     assertEquals(1.2, EntityUtil.getVersion("table.version.1.2"));
@@ -343,34 +327,28 @@ class EntityUtilTest {
     ResourceContext<Table> createContext = mock(ResourceContext.class);
     @SuppressWarnings("unchecked")
     ResourceContext<Table> updateContext = mock(ResourceContext.class);
-
     List<TagLabel> termLabels = EntityUtil.toTagLabels(term);
     List<TagLabel> tagLabels = EntityUtil.toTagLabels(tag);
     assertEquals(TagLabel.TagSource.GLOSSARY, termLabels.get(0).getSource());
     assertEquals("Glossary.PII", termLabels.get(0).getTagFQN());
     assertEquals(TagLabel.TagSource.CLASSIFICATION, tagLabels.get(0).getSource());
     assertEquals("Tier.Tier1", tagLabels.get(0).getTagFQN());
-
     assertEquals("owners", EntityUtil.addField(null, "owners"));
     assertEquals("owners, tags", EntityUtil.addField("owners", "tags"));
-
     EntityUtil.fieldAdded(change, "owners", "alice");
     EntityUtil.fieldDeleted(change, "reviewers", "bob");
     EntityUtil.fieldUpdated(change, "description", "before", "after");
     EntityUtil.fieldAdded(null, "ignored", "value");
-
     assertEquals("owners", change.getFieldsAdded().get(0).getName());
     assertEquals("alice", change.getFieldsAdded().get(0).getNewValue());
     assertEquals("reviewers", change.getFieldsDeleted().get(0).getName());
     assertEquals("bob", change.getFieldsDeleted().get(0).getOldValue());
     assertEquals("description", change.getFieldsUpdated().get(0).getName());
     assertEquals("after", change.getFieldsUpdated().get(0).getNewValue());
-
     when(createContext.getEntity()).thenReturn(null);
     when(updateContext.getEntity()).thenReturn(new Table());
     assertEquals(MetadataOperation.CREATE, EntityUtil.createOrUpdateOperation(createContext));
     assertEquals(MetadataOperation.EDIT_ALL, EntityUtil.createOrUpdateOperation(updateContext));
-
     assertFalse(EntityUtil.isNullOrEmptyChangeDescription(change));
     assertTrue(
         EntityUtil.isNullOrEmptyChangeDescription(
@@ -393,7 +371,6 @@ class EntityUtilTest {
     Table tableA = new Table().withId(id1).withName("a").withFullyQualifiedName("service.a");
     Table tableB = new Table().withId(id2).withName("b").withFullyQualifiedName("service.b");
     List<Table> tables = new ArrayList<>(List.of(tableB, tableA));
-
     assertEquals(id1, EntityUtil.getId(ref1));
     assertNull(EntityUtil.getId(null));
     assertEquals("service.a", EntityUtil.getFqn(ref1));
@@ -402,19 +379,15 @@ class EntityUtilTest {
     assertEquals("service.a", EntityUtil.getEntityReference(tableA).getFullyQualifiedName());
     assertEquals("table", EntityUtil.getEntityReference("table", "service.a").getType());
     assertEquals("<#E::table::service.a>", EntityUtil.buildEntityLink("table", "service.a"));
-
     EntityUtil.sortByFQN(tables);
     assertEquals(List.of("service.a", "service.b"), EntityUtil.toFQNs(tables));
     assertEquals(List.of(id1, id2), EntityUtil.strToIds(List.of(id1.toString(), id2.toString())));
-
     List<EntityReference> references = EntityUtil.toEntityReferences(List.of(id1, id2), "table");
     assertEquals(List.of(id1, id2), EntityUtil.refToIds(references));
     assertEquals(List.of("service.a", "service.b"), EntityUtil.getFqns(List.of(ref1, ref2)));
-
     EntityReference copied = new EntityReference();
     EntityUtil.copy(ref1, copied);
     assertEquals(ref1.getFullyQualifiedName(), copied.getFullyQualifiedName());
-
     List<EntityReference> merged =
         EntityUtil.mergedInheritedEntityRefs(List.of(ref1), List.of(duplicateRef1, ref2));
     assertEquals(2, merged.size());
@@ -454,7 +427,6 @@ class EntityUtilTest {
     List<EntityReference> refsWithNull = new ArrayList<>();
     refsWithNull.add(ref1);
     refsWithNull.add(null);
-
     assertTrue(EntityUtil.entityReferenceMatch.test(ref1, ref2));
     assertFalse(EntityUtil.entityReferenceMatch.test(ref1, differentRef));
     assertTrue(EntityUtil.entityReferenceListMatch.test(null, null));
@@ -512,7 +484,6 @@ class EntityUtilTest {
             .withFullyQualifiedName("analytics");
     MessageParser.EntityLink entityLink =
         MessageParser.EntityLink.parse("<#E::table::service.orders>");
-
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity
           .when(() -> Entity.getEntityReferencesByIds("table", List.of(tableId), Include.ALL))
@@ -532,13 +503,11 @@ class EntityUtilTest {
       entity
           .when(() -> Entity.getEntityReferenceByName("table", "service.orders", Include.ALL))
           .thenReturn(resolvedTable);
-
       List<EntityReference> populated =
           EntityUtil.populateEntityReferences(List.of(unresolvedByName, unresolvedById));
       assertEquals(
           List.of("analytics", "orders"),
           populated.stream().map(EntityReference::getName).toList());
-
       List<EntityReference> validated =
           EntityUtil.validateAndPopulateEntityReferences(new ArrayList<>(List.of(validationRef)));
       assertEquals("orders", validated.get(0).getName());
@@ -570,20 +539,18 @@ class EntityUtilTest {
         CollectionDAO.EntityRelationshipRecord.builder().id(missingId).type("table").build();
     UsageDAO usageDAO = mock(UsageDAO.class);
     @SuppressWarnings("unchecked")
-    EntityRepository<Table> repository = mock(EntityRepository.class);
+    EntityPolicy<Table> repository = mock(EntityPolicy.class);
     UsageDetails storedUsage =
         new UsageDetails()
             .withDate("2026-03-09")
             .withDailyStats(new UsageStats().withCount(5).withPercentileRank(0.5))
             .withWeeklyStats(new UsageStats().withCount(8).withPercentileRank(0.6))
             .withMonthlyStats(new UsageStats().withCount(13).withPercentileRank(0.7));
-
     when(usageDAO.getLatestUsage(validId.toString())).thenReturn(storedUsage);
     when(usageDAO.getLatestUsage(missingId.toString())).thenReturn(null);
     when(usageDAO.getLatestUsageBatch(List.of(validId.toString(), missingId.toString())))
         .thenReturn(List.of(new UsageDetailsWithId(validId.toString(), storedUsage)));
     when(repository.getAllowedFields()).thenReturn(Set.of("description", "displayName"));
-
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity
           .when(
@@ -610,26 +577,21 @@ class EntityUtilTest {
           .when(() -> Entity.getEntityReferenceById("table", missingId, Include.ALL))
           .thenThrow(EntityNotFoundException.byMessage("missing"));
       entity.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
-
       List<EntityReference> populated =
           EntityUtil.populateEntityReferences(List.of(missingRef, validRef));
       assertEquals(List.of("orders"), populated.stream().map(EntityReference::getName).toList());
-
       List<EntityReference> relationshipRefs =
           EntityUtil.getEntityReferences(List.of(validRecord, missingRecord));
       assertEquals(
           List.of("orders"), relationshipRefs.stream().map(EntityReference::getName).toList());
-
       UsageDetails latestUsage = EntityUtil.getLatestUsage(usageDAO, validId);
       assertSame(storedUsage, latestUsage);
       assertEquals(0, EntityUtil.getLatestUsage(usageDAO, missingId).getDailyStats().getCount());
       assertTrue(EntityUtil.getLatestUsageForEntities(usageDAO, List.of()).isEmpty());
-
       Map<UUID, UsageDetails> usageMap =
           EntityUtil.getLatestUsageForEntities(usageDAO, List.of(validId, missingId));
       assertSame(storedUsage, usageMap.get(validId));
       assertEquals(0, usageMap.get(missingId).getDailyStats().getCount());
-
       List<TagLabel> tags =
           new ArrayList<>(
               List.of(
@@ -642,7 +604,6 @@ class EntityUtilTest {
               new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION),
               new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.GLOSSARY)));
       assertEquals(2, tags.size());
-
       assertEquals(
           "description,owners,domains",
           EntityUtil.getFilteredFields("table", "description,owners,domains,missing"));
@@ -655,7 +616,6 @@ class EntityUtilTest {
     EntityReference resolved =
         new EntityReference().withId(id).withType("table").withName("orders");
     List<EntityReference> refs = List.of(new EntityReference().withId(id).withType("table"));
-
     EntityReference validated =
         EntityUtil.validate(
             id, "{\"id\":\"" + id + "\",\"type\":\"table\"}", EntityReference.class);
@@ -678,7 +638,6 @@ class EntityUtilTest {
     assertNull(EntityUtil.getFqn((Table) null));
     assertFalse(EntityUtil.isDescriptionRequired(NoDescriptionEntity.class));
     assertTrue(EntityUtil.isNullOrEmptyChangeDescription(null));
-
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity
           .when(() -> Entity.getEntityReferenceByName("table", "service.orders", Include.ALL))
@@ -693,7 +652,6 @@ class EntityUtilTest {
       entity
           .when(() -> Entity.getEntityReference(refs.get(0), Include.NON_DELETED))
           .thenReturn(resolved);
-
       assertEquals(
           "orders", EntityUtil.getEntityReferenceByName("table", "service.orders").getName());
       assertEquals(
@@ -715,12 +673,10 @@ class EntityUtilTest {
         new EntityReference().withId(id).withType("table").withName("orders");
     EntityReference duplicateResolved =
         new EntityReference().withId(id).withType("table").withName("orders-duplicate");
-
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity
           .when(() -> Entity.getEntityReferencesByIds("table", List.of(id), Include.ALL))
           .thenReturn(List.of(firstResolved, duplicateResolved));
-
       List<EntityReference> populated = EntityUtil.populateEntityReferences(List.of(unresolved));
       assertEquals("orders", populated.get(0).getName());
     }
@@ -741,7 +697,6 @@ class EntityUtilTest {
         new Table()
             .withColumns(List.of(parentColumn, leafColumn))
             .withFullyQualifiedName("service.db.table");
-
     assertEquals(leafColumn, EntityUtil.getColumn(table, "amount"));
     assertNull(EntityUtil.getColumn(table, "missing"));
     assertEquals(leafColumn, EntityUtil.findColumn(table.getColumns(), "amount"));
@@ -756,7 +711,6 @@ class EntityUtilTest {
     assertEquals(
         List.of(parentColumn, nestedColumn, leafColumn),
         EntityUtil.getFlattenedEntityField(table.getColumns()));
-
     assertDoesNotThrow(() -> EntityUtil.validateProfileSample("ROWS", 1000.0));
     assertDoesNotThrow(() -> EntityUtil.validateProfileSample("PERCENTAGE", 50.0));
     assertThrows(
@@ -769,7 +723,6 @@ class EntityUtilTest {
     assertNull(EntityUtil.getEntityField(null, "fullyQualifiedName"));
     assertNull(EntityUtil.getEntityField(table, ""));
     assertNull(EntityUtil.getEntityField(new ThrowingFieldTable(), "brokenField"));
-
     assertTrue(EntityUtil.isDescriptionTask(TaskType.RequestDescription));
     assertTrue(EntityUtil.isDescriptionTask(TaskType.UpdateDescription));
     assertFalse(EntityUtil.isDescriptionTask(TaskType.RequestTag));
@@ -806,7 +759,6 @@ class EntityUtilTest {
             .withType("role")
             .withName(DOMAIN_ONLY_ACCESS_ROLE);
     SecurityContext securityContext = mock(SecurityContext.class);
-
     assertEquals("columns.amount", EntityUtil.getColumnField(column, null));
     assertEquals("schemaFields.\"user.id\"", EntityUtil.getSchemaField(topic, schemaField, null));
     assertEquals(
@@ -815,13 +767,11 @@ class EntityUtilTest {
         "fields.\"keyword.raw\"", EntityUtil.getSearchIndexField(searchIndex, searchField, null));
     assertEquals("rules.maskPII", EntityUtil.getRuleField(rule, null));
     assertEquals("customProperties.retention.value", EntityUtil.getCustomField(property, "value"));
-
     try (MockedStatic<DefaultAuthorizer> authorizer =
         org.mockito.Mockito.mockStatic(DefaultAuthorizer.class)) {
       ListFilter unrestrictedFilter = new ListFilter();
       ListFilter domainFilter = new ListFilter();
       ListFilter noDomainFilter = new ListFilter();
-
       authorizer
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(
@@ -843,11 +793,9 @@ class EntityUtilTest {
                       .withName("analyst-no-domain")
                       .withRoles(List.of(domainRole)),
                   null));
-
       EntityUtil.addDomainQueryParam(securityContext, unrestrictedFilter, "table");
       EntityUtil.addDomainQueryParam(securityContext, domainFilter, "table");
       EntityUtil.addDomainQueryParam(securityContext, noDomainFilter, "table");
-
       assertTrue(unrestrictedFilter.getQueryParams().isEmpty());
       assertEquals("'" + domainRef.getId() + "'", domainFilter.getQueryParam("domainId"));
       assertEquals("true", domainFilter.getQueryParam("domainAccessControl"));
@@ -859,21 +807,19 @@ class EntityUtilTest {
   private static class NoDescriptionEntity {}
 
   private static class ThrowingFieldTable extends Table {
+
     public String getBrokenField() {
       throw new IllegalStateException("boom");
     }
   }
 
   // URL Encoding Tests for Slack Event Fix
-
   @Test
   void testEncodeEntityFqnSafe_NullAndEmpty() {
     // Test null input
     assertEquals("", encodeEntityFqnSafe(null));
-
     // Test empty input
     assertEquals("", encodeEntityFqnSafe(""));
-
     // Test whitespace only
     assertEquals("", encodeEntityFqnSafe("   "));
   }
@@ -913,13 +859,10 @@ class EntityUtilTest {
     // Test complex FQN with spaces and special characters (similar to Databricks example)
     String complexFqn = "Random.pro.silver.l0_purchase_order.TOs con curr INR tery dd ser INR";
     String encoded = encodeEntityFqnSafe(complexFqn);
-
     // Verify spaces are encoded
     assertTrue(encoded.contains("%20"));
-
     // Verify the encoded string doesn't contain unencoded spaces
     assertFalse(encoded.contains(" "));
-
     // Verify the result
     assertEquals(
         "Random.pro.silver.l0_purchase_order.TOs%20con%20curr%20INR%20tery%20dd%20ser%20INR",
@@ -931,7 +874,6 @@ class EntityUtilTest {
     // Test that already encoded percent signs are handled correctly
     String inputWithPercent = "test%already%encoded";
     String encoded = encodeEntityFqnSafe(inputWithPercent);
-
     // The percent signs should be encoded to %25
     assertEquals("test%25already%25encoded", encoded);
   }
@@ -956,14 +898,11 @@ class EntityUtilTest {
   void testEncodeEntityFqnSafe_CompareWithOriginal() {
     // Compare the new safe encoding with the original encoding method
     String testFqn = "Databricks.pro.silver.table with spaces";
-
     String originalEncoding = encodeEntityFqn(testFqn);
     String safeEncoding = encodeEntityFqnSafe(testFqn);
-
     // Both should handle spaces, but safe encoding should be more conservative
     assertTrue(originalEncoding.contains("%20"));
     assertTrue(safeEncoding.contains("%20"));
-
     // Safe encoding should not contain plus signs (which can cause issues)
     assertFalse(safeEncoding.contains("+"));
   }
@@ -1022,10 +961,8 @@ class EntityUtilTest {
             .withType("table")
             .withName("orders")
             .withFullyQualifiedName("service.orders");
-
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityReference(ref, Include.NON_DELETED)).thenReturn(resolved);
-
       EntityReference result = EntityUtil.validateEntityReference(ref, "table");
       assertEquals("orders", result.getName());
       assertEquals("service.orders", result.getFullyQualifiedName());
@@ -1042,10 +979,8 @@ class EntityUtilTest {
             .withType("user")
             .withName("john")
             .withFullyQualifiedName("john");
-
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityReference(ref, Include.NON_DELETED)).thenReturn(resolved);
-
       EntityReference result = EntityUtil.validateEntityReference(ref);
       assertEquals("john", result.getName());
     }
@@ -1055,12 +990,10 @@ class EntityUtilTest {
   void testValidateEntityReference_entityNotFound() {
     UUID id = UUID.randomUUID();
     EntityReference ref = new EntityReference().withId(id).withType("table");
-
     try (MockedStatic<Entity> entity = org.mockito.Mockito.mockStatic(Entity.class)) {
       entity
           .when(() -> Entity.getEntityReference(ref, Include.NON_DELETED))
           .thenThrow(new EntityNotFoundException("table not found"));
-
       assertThrows(
           EntityNotFoundException.class, () -> EntityUtil.validateEntityReference(ref, "table"));
     }
@@ -1071,15 +1004,19 @@ class EntityUtilTest {
     // Test FQNs that would be problematic with email security systems
     String problematicFqn = "Table Name & Data #1 + Test?param=value";
     String encoded = encodeEntityFqnSafe(problematicFqn);
-
     // Verify all problematic characters are encoded
-    assertFalse(encoded.contains(" ")); // spaces
-    assertFalse(encoded.contains("&")); // ampersand
-    assertFalse(encoded.contains("#")); // hash
-    assertFalse(encoded.contains("?")); // question mark
-    assertFalse(encoded.contains("=")); // equals
-    assertFalse(encoded.contains("+")); // plus
-
+    // spaces
+    assertFalse(encoded.contains(" "));
+    // ampersand
+    assertFalse(encoded.contains("&"));
+    // hash
+    assertFalse(encoded.contains("#"));
+    // question mark
+    assertFalse(encoded.contains("?"));
+    // equals
+    assertFalse(encoded.contains("="));
+    // plus
+    assertFalse(encoded.contains("+"));
     String expected = "Table%20Name%20%26%20Data%20%231%20%2B%20Test%3Fparam%3Dvalue";
     assertEquals(expected, encoded);
   }

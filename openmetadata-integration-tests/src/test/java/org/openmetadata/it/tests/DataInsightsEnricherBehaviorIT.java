@@ -64,7 +64,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.StepFailure;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -89,11 +89,14 @@ import org.openmetadata.service.util.EntityUtil;
 class DataInsightsEnricherBehaviorIT {
 
   private static DataInsightsEntityEnricherProcessor enricher;
+
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  /** Common+table fields from {@code dataInsights/config.json}. Mirrors what the real workflow
+  /**
+   * Common+table fields from {@code dataInsights/config.json}. Mirrors what the real workflow
    *  passes via {@code ENTITY_TYPE_FIELDS_KEY}; mismatching this list would mean the IT tests an
-   *  enrichment scope that differs from production. */
+   *  enrichment scope that differs from production.
+   */
   private static final List<String> TABLE_FIELDS =
       List.of(
           "id",
@@ -131,7 +134,6 @@ class DataInsightsEnricherBehaviorIT {
   }
 
   // ────────────────────────────── Test 1: snapshot content ──────────────────────────────
-
   /**
    * Canonical "fully-populated table" — pin the snapshot keys and load-bearing values. If the
    * enricher quietly stops emitting (or starts mis-emitting) any of these fields, this test
@@ -144,13 +146,11 @@ class DataInsightsEnricherBehaviorIT {
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
-
     TagLabel tier =
         new TagLabel()
             .withTagFQN("Tier.Tier2")
             .withSource(TagLabel.TagSource.CLASSIFICATION)
             .withLabelType(TagLabel.LabelType.MANUAL);
-
     Table table =
         Tables.create()
             .name(ns.shortPrefix("tbl_content"))
@@ -168,7 +168,6 @@ class DataInsightsEnricherBehaviorIT {
                     new Column().withName("score").withDataType(ColumnDataType.DOUBLE)))
             .withTags(List.of(shared().PERSONAL_DATA_TAG_LABEL, tier))
             .execute();
-
     // Assign USER1 (member of shared_team11) so processTeam has something to resolve.
     table =
         Tables.find(table.getId().toString())
@@ -176,9 +175,7 @@ class DataInsightsEnricherBehaviorIT {
             .withOwners(List.of(shared().USER1_REF))
             .save()
             .get();
-
     Map<String, Object> snapshot = enrichOneDay(table);
-
     // Identity step + day fanout. Note: startTimestamp/endTimestamp are intentionally removed by
     // generateDailyEntitySnapshots and replaced with @timestamp (one per day). Assert on
     // @timestamp, not the per-version-window keys.
@@ -186,25 +183,19 @@ class DataInsightsEnricherBehaviorIT {
     assertNotNull(snapshot.get("@timestamp"), "per-day @timestamp is set");
     assertInstanceOf(Long.class, snapshot.get("@timestamp"), "@timestamp is a long (millis)");
     assertEquals(table.getFullyQualifiedName(), snapshot.get("fullyQualifiedName"));
-
     // Description stats step
     assertEquals(1, snapshot.get("hasDescription"), "table has description → 1");
     assertEquals(3, snapshot.get("numberOfColumns"));
     assertEquals(1, snapshot.get("numberOfColumnsWithDescription"));
     assertEquals(0, snapshot.get("hasColumnDescription"), "not every column has a description → 0");
-
     assertEquals("shared_team11", snapshot.get("team"));
-
     // Tier step — extracted from the Tier.Tier2 tag
     assertEquals("Tier.Tier2", snapshot.get("tier"));
-
     // Tag/Tier sources — both tags are classification-sourced
     assertInstanceOf(Map.class, snapshot.get("tagSources"), "tagSources is a map");
     assertInstanceOf(Map.class, snapshot.get("tierSources"), "tierSources is a map");
-
     // Description sources (a map)
     assertInstanceOf(Map.class, snapshot.get("descriptionSources"));
-
     // Projected entity fields — verify retainAll didn't strip these
     assertEquals(table.getName(), snapshot.get("name"));
     assertEquals(table.getDescription(), snapshot.get("description"));
@@ -215,7 +206,6 @@ class DataInsightsEnricherBehaviorIT {
   }
 
   // ──────────── Test 1b: source-split tag projection (issue #29355) ────────────
-
   /**
    * Reproduction of issue #29355: a DI chart filtering on {@code classificationTags} or {@code
    * glossaryTags} returned 0 because those derived fields were never projected onto the snapshot.
@@ -228,7 +218,6 @@ class DataInsightsEnricherBehaviorIT {
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
-
     Table table =
         Tables.create()
             .name(ns.shortPrefix("tbl_tagsplit"))
@@ -237,17 +226,13 @@ class DataInsightsEnricherBehaviorIT {
             .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
             .withTags(List.of(shared().PERSONAL_DATA_TAG_LABEL, shared().GLOSSARY1_TERM1_LABEL))
             .execute();
-
     Map<String, Object> snapshot = enrichOneDay(table);
-
     String classificationFqn = shared().PERSONAL_DATA_TAG_LABEL.getTagFQN();
     String glossaryFqn = shared().GLOSSARY1_TERM1_LABEL.getTagFQN();
-
     assertInstanceOf(Collection.class, snapshot.get("classificationTags"));
     assertInstanceOf(Collection.class, snapshot.get("glossaryTags"));
     Collection<?> classificationTags = (Collection<?>) snapshot.get("classificationTags");
     Collection<?> glossaryTags = (Collection<?>) snapshot.get("glossaryTags");
-
     assertTrue(
         classificationTags.contains(classificationFqn),
         "classification tag FQN projected into classificationTags");
@@ -269,7 +254,6 @@ class DataInsightsEnricherBehaviorIT {
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
-
     Table table =
         Tables.create()
             .name(ns.shortPrefix("tbl_notags"))
@@ -277,9 +261,7 @@ class DataInsightsEnricherBehaviorIT {
             .withDescription("no tags")
             .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
             .execute();
-
     Map<String, Object> snapshot = enrichOneDay(table);
-
     Object classificationTags = snapshot.get("classificationTags");
     Object glossaryTags = snapshot.get("glossaryTags");
     assertTrue(
@@ -291,7 +273,6 @@ class DataInsightsEnricherBehaviorIT {
   }
 
   // ──────────── Test 1c: custom-property projection (issue CLT-4661) ────────────
-
   /**
    * Reproduction of CLT-4661: a DI chart grouping/filtering on a custom property returned 0 because
    * the enricher only emitted the per-entity-type twin ({@code tableCustomProperty}) and never the
@@ -306,11 +287,9 @@ class DataInsightsEnricherBehaviorIT {
     String propName = ns.shortPrefix() + "policy";
     Type stringType = getTypeByName(client, "string");
     addCustomPropertyToEntityType(client, "table", propName, stringType);
-
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
-
     Table table =
         Tables.create()
             .name(ns.shortPrefix("tbl_cp"))
@@ -318,18 +297,14 @@ class DataInsightsEnricherBehaviorIT {
             .withDescription("custom-property projection")
             .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
             .execute();
-
     CustomProperties.update(Tables.class, table.getId())
         .withProperty(propName, "purpose")
         .execute();
-
     Map<String, Object> snapshot = enrichOneDay(table);
-
     assertInstanceOf(
         Map.class, snapshot.get("tableCustomProperty"), "per-type twin projected for Group By");
     Map<?, ?> twin = (Map<?, ?>) snapshot.get("tableCustomProperty");
     assertEquals("purpose", twin.get(propName), "twin carries the raw custom-property value");
-
     assertInstanceOf(
         Collection.class,
         snapshot.get("customPropertiesTyped"),
@@ -342,7 +317,6 @@ class DataInsightsEnricherBehaviorIT {
   }
 
   // ────────────────────────────── Test 2: missing owner ──────────────────────────────
-
   /**
    * Owner-less entity. The {@code team} key should be absent from the snapshot — the team step
    * has nothing to emit. Verifies the step's <em>additive</em> contract: no-op steps add no keys
@@ -353,7 +327,6 @@ class DataInsightsEnricherBehaviorIT {
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
-
     Table table =
         Tables.create()
             .name(ns.shortPrefix("tbl_noowner"))
@@ -361,9 +334,7 @@ class DataInsightsEnricherBehaviorIT {
             .withDescription("no owner")
             .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
             .execute();
-
     Map<String, Object> snapshot = enrichOneDay(table);
-
     assertFalse(snapshot.containsKey("team"), "no owner → no team key on snapshot");
     assertNull(snapshot.get("team"), "team explicitly null/missing");
     // The rest of the snapshot is still well-formed
@@ -372,7 +343,6 @@ class DataInsightsEnricherBehaviorIT {
   }
 
   // ───────────────────── Test 3: owner that cannot be resolved ─────────────────────
-
   /**
    * Owner-deleted regression. When the enricher hits an owner ref it cannot resolve (e.g. a
    * hard-deleted user), the snapshot must still be emitted with the {@code team} key gracefully
@@ -389,11 +359,9 @@ class DataInsightsEnricherBehaviorIT {
                 new CreateUser()
                     .withName(ns.shortPrefix("ephemeral"))
                     .withEmail(ns.shortPrefix("ephemeral") + "@test.openmetadata.org"));
-
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
-
     Table table =
         Tables.create()
             .name(ns.shortPrefix("tbl_orphan"))
@@ -407,22 +375,17 @@ class DataInsightsEnricherBehaviorIT {
             .withOwners(List.of(ephemeralOwner.getEntityReference()))
             .save()
             .get();
-
     // Hard delete the owner — the table's owners array still points to the now-gone user id.
     SdkClients.adminClient()
         .users()
         .delete(
             ephemeralOwner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
-
     // Refresh: the SDK returns the table with the dangling owner reference still recorded.
     Table refreshed = Tables.find(table.getId().toString()).fetch().get();
-
     Map<String, Object> snapshot = enrichOneDay(refreshed);
-
     // The entity is still in the snapshot — no NPE escaped to drop it.
     assertEquals("table", snapshot.get("entityType"));
     assertEquals(refreshed.getFullyQualifiedName(), snapshot.get("fullyQualifiedName"));
-
     // The team field is absent because the owner could not be resolved.
     assertFalse(
         snapshot.containsKey("team"),
@@ -430,7 +393,6 @@ class DataInsightsEnricherBehaviorIT {
   }
 
   // ───────────── Test 4: end-to-end step-failure isolation on a real entity ─────────────
-
   /**
    * End-to-end proof that one step throwing does not lose the entity's snapshot — exercised
    * on a real entity instead of a synthetic mock as in {@code EnrichmentPipelineTest}. The test
@@ -443,7 +405,6 @@ class DataInsightsEnricherBehaviorIT {
     DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
-
     Table table =
         Tables.create()
             .name(ns.shortPrefix("tbl_fail"))
@@ -451,7 +412,6 @@ class DataInsightsEnricherBehaviorIT {
             .withDescription("step-failure isolation")
             .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
             .execute();
-
     EnrichmentPipeline customPipeline =
         new EnrichmentPipeline(
             List.of(
@@ -462,23 +422,18 @@ class DataInsightsEnricherBehaviorIT {
                       throw new RuntimeException("simulated failure on real entity");
                     }),
                 lambdaStep("last", t -> t.entityMap().put("lastStepKey", "last"))));
-
     Map<String, Object> entityMap = JsonUtils.getMap(table);
     EnrichmentContext context = new EnrichmentContext("table", TABLE_FIELDS, 0L, 86_400_000L);
     EnrichmentTarget target =
         new EnrichmentTarget(
             table, entityMap, Map.of(), 0L, 86_400_000L, context, VersionShape.LATEST_HYDRATED);
-
     List<StepFailure> failures = customPipeline.run(target);
-
     assertEquals(1, failures.size(), "exactly one step failed");
     assertEquals("boom", failures.get(0).stepName());
     assertEquals(table.getFullyQualifiedName(), failures.get(0).entityFqn());
-
     // Sibling steps' contributions present despite the failure in the middle step.
     assertEquals("first", entityMap.get("firstStepKey"));
     assertEquals("last", entityMap.get("lastStepKey"));
-
     // Pipeline stats record the failure correctly.
     Map<String, ?> stats = customPipeline.snapshotStats();
     assertNotNull(stats.get("first"));
@@ -487,7 +442,6 @@ class DataInsightsEnricherBehaviorIT {
   }
 
   // ───────────────────────────── helpers ─────────────────────────────
-
   /**
    * Loads the entity via the {@link EntityRepository} (matching production's keyset-batch path,
    * the same way {@link EnricherBulkVsHistoryPathEquivalenceIT} does), then enriches it. The
@@ -496,21 +450,18 @@ class DataInsightsEnricherBehaviorIT {
    */
   @SuppressWarnings("unchecked")
   private Map<String, Object> enrichOneDay(Table table) {
-    EntityRepository<Table> repo = (EntityRepository<Table>) Entity.getEntityRepository("table");
-    EntityUtil.Fields allFields = repo.getFields("*");
-    Table loaded = repo.findByName(table.getFullyQualifiedName(), Include.NON_DELETED, false);
+    EntityPolicy<Table> repo = (EntityPolicy<Table>) Entity.getEntityRepository("table");
+    EntityUtil.Fields allFields = repo.fieldPolicy().parse("*");
+    Table loaded = repo.lookup().byName(table.getFullyQualifiedName(), Include.NON_DELETED, false);
     repo.setFieldsInBulk(allFields, List.of(loaded));
-
     long now = System.currentTimeMillis();
     long endTs = TimestampUtils.getEndOfDayTimestamp(now);
     long startTs = TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(now, 1));
-
     Map<String, Object> ctx = new HashMap<>();
     ctx.put(ENTITY_TYPE_KEY, "table");
     ctx.put(START_TIMESTAMP_KEY, startTs);
     ctx.put(END_TIMESTAMP_KEY, endTs);
     ctx.put(ENTITY_TYPE_FIELDS_KEY, new ArrayList<>(TABLE_FIELDS));
-
     try {
       List<Map<String, Object>> snapshots = enricher.enrichSingle(loaded, ctx);
       assertFalse(snapshots.isEmpty(), "enricher must emit at least one snapshot");
@@ -560,6 +511,7 @@ class DataInsightsEnricherBehaviorIT {
 
   private static EnrichmentStep lambdaStep(String name, Consumer<EnrichmentTarget> body) {
     return new EnrichmentStep() {
+
       @Override
       public String name() {
         return name;

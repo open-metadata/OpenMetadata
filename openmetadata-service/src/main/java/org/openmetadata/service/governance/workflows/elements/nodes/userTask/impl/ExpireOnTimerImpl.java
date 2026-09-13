@@ -13,8 +13,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Fires when a user-task expiry boundary timer elapses. Writes the configured transitionId into
@@ -91,7 +93,16 @@ public class ExpireOnTimerImpl implements JavaDelegate {
     // is not requested, and resolveTask -> storeEntity serializes the task back via pojoToJson —
     // a narrow fetch silently erases all task comments on auto-close. Every other resolveTask
     // call site already loads the full field set for this reason.
-    Task task = taskRepository.get(null, taskId, taskRepository.getFields("*"));
+    Task task =
+        taskRepository
+            .reads()
+            .byId(
+                taskId,
+                new EntityReadService.Query(
+                    null,
+                    taskRepository.fieldPolicy().parse("*"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (!TaskRepository.NON_TERMINAL_STATUSES.contains(task.getStatus())) {
       LOG.info(
           "[ExpireOnTimer] Task '{}' already terminal (status={}); skipping expiry close to avoid double-resolve",

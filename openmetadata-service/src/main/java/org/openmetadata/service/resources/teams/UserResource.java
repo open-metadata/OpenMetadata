@@ -131,6 +131,9 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -165,6 +168,7 @@ import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.TokenUtil;
@@ -714,7 +718,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
           User created =
               addHref(
                   uriInfo,
-                  repository.create(uriInfo, user.withLastLoginTime(System.currentTimeMillis())));
+                  repository
+                      .creates()
+                      .create(
+                          uriInfo,
+                          user.withLastLoginTime(System.currentTimeMillis()),
+                          new EntityCommandActor(null, null)));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
           throw new CustomExceptionMessage(
@@ -802,8 +811,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.setFullyQualifiedName(user);
-    User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
-    repository.prepareInternal(user, existingUser != null);
+    User existingUser = repository.lookup().byNameOrNull(user.getFullyQualifiedName(), ALL);
+    repository.preparation().prepare(user, existingUser != null);
     if (existingUser == null) {
       limits.enforceLimits(
           securityContext,
@@ -831,7 +840,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return createOrUpdateBotUser(user, create, uriInfo, securityContext);
     }
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        repository
+            .creates()
+            .upsert(
+                uriInfo,
+                user,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                false);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -863,7 +878,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    User user = repository.get(uriInfo, id, repository.getFieldsWithUserAuth("*"));
+    User user =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    repository.getFieldsWithUserAuth("*"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
 
     // Only allow token generation for bot users via this endpoint
     if (!Boolean.TRUE.equals(user.getIsBot())) {
@@ -879,7 +903,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+    repository
+        .creates()
+        .upsert(
+            uriInfo,
+            user,
+            new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+            false);
 
     // Invalidate cached token for bot user
     BotTokenCache.invalidateToken(user.getName());
@@ -915,7 +945,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("User ID is required for token generation");
     }
 
-    User user = repository.get(uriInfo, userId, repository.getFieldsWithUserAuth("*"));
+    User user =
+        repository
+            .reads()
+            .byId(
+                userId,
+                new EntityReadService.Query(
+                    uriInfo,
+                    repository.getFieldsWithUserAuth("*"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
 
     // Permission check: admins can generate tokens for bot users,
     // users can generate their own tokens
@@ -944,7 +983,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+    repository
+        .creates()
+        .upsert(
+            uriInfo,
+            user,
+            new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+            false);
 
     // Invalidate any cached token for this user
     if (isBotUser) {
@@ -977,7 +1022,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid RevokeTokenRequest revokeTokenRequest) {
     authorizer.authorizeAdmin(securityContext);
     User user =
-        repository.get(uriInfo, revokeTokenRequest.getId(), repository.getFieldsWithUserAuth("*"));
+        repository
+            .reads()
+            .byId(
+                revokeTokenRequest.getId(),
+                new EntityReadService.Query(
+                    uriInfo,
+                    repository.getFieldsWithUserAuth("*"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (Boolean.FALSE.equals(user.getIsBot())) {
       throw new IllegalStateException(CatalogExceptionMessage.INVALID_BOT_USER);
     }
@@ -986,7 +1039,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        repository
+            .creates()
+            .upsert(
+                uriInfo,
+                user,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                false);
     addHref(uriInfo, response.getEntity());
     // Invalidate Bot Token in Cache
     BotTokenCache.invalidateToken(user.getName());
@@ -1015,7 +1074,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
 
-    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
+    User user =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    new Fields(Set.of(AUTH_MECHANISM_FIELD)),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -1051,7 +1119,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
+    User user =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    new Fields(Set.of(AUTH_MECHANISM_FIELD)),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
@@ -1159,7 +1236,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // existingUser comes from findByNameOrNull(), which sets core fields only, so its roles are
     // always null - they have to be loaded before they can be compared against.
     List<EntityReference> currentRoles =
-        repository.get(null, existingUser.getId(), getFields(ROLES_FIELD), ALL, false).getRoles();
+        repository
+            .reads()
+            .byId(
+                existingUser.getId(),
+                new EntityReadService.Query(
+                    null, getFields(ROLES_FIELD), RelationIncludes.fromInclude(ALL), false))
+            .getRoles();
     return !roleIds(currentRoles).containsAll(updatedRoleIds);
   }
 
@@ -1793,7 +1876,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
+    User user =
+        repository
+            .reads()
+            .byName(
+                userName,
+                new EntityReadService.Query(
+                    null,
+                    getFields("id"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    true));
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1831,7 +1923,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
+    User user =
+        repository
+            .reads()
+            .byName(
+                userName,
+                new EntityReadService.Query(
+                    null,
+                    getFields("id"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (removeAll) {
       tokenRepository.deleteTokenByUserAndType(
           user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
@@ -1872,8 +1973,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     String userName = securityContext.getUserPrincipal().getName();
     User user =
-        repository.getByName(
-            null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
+        repository
+            .reads()
+            .byName(
+                userName,
+                new EntityReadService.Query(
+                    null,
+                    getFields("roles,email,isBot"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (user.getIsBot() == null || Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
@@ -2060,10 +2168,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
           retrieveBotRelationshipsFor(original);
       bot =
           Entity.getEntityRepository(Entity.BOT)
-              .get(
-                  null,
+              .reads()
+              .byId(
                   userBotRelationship.stream().findFirst().orElseThrow().getId(),
-                  Fields.EMPTY_FIELDS);
+                  new EntityReadService.Query(
+                      null,
+                      Fields.EMPTY_FIELDS,
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       throw new IllegalArgumentException(
           CatalogExceptionMessage.userAlreadyBot(user.getName(), bot.getName()));
     }
@@ -2080,7 +2192,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        repository
+            .creates()
+            .upsert(
+                uriInfo,
+                user,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                false);
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
@@ -2103,7 +2221,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+    return repository
+        .relationships()
+        .fromRecords(
+            new EntityRelationshipReader.Selection(
+                user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT));
   }
 
   private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
@@ -2118,7 +2240,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(
       EntityInterface bot) {
-    return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
+    return repository
+        .relationships()
+        .toRecords(
+            new EntityRelationshipReader.Selection(
+                bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER));
   }
 
   // TODO remove this -> still valid TODO?
@@ -2160,12 +2286,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private ArrayList<EntityReference> getDefaultBotRoles(User user) {
     ArrayList<EntityReference> defaultBotRoles = new ArrayList<>();
     EntityReference defaultBotRole =
-        roleRepository.getReferenceByName(DEFAULT_BOT_ROLE, Include.NON_DELETED);
+        roleRepository.lookup().referenceByName(DEFAULT_BOT_ROLE, Include.NON_DELETED);
     defaultBotRoles.add(defaultBotRole);
 
     if (!nullOrEmpty(user.getDomains())) {
       EntityReference domainOnlyAccessRole =
-          roleRepository.getReferenceByName(DOMAIN_ONLY_ACCESS_ROLE, Include.NON_DELETED);
+          roleRepository.lookup().referenceByName(DOMAIN_ONLY_ACCESS_ROLE, Include.NON_DELETED);
       defaultBotRoles.add(domainOnlyAccessRole);
     }
     return defaultBotRoles;

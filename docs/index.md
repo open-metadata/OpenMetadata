@@ -26,6 +26,13 @@ verdict cites an artifact that was checked to still exist):
 
 ## Backend & platform design docs (`docs/`)
 
+The [entity repository composition design](entity-repository-composition.md) describes the implemented
+Java 21 modules, mandatory single-transaction boundary, Redis compatibility, and API latency gates.
+The [entity module migration guide](entity-module-migration.md) documents policy construction,
+native operation ports, registration and Java extension changes.
+The [performance report](entity-repository-performance.md) records partial paired measurements and
+their limits; the migration has not passed its latency gate.
+
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
 | `docs/impersonation-design.md` | Bot→user impersonation: `updatedBy`=user / `impersonatedBy`=bot, gated by `allowImpersonation` + RBAC `Impersonate` policy scoping | Touching bot impersonation auth — the flag, `BotImpersonationPolicy` seeds, `checkImpersonationAuthorization` (§4.4 is authoritative) | 2026-06-16 | CURRENT ⚠¹ |

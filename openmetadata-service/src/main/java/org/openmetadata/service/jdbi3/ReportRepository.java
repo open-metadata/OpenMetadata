@@ -10,37 +10,48 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.resources.reports.ReportResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
-public class ReportRepository extends EntityRepository<Report> {
+@Repository()
+public class ReportRepository implements EntityPolicy<Report> {
+
   public ReportRepository() {
-    super(
-        ReportResource.COLLECTION_PATH,
-        Entity.REPORT,
-        Report.class,
-        Entity.getCollectionDAO().reportDAO(),
-        "",
-        "");
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                ReportResource.COLLECTION_PATH,
+                Entity.REPORT,
+                Report.class,
+                Entity.getCollectionDAO().reportDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
   public void setFields(Report report, Fields fields, RelationIncludes relationIncludes) {
-    report.setService(getService(report)); // service is a default field
+    // service is a default field
+    report.setService(getService(report));
     if (report.getUsageSummary() == null) {
       report.withUsageSummary(
           fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId())
+              ? EntityUtil.getLatestUsage(
+                  context().dependencies().daos().usageDAO(), report.getId())
               : report.getUsageSummary());
     }
   }
@@ -57,7 +68,7 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public void storeEntity(Report report, boolean update) {
-    store(report, update);
+    persistence().store(report, update);
   }
 
   @Override
@@ -67,5 +78,12 @@ public class ReportRepository extends EntityRepository<Report> {
 
   private EntityReference getService(Report report) {
     return null;
+  }
+
+  private final EntityPolicyContext<Report> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Report> context() {
+    return entityContext;
   }
 }

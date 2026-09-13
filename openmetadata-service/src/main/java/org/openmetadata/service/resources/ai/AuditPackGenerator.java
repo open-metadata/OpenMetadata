@@ -36,12 +36,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.AuditReportRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Async audit-pack generator. The Resource hands a freshly-created AuditReport to
@@ -69,10 +72,15 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Slf4j
 public final class AuditPackGenerator {
+
   private static final String ADMIN_USER = "admin";
+
   private static final int PAGE_SIZE = 500;
+
   private static final String JSON_DATA_URL_PREFIX = "data:application/json;base64,";
+
   private static final String PDF_DATA_URL_PREFIX = "data:application/pdf;base64,";
+
   private static final String CHECKSUM_PREFIX = "sha256:";
 
   /**
@@ -120,7 +128,16 @@ public final class AuditPackGenerator {
     AuditReportRepository repository = auditReportRepository();
     AuditReport report;
     try {
-      report = repository.get(null, reportId, repository.getFields("id,name,scope,format"));
+      report =
+          repository
+              .reads()
+              .byId(
+                  reportId,
+                  new EntityReadService.Query(
+                      null,
+                      repository.fieldPolicy().parse("id,name,scope,format"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
     } catch (Exception e) {
       LOG.warn(
           "Audit pack generator could not fetch claimed report {}: {}", reportId, e.getMessage());
@@ -235,7 +252,9 @@ public final class AuditPackGenerator {
     }
   }
 
-  /** Computes and stamps the request signature backing indexed idempotent-submission dedup. */
+  /**
+   * Computes and stamps the request signature backing indexed idempotent-submission dedup.
+   */
   static void stampRequestSignature(AuditReport report) {
     report.setRequestSignature(sha256(signatureOf(report).getBytes(StandardCharsets.UTF_8)));
   }
@@ -271,7 +290,12 @@ public final class AuditPackGenerator {
     int scanned = 0;
     do {
       ResultList<AuditReport> page =
-          repository.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+          repository
+              .pages()
+              .after(
+                  new EntityPageReader.Projection(null, EntityUtil.Fields.EMPTY_FIELDS, filter),
+                  PAGE_SIZE,
+                  after);
       for (AuditReport report : page.getData()) {
         if (isInterrupted(report, now)) {
           result.add(report);
@@ -374,7 +398,6 @@ public final class AuditPackGenerator {
     collectAssets(Entity.AI_APPLICATION, scope, report, assets);
     collectAssets(Entity.LLM_MODEL, scope, report, assets);
     collectAssets(Entity.MCP_SERVER, scope, report, assets);
-
     payload.body =
         new AuditPackDocument(
             report.getId() == null ? null : report.getId().toString(),
@@ -434,15 +457,15 @@ public final class AuditPackGenerator {
   private static List<EntityInterface> listAssets(
       String entityType, ListFilter filter, EntityUtil.Fields fields) {
     List<EntityInterface> result = new ArrayList<>();
-    EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+    EntityPolicy<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
     String after = null;
     do {
       ResultList<? extends EntityInterface> page =
-          repo.listAfter(null, fields, filter, PAGE_SIZE, after);
+          repo.pages()
+              .after(new EntityPageReader.Projection(null, fields, filter), PAGE_SIZE, after);
       result.addAll(page.getData());
       after = page.getPaging() == null ? null : page.getPaging().getAfter();
     } while (after != null);
-
     return result;
   }
 
@@ -455,7 +478,7 @@ public final class AuditPackGenerator {
   private static EntityUtil.Fields fieldsForScope(String entityType, AuditReportScope scope) {
     EntityUtil.Fields result = EntityUtil.Fields.EMPTY_FIELDS;
     if (scope == AuditReportScope.Domain) {
-      result = Entity.getEntityRepository(entityType).getFields("domains");
+      result = Entity.getEntityRepository(entityType).fieldPolicy().parse("domains");
     }
     return result;
   }
@@ -492,10 +515,15 @@ public final class AuditPackGenerator {
   }
 
   private static final class AuditPackPayload {
+
     AuditPackDocument body;
+
     int assetCount;
+
     int frameworkCount;
+
     int controlCount;
+
     int complianceRecordCount;
   }
 }

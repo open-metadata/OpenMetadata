@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -71,6 +72,7 @@ import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class RdfRepository {
@@ -2557,8 +2559,15 @@ public class RdfRepository {
       var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
       var glossary =
           (Glossary)
-              glossaryRepo.get(
-                  null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
+              glossaryRepo
+                  .reads()
+                  .byId(
+                      glossaryId,
+                      new EntityReadService.Query(
+                          null,
+                          glossaryRepo.fieldPolicy().parse(""),
+                          RelationIncludes.fromInclude(Include.NON_DELETED),
+                          false));
       return firstNonBlank(glossary.getDisplayName(), glossary.getName());
     } catch (Exception e) {
       LOG.debug("Could not resolve display name for glossary {}: {}", glossaryId, e.getMessage());
@@ -2686,10 +2695,16 @@ public class RdfRepository {
   private List<GlossaryTerm> getGlossaryTermAndDirectNeighbors(
       GlossaryTermRepository glossaryTermRepository, UUID glossaryTermId, UUID glossaryId) {
     try {
-      var fields = glossaryTermRepository.getFields("relatedTerms,parent,children,glossary");
+      var fields =
+          glossaryTermRepository.fieldPolicy().parse("relatedTerms,parent,children,glossary");
       GlossaryTerm selectedTerm =
           (GlossaryTerm)
-              glossaryTermRepository.get(null, glossaryTermId, fields, Include.NON_DELETED, false);
+              glossaryTermRepository
+                  .reads()
+                  .byId(
+                      glossaryTermId,
+                      new EntityReadService.Query(
+                          null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
       if (!isGlossaryTermInGlossary(selectedTerm, glossaryId)) {
         return List.of();
       }
@@ -2707,7 +2722,15 @@ public class RdfRepository {
         try {
           terms.add(
               (GlossaryTerm)
-                  glossaryTermRepository.get(null, termId, fields, Include.NON_DELETED, false));
+                  glossaryTermRepository
+                      .reads()
+                      .byId(
+                          termId,
+                          new EntityReadService.Query(
+                              null,
+                              fields,
+                              RelationIncludes.fromInclude(Include.NON_DELETED),
+                              false)));
         } catch (EntityNotFoundException e) {
           LOG.debug("Skipping missing glossary term neighbor {} in DB graph fallback", termId);
         }
@@ -2751,14 +2774,25 @@ public class RdfRepository {
           var glossaryRepo = Entity.getEntityRepository(Entity.GLOSSARY);
           var glossary =
               (Glossary)
-                  glossaryRepo.get(
-                      null, glossaryId, glossaryRepo.getFields(""), Include.NON_DELETED, false);
+                  glossaryRepo
+                      .reads()
+                      .byId(
+                          glossaryId,
+                          new EntityReadService.Query(
+                              null,
+                              glossaryRepo.fieldPolicy().parse(""),
+                              RelationIncludes.fromInclude(Include.NON_DELETED),
+                              false));
           listFilter.addQueryParam("parent", glossary.getFullyQualifiedName());
         }
         var fetched =
-            glossaryTermRepository.listAll(
-                glossaryTermRepository.getFields("relatedTerms,parent,children,glossary"),
-                listFilter);
+            glossaryTermRepository
+                .collections()
+                .all(
+                    glossaryTermRepository
+                        .fieldPolicy()
+                        .parse("relatedTerms,parent,children,glossary"),
+                    listFilter);
         for (var entity : fetched) {
           terms.add((GlossaryTerm) entity);
         }

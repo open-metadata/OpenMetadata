@@ -29,6 +29,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.EventBased
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -57,7 +58,7 @@ public class MigrationUtil {
           dataInsightSystemChartRepository.getByName(
               null, chartName, EntityUtil.Fields.EMPTY_FIELDS);
       chart.setChartDetails(chartDetails);
-      dataInsightSystemChartRepository.prepareInternal(chart, false);
+      dataInsightSystemChartRepository.preparation().prepare(chart, false);
       dataInsightSystemChartRepository.getDao().update(chart);
     } catch (Exception ex) {
       LOG.warn("Chart {} exists, Exception Message: {}", chartName, ex.getMessage());
@@ -75,7 +76,7 @@ public class MigrationUtil {
               .withUpdatedBy("ingestion-bot")
               .withDeleted(false)
               .withIsSystemChart(true);
-      dataInsightSystemChartRepository.prepareInternal(chart, false);
+      dataInsightSystemChartRepository.preparation().prepare(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
@@ -362,7 +363,9 @@ public class MigrationUtil {
         workflowDefinition.setNodes(nodes);
         workflowDefinition.setEdges(edges);
 
-        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        repository
+            .creates()
+            .upsert(null, workflowDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
 
         LOG.info(
             "Successfully added reviewer auto-approval nodes to workflow '{}'",

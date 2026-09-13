@@ -32,14 +32,17 @@ import org.openmetadata.schema.api.data.OntologyDeleteResult;
 import org.openmetadata.schema.api.data.OntologyImpactReport;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.ontology.OntologyImpactService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/ontology/impacts")
 @Tag(name = "Ontology Impacts", description = "Version-bound ontology impact analysis.")
@@ -96,7 +99,16 @@ public final class OntologyImpactResource {
 
   private void authorizeTerm(
       final SecurityContext securityContext, final UUID id, final MetadataOperation operation) {
-    final GlossaryTerm term = repository.get(null, id, repository.getFields(""));
+    final GlossaryTerm term =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    null,
+                    repository.fieldPolicy().parse(""),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY_TERM, operation),

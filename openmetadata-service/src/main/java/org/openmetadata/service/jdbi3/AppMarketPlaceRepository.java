@@ -1,25 +1,34 @@
 package org.openmetadata.service.jdbi3;
 
+import java.util.Set;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.resources.apps.AppMarketPlaceResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
-public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDefinition> {
+@Repository()
+public class AppMarketPlaceRepository implements EntityPolicy<AppMarketPlaceDefinition> {
 
   public AppMarketPlaceRepository() {
-    super(
-        AppMarketPlaceResource.COLLECTION_PATH,
-        Entity.APP_MARKET_PLACE_DEF,
-        AppMarketPlaceDefinition.class,
-        Entity.getCollectionDAO().applicationMarketPlaceDAO(),
-        "",
-        "");
-    supportsSearch = false;
-    quoteFqn = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                AppMarketPlaceResource.COLLECTION_PATH,
+                Entity.APP_MARKET_PLACE_DEF,
+                AppMarketPlaceDefinition.class,
+                Entity.getCollectionDAO().applicationMarketPlaceDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(false);
+    context().options().setQuoteFqn(true);
   }
 
   @Override
@@ -31,7 +40,7 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
   }
 
   public AppMarketPlaceDefinition getDefinition(App app) {
-    return findByName(app.getName(), Include.NON_DELETED);
+    return lookup().byName(app.getName(), Include.NON_DELETED);
   }
 
   @Override
@@ -44,9 +53,16 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
 
   @Override
   public void storeEntity(AppMarketPlaceDefinition entity, boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
   public void storeRelationships(AppMarketPlaceDefinition entity) {}
+
+  private final EntityPolicyContext<AppMarketPlaceDefinition> entityContext;
+
+  @Override
+  public final EntityPolicyContext<AppMarketPlaceDefinition> context() {
+    return entityContext;
+  }
 }

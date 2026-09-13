@@ -9,6 +9,7 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -25,7 +26,7 @@ public class MigrationUtil {
     DataInsightCustomChart chart =
         dataInsightSystemChartRepository.getByName(null, chartName, EntityUtil.Fields.EMPTY_FIELDS);
     chart.setChartDetails(chartDetails);
-    dataInsightSystemChartRepository.prepareInternal(chart, false);
+    dataInsightSystemChartRepository.preparation().prepare(chart, false);
     try {
       dataInsightSystemChartRepository.getDao().update(chart);
     } catch (Exception ex) {
@@ -70,7 +71,9 @@ public class MigrationUtil {
   public static void updateWorkflowDefinitions() {
     workflowDefinitionRepository = new WorkflowDefinitionRepository();
     List<WorkflowDefinition> workflowDefinitions =
-        workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+        workflowDefinitionRepository
+            .collections()
+            .all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
 
     for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
       try {
@@ -80,7 +83,9 @@ public class MigrationUtil {
           workflowDefinition.getConfig().setStoreStageStatus(false);
         }
 
-        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        workflowDefinitionRepository
+            .creates()
+            .upsert(null, workflowDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
       } catch (Exception ex) {
         LOG.warn(ex.toString());
         LOG.warn("Error updating workflow definition {}", workflowDefinition.getName());

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -14,9 +13,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,19 +29,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.read.EntityReader;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -55,8 +61,29 @@ import org.openmetadata.service.util.RestUtil;
  */
 class PatchEntityToolTest {
 
+  private record PatchRequest(
+      EntityPatchService.Target target,
+      JsonPatch patch,
+      EntityCommandActor actor,
+      UriInfo uri,
+      EntityPatchService.Options options) {}
+
+  private List<PatchRequest> patchRequests(
+      EntityPolicy<EntityInterface> repository, RestUtil.PatchResponse<EntityInterface> response) {
+    final List<PatchRequest> patches = new ArrayList<>();
+    when(repository.patches())
+        .thenReturn(
+            (target, patch, actor, uri, options) -> {
+              patches.add(new PatchRequest(target, patch, actor, uri, options));
+              return response;
+            });
+    return patches;
+  }
+
   private Authorizer authorizer;
+
   private CatalogSecurityContext securityContext;
+
   private Principal principal;
 
   @BeforeEach
@@ -80,7 +107,7 @@ class PatchEntityToolTest {
   @Test
   void execute_refusesToPatchAnotherUsersPrivateMemory() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> repository = mock(EntityPolicy.class);
     ContextMemory memory =
         new ContextMemory()
             .withId(UUID.randomUUID())
@@ -95,12 +122,10 @@ class PatchEntityToolTest {
                         .withName("bob")
                         .withFullyQualifiedName("bob")))
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
-
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", Entity.CONTEXT_MEMORY);
     params.put("fqn", "bobs-private-note");
     params.put("patch", "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"x\"}]");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       entityMock
@@ -115,52 +140,40 @@ class PatchEntityToolTest {
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
-
       assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
           .isInstanceOf(ForbiddenException.class);
     }
-
-    verify(repository, never()).patch(any(), anyString(), any(), any(), any(), any(), any());
+    verify(repository, never()).patches();
   }
 
   @Test
   void execute_passesImpersonationContextToRepository() {
     ImpersonationContext.setImpersonatedBy("McpApplicationBot");
-
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> mockRepo = mock(EntityPolicy.class);
     EntityInterface mockEntity = mock(EntityInterface.class);
     RestUtil.PatchResponse<EntityInterface> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
-    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
-        .thenReturn(patchResponse);
-
+    final var patches = patchRequests(mockRepo, patchResponse);
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", "[]");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
         MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
-
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepo);
       jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
-
       new PatchEntityTool().execute(authorizer, securityContext, params);
-
-      ArgumentCaptor<String> impersonatedByCaptor = ArgumentCaptor.forClass(String.class);
-      verify(mockRepo)
-          .patch(
-              isNull(),
-              any(String.class),
-              eq("alice"),
-              any(),
-              eq(ChangeSource.AUTOMATED),
-              isNull(),
-              impersonatedByCaptor.capture());
-
-      assertThat(impersonatedByCaptor.getValue())
+      assertThat(patches).hasSize(1);
+      final var request = patches.getFirst();
+      assertThat(request.target())
+          .isEqualTo(new EntityPatchService.Target.Name("db.schema.test_table"));
+      assertThat(request.actor().user()).isEqualTo("alice");
+      assertThat(request.options())
+          .isEqualTo(new EntityPatchService.Options(ChangeSource.AUTOMATED, null));
+      assertThat(request.uri()).isNull();
+      assertThat(request.actor().impersonatedBy())
           .as("impersonatedBy passed to repository must equal what was set in ImpersonationContext")
           .isEqualTo("McpApplicationBot");
     }
@@ -169,39 +182,30 @@ class PatchEntityToolTest {
   @Test
   void execute_withNoImpersonationContext_passesNullImpersonatedBy() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> mockRepo = mock(EntityPolicy.class);
     EntityInterface mockEntity = mock(EntityInterface.class);
     RestUtil.PatchResponse<EntityInterface> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
-    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
-        .thenReturn(patchResponse);
-
+    final var patches = patchRequests(mockRepo, patchResponse);
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", "[]");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
         MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
-
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepo);
       jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
-
       new PatchEntityTool().execute(authorizer, securityContext, params);
-
-      ArgumentCaptor<String> impersonatedByCaptor = ArgumentCaptor.forClass(String.class);
-      verify(mockRepo)
-          .patch(
-              isNull(),
-              any(String.class),
-              eq("alice"),
-              any(),
-              eq(ChangeSource.AUTOMATED),
-              isNull(),
-              impersonatedByCaptor.capture());
-
-      assertThat(impersonatedByCaptor.getValue())
+      assertThat(patches).hasSize(1);
+      final var request = patches.getFirst();
+      assertThat(request.target())
+          .isEqualTo(new EntityPatchService.Target.Name("db.schema.test_table"));
+      assertThat(request.actor().user()).isEqualTo("alice");
+      assertThat(request.options())
+          .isEqualTo(new EntityPatchService.Options(ChangeSource.AUTOMATED, null));
+      assertThat(request.uri()).isNull();
+      assertThat(request.actor().impersonatedBy())
           .as("impersonatedBy must be null when ImpersonationContext is not set")
           .isNull();
     }
@@ -210,29 +214,22 @@ class PatchEntityToolTest {
   @Test
   void execute_publishesChangeEventWithCallerUserName() {
     ImpersonationContext.setImpersonatedBy("McpApplicationBot");
-
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> mockRepo = mock(EntityPolicy.class);
     EntityInterface mockEntity = mock(EntityInterface.class);
     RestUtil.PatchResponse<EntityInterface> patchResponse =
         new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED);
-    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
-        .thenReturn(patchResponse);
-
+    final var patches = patchRequests(mockRepo, patchResponse);
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", "[]");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
         MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
-
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepo);
       jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
-
       new PatchEntityTool().execute(authorizer, securityContext, params);
-
       changeEventMock.verify(
           () ->
               McpChangeEventUtil.publishChangeEvent(
@@ -243,36 +240,47 @@ class PatchEntityToolTest {
   @Test
   void execute_authorizesWithPatchResourceContext() {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
-    EntityInterface mockEntity = mock(EntityInterface.class);
-    when(mockRepo.getPatchFields()).thenReturn(new Fields(Set.of()));
-    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
-        .thenReturn(
+    EntityPolicy<EntityInterface> mockRepo = mock(EntityPolicy.class);
+    EntityInterface mockEntity =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("test_table")
+            .withFullyQualifiedName("db.schema.test_table");
+    @SuppressWarnings("unchecked")
+    EntityReader<EntityInterface> reader = mock(EntityReader.class);
+    when(mockRepo.reads()).thenReturn(reader);
+    when(reader.byName(eq("db.schema.test_table"), any()))
+        .thenAnswer(
+            invocation -> {
+              EntityReadService.Query query = invocation.getArgument(1);
+              assertThat(query.fields().getFieldList()).containsExactly("description");
+              assertThat(query.fromCache()).isFalse();
+              return mockEntity;
+            });
+    when(mockRepo.getPatchFields()).thenReturn(new Fields(Set.of("description")));
+    final var patches =
+        patchRequests(
+            mockRepo,
             new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
     doAnswer(
             invocation -> {
               ResourceContextInterface resourceContext = invocation.getArgument(2);
-              resourceContext.getEntity();
+              assertThat(resourceContext.getEntity()).isSameAs(mockEntity);
               return null;
             })
         .when(authorizer)
         .authorize(eq(securityContext), any(), any());
-
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", "[]");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
         MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepo);
       jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
-
       new PatchEntityTool().execute(authorizer, securityContext, params);
     }
-
-    verify(mockRepo).getPatchFields();
   }
 
   @ParameterizedTest
@@ -296,7 +304,6 @@ class PatchEntityToolTest {
     params.put("entityType", entityType);
     params.put("fqn", "target");
     params.put("patch", "[]");
-
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("entityType '" + entityType + "'")
@@ -311,12 +318,10 @@ class PatchEntityToolTest {
     params.put("entityType", Entity.TEST_CASE_RESOLUTION_STATUS);
     params.put("fqn", "target");
     params.put("patch", "[]");
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock
           .when(() -> Entity.isTimeSeriesEntity(Entity.TEST_CASE_RESOLUTION_STATUS))
           .thenReturn(true);
-
       assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("time-series entities")
@@ -342,26 +347,24 @@ class PatchEntityToolTest {
     // the tool description itself advertises - because the paths do not exist in '{}'. Whether a
     // path exists is the repository's question to answer against the real entity.
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface> mockRepo = mock(EntityRepository.class);
+    EntityPolicy<EntityInterface> mockRepo = mock(EntityPolicy.class);
     EntityInterface mockEntity = mock(EntityInterface.class);
-    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
-        .thenReturn(
+    final var patches =
+        patchRequests(
+            mockRepo,
             new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
-
     Map<String, Object> params = new HashMap<>();
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", goodPatch);
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
         MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
       entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepo);
       jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
-
       new PatchEntityTool().execute(authorizer, securityContext, params);
-
-      verify(mockRepo).patch(any(), any(String.class), any(), any(), any(), any(), any());
+      assertThat(patches).hasSize(1);
+      assertThat(patches.getFirst().patch().toJsonArray().toString()).isEqualTo(goodPatch);
     }
   }
 
@@ -378,7 +381,6 @@ class PatchEntityToolTest {
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", badPatch);
-
     // Json.createPatch does not validate operations - it builds happily and only fails on apply(),
     // inside the repository. There an unknown op is a JsonException and a bare object is a raw
     // NullPointerException; the dispatcher reads neither as the caller's fault and returns 500
@@ -394,7 +396,6 @@ class PatchEntityToolTest {
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", "[{\"op\": \"add\", \"path\": \"/owners/-\", \"value\": {\"id\": \"x\"}]");
-
     // An IllegalArgumentException is what the dispatcher maps to 400. Letting the JSON library's
     // own exception escape produced a 500 telling the model its arguments were fine and not to
     // retry - for a document the model wrote and could fix.
@@ -409,7 +410,6 @@ class PatchEntityToolTest {
     params.put("entityType", "table");
     params.put("fqn", "db.schema.test_table");
     params.put("patch", null);
-
     // The patch document is the whole interface, so its absence names the RFC and shows the shape.
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
@@ -421,7 +421,6 @@ class PatchEntityToolTest {
   void execute_missingTarget_namesBothRequiredParameters() {
     Map<String, Object> params = new HashMap<>();
     params.put("fqn", "db.schema.test_table");
-
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("'entityType' and 'fqn' are required");

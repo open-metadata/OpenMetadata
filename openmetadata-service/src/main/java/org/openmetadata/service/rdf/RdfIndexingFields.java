@@ -22,7 +22,7 @@ public final class RdfIndexingFields {
   private RdfIndexingFields() {}
 
   public static List<String> forEntityType(String entityType) {
-    return forSupportedFields(Entity.getEntityRepository(entityType).getAllowedFieldsCopy());
+    return forSupportedFields(Entity.getEntityRepository(entityType).fieldPolicy().allowedCopy());
   }
 
   static List<String> forSupportedFields(Set<String> supportedFields) {

@@ -26,11 +26,15 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /**
@@ -160,7 +164,9 @@ public class ContextFileProcessingService {
     int resubmitted = 0;
     try {
       List<ContextFile> files =
-          repository.listAll(repository.getFields(""), new ListFilter(Include.NON_DELETED));
+          repository
+              .collections()
+              .all(repository.fieldPolicy().parse(""), new ListFilter(Include.NON_DELETED));
       for (ContextFile file : files) {
         if (isInterrupted(file)) {
           submit(file.getId(), UUID.fromString(file.getHeadContentId()));
@@ -480,7 +486,15 @@ public class ContextFileProcessingService {
 
   private ContextFile getFile(UUID fileId) {
     try {
-      return repository.get(null, fileId, repository.getFields(""), Include.NON_DELETED, false);
+      return repository
+          .reads()
+          .byId(
+              fileId,
+              new EntityReadService.Query(
+                  null,
+                  repository.fieldPolicy().parse(""),
+                  RelationIncludes.fromInclude(Include.NON_DELETED),
+                  false));
     } catch (Exception e) {
       return null;
     }
@@ -505,7 +519,14 @@ public class ContextFileProcessingService {
         return false;
       }
       try {
-        repository.updateIfCurrent(null, current, updated, current.getUpdatedBy());
+        repository
+            .puts()
+            .update(
+                null,
+                current,
+                updated,
+                new EntityCommandActor(current.getUpdatedBy(), null),
+                EntityPutService.Mode.OPTIMISTIC);
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
@@ -533,7 +554,13 @@ public class ContextFileProcessingService {
       try {
         repository
             .getContentRepository()
-            .updateIfCurrent(null, current, updated, current.getUpdatedBy());
+            .puts()
+            .update(
+                null,
+                current,
+                updated,
+                new EntityCommandActor(current.getUpdatedBy(), null),
+                EntityPutService.Mode.OPTIMISTIC);
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file content {} changed during extraction update", contentId);

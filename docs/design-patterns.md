@@ -71,8 +71,9 @@ vendor-agnostic.
 **Proxy (caching)** — a stand-in that transparently adds caching in front of the real object.
 - *Use it when* reading entities/subjects on hot paths: read through the existing **bounded** caches,
   don't hit the DB directly (see `CLAUDE.md`: all caches must be bounded).
-- *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityRepository.java`
-  (the `CACHE_WITH_NAME`/`CACHE_WITH_ID` Guava `LoadingCache`),
+- *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/entity/cache/EntityLocalCache.java`
+  (bounded ID/FQN caches), `openmetadata-service/src/main/java/org/openmetadata/service/entity/cache/EntityCacheLoaders.java`
+  (canonical rows through the existing Redis layer),
   `openmetadata-service/src/main/java/org/openmetadata/service/security/policyevaluator/SubjectCache.java`.
 
 **Composite** — model part-whole trees so a leaf and a container are handled uniformly.
@@ -92,11 +93,22 @@ genuine case.*
 ### Behavioral
 
 **Template Method** — a base class fixes the algorithm skeleton and delegates the variable steps to
-abstract hooks the subclass fills. **The backbone of the backend.**
-- *Use it when* adding an entity repository or app: extend the base and implement the hooks
-  (`setFields`, `prepare`, `storeEntity`, …); never reimplement the CRUD lifecycle.
-- *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityRepository.java`
-  (~60 repositories), `openmetadata-service/src/main/java/org/openmetadata/service/apps/AbstractNativeApplication.java`.
+abstract hooks the subclass fills.
+- *Use it when* adding an application that follows the existing app lifecycle.
+- *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/apps/AbstractNativeApplication.java`.
+
+**Composition with entity policies** — shared application services own the CRUD lifecycle and
+receive the variable operations as policies. An entity family implements `EntityPolicy` and binds
+one module graph at startup; it does not inherit a shared repository implementation.
+- *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/entity/EntityModuleFactory.java`,
+  `openmetadata-service/src/main/java/org/openmetadata/service/entity/policy/EntityPolicy.java`,
+  `openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ChartRepository.java`.
+- Keep normal command flushes in `EntityUnitOfWork`. Its retained DAO boundary, retry state and
+  deferred effects are shared across components; policy extraction must not add a transaction.
+- Entity-specific changes implement `EntitySpecificMutation` and use the final `EntityUpdater`'s
+  current snapshots and change recorder. Column policies compose `EntityColumnUpdater` with that
+  same mutation. Service families implement `EntityServicePolicy` and share stateless connection
+  rules through `EntityServiceMutation`; see `McpServiceRepository` and `SecurityServiceRepository`.
 
 **Strategy** — interchangeable algorithms behind a common interface, selected at runtime.
 - *Use it when* there is a family of "same operation, different implementation" (auth, secrets
@@ -134,7 +146,7 @@ parse trees.
 - *Use it when* processing large entity sets (reindex, insights) or paginating a list API: use
   cursor-based sources / `ResultList`, never load everything into memory.
 - *Here:* `openmetadata-service/src/main/java/org/openmetadata/service/workflows/interfaces/Source.java`
-  and `EntityRepository` keyset pagination.
+  and `openmetadata-service/src/main/java/org/openmetadata/service/entity/read/EntityPageReader.java`.
 
 **State** — allowed transitions depend on an explicit status; illegal transitions are rejected.
 *Narrow here.*

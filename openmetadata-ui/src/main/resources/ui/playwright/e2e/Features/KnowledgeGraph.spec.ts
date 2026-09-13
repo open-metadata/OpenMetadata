@@ -312,8 +312,33 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     table = new TableClass();
-    await table.create(apiContext);
-    await afterAction();
+    try {
+      await table.create(apiContext);
+      const schemaIri = `https://open-metadata.org/entity/databaseSchema/${table.schemaResponseData.id}`;
+      const tableIri = `https://open-metadata.org/entity/table/${table.entityResponseData.id}`;
+      await expect
+        .poll(
+          async () => {
+            const response = await apiContext.post('/api/v1/rdf/sparql', {
+              data: {
+                query: `ASK { GRAPH ?graph { <${schemaIri}> ?predicate <${tableIri}> } }`,
+                format: 'json',
+                inference: 'none',
+              },
+            });
+            expect(response.ok()).toBe(true);
+
+            return (await response.json()).boolean;
+          },
+          {
+            message: 'Table relationships must reach the RDF projection',
+            timeout: 60_000,
+          }
+        )
+        .toBe(true);
+    } finally {
+      await afterAction();
+    }
   });
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);

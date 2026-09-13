@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -51,6 +50,8 @@ import org.openmetadata.schema.type.OntologyChangeOperationResult;
 import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService.ChangeTransaction;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService.Dependencies;
@@ -78,9 +79,19 @@ class OntologyChangeApplicationServiceTest {
 
   @BeforeEach
   void setUp() {
+    when(repository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(OntologyChangeSet.class));
     changeSet = changeSet(null);
-    when(repository.get(isNull(), eq(changeSetId), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(changeSet);
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(changeSetId, readId);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return changeSet;
+                }));
     when(repository.transition(any(), eq(USER), eq(changeSetId), any(), any()))
         .thenAnswer(
             invocation -> {

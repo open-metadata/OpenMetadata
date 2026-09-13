@@ -14,7 +14,7 @@
 package org.openmetadata.service.util;
 
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.ReadBundleContext;
+import org.openmetadata.service.entity.read.ReadBundleContext;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.security.ActivePersonaContext;
 import org.openmetadata.service.security.ImpersonationContext;

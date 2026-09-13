@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources.glossary;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -80,9 +79,11 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -102,6 +103,7 @@ import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.MoveGlossaryTermResponse;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -114,15 +116,20 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
-    name = "glossaryTerms",
-    order = 7) // Initialized after Glossary, Classification, and Tags
+    name = "glossaryTerms", // Initialized after Glossary, Classification, and Tags
+    order = 7)
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
+
   private final GlossaryTermMapper mapper = new GlossaryTermMapper();
+
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
+
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
+
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount,"
           + "effectiveAttributes,realizedIn";
+
   // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
   // separators) well below Jetty's default 8 KB request-header limit
   // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
@@ -165,26 +172,24 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
     List<LoadGlossary> loadGlossaries =
-        EntityRepository.getEntitiesFromSeedData(
+        EntityPolicySupport.getEntitiesFromSeedData(
             GLOSSARY, ".*json/data/glossary/.*Glossary\\.json$", LoadGlossary.class);
     for (LoadGlossary loadGlossary : loadGlossaries) {
       Glossary glossary =
           glossaryMapper.createToEntity(loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
       glossary.setFullyQualifiedName(glossary.getName());
       glossaryRepository.initializeEntity(glossary);
-
       List<GlossaryTerm> termsToCreate = new ArrayList<>();
       for (CreateGlossaryTerm createTerm : loadGlossary.getCreateTerms()) {
         createTerm.withGlossary(glossary.getName());
         createTerm.withProvider(glossary.getProvider());
         GlossaryTerm term = mapper.createToEntity(createTerm, ADMIN_USER_NAME);
-        repository.setFullyQualifiedName(term); // FQN required for ordering tags based on hierarchy
+        // FQN required for ordering tags based on hierarchy
+        repository.setFullyQualifiedName(term);
         termsToCreate.add(term);
       }
-
       // Sort tags based on tag hierarchy
       EntityUtil.sortByFQN(termsToCreate);
-
       for (GlossaryTerm term : termsToCreate) {
         repository.initializeEntity(term);
       }
@@ -268,20 +273,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           String entityStatus) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
-
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
     OperationContext glossaryOperationContext =
         new OperationContext(GLOSSARY, getViewOperations(fields));
     OperationContext glossaryTermOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
-
     List<AuthRequest> authRequests =
         List.of(
             new AuthRequest(glossaryOperationContext, glossaryResourceContext),
             new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-
     // Filter by glossary
     String fqn = null;
     EntityReference glossary = null;
@@ -289,13 +291,19 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       glossary = repository.getGlossary(glossaryIdParam);
       fqn = glossary.getFullyQualifiedName();
     }
-
     // Filter by glossary parent term
     if (parentTermParam != null) {
       GlossaryTerm parentTerm =
-          repository.get(null, parentTermParam, repository.getFields("parent"));
+          repository
+              .reads()
+              .byId(
+                  parentTermParam,
+                  new EntityReadService.Query(
+                      null,
+                      repository.fieldPolicy().parse("parent"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       fqn = parentTerm.getFullyQualifiedName();
-
       // Ensure parent glossary term belongs to the glossary
       if ((glossary != null) && (!parentTerm.getGlossary().getId().equals(glossary.getId()))) {
         throw new IllegalArgumentException(
@@ -308,14 +316,22 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             .addQueryParam("parent", fqn)
             .addQueryParam("directChildrenOf", parentTermFQNParam)
             .addQueryParam("entityStatus", entityStatus);
-
     ResultList<GlossaryTerm> terms;
-    if (before != null) { // Reverse paging
+    if (before != null) {
+      // Reverse paging
       terms =
-          repository.listBefore(
-              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
-    } else { // Forward paging or first page
-      terms = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+          repository
+              .pages()
+              .before(
+                  new EntityPageReader.Projection(uriInfo, fields, filter),
+                  limitParam, // Ask for one extra entry
+                  before);
+    } else {
+      // Forward paging or first page
+      terms =
+          repository
+              .pages()
+              .after(new EntityPageReader.Projection(uriInfo, fields, filter), limitParam, after);
     }
     return addHref(uriInfo, terms);
   }
@@ -376,7 +392,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                   "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed)")
           @QueryParam("entityStatus")
           String entityStatus) {
-
     Fields fields = getFields(fieldsParam);
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
     OperationContext glossaryOperationContext =
@@ -384,13 +399,11 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     OperationContext glossaryTermOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
-
     List<AuthRequest> authRequests =
         List.of(
             new AuthRequest(glossaryOperationContext, glossaryResourceContext),
             new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-
     ResultList<GlossaryTerm> result;
     if (glossaryId != null) {
       result =
@@ -415,7 +428,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           repository.searchGlossaryTermsByParentFQN(
               null, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
     }
-
     return addHref(uriInfo, result);
   }
 
@@ -493,6 +505,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   public static final class OntologyDataQuery {
+
     @QueryParam("parent")
     private String parent;
 
@@ -1215,16 +1228,21 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-
     // Validate the move operation synchronously before submitting to async executor
     // This will throw IllegalArgumentException if circular reference detected
     repository.validateMoveOperation(id, moveRequest);
-
     String jobId = UUID.randomUUID().toString();
     GlossaryTerm glossaryTerm =
-        repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    repository.fieldPolicy().parse("name"),
+                    RelationIncludes.fromInclude(Include.ALL),
+                    false));
     String userName = securityContext.getUserPrincipal().getName();
-
     AsyncService.getInstance()
         .executeDatabaseTask(
             DatabaseOperation.ENTITY_DELETE_RESTORE,
@@ -1240,7 +1258,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                     jobId, securityContext, glossaryTerm, e.getMessage());
               }
             });
-
     return Response.accepted()
         .entity(
             new MoveGlossaryTermResponse(
@@ -1572,6 +1589,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   public static final class RelationGraphQuery {
+
     @Parameter(description = "Depth of the graph (1-5, default = 1)")
     @DefaultValue("1")
     @Min(1)

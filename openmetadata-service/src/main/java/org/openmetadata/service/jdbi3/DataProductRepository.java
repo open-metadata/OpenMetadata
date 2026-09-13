@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -64,6 +63,19 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
+import org.openmetadata.service.entity.read.EntityBatchFields;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.domains.DataProductResource;
@@ -87,9 +99,12 @@ import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
-public class DataProductRepository extends EntityRepository<DataProduct> {
-  private static final String UPDATE_FIELDS =
-      "experts,domains"; // Domain can now be updated with asset migration
+@Repository()
+public class DataProductRepository implements EntityPolicy<DataProduct> {
+
+  private static final // Domain can now be updated with asset migration
+  String // Domain can now be updated with asset migration
+      UPDATE_FIELDS = "experts,domains";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -98,25 +113,25 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   protected DataProductRepository(boolean registerEntity) {
-    super(
-        DataProductResource.COLLECTION_PATH,
-        Entity.DATA_PRODUCT,
-        DataProduct.class,
-        Entity.getCollectionDAO().dataProductDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS,
-        Set.of(),
-        registerEntity);
-    supportsSearch = true;
-    renameAllowed = true;
-
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DataProductResource.COLLECTION_PATH,
+                Entity.DATA_PRODUCT,
+                DataProduct.class,
+                Entity.getCollectionDAO().dataProductDAO()),
+            new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, registerEntity);
+    context().options().setSupportsSearch(true);
+    context().options().setRenameAllowed(true);
     // Initialize inherited field search
-    if (searchRepository != null) {
-      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    if (context().dependencies().search() != null) {
+      inheritedFieldEntitySearch =
+          new DefaultInheritedFieldEntitySearch(context().dependencies().search());
     }
-
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("experts", this::fetchAndSetExperts);
+    fieldLoading().register("experts", this::fetchAndSetExperts);
   }
 
   @Override
@@ -130,7 +145,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void setFieldsInBulk(Fields fields, List<DataProduct> entities) {
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
     for (DataProduct entity : entities) {
       clearFieldsInternal(entity, fields);
@@ -141,7 +156,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     if (!fields.contains("experts") || dataProducts == null || dataProducts.isEmpty()) {
       return;
     }
-    setFieldFromMap(true, dataProducts, batchFetchExperts(dataProducts), DataProduct::setExperts);
+    EntityBatchFields.assign(
+        true, dataProducts, batchFetchExperts(dataProducts), DataProduct::setExperts);
   }
 
   @Override
@@ -159,11 +175,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void storeEntity(DataProduct entity, boolean update) {
     // Ports are stored as relationships via dedicated APIs, not in entity JSON
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DataProduct::getId).toList();
     deleteToMany(ids, Entity.DATA_PRODUCT, Relationship.CONTAINS, Entity.DOMAIN);
@@ -173,16 +189,28 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void storeRelationships(DataProduct entity) {
     for (EntityReference domain : listOrEmpty(entity.getDomains())) {
-      addRelationship(
-          domain.getId(),
-          entity.getId(),
-          Entity.DOMAIN,
-          Entity.DATA_PRODUCT,
-          Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  domain.getId(),
+                  entity.getId(),
+                  Entity.DOMAIN,
+                  Entity.DATA_PRODUCT,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
     for (EntityReference expert : listOrEmpty(entity.getExperts())) {
-      addRelationship(
-          entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  entity.getId(),
+                  expert.getId(),
+                  Entity.DATA_PRODUCT,
+                  Entity.USER,
+                  Relationship.EXPERT),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
     // Ports and assets are managed via dedicated bulk APIs:
     // PUT /v1/dataProducts/{name}/inputPorts/add
@@ -191,7 +219,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   public final EntityReference getDomain(Domain domain) {
-    return getFromEntityRef(domain.getId(), Relationship.CONTAINS, DOMAIN, false);
+    return relationships().singleFrom(domain.getId(), Relationship.CONTAINS, DOMAIN, false);
   }
 
   /**
@@ -222,7 +250,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private DataProduct loadForDomainDetach(UUID dataProductId) {
-    DataProduct dataProduct = find(dataProductId, ALL, false);
+    DataProduct dataProduct = lookup().byId(dataProductId, ALL, false);
     setFieldsInternal(dataProduct, getPutFields());
     setInheritedFields(dataProduct, getPutFields());
     return dataProduct;
@@ -230,8 +258,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   private void removeDomainContainment(UUID dataProductId, List<UUID> deletingDomainIds) {
     for (UUID domainId : listOrEmpty(deletingDomainIds)) {
-      deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.CONTAINS);
-      deleteRelationship(domainId, DOMAIN, dataProductId, DATA_PRODUCT, Relationship.HAS);
+      relationshipWrites()
+          .delete(
+              new EntityRelationshipWriter.Edge(
+                  domainId, dataProductId, DOMAIN, DATA_PRODUCT, Relationship.CONTAINS));
+      relationshipWrites()
+          .delete(
+              new EntityRelationshipWriter.Edge(
+                  domainId, dataProductId, DOMAIN, DATA_PRODUCT, Relationship.HAS));
     }
   }
 
@@ -252,13 +286,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     updated.setVersion(EntityUtil.nextVersion(original.getVersion()));
     updated.setUpdatedAt(System.currentTimeMillis());
     updated.setUpdatedBy(updatedBy != null ? updatedBy : original.getUpdatedBy());
-
     ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
     fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
     updated.setChangeDescription(change);
-
     String versionExtension = EntityUtil.getVersionExtension(DATA_PRODUCT, original.getVersion());
-    daoCollection
+    context()
+        .dependencies()
+        .daos()
         .entityExtensionDAO()
         .insert(original.getId(), versionExtension, DATA_PRODUCT, JsonUtils.pojoToJson(original));
     storeEntity(updated, true);
@@ -276,7 +310,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       return;
     }
     for (UUID dataProductId : dataProductIds) {
-      if (searchRepository != null && SearchRepository.isSearchWriteDeferralActive()) {
+      if (context().dependencies().search() != null
+          && SearchRepository.isSearchWriteDeferralActive()) {
         reindexDetachedProduct(dataProductId);
       } else {
         SearchIndexRetryQueue.enqueue(
@@ -290,9 +325,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   private void reindexDetachedProduct(UUID dataProductId) {
     try {
-      DataProduct dataProduct = find(dataProductId, ALL, false);
+      DataProduct dataProduct = lookup().byId(dataProductId, ALL, false);
       setFieldsInternal(dataProduct, getPutFields());
-      searchRepository.updateEntityIndex(dataProduct);
+      context().dependencies().search().updateEntityIndex(dataProduct);
     } catch (EntityNotFoundException e) {
       // A retained product can still be hard-deleted elsewhere in the same domain cascade.
       // This loop runs post-commit, so skip the vanished product and keep reindexing the rest.
@@ -310,14 +345,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     if (!inheritOwners && !inheritExperts) {
       return;
     }
-
     // Domains may not be part of requested response fields, but they are required to derive
     // inherited owners/experts.
     List<EntityReference> domains = getDomains(dataProduct);
     if (!nullOrEmpty(domains)) {
       List<EntityReference> owners = new ArrayList<>();
       List<EntityReference> experts = new ArrayList<>();
-
       for (EntityReference domainRef : domains) {
         Domain domain = Entity.getEntity(DOMAIN, domainRef.getId(), "owners,experts", ALL);
         owners = mergedInheritedEntityRefs(owners, domain.getOwners());
@@ -334,13 +367,16 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public EntityRepository<DataProduct>.EntityUpdater getUpdater(
-      DataProduct original, DataProduct updated, Operation operation, ChangeSource changeSource) {
-    return new DataProductUpdater(original, updated, operation);
+  public EntityUpdater<DataProduct> getUpdater(
+      DataProduct original,
+      DataProduct updated,
+      EntityOperation operation,
+      ChangeSource changeSource) {
+    return new DataProductUpdater(original, updated, operation).mutation();
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
-    DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    DataProduct dataProduct = getByName(null, domainName, fieldPolicy().parse("id"));
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true, userName);
@@ -355,7 +391,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkRemoveAssets(
       String domainName, BulkAssets request, String userName) {
-    DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    DataProduct dataProduct = getByName(null, domainName, fieldPolicy().parse("id"));
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false, userName);
@@ -363,8 +399,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       EntityReference ref = (EntityReference) response.getRequest();
       LineageUtil.removeDataProductsLineage(
           ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
-      deleteRelationship(
-          dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), Relationship.OUTPUT_PORT);
+      relationshipWrites()
+          .delete(
+              new EntityRelationshipWriter.Edge(
+                  dataProduct.getId(),
+                  ref.getId(),
+                  DATA_PRODUCT,
+                  ref.getType(),
+                  Relationship.OUTPUT_PORT));
     }
     return result;
   }
@@ -403,9 +445,16 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private DataProduct resolveDataProduct(String nameOrId) {
     try {
       UUID id = UUID.fromString(nameOrId);
-      return get(null, id, getFields("id"));
+      return reads()
+          .byId(
+              id,
+              new EntityReadService.Query(
+                  null,
+                  fieldPolicy().parse("id"),
+                  RelationIncludes.fromInclude(Include.NON_DELETED),
+                  false));
     } catch (IllegalArgumentException e) {
-      return getByName(null, nameOrId, getFields("id"));
+      return getByName(null, nameOrId, fieldPolicy().parse("id"));
     }
   }
 
@@ -419,22 +468,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
     List<BulkResponse> failed = new ArrayList<>();
-
     List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
-
     String fieldName = relationship == Relationship.INPUT_PORT ? "inputPorts" : "outputPorts";
-
     Relationship oppositeRelationship =
         relationship == Relationship.INPUT_PORT
             ? Relationship.OUTPUT_PORT
             : Relationship.INPUT_PORT;
-
     Set<UUID> oppositePortIds = Set.of();
     Set<UUID> dataProductAssetIds = Set.of();
     if (isAdd) {
       oppositePortIds =
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
               .findTo(dataProduct.getId(), DATA_PRODUCT, oppositeRelationship.ordinal())
               .stream()
@@ -442,7 +489,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               .collect(Collectors.toCollection(HashSet::new));
       if (relationship == Relationship.OUTPUT_PORT) {
         dataProductAssetIds =
-            daoCollection
+            context()
+                .dependencies()
+                .daos()
                 .relationshipDAO()
                 .findTo(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS.ordinal())
                 .stream()
@@ -450,10 +499,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
                 .collect(Collectors.toCollection(HashSet::new));
       }
     }
-
     for (EntityReference ref : assets) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
       if (isAdd) {
         if (!isPortEligibleType(ref.getType())) {
           String msg =
@@ -465,7 +512,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           result.setStatus(ApiStatus.PARTIAL_SUCCESS);
           continue;
         }
-
         if (oppositePortIds.contains(ref.getId())) {
           String oppositePortType =
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
@@ -478,7 +524,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           result.setStatus(ApiStatus.PARTIAL_SUCCESS);
           continue;
         }
-
         if (relationship == Relationship.OUTPUT_PORT
             && !dataProductAssetIds.contains(ref.getId())) {
           String msg =
@@ -490,27 +535,27 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           result.setStatus(ApiStatus.PARTIAL_SUCCESS);
           continue;
         }
-
-        addRelationship(
-            dataProduct.getId(), ref.getId(), DATA_PRODUCT, ref.getType(), relationship);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    dataProduct.getId(), ref.getId(), DATA_PRODUCT, ref.getType(), relationship),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       } else {
-        deleteRelationship(
-            dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), relationship);
+        relationshipWrites()
+            .delete(
+                new EntityRelationshipWriter.Edge(
+                    dataProduct.getId(), ref.getId(), DATA_PRODUCT, ref.getType(), relationship));
       }
-
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
       EntityLifecycleEventDispatcher.getInstance()
           .onEntityUpdated(dataProduct.getEntityReference(), null);
     }
-
     result.withSuccessRequest(success).withFailedRequest(failed);
-
     if (success.isEmpty() && !failed.isEmpty()) {
       result.setStatus(ApiStatus.FAILURE);
     }
-
     if (!success.isEmpty()) {
       List<EntityReference> successAssets =
           success.stream().map(r -> (EntityReference) r.getRequest()).collect(Collectors.toList());
@@ -525,29 +570,41 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       ChangeEvent changeEvent =
           getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      DataProduct entityToUpdate = get(null, dataProduct.getId(), getFields("*"));
+      DataProduct entityToUpdate =
+          reads()
+              .byId(
+                  dataProduct.getId(),
+                  new EntityReadService.Query(
+                      null,
+                      fieldPolicy().parse("*"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       entityToUpdate.setChangeDescription(change);
       entityToUpdate.setUpdatedBy(updatedBy);
       storeEntity(entityToUpdate, true);
       invalidate(entityToUpdate);
     }
-
     return result;
   }
 
   public ResultList<EntityReference> getDataProductAssets(
       UUID dataProductId, int limit, int offset) {
-    DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
-
+    DataProduct dataProduct =
+        reads()
+            .byId(
+                dataProductId,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse("id,fullyQualifiedName"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for data product assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
-
     // Use InheritedFieldQuery for data product assets
     InheritedFieldQuery query =
         InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), offset, limit);
-
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
             query,
@@ -557,13 +614,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
                   dataProduct.getFullyQualifiedName());
               return new InheritedFieldResult(new ArrayList<>(), 0);
             });
-
     return new ResultList<>(result.entities(), null, null, result.total());
   }
 
   public ResultList<EntityReference> getDataProductAssetsByName(
       String dataProductName, int limit, int offset) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
+    DataProduct dataProduct =
+        getByName(null, dataProductName, fieldPolicy().parse("id,fullyQualifiedName"));
     return getDataProductAssets(dataProduct.getId(), limit, offset);
   }
 
@@ -572,15 +629,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       LOG.warn("Search unavailable for data product asset counts");
       return new HashMap<>();
     }
-
     List<DataProduct> allDataProducts =
-        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+        collections().all(fieldPolicy().parse("fullyQualifiedName"), new ListFilter(null));
     Map<String, Integer> dataProductAssetCounts = new LinkedHashMap<>();
-
     for (DataProduct dataProduct : allDataProducts) {
       dataProductAssetCounts.put(dataProduct.getFullyQualifiedName(), 0);
     }
-
     String queryFilter =
         QueryFilterBuilder.buildGenericAssetsCountFilter("dataProducts.fullyQualifiedName", false);
     Map<String, Integer> exactCounts =
@@ -588,12 +642,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             "dataProducts.fullyQualifiedName",
             queryFilter,
             EntityBuilderConstant.MAX_AGGREGATE_SIZE);
-
     for (Map.Entry<String, Integer> entry : exactCounts.entrySet()) {
       dataProductAssetCounts.computeIfPresent(
           entry.getKey(), (ignored, current) -> entry.getValue());
     }
-
     return dataProductAssetCounts;
   }
 
@@ -604,7 +656,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityWithType> getPaginatedInputPortsByName(
       String dataProductName, String fields, int limit, int offset) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
+    DataProduct dataProduct = getByName(null, dataProductName, fieldPolicy().parse("id"));
     return getPaginatedInputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
@@ -615,7 +667,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityWithType> getPaginatedOutputPortsByName(
       String dataProductName, String fields, int limit, int offset) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
+    DataProduct dataProduct = getByName(null, dataProductName, fieldPolicy().parse("id"));
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
@@ -631,20 +683,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private ResultList<EntityWithType> getPaginatedPorts(
       UUID dataProductId, Relationship relationship, String fields, int limit, int offset) {
     List<CollectionDAO.EntityRelationshipRecord> relationshipRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToWithOffset(
                 dataProductId, DATA_PRODUCT, List.of(relationship.ordinal()), offset, limit);
-
     int total =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .countFindTo(dataProductId, DATA_PRODUCT, List.of(relationship.ordinal()));
-
     if (relationshipRecords.isEmpty()) {
       return new ResultList<>(Collections.emptyList(), offset, total);
     }
-
     // Group by entity type for bulk fetching
     Map<String, List<EntityReference>> refsByType = new HashMap<>();
     for (CollectionDAO.EntityRelationshipRecord record : relationshipRecords) {
@@ -666,7 +719,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
-
     // Preserve original order from relationship records
     List<EntityWithType> entities = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipRecord record : relationshipRecords) {
@@ -675,7 +727,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         entities.add(entity);
       }
     }
-
     return new ResultList<>(entities, offset, total);
   }
 
@@ -686,7 +737,15 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       int inputOffset,
       int outputLimit,
       int outputOffset) {
-    DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
+    DataProduct dataProduct =
+        reads()
+            .byId(
+                dataProductId,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse("id,fullyQualifiedName"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     return buildPortsView(dataProduct, fields, inputLimit, inputOffset, outputLimit, outputOffset);
   }
 
@@ -697,7 +756,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       int inputOffset,
       int outputLimit,
       int outputOffset) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
+    DataProduct dataProduct =
+        getByName(null, dataProductName, fieldPolicy().parse("id,fullyQualifiedName"));
     return buildPortsView(dataProduct, fields, inputLimit, inputOffset, outputLimit, outputOffset);
   }
 
@@ -713,7 +773,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         getPaginatedInputPorts(dataProduct.getId(), fields, inputLimit, inputOffset);
     ResultList<EntityWithType> outputPorts =
         getPaginatedOutputPorts(dataProduct.getId(), fields, outputLimit, outputOffset);
-
     return new DataProductPortsView()
         .withEntity(dataProduct.getEntityReference())
         .withInputPorts(
@@ -728,7 +787,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Transaction
   @Override
-  protected BulkOperationResult bulkAssetsOperation(
+  public BulkOperationResult bulkAssetsOperation(
       UUID entityId,
       String fromEntity,
       Relationship relationship,
@@ -740,20 +799,16 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
     List<BulkResponse> failed = new ArrayList<>();
-
     ArrayList<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
-
     // Get the data product reference for validation
-    DataProduct dataProduct = find(entityId, ALL);
+    DataProduct dataProduct = lookup().byId(entityId, ALL);
     EntityReference dataProductRef = dataProduct.getEntityReference();
-
     // Group assets by type for efficient fetching
     Map<String, List<EntityReference>> assetsByType = new HashMap<>();
     for (EntityReference asset : assets) {
       assetsByType.computeIfAbsent(asset.getType(), k -> new ArrayList<>()).add(asset);
     }
-
     // Fetch all asset entities grouped by type so add-validation can still run during dryRun
     Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
     if (isAdd && !assets.isEmpty()) {
@@ -767,10 +822,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         }
       }
     }
-
     for (EntityReference ref : assets) {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
       try {
         if (isAdd) {
           EntityInterface assetEntity = assetEntitiesMap.get(ref.getId());
@@ -779,30 +832,33 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
           }
           validateAssetDataProductAssignment(assetEntity, dataProductRef);
         }
-
         if (dryRun) {
           success.add(new BulkResponse().withRequest(ref));
           result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
           continue;
         }
-
         if (isAdd) {
-          addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+          relationshipWrites()
+              .add(
+                  new EntityRelationshipWriter.Edge(
+                      entityId, ref.getId(), fromEntity, ref.getType(), relationship),
+                  EntityRelationshipWriter.Value.EMPTY,
+                  false);
         } else {
-          deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+          relationshipWrites()
+              .delete(
+                  new EntityRelationshipWriter.Edge(
+                      entityId, ref.getId(), fromEntity, ref.getType(), relationship));
         }
-
         // The asset's stored entity JSON has `dataProducts` stripped
         // (FIELDS_STORED_AS_RELATIONSHIPS) and re-derived from entity_relationship on read.
         // Drop every cached variant of the asset so the next read rebuilds it from the
         // freshly-written relationships.
-        EntityRepository.invalidateCacheForEntity(
-            ref.getType(), ref.getId(), ref.getFullyQualifiedName());
-
+        EntityCaches.invalidations()
+            .referencesChanged(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-        searchRepository.updateEntity(ref);
+        context().dependencies().search().updateEntity(ref);
       } catch (RuleValidationException e) {
         LOG.warn(
             "Validation failed for asset {} in bulk operation: {}", ref.getId(), e.getMessage());
@@ -821,14 +877,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         result.setStatus(ApiStatus.PARTIAL_SUCCESS);
       }
     }
-
     result.withSuccessRequest(success).withFailedRequest(failed);
-
     // If all operations failed, mark as failure
     if (success.isEmpty() && !failed.isEmpty()) {
       result.setStatus(ApiStatus.FAILURE);
     }
-
     // Create a Change Event on successful operations (skip when dryRun makes no changes)
     if (!dryRun && !success.isEmpty()) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
@@ -845,7 +898,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     }
-
     return result;
   }
 
@@ -860,14 +912,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private void validateAssetDataProductAssignment(
       EntityInterface assetEntity, EntityReference dataProductRef) {
     try {
-
       List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());
       List<EntityReference> updatedDataProducts = new ArrayList<>(currentDataProducts);
       updatedDataProducts.add(dataProductRef);
-
       assetEntity.setDataProducts(updatedDataProducts);
       RuleEngine.getInstance().evaluate(assetEntity, true, false);
-
     } catch (RuleValidationException e) {
       // Re-throw validation exceptions with context about the bulk operation
       throw new RuleValidationException(
@@ -887,13 +936,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     // Domain CAN now be changed - assets will be migrated to the new domain
   }
 
   @Override
-  protected void postUpdate(DataProduct original, DataProduct updated) {
-    super.postUpdate(original, updated);
+  public void postUpdate(DataProduct original, DataProduct updated) {
+    EntityPolicy.super.postUpdate(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {
         closeApprovalTask(updated, "Approved the data product");
@@ -901,7 +950,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         closeApprovalTask(updated, "Rejected the data product");
       }
     }
-
     // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
     // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
     // will be a Task created.
@@ -923,29 +971,46 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
-    if (searchRepository != null) {
-      searchRepository.deferIfFlushScopeActive(
-          () -> searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn),
-          "updateDataProductReferences",
-          null,
-          newFqn,
-          DATA_PRODUCT);
+    if (context().dependencies().search() != null) {
+      context()
+          .dependencies()
+          .search()
+          .deferIfFlushScopeActive(
+              () ->
+                  context()
+                      .dependencies()
+                      .search()
+                      .getSearchClient()
+                      .updateDataProductReferences(oldFqn, newFqn),
+              "updateDataProductReferences",
+              null,
+              newFqn,
+              DATA_PRODUCT);
     }
   }
 
-  public class DataProductUpdater extends EntityUpdater {
+  public class DataProductUpdater implements EntitySpecificMutation<DataProduct> {
+
     private boolean renameProcessed = false;
+
     private boolean domainChangeProcessed = false;
+
     // Capture original domains before they can be mutated by change consolidation's revert()
     private List<EntityReference> capturedOriginalDomains = null;
+
     private List<EntityReference> capturedUpdatedDomains = null;
 
-    public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
-      super(original, updated, operation);
+    public DataProductUpdater(
+        DataProduct original, DataProduct updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    protected void resetForRetryAttempt() {
+    public void reset() {
       renameProcessed = false;
       domainChangeProcessed = false;
       capturedOriginalDomains = null;
@@ -962,88 +1027,104 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("name", () -> updateName(updated));
+    public void update(EntityUpdater<DataProduct> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate("name", () -> updateName(entityUpdate.getUpdated()));
       // These ODPS-aligned scalar fields are not handled by the base updater;
       // without recordChange they are reverted by change consolidation and a
       // PATCH that sets them returns 200 but never persists.
-      recordChange("dataProductType", original.getDataProductType(), updated.getDataProductType());
-      recordChange("visibility", original.getVisibility(), updated.getVisibility());
-      recordChange(
-          "portfolioPriority", original.getPortfolioPriority(), updated.getPortfolioPriority());
+      entityUpdate.recordChange(
+          "dataProductType",
+          entityUpdate.getOriginal().getDataProductType(),
+          entityUpdate.getUpdated().getDataProductType());
+      entityUpdate.recordChange(
+          "visibility",
+          entityUpdate.getOriginal().getVisibility(),
+          entityUpdate.getUpdated().getVisibility());
+      entityUpdate.recordChange(
+          "portfolioPriority",
+          entityUpdate.getOriginal().getPortfolioPriority(),
+          entityUpdate.getUpdated().getPortfolioPriority());
       // Ports are managed via dedicated bulk add/remove APIs, not via entity PATCH
       // Handle domain change with asset migration
       // Skip during consolidation to avoid incorrect intermediate migrations.
       // Asset migration should only happen on the final update, not during
       // intermediate consolidation steps which may temporarily revert state.
-      if (!consolidatingChanges && shouldCompare("domains")) {
+      if (!consolidatingChanges && entityUpdate.shouldCompare("domains")) {
         updateDataProductDomains();
       }
     }
 
     private void updateDataProductDomains() {
-      List<EntityReference> origDomains = listOrEmpty(original.getDomains());
-      List<EntityReference> updatedDomains = listOrEmpty(updated.getDomains());
-
+      List<EntityReference> origDomains = listOrEmpty(entityUpdate.getOriginal().getDomains());
+      List<EntityReference> updatedDomains = listOrEmpty(entityUpdate.getUpdated().getDomains());
       if (EntityUtil.entityReferenceListMatch.test(origDomains, updatedDomains)) {
         return;
       }
-
       if (domainChangeProcessed) {
         return;
       }
       domainChangeProcessed = true;
-
       capturedOriginalDomains = new ArrayList<>(origDomains);
       capturedUpdatedDomains = new ArrayList<>(updatedDomains);
-
       LOG.info(
           "Data product {} domain changing from {} to {}",
-          updated.getFullyQualifiedName(),
+          entityUpdate.getUpdated().getFullyQualifiedName(),
           origDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
           updatedDomains.stream().map(EntityReference::getFullyQualifiedName).toList());
-
       updateDataProductDomainContainment(origDomains, updatedDomains);
-
       List<CollectionDAO.EntityRelationshipRecord> assetRecords =
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
-              .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
-
+              .findTo(entityUpdate.getUpdated().getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
       List<CollectionDAO.EntityRelationshipRecord> portRecords = new ArrayList<>();
       portRecords.addAll(
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
-              .findTo(updated.getId(), DATA_PRODUCT, Relationship.INPUT_PORT.ordinal()));
+              .findTo(
+                  entityUpdate.getUpdated().getId(),
+                  DATA_PRODUCT,
+                  Relationship.INPUT_PORT.ordinal()));
       portRecords.addAll(
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
-              .findTo(updated.getId(), DATA_PRODUCT, Relationship.OUTPUT_PORT.ordinal()));
-
+              .findTo(
+                  entityUpdate.getUpdated().getId(),
+                  DATA_PRODUCT,
+                  Relationship.OUTPUT_PORT.ordinal()));
       List<CollectionDAO.EntityRelationshipRecord> allRecords = new ArrayList<>();
       allRecords.addAll(assetRecords);
       allRecords.addAll(portRecords);
-
       if (!allRecords.isEmpty()) {
         LOG.info(
             "Migrating {} assets/ports to new domain(s) for data product {}",
             allRecords.size(),
-            updated.getFullyQualifiedName());
+            entityUpdate.getUpdated().getFullyQualifiedName());
         batchMigrateAssetDomains(allRecords, origDomains, updatedDomains);
-
-        if (searchRepository != null) {
+        if (context().dependencies().search() != null) {
           List<String> oldDomainFqns =
               origDomains.stream().map(EntityReference::getFullyQualifiedName).toList();
           List<UUID> assetIds =
               allRecords.stream().map(CollectionDAO.EntityRelationshipRecord::getId).toList();
-          searchRepository.updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
+          context()
+              .dependencies()
+              .search()
+              .updateAssetDomainsByIds(assetIds, oldDomainFqns, updatedDomains);
           List<EntityReference> assetRefs =
               allRecords.stream()
                   .map(
                       record ->
                           new EntityReference().withId(record.getId()).withType(record.getType()))
                   .toList();
-          searchRepository.propagateInheritedDomainsToChildren(assetRefs, updatedDomains);
+          context()
+              .dependencies()
+              .search()
+              .propagateInheritedDomainsToChildren(assetRefs, updatedDomains);
         }
       }
     }
@@ -1051,27 +1132,40 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     private void updateDataProductDomainContainment(
         List<EntityReference> oldDomains, List<EntityReference> newDomains) {
       List<EntityReference> addedDomains =
-          diffLists(
+          EntityPolicySupport.diffLists(
               newDomains,
               oldDomains,
               EntityReference::getId,
               EntityReference::getId,
               Function.identity());
       List<EntityReference> removedDomains =
-          diffLists(
+          EntityPolicySupport.diffLists(
               oldDomains,
               newDomains,
               EntityReference::getId,
               EntityReference::getId,
               Function.identity());
-
       for (EntityReference domain : removedDomains) {
-        deleteRelationship(
-            domain.getId(), DOMAIN, updated.getId(), DATA_PRODUCT, Relationship.CONTAINS);
+        relationshipWrites()
+            .delete(
+                new EntityRelationshipWriter.Edge(
+                    domain.getId(),
+                    entityUpdate.getUpdated().getId(),
+                    DOMAIN,
+                    DATA_PRODUCT,
+                    Relationship.CONTAINS));
       }
       for (EntityReference domain : addedDomains) {
-        addRelationship(
-            domain.getId(), updated.getId(), DOMAIN, DATA_PRODUCT, Relationship.CONTAINS);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    domain.getId(),
+                    entityUpdate.getUpdated().getId(),
+                    DOMAIN,
+                    DATA_PRODUCT,
+                    Relationship.CONTAINS),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
     }
 
@@ -1079,64 +1173,58 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         List<CollectionDAO.EntityRelationshipRecord> assetRecords,
         List<EntityReference> oldDomains,
         List<EntityReference> newDomains) {
-
       Map<String, List<UUID>> assetsByType = new HashMap<>();
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
         assetsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
       }
-
       for (EntityReference oldDomain : oldDomains) {
         for (Map.Entry<String, List<UUID>> entry : assetsByType.entrySet()) {
           String assetType = entry.getKey();
           List<UUID> assetIds = entry.getValue();
-
           for (UUID assetId : assetIds) {
             removeDomainLineage(assetId, assetType, oldDomain);
           }
-
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
               .bulkRemoveToRelationship(
                   oldDomain.getId(), assetIds, DOMAIN, assetType, Relationship.HAS.ordinal());
         }
       }
-
       for (EntityReference newDomain : newDomains) {
         for (Map.Entry<String, List<UUID>> entry : assetsByType.entrySet()) {
           String assetType = entry.getKey();
           List<UUID> assetIds = entry.getValue();
-
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
               .bulkInsertToRelationship(
                   newDomain.getId(), assetIds, DOMAIN, assetType, Relationship.HAS.ordinal());
-
           for (UUID assetId : assetIds) {
             addDomainLineage(assetId, assetType, newDomain);
           }
         }
       }
-
       // Drop every cache layer for each migrated asset - the bundle cache stores domains as a
       // field and would otherwise serve stale data. invalidateCacheForReferencedEntity pulls the
       // asset FQN from the relationship record's JSON so the by-name cache variant is evicted
       // too; otherwise GET-by-name would keep serving stale domain references until TTL.
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        EntityRepository.invalidateCacheForReferencedEntity(record);
+        EntityCaches.invalidations().referenced(record);
       }
     }
 
     private void updateName(DataProduct updated) {
       // Use getOriginalFqn() which was captured at EntityUpdater construction time.
       // This is reliable even after revert() reassigns 'original' to 'previous'.
-      String oldFqn = getOriginalFqn();
+      String oldFqn = entityUpdate.getOriginalFqn();
       setFullyQualifiedName(updated);
       String newFqn = updated.getFullyQualifiedName();
-
       if (oldFqn.equals(newFqn)) {
         return;
       }
-
       // Only process the rename once per update operation.
       // entitySpecificUpdate is called multiple times during the update flow
       // (incrementalChange, revert, final updateInternal).
@@ -1144,36 +1232,41 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         return;
       }
       renameProcessed = true;
-
-      DataProduct existing = findByNameOrNull(FullyQualifiedName.quoteName(updated.getName()), ALL);
+      DataProduct existing =
+          lookup().byNameOrNull(FullyQualifiedName.quoteName(updated.getName()), ALL);
       if (existing != null && !existing.getId().equals(updated.getId())) {
         throw new IllegalArgumentException(
             entityNameAlreadyExists(DATA_PRODUCT, updated.getName()));
       }
-
       LOG.info("Data product FQN changed from {} to {}", oldFqn, newFqn);
-
-      recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
+      entityUpdate.recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
       updateEntityLinks(oldFqn, newFqn);
       updateAssetSearchIndexes(oldFqn, newFqn);
-
       // Every asset that had this data product in its `dataProducts` reference list now holds a
       // stale FQN in its cache entry. Invalidate them so next read rebuilds with the new FQN.
       // Pull the asset FQN from the record JSON so both ID and by-name cache variants are evicted.
       List<CollectionDAO.EntityRelationshipRecord> assetRecords =
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
               .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        EntityRepository.invalidateCacheForReferencedEntity(record);
+        EntityCaches.invalidations().referenced(record);
       }
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn) {
-      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
-      daoCollection.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
+      context().dependencies().daos().fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+      context().dependencies().daos().tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
       Entity.getConversationRepository()
-          .updateEntityReference(updated.getEntityReference(), oldFqn);
+          .updateEntityReference(entityUpdate.getUpdated().getEntityReference(), oldFqn);
+    }
+
+    private final EntityUpdater<DataProduct> entityUpdate;
+
+    public EntityUpdater<DataProduct> mutation() {
+      return entityUpdate;
     }
   }
 
@@ -1182,23 +1275,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     if (dataProducts == null || dataProducts.isEmpty()) {
       return expertsMap;
     }
-
     for (DataProduct dataProduct : dataProducts) {
       expertsMap.put(dataProduct.getId(), new ArrayList<>());
     }
-
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(dataProducts), Relationship.EXPERT.ordinal(), Entity.USER);
-
     List<UUID> expertIds =
         records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList();
     Map<UUID, EntityReference> expertRefsById =
         Entity.getEntityReferencesByIds(Entity.USER, expertIds, Include.NON_DELETED).stream()
             .collect(Collectors.toMap(EntityReference::getId, Function.identity(), (a, b) -> a));
-
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID dataProductId = UUID.fromString(record.getFromId());
       EntityReference expertRef = expertRefsById.get(UUID.fromString(record.getToId()));
@@ -1207,12 +1298,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       }
       expertsMap.get(dataProductId).add(expertRef);
     }
-
     return expertsMap;
   }
 
   @Override
-  protected void preDelete(DataProduct entity, String deletedBy) {
+  public void preDelete(DataProduct entity, String deletedBy) {
     if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
       checkUpdatedByReviewer(entity, deletedBy);
     }
@@ -1264,5 +1354,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       LOG.debug("No contract found for data product {}: {}", dataProductId, e.getMessage());
       return null;
     }
+  }
+
+  private final EntityPolicyContext<DataProduct> entityContext;
+
+  @Override
+  public final EntityPolicyContext<DataProduct> context() {
+    return entityContext;
   }
 }

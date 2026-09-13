@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.openlineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -39,8 +38,9 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.openlineage.OpenLineageDatasetNameNormalizer.DatasetCandidate;
 import org.openmetadata.service.util.LikeEscape;
@@ -51,10 +51,15 @@ public class OpenLineageEntityResolver {
   private static final int MAX_LOGGED_AMBIGUOUS_MATCHES = 5;
 
   private final Map<String, EntityReference> tableCache = new ConcurrentHashMap<>();
+
   private final Map<String, EntityReference> pipelineCache = new ConcurrentHashMap<>();
+
   private final Map<String, EntityReference> containerCache = new ConcurrentHashMap<>();
+
   private final boolean autoCreateEntities;
+
   private final String defaultPipelineService;
+
   private final Map<String, String> namespaceToServiceMapping;
 
   public OpenLineageEntityResolver(boolean autoCreateEntities, String defaultPipelineService) {
@@ -92,12 +97,10 @@ public class OpenLineageEntityResolver {
     if (cached != null) {
       return cached;
     }
-
     String tableFqn = resolveTableFqn(namespace, name, facets);
     if (tableFqn == null) {
       return null;
     }
-
     try {
       EntityReference ref = Entity.getEntityReferenceByName(Entity.TABLE, tableFqn, NON_DELETED);
       if (ref != null) {
@@ -115,12 +118,10 @@ public class OpenLineageEntityResolver {
     if (ref != null) {
       return ref;
     }
-
     if (!autoCreateEntities) {
       LOG.debug("Auto-create disabled, skipping table creation for: {}", dataset.getName());
       return null;
     }
-
     return createTableFromInput(dataset, updatedBy);
   }
 
@@ -129,12 +130,10 @@ public class OpenLineageEntityResolver {
     if (ref != null) {
       return ref;
     }
-
     if (!autoCreateEntities) {
       LOG.debug("Auto-create disabled, skipping table creation for: {}", dataset.getName());
       return null;
     }
-
     return createTableFromOutput(dataset, updatedBy);
   }
 
@@ -146,21 +145,17 @@ public class OpenLineageEntityResolver {
     if (nullOrEmpty(namespace) || nullOrEmpty(name)) {
       return null;
     }
-
     String fullPath = namespace.endsWith("/") ? namespace + name : namespace + "/" + name;
     String cacheKey = "container:" + fullPath;
-
     EntityReference cached = containerCache.get(cacheKey);
     if (cached != null) {
       return cached;
     }
-
     EntityReference ref = searchContainerByFullPath(fullPath);
     if (ref != null) {
       containerCache.put(cacheKey, ref);
       return ref;
     }
-
     // Try without wildcard suffixes (e.g., "gs://bucket/path/file_*.csv" → "gs://bucket/path")
     String parentPath = extractParentPath(fullPath);
     if (parentPath != null && !parentPath.equals(fullPath)) {
@@ -170,7 +165,6 @@ public class OpenLineageEntityResolver {
         return ref;
       }
     }
-
     return null;
   }
 
@@ -178,15 +172,12 @@ public class OpenLineageEntityResolver {
     if (nullOrEmpty(name)) {
       return null;
     }
-
     String pipelineName = buildPipelineName(namespace, name);
     String cacheKey = namespace + "/" + name;
-
     EntityReference cached = pipelineCache.get(cacheKey);
     if (cached != null) {
       return cached;
     }
-
     String pipelineFqn = buildPipelineFqn(pipelineName);
     try {
       EntityReference ref =
@@ -198,7 +189,6 @@ public class OpenLineageEntityResolver {
     } catch (EntityNotFoundException e) {
       LOG.debug("Pipeline not found: {}", pipelineFqn);
     }
-
     // Fallback: try namespace as service name, e.g. fasfas.stackoverflow_etl_lineage
     if (!nullOrEmpty(namespace)) {
       String fallbackFqn = namespace + "." + name;
@@ -214,12 +204,10 @@ public class OpenLineageEntityResolver {
         LOG.debug("Pipeline not found by namespace fallback: {}", fallbackFqn);
       }
     }
-
     if (!autoCreateEntities) {
       LOG.debug("Auto-create disabled, skipping pipeline creation for: {}", pipelineName);
       return null;
     }
-
     return createPipeline(pipelineName, updatedBy);
   }
 
@@ -338,7 +326,6 @@ public class OpenLineageEntityResolver {
     if (database == null) {
       database = OpenLineageDatasetNameNormalizer.extractGlueCatalogId(namespace);
     }
-
     String result = resolveViaNamespaceMapping(namespace, database, schema, table);
     if (result == null) {
       result = resolveViaDatasource(datasourceName, database, schema, table);
@@ -392,19 +379,16 @@ public class OpenLineageEntityResolver {
     if (namespace == null || namespaceToServiceMapping.isEmpty()) {
       return null;
     }
-
     // First try exact match
     if (namespaceToServiceMapping.containsKey(namespace)) {
       return namespaceToServiceMapping.get(namespace);
     }
-
     // Try prefix matching for namespaces like "postgresql://host:5432/db"
     for (Map.Entry<String, String> entry : namespaceToServiceMapping.entrySet()) {
       if (namespace.startsWith(entry.getKey()) || entry.getKey().startsWith(namespace)) {
         return entry.getValue();
       }
     }
-
     return null;
   }
 
@@ -430,9 +414,12 @@ public class OpenLineageEntityResolver {
     List<Table> result = List.of();
     try {
       @SuppressWarnings("unchecked")
-      EntityRepository<Table> tableRepository =
-          (EntityRepository<Table>) Entity.getEntityRepository(Entity.TABLE);
-      result = tableRepository.listAll(tableRepository.getFields("databaseSchema"), filter);
+      EntityPolicy<Table> tableRepository =
+          (EntityPolicy<Table>) Entity.getEntityRepository(Entity.TABLE);
+      result =
+          tableRepository
+              .collections()
+              .all(tableRepository.fieldPolicy().parse("databaseSchema"), filter);
     } catch (Exception e) {
       LOG.debug("Error searching for table matching {}: {}", searchKey, e.getMessage());
     }
@@ -468,25 +455,24 @@ public class OpenLineageEntityResolver {
     if (facets == null) {
       return null;
     }
-
     DatasourceFacet datasource = facets.getDatasource();
     if (datasource != null && datasource.getName() != null) {
       return datasource.getName();
     }
-
     return null;
   }
 
   private EntityReference searchContainerByFullPath(String fullPath) {
     try {
       @SuppressWarnings("unchecked")
-      EntityRepository<Container> containerRepository =
-          (EntityRepository<Container>) Entity.getEntityRepository(Entity.CONTAINER);
-
+      EntityPolicy<Container> containerRepository =
+          (EntityPolicy<Container>) Entity.getEntityRepository(Entity.CONTAINER);
       List<Container> containers =
-          containerRepository.listAll(
-              containerRepository.getFields(""), new ListFilterByJsonField("fullPath", fullPath));
-
+          containerRepository
+              .collections()
+              .all(
+                  containerRepository.fieldPolicy().parse(""),
+                  new ListFilterByJsonField("fullPath", fullPath));
       if (!containers.isEmpty()) {
         Container container = containers.get(0);
         LOG.debug(
@@ -531,7 +517,6 @@ public class OpenLineageEntityResolver {
       LOG.warn("Cannot create table, invalid name format: {}", name);
       return null;
     }
-
     String table = null;
     String schemaFqn = null;
     for (DatasetCandidate candidate : candidates) {
@@ -546,16 +531,13 @@ public class OpenLineageEntityResolver {
       LOG.warn("Cannot create table, schema not found for candidates: {}", candidates);
       return null;
     }
-
     try {
       @SuppressWarnings("unchecked")
-      EntityRepository<Table> tableRepository =
-          (EntityRepository<Table>) Entity.getEntityRepository(Entity.TABLE);
-
+      EntityPolicy<Table> tableRepository =
+          (EntityPolicy<Table>) Entity.getEntityRepository(Entity.TABLE);
       List<Column> columns = extractColumns(facets);
       String description = extractDescription(facets);
       List<EntityReference> owners = extractOwners(facets);
-
       Table newTable = new Table();
       newTable.setId(java.util.UUID.randomUUID());
       newTable.setName(table);
@@ -563,22 +545,18 @@ public class OpenLineageEntityResolver {
       newTable.setDatabaseSchema(
           Entity.getEntityReferenceByName(Entity.DATABASE_SCHEMA, schemaFqn, NON_DELETED));
       newTable.setColumns(columns);
-
       if (description != null) {
         newTable.setDescription(description);
       }
-
       if (!owners.isEmpty()) {
         newTable.setOwners(owners);
       }
-
-      Table created = tableRepository.create(null, newTable);
+      Table created =
+          tableRepository.creates().create(null, newTable, new EntityCommandActor(null, null));
       LOG.info("Created table from OpenLineage event: {}", created.getFullyQualifiedName());
-
       EntityReference ref = created.getEntityReference();
       String cacheKey = buildCacheKey(namespace, name);
       tableCache.put(cacheKey, ref);
-
       return ref;
     } catch (Exception e) {
       LOG.error("Failed to create table {}: {}", table, e.getMessage());
@@ -590,32 +568,26 @@ public class OpenLineageEntityResolver {
     if (facets == null) {
       return null;
     }
-
     DocumentationFacet documentation = facets.getDocumentation();
     if (documentation != null && documentation.getDescription() != null) {
       return documentation.getDescription();
     }
-
     return null;
   }
 
   private List<EntityReference> extractOwners(DatasetFacets facets) {
     List<EntityReference> ownerRefs = new ArrayList<>();
-
     if (facets == null) {
       return ownerRefs;
     }
-
     OwnershipFacet ownership = facets.getOwnership();
     if (ownership == null || ownership.getOwners() == null) {
       return ownerRefs;
     }
-
     for (Owner owner : ownership.getOwners()) {
       if (owner.getName() == null) {
         continue;
       }
-
       try {
         EntityReference userRef =
             Entity.getEntityReferenceByName(Entity.USER, owner.getName(), NON_DELETED);
@@ -626,7 +598,6 @@ public class OpenLineageEntityResolver {
         LOG.debug("Owner user not found: {}", owner.getName());
       }
     }
-
     return ownerRefs;
   }
 
@@ -646,13 +617,14 @@ public class OpenLineageEntityResolver {
   private String searchSchemaByName(String schemaName) {
     try {
       @SuppressWarnings("unchecked")
-      EntityRepository<?> schemaRepository = Entity.getEntityRepository(Entity.DATABASE_SCHEMA);
-
+      EntityPolicy<?> schemaRepository = Entity.getEntityRepository(Entity.DATABASE_SCHEMA);
       String searchPattern = "%" + schemaName;
       List<?> schemas =
-          schemaRepository.listAll(
-              schemaRepository.getFields(""), new ListFilterByFqnSuffix(searchPattern));
-
+          schemaRepository
+              .collections()
+              .all(
+                  schemaRepository.fieldPolicy().parse(""),
+                  new ListFilterByFqnSuffix(searchPattern));
       if (!schemas.isEmpty()) {
         Object schema = schemas.get(0);
         if (schema instanceof org.openmetadata.schema.entity.data.DatabaseSchema dbSchema) {
@@ -667,16 +639,13 @@ public class OpenLineageEntityResolver {
 
   private List<Column> extractColumns(DatasetFacets facets) {
     List<Column> columns = new ArrayList<>();
-
     if (facets == null) {
       return columns;
     }
-
     SchemaFacet schemaFacet = facets.getSchema();
     if (schemaFacet == null || schemaFacet.getFields() == null) {
       return columns;
     }
-
     for (SchemaField field : schemaFacet.getFields()) {
       Column column = new Column();
       column.setName(field.getName());
@@ -687,7 +656,6 @@ public class OpenLineageEntityResolver {
       }
       columns.add(column);
     }
-
     return columns;
   }
 
@@ -695,9 +663,7 @@ public class OpenLineageEntityResolver {
     if (olType == null) {
       return ColumnDataType.UNKNOWN;
     }
-
     String upperType = olType.toUpperCase();
-
     if (upperType.contains("STRING")
         || upperType.contains("VARCHAR")
         || upperType.contains("CHAR")) {
@@ -729,7 +695,6 @@ public class OpenLineageEntityResolver {
     } else if (upperType.contains("JSON")) {
       return ColumnDataType.JSON;
     }
-
     return ColumnDataType.UNKNOWN;
   }
 
@@ -747,23 +712,22 @@ public class OpenLineageEntityResolver {
   private EntityReference createPipeline(String pipelineName, String updatedBy) {
     try {
       @SuppressWarnings("unchecked")
-      EntityRepository<Pipeline> pipelineRepository =
-          (EntityRepository<Pipeline>) Entity.getEntityRepository(Entity.PIPELINE);
-
+      EntityPolicy<Pipeline> pipelineRepository =
+          (EntityPolicy<Pipeline>) Entity.getEntityRepository(Entity.PIPELINE);
       EntityReference serviceRef =
           Entity.getEntityReferenceByName(
               Entity.PIPELINE_SERVICE, defaultPipelineService, NON_DELETED);
-
       Pipeline newPipeline = new Pipeline();
       newPipeline.setId(java.util.UUID.randomUUID());
       newPipeline.setName(pipelineName);
       newPipeline.setFullyQualifiedName(buildPipelineFqn(pipelineName));
       newPipeline.setService(serviceRef);
       newPipeline.setDescription("Pipeline created from OpenLineage event");
-
-      Pipeline created = pipelineRepository.create(null, newPipeline);
+      Pipeline created =
+          pipelineRepository
+              .creates()
+              .create(null, newPipeline, new EntityCommandActor(null, null));
       LOG.info("Created pipeline from OpenLineage event: {}", created.getFullyQualifiedName());
-
       return created.getEntityReference();
     } catch (EntityNotFoundException e) {
       LOG.warn(
@@ -788,6 +752,7 @@ public class OpenLineageEntityResolver {
   }
 
   private static class ListFilterByFqnSuffix extends ListFilter {
+
     public ListFilterByFqnSuffix(String suffix) {
       super(Include.NON_DELETED);
       addQueryParam("fqnSuffix", "%" + suffix);
@@ -823,6 +788,7 @@ public class OpenLineageEntityResolver {
   }
 
   private static class ListFilterByJsonField extends ListFilter {
+
     private final String fieldName;
 
     public ListFilterByJsonField(String fieldName, String value) {

@@ -31,6 +31,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,16 @@ public final class RdfTestUtils {
 
   public static boolean isRdfEnabled() {
     return "true".equals(System.getProperty("enableRdf"));
+  }
+
+  /** Keeps later test classes publishing to the RDF store selected by the suite profile. */
+  public static void restoreSuiteConfiguration() {
+    if (isRdfEnabled()) {
+      final var config = TestSuiteBootstrap.createApplicationConfigCopy();
+      RdfUpdater.initialize(config.getRdfConfiguration(), config.getAsyncOperationsConfiguration());
+    } else {
+      RdfUpdater.disable();
+    }
   }
 
   /**

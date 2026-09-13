@@ -52,9 +52,9 @@ import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -162,7 +162,7 @@ public class AlertsRuleEvaluator {
   private List<EntityReference> resolveOwners(EntityInterface entity) {
     List<EntityReference> ownerReferences = entity.getOwners();
     if (nullOrEmpty(ownerReferences)
-        && supports(changeEvent.getEntityType(), EntityRepository::isSupportsOwners)) {
+        && supports(changeEvent.getEntityType(), EntityPolicy::isSupportsOwners)) {
       EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_OWNERS);
       ownerReferences = storedEntity == null ? ownerReferences : storedEntity.getOwners();
     }
@@ -509,7 +509,7 @@ public class AlertsRuleEvaluator {
 
   private boolean matchesEntityOrTestSuiteDomain(EntityInterface entity, List<String> domainFqns) {
     List<EntityReference> domains = entity.getDomains();
-    if (supports(changeEvent.getEntityType(), EntityRepository::isSupportsDomains)) {
+    if (supports(changeEvent.getEntityType(), EntityPolicy::isSupportsDomains)) {
       EntityInterface storedEntity = readStoredEntity(entity.getId(), Entity.FIELD_DOMAINS);
       domains = storedEntity == null ? domains : storedEntity.getDomains();
     }
@@ -555,7 +555,7 @@ public class AlertsRuleEvaluator {
    * {@code IllegalArgumentException} out of the matcher and discards the whole change-event batch
    * (issue #31331). An unregistered type reads as unsupported: a feed subject can name one.
    */
-  private static boolean supports(String entityType, Predicate<EntityRepository<?>> capability) {
+  private static boolean supports(String entityType, Predicate<EntityPolicy<?>> capability) {
     boolean supported = false;
     if (entityType != null) {
       try {
@@ -819,8 +819,7 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean feedSubjectMatchesOwner(List<String> ownerNameList) {
-    EntityInterface subject =
-        readFeedSubject(Entity.FIELD_OWNERS, EntityRepository::isSupportsOwners);
+    EntityInterface subject = readFeedSubject(Entity.FIELD_OWNERS, EntityPolicy::isSupportsOwners);
     return subject != null
         && !nullOrEmpty(subject.getOwners())
         && matchOwners(subject.getOwners(), ownerNameList);
@@ -828,12 +827,12 @@ public class AlertsRuleEvaluator {
 
   private boolean feedSubjectMatchesDomain(List<String> domainFqns) {
     EntityInterface subject =
-        readFeedSubject(Entity.FIELD_DOMAINS, EntityRepository::isSupportsDomains);
+        readFeedSubject(Entity.FIELD_DOMAINS, EntityPolicy::isSupportsDomains);
     return subject != null && matchesAnyDomainFqn(subject.getDomains(), domainFqns);
   }
 
   /** The feed's subject read with {@code field}, or null when its type cannot supply that field. */
-  private EntityInterface readFeedSubject(String field, Predicate<EntityRepository<?>> capability) {
+  private EntityInterface readFeedSubject(String field, Predicate<EntityPolicy<?>> capability) {
     EntityReference subject = feedSubject();
     EntityInterface entity = null;
     if (subject != null && supports(subject.getType(), capability)) {

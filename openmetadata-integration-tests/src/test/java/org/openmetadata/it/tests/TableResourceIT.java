@@ -118,7 +118,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.cache.EntityCaches;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -3887,8 +3887,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Modern writes populate column FQNs, so seed the legacy state directly in storage.
     findColumn(source, "legacy_col").setFullyQualifiedName(null);
     Entity.getCollectionDAO().tableDAO().update(source);
-    EntityRepository.invalidateCacheForEntity(
-        Entity.TABLE, source.getId(), source.getFullyQualifiedName());
+    EntityCaches.invalidations()
+        .referencesChanged(Entity.TABLE, source.getId(), source.getFullyQualifiedName());
     assertNull(
         findColumn(client.tables().get(source.getId().toString()), "legacy_col")
             .getFullyQualifiedName());

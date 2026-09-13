@@ -24,6 +24,7 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 
 /** Keeps the deprecated settings write endpoint compatible during the 2.0 transition. */
@@ -54,7 +55,7 @@ public final class LegacyRelationshipTypeSynchronizer {
   private void upsert(
       final UriInfo uriInfo, final String updatedBy, final RelationshipType relationshipType) {
     final RelationshipType existing =
-        repository.findByNameOrNull(relationshipType.getName(), Include.ALL);
+        repository.lookup().byNameOrNull(relationshipType.getName(), Include.ALL);
     if (existing != null) {
       relationshipType.setId(existing.getId());
       relationshipType.setSystemDefined(existing.getSystemDefined());
@@ -62,13 +63,15 @@ public final class LegacyRelationshipTypeSynchronizer {
       relationshipType.setOwners(existing.getOwners());
       relationshipType.setReviewers(existing.getReviewers());
     }
-    repository.createOrUpdate(uriInfo, relationshipType, updatedBy);
+    repository
+        .creates()
+        .upsert(uriInfo, relationshipType, new EntityCommandActor(updatedBy, null), false);
   }
 
   private void delete(final String updatedBy, final String name) {
-    final RelationshipType existing = repository.findByNameOrNull(name, Include.ALL);
+    final RelationshipType existing = repository.lookup().byNameOrNull(name, Include.ALL);
     if (existing != null && !Boolean.TRUE.equals(existing.getSystemDefined())) {
-      repository.delete(updatedBy, existing.getId(), false, true);
+      repository.deletes().byId(updatedBy, existing.getId(), false, true);
     }
   }
 

@@ -16,11 +16,13 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class BotTokenCache {
@@ -59,12 +61,15 @@ public class BotTokenCache {
     public String load(@CheckForNull String botName) {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(
-              null,
-              botName,
-              new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
-              NON_DELETED,
-              true);
+          userRepository
+              .reads()
+              .byName(
+                  botName,
+                  new EntityReadService.Query(
+                      null,
+                      new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
+                      RelationIncludes.fromInclude(NON_DELETED),
+                      true));
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       secretsManager.decryptAuthenticationMechanism(user.getName(), authenticationMechanism);

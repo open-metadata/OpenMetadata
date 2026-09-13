@@ -23,6 +23,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -111,8 +112,8 @@ public class GlossaryOntologyExportIT {
   }
 
   @AfterAll
-  static void disableRdf() {
-    RdfUpdater.disable();
+  static void restoreRdf() {
+    RdfTestUtils.restoreSuiteConfiguration();
     if (localFusekiContainer != null) {
       localFusekiContainer.stop();
       localFusekiContainer = null;

@@ -10,32 +10,46 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.ai.AIGovernancePolicyResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Repository
-public class AIGovernancePolicyRepository extends EntityRepository<AIGovernancePolicy> {
+public class AIGovernancePolicyRepository implements EntityPolicy<AIGovernancePolicy> {
+
   private static final String POLICY_UPDATE_FIELDS = "rules,appliesTo";
+
   private static final String POLICY_PATCH_FIELDS = "rules,appliesTo";
 
   public AIGovernancePolicyRepository() {
-    super(
-        AIGovernancePolicyResource.COLLECTION_PATH,
-        Entity.AI_GOVERNANCE_POLICY,
-        AIGovernancePolicy.class,
-        Entity.getCollectionDAO().aiGovernancePolicyDAO(),
-        POLICY_PATCH_FIELDS,
-        POLICY_UPDATE_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                AIGovernancePolicyResource.COLLECTION_PATH,
+                Entity.AI_GOVERNANCE_POLICY,
+                AIGovernancePolicy.class,
+                Entity.getCollectionDAO().aiGovernancePolicyDAO()),
+            new EntityPolicyContext.WriteFields(
+                POLICY_PATCH_FIELDS, POLICY_UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -56,7 +70,7 @@ public class AIGovernancePolicyRepository extends EntityRepository<AIGovernanceP
 
   @Override
   public void storeEntity(AIGovernancePolicy policy, boolean update) {
-    store(policy, update);
+    persistence().store(policy, update);
   }
 
   @Override
@@ -65,76 +79,118 @@ public class AIGovernancePolicyRepository extends EntityRepository<AIGovernanceP
   }
 
   @Override
-  public EntityRepository<AIGovernancePolicy>.EntityUpdater getUpdater(
+  public EntityUpdater<AIGovernancePolicy> getUpdater(
       AIGovernancePolicy original,
       AIGovernancePolicy updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new AIGovernancePolicyUpdater(original, updated, operation);
+    return new AIGovernancePolicyUpdater(original, updated, operation).mutation();
   }
 
-  public class AIGovernancePolicyUpdater extends EntityUpdater {
+  public class AIGovernancePolicyUpdater implements EntitySpecificMutation<AIGovernancePolicy> {
+
     public AIGovernancePolicyUpdater(
-        AIGovernancePolicy original, AIGovernancePolicy updated, Operation operation) {
-      super(original, updated, operation);
+        AIGovernancePolicy original, AIGovernancePolicy updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(
+        EntityUpdater<AIGovernancePolicy> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "policyType",
-          () -> recordChange("policyType", original.getPolicyType(), updated.getPolicyType()));
-      compareAndUpdate(
-          "rules", () -> recordChange("rules", original.getRules(), updated.getRules(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "policyType",
+                  entityUpdate.getOriginal().getPolicyType(),
+                  entityUpdate.getUpdated().getPolicyType()));
+      entityUpdate.compareAndUpdate(
+          "rules",
+          () ->
+              entityUpdate.recordChange(
+                  "rules",
+                  entityUpdate.getOriginal().getRules(),
+                  entityUpdate.getUpdated().getRules(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "biasThresholds",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "biasThresholds",
-                  original.getBiasThresholds(),
-                  updated.getBiasThresholds(),
+                  entityUpdate.getOriginal().getBiasThresholds(),
+                  entityUpdate.getUpdated().getBiasThresholds(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "dataAccessControls",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "dataAccessControls",
-                  original.getDataAccessControls(),
-                  updated.getDataAccessControls(),
+                  entityUpdate.getOriginal().getDataAccessControls(),
+                  entityUpdate.getUpdated().getDataAccessControls(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "costControls",
           () ->
-              recordChange(
-                  "costControls", original.getCostControls(), updated.getCostControls(), true));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "costControls",
+                  entityUpdate.getOriginal().getCostControls(),
+                  entityUpdate.getUpdated().getCostControls(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "complianceRequirements",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "complianceRequirements",
-                  original.getComplianceRequirements(),
-                  updated.getComplianceRequirements(),
+                  entityUpdate.getOriginal().getComplianceRequirements(),
+                  entityUpdate.getUpdated().getComplianceRequirements(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "performanceStandards",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "performanceStandards",
-                  original.getPerformanceStandards(),
-                  updated.getPerformanceStandards(),
+                  entityUpdate.getOriginal().getPerformanceStandards(),
+                  entityUpdate.getUpdated().getPerformanceStandards(),
                   true));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
           "appliesTo",
-          () -> recordChange("appliesTo", original.getAppliesTo(), updated.getAppliesTo(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "appliesTo",
+                  entityUpdate.getOriginal().getAppliesTo(),
+                  entityUpdate.getUpdated().getAppliesTo(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "enforcementLevel",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "enforcementLevel",
-                  original.getEnforcementLevel(),
-                  updated.getEnforcementLevel()));
-      compareAndUpdate(
-          "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
+                  entityUpdate.getOriginal().getEnforcementLevel(),
+                  entityUpdate.getUpdated().getEnforcementLevel()));
+      entityUpdate.compareAndUpdate(
+          "enabled",
+          () ->
+              entityUpdate.recordChange(
+                  "enabled",
+                  entityUpdate.getOriginal().getEnabled(),
+                  entityUpdate.getUpdated().getEnabled()));
     }
+
+    private final EntityUpdater<AIGovernancePolicy> entityUpdate;
+
+    public EntityUpdater<AIGovernancePolicy> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<AIGovernancePolicy> entityContext;
+
+  @Override
+  public final EntityPolicyContext<AIGovernancePolicy> context() {
+    return entityContext;
   }
 }

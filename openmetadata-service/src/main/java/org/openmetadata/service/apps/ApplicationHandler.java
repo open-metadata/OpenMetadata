@@ -27,12 +27,14 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.search.SearchRepository;
@@ -238,16 +240,19 @@ public class ApplicationHandler {
                     .flatMap(
                         sub ->
                             Optional.ofNullable(
-                                eventSubscriptionRepository.findByNameOrNull(
-                                    sub.getName(), Include.ALL)))
+                                eventSubscriptionRepository
+                                    .lookup()
+                                    .byNameOrNull(sub.getName(), Include.ALL)))
                     .orElseGet(
                         () -> {
                           EventSubscription createdEventSub =
-                              eventSubscriptionRepository.create(
-                                  null,
-                                  // TODO need to get the actual user
-                                  new EventSubscriptionMapper()
-                                      .createToEntity(request, installedBy));
+                              eventSubscriptionRepository
+                                  .creates()
+                                  .create(
+                                      null, // TODO need to get the actual user
+                                      new EventSubscriptionMapper()
+                                          .createToEntity(request, installedBy),
+                                      new EntityCommandActor(null, null));
                           appRepository.addEventSubscription(app, createdEventSub);
                           return createdEventSub;
                         }))
@@ -296,10 +301,13 @@ public class ApplicationHandler {
             eventSubscriptionReference -> {
               try {
                 EventSubscription eventSub =
-                    eventSubscriptionRepository.find(
-                        eventSubscriptionReference.getId(), Include.ALL);
+                    eventSubscriptionRepository
+                        .lookup()
+                        .byId(eventSubscriptionReference.getId(), Include.ALL);
                 EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSub);
-                eventSubscriptionRepository.delete(deletedBy, eventSub.getId(), false, true);
+                eventSubscriptionRepository
+                    .deletes()
+                    .byId(deletedBy, eventSub.getId(), false, true);
 
               } catch (EntityNotFoundException e) {
                 LOG.debug("Event subscription {} not found", eventSubscriptionReference.getId());
@@ -370,8 +378,8 @@ public class ApplicationHandler {
     updatedApp.setAppSchedule(currentApp.getAppSchedule());
     updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
     updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
-    EntityRepository<App>.EntityUpdater updater =
-        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH, null);
+    EntityUpdater<App> updater =
+        appRepository.getUpdater(currentApp, updatedApp, EntityOperation.PATCH, null);
     updater.update();
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
     LOG.info(

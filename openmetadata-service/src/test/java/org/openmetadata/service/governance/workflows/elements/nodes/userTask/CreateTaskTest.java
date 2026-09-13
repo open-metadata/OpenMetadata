@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -43,11 +44,14 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
 class CreateTaskTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
 
   @Test
   void testResolveExistingTaskAssigneesDefersToCurrentDatabaseAssignmentsDuringPendingStart() {
@@ -144,44 +148,47 @@ class CreateTaskTest {
   void testFindExistingTaskWithRetryBridgesTransientDraftVisibilityGap() {
     UUID taskId = UUID.randomUUID();
     TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    EntityDAO<Task> taskRows = lookups.attach(taskRepository, Entity.TASK, Task.class);
     Task existingTask = new Task().withId(taskId);
 
-    when(taskRepository.find(taskId, Include.ALL))
+    when(taskRows.findEntityById(taskId, Include.ALL))
         .thenThrow(EntityNotFoundException.byId(taskId.toString()))
         .thenReturn(existingTask);
 
     Task resolvedTask = CreateTask.findExistingTaskWithRetry(taskRepository, taskId, true);
 
     assertEquals(existingTask, resolvedTask);
-    verify(taskRepository, times(2)).find(taskId, Include.ALL);
+    verify(taskRows, times(2)).findEntityById(taskId, Include.ALL);
   }
 
   @Test
   void testFindExistingTaskWithRetryDoesSingleLookupForNonWorkflowManagedTasks() {
     UUID taskId = UUID.randomUUID();
     TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    EntityDAO<Task> taskRows = lookups.attach(taskRepository, Entity.TASK, Task.class);
     Task existingTask = new Task().withId(taskId);
 
-    when(taskRepository.find(taskId, Include.ALL)).thenReturn(existingTask);
+    when(taskRows.findEntityById(taskId, Include.ALL)).thenReturn(existingTask);
 
     Task resolvedTask = CreateTask.findExistingTaskWithRetry(taskRepository, taskId, false);
 
     assertEquals(existingTask, resolvedTask);
-    verify(taskRepository).find(taskId, Include.ALL);
+    verify(taskRows).findEntityById(taskId, Include.ALL);
   }
 
   @Test
   void testFindExistingTaskWithRetryReturnsNullAfterExhaustingWorkflowManagedLookup() {
     UUID taskId = UUID.randomUUID();
     TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    EntityDAO<Task> taskRows = lookups.attach(taskRepository, Entity.TASK, Task.class);
 
-    when(taskRepository.find(taskId, Include.ALL))
+    when(taskRows.findEntityById(taskId, Include.ALL))
         .thenThrow(EntityNotFoundException.byId(taskId.toString()));
 
     Task resolvedTask = CreateTask.findExistingTaskWithRetry(taskRepository, taskId, true);
 
     assertNull(resolvedTask);
-    verify(taskRepository, times(6)).find(taskId, Include.ALL);
+    verify(taskRows, times(6)).findEntityById(taskId, Include.ALL);
   }
 
   @Test

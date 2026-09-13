@@ -62,6 +62,10 @@ import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.CustomPropertyValidator;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.search.SearchClient;
@@ -73,6 +77,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -128,7 +133,15 @@ public class ColumnRepository {
       SecurityContext securityContext) {
     TableRepository tableRepo = (TableRepository) Entity.getEntityRepository(TABLE);
     Table table =
-        tableRepo.getByName(null, parentFQN, tableRepo.getFields("owners"), include, false);
+        tableRepo
+            .reads()
+            .byName(
+                parentFQN,
+                new EntityReadService.Query(
+                    null,
+                    tableRepo.fieldPolicy().parse("owners"),
+                    RelationIncludes.fromInclude(include),
+                    false));
     ResourceContext<Table> resourceContext = new ResourceContext<>(TABLE, table, tableRepo);
     authorizer.authorize(
         securityContext,
@@ -153,7 +166,15 @@ public class ColumnRepository {
     DashboardDataModelRepository dataModelRepo =
         (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
     DashboardDataModel dataModel =
-        dataModelRepo.getByName(null, parentFQN, dataModelRepo.getFields("owners"), include, false);
+        dataModelRepo
+            .reads()
+            .byName(
+                parentFQN,
+                new EntityReadService.Query(
+                    null,
+                    dataModelRepo.fieldPolicy().parse("owners"),
+                    RelationIncludes.fromInclude(include),
+                    false));
     ResourceContext<DashboardDataModel> resourceContext =
         new ResourceContext<>(DASHBOARD_DATA_MODEL, dataModel, dataModelRepo);
     authorizer.authorize(
@@ -228,12 +249,15 @@ public class ColumnRepository {
       EntityReference parentEntityRef) {
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
     Table originalTable =
-        tableRepository.get(
-            null,
-            parentEntityRef.getId(),
-            tableRepository.getFields("columns,tags,tableConstraints"),
-            Include.NON_DELETED,
-            false);
+        tableRepository
+            .reads()
+            .byId(
+                parentEntityRef.getId(),
+                new EntityReadService.Query(
+                    null,
+                    tableRepository.fieldPolicy().parse("columns,tags,tableConstraints"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
 
     Table updatedTable = JsonUtils.deepCopy(originalTable, Table.class);
     ColumnUtil.setColumnFQN(updatedTable.getFullyQualifiedName(), updatedTable.getColumns());
@@ -264,7 +288,14 @@ public class ColumnRepository {
     authorizeAndPatch(securityContext, TABLE, parentEntityRef, jsonPatch);
 
     RestUtil.PatchResponse<Table> patchResponse =
-        tableRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
+        tableRepository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Id(parentEntityRef.getId()),
+                jsonPatch,
+                new EntityCommandActor(user, null),
+                uriInfo,
+                new EntityPatchService.Options(null, null));
     triggerParentChangeEvent(patchResponse.entity(), user);
 
     return column;
@@ -281,12 +312,15 @@ public class ColumnRepository {
         (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
 
     DashboardDataModel originalDataModel =
-        dataModelRepository.get(
-            null,
-            parentEntityRef.getId(),
-            dataModelRepository.getFields("columns,tags"),
-            Include.NON_DELETED,
-            false);
+        dataModelRepository
+            .reads()
+            .byId(
+                parentEntityRef.getId(),
+                new EntityReadService.Query(
+                    null,
+                    dataModelRepository.fieldPolicy().parse("columns,tags"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
 
     DashboardDataModel updatedDataModel =
         JsonUtils.deepCopy(originalDataModel, DashboardDataModel.class);
@@ -304,7 +338,14 @@ public class ColumnRepository {
     authorizeAndPatch(securityContext, DASHBOARD_DATA_MODEL, parentEntityRef, jsonPatch);
 
     RestUtil.PatchResponse<DashboardDataModel> patchResponse =
-        dataModelRepository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch);
+        dataModelRepository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Id(parentEntityRef.getId()),
+                jsonPatch,
+                new EntityCommandActor(user, null),
+                uriInfo,
+                new EntityPatchService.Options(null, null));
     triggerParentChangeEvent(patchResponse.entity(), user);
 
     return column;
@@ -336,7 +377,7 @@ public class ColumnRepository {
         .ifPresent(
             ext -> {
               Object transformedExtension =
-                  EntityRepository.validateAndTransformExtension(ext, columnEntityType);
+                  CustomPropertyValidator.shared().validateAndTransform(ext, columnEntityType);
               column.setExtension(transformedExtension);
             });
   }
@@ -372,14 +413,14 @@ public class ColumnRepository {
     return switch (entityType) {
       case TABLE -> {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-        Table table = tableRepository.findByName(parentFQN, Include.NON_DELETED);
+        Table table = tableRepository.lookup().byName(parentFQN, Include.NON_DELETED);
         yield table.getEntityReference();
       }
       case DASHBOARD_DATA_MODEL -> {
         DashboardDataModelRepository dataModelRepository =
             (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
         DashboardDataModel dataModel =
-            dataModelRepository.findByName(parentFQN, Include.NON_DELETED);
+            dataModelRepository.lookup().byName(parentFQN, Include.NON_DELETED);
         yield dataModel.getEntityReference();
       }
       default -> throw new IllegalArgumentException(
@@ -478,8 +519,11 @@ public class ColumnRepository {
     }
 
     List<Table> tables =
-        tableRepository.listAll(
-            tableRepository.getFields("columns,tags,service,database,databaseSchema"), filter);
+        tableRepository
+            .collections()
+            .all(
+                tableRepository.fieldPolicy().parse("columns,tags,service,database,databaseSchema"),
+                filter);
 
     for (Table table : tables) {
       if (table.getColumns() != null) {
@@ -505,7 +549,9 @@ public class ColumnRepository {
     }
 
     List<DashboardDataModel> dataModels =
-        dataModelRepository.listAll(dataModelRepository.getFields("columns,tags,service"), filter);
+        dataModelRepository
+            .collections()
+            .all(dataModelRepository.fieldPolicy().parse("columns,tags,service"), filter);
 
     for (DashboardDataModel dataModel : dataModels) {
       if (dataModel.getColumns() != null) {
@@ -673,12 +719,15 @@ public class ColumnRepository {
       if (TABLE.equals(entityType)) {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         Table table =
-            tableRepository.get(
-                null,
-                parentEntityRef.getId(),
-                tableRepository.getFields("columns,tags"),
-                Include.NON_DELETED,
-                false);
+            tableRepository
+                .reads()
+                .byId(
+                    parentEntityRef.getId(),
+                    new EntityReadService.Query(
+                        null,
+                        tableRepository.fieldPolicy().parse("columns,tags"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
         ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
         return findColumnInHierarchy(table.getColumns(), columnFQN).orElse(null);
 
@@ -686,12 +735,15 @@ public class ColumnRepository {
         DashboardDataModelRepository dataModelRepository =
             (DashboardDataModelRepository) Entity.getEntityRepository(DASHBOARD_DATA_MODEL);
         DashboardDataModel dataModel =
-            dataModelRepository.get(
-                null,
-                parentEntityRef.getId(),
-                dataModelRepository.getFields("columns,tags"),
-                Include.NON_DELETED,
-                false);
+            dataModelRepository
+                .reads()
+                .byId(
+                    parentEntityRef.getId(),
+                    new EntityReadService.Query(
+                        null,
+                        dataModelRepository.fieldPolicy().parse("columns,tags"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
         ColumnUtil.setColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
         return findColumnInHierarchy(dataModel.getColumns(), columnFQN).orElse(null);
       }

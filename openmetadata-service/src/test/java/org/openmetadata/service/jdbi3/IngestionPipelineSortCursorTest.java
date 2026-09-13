@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.entity.read.EntityCursor;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository.DisplayNameCursor;
 import org.openmetadata.service.util.RestUtil;
@@ -46,7 +47,6 @@ class IngestionPipelineSortCursorTest {
     repository = mock(IngestionPipelineRepository.class);
     when(repository.displayNameCursorValue(Mockito.any())).thenCallRealMethod();
     when(repository.parseDisplayNameCursor(Mockito.anyString())).thenCallRealMethod();
-    when(repository.parseCursorMap(Mockito.nullable(String.class))).thenCallRealMethod();
     when(repository.forwardBeforeCursor(Mockito.nullable(String.class), Mockito.any()))
         .thenCallRealMethod();
   }
@@ -59,9 +59,7 @@ class IngestionPipelineSortCursorTest {
   }
 
   private String sortKeyOf(IngestionPipeline pipeline) {
-    return repository
-        .parseCursorMap(repository.displayNameCursorValue(pipeline))
-        .get("displayNameSort");
+    return EntityCursor.parse(repository.displayNameCursorValue(pipeline)).get("displayNameSort");
   }
 
   @Test

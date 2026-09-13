@@ -97,8 +97,8 @@ public class RdfSemanticSearchIT {
   }
 
   @AfterAll
-  static void disableRdf() {
-    RdfUpdater.disable();
+  static void restoreRdf() {
+    RdfTestUtils.restoreSuiteConfiguration();
   }
 
   @AfterEach

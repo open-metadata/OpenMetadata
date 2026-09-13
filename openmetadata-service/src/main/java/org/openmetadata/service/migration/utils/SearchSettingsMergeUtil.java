@@ -13,8 +13,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -35,21 +34,26 @@ import org.openmetadata.service.util.EntityUtil;
 @Slf4j
 public class SearchSettingsMergeUtil {
 
-  private static final SystemRepository systemRepository = Entity.getSystemRepository();
   private static final String SEARCH_SETTINGS_KEY = "searchSettings";
 
-  /** Retrieves search settings from the database. */
+  /**
+   * Retrieves search settings from the database.
+   */
   public static Settings getSearchSettingsFromDatabase() {
-    return systemRepository.getConfigWithKey(SEARCH_SETTINGS_KEY);
+    return Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS_KEY);
   }
 
-  /** Converts database Settings object to SearchSettings object. */
+  /**
+   * Converts database Settings object to SearchSettings object.
+   */
   public static SearchSettings loadSearchSettings(Settings searchSettings) {
     return JsonUtils.readValue(
         JsonUtils.pojoToJson(searchSettings.getConfigValue()), SearchSettings.class);
   }
 
-  /** Loads default SearchSettings from packaged JSON file (searchSettings.json). */
+  /**
+   * Loads default SearchSettings from packaged JSON file (searchSettings.json).
+   */
   public static SearchSettings loadSearchSettingsFromFile() {
     try {
       List<String> jsonDataFiles =
@@ -57,7 +61,7 @@ public class SearchSettingsMergeUtil {
       if (!jsonDataFiles.isEmpty()) {
         String json =
             CommonUtil.getResourceAsStream(
-                EntityRepository.class.getClassLoader(), jsonDataFiles.getFirst());
+                EntityPolicy.class.getClassLoader(), jsonDataFiles.getFirst());
         return JsonUtils.readValue(json, SearchSettings.class);
       }
     } catch (Exception e) {
@@ -66,10 +70,12 @@ public class SearchSettingsMergeUtil {
     return null;
   }
 
-  /** Saves updated SearchSettings back to the database. */
+  /**
+   * Saves updated SearchSettings back to the database.
+   */
   public static void saveSearchSettings(Settings searchSettings, SearchSettings updatedSettings) {
     searchSettings.withConfigValue(updatedSettings);
-    systemRepository.updateSetting(searchSettings);
+    Entity.getSystemRepository().updateSetting(searchSettings);
   }
 
   /**
@@ -119,9 +125,7 @@ public class SearchSettingsMergeUtil {
       LOG.warn("Default settings not available, skipping merge for {}", fieldDescription);
       return false;
     }
-
     boolean merged = false;
-
     if (defaultSettings.getGlobalSettings() != null
         && defaultSettings.getGlobalSettings().getFieldValueBoosts() != null) {
       for (FieldValueBoost defaultBoost :
@@ -144,7 +148,6 @@ public class SearchSettingsMergeUtil {
         }
       }
     }
-
     if (defaultSettings.getAssetTypeConfigurations() != null
         && currentSettings.getAssetTypeConfigurations() != null) {
       for (AssetTypeConfiguration defaultAssetConfig :
@@ -176,7 +179,6 @@ public class SearchSettingsMergeUtil {
         }
       }
     }
-
     return merged;
   }
 
@@ -251,10 +253,8 @@ public class SearchSettingsMergeUtil {
       LOG.warn("Default settings not available, skipping merge for {}", settingName);
       return false;
     }
-
     T currentValue = getter.apply(currentSettings);
     T defaultValue = getter.apply(defaultSettings);
-
     if (defaultValue != null
         && currentValue != null
         && shouldMerge.test(currentValue, defaultValue)) {
@@ -262,7 +262,6 @@ public class SearchSettingsMergeUtil {
       setter.accept(currentSettings, defaultValue);
       return true;
     }
-
     return false;
   }
 
@@ -344,17 +343,13 @@ public class SearchSettingsMergeUtil {
       LOG.warn("Asset configurations not available, skipping merge for {}", propertyName);
       return false;
     }
-
     boolean merged = false;
-
     for (AssetTypeConfiguration defaultAssetConfig : defaultSettings.getAssetTypeConfigurations()) {
       AssetTypeConfiguration currentAssetConfig =
           findAssetTypeConfiguration(currentSettings, defaultAssetConfig.getAssetType());
-
       if (currentAssetConfig != null) {
         T currentValue = assetGetter.apply(currentAssetConfig);
         T defaultValue = assetGetter.apply(defaultAssetConfig);
-
         if (defaultValue != null
             && currentValue != null
             && shouldMerge.test(currentValue, defaultValue)) {
@@ -369,7 +364,6 @@ public class SearchSettingsMergeUtil {
         }
       }
     }
-
     return merged;
   }
 
@@ -439,23 +433,19 @@ public class SearchSettingsMergeUtil {
       LOG.warn("Default settings not available, skipping add for asset type: {}", assetType);
       return false;
     }
-
     AssetTypeConfiguration existingConfig = findAssetTypeConfiguration(currentSettings, assetType);
     if (existingConfig != null) {
       LOG.info("Asset type configuration for {} already exists, skipping add", assetType);
       return false;
     }
-
     AssetTypeConfiguration defaultConfig = findAssetTypeConfiguration(defaultSettings, assetType);
     if (defaultConfig == null) {
       LOG.warn("No default configuration found for asset type: {}", assetType);
       return false;
     }
-
     if (currentSettings.getAssetTypeConfigurations() == null) {
       currentSettings.setAssetTypeConfigurations(new java.util.ArrayList<>());
     }
-
     currentSettings.getAssetTypeConfigurations().add(defaultConfig);
     LOG.info("Added new asset type configuration for: {}", assetType);
     return true;
@@ -476,7 +466,6 @@ public class SearchSettingsMergeUtil {
       LOG.warn("Default settings not available, skipping add for allowed fields: {}", entityType);
       return false;
     }
-
     if (currentSettings.getAllowedFields() != null) {
       for (AllowedSearchFields allowedField : currentSettings.getAllowedFields()) {
         if (entityType.equals(allowedField.getEntityType())) {
@@ -485,7 +474,6 @@ public class SearchSettingsMergeUtil {
         }
       }
     }
-
     AllowedSearchFields defaultAllowedFields = null;
     for (AllowedSearchFields allowedField : defaultSettings.getAllowedFields()) {
       if (entityType.equals(allowedField.getEntityType())) {
@@ -493,16 +481,13 @@ public class SearchSettingsMergeUtil {
         break;
       }
     }
-
     if (defaultAllowedFields == null) {
       LOG.warn("No default allowed fields found for entity type: {}", entityType);
       return false;
     }
-
     if (currentSettings.getAllowedFields() == null) {
       currentSettings.setAllowedFields(new java.util.ArrayList<>());
     }
-
     currentSettings.getAllowedFields().add(defaultAllowedFields);
     LOG.info("Added new allowed fields configuration for: {}", entityType);
     return true;

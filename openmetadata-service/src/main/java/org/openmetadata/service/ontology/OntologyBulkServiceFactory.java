@@ -15,6 +15,7 @@ package org.openmetadata.service.ontology;
 
 import java.time.Clock;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 
@@ -41,10 +42,13 @@ public final class OntologyBulkServiceFactory {
       final OntologyBulkPlanner planner,
       final OntologyBulkJobManager jobManager,
       final Clock clock) {
+    final var creates = changeSetRepository.creates();
     return new OntologyBulkExecutionService(
         new OntologyBulkRequestValidator(),
         planner,
-        new OntologyBulkDraftFactory(changeSetRepository::create),
+        new OntologyBulkDraftFactory(
+            (uri, entity, actor, impersonated) ->
+                creates.create(uri, entity, new EntityCommandActor(actor, impersonated))),
         new OntologyBulkArtifactFactory(clock),
         jobManager);
   }

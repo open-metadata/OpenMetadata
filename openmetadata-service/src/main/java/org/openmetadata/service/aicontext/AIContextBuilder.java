@@ -74,6 +74,7 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -882,7 +883,11 @@ public class AIContextBuilder {
     try {
       pills =
           Entity.getEntityRepository(entityType)
-              .findTo(entity.getId(), entityType, Relationship.APPLIED_TO, Entity.CONTEXT_MEMORY);
+              .relationships()
+              .to(
+                  new EntityRelationshipReader.Selection(
+                      entity.getId(), entityType, Relationship.APPLIED_TO, Entity.CONTEXT_MEMORY),
+                  Include.NON_DELETED);
     } catch (Exception e) {
       LOG.warn("AIContext: failed to list knowledge pills for {}: {}", fqn, e.getMessage());
     }
@@ -946,7 +951,11 @@ public class AIContextBuilder {
     try {
       metrics =
           Entity.getEntityRepository(entityType)
-              .findFrom(entity.getId(), entityType, Relationship.APPLIED_TO, Entity.METRIC);
+              .relationships()
+              .from(
+                  new EntityRelationshipReader.Selection(
+                      entity.getId(), entityType, Relationship.APPLIED_TO, Entity.METRIC),
+                  Include.NON_DELETED);
     } catch (Exception e) {
       LOG.warn("AIContext: failed to list metrics for {}: {}", fqn, e.getMessage());
     }
@@ -1019,7 +1028,11 @@ public class AIContextBuilder {
     try {
       pages =
           Entity.getEntityRepository(entityType)
-              .findTo(entity.getId(), entityType, Relationship.HAS, Entity.PAGE);
+              .relationships()
+              .to(
+                  new EntityRelationshipReader.Selection(
+                      entity.getId(), entityType, Relationship.HAS, Entity.PAGE),
+                  Include.NON_DELETED);
     } catch (Exception e) {
       LOG.warn("AIContext: failed to list attached articles for {}: {}", fqn, e.getMessage());
     }

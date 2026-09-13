@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -19,9 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -50,10 +47,10 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageFixture;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -62,17 +59,23 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 class SetApprovalAssigneesImplTest {
 
   @Mock private DelegateExecution execution;
+
   @Mock private Expression assigneesExpr;
+
   @Mock private Expression assigneesVarNameExpr;
+
   @Mock private Expression inputNamespaceMapExpr;
+
   @Mock private EntityInterface mockEntity;
 
   @SuppressWarnings("rawtypes")
   @Mock
-  private EntityRepository mockRepository;
+  private EntityPolicy mockRepository;
 
   private SetApprovalAssigneesImpl delegate;
+
   private MockedStatic<Entity> mockedEntity;
+
   private Map<String, Object> capturedVars;
 
   @BeforeEach
@@ -81,7 +84,6 @@ class SetApprovalAssigneesImplTest {
     injectField(delegate, "assigneesExpr", assigneesExpr);
     injectField(delegate, "assigneesVarNameExpr", assigneesVarNameExpr);
     injectField(delegate, "inputNamespaceMapExpr", inputNamespaceMapExpr);
-
     when(inputNamespaceMapExpr.getValue(execution)).thenReturn("{\"relatedEntity\":\"global\"}");
     when(assigneesVarNameExpr.getValue(execution)).thenReturn("ApprovalTask_assignees");
     when(execution.getProcessDefinitionId()).thenReturn("sample:1:1");
@@ -89,7 +91,6 @@ class SetApprovalAssigneesImplTest {
         .thenReturn("<#E::classification::test_classification>");
     when(mockRepository.isSupportsReviewers()).thenReturn(true);
     when(mockEntity.getOwners()).thenReturn(List.of());
-
     mockedEntity = mockStatic(Entity.class);
     mockedEntity.when(() -> Entity.getEntityRepository(anyString())).thenReturn(mockRepository);
     mockedEntity
@@ -98,7 +99,6 @@ class SetApprovalAssigneesImplTest {
                 Entity.getEntity(
                     any(MessageParser.EntityLink.class), anyString(), any(Include.class)))
         .thenReturn(mockEntity);
-
     capturedVars = new HashMap<>();
     doAnswer(
             inv -> {
@@ -128,15 +128,12 @@ class SetApprovalAssigneesImplTest {
         new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
     EntityReference otherUserRef =
         new EntityReference().withType("user").withFullyQualifiedName("john");
-
     when(mockEntity.getReviewers()).thenReturn(List.of(dottedUserRef, otherUserRef));
     // updatedBy arrives unquoted from event.getUserName()
     when(execution.getVariable("global_updatedBy")).thenReturn("ram.balaji");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertFalse(
@@ -158,15 +155,12 @@ class SetApprovalAssigneesImplTest {
         new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
     EntityReference otherReviewerRef =
         new EntityReference().withType("user").withFullyQualifiedName("john");
-
     when(mockEntity.getReviewers()).thenReturn(List.of(requesterRef, otherReviewerRef));
     when(execution.getVariable("global_updatedBy")).thenReturn(null);
     when(execution.getVariable("taskUpdatedBy")).thenReturn("ram.balaji");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertFalse(
@@ -188,16 +182,13 @@ class SetApprovalAssigneesImplTest {
         new EntityReference().withType("user").withFullyQualifiedName("alice");
     EntityReference otherReviewerRef =
         new EntityReference().withType("user").withFullyQualifiedName("john");
-
     when(mockEntity.getReviewers())
         .thenReturn(List.of(taskRequesterRef, globalRequesterRef, otherReviewerRef));
     when(execution.getVariable("taskUpdatedBy")).thenReturn("ram.balaji");
     when(execution.getVariable("global_updatedBy")).thenReturn("alice");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertFalse(assigneesJson.contains("ram.balaji"), "taskUpdatedBy user must be removed");
@@ -212,15 +203,12 @@ class SetApprovalAssigneesImplTest {
         new EntityReference().withType("user").withFullyQualifiedName("alice");
     EntityReference otherReviewerRef =
         new EntityReference().withType("user").withFullyQualifiedName("bob");
-
     when(mockEntity.getReviewers()).thenReturn(List.of(requesterRef, otherReviewerRef));
     when(execution.getVariable("taskUpdatedBy")).thenReturn(null);
     when(execution.getVariable("global_updatedBy")).thenReturn("alice");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertFalse(
@@ -235,14 +223,11 @@ class SetApprovalAssigneesImplTest {
         new EntityReference().withType("user").withFullyQualifiedName("alice");
     EntityReference dottedUserRef =
         new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
-
     when(mockEntity.getReviewers()).thenReturn(List.of(simpleUserRef, dottedUserRef));
     when(execution.getVariable("global_updatedBy")).thenReturn("alice");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertFalse(
@@ -255,14 +240,11 @@ class SetApprovalAssigneesImplTest {
   void testSelfApprovalPrevention_nullUpdatedBy_allReviewersRetained() {
     EntityReference reviewerRef =
         new EntityReference().withType("user").withFullyQualifiedName("\"ram.balaji\"");
-
     when(mockEntity.getReviewers()).thenReturn(List.of(reviewerRef));
     when(execution.getVariable("global_updatedBy")).thenReturn(null);
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     assertDoesNotThrow(() -> delegate.execute(execution));
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertTrue(
@@ -274,15 +256,12 @@ class SetApprovalAssigneesImplTest {
   void testSelfApprovalPrevention_workflowManagedTaskRemovesCreatorAndLeavesTaskUnassigned() {
     EntityReference creatorRef =
         new EntityReference().withType("user").withFullyQualifiedName("alice");
-
     when(mockEntity.getReviewers()).thenReturn(List.of(creatorRef));
     when(execution.getVariable("global_updatedBy")).thenReturn("alice");
     when(execution.getVariable("taskWorkflowManaged")).thenReturn(true);
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertFalse(
@@ -297,7 +276,6 @@ class SetApprovalAssigneesImplTest {
     when(execution.getVariable("global_relatedEntity")).thenReturn("<#E::tag::PII.Sensitive>");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     EntityReference classificationRef =
         new EntityReference()
             .withType(Entity.CLASSIFICATION)
@@ -314,7 +292,6 @@ class SetApprovalAssigneesImplTest {
                     new EntityReference()
                         .withType(Entity.USER)
                         .withFullyQualifiedName("classificationReviewer")));
-
     mockedEntity
         .when(
             () ->
@@ -326,9 +303,7 @@ class SetApprovalAssigneesImplTest {
     mockedEntity
         .when(() -> Entity.getEntity(classificationRef, "reviewers", Include.NON_DELETED))
         .thenReturn(classification);
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertTrue(
@@ -342,7 +317,6 @@ class SetApprovalAssigneesImplTest {
         .thenReturn("<#E::glossaryTerm::sample_glossary.sample_term>");
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     EntityReference glossaryRef =
         new EntityReference().withType(Entity.GLOSSARY).withFullyQualifiedName("sample_glossary");
     GlossaryTerm glossaryTerm =
@@ -354,7 +328,6 @@ class SetApprovalAssigneesImplTest {
                     new EntityReference()
                         .withType(Entity.USER)
                         .withFullyQualifiedName("reviewer1")));
-
     mockedEntity
         .when(
             () ->
@@ -366,9 +339,7 @@ class SetApprovalAssigneesImplTest {
     mockedEntity
         .when(() -> Entity.getEntity(glossaryRef, "reviewers", Include.NON_DELETED))
         .thenReturn(glossary);
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertTrue(
@@ -434,18 +405,13 @@ class SetApprovalAssigneesImplTest {
     when(assigneesExpr.getValue(execution))
         .thenReturn(
             "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
-
     UserRepository mockUserRepository = mock(UserRepository.class);
     mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
     User adminUser = new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
-    @SuppressWarnings("unchecked")
-    ResultList<User> page = mock(ResultList.class);
-    when(page.getData()).thenReturn(List.of(adminUser));
-    when(page.getPaging()).thenReturn(new Paging());
-    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
-
+    ResultList<User> page = new ResultList<>(List.of(adminUser), null, null, 1);
+    when(mockUserRepository.pages())
+        .thenReturn(new EntityPageFixture<>((projection, limit, cursor) -> page));
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertTrue(
@@ -460,9 +426,7 @@ class SetApprovalAssigneesImplTest {
     when(assigneesExpr.getValue(execution))
         .thenReturn(
             "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertTrue(assigneesJson.contains("bob"), "Reviewer should be assigned");
@@ -476,9 +440,7 @@ class SetApprovalAssigneesImplTest {
     when(mockEntity.getReviewers()).thenReturn(List.of());
     when(assigneesExpr.getValue(execution))
         .thenReturn("{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[]}");
-
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertEquals("[]", assigneesJson, "Without the flag, an empty resolution stays unassigned");
@@ -494,18 +456,13 @@ class SetApprovalAssigneesImplTest {
     when(assigneesExpr.getValue(execution))
         .thenReturn(
             "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
-
     UserRepository mockUserRepository = mock(UserRepository.class);
     mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
     User adminUser = new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
-    @SuppressWarnings("unchecked")
-    ResultList<User> page = mock(ResultList.class);
-    when(page.getData()).thenReturn(List.of(adminUser));
-    when(page.getPaging()).thenReturn(new Paging());
-    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
-
+    ResultList<User> page = new ResultList<>(List.of(adminUser), null, null, 1);
+    when(mockUserRepository.pages())
+        .thenReturn(new EntityPageFixture<>((projection, limit, cursor) -> page));
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertTrue(
@@ -524,20 +481,15 @@ class SetApprovalAssigneesImplTest {
     when(assigneesExpr.getValue(execution))
         .thenReturn(
             "{\"addReviewers\":true,\"addOwners\":false,\"users\":[],\"teams\":[],\"emptyAssigneeStrategy\":\"assignAdmins\"}");
-
     UserRepository mockUserRepository = mock(UserRepository.class);
     mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(mockUserRepository);
     User requesterAdmin = new User().withName("alice").withFullyQualifiedName("alice");
     User otherAdmin =
         new User().withName("platform_admin").withFullyQualifiedName("platform_admin");
-    @SuppressWarnings("unchecked")
-    ResultList<User> page = mock(ResultList.class);
-    when(page.getData()).thenReturn(List.of(requesterAdmin, otherAdmin));
-    when(page.getPaging()).thenReturn(new Paging());
-    when(mockUserRepository.listAfter(isNull(), any(), any(), anyInt(), isNull())).thenReturn(page);
-
+    ResultList<User> page = new ResultList<>(List.of(requesterAdmin, otherAdmin), null, null, 2);
+    when(mockUserRepository.pages())
+        .thenReturn(new EntityPageFixture<>((projection, limit, cursor) -> page));
     delegate.execute(execution);
-
     String assigneesJson = (String) capturedVars.get("ApprovalTask_assignees");
     assertNotNull(assigneesJson);
     assertTrue(assigneesJson.contains("platform_admin"), "Other admins must be assigned");

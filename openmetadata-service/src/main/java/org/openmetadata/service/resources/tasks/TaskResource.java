@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources.tasks;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -82,9 +81,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -102,6 +103,7 @@ import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -113,6 +115,7 @@ import org.openmetadata.service.util.RestUtil;
 public class TaskResource extends EntityResource<Task, TaskRepository> {
 
   public static final String COLLECTION_PATH = "v1/tasks/";
+
   static final String FIELDS =
       "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,availableTransitions";
 
@@ -126,11 +129,17 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   static final String LIST_FIELDS = "assignees,about,createdBy";
 
   private static final String COUNT_VIEW_ALL = "all";
+
   private static final String COUNT_VIEW_VISIBLE = "visible";
+
   private static final String COUNT_VIEW_ASSIGNED = "assigned";
+
   private static final String COUNT_VIEW_OWNED = "owned";
+
   private static final String COUNT_VIEW_CREATED = "created";
+
   private static final String COUNT_VIEW_MENTIONED = "mentioned";
+
   private static final String COUNT_VIEW_ENTITY = "entity";
 
   public TaskResource(Authorizer authorizer, Limits limits) {
@@ -283,7 +292,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     if (mentionedUser != null) {
       filter.addQueryParam("mentionedUser", mentionedUser);
     }
-
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -341,13 +349,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             domain,
             view);
     repository.applyTaskDomainFilter(baseFilter);
-
     CollectionDAO.TaskDAO.TaskCountSummary countSummary =
         repository
             .getDaoCollection()
             .taskDAO()
             .getTaskCountSummary(baseFilter.getCondition(), baseFilter.getQueryParams());
-
     TaskCount response =
         new TaskCount()
             .withOpen(countSummary.getOpen())
@@ -356,7 +362,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withApproved(countSummary.getApproved())
             .withGranted(countSummary.getGranted())
             .withTotal(countSummary.getTotal());
-
     return Response.ok(response).build();
   }
 
@@ -478,7 +483,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("category", TaskCategory.DataAccess.value());
     filter.addQueryParam("taskType", TaskEntityType.DataAccessRequest.value());
-
     if (statusGroup != null) {
       filter.addQueryParam("taskStatusGroup", statusGroup);
     } else if (!nullOrEmpty(status)) {
@@ -517,7 +521,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       filter.addQueryParam("darSearch", q);
     }
     repository.addDomainFilter(filter, domain);
-
     Fields fields = getFields(fieldsParam);
     // Mirror the auth + domain-scoping that listInternal applies on the generic /v1/tasks
     // endpoint. We don't reuse listInternal directly because this endpoint is offset-paginated
@@ -526,7 +529,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
-
     return repository.listDataAccessRequests(
         uriInfo, fields, filter, limitParam, offset, sortOrder);
   }
@@ -586,7 +588,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
     applyTaskTimeRange(filter, startTs, endTs);
-
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -646,7 +647,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
     applyTaskTimeRange(filter, startTs, endTs);
-
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -704,20 +704,18 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     String userName = securityContext.getUserPrincipal().getName();
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User user = userRepository.getByName(uriInfo, userName, userRepository.getFields("email"));
+    User user =
+        userRepository.getByName(uriInfo, userName, userRepository.fieldPolicy().parse("email"));
     List<EntityReference> groupTeams =
         userRepository.getGroupTeams(uriInfo, securityContext, user.getEmail());
-
     List<String> ownerIds = new ArrayList<>();
     ownerIds.add("'" + user.getId() + "'");
     if (groupTeams != null) {
       ownerIds.addAll(groupTeams.stream().map(team -> "'" + team.getId() + "'").toList());
     }
-
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
     applyTaskTimeRange(filter, startTs, endTs);
-
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -773,11 +771,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
-
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("createdById", user.getId().toString());
     applyTaskTimeRange(filter, startTs, endTs);
-
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -987,16 +983,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   private void enforceDomainOnlyPolicyForTask(SecurityContext securityContext, Task task) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-
     if (subjectContext.isAdmin() || !subjectContext.hasDomainOnlyAccessRole()) {
       return;
     }
-
     EntityReference about = task.getAbout();
     if (about == null) {
       return;
     }
-
     List<EntityReference> targetDomains = getEntityDomains(about);
     if (nullOrEmpty(targetDomains)) {
       throw new AuthorizationException(
@@ -1004,7 +997,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               "User with domain-only access cannot create task on entity '%s' with no domain",
               about.getFullyQualifiedName()));
     }
-
     List<EntityReference> userDomains = subjectContext.getUserDomains();
     if (nullOrEmpty(userDomains)) {
       throw new AuthorizationException(
@@ -1012,10 +1004,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
               "User with domain-only access has no assigned domains and cannot create task on '%s'",
               about.getFullyQualifiedName()));
     }
-
     boolean hasMatchingDomain =
         targetDomains.stream().anyMatch(targetDomain -> isDomainAllowed(targetDomain, userDomains));
-
     if (!hasMatchingDomain) {
       throw new AuthorizationException(
           String.format(
@@ -1037,9 +1027,16 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   @SuppressWarnings("unchecked")
   private List<EntityReference> getEntityDomains(EntityReference entityRef) {
     try {
-      EntityRepository<?> repo = Entity.getEntityRepository(entityRef.getType());
-      Object entity = repo.get(null, entityRef.getId(), repo.getFields("domains"));
-
+      EntityPolicy<?> repo = Entity.getEntityRepository(entityRef.getType());
+      Object entity =
+          repo.reads()
+              .byId(
+                  entityRef.getId(),
+                  new EntityReadService.Query(
+                      null,
+                      repo.fieldPolicy().parse("domains"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       java.lang.reflect.Method getDomainsMethod = entity.getClass().getMethod("getDomains");
       Object domains = getDomainsMethod.invoke(entity);
       if (domains instanceof List<?> domainList && !domainList.isEmpty()) {
@@ -1099,7 +1096,16 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // hydrated field the client might address in an "add"/"remove" op (e.g. /assignees/-) is
     // populated and JsonUtils.applyPatch does not blow up on a null list. The diff-based
     // checks in validateTaskPatch read a subset of these anyway.
-    Task original = repository.get(uriInfo, id, repository.getPatchFields());
+    Task original =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    repository.getPatchFields(),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
     return patchInternal(uriInfo, securityContext, id, patch);
@@ -1235,11 +1241,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Valid ResolveTask resolveTask) {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
-    Task task = repository.get(uriInfo, id, fields);
-
+    Task task =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     validateTaskCanBeResolved(task);
-
     // Use TaskWorkflowHandler to resolve the task and apply entity changes. The strict-transition
     // validation only fires when the caller explicitly named a transitionId — legacy callers that
     // pass resolutionType alone stay on the workflow handler's positive/negative default path (used
@@ -1265,7 +1275,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Object resolvedPayload = resolveTask.getPayload();
     String comment = resolveTask.getComment();
     validateTransitionComment(task, transitionId, comment);
-
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
             task,
@@ -1290,7 +1299,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       filter.addQueryParam("taskStatus", status.value());
     }
     repository.addDomainFilter(filter, domain);
-
     return filter;
   }
 
@@ -1305,20 +1313,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       String view) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     repository.addDomainFilter(filter, domain);
-
     String normalizedView = view == null ? null : view.trim().toLowerCase(Locale.ROOT);
-
     if (nullOrEmpty(normalizedView)) {
       applyLegacyCountFilters(filter, assignee, createdBy, aboutEntity, mentionedUser);
-
       return filter;
     }
-
     switch (normalizedView) {
       case COUNT_VIEW_ALL, COUNT_VIEW_VISIBLE -> {
         boolean hasLegacyUserFilter =
             assignee != null || createdBy != null || mentionedUser != null;
-
         if (hasLegacyUserFilter) {
           applyLegacyCountFilters(filter, assignee, createdBy, aboutEntity, mentionedUser);
         } else {
@@ -1341,11 +1344,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       }
       default -> applyLegacyCountFilters(filter, assignee, createdBy, aboutEntity, mentionedUser);
     }
-
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
     }
-
     return filter;
   }
 
@@ -1378,43 +1379,38 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   private String getCurrentUserAssigneeIds(SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(Entity.USER, userName, "teams", Include.NON_DELETED);
-
     List<String> assigneeIds = new ArrayList<>();
     assigneeIds.add("'" + user.getId() + "'");
     if (user.getTeams() != null) {
       assigneeIds.addAll(user.getTeams().stream().map(team -> "'" + team.getId() + "'").toList());
     }
-
     return String.join(",", assigneeIds);
   }
 
   private String getCurrentUserOwnedIds(UriInfo uriInfo, SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User user = userRepository.getByName(uriInfo, userName, userRepository.getFields("email"));
+    User user =
+        userRepository.getByName(uriInfo, userName, userRepository.fieldPolicy().parse("email"));
     List<EntityReference> groupTeams =
         userRepository.getGroupTeams(uriInfo, securityContext, user.getEmail());
-
     List<String> ownerIds = new ArrayList<>();
     ownerIds.add("'" + user.getId() + "'");
     if (groupTeams != null) {
       ownerIds.addAll(groupTeams.stream().map(team -> "'" + team.getId() + "'").toList());
     }
-
     return String.join(",", ownerIds);
   }
 
   private String getCurrentUserId(SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
-
     return user.getId().toString();
   }
 
   private String getCurrentUserMentionedFqn(SecurityContext securityContext) {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
-
     return nullOrEmpty(user.getFullyQualifiedName())
         ? user.getName()
         : user.getFullyQualifiedName();
@@ -1446,11 +1442,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String comment) {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
-    Task task = repository.get(uriInfo, id, fields);
-
+    Task task =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
     validateTaskCanBeClosed(task);
-
     Task closedTask = repository.closeTask(task, userName, comment);
     // Change-event header so close fires task alerts.
     return Response.ok(closedTask)
@@ -1482,11 +1482,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // which would leave createdBy null and prevent the filer-delete-own-task TaskAuthorPolicy
     // rule from matching. Include.ALL so a hardDelete request can fetch a previously soft-deleted
     // task for the authorization check.
-    Task task = repository.get(uriInfo, id, getFields(FIELDS), Include.ALL, false);
+    Task task =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, getFields(FIELDS), RelationIncludes.fromInclude(Include.ALL), false));
     OperationContext operationContext = new OperationContext(Entity.TASK, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, new TaskResourceContext(task));
     RestUtil.DeleteResponse<Task> response =
-        repository.delete(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
+        repository
+            .deletes()
+            .byId(securityContext.getUserPrincipal().getName(), id, false, hardDelete);
     if (hardDelete) {
       limits.invalidateCache(entityType);
     }
@@ -1495,7 +1503,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   // ========================= Suggestion Endpoints =========================
-
   @PUT
   @Path("/{id}/suggestion/apply")
   @Operation(
@@ -1524,19 +1531,21 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Comment for the approval") @QueryParam("comment") String comment) {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
-    Task task = repository.get(uriInfo, id, fields);
-
+    Task task =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     if (task.getType() != TaskEntityType.Suggestion) {
       throw new IllegalArgumentException("Task is not a suggestion task. Type: " + task.getType());
     }
-
     if (task.getPayload() == null) {
       throw new IllegalArgumentException("Task does not have a payload");
     }
-
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     validateTaskCanBeResolved(task);
-
     // Match /resolve's guard: validateTransition only fires when defaultTransitionId resolves
     // to a concrete id the workflow actually exposes. A task that has not yet stamped
     // availableTransitions (still at PENDING_WORKFLOW_START_STAGE_ID, or a workflow whose
@@ -1564,7 +1573,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   // ========================= Bulk Operations Endpoint =========================
-
   @POST
   @Path("/bulk")
   @Operation(
@@ -1589,35 +1597,41 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Valid BulkTaskOperation bulkOperation) {
     String userName = securityContext.getUserPrincipal().getName();
-
     List<BulkTaskOperationResultItem> results = new ArrayList<>();
     int successful = 0;
     int failed = 0;
-
     for (String taskIdStr : bulkOperation.getTaskIds()) {
       BulkTaskOperationResultItem result = new BulkTaskOperationResultItem();
       result.setTaskId(taskIdStr);
-
       try {
         if (taskIdStr == null || taskIdStr.isBlank()) {
           throw new IllegalArgumentException("Task ID must not be empty");
         }
-
         UUID taskId;
         try {
           taskId = UUID.fromString(taskIdStr);
         } catch (IllegalArgumentException e) {
           Task task =
-              repository.getByName(
-                  uriInfo, taskIdStr, getFields(FIELDS), Include.NON_DELETED, false);
+              repository
+                  .reads()
+                  .byName(
+                      taskIdStr,
+                      new EntityReadService.Query(
+                          uriInfo,
+                          getFields(FIELDS),
+                          RelationIncludes.fromInclude(Include.NON_DELETED),
+                          false));
           taskId = task.getId();
         }
-
         Fields fields = getFields(FIELDS);
-        Task task = repository.get(uriInfo, taskId, fields);
-
+        Task task =
+            repository
+                .reads()
+                .byId(
+                    taskId,
+                    new EntityReadService.Query(
+                        uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
         processBulkOperation(uriInfo, task, bulkOperation, userName, securityContext);
-
         result.setStatus(BulkTaskOperationResultItem.Status.SUCCESS);
         successful++;
       } catch (Exception e) {
@@ -1627,16 +1641,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         failed++;
         LOG.warn("Bulk operation failed for task {}: {}", taskIdStr, errorMsg, e);
       }
-
       results.add(result);
     }
-
     BulkTaskOperationResult response = new BulkTaskOperationResult();
     response.setTotalRequested(bulkOperation.getTaskIds().size());
     response.setSuccessful(successful);
     response.setFailed(failed);
     response.setResults(results);
-
     return Response.ok(response).build();
   }
 
@@ -1649,7 +1660,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     BulkTaskOperationType operation = bulkOperation.getOperation();
     BulkTaskOperationParams params = bulkOperation.getParams();
     String comment = params != null ? params.getComment() : null;
-
     switch (operation) {
       case Approve -> {
         repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
@@ -1688,7 +1698,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         task.setAssignees(newAssignees);
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());
-        repository.createOrUpdate(uriInfo, task, userName);
+        repository.creates().upsert(uriInfo, task, new EntityCommandActor(userName, null), false);
       }
       case UpdatePriority -> {
         if (params == null || params.getPriority() == null) {
@@ -1699,7 +1709,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         task.setPriority(params.getPriority());
         task.setUpdatedBy(userName);
         task.setUpdatedAt(System.currentTimeMillis());
-        repository.createOrUpdate(uriInfo, task, userName);
+        repository.creates().upsert(uriInfo, task, new EntityCommandActor(userName, null), false);
       }
       case Cancel -> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
@@ -1840,7 +1850,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         || status == TaskEntityStatus.Pending) {
       return;
     }
-
     // Approved / Granted / ManualRevoke are non-terminal only for workflows that expose further
     // transitions out of them (Data Access Request: Approved → markAsGranted/revoke,
     // Granted → revoke, ManualRevoke → markAsRevoked). For workflows where these are terminal
@@ -1853,13 +1862,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         && !task.getAvailableTransitions().isEmpty()) {
       return;
     }
-
     throw BadRequestException.of(
         String.format("Task '%s' is already in status '%s'", task.getId(), status));
   }
 
   // ========================= Comment Endpoints =========================
-
   @POST
   @Path("/{id}/comments")
   @Operation(
@@ -1883,22 +1890,25 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Valid CreateTaskComment createComment) {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
-    Task task = repository.get(uriInfo, id, fields);
-
+    Task task =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     // Report M4 note: QA flagged that this endpoint returns the full Task with private
     // payload / assignee / comment history to whoever calls it. That is a *view-side*
     // information-disclosure concern that belongs on the GET / listing paths, not here — add-
     // comment is intentionally open (any collaborator can add a comment, same as the feed),
     // so we do NOT gate this on EDIT_TASK. Follow-up: redact `payload` on GET responses for
     // callers that don't hold viewer-level permission on the DAR's target entity.
-
     TaskComment comment =
         new TaskComment()
             .withId(UUID.randomUUID())
             .withMessage(createComment.getMessage())
             .withAuthor(Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED))
             .withCreatedAt(System.currentTimeMillis());
-
     Task updatedTask = repository.addComment(task, comment);
     return Response.ok(updatedTask)
         .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
@@ -1932,8 +1942,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Valid CreateTaskComment updateComment) {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
-    Task task = repository.get(uriInfo, id, fields);
-
+    Task task =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     Task updatedTask =
         repository.editComment(task, commentId, updateComment.getMessage(), userName);
     return Response.ok(updatedTask).build();
@@ -1969,10 +1984,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     User user = Entity.getEntityByName(Entity.USER, userName, "", Include.NON_DELETED);
     boolean isAdmin = Boolean.TRUE.equals(user.getIsAdmin());
-
     Fields fields = getFields(FIELDS);
-    Task task = repository.get(uriInfo, id, fields);
-
+    Task task =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     Task updatedTask = repository.deleteComment(task, commentId, userName, isAdmin);
     return Response.ok(updatedTask).build();
   }
@@ -1996,26 +2015,21 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
-
     if (create.getAbout() != null) {
       EntityLink link = EntityLink.parse(create.getAbout());
       task.setAbout(
           Entity.getEntityReferenceByName(
               link.getEntityType(), link.getEntityFQN(), Include.NON_DELETED));
     }
-
     // Note: domains are inherited from the target entity (about) automatically in
     // TaskRepository.prepare()
     // No need to set domains manually here
-
     if (create.getAssignees() != null) {
       task.setAssignees(create.getAssignees().stream().map(this::resolveUserOrTeam).toList());
     }
-
     if (create.getReviewers() != null) {
       task.setReviewers(create.getReviewers().stream().map(this::resolveUserOrTeam).toList());
     }
-
     return task;
   }
 

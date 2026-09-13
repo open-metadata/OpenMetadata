@@ -1,19 +1,17 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -21,12 +19,36 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryReconcilerTest {
 
   @Mock private ContextMemoryRepository memoryRepository;
+  private EntityCreationFixture<ContextMemory> creations;
+  private EntityDeleteFixture<ContextMemory> deletions;
+  private final List<ContextMemory> writes = new ArrayList<>();
+
+  @BeforeEach
+  void attachCommands() {
+    creations = EntityCreationFixture.attach(memoryRepository);
+    deletions = EntityDeleteFixture.attach(memoryRepository);
+    lenient()
+        .when(memoryRepository.puts())
+        .thenReturn(
+            (uri, original, updated, actor, mode) -> {
+              assertNull(uri);
+              assertEquals(new EntityCommandActor(Entity.ADMIN_USER_NAME, null), actor);
+              assertEquals(EntityPutService.Mode.NORMAL, mode);
+              assertEquals(original.getId(), updated.getId());
+              writes.add(updated);
+              return null;
+            });
+  }
 
   private final EntityReference source =
       new EntityReference().withId(UUID.randomUUID()).withName("page").withType(Entity.PAGE);
@@ -85,12 +107,11 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.updated(), "the rephrased fact should inherit the stored pill");
     assertEquals(0, result.created());
     assertEquals(0, result.deleted());
-    verify(memoryRepository, never()).create(isNull(), any());
+    assertTrue(creations.creations().isEmpty());
 
-    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository).update(isNull(), any(), captor.capture(), any());
-    assertEquals(stored.getId(), captor.getValue().getId(), "identity is the point of the match");
-    assertEquals(42, captor.getValue().getUsageCount(), "retrieval telemetry rides the identity");
+    assertEquals(1, writes.size());
+    assertEquals(stored.getId(), writes.getFirst().getId(), "identity is the point of the match");
+    assertEquals(42, writes.getFirst().getUsageCount(), "retrieval telemetry rides the identity");
   }
 
   @Test
@@ -125,7 +146,7 @@ class ContextMemoryReconcilerTest {
         reconcile(List.of(derived("Q1", "A1"), derived("Q2", "A2")));
 
     assertEquals(2, result.created());
-    verify(memoryRepository, times(2)).create(isNull(), any());
+    assertEquals(2, creations.creations().size());
   }
 
   @Test
@@ -136,8 +157,8 @@ class ContextMemoryReconcilerTest {
 
     assertEquals(1, result.kept());
     assertEquals(0, result.created());
-    verify(memoryRepository, never()).create(any(), any());
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    assertTrue(creations.creations().isEmpty());
+    assertTrue(writes.isEmpty());
   }
 
   @Test
@@ -149,11 +170,9 @@ class ContextMemoryReconcilerTest {
     ContextMemoryReconciler.ReconcileResult result = reconcile(List.of(derived("Q1", "new")));
 
     assertEquals(1, result.updated());
-    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository)
-        .update(isNull(), eq(original), captor.capture(), eq(Entity.ADMIN_USER_NAME));
-    assertEquals("new", captor.getValue().getAnswer());
-    assertEquals(original.getId(), captor.getValue().getId(), "identity must be preserved");
+    assertEquals(1, writes.size());
+    assertEquals("new", writes.getFirst().getAnswer());
+    assertEquals(original.getId(), writes.getFirst().getId(), "identity must be preserved");
   }
 
   @Test
@@ -166,8 +185,11 @@ class ContextMemoryReconcilerTest {
 
     assertEquals(1, result.deleted());
     assertEquals(1, result.created());
-    verify(memoryRepository).delete(Entity.ADMIN_USER_NAME, gone.getId(), false, true);
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
+    assertEquals(
+        List.of(
+            new EntityDeleteFixture.Deletion(Entity.ADMIN_USER_NAME, gone.getId(), false, true)),
+        deletions.deletions());
+    assertTrue(writes.isEmpty());
   }
 
   @Test
@@ -177,10 +199,12 @@ class ContextMemoryReconcilerTest {
     ContextMemoryReconciler.ReconcileResult result =
         reconcile(List.of(derived("Q1", "llm answer"), derived("Q2", "A2")));
 
-    verify(memoryRepository, never()).update(any(), any(), any(), any());
-    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository, times(1)).create(isNull(), captor.capture());
-    assertEquals("Q2", captor.getValue().getQuestion(), "Q1 is owned by the manual pill");
+    assertTrue(writes.isEmpty());
+    assertEquals(1, creations.creations().size());
+    assertEquals(
+        "Q2",
+        creations.creations().getFirst().entity().getQuestion(),
+        "Q1 is owned by the manual pill");
     assertEquals(1, result.created());
   }
 
@@ -206,13 +230,11 @@ class ContextMemoryReconcilerTest {
     assertEquals(0, result.created(), "a rephrase must not create a second pill");
     assertEquals(0, result.deleted(), "a rephrase must not retire the original");
     assertEquals(1, result.updated());
-    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memoryRepository)
-        .update(isNull(), eq(original), captor.capture(), eq(Entity.ADMIN_USER_NAME));
-    assertEquals(original.getId(), captor.getValue().getId(), "identity must be preserved");
+    assertEquals(1, writes.size());
+    assertEquals(original.getId(), writes.getFirst().getId(), "identity must be preserved");
     assertEquals(
         "How should billing totals handle the refunds?",
-        captor.getValue().getQuestion(),
+        writes.getFirst().getQuestion(),
         "the rephrased question must be adopted");
   }
 
@@ -237,7 +259,7 @@ class ContextMemoryReconcilerTest {
 
     assertEquals(1, result.skippedDuplicates());
     assertEquals(0, result.created());
-    verify(memoryRepository, never()).create(any(), any());
+    assertTrue(creations.creations().isEmpty());
   }
 
   @Test

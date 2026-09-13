@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import jakarta.ws.rs.client.Client;
@@ -44,6 +43,15 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
@@ -64,32 +72,36 @@ import org.openmetadata.service.util.resourcepath.ResourcePathResolver;
 import org.openmetadata.service.util.resourcepath.providers.NotificationTemplateResourcePathProvider;
 
 @Slf4j
-public class NotificationTemplateRepository extends EntityRepository<NotificationTemplate> {
+@Repository()
+public class NotificationTemplateRepository implements EntityPolicy<NotificationTemplate> {
 
   static final String PATCH_FIELDS = "templateBody,templateSubject";
+
   static final String UPDATE_FIELDS = "templateBody,templateSubject";
 
   private final NotificationTemplateProcessor templateProcessor;
+
   private final MockChangeEventFactory mockChangeEventFactory;
+
   private final HandlebarsNotificationMessageEngine messageEngine;
 
   public NotificationTemplateRepository() {
-    super(
-        NotificationTemplateResource.COLLECTION_PATH,
-        Entity.NOTIFICATION_TEMPLATE,
-        NotificationTemplate.class,
-        Entity.getCollectionDAO().notificationTemplateDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS);
-
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                NotificationTemplateResource.COLLECTION_PATH,
+                Entity.NOTIFICATION_TEMPLATE,
+                NotificationTemplate.class,
+                Entity.getCollectionDAO().notificationTemplateDAO()),
+            new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
     // Initialize template processor
     this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
-
     // Initialize mock factory for template testing
     EntityFixtureLoader fixtureLoader = new EntityFixtureLoader();
     MockChangeEventRegistry mockRegistry = new MockChangeEventRegistry(fixtureLoader);
     this.mockChangeEventFactory = new MockChangeEventFactory(mockRegistry);
-
     // Initialize message engine for template rendering
     this.messageEngine = new HandlebarsNotificationMessageEngine(this);
   }
@@ -106,9 +118,7 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     NotificationTemplateValidationRequest request = new NotificationTemplateValidationRequest();
     request.setTemplateBody(entity.getTemplateBody());
     request.setTemplateSubject(entity.getTemplateSubject());
-
     NotificationTemplateValidationResponse response = templateProcessor.validate(request);
-
     if (!response.getIsValid()) {
       List<String> errors = new ArrayList<>();
       if (response.getSubjectError() != null) {
@@ -123,45 +133,42 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
   @Override
   public void storeEntity(NotificationTemplate entity, boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
   public void storeRelationships(NotificationTemplate entity) {}
 
   @Override
-  protected void preDelete(NotificationTemplate template, String deletedBy) {
+  public void preDelete(NotificationTemplate template, String deletedBy) {
     if (ProviderType.SYSTEM.equals(template.getProvider())) {
       throw new IllegalArgumentException(
           String.format(
               "Cannot delete SYSTEM template '%s'. System templates are protected and cannot be deleted.",
               template.getName()));
     }
-
     // Nullify stale references in EventSubscription JSON blobs before deletion
     // This ensures ListFilter queries on JSON don't return stale data
     List<EntityReference> subscriptions =
-        findFrom(
-            template.getId(),
-            Entity.NOTIFICATION_TEMPLATE,
-            Relationship.USES,
-            Entity.EVENT_SUBSCRIPTION);
-
+        relationships()
+            .from(
+                new EntityRelationshipReader.Selection(
+                    template.getId(),
+                    Entity.NOTIFICATION_TEMPLATE,
+                    Relationship.USES,
+                    Entity.EVENT_SUBSCRIPTION),
+                Include.NON_DELETED);
     EventSubscriptionRepository subscriptionRepository =
         (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
-
     for (EntityReference subRef : subscriptions) {
       try {
         EventSubscription original =
             Entity.getEntity(Entity.EVENT_SUBSCRIPTION, subRef.getId(), "*", Include.ALL);
-
         EventSubscription updated = JsonUtils.deepCopy(original, EventSubscription.class);
         updated.setNotificationTemplate(null);
-
-        EntityRepository<EventSubscription>.EntityUpdater updater =
-            subscriptionRepository.getUpdater(original, updated, Operation.PUT, null);
+        EntityUpdater<EventSubscription> updater =
+            subscriptionRepository.getUpdater(original, updated, EntityOperation.PUT, null);
         updater.update();
-
         LOG.debug(
             "Nullified template reference in subscription {} before deleting template {}",
             original.getId(),
@@ -173,17 +180,16 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
             e.getMessage());
       }
     }
-
-    super.preDelete(template, deletedBy);
+    EntityPolicy.super.preDelete(template, deletedBy);
   }
 
   @Override
-  public EntityRepository<NotificationTemplate>.EntityUpdater getUpdater(
+  public EntityUpdater<NotificationTemplate> getUpdater(
       NotificationTemplate original,
       NotificationTemplate updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new NotificationTemplateUpdater(original, updated, operation);
+    return new NotificationTemplateUpdater(original, updated, operation).mutation();
   }
 
   @Override
@@ -199,11 +205,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
       return;
     }
     List<NotificationTemplate> seedTemplates = getEntitiesFromSeedData();
-
     for (NotificationTemplate seedTemplate : seedTemplates) {
       String fqn = seedTemplate.getFullyQualifiedName();
-      NotificationTemplate existing = findByNameOrNull(fqn, Include.ALL);
-
+      NotificationTemplate existing = lookup().byNameOrNull(fqn, Include.ALL);
       if (existing == null) {
         createSystemTemplateFromSeed(seedTemplate, fqn);
       } else if (shouldUpdateSystemTemplate(existing, seedTemplate)) {
@@ -243,7 +247,7 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
         .withTemplateSubject(seedTemplate.getTemplateSubject());
     try {
       prepare(existing, true);
-      store(existing, true);
+      persistence().store(existing, true);
     } catch (IllegalArgumentException e) {
       throw new IOException(
           String.format("Failed to validate seed template '%s': %s", fqn, e.getMessage()), e);
@@ -255,7 +259,6 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
       if (!ProviderType.SYSTEM.equals(original.getProvider())) {
         return;
       }
-
       NotificationTemplate defaultTemplate = getDefaultTemplateFromSeed(original.getName());
       NotificationTemplate updated = JsonUtils.deepCopy(original, NotificationTemplate.class);
       updated
@@ -263,10 +266,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
           .withTemplateSubject(defaultTemplate.getTemplateSubject())
           .withDescription(defaultTemplate.getDescription())
           .withDisplayName(defaultTemplate.getDisplayName());
-
-      EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
+      EntityUpdater<NotificationTemplate> entityUpdater =
+          getUpdater(original, updated, EntityOperation.PUT, null);
       entityUpdater.update();
-
       LOG.info("Reset NotificationTemplate {} to default", original.getName());
     } catch (IllegalArgumentException e) {
       LOG.error("Failed to reset template: {}", e.getMessage(), e);
@@ -302,35 +304,28 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
             new NotificationTemplateValidationRequest()
                 .withTemplateBody(request.getTemplateBody())
                 .withTemplateSubject(request.getTemplateSubject()));
-
     if (!validationResponse.getIsValid()) {
       return new NotificationTemplateRenderResponse()
           .withValidation(validationResponse)
           .withRender(null);
     }
-
     ChangeEvent mockEvent =
         mockChangeEventFactory.create(request.getResource(), request.getEventType());
-
     NotificationTemplate testTemplate =
         new NotificationTemplate()
             .withId(UUID.randomUUID())
             .withName("test-template")
             .withTemplateSubject(request.getTemplateSubject())
             .withTemplateBody(request.getTemplateBody());
-
     EventSubscription testSubscription =
         new EventSubscription()
             .withId(UUID.randomUUID())
             .withName("test-subscription")
             .withDisplayName("Test Notification");
-
     SubscriptionDestination emailDestination =
         new SubscriptionDestination().withType(SubscriptionDestination.SubscriptionType.EMAIL);
-
     TemplateRenderResult renderResult =
         renderWithMessageEngine(mockEvent, testSubscription, emailDestination, testTemplate);
-
     return new NotificationTemplateRenderResponse()
         .withValidation(validationResponse)
         .withRender(renderResult);
@@ -345,11 +340,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
       EmailMessage emailMessage =
           (EmailMessage)
               messageEngine.generateMessageWithTemplate(event, subscription, destination, template);
-
       return new TemplateRenderResult()
           .withSubject(emailMessage.getSubject())
           .withBody(emailMessage.getHtmlContent());
-
     } catch (Exception e) {
       String errorMessage = "Failed to render template: " + e.getMessage();
       LOG.error(errorMessage, e);
@@ -366,37 +359,29 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
    */
   public NotificationTemplateValidationResponse send(NotificationTemplateSendRequest request) {
     NotificationTemplateRenderRequest renderRequest = request.getRenderRequest();
-
     NotificationTemplateValidationRequest validationRequest =
         new NotificationTemplateValidationRequest()
             .withTemplateBody(renderRequest.getTemplateBody())
             .withTemplateSubject(renderRequest.getTemplateSubject());
-
     NotificationTemplateValidationResponse validation =
         templateProcessor.validate(validationRequest);
-
     if (!validation.getIsValid()) {
       return validation;
     }
-
     validateExternalDestinations(request.getDestinations());
-
     ChangeEvent mockEvent =
         mockChangeEventFactory.create(renderRequest.getResource(), renderRequest.getEventType());
-
     NotificationTemplate testTemplate =
         new NotificationTemplate()
             .withId(UUID.randomUUID())
             .withName("test-template")
             .withTemplateSubject(renderRequest.getTemplateSubject())
             .withTemplateBody(renderRequest.getTemplateBody());
-
     EventSubscription testSubscription =
         new EventSubscription()
             .withId(UUID.randomUUID())
             .withName("test-notification")
             .withDisplayName("Test Notification Template");
-
     for (SubscriptionDestination dest : request.getDestinations()) {
       try {
         sendToDestination(mockEvent, testSubscription, dest, testTemplate);
@@ -409,7 +394,6 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
             e);
       }
     }
-
     return validation;
   }
 
@@ -454,10 +438,8 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
       EventSubscription subscription,
       SubscriptionDestination destination,
       NotificationTemplate template) {
-
     NotificationMessage message =
         messageEngine.generateMessageWithTemplate(event, subscription, destination, template);
-
     switch (destination.getType()) {
       case EMAIL -> sendEmailNotification((EmailMessage) message, destination);
       case SLACK, MS_TEAMS, G_CHAT, WEBHOOK -> sendWebhookNotification(message, destination);
@@ -471,7 +453,6 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     EmailAlertConfig emailConfig =
         JsonUtils.convertValue(destination.getConfig(), EmailAlertConfig.class);
     Set<String> receivers = emailConfig.getReceivers();
-
     for (String receiver : receivers) {
       EmailUtil.sendNotificationEmail(
           receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
@@ -482,11 +463,9 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
       NotificationMessage message, SubscriptionDestination destination) {
     Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
     String json = JsonUtils.pojoToJsonIgnoreNull(message);
-
     try (Client client =
         SubscriptionUtil.getClient(destination.getTimeout(), destination.getReadTimeout())) {
       Invocation.Builder target = SubscriptionUtil.getTarget(client, webhook, json);
-
       try (Response response =
           target.post(jakarta.ws.rs.client.Entity.entity(json, MediaType.APPLICATION_JSON_TYPE))) {
         if (response.getStatus() >= 300) {
@@ -496,33 +475,56 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     }
   }
 
-  public class NotificationTemplateUpdater extends EntityUpdater {
+  public class NotificationTemplateUpdater implements EntitySpecificMutation<NotificationTemplate> {
+
     public NotificationTemplateUpdater(
-        NotificationTemplate original, NotificationTemplate updated, Operation operation) {
-      super(original, updated, operation);
+        NotificationTemplate original, NotificationTemplate updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    protected void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(
+        EntityUpdater<NotificationTemplate> entityUpdate, boolean consolidatingChanges) {
       // Preserve provider type - it's immutable after creation
-      updated.setProvider(original.getProvider());
-
-      recordChange("templateBody", original.getTemplateBody(), updated.getTemplateBody());
-      recordChange("templateSubject", original.getTemplateSubject(), updated.getTemplateSubject());
-
-      if (ProviderType.SYSTEM.equals(original.getProvider())) {
+      entityUpdate.getUpdated().setProvider(entityUpdate.getOriginal().getProvider());
+      entityUpdate.recordChange(
+          "templateBody",
+          entityUpdate.getOriginal().getTemplateBody(),
+          entityUpdate.getUpdated().getTemplateBody());
+      entityUpdate.recordChange(
+          "templateSubject",
+          entityUpdate.getOriginal().getTemplateSubject(),
+          entityUpdate.getUpdated().getTemplateSubject());
+      if (ProviderType.SYSTEM.equals(entityUpdate.getOriginal().getProvider())) {
         try {
           NotificationTemplate defaultTemplate =
-              getDefaultTemplateFromSeed(original.getFullyQualifiedName());
-
-          String currentChecksum = calculateTemplateChecksum(updated);
+              getDefaultTemplateFromSeed(entityUpdate.getOriginal().getFullyQualifiedName());
+          String currentChecksum = calculateTemplateChecksum(entityUpdate.getUpdated());
           String defaultChecksum = calculateTemplateChecksum(defaultTemplate);
-
-          updated.setIsModifiedFromDefault(!Objects.equals(currentChecksum, defaultChecksum));
+          entityUpdate
+              .getUpdated()
+              .setIsModifiedFromDefault(!Objects.equals(currentChecksum, defaultChecksum));
         } catch (IOException | IllegalArgumentException e) {
           LOG.warn("Failed to load seed data for modification tracking", e);
         }
       }
     }
+
+    private final EntityUpdater<NotificationTemplate> entityUpdate;
+
+    public EntityUpdater<NotificationTemplate> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<NotificationTemplate> entityContext;
+
+  @Override
+  public final EntityPolicyContext<NotificationTemplate> context() {
+    return entityContext;
   }
 }

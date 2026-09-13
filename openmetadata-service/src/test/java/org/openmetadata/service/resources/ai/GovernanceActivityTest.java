@@ -26,10 +26,9 @@ import org.openmetadata.schema.api.ai.AIGovernanceActivityEvent;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.type.AIDetection;
 import org.openmetadata.schema.type.AIDetectionSource;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.history.EntityVersionHistoryFixture;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 
 class GovernanceActivityTest {
 
@@ -42,9 +41,7 @@ class GovernanceActivityTest {
                 new AIDetection()
                     .withSource(AIDetectionSource.OutboundApiTraffic)
                     .withDetectedAt(1000L));
-
     List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model);
-
     assertEquals(List.of("ShadowAIDetected", "SubmittedForReview"), eventTypes(events));
     assertEquals(2000L, event(events, "SubmittedForReview").getAt());
     assertEquals("alice", event(events, "SubmittedForReview").getWho());
@@ -59,18 +56,16 @@ class GovernanceActivityTest {
         model(LLMModel.GovernanceStatus.PENDING_REVIEW, 2000L)
             .withId(model.getId())
             .withUpdatedBy("bob");
-    EntityRepository<LLMModel> repository = mock(EntityRepository.class);
-    EntityHistory history =
-        new EntityHistory()
-            .withVersions(
-                List.of(JsonUtils.pojoToJson(model), JsonUtils.pojoToJson(pendingReview)));
-    when(repository.listVersions(model.getId())).thenReturn(history);
-
+    EntityPolicy<LLMModel> repository = mock(EntityPolicy.class);
+    model.setVersion(0.2);
+    pendingReview.setVersion(0.1);
+    final var history =
+        EntityVersionHistoryFixture.versions(
+            Entity.LLM_MODEL, LLMModel.class, model, List.of(pendingReview));
+    when(repository.versions()).thenReturn(history);
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.LLM_MODEL)).thenReturn(repository);
-
       List<AIGovernanceActivityEvent> events = GovernanceActivity.eventsFor(model);
-
       assertEquals(List.of("SubmittedForReview", "Approved"), eventTypes(events));
       assertEquals(2000L, event(events, "SubmittedForReview").getAt());
       assertEquals("bob", event(events, "SubmittedForReview").getWho());

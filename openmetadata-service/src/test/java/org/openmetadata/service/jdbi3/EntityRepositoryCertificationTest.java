@@ -18,7 +18,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -30,14 +29,24 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityCertificationUpdates;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -45,37 +54,53 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 class EntityRepositoryCertificationTest {
 
+  @RegisterExtension
+  private static final EntityLookupTestContext LOOKUPS = new EntityLookupTestContext();
+
   private CollectionDAO daoCollection;
+
   private TagUsageDAO tagUsageDAO;
+
   private CollectionDAO.EntityRelationshipDAO relationshipDAO;
+
   private CollectionDAO.PipelineDAO pipelineDAO;
+
   private TestPipelineRepo repo;
 
-  private static class TestPipelineRepo extends EntityRepository<Pipeline> {
+  @Repository()
+  private static class TestPipelineRepo implements EntityPolicy<Pipeline> {
+
     TestPipelineRepo(CollectionDAO.PipelineDAO dao) {
-      super(
-          "pipelines",
-          Entity.PIPELINE,
-          Pipeline.class,
-          dao,
-          "certification,tags,owners",
-          "certification,tags,owners");
+      this.entityContext =
+          new EntityPolicyContext<>(
+              new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
+              new EntityPolicyContext.WriteFields(
+                  "certification,tags,owners", "certification,tags,owners", Set.of()),
+              EntityModuleDependencies.standard());
+      EntityModuleFactory.initialize(this, true);
     }
 
     @Override
-    protected void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
+    public void setFields(Pipeline entity, Fields fields, RelationIncludes r) {}
 
     @Override
-    protected void clearFields(Pipeline entity, Fields fields) {}
+    public void clearFields(Pipeline entity, Fields fields) {}
 
     @Override
-    protected void prepare(Pipeline entity, boolean update) {}
+    public void prepare(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Pipeline entity, boolean update) {}
+    public void storeEntity(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeRelationships(Pipeline entity) {}
+    public void storeRelationships(Pipeline entity) {}
+
+    private final EntityPolicyContext<Pipeline> entityContext;
+
+    @Override
+    public final EntityPolicyContext<Pipeline> context() {
+      return entityContext;
+    }
   }
 
   @BeforeEach
@@ -84,15 +109,12 @@ class EntityRepositoryCertificationTest {
     tagUsageDAO = mock(TagUsageDAO.class);
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
-
     when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
-
     Entity.setCollectionDAO(daoCollection);
     Entity.setJobDAO(null);
     Entity.setSearchRepository(null);
     Entity.setEntityRelationshipRepository(null);
-
     repo = new TestPipelineRepo(pipelineDAO);
   }
 
@@ -106,31 +128,39 @@ class EntityRepositoryCertificationTest {
     Entity.cleanup();
   }
 
-  private static EntityRepository<Pipeline>.EntityUpdater newUpdater(
-      TestPipelineRepo repo, Pipeline original, Pipeline updated, EntityRepository.Operation op) {
-    return repo.new EntityUpdater(original, updated, op);
+  private static EntityUpdater<Pipeline> newUpdater(
+      TestPipelineRepo repo, Pipeline original, Pipeline updated, EntityOperation op) {
+    EntityUpdater<Pipeline> updater = repo.getUpdater(original, updated, op, null);
+    updater.setChangeDescription(new ChangeDescription());
+    return updater;
   }
 
-  private static void invokeUpdateCertification(EntityRepository<Pipeline>.EntityUpdater updater)
-      throws Exception {
-    Method method = EntityRepository.EntityUpdater.class.getDeclaredMethod("updateCertification");
-    method.setAccessible(true);
-    method.invoke(updater);
+  private void invokeUpdateCertification(EntityUpdater<Pipeline> updater) {
+    EntityCertificationUpdates<Pipeline> updates =
+        new EntityCertificationUpdates<>(
+            true,
+            () -> Entity.getSystemRepository().getAssetCertificationSettingOrDefault(),
+            System::currentTimeMillis,
+            new EntityCertificationUpdates.Persistence<>(
+                repo.certification()::delete, repo.certification()::apply));
+    updates.update(updater, updater.getOriginal(), updater.getUpdated());
   }
 
   @SuppressWarnings("unchecked")
   private static void registerBotUser(String botName) {
-    EntityRepository<User> mockUserRepo = mock(EntityRepository.class);
+    EntityPolicy<User> mockUserRepo = mock(EntityPolicy.class);
     User bot = new User().withName(botName).withIsBot(true);
-    when(mockUserRepo.findByNameOrNull(anyString(), any()))
+    EntityDAO<User> userDao = LOOKUPS.attach(mockUserRepo, Entity.USER, User.class);
+    when(userDao.findEntityByName(anyString(), any()))
         .thenAnswer(inv -> botName.equals(inv.getArgument(0)) ? bot : null);
     Entity.registerEntity(User.class, Entity.USER, mockUserRepo);
   }
 
   @SuppressWarnings("unchecked")
   private static void registerNoUsersFound() {
-    EntityRepository<User> mockUserRepo = mock(EntityRepository.class);
-    when(mockUserRepo.findByNameOrNull(anyString(), any())).thenReturn(null);
+    EntityPolicy<User> mockUserRepo = mock(EntityPolicy.class);
+    EntityDAO<User> userDao = LOOKUPS.attach(mockUserRepo, Entity.USER, User.class);
+    when(userDao.findEntityByName(anyString(), any())).thenReturn(null);
     Entity.registerEntity(User.class, Entity.USER, mockUserRepo);
   }
 
@@ -162,8 +192,7 @@ class EntityRepositoryCertificationTest {
     Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
     Pipeline updated = pipelineWithCertification("ingestion-bot", null);
 
-    EntityRepository<Pipeline>.EntityUpdater updater =
-        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
 
     invokeUpdateCertification(updater);
 
@@ -187,8 +216,7 @@ class EntityRepositoryCertificationTest {
     Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
     Pipeline updated = pipelineWithCertification("ingestion-bot", newCert);
 
-    EntityRepository<Pipeline>.EntityUpdater updater =
-        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
 
     invokeUpdateCertification(updater);
 
@@ -212,8 +240,7 @@ class EntityRepositoryCertificationTest {
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of());
 
-    EntityRepository<Pipeline>.EntityUpdater updater =
-        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
     updater.setOverrideMetadata(true);
 
     invokeUpdateCertification(updater);
@@ -232,8 +259,7 @@ class EntityRepositoryCertificationTest {
     Pipeline original = pipelineWithCertification("ingestion-bot", origCert);
     Pipeline updated = pipelineWithCertification("ingestion-bot", null);
 
-    EntityRepository<Pipeline>.EntityUpdater updater =
-        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
     updater.setOverrideMetadata(true);
 
     invokeUpdateCertification(updater);
@@ -250,8 +276,7 @@ class EntityRepositoryCertificationTest {
     Pipeline original = pipelineWithCertification("a-human", origCert);
     Pipeline updated = pipelineWithCertification("a-human", null);
 
-    EntityRepository<Pipeline>.EntityUpdater updater =
-        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
 
     invokeUpdateCertification(updater);
 
@@ -283,8 +308,7 @@ class EntityRepositoryCertificationTest {
     Pipeline original = pipelineWithCertification("a-human", origCert);
     Pipeline updated = pipelineWithCertification("a-human", updatedCert);
 
-    EntityRepository<Pipeline>.EntityUpdater updater =
-        newUpdater(repo, original, updated, EntityRepository.Operation.PUT);
+    EntityUpdater<Pipeline> updater = newUpdater(repo, original, updated, EntityOperation.PUT);
 
     invokeUpdateCertification(updater);
 
@@ -315,7 +339,13 @@ class EntityRepositoryCertificationTest {
     IllegalArgumentException thrown =
         assertThrows(
             IllegalArgumentException.class,
-            () -> repo.validateAndStampCertification(certification));
+            () ->
+                repo.preparation()
+                    .prepare(
+                        new Pipeline()
+                            .withName("certification-probe")
+                            .withCertification(certification),
+                        false));
 
     assertTrue(
         thrown.getMessage().contains("not valid for Certification"),
@@ -333,7 +363,9 @@ class EntityRepositoryCertificationTest {
             .withExpiryDate(clientExpiryDate);
 
     long beforeStamp = System.currentTimeMillis();
-    repo.validateAndStampCertification(certification);
+    repo.preparation()
+        .prepare(
+            new Pipeline().withName("certification-probe").withCertification(certification), false);
     long afterStamp = System.currentTimeMillis();
 
     assertTrue(
@@ -353,19 +385,15 @@ class EntityRepositoryCertificationTest {
             .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline");
-
     CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagEntry =
         new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
     tagEntry.setTagFQN("Certification.Gold");
     tagEntry.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
     tagEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     tagEntry.setState(TagLabel.State.CONFIRMED.ordinal());
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of(tagEntry));
-
-    AssetCertification cert = repo.getCertification(entity);
-
+    AssetCertification cert = repo.certification().read(entity);
     assertNotNull(cert);
     assertNotNull(cert.getTagLabel());
   }
@@ -377,12 +405,9 @@ class EntityRepositoryCertificationTest {
             .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline");
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of());
-
-    AssetCertification cert = repo.getCertification(entity);
-
+    AssetCertification cert = repo.certification().read(entity);
     assertNull(cert);
   }
 
@@ -395,9 +420,7 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(certWithNullTag);
-
-    assertDoesNotThrow(() -> repo.applyCertification(entity));
-
+    assertDoesNotThrow(() -> repo.certification().apply(entity));
     verify(tagUsageDAO, never())
         .applyTag(
             anyInt(),
@@ -419,9 +442,7 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
-
-    assertDoesNotThrow(() -> repo.applyCertification(entity));
-
+    assertDoesNotThrow(() -> repo.certification().apply(entity));
     verify(tagUsageDAO, never())
         .applyTag(
             anyInt(),
@@ -440,26 +461,21 @@ class EntityRepositoryCertificationTest {
     TagLabel tagLabel = new TagLabel().withTagFQN("Certification.Gold");
     AssetCertification incoming =
         new AssetCertification().withTagLabel(tagLabel).withExpiryDate(null);
-
     Pipeline entity =
         new Pipeline()
             .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(incoming);
-
     CollectionDAO.TagUsageDAO.TagLabelWithFQNHash existingEntry =
         new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
     existingEntry.setTagFQN("Certification.Gold");
     existingEntry.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
     existingEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     existingEntry.setState(TagLabel.State.CONFIRMED.ordinal());
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of(existingEntry));
-
-    assertDoesNotThrow(() -> repo.applyCertification(entity));
-
+    assertDoesNotThrow(() -> repo.certification().apply(entity));
     verify(tagUsageDAO, never()).deleteTagsByPrefixAndTarget(anyInt(), anyString(), anyString());
   }
 
@@ -468,19 +484,15 @@ class EntityRepositoryCertificationTest {
     TagLabel incomingLabel = new TagLabel().withTagFQN("Certification.Silver");
     AssetCertification incoming =
         new AssetCertification().withTagLabel(incomingLabel).withExpiryDate(null);
-
     Pipeline entity =
         new Pipeline()
             .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(incoming);
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of());
-
-    assertDoesNotThrow(() -> repo.applyCertification(entity));
-
+    assertDoesNotThrow(() -> repo.certification().apply(entity));
     verify(tagUsageDAO)
         .applyTag(
             anyInt(),
@@ -496,20 +508,18 @@ class EntityRepositoryCertificationTest {
 
   @Test
   void deleteCertificationTagIsNoOpWhenEntityFqnIsEmpty() {
-    assertDoesNotThrow(() -> repo.deleteCertificationTag(""));
+    assertDoesNotThrow(() -> repo.certification().delete(""));
   }
 
   @Test
   void deleteCertificationTagCallsDeleteWhenClassificationIsSet() {
-    assertDoesNotThrow(() -> repo.deleteCertificationTag("service.my-pipeline"));
-
+    assertDoesNotThrow(() -> repo.certification().delete("service.my-pipeline"));
     verify(tagUsageDAO).deleteTagsByPrefixAndTarget(anyInt(), anyString(), anyString());
   }
 
   @Test
   void storeRelationshipsInternalEmptyListDoesNotCallDao() {
-    assertDoesNotThrow(() -> repo.storeRelationshipsInternal(List.of()));
-
+    assertDoesNotThrow(() -> repo.metadata().storeMany(List.of()));
     verify(tagUsageDAO, never())
         .applyTag(
             anyInt(),
@@ -531,17 +541,14 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of());
-
-    assertDoesNotThrow(() -> repo.storeRelationshipsInternal(List.of(entity)));
+    assertDoesNotThrow(() -> repo.metadata().storeMany(List.of(entity)));
   }
 
   @Test
   void applyCertificationBatchIsNoOpWhenListIsEmpty() {
-    assertDoesNotThrow(() -> repo.applyCertificationBatch(List.of()));
-
+    assertDoesNotThrow(() -> repo.certification().applyMany(List.of()));
     verify(tagUsageDAO, never()).deleteTagsByPrefixAndTargets(anyInt(), anyString(), anyList());
     verify(tagUsageDAO, never()).applyTagsBatchMultiTarget(any(Map.class));
   }
@@ -554,9 +561,7 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
-
-    assertDoesNotThrow(() -> repo.applyCertificationBatch(List.of(entity)));
-
+    assertDoesNotThrow(() -> repo.certification().applyMany(List.of(entity)));
     verify(tagUsageDAO, never()).deleteTagsByPrefixAndTargets(anyInt(), anyString(), anyList());
     verify(tagUsageDAO, never()).applyTagsBatchMultiTarget(any(Map.class));
   }
@@ -569,9 +574,7 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(new AssetCertification().withTagLabel(null));
-
-    assertDoesNotThrow(() -> repo.applyCertificationBatch(List.of(entity)));
-
+    assertDoesNotThrow(() -> repo.certification().applyMany(List.of(entity)));
     verify(tagUsageDAO, never()).deleteTagsByPrefixAndTargets(anyInt(), anyString(), anyList());
   }
 
@@ -584,9 +587,7 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(new AssetCertification().withTagLabel(tagLabel));
-
-    assertDoesNotThrow(() -> repo.applyCertificationBatch(List.of(entity)));
-
+    assertDoesNotThrow(() -> repo.certification().applyMany(List.of(entity)));
     verify(tagUsageDAO).deleteTagsByPrefixAndTargets(anyInt(), anyString(), anyList());
     verify(tagUsageDAO).applyTagsBatchMultiTarget(any(Map.class));
   }
@@ -606,9 +607,7 @@ class EntityRepositoryCertificationTest {
             .withName("uncertified-pipeline")
             .withFullyQualifiedName("service.uncertified-pipeline")
             .withCertification(null);
-
-    assertDoesNotThrow(() -> repo.applyCertificationBatch(List.of(certified, uncertified)));
-
+    assertDoesNotThrow(() -> repo.certification().applyMany(List.of(certified, uncertified)));
     verify(tagUsageDAO).deleteTagsByPrefixAndTargets(anyInt(), anyString(), anyList());
     verify(tagUsageDAO).applyTagsBatchMultiTarget(any(Map.class));
   }
@@ -625,11 +624,8 @@ class EntityRepositoryCertificationTest {
             .withTagFQN("PII.Sensitive")
             .withSource(TagLabel.TagSource.CLASSIFICATION)
             .withLabelType(TagLabel.LabelType.MANUAL);
-
     when(tagUsageDAO.getTags(anyString())).thenReturn(List.of(certTag, regularTag));
-
-    List<TagLabel> tags = repo.getTags("service.my-pipeline");
-
+    List<TagLabel> tags = repo.tags().read("service.my-pipeline");
     assertNotNull(tags);
     assertEquals(1, tags.size());
     assertEquals("PII.Sensitive", tags.get(0).getTagFQN());
@@ -643,11 +639,9 @@ class EntityRepositoryCertificationTest {
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline")
             .withCertification(null);
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of());
-
-    assertDoesNotThrow(() -> repo.storeRelationshipsInternal(entity));
+    assertDoesNotThrow(() -> repo.metadata().store(entity));
   }
 
   @Test
@@ -658,7 +652,6 @@ class EntityRepositoryCertificationTest {
             .withId(entityId)
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline");
-
     CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagEntry =
         new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
     tagEntry.setTagFQN("Certification.Gold");
@@ -666,13 +659,10 @@ class EntityRepositoryCertificationTest {
     tagEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     tagEntry.setState(TagLabel.State.CONFIRMED.ordinal());
     tagEntry.setTargetFQNHash(FullyQualifiedName.buildHash("service.my-pipeline"));
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of(tagEntry));
-
     Fields certFields = new Fields(Set.of("certification"));
-    repo.fetchAndSetFields(List.of(entity), certFields);
-
+    repo.fieldLoading().populate(List.of(entity), certFields);
     assertNotNull(entity.getCertification());
     assertEquals("Certification.Gold", entity.getCertification().getTagLabel().getTagFQN());
   }
@@ -684,20 +674,17 @@ class EntityRepositoryCertificationTest {
             .withId(UUID.randomUUID())
             .withName("my-pipeline")
             .withFullyQualifiedName("service.my-pipeline");
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenThrow(new RuntimeException("DB error"))
         .thenReturn(List.of());
-
     Fields certFields = new Fields(Set.of("certification"));
-    assertDoesNotThrow(() -> repo.fetchAndSetFields(List.of(entity), certFields));
+    assertDoesNotThrow(() -> repo.fieldLoading().populate(List.of(entity), certFields));
   }
 
   @Test
   void tagLabelMapperMapsResultSetFields() throws SQLException {
     ResultSet rs = mock(ResultSet.class);
     StatementContext ctx = mock(StatementContext.class);
-
     when(rs.getInt("source")).thenReturn(TagLabel.TagSource.CLASSIFICATION.ordinal());
     when(rs.getInt("labelType")).thenReturn(TagLabel.LabelType.MANUAL.ordinal());
     when(rs.getInt("state")).thenReturn(TagLabel.State.CONFIRMED.ordinal());
@@ -706,9 +693,7 @@ class EntityRepositoryCertificationTest {
     when(rs.getTimestamp("appliedAt")).thenReturn(null);
     when(rs.getString("appliedBy")).thenReturn(null);
     when(rs.getString("metadata")).thenReturn(null);
-
     TagLabel label = new CollectionDAO.TagUsageDAO.TagLabelMapper().map(rs, ctx);
-
     assertEquals("PII.Sensitive", label.getTagFQN());
     assertEquals(TagLabel.TagSource.CLASSIFICATION, label.getSource());
     assertNull(label.getMetadata());
@@ -718,7 +703,6 @@ class EntityRepositoryCertificationTest {
   void tagLabelWithFQNHashMapperMapsResultSetFields() throws SQLException {
     ResultSet rs = mock(ResultSet.class);
     StatementContext ctx = mock(StatementContext.class);
-
     when(rs.getString("targetFQNHash")).thenReturn("abc123");
     when(rs.getInt("source")).thenReturn(TagLabel.TagSource.CLASSIFICATION.ordinal());
     when(rs.getString("tagFQN")).thenReturn("Certification.Gold");
@@ -728,10 +712,8 @@ class EntityRepositoryCertificationTest {
     when(rs.getTimestamp("appliedAt")).thenReturn(null);
     when(rs.getString("appliedBy")).thenReturn(null);
     when(rs.getString("metadata")).thenReturn(null);
-
     CollectionDAO.TagUsageDAO.TagLabelWithFQNHash result =
         new CollectionDAO.TagUsageDAO.TagLabelWithFQNHashMapper().map(rs, ctx);
-
     assertEquals("abc123", result.getTargetFQNHash());
     assertEquals("Certification.Gold", result.getTagFQN());
     assertNull(result.getMetadata());
@@ -745,9 +727,7 @@ class EntityRepositoryCertificationTest {
     hash.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     hash.setState(TagLabel.State.CONFIRMED.ordinal());
     hash.setTagFQN("Certification.Gold");
-
     TagLabel label = hash.toTagLabel();
-
     assertEquals(TagLabel.TagSource.CLASSIFICATION, label.getSource());
   }
 
@@ -759,9 +739,7 @@ class EntityRepositoryCertificationTest {
     hash.setLabelType(-1);
     hash.setState(TagLabel.State.CONFIRMED.ordinal());
     hash.setTagFQN("Certification.Gold");
-
     TagLabel label = hash.toTagLabel();
-
     assertEquals(TagLabel.LabelType.MANUAL, label.getLabelType());
   }
 
@@ -773,16 +751,13 @@ class EntityRepositoryCertificationTest {
     hash.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     hash.setState(-1);
     hash.setTagFQN("Certification.Gold");
-
     TagLabel label = hash.toTagLabel();
-
     assertEquals(TagLabel.State.CONFIRMED, label.getState());
   }
 
   @Test
   void batchFetchTagsFiltersCertificationTags() {
     String entityFqn = "service.my-pipeline";
-
     CollectionDAO.TagUsageDAO.TagLabelWithFQNHash certEntry =
         new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
     certEntry.setTagFQN("Certification.Gold");
@@ -790,7 +765,6 @@ class EntityRepositoryCertificationTest {
     certEntry.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
     certEntry.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     certEntry.setState(TagLabel.State.CONFIRMED.ordinal());
-
     CollectionDAO.TagUsageDAO.TagLabelWithFQNHash regularEntry =
         new CollectionDAO.TagUsageDAO.TagLabelWithFQNHash();
     regularEntry.setTagFQN("PII.Sensitive");
@@ -798,11 +772,8 @@ class EntityRepositoryCertificationTest {
     regularEntry.setSource(TagLabel.TagSource.CLASSIFICATION.ordinal());
     regularEntry.setLabelType(TagLabel.LabelType.MANUAL.ordinal());
     regularEntry.setState(TagLabel.State.CONFIRMED.ordinal());
-
     when(tagUsageDAO.getTagsInternalBatch(anyList())).thenReturn(List.of(certEntry, regularEntry));
-
-    Map<String, List<TagLabel>> result = repo.batchFetchTags(List.of(entityFqn));
-
+    Map<String, List<TagLabel>> result = repo.tags().readMany(List.of(entityFqn));
     List<TagLabel> tags = result.get(entityFqn);
     assertNotNull(tags);
     assertEquals(1, tags.size());
@@ -819,12 +790,9 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withUpdatedBy("alice")
             .withCertification(new AssetCertification().withTagLabel(tagLabel));
-
     when(tagUsageDAO.getCertTagsInternalBatch(anyInt(), anyList(), anyString()))
         .thenReturn(List.of());
-
-    assertDoesNotThrow(() -> repo.applyCertification(entity));
-
+    assertDoesNotThrow(() -> repo.certification().apply(entity));
     verify(tagUsageDAO)
         .applyTag(
             anyInt(),
@@ -848,12 +816,9 @@ class EntityRepositoryCertificationTest {
             .withFullyQualifiedName("service.my-pipeline")
             .withUpdatedBy("bob")
             .withCertification(new AssetCertification().withTagLabel(tagLabel));
-
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Map<String, List<TagLabel>>> captor = ArgumentCaptor.forClass(Map.class);
-
-    assertDoesNotThrow(() -> repo.applyCertificationBatch(List.of(entity)));
-
+    assertDoesNotThrow(() -> repo.certification().applyMany(List.of(entity)));
     verify(tagUsageDAO).applyTagsBatchMultiTarget(captor.capture());
     Map<String, List<TagLabel>> applied = captor.getValue();
     assertFalse(applied.isEmpty());
@@ -873,9 +838,7 @@ class EntityRepositoryCertificationTest {
     hash.setLabelType(TagLabel.LabelType.AUTOMATED.ordinal());
     hash.setState(TagLabel.State.CONFIRMED.ordinal());
     hash.setMetadata(metadata);
-
     TagLabel label = hash.toTagLabel();
-
     assertEquals(TagLabel.TagSource.CLASSIFICATION, label.getSource());
     assertEquals("Certification.Gold", label.getTagFQN());
     assertEquals(TagLabel.LabelType.AUTOMATED, label.getLabelType());

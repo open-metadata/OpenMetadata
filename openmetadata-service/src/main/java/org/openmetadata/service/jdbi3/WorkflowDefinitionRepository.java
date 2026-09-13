@@ -19,6 +19,15 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
@@ -28,18 +37,22 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
-public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefinition> {
+@Repository()
+public class WorkflowDefinitionRepository implements EntityPolicy<WorkflowDefinition> {
 
   private static final String USER_APPROVAL_TASK = "userApprovalTask";
 
   public WorkflowDefinitionRepository() {
-    super(
-        WorkflowDefinitionResource.COLLECTION_PATH,
-        Entity.WORKFLOW_DEFINITION,
-        WorkflowDefinition.class,
-        Entity.getCollectionDAO().workflowDefinitionDAO(),
-        "",
-        "");
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                WorkflowDefinitionResource.COLLECTION_PATH,
+                Entity.WORKFLOW_DEFINITION,
+                WorkflowDefinition.class,
+                Entity.getCollectionDAO().workflowDefinitionDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
@@ -48,23 +61,23 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  protected void postCreate(WorkflowDefinition entity) {
+  public void postCreate(WorkflowDefinition entity) {
     WorkflowHandler.getInstance().deploy(new Workflow(entity));
   }
 
   @Override
-  protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
+  public void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
   }
 
   @Override
-  protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
+  public void postDelete(WorkflowDefinition entity, boolean hardDelete) {
+    EntityPolicy.super.postDelete(entity, hardDelete);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
   }
 
   @Override
-  protected void setFields(
+  public void setFields(
       WorkflowDefinition entity, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     if (WorkflowHandler.isInitialized()) {
       entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
@@ -74,60 +87,72 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   @Override
-  protected void clearFields(WorkflowDefinition entity, EntityUtil.Fields fields) {}
+  public void clearFields(WorkflowDefinition entity, EntityUtil.Fields fields) {}
 
   @Override
-  protected void prepare(WorkflowDefinition entity, boolean update) {
+  public void prepare(WorkflowDefinition entity, boolean update) {
     // Validate workflow configuration - single entry point for all validations
     LOG.info("Validating workflow configuration for: {}", entity.getName());
     validateWorkflow(entity);
   }
 
   @Override
-  public EntityRepository<WorkflowDefinition>.EntityUpdater getUpdater(
+  public EntityUpdater<WorkflowDefinition> getUpdater(
       WorkflowDefinition original,
       WorkflowDefinition updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
+    return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation)
+        .mutation();
   }
 
-  public class WorkflowDefinitionUpdater extends EntityUpdater {
+  public class WorkflowDefinitionUpdater implements EntitySpecificMutation<WorkflowDefinition> {
+
     public WorkflowDefinitionUpdater(
-        WorkflowDefinition original, WorkflowDefinition updated, Operation operation) {
-      super(original, updated, operation);
+        WorkflowDefinition original, WorkflowDefinition updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("trigger", this::updateTrigger);
-      compareAndUpdate("config", this::updateConfig);
-      compareAndUpdate("nodes", this::updateNodes);
-      compareAndUpdate("edges", this::updateEdges);
+    public void update(
+        EntityUpdater<WorkflowDefinition> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate("trigger", this::updateTrigger);
+      entityUpdate.compareAndUpdate("config", this::updateConfig);
+      entityUpdate.compareAndUpdate("nodes", this::updateNodes);
+      entityUpdate.compareAndUpdate("edges", this::updateEdges);
     }
 
     private void updateTrigger() {
-      if (original.getTrigger() == updated.getTrigger()) {
+      if (entityUpdate.getOriginal().getTrigger() == entityUpdate.getUpdated().getTrigger()) {
         return;
       }
-      recordChange("trigger", original.getTrigger(), updated.getTrigger());
+      entityUpdate.recordChange(
+          "trigger",
+          entityUpdate.getOriginal().getTrigger(),
+          entityUpdate.getUpdated().getTrigger());
     }
 
     private void updateConfig() {
-      if (Objects.equals(original.getConfig(), updated.getConfig())) {
+      if (Objects.equals(
+          entityUpdate.getOriginal().getConfig(), entityUpdate.getUpdated().getConfig())) {
         return;
       }
-      recordChange("config", original.getConfig(), updated.getConfig());
+      entityUpdate.recordChange(
+          "config", entityUpdate.getOriginal().getConfig(), entityUpdate.getUpdated().getConfig());
     }
 
     private void updateNodes() {
       List<WorkflowNodeDefinitionInterface> addedNodes = new ArrayList<>();
       List<WorkflowNodeDefinitionInterface> deletedNodes = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           "nodes",
-          original.getNodes(),
-          updated.getNodes(),
+          entityUpdate.getOriginal().getNodes(),
+          entityUpdate.getUpdated().getNodes(),
           addedNodes,
           deletedNodes,
           WorkflowNodeDefinitionInterface::equals);
@@ -136,23 +161,29 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     private void updateEdges() {
       List<EdgeDefinition> addedEdges = new ArrayList<>();
       List<EdgeDefinition> deletedEdges = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           "nodes",
-          original.getEdges(),
-          updated.getEdges(),
+          entityUpdate.getOriginal().getEdges(),
+          entityUpdate.getUpdated().getEdges(),
           addedEdges,
           deletedEdges,
           EdgeDefinition::equals);
     }
+
+    private final EntityUpdater<WorkflowDefinition> entityUpdate;
+
+    public EntityUpdater<WorkflowDefinition> mutation() {
+      return entityUpdate;
+    }
   }
 
   @Override
-  protected void storeEntity(WorkflowDefinition entity, boolean update) {
-    store(entity, update);
+  public void storeEntity(WorkflowDefinition entity, boolean update) {
+    persistence().store(entity, update);
   }
 
   @Override
-  protected void storeRelationships(WorkflowDefinition entity) {}
+  public void storeRelationships(WorkflowDefinition entity) {}
 
   public UUID getIdFromName(String workflowDefinitionName) {
     EntityReference workflowDefinitionReference =
@@ -250,25 +281,20 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
       return;
     }
-
     if (workflowDefinition.getEdges() == null) {
       workflowDefinition.setEdges(new ArrayList<>());
     }
-
     String workflowName = workflowDefinition.getName();
-
     // Build node sets and maps for validation
     Set<String> allNodeIds = new java.util.HashSet<>();
     Set<String> startNodes = new java.util.HashSet<>();
     Set<String> endNodes = new java.util.HashSet<>();
     Map<String, WorkflowNodeDefinitionInterface> nodeMap = new java.util.HashMap<>();
-
     // Collect all nodes and identify start/end nodes
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       String nodeId = node.getName();
       allNodeIds.add(nodeId);
       nodeMap.put(nodeId, node);
-
       if ("startEvent".equals(node.getSubType())) {
         startNodes.add(nodeId);
       }
@@ -276,7 +302,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         endNodes.add(nodeId);
       }
     }
-
     // Validation 1: Exactly one start node
     if (startNodes.isEmpty()) {
       throw BadRequestException.of(
@@ -288,22 +313,18 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
               "Workflow '%s' must have exactly one start event node, found %d: %s",
               workflowName, startNodes.size(), startNodes));
     }
-
     // Build adjacency lists
     Map<String, List<String>> outgoingEdges = new java.util.HashMap<>();
     Map<String, List<String>> incomingEdges = new java.util.HashMap<>();
-
     // Initialize empty lists for all nodes
     for (String nodeId : allNodeIds) {
       outgoingEdges.put(nodeId, new ArrayList<>());
       incomingEdges.put(nodeId, new ArrayList<>());
     }
-
     // Validation 4: All edges must reference valid nodes
     for (EdgeDefinition edge : workflowDefinition.getEdges()) {
       String from = edge.getFrom();
       String to = edge.getTo();
-
       if (!allNodeIds.contains(from)) {
         throw BadRequestException.of(
             String.format(
@@ -313,24 +334,20 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         throw BadRequestException.of(
             String.format("Workflow '%s' has edge to non-existent node: '%s'", workflowName, to));
       }
-
       outgoingEdges.get(from).add(to);
       incomingEdges.get(to).add(from);
     }
-
     // Validation 5 & 6: End nodes validation and non-end nodes must have outgoing edges
     for (String nodeId : allNodeIds) {
       WorkflowNodeDefinitionInterface node = nodeMap.get(nodeId);
       boolean hasOutgoing = !outgoingEdges.get(nodeId).isEmpty();
       boolean isEndNode = "endEvent".equals(node.getSubType());
-
       if (isEndNode && hasOutgoing) {
         throw BadRequestException.of(
             String.format(
                 "Workflow '%s': End node '%s' cannot have outgoing edges",
                 workflowName, node.getNodeDisplayName()));
       }
-
       // Non-end nodes must have outgoing edges
       if (!isEndNode && !hasOutgoing) {
         throw BadRequestException.of(
@@ -339,7 +356,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                 workflowName, node.getNodeDisplayName()));
       }
     }
-
     // Reject infinite automated cycles and orphaned nodes. A cycle is ALLOWED when it passes
     // through
     // a human-gated node (a userApprovalTask): such a loop cannot run unbounded without external
@@ -352,10 +368,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       throw BadRequestException.of(
           String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
     }
-
     Set<String> orphanedNodes = new java.util.HashSet<>(allNodeIds);
     orphanedNodes.removeAll(visited);
-
     if (!orphanedNodes.isEmpty()) {
       throw BadRequestException.of(
           String.format(
@@ -411,15 +425,14 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   public void suspendWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
-
     try {
       // Suspend all active process instances for this workflow
       WorkflowHandler.getInstance().suspendWorkflow(workflowName);
-
       workflow.setSuspended(true);
-      dao.update(workflow);
-      EntityRepository.invalidateCacheForEntity(
-          entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      context().schema().dao().update(workflow);
+      EntityCaches.invalidations()
+          .referencesChanged(
+              context().schema().entityType(), workflow.getId(), workflow.getFullyQualifiedName());
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -436,16 +449,14 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   public void resumeWorkflow(WorkflowDefinition workflow) {
     String workflowName = workflow.getName();
-
     try {
       // Resume all suspended process instances for this workflow
       WorkflowHandler.getInstance().resumeWorkflow(workflowName);
-
       workflow.setSuspended(false);
-      dao.update(workflow);
-      EntityRepository.invalidateCacheForEntity(
-          entityType, workflow.getId(), workflow.getFullyQualifiedName());
-
+      context().schema().dao().update(workflow);
+      EntityCaches.invalidations()
+          .referencesChanged(
+              context().schema().entityType(), workflow.getId(), workflow.getFullyQualifiedName());
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
@@ -468,19 +479,15 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (workflowDefinition.getNodes() == null) {
       return;
     }
-
     Set<String> nodeIds = new java.util.HashSet<>();
     String workflowName = workflowDefinition.getName();
-
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       String nodeId = node.getName();
-
       // Check for duplicate node IDs
       if (!nodeIds.add(nodeId)) {
         throw BadRequestException.of(
             String.format("Workflow '%s' has duplicate node ID: '%s'", workflowName, nodeId));
       }
-
       // Check if node ID clashes with workflow name
       if (nodeId.equals(workflowName)) {
         throw BadRequestException.of(
@@ -489,7 +496,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                 workflowName, nodeId));
       }
     }
-
     // Validate that all edges reference existing nodes
     if (workflowDefinition.getEdges() != null) {
       for (EdgeDefinition edge : workflowDefinition.getEdges()) {
@@ -516,37 +522,31 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (workflowDefinition.getNodes() == null || workflowDefinition.getEdges() == null) {
       return;
     }
-
     // Build node map
     Map<String, WorkflowNodeDefinitionInterface> nodeMap = new java.util.HashMap<>();
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       nodeMap.put(node.getName(), node);
     }
-
     // Build adjacency list for reverse traversal
     Map<String, List<String>> reverseAdjacency = new java.util.HashMap<>();
     for (EdgeDefinition edge : workflowDefinition.getEdges()) {
       reverseAdjacency.computeIfAbsent(edge.getTo(), k -> new ArrayList<>()).add(edge.getFrom());
     }
-
     // Check each node that uses updatedBy
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       Object inputNamespaceMapObj = node.getInputNamespaceMap();
       if (inputNamespaceMapObj != null && inputNamespaceMapObj instanceof Map) {
         @SuppressWarnings("unchecked")
         Map<String, String> inputNamespaceMap = (Map<String, String>) inputNamespaceMapObj;
-
         if (inputNamespaceMap.containsKey("updatedBy")) {
           String namespace = inputNamespaceMap.get("updatedBy");
           boolean hasUserTaskBefore = hasUserTaskInPath(node.getName(), reverseAdjacency, nodeMap);
-
           if (!hasUserTaskBefore && !"global".equals(namespace)) {
             throw BadRequestException.of(
                 String.format(
                     "Workflow '%s' node '%s' uses updatedBy with namespace '%s' but has no user task in its path. Should use 'global' namespace.",
                     workflowDefinition.getName(), node.getName(), namespace));
           }
-
           if (hasUserTaskBefore && "global".equals(namespace)) {
             LOG.warn(
                 "Workflow '{}' node '{}' has user task before it but uses 'global' namespace for updatedBy",
@@ -575,9 +575,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     Set<String> visited = new java.util.HashSet<>();
     Queue<String> queue = new java.util.LinkedList<>();
     queue.add(nodeId);
-
     List<String> userTaskTypes = List.of(USER_APPROVAL_TASK);
-
     // BFS traversal backwards through the workflow
     while (!queue.isEmpty()) {
       String current = queue.poll();
@@ -585,7 +583,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         continue;
       }
       visited.add(current);
-
       // Check all predecessors of current node
       List<String> predecessors = reverseAdjacency.get(current);
       if (predecessors != null) {
@@ -610,37 +607,29 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
       return;
     }
-
     // Build node map and reachability information
     Map<String, WorkflowNodeDefinitionInterface> nodeMap = new java.util.HashMap<>();
     Map<String, List<String>> adjacencyList = new java.util.HashMap<>();
-
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       nodeMap.put(node.getName(), node);
     }
-
     if (workflowDefinition.getEdges() != null) {
       for (EdgeDefinition edge : workflowDefinition.getEdges()) {
         adjacencyList.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge.getTo());
       }
     }
-
     Set<String> globalVariables = workflowDefinition.getTrigger().getOutput();
     boolean isNoOpTrigger = "noOp".equals(workflowDefinition.getTrigger().getType());
-
     // Validate each node's input namespace mapping
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(node.getInputNamespaceMap(), Map.class);
-
       if (inputNamespaceMap == null) {
         continue;
       }
-
       for (Map.Entry<String, String> entry : inputNamespaceMap.entrySet()) {
         String variable = entry.getKey();
         String namespace = entry.getValue();
-
         if (Workflow.GLOBAL_NAMESPACE.equals(namespace)) {
           // Validate global variable exists (unless noOp trigger)
           if (!isNoOpTrigger && !globalVariables.contains(variable)) {
@@ -658,7 +647,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                     "Invalid Workflow: Node '%s' references non-existent node '%s'",
                     node.getName(), namespace));
           }
-
           // Check if the source node outputs the expected variable
           if (sourceNode.getOutput() != null && !sourceNode.getOutput().contains(variable)) {
             throw BadRequestException.of(
@@ -666,7 +654,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
                     "Invalid Workflow: Node '%s' expects '%s' from node '%s', but it does not output this variable",
                     node.getName(), variable, namespace));
           }
-
           // Validate node is reachable
           if (!isNodeReachable(namespace, node.getName(), adjacencyList)) {
             throw BadRequestException.of(
@@ -685,20 +672,18 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   private boolean isNodeReachable(
       String sourceNode, String targetNode, Map<String, List<String>> adjacencyList) {
     if (sourceNode.equals(targetNode)) {
-      return false; // Self-reference is not allowed
+      // Self-reference is not allowed
+      return false;
     }
-
     Set<String> visited = new java.util.HashSet<>();
     Queue<String> queue = new java.util.LinkedList<>();
     queue.add(sourceNode);
-
     while (!queue.isEmpty()) {
       String current = queue.poll();
       if (visited.contains(current)) {
         continue;
       }
       visited.add(current);
-
       List<String> neighbors = adjacencyList.get(current);
       if (neighbors != null) {
         for (String neighbor : neighbors) {
@@ -716,27 +701,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     if (workflowDefinition.getNodes() == null || workflowDefinition.getEdges() == null) {
       return;
     }
-
     String workflowName = workflowDefinition.getName();
-
     // Build outgoing edges map for each node
     Map<String, List<EdgeDefinition>> outgoingEdgesMap = new java.util.HashMap<>();
     for (EdgeDefinition edge : workflowDefinition.getEdges()) {
       outgoingEdgesMap.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge);
     }
-
     // Check each conditional task node
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       if (isConditionalTask(node)) {
         List<EdgeDefinition> outgoingEdges = outgoingEdgesMap.get(node.getName());
-
         if (outgoingEdges == null || outgoingEdges.isEmpty()) {
           throw BadRequestException.of(
               String.format(
                   "Workflow '%s': Conditional task '%s' must have outgoing sequence flows for both TRUE and FALSE conditions",
                   workflowName, node.getNodeDisplayName()));
         }
-
         if (USER_APPROVAL_TASK.equals(node.getSubType())) {
           List<String> configuredTransitions = getConfiguredUserApprovalTransitions(node);
           if (!configuredTransitions.isEmpty()) {
@@ -747,11 +727,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
           validateApprovalConditions(workflowName, node.getNodeDisplayName(), outgoingEdges);
           continue;
         }
-
         // Check if we have both TRUE and FALSE conditions
         boolean hasTrueCondition = false;
         boolean hasFalseCondition = false;
-
         for (EdgeDefinition edge : outgoingEdges) {
           String condition = edge.getCondition();
           if (condition != null) {
@@ -762,7 +740,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
             }
           }
         }
-
         if (!hasTrueCondition || !hasFalseCondition) {
           throw BadRequestException.of(
               String.format(
@@ -789,7 +766,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         }
       }
     }
-
     if (!hasApprove || !hasReject) {
       throw BadRequestException.of(
           String.format(
@@ -801,6 +777,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   private static final Set<String> APPROVE_CONDITIONS =
       Set.of(Workflow.APPROVE_CONDITION, Workflow.LEGACY_APPROVE_CONDITION);
+
   private static final Set<String> REJECT_CONDITIONS =
       Set.of(Workflow.REJECT_CONDITION, Workflow.LEGACY_REJECT_CONDITION);
 
@@ -871,7 +848,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         outgoingConditions.add(edge.getCondition().trim());
       }
     }
-
     List<String> missingTransitions =
         configuredTransitions.stream()
             .filter(transitionId -> !outgoingConditions.contains(transitionId))
@@ -882,7 +858,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
               "Workflow '%s': User approval task '%s' must have outgoing sequence flows for every configured transition. Missing conditions for %s",
               workflowName, nodeDisplayName, missingTransitions));
     }
-
     List<String> unexpectedConditions =
         outgoingConditions.stream()
             .filter(condition -> !configuredTransitionSet.contains(condition))
@@ -894,5 +869,12 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
               "Workflow '%s': User approval task '%s' has outgoing sequence flows with conditions not declared in transitionMetadata: %s",
               workflowName, nodeDisplayName, unexpectedConditions));
     }
+  }
+
+  private final EntityPolicyContext<WorkflowDefinition> entityContext;
+
+  @Override
+  public final EntityPolicyContext<WorkflowDefinition> context() {
+    return entityContext;
   }
 }

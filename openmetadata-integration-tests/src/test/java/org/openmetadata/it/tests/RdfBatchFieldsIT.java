@@ -56,7 +56,7 @@ public class RdfBatchFieldsIT {
     assertEquals(Set.of(team.getId()), ids(normal.getTeams()));
     final RoleRepository repository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
     final Role batch = repository.getDao().findEntityById(role.getId());
-    repository.setFieldsInBulk(repository.getFields("users,teams"), List.of(batch));
+    repository.setFieldsInBulk(repository.fieldPolicy().parse("users,teams"), List.of(batch));
     assertEquals(ids(normal.getUsers()), ids(batch.getUsers()));
     assertEquals(ids(normal.getTeams()), ids(batch.getTeams()));
   }
@@ -79,7 +79,8 @@ public class RdfBatchFieldsIT {
     assertFalse(normal.getInheritedRoles().isEmpty());
     final TeamRepository repository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
     final Team batch = repository.getDao().findEntityById(team.getId());
-    repository.setFieldsInBulk(repository.getFields("users,defaultRoles"), List.of(batch));
+    repository.setFieldsInBulk(
+        repository.fieldPolicy().parse("users,defaultRoles"), List.of(batch));
     assertEquals(ids(normal.getUsers()), ids(batch.getUsers()));
     assertEquals(ids(normal.getInheritedRoles()), ids(batch.getInheritedRoles()));
     assertEquals("user", batch.getUsers().getFirst().getType());
@@ -116,7 +117,7 @@ public class RdfBatchFieldsIT {
     relationships.insert(
         parent.getId(), missingChild, Entity.TEAM, Entity.TEAM, Relationship.PARENT_OF.ordinal());
     try {
-      repository.setFieldsInBulk(repository.getFields("children"), List.of(batch));
+      repository.setFieldsInBulk(repository.fieldPolicy().parse("children"), List.of(batch));
       assertEquals(ids(normal.getChildren()), ids(batch.getChildren()));
     } finally {
       relationships.delete(

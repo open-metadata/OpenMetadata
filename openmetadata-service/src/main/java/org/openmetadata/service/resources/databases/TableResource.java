@@ -1270,7 +1270,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.find(id, Include.NON_DELETED);
+    Table table = repository.lookup().byId(id, Include.NON_DELETED);
     return addHref(
         uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
   }

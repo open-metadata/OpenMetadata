@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -113,7 +114,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
 
   private WorkflowDefinition loadWorkflow() {
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
-    Bot appBot = botRepository.findByName(getAppBot(), Include.NON_DELETED);
+    Bot appBot = botRepository.lookup().byName(getAppBot(), Include.NON_DELETED);
     EntityReference adminReference = botRepository.getBotUser(appBot);
     if (adminReference == null) {
       throw EntityNotFoundException.byName(getAppBot());
@@ -134,13 +135,15 @@ public class AutoPilotApp extends AbstractNativeApplication {
   private void createWorkflow(String createdBy) {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    repository.createOrUpdate(null, loadWorkflow(), createdBy);
+    repository
+        .creates()
+        .upsert(null, loadWorkflow(), new EntityCommandActor(createdBy, null), false);
   }
 
   private void deleteWorkflow() {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    repository.deleteByName(getAppBot(), WORKFLOW_NAME, true, true);
+    repository.deletes().byName(getAppBot(), WORKFLOW_NAME, true, true);
   }
 
   private void suspendWorkflow() {

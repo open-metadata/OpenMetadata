@@ -14,13 +14,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
- * Request-scoped entity cache that stores JSON strings instead of entity objects. This eliminates
- * the two {@code deepCopy} calls per cache interaction that previously caused ~1 MB of allocation
- * per 247 KB entity (deepCopy on put + deepCopy on get).
- *
- * <p>Now: {@code put()} serializes once to JSON string (~247 KB), {@code get()} deserializes back.
- * The JSON string is immutable and safe to share, so no defensive copying is needed. Net savings:
- * ~50% less allocation per cache interaction compared to the deepCopy approach.
+ * Request-scoped entity cache. ID and name aliases share immutable JSON; each retrieval
+ * deserializes a fresh entity so callers cannot mutate another reader's response.
  *
  * <p>Bounded to {@value MAX_ENTRIES_PER_REQUEST} entries using LRU eviction.
  */
@@ -48,6 +43,14 @@ public final class RequestEntityCache {
               });
 
   private RequestEntityCache() {}
+
+  /** A normalized projection can be shared by every lookup and alias of the same read. */
+  public record Projection(String fields, String includes, boolean fromCache) {}
+
+  public static Projection projection(
+      Fields fields, RelationIncludes relationIncludes, boolean fromCache) {
+    return new Projection(fieldsKey(fields), relationIncludesKey(relationIncludes), fromCache);
+  }
 
   public static void clear() {
     REQUEST_CACHE.remove();
@@ -91,10 +94,12 @@ public final class RequestEntityCache {
       RelationIncludes relationIncludes,
       boolean fromCache,
       Class<T> entityClass) {
-    return get(
-        EntityCacheKey.forId(
-            entityType, id, fieldsKey(fields), relationIncludesKey(relationIncludes), fromCache),
-        entityClass);
+    return getById(entityType, id, projection(fields, relationIncludes, fromCache), entityClass);
+  }
+
+  public static <T extends EntityInterface> T getById(
+      String entityType, UUID id, Projection projection, Class<T> entityClass) {
+    return get(EntityCacheKey.forId(entityType, id, projection), entityClass);
   }
 
   public static <T extends EntityInterface> T getByName(
@@ -104,10 +109,29 @@ public final class RequestEntityCache {
       RelationIncludes relationIncludes,
       boolean fromCache,
       Class<T> entityClass) {
-    return get(
-        EntityCacheKey.forName(
-            entityType, name, fieldsKey(fields), relationIncludesKey(relationIncludes), fromCache),
-        entityClass);
+    return getByName(
+        entityType, name, projection(fields, relationIncludes, fromCache), entityClass);
+  }
+
+  public static <T extends EntityInterface> T getByName(
+      String entityType, String name, Projection projection, Class<T> entityClass) {
+    return get(EntityCacheKey.forName(entityType, name, projection), entityClass);
+  }
+
+  public static void putByIdAndName(
+      String entityType, UUID id, String name, Projection projection, EntityInterface entity) {
+    putAliases(
+        EntityCacheKey.forId(entityType, id, projection),
+        name == null ? null : EntityCacheKey.forName(entityType, name, projection),
+        entity);
+  }
+
+  public static void putByNameAndId(
+      String entityType, String name, UUID id, Projection projection, EntityInterface entity) {
+    putAliases(
+        EntityCacheKey.forName(entityType, name, projection),
+        id == null ? null : EntityCacheKey.forId(entityType, id, projection),
+        entity);
   }
 
   public static <T extends EntityInterface> void putById(
@@ -119,8 +143,7 @@ public final class RequestEntityCache {
       T entity,
       Class<T> entityClass) {
     put(
-        EntityCacheKey.forId(
-            entityType, id, fieldsKey(fields), relationIncludesKey(relationIncludes), fromCache),
+        EntityCacheKey.forId(entityType, id, projection(fields, relationIncludes, fromCache)),
         entity);
   }
 
@@ -133,8 +156,7 @@ public final class RequestEntityCache {
       T entity,
       Class<T> entityClass) {
     put(
-        EntityCacheKey.forName(
-            entityType, name, fieldsKey(fields), relationIncludesKey(relationIncludes), fromCache),
+        EntityCacheKey.forName(entityType, name, projection(fields, relationIncludes, fromCache)),
         entity);
   }
 
@@ -152,12 +174,21 @@ public final class RequestEntityCache {
   }
 
   private static <T extends EntityInterface> void put(EntityCacheKey key, T entity) {
+    putAliases(key, null, entity);
+  }
+
+  private static void putAliases(
+      EntityCacheKey primary, EntityCacheKey secondary, EntityInterface entity) {
     if (entity == null) {
       return;
     }
     try (var ignored = phase("requestCacheSerialize")) {
       String json = JsonUtils.pojoToJson(entity);
-      REQUEST_CACHE.get().put(key, json);
+      Map<EntityCacheKey, String> cache = REQUEST_CACHE.get();
+      cache.put(primary, json);
+      if (secondary != null) {
+        cache.put(secondary, json);
+      }
     }
   }
 
@@ -191,31 +222,14 @@ public final class RequestEntityCache {
   }
 
   private record EntityCacheKey(
-      String entityType,
-      LookupType lookupType,
-      String lookupValue,
-      String fieldsKey,
-      String includesKey,
-      boolean fromCache) {
+      String entityType, LookupType lookupType, String lookupValue, Projection projection) {
 
-    static EntityCacheKey forId(
-        String entityType,
-        UUID id,
-        String fieldsKey,
-        String relationIncludesKey,
-        boolean fromCache) {
-      return new EntityCacheKey(
-          entityType, LookupType.ID, id.toString(), fieldsKey, relationIncludesKey, fromCache);
+    static EntityCacheKey forId(String entityType, UUID id, Projection projection) {
+      return new EntityCacheKey(entityType, LookupType.ID, id.toString(), projection);
     }
 
-    static EntityCacheKey forName(
-        String entityType,
-        String name,
-        String fieldsKey,
-        String relationIncludesKey,
-        boolean fromCache) {
-      return new EntityCacheKey(
-          entityType, LookupType.NAME, name, fieldsKey, relationIncludesKey, fromCache);
+    static EntityCacheKey forName(String entityType, String name, Projection projection) {
+      return new EntityCacheKey(entityType, LookupType.NAME, name, projection);
     }
   }
 }

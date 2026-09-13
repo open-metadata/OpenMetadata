@@ -23,6 +23,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.PolicyRepository;
@@ -35,7 +37,8 @@ public class MigrationUtil {
   public static void addViewAllRuleToOrgPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
+      Policy organizationPolicy =
+          repository.lookup().byName("OrganizationPolicy", Include.NON_DELETED);
       if (organizationPolicy.getRules() == null) {
         organizationPolicy.setRules(new ArrayList<>());
       }
@@ -86,7 +89,7 @@ public class MigrationUtil {
       CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy policy = repository.findByName(policyName, Include.NON_DELETED);
+      Policy policy = repository.lookup().byName(policyName, Include.NON_DELETED);
       if (policy.getRules() == null) {
         LOG.warn("{} has no rules defined.", policyName);
         return;
@@ -189,7 +192,12 @@ public class MigrationUtil {
       for (TableConstraint constraint : constraints) {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           List<EntityReference> relationships =
-              tableRepository.findTo(table.getId(), TABLE, Relationship.RELATED_TO, TABLE);
+              tableRepository
+                  .relationships()
+                  .to(
+                      new EntityRelationshipReader.Selection(
+                          table.getId(), TABLE, Relationship.RELATED_TO, TABLE),
+                      Include.NON_DELETED);
           Map<UUID, EntityReference> relatedTables = new HashMap<>();
           relationships.forEach(r -> relatedTables.put(r.getId(), r));
           for (String column : constraint.getReferredColumns()) {
@@ -198,8 +206,13 @@ public class MigrationUtil {
               EntityReference toTable =
                   Entity.getEntityReferenceByName(TABLE, toParent, NON_DELETED);
               if (!relatedTables.containsKey(toTable.getId())) {
-                tableRepository.addRelationship(
-                    table.getId(), toTable.getId(), TABLE, TABLE, Relationship.RELATED_TO);
+                tableRepository
+                    .relationshipWrites()
+                    .add(
+                        new EntityRelationshipWriter.Edge(
+                            table.getId(), toTable.getId(), TABLE, TABLE, Relationship.RELATED_TO),
+                        EntityRelationshipWriter.Value.EMPTY,
+                        false);
               }
             } catch (EntityNotFoundException e) {
               throw EntityNotFoundException.byName(

@@ -28,6 +28,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedEntityDao;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -39,17 +43,13 @@ class EntityRepositoryStorageJsonReuseTest {
     CachedEntityDao cachedEntityDao = mock(CachedEntityDao.class);
     CountingPipelineRepository repository = new CountingPipelineRepository(dao);
     Pipeline pipeline = pipeline("before");
-
     repository.storeForCacheForTest(pipeline);
     pipeline.setName("after");
-
     try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
       when(CacheBundle.getCachedEntityDao()).thenReturn(cachedEntityDao);
-
       repository.writeThroughCacheForTest(pipeline);
       assertEquals(1, repository.serializationCount);
       verify(cachedEntityDao).putBase(Entity.PIPELINE, pipeline.getId(), "{\"name\":\"before\"}");
-
       repository.writeThroughCacheForTest(pipeline);
       assertEquals(2, repository.serializationCount);
       verify(cachedEntityDao).putBase(Entity.PIPELINE, pipeline.getId(), "{\"name\":\"after\"}");
@@ -62,15 +62,12 @@ class EntityRepositoryStorageJsonReuseTest {
     CachedEntityDao cachedEntityDao = mock(CachedEntityDao.class);
     CountingPipelineRepository repository = new CountingPipelineRepository(dao);
     Pipeline pipeline = pipeline("before");
-
     repository.storeDirectlyForTest(pipeline);
     pipeline.setName("after");
-
     try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
       when(CacheBundle.getCachedEntityDao()).thenReturn(cachedEntityDao);
       repository.writeThroughCacheForTest(pipeline);
     }
-
     assertEquals(2, repository.serializationCount);
     verify(cachedEntityDao).putBase(Entity.PIPELINE, pipeline.getId(), "{\"name\":\"after\"}");
   }
@@ -82,11 +79,18 @@ class EntityRepositoryStorageJsonReuseTest {
         .withFullyQualifiedName("service." + name);
   }
 
-  private static class CountingPipelineRepository extends EntityRepository<Pipeline> {
+  @Repository()
+  private static class CountingPipelineRepository implements EntityPolicy<Pipeline> {
+
     private int serializationCount;
 
     private CountingPipelineRepository(CollectionDAO.PipelineDAO dao) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "", Set.of(), false);
+      this.entityContext =
+          new EntityPolicyContext<>(
+              new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
+              new EntityPolicyContext.WriteFields("", "", Set.of()),
+              EntityModuleDependencies.standard());
+      EntityModuleFactory.initialize(this, false);
     }
 
     private void storeForCacheForTest(Pipeline pipeline) {
@@ -102,26 +106,33 @@ class EntityRepositoryStorageJsonReuseTest {
     }
 
     @Override
-    protected String serializeForStorage(Pipeline entity) {
+    public String serializeForStorage(Pipeline entity) {
       serializationCount++;
       return JsonUtils.pojoToJson(Map.of("name", entity.getName()));
     }
 
     @Override
-    protected void setFields(Pipeline entity, Fields fields, RelationIncludes relationIncludes) {}
+    public void setFields(Pipeline entity, Fields fields, RelationIncludes relationIncludes) {}
 
     @Override
-    protected void clearFields(Pipeline entity, Fields fields) {}
+    public void clearFields(Pipeline entity, Fields fields) {}
 
     @Override
-    protected void prepare(Pipeline entity, boolean update) {}
+    public void prepare(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Pipeline entity, boolean update) {
-      store(entity, update);
+    public void storeEntity(Pipeline entity, boolean update) {
+      persistence().store(entity, update);
     }
 
     @Override
-    protected void storeRelationships(Pipeline entity) {}
+    public void storeRelationships(Pipeline entity) {}
+
+    private final EntityPolicyContext<Pipeline> entityContext;
+
+    @Override
+    public final EntityPolicyContext<Pipeline> context() {
+      return entityContext;
+    }
   }
 }

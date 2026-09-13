@@ -17,15 +17,19 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class RollbackEntityImpl implements JavaDelegate {
+
   private Workflow workflow;
+
   private Expression inputNamespaceMapExpr;
 
   @Deprecated
@@ -36,23 +40,19 @@ public class RollbackEntityImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     try {
       WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
-
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-
       Object workflowInstanceExecutionIdObj =
           execution.getVariable(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE);
       String workflowInstanceExecutionId =
           workflowInstanceExecutionIdObj instanceof UUID
               ? workflowInstanceExecutionIdObj.toString()
               : (String) workflowInstanceExecutionIdObj;
-
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
                       inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                       RELATED_ENTITY_VARIABLE));
-
       String updatedBy =
           (String)
               varHandler.getNamespacedVariable(
@@ -60,20 +60,15 @@ public class RollbackEntityImpl implements JavaDelegate {
       if (updatedBy == null || updatedBy.isEmpty()) {
         updatedBy = "governance-bot";
       }
-
       EntityInterface currentEntity = varHandler.getRelatedEntity(entityLink, "", Include.ALL);
-
       String entityType = currentEntity.getEntityReference().getType();
       UUID entityId = currentEntity.getId();
-
       LOG.info(
           "[RollbackEntity] Rolling back entity: {} ({}), Workflow Instance: {}",
           currentEntity.getName(),
           entityId,
           workflowInstanceExecutionId);
-
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-
+      EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
       Double previousVersion = getPreviousApprovedVersion(currentEntity, repository);
       if (previousVersion == null) {
         LOG.warn(
@@ -82,40 +77,34 @@ public class RollbackEntityImpl implements JavaDelegate {
             entityId);
         return;
       }
-
-      EntityInterface previousEntity = repository.getVersion(entityId, previousVersion.toString());
-
+      EntityInterface previousEntity =
+          repository.versions().getVersion(entityId, previousVersion.toString());
       LOG.info(
           "[RollbackEntity] Rolling back entity {} from version {} to version {}",
           currentEntity.getName(),
           currentEntity.getVersion(),
           previousVersion);
-
       restoreToPreviousVersion(repository, currentEntity, previousEntity, updatedBy);
-
       execution.setVariable("rollbackAction", "rollback");
       execution.setVariable("rollbackFromVersion", currentEntity.getVersion());
       execution.setVariable("rollbackToVersion", previousVersion);
       execution.setVariable("rollbackEntityId", entityId.toString());
       execution.setVariable("rollbackEntityType", entityType);
-
       LOG.info(
           "[RollbackEntity] Successfully rolled back entity: {} ({}) to version {}",
           currentEntity.getName(),
           entityId,
           previousVersion);
-
     } catch (Exception e) {
       LOG.error("[RollbackEntity] Error during entity rollback: {}", e.getMessage(), e);
       throw new RuntimeException("Failed to rollback entity", e);
     }
   }
 
-  private Double getPreviousApprovedVersion(
-      EntityInterface entity, EntityRepository<?> repository) {
+  private Double getPreviousApprovedVersion(EntityInterface entity, EntityPolicy<?> repository) {
     try {
       UUID entityId = entity.getId();
-      EntityHistory history = repository.listVersions(entityId);
+      EntityHistory history = repository.versions().listVersions(entityId);
       Double currentVersion = entity.getVersion();
       List<Double> versionNumbers = new ArrayList<>();
       for (Object versionObj : history.getVersions()) {
@@ -126,10 +115,8 @@ public class RollbackEntityImpl implements JavaDelegate {
           } else {
             versionJson = JsonUtils.pojoToJson(versionObj);
           }
-
           EntityInterface versionEntity = JsonUtils.readValue(versionJson, entity.getClass());
           Double versionNumber = versionEntity.getVersion();
-
           if (versionNumber < currentVersion) {
             versionNumbers.add(versionNumber);
           }
@@ -138,14 +125,11 @@ public class RollbackEntityImpl implements JavaDelegate {
           continue;
         }
       }
-
       versionNumbers.sort((v1, v2) -> Double.compare(v2, v1));
-
       for (Double versionNumber : versionNumbers) {
         try {
           EntityInterface fullVersionEntity =
-              repository.getVersion(entityId, versionNumber.toString());
-
+              repository.versions().getVersion(entityId, versionNumber.toString());
           try {
             java.lang.reflect.Method getStatusMethod =
                 fullVersionEntity.getClass().getMethod("getEntityStatus");
@@ -166,7 +150,6 @@ public class RollbackEntityImpl implements JavaDelegate {
                 fullVersionEntity.getClass().getSimpleName(),
                 versionNumber);
           }
-
           String status = getRollbackStatus(fullVersionEntity);
           if (status != null) {
             LOG.info(
@@ -186,7 +169,6 @@ public class RollbackEntityImpl implements JavaDelegate {
           continue;
         }
       }
-
       LOG.warn(
           "[RollbackEntity] No approved or rejected version found in history for entity: {} ({})",
           entity.getName(),
@@ -202,7 +184,6 @@ public class RollbackEntityImpl implements JavaDelegate {
     try {
       java.lang.reflect.Method getStatusMethod = entity.getClass().getMethod("getEntityStatus");
       Object statusObj = getStatusMethod.invoke(entity);
-
       if (statusObj == null) {
         LOG.warn(
             "[RollbackEntity] Status is null for {} version {}",
@@ -210,31 +191,25 @@ public class RollbackEntityImpl implements JavaDelegate {
             entity.getVersion());
         return null;
       }
-
       if (statusObj instanceof EntityStatus status) {
         LOG.debug(
             "[RollbackEntity] Checking status: '{}' for version {}", status, entity.getVersion());
-
         if (status == EntityStatus.APPROVED) {
           return "Approved";
         } else if (status == EntityStatus.REJECTED) {
           return "Rejected";
         }
-
         LOG.debug(
             "[RollbackEntity] Skipping version {} with status '{}' - not a rollback target",
             entity.getVersion(),
             status);
-
         return null;
       }
-
       LOG.warn(
           "[RollbackEntity] Unexpected status type for {}: {}",
           entity.getClass().getSimpleName(),
           statusObj.getClass().getName());
       return null;
-
     } catch (NoSuchMethodException e) {
       LOG.debug(
           "[RollbackEntity] Entity type {} doesn't have entityStatus field, treating as approved",
@@ -250,25 +225,30 @@ public class RollbackEntityImpl implements JavaDelegate {
   }
 
   private void restoreToPreviousVersion(
-      EntityRepository<?> repository,
+      EntityPolicy<?> repository,
       EntityInterface currentEntity,
       EntityInterface previousEntity,
       String updatedBy) {
     try {
       currentEntity =
-          repository.getVersion(currentEntity.getId(), currentEntity.getVersion().toString());
-
+          repository
+              .versions()
+              .getVersion(currentEntity.getId(), currentEntity.getVersion().toString());
       String currentJson = JsonUtils.pojoToJson(currentEntity);
       String previousJson = JsonUtils.pojoToJson(previousEntity);
       jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(currentJson, previousJson);
-
-      repository.patch(null, currentEntity.getFullyQualifiedName(), updatedBy, patch);
-
+      repository
+          .patches()
+          .patch(
+              new EntityPatchService.Target.Name(currentEntity.getFullyQualifiedName()),
+              patch,
+              new EntityCommandActor(updatedBy, null),
+              null,
+              new EntityPatchService.Options(null, null));
       LOG.info(
           "[RollbackEntity] Successfully applied rollback patch for entity: {} ({})",
           currentEntity.getName(),
           currentEntity.getId());
-
     } catch (Exception e) {
       LOG.error("[RollbackEntity] Failed to restore entity to previous version", e);
       throw new RuntimeException("Failed to restore entity to previous version", e);

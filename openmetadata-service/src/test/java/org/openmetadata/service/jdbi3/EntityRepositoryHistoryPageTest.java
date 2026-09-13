@@ -30,19 +30,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.history.EntityHistoryQuery;
+import org.openmetadata.service.entity.history.EntityHistoryType;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
- * {@link EntityRepository#listEntityHistoryByTimestamp} reads version rows without a lock, so an
+ * {@link EntityHistoryQuery#list} reads version rows without a lock, so an
  * entity in the window can be hard-deleted before the page is hydrated. These tests pin what the
  * reader gets in that window: the page is still served, and the cursor still describes the rows the
  * query returned so a paged walk neither repeats a page nor stops before its last one.
@@ -53,19 +52,21 @@ class EntityRepositoryHistoryPageTest {
   private static final AtomicLong WINDOW = new AtomicLong(1_000_000L);
 
   private CollectionDAO.EntityExtensionDAO extensionDAO;
-  private CollectionDAO.PipelineDAO pipelineDAO;
 
-  /** Hydration stub: a batch holding a vanished id fails the way a strict reference lookup does. */
-  private static class HistoryPipelineRepo extends EntityRepository<Pipeline> {
+  private static class HistoryPipelineRepo {
     final Set<UUID> vanished = new HashSet<>();
-    int hydrationCalls = 0;
+    int hydrationCalls;
+    private final EntityHistoryQuery<Pipeline> history;
 
-    HistoryPipelineRepo(CollectionDAO.PipelineDAO dao) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
+    HistoryPipelineRepo(CollectionDAO.EntityExtensionDAO dao) {
+      history =
+          new EntityHistoryQuery<>(
+              new EntityHistoryType<>(Entity.PIPELINE, Pipeline.class, "pipeline_entity"),
+              () -> dao,
+              this::hydrate);
     }
 
-    @Override
-    public void setFieldsInBulk(Fields fields, List<Pipeline> entities) {
+    private void hydrate(List<Pipeline> entities) {
       hydrationCalls++;
       for (Pipeline entity : entities) {
         if (vanished.contains(entity.getId())) {
@@ -74,42 +75,20 @@ class EntityRepositoryHistoryPageTest {
       }
     }
 
-    @Override
-    protected void setFields(Pipeline entity, Fields fields, RelationIncludes includes) {}
-
-    @Override
-    protected void clearFields(Pipeline entity, Fields fields) {}
-
-    @Override
-    protected void prepare(Pipeline entity, boolean update) {}
-
-    @Override
-    protected void storeEntity(Pipeline entity, boolean update) {}
-
-    @Override
-    protected void storeRelationships(Pipeline entity) {}
+    ResultList<Pipeline> listEntityHistoryByTimestamp(
+        long start, long end, String after, String before, int limit) {
+      return history.list(new EntityHistoryQuery.Window(start, end, after, before, limit));
+    }
   }
 
   @BeforeEach
   void setUp() {
-    CollectionDAO daoCollection = mock(CollectionDAO.class);
     extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
-    pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
-    when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
-    when(daoCollection.relationshipDAO())
-        .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
-    when(pipelineDAO.getTableName()).thenReturn("pipeline_entity");
-    Entity.setCollectionDAO(daoCollection);
-  }
-
-  @AfterEach
-  void tearDown() {
-    Entity.setCollectionDAO(null);
   }
 
   @Test
   void historyPage_isServedWhenAnEntityVanishesDuringHydration() {
-    HistoryPipelineRepo repo = new HistoryPipelineRepo(pipelineDAO);
+    HistoryPipelineRepo repo = new HistoryPipelineRepo(extensionDAO);
     Pipeline newest = version(30L);
     Pipeline gone = version(20L);
     Pipeline oldest = version(10L);
@@ -126,7 +105,7 @@ class EntityRepositoryHistoryPageTest {
 
   @Test
   void historyPage_hydratesAHealthyPageInOneBatch() {
-    HistoryPipelineRepo repo = new HistoryPipelineRepo(pipelineDAO);
+    HistoryPipelineRepo repo = new HistoryPipelineRepo(extensionDAO);
     Pipeline newest = version(30L);
     Pipeline oldest = version(20L);
     long startTs = window();
@@ -146,7 +125,7 @@ class EntityRepositoryHistoryPageTest {
    */
   @Test
   void historyPage_cursorNamesTheLastQueriedRow_notTheLastSurvivor() {
-    HistoryPipelineRepo repo = new HistoryPipelineRepo(pipelineDAO);
+    HistoryPipelineRepo repo = new HistoryPipelineRepo(extensionDAO);
     Pipeline newest = version(30L);
     Pipeline gone = version(20L);
     Pipeline beyondPage = version(10L);
@@ -164,7 +143,7 @@ class EntityRepositoryHistoryPageTest {
   /** A page whose every row vanished must still hand back a cursor, or the walk ends early. */
   @Test
   void historyPage_keepsPagingWhenEveryRowVanishes() {
-    HistoryPipelineRepo repo = new HistoryPipelineRepo(pipelineDAO);
+    HistoryPipelineRepo repo = new HistoryPipelineRepo(extensionDAO);
     Pipeline gone = version(30L);
     Pipeline alsoGone = version(20L);
     Pipeline beyondPage = version(10L);

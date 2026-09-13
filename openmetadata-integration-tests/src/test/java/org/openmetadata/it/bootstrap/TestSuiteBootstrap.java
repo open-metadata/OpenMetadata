@@ -148,7 +148,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static K3sContainer K3S_CONTAINER;
   private static GenericContainer<?> MINIO_CONTAINER;
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
-  private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
+  private static final List<ForkedTestNode> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
   private static Jdbi jdbi;
 
@@ -284,9 +284,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "--sort_buffer_size=8M");
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
-      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
-        mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
-      }
+      configureDatabaseStorage(mysql, "/var/lib/mysql");
       mysql.withCreateContainerCmdModifier(
           cmd ->
               cmd.getHostConfig()
@@ -340,9 +338,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // under load.
           "-c",
           "work_mem=32MB");
-      if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
-        postgres.withTmpFs(java.util.Map.of("/var/lib/postgresql/data", "rw,size=2g"));
-      }
+      configureDatabaseStorage(postgres, "/var/lib/postgresql/data");
       postgres.withCreateContainerCmdModifier(
           cmd -> {
             final long memory = Long.getLong("dbContainerMemoryBytes", 0L);
@@ -359,6 +355,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       postgres.start();
       DATABASE_CONTAINER = postgres;
       LOG.info("PostgreSQL started: {}", DATABASE_CONTAINER.getJdbcUrl());
+    }
+  }
+
+  private void configureDatabaseStorage(JdbcDatabaseContainer<?> database, String dataDirectory) {
+    // fsync on tmpfs measures RAM; durable benchmarks need the image's disk-backed data volume.
+    if (!Boolean.getBoolean("dbDurable")
+        && Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
+      database.withTmpFs(Map.of(dataDirectory, "rw,size=2g"));
     }
   }
 
@@ -687,7 +691,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
   }
 
-  private static OpenMetadataApplicationConfig readTestAppConfig(String path)
+  static OpenMetadataApplicationConfig readTestAppConfig(String path)
       throws ConfigurationException, IOException {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     objectMapper.registerSubtypes(
@@ -857,9 +861,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
     try {
       synchronized (ADDITIONAL_APPS) {
-        for (DropwizardAppExtension<OpenMetadataApplicationConfig> app : ADDITIONAL_APPS) {
+        for (ForkedTestNode app : ADDITIONAL_APPS) {
           try {
-            app.after();
+            app.close();
           } catch (Exception e) {
             LOG.warn("Error stopping additional Dropwizard app", e);
           }
@@ -1316,8 +1320,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return projectRoot + "/openmetadata-integration-tests/src/test/resources/";
   }
 
-  public static void registerAdditionalApp(
-      DropwizardAppExtension<OpenMetadataApplicationConfig> app) {
+  public static void registerAdditionalNode(ForkedTestNode app) {
     ADDITIONAL_APPS.add(app);
   }
 

@@ -19,8 +19,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -33,16 +34,28 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  */
 @Slf4j
 public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+
   @NonNull @Getter private final String resource;
-  private final EntityRepository<T> entityRepository;
+
+  private final EntityPolicy<T> entityRepository;
+
   private final UUID id;
+
   private final String name;
-  private T entity; // Will be lazily initialized
+
+  // Will be lazily initialized
+  private T entity;
+
   private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
+
   private Include include;
+
   private Fields requestedFields;
+
   private final Set<String> loadedFieldNames = new HashSet<>();
+
   private RelationIncludes relationIncludes;
+
   // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
   // of once per entity. Null for single-entity requests, which keep the per-entity load.
   private BulkFieldHydrator bulkFieldHydrator;
@@ -51,14 +64,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.resource = resource;
     this.id = null;
     this.name = null;
-    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+    this.entityRepository = (EntityPolicy<T>) Entity.getEntityRepository(resource);
   }
 
   public ResourceContext(@NonNull String resource, UUID id, String name) {
     this.resource = resource;
     this.id = id;
     this.name = name;
-    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+    this.entityRepository = (EntityPolicy<T>) Entity.getEntityRepository(resource);
   }
 
   public ResourceContext(@NonNull String resource, UUID id, String name, Include include) {
@@ -66,7 +79,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.id = id;
     this.name = name;
     this.include = include;
-    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+    this.entityRepository = (EntityPolicy<T>) Entity.getEntityRepository(resource);
   }
 
   public ResourceContext(
@@ -82,7 +95,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.include = include;
     this.requestedFields = requestedFields;
     this.relationIncludes = relationIncludes;
-    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+    this.entityRepository = (EntityPolicy<T>) Entity.getEntityRepository(resource);
   }
 
   public ResourceContext(
@@ -104,10 +117,10 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.name = name;
     this.operation = operation;
     this.include = include;
-    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+    this.entityRepository = (EntityPolicy<T>) Entity.getEntityRepository(resource);
   }
 
-  public ResourceContext(@NonNull String resource, T entity, EntityRepository<T> repository) {
+  public ResourceContext(@NonNull String resource, T entity, EntityPolicy<T> repository) {
     this.resource = resource;
     this.id = null;
     this.name = null;
@@ -124,7 +137,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   public ResourceContext(
       @NonNull String resource,
       T entity,
-      EntityRepository<T> repository,
+      EntityPolicy<T> repository,
       BulkFieldHydrator bulkFieldHydrator) {
     this(resource, entity, repository);
     this.bulkFieldHydrator = bulkFieldHydrator;
@@ -136,9 +149,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     if (entity == null) {
       return null;
     } else if (Entity.USER.equals(entityRepository.getEntityType())) {
-      return List.of(entity.getEntityReference()); // Owner for a user is same as the user
+      // Owner for a user is same as the user
+      return List.of(entity.getEntityReference());
     }
-
     // Check for parents owners'
     List<EntityReference> owners =
         nullOrEmpty(entity.getOwners()) ? null : new ArrayList<>(entity.getOwners());
@@ -151,7 +164,6 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         }
       }
     }
-
     return owners;
   }
 
@@ -165,17 +177,21 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
             case Entity.DATA_PRODUCT -> entity.getDomains();
             default -> null;
           };
-
       if (nullOrEmpty(parentReferences)) return null;
       List<EntityInterface> parentEntities = new ArrayList<>();
-
       for (EntityReference parentReference : parentReferences) {
         if (parentReference == null || parentReference.getId() == null) {
           LOG.warn("Parent reference is null or does not have an ID: {}", parentReference);
           continue;
         }
-        EntityRepository<?> rootRepository = Entity.getEntityRepository(parentReference.getType());
-        parentEntities.add(rootRepository.get(null, parentReference.getId(), fields));
+        EntityPolicy<?> rootRepository = Entity.getEntityRepository(parentReference.getType());
+        parentEntities.add(
+            rootRepository
+                .reads()
+                .byId(
+                    parentReference.getId(),
+                    new EntityReadService.Query(
+                        null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false)));
       }
       return parentEntities;
     } catch (Exception e) {
@@ -205,9 +221,11 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   void ensureTagsLoaded() {
     if (!loadedFieldNames.contains(Entity.FIELD_TAGS) && entityRepository.isSupportsTags()) {
       if (bulkFieldHydrator != null) {
-        bulkFieldHydrator.hydrate(Entity.FIELD_TAGS); // one batch query for the whole bulk request
+        // one batch query for the whole bulk request
+        bulkFieldHydrator.hydrate(Entity.FIELD_TAGS);
       } else {
-        entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+        entityRepository.setFieldsInternal(
+            entity, entityRepository.fieldPolicy().parse(Entity.FIELD_TAGS));
       }
       loadedFieldNames.add(Entity.FIELD_TAGS);
     }
@@ -234,7 +252,8 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     if (entity == null) {
       return null;
     } else if (Entity.DOMAIN.equals(entityRepository.getEntityType())) {
-      return List.of(entity.getEntityReference()); // Domain for a domain is same as the domain
+      // Domain for a domain is same as the domain
+      return List.of(entity.getEntityReference());
     }
     return entity.getDomains();
   }
@@ -250,20 +269,29 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       } else {
         fieldList = authorizationFields();
       }
-
       loadedFieldNames.addAll(fieldList.getFieldList());
       Include includeToUse = resolveInclude();
       boolean fromCache = useRepositoryCache();
       if (relationIncludesToUse == null) {
         relationIncludesToUse = RelationIncludes.fromInclude(includeToUse);
       }
-
       try {
         if (id != null) {
-          entity = entityRepository.get(null, id, fieldList, relationIncludesToUse, fromCache);
+          entity =
+              entityRepository
+                  .reads()
+                  .byId(
+                      id,
+                      new EntityReadService.Query(
+                          null, fieldList, relationIncludesToUse, fromCache));
         } else if (name != null) {
           entity =
-              entityRepository.getByName(null, name, fieldList, relationIncludesToUse, fromCache);
+              entityRepository
+                  .reads()
+                  .byName(
+                      name,
+                      new EntityReadService.Query(
+                          null, fieldList, relationIncludesToUse, fromCache));
         }
       } catch (EntityNotFoundException e) {
         entity = null;
@@ -298,7 +326,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
    * without this the entity arrives with whatever fields the caller happened to ask for and every
    * unloaded attribute misfires its condition. Exposed so the two cannot drift.
    */
-  public static Fields authorizationFields(EntityRepository<?> entityRepository) {
+  public static Fields authorizationFields(EntityPolicy<?> entityRepository) {
     String fields = "";
     if (entityRepository.isSupportsOwners()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
@@ -315,7 +343,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     if (entityRepository.isSupportsCertification()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_CERTIFICATION);
     }
-    return entityRepository.getFields(fields);
+    return entityRepository.fieldPolicy().parse(fields);
   }
 
   private Include resolveInclude() {

@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.ai.CopiedAIFrameworkControl;
@@ -28,6 +29,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.ai.AIGovernanceFrameworkResource;
 import org.openmetadata.service.resources.ai.FrameworkCoverageComputer;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -35,19 +46,24 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Repository
-public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernanceFramework> {
+public class AIGovernanceFrameworkRepository implements EntityPolicy<AIGovernanceFramework> {
+
   private static final String FIELDS = "stewards,autoApply";
+
   private static final int CONTROL_PAGE_SIZE = 1000;
 
   public AIGovernanceFrameworkRepository() {
-    super(
-        AIGovernanceFrameworkResource.COLLECTION_PATH,
-        Entity.AI_GOVERNANCE_FRAMEWORK,
-        AIGovernanceFramework.class,
-        Entity.getCollectionDAO().aiGovernanceFrameworkDAO(),
-        FIELDS,
-        FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                AIGovernanceFrameworkResource.COLLECTION_PATH,
+                Entity.AI_GOVERNANCE_FRAMEWORK,
+                AIGovernanceFramework.class,
+                Entity.getCollectionDAO().aiGovernanceFrameworkDAO()),
+            new EntityPolicyContext.WriteFields(FIELDS, FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -68,7 +84,7 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
 
   @Override
   public void storeEntity(AIGovernanceFramework framework, boolean update) {
-    store(framework, update);
+    persistence().store(framework, update);
   }
 
   @Override
@@ -88,7 +104,6 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
         controls.add(control);
       }
     }
-
     return FrameworkCoverageComputer.compute(framework, controls);
   }
 
@@ -98,13 +113,16 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       ForkAIGovernanceFrameworkRequest request,
       String user) {
     AIGovernanceFramework created =
-        create(uriInfo, forkedFramework(source, request, user), user, null);
+        creates()
+            .create(
+                uriInfo,
+                forkedFramework(source, request, user),
+                new EntityCommandActor(user, null));
     AIFrameworkControlRepository controlRepo = controlRepository();
     ListFilter controlFilter = new ListFilter(Include.NON_DELETED);
     if (source.getFullyQualifiedName() != null) {
       controlFilter.addQueryParam("framework", source.getFullyQualifiedName());
     }
-
     List<CopiedAIFrameworkControl> copiedControls = new ArrayList<>();
     long now = System.currentTimeMillis();
     for (AIFrameworkControl control : listControls(uriInfo, controlRepo, FIELDS, controlFilter)) {
@@ -114,11 +132,10 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       control.setFramework(created.getEntityReference());
       control.setUpdatedAt(now);
       control.setUpdatedBy(user);
-      controlRepo.create(uriInfo, control, user, null);
+      controlRepo.creates().create(uriInfo, control, new EntityCommandActor(user, null));
       copiedControls.add(
           new CopiedAIFrameworkControl().withCode(control.getCode()).withName(control.getName()));
     }
-
     return new ForkAIGovernanceFrameworkResponse()
         .withFramework(created)
         .withCopiedControlsCount(copiedControls.size())
@@ -158,12 +175,16 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
     String after = null;
     do {
       ResultList<AIFrameworkControl> page =
-          controlRepo.listAfter(
-              uriInfo, controlRepo.getFields(fields), filter, CONTROL_PAGE_SIZE, after);
+          controlRepo
+              .pages()
+              .after(
+                  new EntityPageReader.Projection(
+                      uriInfo, controlRepo.fieldPolicy().parse(fields), filter),
+                  CONTROL_PAGE_SIZE,
+                  after);
       result.addAll(page.getData());
       after = page.getPaging() == null ? null : page.getPaging().getAfter();
     } while (after != null);
-
     return result;
   }
 
@@ -172,48 +193,100 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
   }
 
   @Override
-  public EntityRepository<AIGovernanceFramework>.EntityUpdater getUpdater(
+  public EntityUpdater<AIGovernanceFramework> getUpdater(
       AIGovernanceFramework original,
       AIGovernanceFramework updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new AIGovernanceFrameworkUpdater(original, updated, operation);
+    return new AIGovernanceFrameworkUpdater(original, updated, operation).mutation();
   }
 
-  public class AIGovernanceFrameworkUpdater extends EntityUpdater {
+  public class AIGovernanceFrameworkUpdater
+      implements EntitySpecificMutation<AIGovernanceFramework> {
+
     public AIGovernanceFrameworkUpdater(
-        AIGovernanceFramework original, AIGovernanceFramework updated, Operation operation) {
-      super(original, updated, operation);
+        AIGovernanceFramework original, AIGovernanceFramework updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
-      compareAndUpdate(
+    public void update(
+        EntityUpdater<AIGovernanceFramework> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
+          "enabled",
+          () ->
+              entityUpdate.recordChange(
+                  "enabled",
+                  entityUpdate.getOriginal().getEnabled(),
+                  entityUpdate.getUpdated().getEnabled()));
+      entityUpdate.compareAndUpdate(
           "reference",
-          () -> recordChange("reference", original.getReference(), updated.getReference()));
-      compareAndUpdate(
-          "region", () -> recordChange("region", original.getRegion(), updated.getRegion()));
-      compareAndUpdate(
-          "source", () -> recordChange("source", original.getSource(), updated.getSource()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "reference",
+                  entityUpdate.getOriginal().getReference(),
+                  entityUpdate.getUpdated().getReference()));
+      entityUpdate.compareAndUpdate(
+          "region",
+          () ->
+              entityUpdate.recordChange(
+                  "region",
+                  entityUpdate.getOriginal().getRegion(),
+                  entityUpdate.getUpdated().getRegion()));
+      entityUpdate.compareAndUpdate(
+          "source",
+          () ->
+              entityUpdate.recordChange(
+                  "source",
+                  entityUpdate.getOriginal().getSource(),
+                  entityUpdate.getUpdated().getSource()));
+      entityUpdate.compareAndUpdate(
           "assessmentCadence",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "assessmentCadence",
-                  original.getAssessmentCadence(),
-                  updated.getAssessmentCadence()));
-      compareAndUpdate(
+                  entityUpdate.getOriginal().getAssessmentCadence(),
+                  entityUpdate.getUpdated().getAssessmentCadence()));
+      entityUpdate.compareAndUpdate(
           "autoApply",
-          () -> recordChange("autoApply", original.getAutoApply(), updated.getAutoApply(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "autoApply",
+                  entityUpdate.getOriginal().getAutoApply(),
+                  entityUpdate.getUpdated().getAutoApply(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "stewards",
-          () -> recordChange("stewards", original.getStewards(), updated.getStewards(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "stewards",
+                  entityUpdate.getOriginal().getStewards(),
+                  entityUpdate.getUpdated().getStewards(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "nextDeadline",
           () ->
-              recordChange("nextDeadline", original.getNextDeadline(), updated.getNextDeadline()));
+              entityUpdate.recordChange(
+                  "nextDeadline",
+                  entityUpdate.getOriginal().getNextDeadline(),
+                  entityUpdate.getUpdated().getNextDeadline()));
     }
+
+    private final EntityUpdater<AIGovernanceFramework> entityUpdate;
+
+    public EntityUpdater<AIGovernanceFramework> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<AIGovernanceFramework> entityContext;
+
+  @Override
+  public final EntityPolicyContext<AIGovernanceFramework> context() {
+    return entityContext;
   }
 }

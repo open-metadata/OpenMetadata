@@ -30,6 +30,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchAggregation;
@@ -46,12 +47,19 @@ import org.openmetadata.service.util.RestUtil;
 @Repository
 @Slf4j
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
+
   protected final String collectionPath;
+
   protected final EntityTimeSeriesDAO timeSeriesDao;
+
   protected final SearchRepository searchRepository;
+
   protected final String entityType;
+
   protected final Class<T> entityClass;
+
   protected final CollectionDAO daoCollection;
+
   protected final Set<String> allowedFields;
 
   public EntityTimeSeriesRepository(
@@ -200,7 +208,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) {
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(toId, entityType, relationship, fromEntityType);
-    EntityRepository.ensureSingleRelationship(
+    EntityPolicySupport.ensureSingleRelationship(
         entityType, toId, records, relationship.value(), fromEntityType, mustHaveRelationship);
     return !records.isEmpty()
         ? Entity.getEntityReferenceById(records.get(0).getType(), records.get(0).getId(), ALL)
@@ -265,7 +273,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       int total) {
     List<T> entityList = new ArrayList<>();
     List<EntityError> errors = null;
-
     int offsetInt = getOffset(offset);
     String afterOffset = getAfterOffset(offsetInt, limitParam, total);
     String beforeOffset = getBeforeOffset(offsetInt, limitParam);
@@ -342,7 +349,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (limitParam <= 0 || rows.isEmpty()) {
       return getResultList(new ArrayList<>(), null, null, cachedTotal);
     }
-
     EntityTimeSeriesDAO.KeysetPage page = EntityTimeSeriesDAO.KeysetPage.from(rows, limitParam);
     Map<String, List<?>> entityListMap = getEntityList(page.jsons(), skipErrors);
     List<T> entityList = (List<T>) entityListMap.get("entityList");
@@ -350,7 +356,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     if (skipErrors) {
       errors = (List<EntityError>) entityListMap.get("errors");
     }
-
     if (!errors.isEmpty()) {
       return getResultList(entityList, null, page.afterCursor(), cachedTotal, errors);
     }
@@ -432,9 +437,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
     List<T> entityList = new ArrayList<>();
     List<EntityError> errors = new ArrayList<>();
-
     Map<String, List<?>> resultList = new HashMap<>();
-
     for (String json : jsons) {
       try {
         T recordEntity = JsonUtils.readValue(json, entityClass);
@@ -459,10 +462,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     }
     T original = JsonUtils.readValue(originalJson, entityClass);
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
-
     setUpdatedFields(updated, user);
     validatePatchFields(updated, original);
-
     timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
     postUpdate(updated);
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
@@ -503,7 +504,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       throws IOException {
     List<T> entityList = new ArrayList<>();
     long total;
-
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     if (limit > 0) {
@@ -595,7 +595,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     JsonObject jsonObjResults =
         searchRepository.aggregate(
             q, entityType, searchAggregation, searchListFilter, subjectContext);
-
     Optional<List> jsonObjects =
         JsonUtils.readJsonAtPath(jsonObjResults.toString(), aggregationPath, List.class);
     jsonObjects.ifPresent(
@@ -631,7 +630,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                 });
           }
         });
-
     int totalCount = entityList.size();
     if (limit != null && limit > 0) {
       try {
@@ -645,7 +643,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
         LOG.warn("Failed to extract stats_bucket total count, falling back to page size", e);
       }
     }
-
     return new ResultList<>(entityList, offset, limit, totalCount);
   }
 
@@ -657,7 +654,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String sortField,
       String sortType) {
     String contentFilters = contentFilter.getFilterQuery(entityType);
-
     List<SearchAggregationNode> nodes =
         buildAggregationNodes(
             groupBy, contentFilters, limit, offset, sortField, sortType, MAX_AGGREGATE_SIZE);
@@ -675,17 +671,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String sortType,
       int maxAggSize) {
     List<SearchAggregationNode> rootNodes = new ArrayList<>();
-
     // When paginating, use MAX_AGGREGATE_SIZE so bucket_sort has enough upstream buckets to slice
     // from. Without this, a default size of 100 would make offset>100 always return empty results.
     int termsSize = (limit != null && limit > 0) ? maxAggSize : 100;
     SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy, termsSize);
-
     // top_hits fetches the latest document per group — the actual entity we return to the caller.
     termsAgg.addChild(SearchAggregation.topHits("latest", 1, "timestamp", "desc"));
     // max_timestamp is the reference value for bucket_selector to compare against.
     termsAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
-
     // Re-apply content filters inside the bucket to find the latest document that also matches.
     // This lets bucket_selector decide whether the group's latest doc satisfies the filters.
     SearchAggregationNode filterAgg =
@@ -693,7 +686,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     filterAgg.addChild(SearchAggregation.max("max_matching_timestamp", "timestamp"));
     filterAgg.addChild(SearchAggregation.valueCount("count", "timestamp"));
     termsAgg.addChild(filterAgg);
-
     // Discard groups where the latest document does not match the content filters.
     // The check "latest_timestamp == matching_timestamp" means the most recent doc passed the
     // filter.
@@ -703,7 +695,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
             "if (params.matching_count == 0) return false; return params.latest_timestamp == params.matching_timestamp;",
             "latest_timestamp,matching_count,matching_timestamp",
             "max_timestamp,with_content_filters>count,with_content_filters>max_matching_timestamp"));
-
     if (limit != null && limit > 0) {
       // Slice the surviving buckets into pages. Must run after bucket_selector.
       Integer effectiveLimit = Math.min(limit, maxAggSize);
@@ -714,9 +705,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
           SearchAggregation.bucketSort(
               "pagination", effectiveLimit, effectiveOffset, aggSortField, aggSortOrder));
     }
-
     rootNodes.add(termsAgg);
-
     if (limit != null && limit > 0) {
       // byTermsCount is a sibling of byTerms with identical filters but no top_hits and no
       // bucket_sort. Its sole purpose is to count all post-filter groups so stats_bucket can
@@ -724,27 +713,23 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       SearchAggregationNode termsCountAgg =
           SearchAggregation.terms("byTermsCount", groupBy, maxAggSize);
       termsCountAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
-
       SearchAggregationNode countFilterAgg =
           SearchAggregation.filter("with_content_filters", contentFilters);
       countFilterAgg.addChild(SearchAggregation.max("max_matching_timestamp", "timestamp"));
       countFilterAgg.addChild(SearchAggregation.valueCount("count", "timestamp"));
       termsCountAgg.addChild(countFilterAgg);
-
       termsCountAgg.addChild(
           SearchAggregation.bucketSelector(
               "filter_groups",
               "if (params.matching_count == 0) return false; return params.latest_timestamp == params.matching_timestamp;",
               "latest_timestamp,matching_count,matching_timestamp",
               "max_timestamp,with_content_filters>count,with_content_filters>max_matching_timestamp"));
-
       rootNodes.add(termsCountAgg);
       // stats_bucket counts how many buckets survived in byTermsCount, giving an exact total
       // that reflects filters but not the pagination window.
       rootNodes.add(
           SearchAggregation.statsBucket("total_bucket_count", "byTermsCount>max_timestamp"));
     }
-
     return rootNodes;
   }
 
@@ -813,17 +798,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   private Map<String, Object> extractAndFilterSource(Map<String, Object> hit) {
     List<String> includeSearchFields = getIncludeSearchFields();
     List<String> excludeSearchFields = getExcludeSearchFields();
-
     Map<String, Object> source = (Map<String, Object>) hit.get("_source");
     if (source == null) {
       return new HashMap<>();
     }
-
     if (CommonUtil.nullOrEmpty(includeSearchFields)
         && CommonUtil.nullOrEmpty(excludeSearchFields)) {
       return source;
     }
-
     Map<String, Object> filteredSource = new HashMap<>();
     for (Map.Entry<String, Object> entry : source.entrySet()) {
       String fieldName = entry.getKey();
@@ -831,7 +813,6 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
         filteredSource.put(fieldName, entry.getValue());
       }
     }
-
     return filteredSource;
   }
 

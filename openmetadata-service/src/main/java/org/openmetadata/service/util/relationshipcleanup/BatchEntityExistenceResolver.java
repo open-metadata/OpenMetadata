@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.util.relationshipcleanup;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -24,9 +23,9 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 
 /**
@@ -43,14 +42,17 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 public class BatchEntityExistenceResolver implements RelationshipValidator.EntityExistenceChecker {
 
   private static final int MAX_CACHE_ENTRIES = 100_000;
+
   private static final int MAX_IDS_PER_QUERY = 5_000;
 
-  private final Map<String, EntityRepository<?>> entityRepositories;
+  private final Map<String, EntityPolicy<?>> entityRepositories;
+
   private final Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositories;
+
   private final Cache<String, Boolean> existenceCache;
 
   public BatchEntityExistenceResolver(
-      Map<String, EntityRepository<?>> entityRepositories,
+      Map<String, EntityPolicy<?>> entityRepositories,
       Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositories) {
     this.entityRepositories = entityRepositories;
     this.entityTimeSeriesRepositories = entityTimeSeriesRepositories;

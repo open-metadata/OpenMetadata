@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyPatternDraftFactory.Draft;
 
@@ -52,7 +53,8 @@ public final class OntologyPatternInstantiationService {
       final OntologyChangeSetRepository repository) {
     this(
         draftFactory,
-        (uriInfo, changeSet, user) -> repository.create(uriInfo, changeSet, user, null));
+        (uriInfo, changeSet, user) ->
+            repository.creates().create(uriInfo, changeSet, new EntityCommandActor(user, null)));
   }
 
   OntologyPatternInstantiationService(

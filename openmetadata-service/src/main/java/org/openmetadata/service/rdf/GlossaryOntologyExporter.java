@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -58,21 +57,30 @@ import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.SemanticReference;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexRow;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class GlossaryOntologyExporter {
+
   private static final String OM = "https://open-metadata.org/ontology/";
+
   private static final String RELATED_TO_TYPE = "relatedTo";
+
   private static final String DEFAULT_TERM_FIELDS =
       "attributes,conceptMappings,entityStatus,parent,realizedIn,relatedTerms,synonyms";
+
   private static final String MAPPED_TO_PREDICATE = "mappedTo";
+
   private final URI publicBaseUri;
+
   private final OntologyAnnexDAO annexDAO;
+
   private final OntologyExpressionRdfWriter expressionWriter;
 
   public GlossaryOntologyExporter(final URI publicBaseUri, final OntologyAnnexDAO annexDAO) {
@@ -124,21 +132,26 @@ public final class GlossaryOntologyExporter {
   private Glossary glossary(final UUID glossaryId) {
     final GlossaryRepository repository =
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-    return repository.get(
-        null,
-        glossaryId,
-        repository.getFields("namespaces,ontologyConfiguration"),
-        Include.NON_DELETED,
-        false);
+    return repository
+        .reads()
+        .byId(
+            glossaryId,
+            new EntityReadService.Query(
+                null,
+                repository.fieldPolicy().parse("namespaces,ontologyConfiguration"),
+                RelationIncludes.fromInclude(Include.NON_DELETED),
+                false));
   }
 
   @SuppressWarnings("unchecked")
   private List<GlossaryTerm> terms(final Glossary glossary) {
-    final EntityRepository<GlossaryTerm> repository =
-        (EntityRepository<GlossaryTerm>) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    final EntityPolicy<GlossaryTerm> repository =
+        (EntityPolicy<GlossaryTerm>) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     final ListFilter filter = new ListFilter(Include.NON_DELETED);
     filter.addQueryParam("parent", glossary.getFullyQualifiedName());
-    return repository.listAll(repository.getFields(DEFAULT_TERM_FIELDS), filter);
+    return repository
+        .collections()
+        .all(repository.fieldPolicy().parse(DEFAULT_TERM_FIELDS), filter);
   }
 
   private static Model ontologyModel(final Glossary glossary) {
@@ -543,12 +556,13 @@ public final class GlossaryOntologyExporter {
 
   @SuppressWarnings("unchecked")
   private void addAxioms(final Model model, final UUID glossaryId) {
-    final EntityRepository<OntologyAxiom> repository =
-        (EntityRepository<OntologyAxiom>) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM);
+    final EntityPolicy<OntologyAxiom> repository =
+        (EntityPolicy<OntologyAxiom>) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM);
     final ListFilter filter = new ListFilter(Include.NON_DELETED);
     filter.addQueryParam("glossaryId", glossaryId.toString());
     repository
-        .listAll(repository.getFields(""), filter)
+        .collections()
+        .all(repository.fieldPolicy().parse(""), filter)
         .forEach(axiom -> expressionWriter.write(model, axiom));
   }
 

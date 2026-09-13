@@ -8,8 +8,12 @@ import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * {@link ContextProcessingEngine} for ContextFile sources. The source text is the current content
@@ -57,7 +61,14 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
     if (current != null) {
       ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
       updated.setExtractionStats(stats);
-      fileRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
+      fileRepository
+          .puts()
+          .update(
+              null,
+              current,
+              updated,
+              new EntityCommandActor(Entity.ADMIN_USER_NAME, null),
+              EntityPutService.Mode.NORMAL);
     }
   }
 
@@ -75,8 +86,15 @@ public class FileContextProcessingEngine extends ContextProcessingEngine {
     ContextFile result = null;
     try {
       result =
-          fileRepository.get(
-              null, fileId, fileRepository.getFields(""), Include.NON_DELETED, false);
+          fileRepository
+              .reads()
+              .byId(
+                  fileId,
+                  new EntityReadService.Query(
+                      null,
+                      fileRepository.fieldPolicy().parse(""),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
     } catch (EntityNotFoundException e) {
       // A deleted file is a legitimate skip; any other failure (DB outage, ...) must propagate so
       // the caller records a Failed run instead of silently marking the file Processed.

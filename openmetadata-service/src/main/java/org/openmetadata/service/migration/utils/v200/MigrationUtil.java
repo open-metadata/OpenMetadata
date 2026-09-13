@@ -72,12 +72,14 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
@@ -91,18 +93,26 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MigrationUtil {
 
   private static final String DATA_CONSUMER_ROLE = "DataConsumer";
+
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
+
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
+
   private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+
   private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
+
   private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
+
   private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
+
   private static final String ADMIN_USER_NAME = "admin";
 
   /**
@@ -121,6 +131,7 @@ public class MigrationUtil {
 
   private static final Map<String, List<EntityReference>> DOMAIN_CACHE =
       new LinkedHashMap<>(16, 0.75f, true) {
+
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, List<EntityReference>> eldest) {
           return size() > DOMAIN_CACHE_MAX_SIZE;
@@ -167,7 +178,6 @@ public class MigrationUtil {
       SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
       AssetTypeConfiguration defaultConfiguration =
           defaultSettings != null ? defaultSettings.getDefaultConfiguration() : null;
-
       if (currentSettings == null) {
         LOG.warn("Stored searchSettings could not be loaded; skipping ranking settings backfill");
       } else if (defaultConfiguration == null || defaultConfiguration.getRanking() == null) {
@@ -201,12 +211,10 @@ public class MigrationUtil {
         || Boolean.FALSE.equals(currentRanking.getEnabled())) {
       return false;
     }
-
     List<RankingStage> defaultStages = listOrEmpty(defaultRanking.getStages());
     if (defaultStages.isEmpty()) {
       return false;
     }
-
     List<RankingStage> currentStages = new ArrayList<>(listOrEmpty(currentRanking.getStages()));
     Set<String> currentStageNames = new HashSet<>();
     for (RankingStage stage : currentStages) {
@@ -214,7 +222,6 @@ public class MigrationUtil {
         currentStageNames.add(stage.getName());
       }
     }
-
     boolean merged = false;
     for (int index = 0; index < defaultStages.size(); index++) {
       RankingStage defaultStage = defaultStages.get(index);
@@ -227,7 +234,6 @@ public class MigrationUtil {
       merged = true;
       LOG.info("Backfilled missing search ranking stage: {}", defaultStage.getName());
     }
-
     if (merged) {
       currentRanking.setStages(currentStages);
     }
@@ -242,14 +248,12 @@ public class MigrationUtil {
         return currentIndex + 1;
       }
     }
-
     for (int index = defaultStageIndex + 1; index < defaultStages.size(); index++) {
       int currentIndex = rankingStageIndex(currentStages, defaultStages.get(index).getName());
       if (currentIndex >= 0) {
         return currentIndex;
       }
     }
-
     return currentStages.size();
   }
 
@@ -288,7 +292,7 @@ public class MigrationUtil {
             "{} seed not found on classpath, skipping DataConsumer attachment", TASK_AUTHOR_POLICY);
         return;
       }
-      Role role = roleRepository.findByName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
+      Role role = roleRepository.lookup().byName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
       collectionDAO
           .relationshipDAO()
           .insert(
@@ -318,7 +322,7 @@ public class MigrationUtil {
   public static void addCreateTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      Policy policy = repository.lookup().byName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
       if (policy.getRules() == null) {
         policy.setRules(new ArrayList<>());
       }
@@ -369,7 +373,7 @@ public class MigrationUtil {
   public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      Policy policy = repository.lookup().byName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
       if (policy.getRules() == null) {
         policy.setRules(new ArrayList<>());
       }
@@ -426,7 +430,7 @@ public class MigrationUtil {
   private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {
     Policy existing = null;
     try {
-      existing = repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+      existing = repository.lookup().byName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
     } catch (EntityNotFoundException ignored) {
       // Not seeded yet — fall through to seed-from-classpath path.
     }
@@ -438,7 +442,7 @@ public class MigrationUtil {
       for (Policy seed : seeds) {
         if (TASK_AUTHOR_POLICY.equals(seed.getName())) {
           repository.initializeEntity(seed);
-          return repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+          return repository.lookup().byName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
         }
       }
     } catch (IOException e) {
@@ -454,7 +458,6 @@ public class MigrationUtil {
    */
   public static void migrateSuggestionsToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of suggestions to task_entity");
-
     boolean tableExists;
     try {
       handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list();
@@ -462,35 +465,27 @@ public class MigrationUtil {
     } catch (Exception e) {
       tableExists = false;
     }
-
     if (!tableExists) {
       LOG.info("suggestions table does not exist, skipping suggestion migration");
       return;
     }
-
     List<Map<String, Object>> suggestions =
         handle.createQuery("SELECT json FROM suggestions ORDER BY updatedAt ASC").mapToMap().list();
-
     if (suggestions.isEmpty()) {
       LOG.info("No suggestions found to migrate");
       handle.execute("DROP TABLE IF EXISTS suggestions");
       return;
     }
-
     LOG.info("Found {} suggestions to migrate", suggestions.size());
-
     long seqVal = getSequenceValue(handle);
     int migrated = 0;
     int skipped = 0;
-
     for (Map<String, Object> row : suggestions) {
       try {
         String jsonStr = row.get("json").toString();
         JsonNode suggestionJson = JsonUtils.readTree(jsonStr);
-
         String suggestionId = suggestionJson.get("id").asText();
         boolean alreadyExists = taskExists(handle, suggestionId);
-
         if (alreadyExists) {
           String createdByUserId = null;
           if (suggestionJson.has("createdBy")
@@ -509,18 +504,15 @@ public class MigrationUtil {
           skipped++;
           continue;
         }
-
         seqVal++;
         String taskIdStr = String.format("TASK-%05d", seqVal);
         String fqnHash = FullyQualifiedName.buildHash(taskIdStr);
-
         String entityLink =
             suggestionJson.has("entityLink") ? suggestionJson.get("entityLink").asText() : null;
         String suggestionType =
             suggestionJson.has("type") ? suggestionJson.get("type").asText() : "SuggestDescription";
         String oldStatus =
             suggestionJson.has("status") ? suggestionJson.get("status").asText() : "Open";
-
         String mappedSuggestionType =
             "SuggestTagLabel".equals(suggestionType) ? "Tag" : "Description";
         String newStatus =
@@ -529,7 +521,6 @@ public class MigrationUtil {
               case "Rejected" -> "Rejected";
               default -> "Open";
             };
-
         ObjectNode taskJson = JsonUtils.getObjectNode();
         taskJson.put("id", suggestionId);
         taskJson.put("taskId", taskIdStr);
@@ -539,21 +530,17 @@ public class MigrationUtil {
         taskJson.put("type", "Suggestion");
         taskJson.put("status", newStatus);
         taskJson.put("priority", "Medium");
-
         // Build about reference and aboutFqnHash from entityLink
         if (entityLink != null) {
           setAboutFromEntityLink(taskJson, entityLink, suggestionJson);
         }
-
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated suggestions correctly.
         List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
-
         // Build payload
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
-
         // Keep the field path the entityLink points at (e.g. columns.<col>.tags) so a tag
         // suggestion lands on the suggested column, not the parent entity; fall back to
         // entity-level tags only when the link carries no tags field.
@@ -562,7 +549,6 @@ public class MigrationUtil {
           fieldPath = Entity.FIELD_TAGS;
         }
         payload.put("fieldPath", fieldPath);
-
         if ("Tag".equals(mappedSuggestionType)) {
           JsonNode tagLabels = suggestionJson.get("tagLabels");
           if (tagLabels != null) {
@@ -577,7 +563,6 @@ public class MigrationUtil {
         }
         payload.put("source", "User");
         taskJson.set("payload", payload);
-
         // Extract createdBy ID from the suggestion's EntityReference
         String createdByUserId = null;
         if (suggestionJson.has("createdBy")
@@ -586,14 +571,12 @@ public class MigrationUtil {
           createdByUserId = suggestionJson.get("createdBy").get("id").asText();
           taskJson.put("createdById", createdByUserId);
         }
-
         long createdAt =
             suggestionJson.has("createdAt") ? suggestionJson.get("createdAt").asLong() : 0;
         long updatedAt =
             suggestionJson.has("updatedAt") ? suggestionJson.get("updatedAt").asLong() : createdAt;
         String updatedBy =
             suggestionJson.has("updatedBy") ? suggestionJson.get("updatedBy").asText() : "system";
-
         taskJson.put("createdAt", createdAt);
         taskJson.put("updatedAt", updatedAt);
         taskJson.put("updatedBy", updatedBy);
@@ -602,7 +585,6 @@ public class MigrationUtil {
         taskJson.set("comments", JsonUtils.getObjectNode().arrayNode());
         taskJson.put("commentCount", 0);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
-
         insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, suggestionId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
@@ -613,7 +595,6 @@ public class MigrationUtil {
         skipped++;
       }
     }
-
     updateSequenceValue(handle, seqVal);
     handle.execute("DROP TABLE IF EXISTS suggestions");
     LOG.info("Suggestion migration complete: migrated={}, skipped={}", migrated, skipped);
@@ -642,44 +623,34 @@ public class MigrationUtil {
                     "SELECT json FROM %s WHERE type = 'Task' ORDER BY createdAt ASC", threadTable))
             .mapToMap()
             .list();
-
     if (threads.isEmpty()) {
       LOG.info("No thread-based tasks found to migrate");
       return;
     }
-
     LOG.info("Found {} thread-based tasks to migrate", threads.size());
-
     Map<String, String> umbrellaWorkflowInstanceIds =
         resolveUmbrellaWorkflowInstanceIdBatch(handle, threads);
-
     long seqVal = getSequenceValue(handle);
     int migrated = 0;
     int skipped = 0;
-
     for (Map<String, Object> row : threads) {
       try {
         String jsonStr = row.get("json").toString();
         JsonNode threadJson = JsonUtils.readTree(jsonStr);
-
         String threadId = threadJson.get("id").asText();
         boolean alreadyExists = taskExists(handle, threadId);
-
         JsonNode taskDetails = threadJson.get("task");
         if (taskDetails == null) {
           skipped++;
           continue;
         }
-
         String aboutLink = threadJson.has("about") ? threadJson.get("about").asText() : null;
         if (aboutLink == null) {
           skipped++;
           continue;
         }
-
         String oldType = taskDetails.get("type").asText();
         String oldStatus = taskDetails.has("status") ? taskDetails.get("status").asText() : "Open";
-
         MessageParser.EntityLink entityLink;
         try {
           entityLink = MessageParser.EntityLink.parse(aboutLink);
@@ -688,7 +659,6 @@ public class MigrationUtil {
           skipped++;
           continue;
         }
-
         if (alreadyExists) {
           String createdByName = threadJson.path("createdBy").asText("system");
           String createdByUserId = lookupUserId(handle, createdByName);
@@ -713,16 +683,13 @@ public class MigrationUtil {
           skipped++;
           continue;
         }
-
         String entityType = entityLink.getEntityType();
         String newType = mapThreadTaskType(oldType, entityType);
         String newCategory = mapThreadTaskCategory(oldType, entityType);
         String newStatus = mapThreadTaskStatus(oldStatus, oldType, entityType);
-
         seqVal++;
         String taskIdStr = String.format("TASK-%05d", seqVal);
         String fqnHash = FullyQualifiedName.buildHash(taskIdStr);
-
         ObjectNode taskJson = JsonUtils.getObjectNode();
         taskJson.put("id", threadId);
         taskJson.put("taskId", taskIdStr);
@@ -732,31 +699,25 @@ public class MigrationUtil {
         taskJson.put("type", newType);
         taskJson.put("status", newStatus);
         taskJson.put("priority", "Medium");
-
         // Set about and aboutFqnHash
         setAboutFromEntityLink(taskJson, aboutLink, threadJson);
-
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated tasks correctly.
         List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
-
         // Build payload
         ObjectNode payload = buildThreadTaskPayload(oldType, taskDetails, entityLink);
         if (payload != null) {
           taskJson.set("payload", payload);
         }
-
         // Set assignees
         if (taskDetails.has("assignees") && taskDetails.get("assignees").isArray()) {
           taskJson.set("assignees", taskDetails.get("assignees"));
         }
-
         // Set description from thread message
         if (threadJson.has("message")) {
           taskJson.put("description", threadJson.get("message").asText());
         }
-
         long createdAt = threadJson.has("threadTs") ? threadJson.get("threadTs").asLong() : 0;
         long updatedAt =
             threadJson.has("updatedAt") ? threadJson.get("updatedAt").asLong() : createdAt;
@@ -764,7 +725,6 @@ public class MigrationUtil {
             threadJson.has("createdBy") ? threadJson.get("createdBy").asText() : "system";
         String updatedBy =
             threadJson.has("updatedBy") ? threadJson.get("updatedBy").asText() : createdByName;
-
         // Preserve the original requester: createdBy ref + createdById for the filter.
         ObjectNode createdByRef = buildUserRef(createdByName);
         String createdByUserId = null;
@@ -773,7 +733,6 @@ public class MigrationUtil {
           taskJson.put("createdById", createdByUserId);
           taskJson.set("createdBy", createdByRef);
         }
-
         taskJson.put("createdAt", createdAt);
         taskJson.put("updatedAt", updatedAt);
         taskJson.put("updatedBy", updatedBy);
@@ -783,12 +742,10 @@ public class MigrationUtil {
         // Task has no top-level reactions field, so thread-level reactions are not carried over.
         migrateThreadPostsToComments(threadJson, taskJson);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
-
         String umbrellaWorkflowInstanceId = umbrellaWorkflowInstanceIds.get(threadId);
         if (umbrellaWorkflowInstanceId != null) {
           taskJson.put("workflowInstanceId", umbrellaWorkflowInstanceId);
         }
-
         // Resolution for closed tasks: keep resolvedBy from the legacy closedBy.
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
@@ -807,7 +764,6 @@ public class MigrationUtil {
           }
           taskJson.set("resolution", resolution);
         }
-
         insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
         insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
@@ -825,14 +781,12 @@ public class MigrationUtil {
         skipped++;
       }
     }
-
     updateSequenceValue(handle, seqVal);
     LOG.info("Thread task migration complete: migrated={}, skipped={}", migrated, skipped);
   }
 
   public static void backfillAnnouncementRelationships(Handle handle) {
     LOG.info("Backfilling announcement relationships");
-
     boolean tableExists;
     try {
       handle.createQuery("SELECT 1 FROM announcement_entity LIMIT 1").mapTo(Integer.class).one();
@@ -840,50 +794,41 @@ public class MigrationUtil {
     } catch (Exception e) {
       tableExists = false;
     }
-
     if (!tableExists) {
       LOG.info("announcement_entity table does not exist, skipping relationship backfill");
       return;
     }
-
     List<Map<String, Object>> rows =
         handle.createQuery("SELECT json FROM announcement_entity").mapToMap().list();
     if (rows.isEmpty()) {
       return;
     }
-
     AnnouncementRepository repository =
         (AnnouncementRepository) Entity.getEntityRepository(Entity.ANNOUNCEMENT);
     CollectionDAO.EntityRelationshipDAO relationshipDAO =
         Entity.getCollectionDAO().relationshipDAO();
-
     for (Map<String, Object> row : rows) {
       try {
         Announcement announcement =
             JsonUtils.readValue(row.get("json").toString(), Announcement.class);
-
         relationshipDAO.deleteTo(
             announcement.getId(), Entity.ANNOUNCEMENT, Relationship.HAS.ordinal());
         relationshipDAO.deleteTo(
             announcement.getId(), Entity.ANNOUNCEMENT, Relationship.OWNS.ordinal());
         relationshipDAO.deleteTo(
             announcement.getId(), Entity.ANNOUNCEMENT, Relationship.MENTIONED_IN.ordinal());
-
         if (announcement.getEntityLink() == null) {
           continue;
         }
-
         EntityReference target =
             EntityUtil.validateEntityLink(
                 MessageParser.EntityLink.parse(announcement.getEntityLink()));
-
         relationshipDAO.insert(
             target.getId(),
             announcement.getId(),
             target.getType(),
             Entity.ANNOUNCEMENT,
             Relationship.MENTIONED_IN.ordinal());
-
         List<EntityReference> owners = Entity.getOwners(target);
         if (owners != null) {
           for (EntityReference owner : owners) {
@@ -895,7 +840,6 @@ public class MigrationUtil {
                 Relationship.OWNS.ordinal());
           }
         }
-
         repository.prepare(announcement, true);
         List<EntityReference> domains = announcement.getDomains();
         if (domains != null) {
@@ -922,22 +866,17 @@ public class MigrationUtil {
   public static void migrateLegacyActivityThreadsToActivityStream(
       Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of legacy thread activity to activity_stream");
-
     if (!tableExists(handle, "thread_entity")) {
       LOG.info("thread_entity table does not exist, skipping activity stream migration");
       return;
     }
-
     List<Map<String, Object>> rows = listLegacyActivityThreadRows(handle);
-
     if (rows.isEmpty()) {
       LOG.info("No legacy conversation rows found to inspect for activity migration");
       return;
     }
-
     int migrated = 0;
     int skipped = 0;
-
     for (Map<String, Object> row : rows) {
       try {
         String json = row.get("json").toString();
@@ -945,17 +884,14 @@ public class MigrationUtil {
         JsonNode legacyThreadJson = JsonUtils.readTree(json);
         ActivityEvent event =
             buildActivityEventFromLegacyThread(handle, legacyThread, legacyThreadJson);
-
         if (event == null) {
           skipped++;
           continue;
         }
-
         if (activityEventExists(handle, event.getId(), event.getTimestamp())) {
           skipped++;
           continue;
         }
-
         insertActivityEvent(handle, event, connectionType);
         migrated++;
       } catch (Exception e) {
@@ -963,7 +899,6 @@ public class MigrationUtil {
         skipped++;
       }
     }
-
     LOG.info(
         "Legacy activity thread migration complete: migrated={}, skipped={}", migrated, skipped);
   }
@@ -974,7 +909,6 @@ public class MigrationUtil {
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
       String entityType = entityLink.getEntityType();
       String entityFQN = entityLink.getEntityFQN();
-
       ObjectNode aboutRef = JsonUtils.getObjectNode();
       String entityId = extractEntityIdFromSource(sourceJson);
       if (entityId == null) {
@@ -986,7 +920,6 @@ public class MigrationUtil {
       aboutRef.put("type", entityType);
       aboutRef.put("fullyQualifiedName", entityFQN);
       taskJson.set("about", aboutRef);
-
       String aboutFqnHash = FullyQualifiedName.buildHash(entityFQN);
       taskJson.put("aboutFqnHash", aboutFqnHash);
     } catch (Exception e) {
@@ -1018,9 +951,16 @@ public class MigrationUtil {
   private static String lookupEntityIdByFqn(String entityType, String entityFQN) {
     String resolvedId = null;
     try {
-      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      EntityPolicy<?> repo = Entity.getEntityRepository(entityType);
       Object entity =
-          repo.getByName(null, entityFQN, repo.getFields(""), Include.NON_DELETED, true);
+          repo.reads()
+              .byName(
+                  entityFQN,
+                  new EntityReadService.Query(
+                      null,
+                      repo.fieldPolicy().parse(""),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      true));
       if (entity instanceof EntityInterface ei && ei.getId() != null) {
         resolvedId = ei.getId().toString();
       }
@@ -1187,7 +1127,6 @@ public class MigrationUtil {
         || legacyThread.getGeneratedBy() != Thread.GeneratedBy.SYSTEM) {
       return null;
     }
-
     EntityReference entityRef = resolveActivityEntityReference(legacyThread);
     if (entityRef == null || entityRef.getId() == null || entityRef.getType() == null) {
       LOG.debug(
@@ -1195,27 +1134,22 @@ public class MigrationUtil {
           legacyThread.getId());
       return null;
     }
-
     ActivityEventType eventType = mapLegacyActivityThreadType(legacyThread, legacyThreadJson);
     if (eventType == null) {
       return null;
     }
-
     String actorName =
         legacyThread.getUpdatedBy() != null && !legacyThread.getUpdatedBy().isBlank()
             ? legacyThread.getUpdatedBy()
             : legacyThread.getCreatedBy();
     EntityReference actorRef = buildActivityActorReference(handle, actorName);
-
     long timestamp =
         legacyThread.getUpdatedAt() != null
             ? legacyThread.getUpdatedAt()
             : legacyThread.getThreadTs() != null
                 ? legacyThread.getThreadTs()
                 : System.currentTimeMillis();
-
     String fieldName = readThreadFeedFieldName(legacyThreadJson);
-
     return new ActivityEvent()
         .withId(legacyThread.getId())
         .withEventType(eventType)
@@ -1242,7 +1176,6 @@ public class MigrationUtil {
             ? UUID.fromString(actorId)
             : UUID.nameUUIDFromBytes(
                 ("activity-actor:" + actorName).getBytes(StandardCharsets.UTF_8));
-
     return new EntityReference()
         .withId(actorUuid)
         .withType(Entity.USER)
@@ -1254,7 +1187,6 @@ public class MigrationUtil {
     if (domainIds == null || domainIds.isEmpty()) {
       return null;
     }
-
     return domainIds.stream()
         .map(domainId -> new EntityReference().withId(domainId).withType(Entity.DOMAIN))
         .toList();
@@ -1265,7 +1197,6 @@ public class MigrationUtil {
     if (legacyThread.getCardStyle() == null) {
       return mapFieldNameToActivityEventType(readThreadFeedFieldName(legacyThreadJson));
     }
-
     return switch (legacyThread.getCardStyle()) {
       case ENTITY_CREATED -> ActivityEventType.ENTITY_CREATED;
       case ENTITY_DELETED -> ActivityEventType.ENTITY_DELETED;
@@ -1297,7 +1228,6 @@ public class MigrationUtil {
     if (fieldName == null || fieldName.isBlank()) {
       return null;
     }
-
     return switch (fieldName) {
       case "description" -> ActivityEventType.DESCRIPTION_UPDATED;
       case "tags" -> ActivityEventType.TAGS_UPDATED;
@@ -1314,11 +1244,9 @@ public class MigrationUtil {
     if (legacyThread.getEntityRef() != null && legacyThread.getEntityRef().getId() != null) {
       return legacyThread.getEntityRef();
     }
-
     if (legacyThread.getAbout() == null || legacyThread.getAbout().isBlank()) {
       return null;
     }
-
     try {
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(legacyThread.getAbout());
       return Entity.getEntityReferenceByName(
@@ -1351,32 +1279,26 @@ public class MigrationUtil {
     if (entitySpecificInfo.isMissingNode() || entitySpecificInfo.isNull()) {
       return null;
     }
-
     String previousKey = oldValue ? "previousDescription" : "newDescription";
     if ("description".equals(fieldName) && entitySpecificInfo.has(previousKey)) {
       return entitySpecificInfo.get(previousKey).asText();
     }
-
     if ("tags".equals(fieldName)) {
       String key = oldValue ? "previousTags" : "updatedTags";
       return entitySpecificInfo.has(key) ? entitySpecificInfo.get(key).toString() : null;
     }
-
     if ("owner".equals(fieldName) || "owners".equals(fieldName)) {
       String key = oldValue ? "previousOwner" : "updatedOwner";
       return entitySpecificInfo.has(key) ? entitySpecificInfo.get(key).toString() : null;
     }
-
     if ("domain".equals(fieldName) || "domains".equals(fieldName)) {
       String key = oldValue ? "previousDomains" : "updatedDomains";
       return entitySpecificInfo.has(key) ? entitySpecificInfo.get(key).toString() : null;
     }
-
     if (fieldName != null && fieldName.startsWith("extension")) {
       String key = oldValue ? "previousValue" : "updatedValue";
       return entitySpecificInfo.has(key) ? entitySpecificInfo.get(key).toString() : null;
     }
-
     return null;
   }
 
@@ -1384,7 +1306,6 @@ public class MigrationUtil {
     if (about == null || about.isBlank()) {
       return false;
     }
-
     try {
       MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(about);
       return List.of("columns", "schemaFields", "children").contains(entityLink.getFieldName())
@@ -1417,7 +1338,6 @@ public class MigrationUtil {
             + "WHERE type = 'Conversation' "
             + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.generatedBy')) = 'system' "
             + "ORDER BY updatedAt ASC, createdAt ASC";
-
     try {
       return handle.createQuery(postgresQuery).mapToMap().list();
     } catch (Exception ignored) {
@@ -1429,12 +1349,10 @@ public class MigrationUtil {
     if (value == null) {
       return null;
     }
-
     String stringValue = value.toString();
     if (stringValue.length() <= 1000) {
       return stringValue;
     }
-
     return stringValue.substring(0, 997) + "...";
   }
 
@@ -1465,7 +1383,6 @@ public class MigrationUtil {
             ? null
             : JsonUtils.pojoToJson(
                 event.getDomains().stream().map(domain -> domain.getId().toString()).toList());
-
     String domainsBind = connectionType == ConnectionType.POSTGRES ? ":domains::jsonb" : ":domains";
     String jsonBind = connectionType == ConnectionType.POSTGRES ? ":json::jsonb" : ":json";
     handle
@@ -1724,15 +1641,12 @@ public class MigrationUtil {
     if (about == null || !about.has("type")) {
       return Collections.emptyList();
     }
-
     String entityType = about.get("type").asText();
     String entityId =
         about.has("id") && !about.get("id").isNull() ? about.get("id").asText() : null;
-
     if (entityId == null) {
       return Collections.emptyList();
     }
-
     return resolveDomainsViaRepository(entityId, entityType);
   }
 
@@ -1755,13 +1669,20 @@ public class MigrationUtil {
       return cached;
     }
     try {
-      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      EntityPolicy<?> repo = Entity.getEntityRepository(entityType);
       if (!repo.isSupportsDomains()) {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
       }
       Object entity =
-          repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
+          repo.reads()
+              .byId(
+                  UUID.fromString(entityId),
+                  new EntityReadService.Query(
+                      null,
+                      repo.fieldPolicy().parse(Entity.FIELD_DOMAINS),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       if (!(entity instanceof EntityInterface ei)) {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();
@@ -1916,32 +1837,51 @@ public class MigrationUtil {
     }
   }
 
-  /** Task workflow cutover + recognizer feedback rewrite + mention-alert wiring for 2.0.0. */
+  /**
+   * Task workflow cutover + recognizer feedback rewrite + mention-alert wiring for 2.0.0.
+   */
   public static class TaskWorkflow {
+
     private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
+
     private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
         "createRecognizerFeedbackApprovalTask";
+
     private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
+
     private static final String ENTITY_STATUS_FIELD = "entityStatus";
+
     private static final String FEEDBACK_PAYLOAD_KEY = "feedback";
+
     private static final int BATCH_SIZE = 200;
 
     private static final String NOTIFICATION_ALERT_TYPE = "Notification";
+
     private static final String MENTION_FILTER_NAME = "filterByMentionedName";
+
     private static final String CONVERSATION_RESOURCE = "conversation";
+
     private static final String TASK_RESOURCE = "task";
+
     private static final String TEST_CASE_TABLE = "test_case";
+
     private static final String INCIDENT_TIME_SERIES_TABLE =
         "test_case_resolution_status_time_series";
+
     private static final String UPDATE_SUBSCRIPTION_MYSQL =
         "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
+
     private static final String UPDATE_SUBSCRIPTION_POSTGRES =
         "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
 
     private final Handle handle;
+
     private final CollectionDAO collectionDAO;
+
     private final TaskRepository taskRepository;
+
     private final WorkflowDefinitionRepository workflowDefinitionRepository;
+
     private final WorkflowHandler workflowHandler;
 
     public TaskWorkflow(Handle handle) {
@@ -1960,7 +1900,6 @@ public class MigrationUtil {
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
       int adoptedIncidents = adoptOrphanIncidentChains();
       int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
-
       LOG.info(
           "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, adoptedIncidents={}, backfilledOpenTasks={}",
           seededDefaults,
@@ -1978,7 +1917,6 @@ public class MigrationUtil {
       int seededDefaults = ensureDefaultTaskWorkflows();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
       int rewrittenApprovalEdges = migrateUserApprovalTaskEdgeConditions();
-
       LOG.info(
           "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}, rewrittenApprovalEdges={}",
           seededDefaults,
@@ -2011,7 +1949,9 @@ public class MigrationUtil {
       int migrated = 0;
       try {
         List<WorkflowDefinition> workflowDefinitions =
-            workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+            workflowDefinitionRepository
+                .collections()
+                .all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
         for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
           if (rewriteApprovalEdgesInPlace(workflowDefinition)
               && persistMigratedApprovalEdges(workflowDefinition)) {
@@ -2032,7 +1972,9 @@ public class MigrationUtil {
       try {
         workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
         workflowDefinition.setUpdatedAt(System.currentTimeMillis());
-        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        workflowDefinitionRepository
+            .creates()
+            .upsert(null, workflowDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
         LOG.info(
             "[v200] Migrated approval-edge conditions on workflow '{}'",
             workflowDefinition.getName());
@@ -2114,19 +2056,20 @@ public class MigrationUtil {
               .contains(workflowName)) {
             continue;
           }
-
           WorkflowDefinition existingWorkflow =
-              workflowDefinitionRepository.findByNameOrNull(workflowName, Include.NON_DELETED);
+              workflowDefinitionRepository.lookup().byNameOrNull(workflowName, Include.NON_DELETED);
           if (existingWorkflow != null) {
             workflowDefinition.setId(existingWorkflow.getId());
             workflowDefinition.setVersion(existingWorkflow.getVersion());
           } else if (workflowDefinition.getId() == null) {
             workflowDefinition.setId(UUID.randomUUID());
           }
-
           workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
           workflowDefinition.setUpdatedAt(System.currentTimeMillis());
-          workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+          workflowDefinitionRepository
+              .creates()
+              .upsert(
+                  null, workflowDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
           seeded++;
         }
       } catch (Exception e) {
@@ -2139,19 +2082,21 @@ public class MigrationUtil {
       int redeployed = 0;
       try {
         List<WorkflowDefinition> workflowDefinitions =
-            workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
-
+            workflowDefinitionRepository
+                .collections()
+                .all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
         for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
           if (!containsApprovalTaskNodeForCutover(workflowDefinition.getNodes())) {
             continue;
           }
-
           try {
             if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
               addEntityStatusToTriggerExclude(workflowDefinition);
             }
             WorkflowDefinition patched = backfillUserApprovalTransitionMetadata(workflowDefinition);
-            workflowDefinitionRepository.createOrUpdate(null, patched, ADMIN_USER_NAME);
+            workflowDefinitionRepository
+                .creates()
+                .upsert(null, patched, new EntityCommandActor(ADMIN_USER_NAME, null), false);
             redeployed++;
             LOG.info(
                 "Redeployed workflow '{}' to activate Task V2 approval listeners",
@@ -2242,7 +2187,6 @@ public class MigrationUtil {
       approve.put("targetTaskStatus", TaskEntityStatus.Approved.value());
       approve.put("resolutionType", TaskResolutionType.Approved.value());
       approve.put("requiresComment", false);
-
       Map<String, Object> reject = new LinkedHashMap<>();
       reject.put("id", "reject");
       reject.put("label", "Reject");
@@ -2250,7 +2194,6 @@ public class MigrationUtil {
       reject.put("targetTaskStatus", TaskEntityStatus.Rejected.value());
       reject.put("resolutionType", TaskResolutionType.Rejected.value());
       reject.put("requiresComment", false);
-
       return List.of(approve, reject);
     }
 
@@ -2289,18 +2232,15 @@ public class MigrationUtil {
       MigrationStats stats = new MigrationStats();
       int offset = 0;
       String legacyThreadTable = getLegacyThreadSourceTable();
-
       if (legacyThreadTable == null) {
         LOG.info("No legacy thread task table found, skipping task workflow cutover migration");
         return stats;
       }
-
       while (true) {
         List<String> threadBatch = listTaskThreadWithOffset(legacyThreadTable, BATCH_SIZE, offset);
         if (threadBatch.isEmpty()) {
           break;
         }
-
         List<Thread> parsedThreads = new ArrayList<>(threadBatch.size());
         for (String threadJson : threadBatch) {
           try {
@@ -2310,7 +2250,6 @@ public class MigrationUtil {
             LOG.warn("Failed to parse legacy thread task JSON: {}", e.getMessage());
           }
         }
-
         Map<String, String> umbrellaWorkflowInstanceIds =
             lookupLegacyUmbrellaWorkflowInstanceIds(
                 handle,
@@ -2318,7 +2257,6 @@ public class MigrationUtil {
                     .filter(t -> t != null && t.getId() != null)
                     .map(t -> t.getId().toString())
                     .toList());
-
         for (Thread legacyThread : parsedThreads) {
           try {
             migrateLegacyThreadTask(legacyThread, stats, umbrellaWorkflowInstanceIds);
@@ -2327,13 +2265,11 @@ public class MigrationUtil {
             LOG.warn("Failed to migrate legacy thread task: {}", e.getMessage());
           }
         }
-
         offset += threadBatch.size();
         if (threadBatch.size() < BATCH_SIZE) {
           break;
         }
       }
-
       return stats;
     }
 
@@ -2371,7 +2307,7 @@ public class MigrationUtil {
       Task task = buildTaskFromIncidentChain(candidate.latest(), candidate.testCaseId());
       if (task != null) {
         try {
-          taskRepository.create(null, task);
+          taskRepository.creates().create(null, task, new EntityCommandActor(null, null));
           adopted = 1;
           LOG.info("[v200] Adopted orphan incident chain {} as a task", stateId);
         } catch (Exception e) {
@@ -2406,7 +2342,6 @@ public class MigrationUtil {
               .stream()
               .filter(Objects::nonNull)
               .toList();
-
       Map<UUID, OrphanIncidentCandidate> latestPerTestCase = new LinkedHashMap<>();
       for (OrphanIncidentCandidate candidate : candidates) {
         latestPerTestCase.merge(candidate.testCaseId(), candidate, TaskWorkflow::preferStableChain);
@@ -2441,10 +2376,12 @@ public class MigrationUtil {
 
     private record OrphanIncidentCandidate(TestCaseResolutionStatus latest, UUID testCaseId) {}
 
-    /** True when the chain already drives a task, either as its id or through a migrated thread. */
+    /**
+     * True when the chain already drives a task, either as its id or through a migrated thread.
+     */
     private boolean incidentChainHasTask(UUID stateId) {
       try {
-        if (taskRepository.find(stateId, Include.ALL) != null) {
+        if (taskRepository.lookup().byId(stateId, Include.ALL) != null) {
           return true;
         }
       } catch (Exception e) {
@@ -2463,7 +2400,6 @@ public class MigrationUtil {
             "[v200] Incident chain {} has no resolvable test case; skipping", latest.getStateId());
         return null;
       }
-
       long updatedAt =
           latest.getTimestamp() != null ? latest.getTimestamp() : System.currentTimeMillis();
       // Flows into the workflow's updatedBy variable, so it must never be null.
@@ -2474,7 +2410,6 @@ public class MigrationUtil {
       EntityReference actorRef = resolveUserReference(actorName);
       Map<String, Object> payload = new HashMap<>();
       payload.put("testCaseResolutionStatusId", latest.getStateId().toString());
-
       return new Task()
           .withId(latest.getStateId())
           .withCategory(TaskCategory.Incident)
@@ -2497,7 +2432,10 @@ public class MigrationUtil {
         ListFilter filter = new ListFilter(Include.NON_DELETED);
         filter.addQueryParam("taskStatusGroup", "open");
         List<Task> openTasks =
-            listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
+            listOrEmpty(
+                taskRepository
+                    .collections()
+                    .all(taskRepository.fieldPolicy().parse("about,payload"), filter));
         for (Task task : openTasks) {
           // Glossary approvals are governed by GlossaryTermApprovalWorkflow, not a standalone task
           // workflow. A GlossaryApproval task with no workflowInstanceId is a legacy row stranded
@@ -2549,8 +2487,9 @@ public class MigrationUtil {
       WorkflowDefinition definition =
           binding.isEmpty()
               ? null
-              : workflowDefinitionRepository.findByNameOrNull(
-                  binding.get().workflowDefinitionRef(), Include.NON_DELETED);
+              : workflowDefinitionRepository
+                  .lookup()
+                  .byNameOrNull(binding.get().workflowDefinitionRef(), Include.NON_DELETED);
       if (definition != null) {
         workflowHandler.triggerByKey(
             getTriggerWorkflowId(definition.getFullyQualifiedName()),
@@ -2677,8 +2616,9 @@ public class MigrationUtil {
 
     private boolean startGlossaryTermApprovalWorkflow(GlossaryTerm term, String updatedBy) {
       WorkflowDefinition definition =
-          workflowDefinitionRepository.findByNameOrNull(
-              GLOSSARY_TERM_APPROVAL_WORKFLOW, Include.NON_DELETED);
+          workflowDefinitionRepository
+              .lookup()
+              .byNameOrNull(GLOSSARY_TERM_APPROVAL_WORKFLOW, Include.NON_DELETED);
       boolean started = false;
       if (definition != null) {
         Map<String, Object> variables = new LinkedHashMap<>();
@@ -2749,16 +2689,17 @@ public class MigrationUtil {
         ListFilter filter = new ListFilter(Include.NON_DELETED);
         filter.addQueryParam("taskStatusGroup", "open");
         filter.addQueryParam("taskType", TaskEntityType.DataQualityReview.value());
-
         List<Task> openDataQualityReviewTasks =
-            listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
+            listOrEmpty(
+                taskRepository
+                    .collections()
+                    .all(taskRepository.fieldPolicy().parse("about,payload"), filter));
         for (Task task : openDataQualityReviewTasks) {
           if (task == null
               || task.getId() == null
               || !isRecognizerFeedbackDataQualityReviewTask(task)) {
             continue;
           }
-
           TaskEntityType previousType = task.getType();
           TaskCategory previousCategory = task.getCategory();
           try {
@@ -2782,13 +2723,11 @@ public class MigrationUtil {
       if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
         return false;
       }
-
       try {
         Map<String, Object> payload = JsonUtils.readOrConvertValue(task.getPayload(), Map.class);
         if (payload == null || !payload.containsKey(FEEDBACK_PAYLOAD_KEY)) {
           return false;
         }
-
         RecognizerFeedback feedback =
             JsonUtils.convertValue(payload.get(FEEDBACK_PAYLOAD_KEY), RecognizerFeedback.class);
         return feedback != null
@@ -2821,18 +2760,16 @@ public class MigrationUtil {
         stats.skipped++;
         return;
       }
-
       UUID legacyThreadId = legacyThread.getId();
-
       if (isAlreadyMigrated(legacyThreadId)) {
         stats.alreadyMigrated++;
         upsertTaskMigrationMapping(legacyThreadId, legacyThreadId);
         return;
       }
-
       try {
         Task migratedTask = buildTaskFromLegacyThread(legacyThread, umbrellaWorkflowInstanceIds);
-        Task createdTask = taskRepository.create(null, migratedTask);
+        Task createdTask =
+            taskRepository.creates().create(null, migratedTask, new EntityCommandActor(null, null));
         upsertTaskMigrationMapping(legacyThreadId, createdTask.getId());
         stats.migrated++;
       } catch (Exception e) {
@@ -2843,7 +2780,7 @@ public class MigrationUtil {
 
     private boolean isAlreadyMigrated(UUID legacyThreadId) {
       try {
-        return taskRepository.find(legacyThreadId, Include.ALL) != null;
+        return taskRepository.lookup().byId(legacyThreadId, Include.ALL) != null;
       } catch (Exception e) {
         return false;
       }
@@ -2853,19 +2790,15 @@ public class MigrationUtil {
         Thread legacyThread, Map<String, String> umbrellaWorkflowInstanceIds) {
       TaskDetails legacyTaskDetails = legacyThread.getTask();
       TypeAndCategory typeAndCategory = mapLegacyTaskType(legacyTaskDetails.getType());
-
       EntityReference createdByRef = resolveUserReference(legacyThread.getCreatedBy());
       EntityReference aboutRef = resolveAboutReference(legacyThread);
-
       long createdAt =
           legacyThread.getThreadTs() != null
               ? legacyThread.getThreadTs()
               : System.currentTimeMillis();
       long updatedAt =
           legacyThread.getUpdatedAt() != null ? legacyThread.getUpdatedAt() : createdAt;
-
       TaskEntityStatus status = mapLegacyStatus(legacyTaskDetails.getStatus());
-
       Task task =
           new Task()
               .withId(legacyThread.getId())
@@ -2881,20 +2814,16 @@ public class MigrationUtil {
               .withUpdatedAt(updatedAt)
               .withUpdatedBy(resolveUpdatedBy(legacyThread, createdByRef))
               .withPayload(buildLegacyPayload(legacyTaskDetails));
-
       List<TaskComment> comments =
           convertPostsToComments(legacyThread.getPosts(), createdByRef, updatedAt);
       task.withComments(comments).withCommentCount(comments.size());
-
       String batchedUmbrellaId = umbrellaWorkflowInstanceIds.get(legacyThread.getId().toString());
       if (batchedUmbrellaId != null) {
         task.setWorkflowInstanceId(UUID.fromString(batchedUmbrellaId));
       }
-
       if (status != TaskEntityStatus.Open) {
         task.setResolution(buildLegacyResolution(legacyThread, createdByRef));
       }
-
       return task;
     }
 
@@ -2902,7 +2831,6 @@ public class MigrationUtil {
       if (legacyTaskType == null) {
         return new TypeAndCategory(TaskEntityType.CustomTask, TaskCategory.Custom);
       }
-
       return switch (legacyTaskType) {
         case RequestApproval -> new TypeAndCategory(
             TaskEntityType.GlossaryApproval, TaskCategory.Approval);
@@ -2929,12 +2857,10 @@ public class MigrationUtil {
         Thread legacyThread, EntityReference fallbackUserRef) {
       TaskDetails legacyTask = legacyThread.getTask();
       TaskResolutionType resolutionType = mapLegacyResolutionType(legacyTask);
-
       EntityReference resolvedBy = resolveUserReference(legacyTask.getClosedBy());
       if (resolvedBy == null) {
         resolvedBy = fallbackUserRef;
       }
-
       Long resolvedAt = legacyTask.getClosedAt();
       if (resolvedAt == null) {
         resolvedAt = legacyThread.getUpdatedAt();
@@ -2942,7 +2868,6 @@ public class MigrationUtil {
       if (resolvedAt == null) {
         resolvedAt = System.currentTimeMillis();
       }
-
       return new TaskResolution()
           .withType(resolutionType)
           .withResolvedBy(resolvedBy)
@@ -2955,7 +2880,6 @@ public class MigrationUtil {
       if (legacyTask == null) {
         return TaskResolutionType.Completed;
       }
-
       TaskType taskType = legacyTask.getType();
       if (taskType == TaskType.RequestApproval || taskType == TaskType.RecognizerFeedbackApproval) {
         return nullOrEmpty(legacyTask.getNewValue())
@@ -2983,9 +2907,7 @@ public class MigrationUtil {
       if (legacyTask == null) {
         return null;
       }
-
       Map<String, Object> payload = new LinkedHashMap<>();
-
       if (!nullOrEmpty(legacyTask.getOldValue())) {
         payload.put("oldValue", legacyTask.getOldValue());
       }
@@ -3004,19 +2926,16 @@ public class MigrationUtil {
       if (legacyTask.getRecognizer() != null) {
         payload.put("recognizer", legacyTask.getRecognizer());
       }
-
       return payload.isEmpty() ? null : payload;
     }
 
     private List<TaskComment> convertPostsToComments(
         List<Post> posts, EntityReference fallbackUserRef, long fallbackTimestamp) {
       List<TaskComment> comments = new ArrayList<>();
-
       for (Post post : listOrEmpty(posts)) {
         if (post == null || nullOrEmpty(post.getMessage())) {
           continue;
         }
-
         EntityReference author = resolveUserReference(post.getFrom());
         if (author == null) {
           author = fallbackUserRef;
@@ -3024,9 +2943,7 @@ public class MigrationUtil {
         if (author == null) {
           continue;
         }
-
         long createdAt = post.getPostTs() != null ? post.getPostTs() : fallbackTimestamp;
-
         TaskComment comment =
             new TaskComment()
                 .withId(post.getId() != null ? post.getId() : UUID.randomUUID())
@@ -3036,7 +2953,6 @@ public class MigrationUtil {
                 .withReactions(post.getReactions());
         comments.add(comment);
       }
-
       return comments;
     }
 
@@ -3044,11 +2960,9 @@ public class MigrationUtil {
       if (legacyThread.getEntityRef() != null && legacyThread.getEntityRef().getId() != null) {
         return legacyThread.getEntityRef();
       }
-
       if (nullOrEmpty(legacyThread.getAbout())) {
         return null;
       }
-
       try {
         MessageParser.EntityLink entityLink =
             MessageParser.EntityLink.parse(legacyThread.getAbout());
@@ -3070,12 +2984,10 @@ public class MigrationUtil {
 
     private void upsertTaskMigrationMapping(UUID oldThreadId, UUID newTaskId) {
       long migratedAt = System.currentTimeMillis();
-
       handle
           .createUpdate("DELETE FROM task_migration_mapping WHERE old_thread_id = :oldThreadId")
           .bind("oldThreadId", oldThreadId.toString())
           .execute();
-
       handle
           .createUpdate(
               "INSERT INTO task_migration_mapping(old_thread_id, new_task_id, migrated_at, source) "
@@ -3124,7 +3036,6 @@ public class MigrationUtil {
       List<Map<String, Object>> rows =
           handle.createQuery("SELECT id, json FROM event_subscription_entity").mapToMap().list();
       int updated = 0;
-
       for (Map<String, Object> row : rows) {
         String id = row.get("id").toString();
         try {
@@ -3188,7 +3099,9 @@ public class MigrationUtil {
     }
 
     private static class TypeAndCategory {
+
       private final TaskEntityType type;
+
       private final TaskCategory category;
 
       private TypeAndCategory(TaskEntityType type, TaskCategory category) {
@@ -3198,9 +3111,13 @@ public class MigrationUtil {
     }
 
     private static class MigrationStats {
+
       private int migrated;
+
       private int alreadyMigrated;
+
       private int skipped;
+
       private int failed;
     }
   }

@@ -6,8 +6,13 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.EntityUtil.hash;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -62,6 +67,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -521,7 +527,7 @@ public class MigrationUtil {
                       "ingestion-bot")
                   .withExecutable(true)
                   .withFullyQualifiedName(nativeTestSuiteFqn);
-          testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
+          testSuiteRepository.preparation().prepare(newExecutableTestSuite, false);
           try {
             testSuiteRepository
                 .getDao()
@@ -531,23 +537,33 @@ public class MigrationUtil {
                     newExecutableTestSuite.getFullyQualifiedName());
 
             // add relationship between executable TestSuite with Table
-            testSuiteRepository.addRelationship(
-                newExecutableTestSuite.getExecutableEntityReference().getId(),
-                newExecutableTestSuite.getId(),
-                Entity.TABLE,
-                TEST_SUITE,
-                Relationship.CONTAINS);
+            testSuiteRepository
+                .relationshipWrites()
+                .add(
+                    new EntityRelationshipWriter.Edge(
+                        newExecutableTestSuite.getExecutableEntityReference().getId(),
+                        newExecutableTestSuite.getId(),
+                        Entity.TABLE,
+                        TEST_SUITE,
+                        Relationship.CONTAINS),
+                    EntityRelationshipWriter.Value.EMPTY,
+                    false);
 
             // add relationship between all the testCases that are created against a table with
             // native
             // test suite.
             for (TestCase testCase : testCases) {
-              testSuiteRepository.addRelationship(
-                  newExecutableTestSuite.getId(),
-                  testCase.getId(),
-                  TEST_SUITE,
-                  TEST_CASE,
-                  Relationship.CONTAINS);
+              testSuiteRepository
+                  .relationshipWrites()
+                  .add(
+                      new EntityRelationshipWriter.Edge(
+                          newExecutableTestSuite.getId(),
+                          testCase.getId(),
+                          TEST_SUITE,
+                          TEST_CASE,
+                          Relationship.CONTAINS),
+                      EntityRelationshipWriter.Value.EMPTY,
+                      false);
             }
           } catch (Exception ex) {
             LOG.warn("TestSuite {} exists", nativeTestSuiteFqn);
@@ -565,7 +581,8 @@ public class MigrationUtil {
     TestSuiteRepository testSuiteRepository =
         (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
     ListFilter filter = new ListFilter(Include.ALL);
-    List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
+    List<TestSuite> testSuites =
+        testSuiteRepository.collections().all(new Fields(Set.of("id")), filter);
     for (TestSuite testSuite : testSuites) {
       testSuite.setExecutable(false);
       List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
@@ -590,7 +607,7 @@ public class MigrationUtil {
     TestCaseRepository testCaseRepository =
         (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
     List<TestCase> testCases =
-        testCaseRepository.listAll(new Fields(Set.of("id")), new ListFilter(Include.ALL));
+        testCaseRepository.collections().all(new Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestCase testCase : testCases) {
       // Create New Executable Test Suites
       MessageParser.EntityLink entityLink =

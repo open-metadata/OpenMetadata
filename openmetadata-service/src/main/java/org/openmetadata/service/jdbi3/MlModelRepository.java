@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -45,6 +44,16 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityBatchFields;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
@@ -54,29 +63,35 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class MlModelRepository extends EntityRepository<MlModel> {
+@Repository()
+public class MlModelRepository implements EntityPolicy<MlModel> {
+
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
+
   private static final String MODEL_PATCH_FIELDS = "dashboard";
+
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("mlFeatures.description");
 
   public MlModelRepository() {
-    super(
-        MlModelResource.COLLECTION_PATH,
-        Entity.MLMODEL,
-        MlModel.class,
-        Entity.getCollectionDAO().mlModelDAO(),
-        MODEL_PATCH_FIELDS,
-        MODEL_UPDATE_FIELDS,
-        CHANGE_SUMMARY_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                MlModelResource.COLLECTION_PATH,
+                Entity.MLMODEL,
+                MlModel.class,
+                Entity.getCollectionDAO().mlModelDAO()),
+            new EntityPolicyContext.WriteFields(
+                MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS, CHANGE_SUMMARY_FIELDS),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
-
+    context().options().setDescendantsCoveredByAncestorCascade(true);
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("dashboard", this::fetchAndSetDashboards);
-    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+    fieldLoading().register("dashboard", this::fetchAndSetDashboards);
+    fieldLoading().register("usageSummary", this::fetchAndSetUsageSummaries);
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {
@@ -100,13 +115,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
   @Override
   public void setFields(MlModel mlModel, Fields fields, RelationIncludes relationIncludes) {
-    mlModel.setService(getContainer(mlModel.getId()));
+    mlModel.setService(relationships().container(mlModel.getId(), null));
     mlModel.setDashboard(
         fields.contains("dashboard") ? getDashboard(mlModel) : mlModel.getDashboard());
     if (mlModel.getUsageSummary() == null) {
       mlModel.withUsageSummary(
           fields.contains("usageSummary")
-              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
+              ? EntityUtil.getLatestUsage(
+                  context().dependencies().daos().usageDAO(), mlModel.getId())
               : mlModel.getUsageSummary());
     }
   }
@@ -115,10 +131,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   public void setFieldsInBulk(Fields fields, List<MlModel> entities) {
     // Always set default service field for all ML models
     fetchAndSetDefaultService(entities);
-
-    fetchAndSetFields(entities, fields);
+    fieldLoading().populate(entities, fields);
     setInheritedFields(entities, fields);
-
     for (MlModel entity : entities) {
       clearFieldsInternal(entity, fields);
     }
@@ -129,17 +143,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (!fields.contains("dashboard") || mlModels == null || mlModels.isEmpty()) {
       return;
     }
-    setFieldFromMap(true, mlModels, batchFetchDashboards(mlModels), MlModel::setDashboard);
+    EntityBatchFields.assign(true, mlModels, batchFetchDashboards(mlModels), MlModel::setDashboard);
   }
 
   private void fetchAndSetUsageSummaries(List<MlModel> mlModels, Fields fields) {
     if (!fields.contains("usageSummary") || mlModels == null || mlModels.isEmpty()) {
       return;
     }
-    setFieldFromMap(
+    EntityBatchFields.assign(
         true,
         mlModels,
-        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(mlModels)),
+        EntityUtil.getLatestUsageForEntities(
+            context().dependencies().daos().usageDAO(), EntityBatchFields.ids(mlModels)),
         MlModel::setUsageSummary);
   }
 
@@ -148,20 +163,19 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModels == null || mlModels.isEmpty()) {
       return dashboardMap;
     }
-
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 entityListToStrings(mlModels), Relationship.HAS.ordinal(), Entity.DASHBOARD);
-
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID mlModelId = UUID.fromString(record.getFromId());
       EntityReference dashboardRef =
           getEntityReferenceById(Entity.DASHBOARD, UUID.fromString(record.getToId()), NON_DELETED);
       dashboardMap.put(mlModelId, dashboardRef);
     }
-
     return dashboardMap;
   }
 
@@ -169,10 +183,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModels == null || mlModels.isEmpty()) {
       return;
     }
-
     // Batch fetch service references for all ML models
     Map<UUID, EntityReference> serviceMap = batchFetchServices(mlModels);
-
     // Set service for all ML models
     for (MlModel mlModel : mlModels) {
       mlModel.setService(serviceMap.get(mlModel.getId()));
@@ -184,13 +196,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModels == null || mlModels.isEmpty()) {
       return serviceMap;
     }
-
     // Single batch query to get all services for all ML models
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(entityListToStrings(mlModels), Relationship.CONTAINS.ordinal());
-
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID mlModelId = UUID.fromString(record.getToId());
       EntityReference serviceRef = resolveServiceRefLeniently(UUID.fromString(record.getFromId()));
@@ -198,7 +210,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         serviceMap.put(mlModelId, serviceRef);
       }
     }
-
     return serviceMap;
   }
 
@@ -224,7 +235,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public void restorePatchAttributes(MlModel original, MlModel updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
   }
 
@@ -280,7 +291,6 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       validateReferences(mlModel.getMlFeatures());
       mlModel.getMlFeatures().forEach(feature -> checkMutuallyExclusive(feature.getTags()));
     }
-
     // Check that the dashboard exists
     if (mlModel.getDashboard() != null) {
       mlModel.setDashboard(Entity.getEntityReference(mlModel.getDashboard(), Include.NON_DELETED));
@@ -288,47 +298,49 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service", "dashboard");
   }
 
   @Override
   public void storeEntity(MlModel mlModel, boolean update) {
-    store(mlModel, update);
+    persistence().store(mlModel, update);
   }
 
   @Override
   public void storeEntities(List<MlModel> entities) {
-    storeMany(entities);
+    persistence().insertMany(entities);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<MlModel> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<MlModel> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(MlModel::getId).toList();
-    deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+    deleteToMany(ids, context().schema().entityType(), Relationship.CONTAINS, null);
     deleteFromMany(ids, Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
   }
 
   @Override
   public void storeRelationships(MlModel mlModel) {
     addServiceRelationship(mlModel, mlModel.getService());
-
     if (mlModel.getDashboard() != null) {
       // Add relationship from MlModel --- uses ---> Dashboard
-      addRelationship(
-          mlModel.getId(),
-          mlModel.getDashboard().getId(),
-          Entity.MLMODEL,
-          Entity.DASHBOARD,
-          Relationship.USES);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  mlModel.getId(),
+                  mlModel.getDashboard().getId(),
+                  Entity.MLMODEL,
+                  Entity.DASHBOARD,
+                  Relationship.USES),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
-
     setMlFeatureSourcesLineage(mlModel);
   }
 
   @Override
-  protected void storeEntitySpecificRelationshipsForMany(List<MlModel> entities) {
+  public void storeEntitySpecificRelationshipsForMany(List<MlModel> entities) {
     List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
     for (MlModel mlModel : entities) {
       EntityReference service = mlModel.getService();
@@ -338,7 +350,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                 service.getId(),
                 mlModel.getId(),
                 service.getType(),
-                entityType,
+                context().schema().entityType(),
                 Relationship.CONTAINS));
       }
       if (mlModel.getDashboard() != null && mlModel.getDashboard().getId() != null) {
@@ -374,12 +386,16 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                             EntityReference targetEntity =
                                 getEntityReference(mlFeatureSource.getDataSource(), Include.ALL);
                             if (targetEntity != null) {
-                              addRelationship(
-                                  targetEntity.getId(),
-                                  mlModel.getId(),
-                                  targetEntity.getType(),
-                                  MLMODEL,
-                                  Relationship.UPSTREAM);
+                              relationshipWrites()
+                                  .add(
+                                      new EntityRelationshipWriter.Edge(
+                                          targetEntity.getId(),
+                                          mlModel.getId(),
+                                          targetEntity.getType(),
+                                          MLMODEL,
+                                          Relationship.UPSTREAM),
+                                      EntityRelationshipWriter.Value.EMPTY,
+                                      false);
                             }
                           });
                 }
@@ -388,13 +404,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   }
 
   @Override
-  public EntityRepository<MlModel>.EntityUpdater getUpdater(
-      MlModel original, MlModel updated, Operation operation, ChangeSource changeSource) {
-    return new MlModelUpdater(original, updated, operation);
+  public EntityUpdater<MlModel> getUpdater(
+      MlModel original, MlModel updated, EntityOperation operation, ChangeSource changeSource) {
+    return new MlModelUpdater(original, updated, operation).mutation();
   }
 
   @Override
-  protected EntityReference getParentReference(MlModel entity) {
+  public EntityReference getParentReference(MlModel entity) {
     return entity.getService();
   }
 
@@ -430,35 +446,57 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private EntityReference getDashboard(MlModel mlModel) {
     return mlModel == null
         ? null
-        : getToEntityRef(mlModel.getId(), Relationship.USES, DASHBOARD, false);
+        : relationships().singleTo(mlModel.getId(), Relationship.USES, DASHBOARD, false);
   }
 
-  /** Handles entity updated from PUT and POST operation. */
-  public class MlModelUpdater extends EntityUpdater {
-    public MlModelUpdater(MlModel original, MlModel updated, Operation operation) {
-      super(original, updated, operation);
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class MlModelUpdater implements EntitySpecificMutation<MlModel> {
+
+    public MlModelUpdater(MlModel original, MlModel updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("algorithm", () -> updateAlgorithm(original, updated));
-      compareAndUpdate("dashboard", () -> updateDashboard(original, updated));
-      compareAndUpdate("mlFeatures", () -> updateMlFeatures(original, updated));
-      compareAndUpdate("mlHyperParameters", () -> updateMlHyperParameters(original, updated));
-      compareAndUpdate("mlStore", () -> updateMlStore(original, updated));
-      compareAndUpdate("server", () -> updateServer(original, updated));
-      compareAndUpdate("target", () -> updateTarget(original, updated));
-      compareAndUpdate(
+    public void update(EntityUpdater<MlModel> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
+          "algorithm",
+          () -> updateAlgorithm(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "dashboard",
+          () -> updateDashboard(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "mlFeatures",
+          () -> updateMlFeatures(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "mlHyperParameters",
+          () -> updateMlHyperParameters(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "mlStore", () -> updateMlStore(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "server", () -> updateServer(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "target", () -> updateTarget(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
           "sourceUrl",
-          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "sourceUrl",
+                  entityUpdate.getOriginal().getSourceUrl(),
+                  entityUpdate.getUpdated().getSourceUrl()));
+      entityUpdate.compareAndUpdate(
           "sourceHash",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "sourceHash",
-                  original.getSourceHash(),
-                  updated.getSourceHash(),
+                  entityUpdate.getOriginal().getSourceHash(),
+                  entityUpdate.getUpdated().getSourceHash(),
                   false,
                   EntityUtil.objectMatch,
                   false));
@@ -467,24 +505,24 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {
       // Updating an algorithm should be flagged for an ML Model
       // Algorithm is a required field. Cannot be null.
-      if (updated.getAlgorithm() != null
-          && (recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm()))) {
+      if (entityUpdate.getUpdated().getAlgorithm() != null
+          && (entityUpdate.recordChange(
+              "algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm()))) {
         // Mark the EntityUpdater version change to major
-        majorVersionChange = true;
+        entityUpdate.setMajorVersionChange(true);
       }
     }
 
     private void updateMlFeatures(MlModel origModel, MlModel updatedModel) {
       List<MlFeature> addedList = new ArrayList<>();
       List<MlFeature> deletedList = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           "mlFeatures",
           origModel.getMlFeatures(),
           updatedModel.getMlFeatures(),
           addedList,
           deletedList,
           mlFeatureMatch);
-
       for (MlFeature updatedFeature : listOrEmpty(updatedModel.getMlFeatures())) {
         MlFeature storedFeature =
             listOrEmpty(origModel.getMlFeatures()).stream()
@@ -494,18 +532,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         if (storedFeature == null) {
           continue;
         }
-
         updateMlFeatureDescription(storedFeature, updatedFeature);
       }
     }
 
     private void updateMlFeatureDescription(MlFeature originalFeature, MlFeature updatedFeature) {
-      if (operation.isPut() && !nullOrEmpty(originalFeature.getDescription()) && updatedByBot()) {
+      if (entityUpdate.getOperation().isPut()
+          && !nullOrEmpty(originalFeature.getDescription())
+          && entityUpdate.updatedByBot()) {
         updatedFeature.setDescription(originalFeature.getDescription());
         return;
       }
-
-      recordChange(
+      entityUpdate.recordChange(
           "mlFeatures." + originalFeature.getName() + ".description",
           originalFeature.getDescription(),
           updatedFeature.getDescription());
@@ -514,7 +552,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     private void updateMlHyperParameters(MlModel origModel, MlModel updatedModel) {
       List<MlHyperParameter> addedList = new ArrayList<>();
       List<MlHyperParameter> deletedList = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           "mlHyperParameters",
           origModel.getMlHyperParameters(),
           updatedModel.getMlHyperParameters(),
@@ -524,45 +562,64 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
 
     private void updateMlStore(MlModel origModel, MlModel updatedModel) {
-      recordChange("mlStore", origModel.getMlStore(), updatedModel.getMlStore(), true);
+      entityUpdate.recordChange("mlStore", origModel.getMlStore(), updatedModel.getMlStore(), true);
     }
 
     private void updateServer(MlModel origModel, MlModel updatedModel) {
       // Updating the server can break current integrations to the ML services or enable new
       // integrations
-      if (recordChange("server", origModel.getServer(), updatedModel.getServer())) {
+      if (entityUpdate.recordChange("server", origModel.getServer(), updatedModel.getServer())) {
         // Mark the EntityUpdater version change to major
-        majorVersionChange = true;
+        entityUpdate.setMajorVersionChange(true);
       }
     }
 
     private void updateTarget(MlModel origModel, MlModel updatedModel) {
       // Updating the target changes the model response
-      if (recordChange("target", origModel.getTarget(), updatedModel.getTarget())) {
-        majorVersionChange = true;
+      if (entityUpdate.recordChange("target", origModel.getTarget(), updatedModel.getTarget())) {
+        entityUpdate.setMajorVersionChange(true);
       }
     }
 
     private void updateDashboard(MlModel origModel, MlModel updatedModel) {
       EntityReference origDashboard = origModel.getDashboard();
       EntityReference updatedDashboard = updatedModel.getDashboard();
-      if (recordChange("dashboard", origDashboard, updatedDashboard, true, entityReferenceMatch)) {
-
+      if (entityUpdate.recordChange(
+          "dashboard", origDashboard, updatedDashboard, true, entityReferenceMatch)) {
         // Remove the dashboard associated with the model, if any
         if (origModel.getDashboard() != null) {
-          deleteTo(updatedModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD);
+          relationshipWrites()
+              .deleteIncoming(
+                  new EntityRelationshipWriter.Selection(
+                      updatedModel.getId(), Entity.MLMODEL, Relationship.USES, Entity.DASHBOARD));
         }
-
         // Add relationship from model -- uses --> dashboard
         if (updatedDashboard != null) {
-          addRelationship(
-              updatedModel.getId(),
-              updatedDashboard.getId(),
-              Entity.MLMODEL,
-              Entity.DASHBOARD,
-              Relationship.USES);
+          relationshipWrites()
+              .add(
+                  new EntityRelationshipWriter.Edge(
+                      updatedModel.getId(),
+                      updatedDashboard.getId(),
+                      Entity.MLMODEL,
+                      Entity.DASHBOARD,
+                      Relationship.USES),
+                  EntityRelationshipWriter.Value.EMPTY,
+                  false);
         }
       }
     }
+
+    private final EntityUpdater<MlModel> entityUpdate;
+
+    public EntityUpdater<MlModel> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<MlModel> entityContext;
+
+  @Override
+  public final EntityPolicyContext<MlModel> context() {
+    return entityContext;
   }
 }

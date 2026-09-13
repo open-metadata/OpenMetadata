@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import java.util.ArrayList;
@@ -25,7 +24,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.EntityPriority;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -39,13 +38,19 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class PartitionCalculator {
 
-  /** Default number of entities per partition */
+  /**
+   * Default number of entities per partition
+   */
   private static final int DEFAULT_PARTITION_SIZE = 10000;
 
-  /** Minimum partition size to avoid too many small partitions */
+  /**
+   * Minimum partition size to avoid too many small partitions
+   */
   private static final int MIN_PARTITION_SIZE = 1000;
 
-  /** Maximum partition size to ensure reasonable parallelism */
+  /**
+   * Maximum partition size to ensure reasonable parallelism
+   */
   private static final int MAX_PARTITION_SIZE = 50000;
 
   /**
@@ -54,7 +59,9 @@ public class PartitionCalculator {
    */
   private static final int MAX_PARTITIONS_PER_ENTITY_TYPE = 10000;
 
-  /** Maximum total partitions for a single job */
+  /**
+   * Maximum total partitions for a single job
+   */
   private static final int MAX_TOTAL_PARTITIONS = 50000;
 
   /**
@@ -62,27 +69,27 @@ public class PartitionCalculator {
    * entity due to relationships, nested data, etc.
    */
   private static final Map<String, Double> ENTITY_COMPLEXITY_FACTORS =
-      Map.ofEntries(
-          Map.entry("table", 1.5), // Tables have many columns, relationships
-          Map.entry("dashboard", 1.3), // Dashboards have charts, data models
-          Map.entry("pipeline", 1.2), // Pipelines have tasks, lineage
-          Map.entry("mlmodel", 1.4), // ML models have features, hyperparameters
-          Map.entry("container", 1.1), // Containers have data models
-          Map.entry("topic", 1.0), // Topics are relatively simple
-          Map.entry("database", 0.8), // Databases are lightweight
-          Map.entry("databaseSchema", 0.7), // Schemas are lightweight
-          Map.entry("databaseService", 0.5), // Services are lightweight
-          Map.entry("user", 0.6), // Users are simple
-          Map.entry("team", 0.7), // Teams have members
-          Map.entry("glossaryTerm", 1.0), // Glossary terms have relationships
-          Map.entry("tag", 0.5), // Tags are simple
-          Map.entry("testCase", 0.8), // Test cases are moderately complex
+      Map.ofEntries( // Tables have many columns, relationships
+          Map.entry("table", 1.5), // Dashboards have charts, data models
+          Map.entry("dashboard", 1.3), // Pipelines have tasks, lineage
+          Map.entry("pipeline", 1.2), // ML models have features, hyperparameters
+          Map.entry("mlmodel", 1.4), // Containers have data models
+          Map.entry("container", 1.1), // Topics are relatively simple
+          Map.entry("topic", 1.0), // Databases are lightweight
+          Map.entry("database", 0.8), // Schemas are lightweight
+          Map.entry("databaseSchema", 0.7), // Services are lightweight
+          Map.entry("databaseService", 0.5), // Users are simple
+          Map.entry("user", 0.6), // Teams have members
+          Map.entry("team", 0.7), // Glossary terms have relationships
+          Map.entry("glossaryTerm", 1.0), // Tags are simple
+          Map.entry("tag", 0.5), // Test cases are moderately complex
+          Map.entry("testCase", 0.8), // Time series, simple structure
           Map.entry("testCaseResult", 0.3), // Time series, simple structure
           Map.entry("testCaseResolutionStatus", 0.3), // Time series, simple structure
-          Map.entry("queryCostRecord", 0.3) // Time series, simple structure
-          );
+          Map.entry("queryCostRecord", 0.3));
 
   private final int partitionSize;
+
   private final int minPartitionsPerEntity;
 
   public PartitionCalculator() {
@@ -115,12 +122,10 @@ public class PartitionCalculator {
   public List<SearchIndexPartition> calculatePartitions(
       UUID jobId, Set<String> entityTypes, ReindexingConfiguration reindexConfig) {
     List<SearchIndexPartition> partitions = new ArrayList<>();
-
     for (String entityType : entityTypes) {
       List<SearchIndexPartition> entityPartitions =
           calculatePartitionsForEntity(jobId, entityType, reindexConfig);
       partitions.addAll(entityPartitions);
-
       if (partitions.size() > MAX_TOTAL_PARTITIONS) {
         throw new IllegalStateException(
             String.format(
@@ -129,7 +134,6 @@ public class PartitionCalculator {
                 partitions.size(), MAX_TOTAL_PARTITIONS));
       }
     }
-
     LOG.info(
         "Calculated {} total partitions for {} entity types",
         partitions.size(),
@@ -155,25 +159,20 @@ public class PartitionCalculator {
       LOG.debug("No entities found for type: {}", entityType);
       return List.of();
     }
-
     double complexityFactor = ENTITY_COMPLEXITY_FACTORS.getOrDefault(entityType, 1.0);
     int priority = EntityPriority.getNumericPriority(entityType);
-
     // Adjust partition size based on complexity - more complex entities get smaller partitions
     long adjustedPartitionSizeLong = (long) (partitionSize / complexityFactor);
     adjustedPartitionSizeLong = Math.max(MIN_PARTITION_SIZE, adjustedPartitionSizeLong);
-
     // Calculate partition count with overflow protection
     long numPartitionsLong =
         (totalCount + adjustedPartitionSizeLong - 1) / adjustedPartitionSizeLong;
-
     // Ensure minimum partitions so all workers stay busy (e.g. testCaseResult with
     // only 4 partitions leaves 6 of 10 workers idle for minutes)
     if (numPartitionsLong < minPartitionsPerEntity && totalCount >= minPartitionsPerEntity) {
       numPartitionsLong = minPartitionsPerEntity;
       adjustedPartitionSizeLong = (totalCount + numPartitionsLong - 1) / numPartitionsLong;
     }
-
     // Enforce per-entity-type limit and adjust partition size if needed
     if (numPartitionsLong > MAX_PARTITIONS_PER_ENTITY_TYPE) {
       LOG.warn(
@@ -184,11 +183,9 @@ public class PartitionCalculator {
       numPartitionsLong = MAX_PARTITIONS_PER_ENTITY_TYPE;
       adjustedPartitionSizeLong = (totalCount + numPartitionsLong - 1) / numPartitionsLong;
     }
-
     int numPartitions = (int) numPartitionsLong;
     int adjustedPartitionSize = (int) adjustedPartitionSizeLong;
     List<SearchIndexPartition> partitions = new ArrayList<>(numPartitions);
-
     for (int i = 0; i < numPartitions; i++) {
       long rangeStart = (long) i * adjustedPartitionSize;
       if (rangeStart >= totalCount) {
@@ -196,10 +193,8 @@ public class PartitionCalculator {
       }
       long rangeEnd = Math.min(rangeStart + adjustedPartitionSize, totalCount);
       long estimatedCount = rangeEnd - rangeStart;
-
       // Work units consider both count and complexity
       long workUnits = (long) (estimatedCount * complexityFactor);
-
       SearchIndexPartition partition =
           SearchIndexPartition.builder()
               .id(UUID.randomUUID())
@@ -218,17 +213,14 @@ public class PartitionCalculator {
               .failedCount(0)
               .retryCount(0)
               .build();
-
       partitions.add(partition);
     }
-
     LOG.info(
         "Created {} partitions for entity type {} (total: {}, partition size: {})",
         partitions.size(),
         entityType,
         totalCount,
         adjustedPartitionSize);
-
     return partitions;
   }
 
@@ -259,21 +251,19 @@ public class PartitionCalculator {
   }
 
   private long getRegularEntityCount(String entityType) {
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
     return repository.getDao().listCount(repository.getReindexFilter());
   }
 
   private long getTimeSeriesEntityCount(String entityType, ReindexingConfiguration reindexConfig) {
     ListFilter listFilter = new ListFilter(Include.ALL);
     EntityTimeSeriesRepository<?> repository;
-
     if (SearchIndexEntityTypes.isDataInsightEntity(entityType)) {
       listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(entityType));
       repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
     } else {
       repository = Entity.getEntityTimeSeriesRepository(entityType);
     }
-
     if (reindexConfig != null) {
       long startTs = reindexConfig.getTimeSeriesStartTs(entityType);
       if (startTs > 0) {
@@ -288,7 +278,6 @@ public class PartitionCalculator {
         return count;
       }
     }
-
     return repository.getTimeSeriesDao().listCount(listFilter);
   }
 

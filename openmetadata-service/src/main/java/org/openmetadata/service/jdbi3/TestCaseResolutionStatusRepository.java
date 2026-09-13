@@ -50,6 +50,8 @@ import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
@@ -58,6 +60,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
@@ -418,11 +421,18 @@ public class TestCaseResolutionStatusRepository
 
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     Task task =
-        taskRepository.get(
-            null,
-            incidentTask.getId(),
-            taskRepository.getFields(
-                "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"));
+        taskRepository
+            .reads()
+            .byId(
+                incidentTask.getId(),
+                new EntityReadService.Query(
+                    null,
+                    taskRepository
+                        .fieldPolicy()
+                        .parse(
+                            "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
 
     if (TaskRepository.isTerminalStatus(task.getStatus())
         && recordEntity.getTestCaseResolutionStatusType()
@@ -485,8 +495,15 @@ public class TestCaseResolutionStatusRepository
         // `about` is relationship-backed and stripped from stored JSON — request it explicitly,
         // or a bare find() leaves it null and the FQN guard below never matches.
         Task task =
-            taskRepository.get(
-                null, stateId, taskRepository.getFields("about"), Include.ALL, false);
+            taskRepository
+                .reads()
+                .byId(
+                    stateId,
+                    new EntityReadService.Query(
+                        null,
+                        taskRepository.fieldPolicy().parse("about"),
+                        RelationIncludes.fromInclude(Include.ALL),
+                        false));
         if (task != null
             && !Boolean.TRUE.equals(task.getDeleted())
             && task.getType() == TaskEntityType.TestCaseResolution
@@ -626,7 +643,7 @@ public class TestCaseResolutionStatusRepository
       task.withDomains(fullTestCase.getDomains());
     }
 
-    task = taskRepository.createInternal(task);
+    task = taskRepository.creates().create(task, new EntityCommandActor(null, null));
     LOG.info(
         "Incident task created on test failure: id={}, testCase={}",
         task.getId(),
@@ -651,7 +668,16 @@ public class TestCaseResolutionStatusRepository
       String updatedBy) {
     if (!nullOrEmpty(assignees)) {
       try {
-        Task current = taskRepository.get(null, taskId, taskRepository.getFields("*"));
+        Task current =
+            taskRepository
+                .reads()
+                .byId(
+                    taskId,
+                    new EntityReadService.Query(
+                        null,
+                        taskRepository.fieldPolicy().parse("*"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
         if (canAdvanceToAssignedStage(current)) {
           taskRepository.resolveTaskWithWorkflow(
               current,

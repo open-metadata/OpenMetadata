@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static java.lang.Boolean.FALSE;
@@ -22,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +32,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
@@ -41,18 +51,24 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
-public class RoleRepository extends EntityRepository<Role> {
+@Repository()
+public class RoleRepository implements EntityPolicy<Role> {
+
   public static final String DOMAIN_ONLY_ACCESS_ROLE = "DomainOnlyAccessRole";
+
   public static final String DEFAULT_BOT_ROLE = "DefaultBotRole";
 
   public RoleRepository() {
-    super(
-        RoleResource.COLLECTION_PATH,
-        Entity.ROLE,
-        Role.class,
-        Entity.getCollectionDAO().roleDAO(),
-        POLICIES,
-        POLICIES);
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                RoleResource.COLLECTION_PATH,
+                Entity.ROLE,
+                Role.class,
+                Entity.getCollectionDAO().roleDAO()),
+            new EntityPolicyContext.WriteFields(POLICIES, POLICIES, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
@@ -74,32 +90,28 @@ public class RoleRepository extends EntityRepository<Role> {
     if (roles == null || roles.isEmpty()) {
       return;
     }
-
     if (fields.contains(POLICIES)) {
       fetchAndSetPolicies(roles);
     }
-
     if (fields.contains("teams")) {
       fetchAndSetTeams(roles);
     }
-
     if (fields.contains("users")) {
       fetchAndSetUsers(roles);
     }
-
     // Handle standard fields that are managed by the parent class
-    super.setFieldsInBulk(fields, roles);
+    EntityPolicy.super.setFieldsInBulk(fields, roles);
   }
 
   private void fetchAndSetPolicies(List<Role> roles) {
     List<String> roleIds = roles.stream().map(Role::getId).map(UUID::toString).distinct().toList();
-
     // Bulk fetch policies for all roles
     List<CollectionDAO.EntityRelationshipObject> policyRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(roleIds, Relationship.HAS.ordinal(), Entity.ROLE, Entity.POLICY);
-
     // Create a map of role ID to policy references
     Map<UUID, List<EntityReference>> roleToPolicies = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : policyRecords) {
@@ -109,7 +121,6 @@ public class RoleRepository extends EntityRepository<Role> {
               Entity.POLICY, UUID.fromString(record.getToId()), Include.ALL);
       roleToPolicies.computeIfAbsent(roleId, k -> new ArrayList<>()).add(policyRef);
     }
-
     // Set policies on roles
     for (Role role : roles) {
       List<EntityReference> policies = roleToPolicies.get(role.getId());
@@ -119,10 +130,11 @@ public class RoleRepository extends EntityRepository<Role> {
 
   private void fetchAndSetTeams(List<Role> roles) {
     List<String> roleIds = roles.stream().map(Role::getId).map(UUID::toString).distinct().toList();
-
     // Bulk fetch teams for all roles
     List<CollectionDAO.EntityRelationshipObject> teamRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.TEAM, Entity.ROLE);
 
@@ -135,7 +147,6 @@ public class RoleRepository extends EntityRepository<Role> {
               Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
       roleToTeams.computeIfAbsent(roleId, k -> new ArrayList<>()).add(teamRef);
     }
-
     // Set teams on roles
     for (Role role : roles) {
       List<EntityReference> teams = roleToTeams.get(role.getId());
@@ -145,10 +156,11 @@ public class RoleRepository extends EntityRepository<Role> {
 
   private void fetchAndSetUsers(List<Role> roles) {
     List<String> roleIds = roles.stream().map(Role::getId).map(UUID::toString).distinct().toList();
-
     // Bulk fetch users for all roles
     List<CollectionDAO.EntityRelationshipObject> userRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(roleIds, Relationship.HAS.ordinal(), Entity.USER, Entity.ROLE);
 
@@ -161,7 +173,6 @@ public class RoleRepository extends EntityRepository<Role> {
               Entity.USER, UUID.fromString(record.getFromId()), Include.ALL);
       roleToUsers.computeIfAbsent(roleId, k -> new ArrayList<>()).add(userRef);
     }
-
     // Set users on roles
     for (Role role : roles) {
       List<EntityReference> users = roleToUsers.get(role.getId());
@@ -170,15 +181,27 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   private List<EntityReference> getPolicies(@NonNull Role role) {
-    return findTo(role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(
+                role.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY),
+            Include.NON_DELETED);
   }
 
   private List<EntityReference> getUsers(@NonNull Role role) {
-    return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(
+                role.getId(), Entity.ROLE, Relationship.HAS, Entity.USER),
+            Include.NON_DELETED);
   }
 
   private List<EntityReference> getTeams(@NonNull Role role) {
-    return findFrom(role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(
+                role.getId(), Entity.ROLE, Relationship.HAS, Entity.TEAM),
+            Include.NON_DELETED);
   }
 
   /**
@@ -200,22 +223,22 @@ public class RoleRepository extends EntityRepository<Role> {
    * <p>This method ensures that the role and its policy are stored correctly.
    */
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("policies");
   }
 
   @Override
   public void storeEntity(Role role, boolean update) {
-    store(role, update);
+    persistence().store(role, update);
   }
 
   @Override
   public void storeEntities(List<Role> entities) {
-    storeMany(entities);
+    persistence().insertMany(entities);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<Role> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<Role> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Role::getId).toList();
     deleteFromMany(ids, Entity.ROLE, Relationship.HAS, Entity.POLICY);
@@ -224,18 +247,23 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   public void storeRelationships(Role role) {
     for (EntityReference policy : listOrEmpty(role.getPolicies())) {
-      addRelationship(role.getId(), policy.getId(), Entity.ROLE, Entity.POLICY, Relationship.HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  role.getId(), policy.getId(), Entity.ROLE, Entity.POLICY, Relationship.HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   @Override
-  public EntityRepository<Role>.EntityUpdater getUpdater(
-      Role original, Role updated, Operation operation, ChangeSource changeSource) {
-    return new RoleUpdater(original, updated, operation);
+  public EntityUpdater<Role> getUpdater(
+      Role original, Role updated, EntityOperation operation, ChangeSource changeSource) {
+    return new RoleUpdater(original, updated, operation).mutation();
   }
 
   @Override
-  protected void preDelete(Role entity, String deletedBy) {
+  public void preDelete(Role entity, String deletedBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));
@@ -243,27 +271,36 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  protected void postDelete(Role entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
+  public void postDelete(Role entity, boolean hardDelete) {
+    EntityPolicy.super.postDelete(entity, hardDelete);
     PolicyConditionUpdater.updateAllPolicyConditions(
         condition ->
             PolicyConditionUpdater.removeFromCondition(
                 condition, entity.getName(), PolicyConditionUpdater.ROLE_FUNCTIONS));
   }
 
-  /** Handles entity updated from PUT and POST operation. */
-  public class RoleUpdater extends EntityUpdater {
-    public RoleUpdater(Role original, Role updated, Operation operation) {
-      super(original, updated, operation);
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class RoleUpdater implements EntitySpecificMutation<Role> {
+
+    public RoleUpdater(Role original, Role updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<Role> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "policies",
           () -> {
-            updatePolicies(listOrEmpty(original.getPolicies()), listOrEmpty(updated.getPolicies()));
+            updatePolicies(
+                listOrEmpty(entityUpdate.getOriginal().getPolicies()),
+                listOrEmpty(entityUpdate.getUpdated().getPolicies()));
             SubjectCache.invalidateAll();
           });
     }
@@ -274,21 +311,38 @@ public class RoleRepository extends EntityRepository<Role> {
       List<EntityReference> deletedPolicies = new ArrayList<>();
       List<EntityReference> addedPolicies = new ArrayList<>();
       boolean changed =
-          recordListChange(
+          entityUpdate.recordListChange(
               "policies",
               origPolicies,
               updatedPolicies,
               addedPolicies,
               deletedPolicies,
               entityReferenceMatch);
-
       if (changed) {
         // Remove all the Role to policy relationships
-        deleteFrom(original.getId(), Entity.ROLE, Relationship.HAS, Entity.POLICY);
-
+        relationshipWrites()
+            .deleteOutgoing(
+                new EntityRelationshipWriter.Selection(
+                    entityUpdate.getOriginal().getId(),
+                    Entity.ROLE,
+                    Relationship.HAS,
+                    Entity.POLICY));
         // Add Role to policy relationships back based on Updated entity
-        storeRelationships(updated);
+        storeRelationships(entityUpdate.getUpdated());
       }
     }
+
+    private final EntityUpdater<Role> entityUpdate;
+
+    public EntityUpdater<Role> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<Role> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Role> context() {
+    return entityContext;
   }
 }

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.csv;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -31,8 +30,8 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
@@ -46,6 +45,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class CsvImportExportJobHandler implements JobHandler {
+
   private final CsvAsyncJobManager jobManager;
 
   public CsvImportExportJobHandler(CsvAsyncJobManager jobManager) {
@@ -86,9 +86,9 @@ public class CsvImportExportJobHandler implements JobHandler {
   private void runImport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
     String jobId = String.valueOf(job.getId());
     sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "STARTED", null, null));
-
     CsvImportProgressCallback progressCallback =
         new CsvImportProgressCallback() {
+
           @Override
           public void onProgress(
               int rowsProcessed, int totalRows, int batchNumber, String message) {
@@ -104,8 +104,7 @@ public class CsvImportExportJobHandler implements JobHandler {
             jobManager.checkpoint(jobId);
           }
         };
-
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
+    EntityPolicy<EntityInterface> repository = getRepository(args.getEntityType());
     CsvImportResult result =
         nullOrEmpty(args.getVersioningEntityType())
             ? repository.importFromCsv(
@@ -123,7 +122,6 @@ public class CsvImportExportJobHandler implements JobHandler {
                 Boolean.TRUE.equals(args.getRecursive()),
                 args.getVersioningEntityType(),
                 progressCallback);
-
     createBulkImportVersion(args, result, job.getCreatedBy());
     jobManager.completeImportJob(jobId, result, "Import completed.");
     sendImportMessage(job.getCreatedBy(), new CSVImportMessage(jobId, "COMPLETED", result, null));
@@ -131,9 +129,10 @@ public class CsvImportExportJobHandler implements JobHandler {
 
   private void runExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
     String jobId = String.valueOf(job.getId());
-    EntityRepository<EntityInterface> repository = getRepository(args.getEntityType());
+    EntityPolicy<EntityInterface> repository = getRepository(args.getEntityType());
     CsvExportProgressCallback progressCallback =
         new CsvExportProgressCallback() {
+
           @Override
           public void onProgress(int exported, int total, String message) {
             jobManager.updateProgress(jobId, exported, total, message);
@@ -147,7 +146,6 @@ public class CsvImportExportJobHandler implements JobHandler {
             jobManager.checkpoint(jobId);
           }
         };
-
     String csvData =
         repository.exportToCsv(
             args.getTargetFqn(),
@@ -193,7 +191,6 @@ public class CsvImportExportJobHandler implements JobHandler {
               "Results contain %d rows, max is %d. Please add filters to reduce the result set.",
               effectiveTotal, SearchResultCsvExporter.MAX_EXPORT_ROWS));
     }
-
     final String encodedResult;
     try (CsvExportPayload.Buffer buffer = new CsvExportPayload.Buffer()) {
       OutputStream progressTracking =
@@ -288,7 +285,9 @@ public class CsvImportExportJobHandler implements JobHandler {
     sendExportMessage(job.getCreatedBy(), new CSVExportMessage(jobId, "COMPLETED", null, null));
   }
 
-  /** Data rows in a CSV, excluding the header, for job progress reporting. */
+  /**
+   * Data rows in a CSV, excluding the header, for job progress reporting.
+   */
   private int countRows(String csvData) {
     int newlines = (int) csvData.chars().filter(character -> character == '\n').count();
     return Math.max(newlines - 1, 0);
@@ -297,11 +296,17 @@ public class CsvImportExportJobHandler implements JobHandler {
   // Counts CSV rows as they stream by so the job reports live progress and
   // honors cancellation between batches.
   private static final class RowCountingOutputStream extends FilterOutputStream {
+
     private static final int PROGRESS_EVERY_ROWS = 1000;
+
     private final int total;
+
     private final String jobId;
+
     private final CsvAsyncJobManager jobManager;
+
     private int rows;
+
     private int rowsAtLastReport;
 
     private RowCountingOutputStream(
@@ -351,7 +356,7 @@ public class CsvImportExportJobHandler implements JobHandler {
         || Boolean.TRUE.equals(args.getDryRun())) {
       return;
     }
-    EntityRepository<EntityInterface> versioningRepo = getRepository(effectiveVersioningEntityType);
+    EntityPolicy<EntityInterface> versioningRepo = getRepository(effectiveVersioningEntityType);
     if (!versioningRepo.supportsBulkImportVersioning()) {
       return;
     }
@@ -389,8 +394,8 @@ public class CsvImportExportJobHandler implements JobHandler {
   }
 
   @SuppressWarnings("unchecked")
-  private EntityRepository<EntityInterface> getRepository(String entityType) {
-    return (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+  private EntityPolicy<EntityInterface> getRepository(String entityType) {
+    return (EntityPolicy<EntityInterface>) Entity.getEntityRepository(entityType);
   }
 
   private String getStartedMessage(CsvAsyncJobArgs args) {

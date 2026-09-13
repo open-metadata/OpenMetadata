@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.security.policyevaluator;
 
 import java.util.List;
@@ -22,11 +21,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Builds ResourceContext lazily. ResourceContext includes all the attributes of a resource a user is trying to access
@@ -36,14 +37,21 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Builder
 public class TestCaseResourceContext implements ResourceContextInterface {
+
   private final EntityLink entityLink;
+
   private final UUID testSuiteId;
+
   private final String entityFQN;
+
   private final String entityType;
+
   private final UUID id;
+
   private final String name;
-  private EntityInterface
-      entity; // Will be lazily initialized to the entity that has this test case
+
+  private EntityInterface // Will be lazily initialized to the entity that has this test case
+      entity;
 
   @Override
   public String getResource() {
@@ -92,11 +100,18 @@ public class TestCaseResourceContext implements ResourceContextInterface {
 
   private static EntityInterface resolveTestSuiteById(UUID id) {
     TestSuiteRepository dao = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    return dao.get(null, id, dao.getFields("owners,tags,domains"), Include.ALL, true);
+    return dao.reads()
+        .byId(
+            id,
+            new EntityReadService.Query(
+                null,
+                dao.fieldPolicy().parse("owners,tags,domains"),
+                RelationIncludes.fromInclude(Include.ALL),
+                true));
   }
 
   private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityPolicy<? extends EntityInterface> entityRepository =
         Entity.getEntityRepository(entityLink.getEntityType());
     String fields = "";
     if (entityRepository.isSupportsOwners()) {
@@ -109,24 +124,40 @@ public class TestCaseResourceContext implements ResourceContextInterface {
       fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
     }
     return entityRepository.getByName(
-        null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
+        null, entityLink.getEntityFQN(), entityRepository.fieldPolicy().parse(fields));
   }
 
   private static EntityInterface resolveEntityById(UUID id) {
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    TestCase testCase = dao.get(null, id, dao.getFields("entityLink"), Include.ALL, true);
+    TestCase testCase =
+        dao.reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    null,
+                    dao.fieldPolicy().parse("entityLink"),
+                    RelationIncludes.fromInclude(Include.ALL),
+                    true));
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 
   private static EntityInterface resolveEntityByName(String fqn) {
     if (fqn == null) return null;
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL, true);
+    TestCase testCase =
+        dao.reads()
+            .byName(
+                fqn,
+                new EntityReadService.Query(
+                    null,
+                    dao.fieldPolicy().parse("entityLink"),
+                    RelationIncludes.fromInclude(Include.ALL),
+                    true));
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 
   private static EntityInterface resolveEntityFQN(String entityFQN, String entityType) {
-    EntityRepository<? extends EntityInterface> dao = Entity.getEntityRepository(entityType);
-    return dao.getByName(null, entityFQN, dao.getFields("owners,tags,domains"));
+    EntityPolicy<? extends EntityInterface> dao = Entity.getEntityRepository(entityType);
+    return dao.getByName(null, entityFQN, dao.fieldPolicy().parse("owners,tags,domains"));
   }
 }

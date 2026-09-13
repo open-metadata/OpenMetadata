@@ -59,6 +59,9 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -71,6 +74,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Tag(name = "Context Memories", description = "APIs for managing reusable Context Center memories.")
@@ -634,11 +638,26 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
     ContextMemory original =
-        repository.get(uriInfo, id, getFields(PIN_UPDATE_FIELDS), Include.NON_DELETED, false);
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    getFields(PIN_UPDATE_FIELDS),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     ContextMemory updated = JsonUtils.deepCopy(original, ContextMemory.class);
     updated.setPinned(pinned);
     var response =
-        repository.update(uriInfo, original, updated, securityContext.getUserPrincipal().getName());
+        repository
+            .puts()
+            .update(
+                uriInfo,
+                original,
+                updated,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                EntityPutService.Mode.NORMAL);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

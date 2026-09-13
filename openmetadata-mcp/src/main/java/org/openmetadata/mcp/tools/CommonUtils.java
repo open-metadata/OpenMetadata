@@ -78,10 +78,10 @@ public class CommonUtils {
 
     for (String owner : JsonUtils.readOrConvertValues(teamsOrUsersParam, String.class)) {
       try {
-        User user = userRepository.findByNameOrNull(owner, Include.NON_DELETED);
+        User user = userRepository.lookup().byNameOrNull(owner, Include.NON_DELETED);
         if (user == null) {
           // If the owner is not a user, check if it's a team
-          Team team = teamRepository.findByNameOrNull(owner, Include.NON_DELETED);
+          Team team = teamRepository.lookup().byNameOrNull(owner, Include.NON_DELETED);
           if (team != null) {
             teamsOrUsers.add(team.getEntityReference());
           }

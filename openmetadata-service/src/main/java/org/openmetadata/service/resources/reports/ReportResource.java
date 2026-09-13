@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
 import org.openmetadata.service.limits.Limits;
@@ -103,7 +104,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
           String fieldsParam) {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
-    return repository.listAfter(uriInfo, fields, filter, 10000, null);
+    return repository
+        .pages()
+        .after(new EntityPageReader.Projection(uriInfo, fields, filter), 10000, null);
   }
 
   @GET

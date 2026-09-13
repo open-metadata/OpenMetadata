@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -25,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
@@ -42,6 +42,16 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
@@ -49,20 +59,26 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
-public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
+@Repository()
+public class EventSubscriptionRepository implements EntityPolicy<EventSubscription> {
+
   static final String ALERT_PATCH_FIELDS =
       "trigger,enabled,batchSize,notificationTemplate,destinations";
+
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
 
   public EventSubscriptionRepository() {
-    super(
-        EventSubscriptionResource.COLLECTION_PATH,
-        Entity.EVENT_SUBSCRIPTION,
-        EventSubscription.class,
-        Entity.getCollectionDAO().eventSubscriptionDAO(),
-        ALERT_PATCH_FIELDS,
-        ALERT_UPDATE_FIELDS);
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                EventSubscriptionResource.COLLECTION_PATH,
+                Entity.EVENT_SUBSCRIPTION,
+                EventSubscription.class,
+                Entity.getCollectionDAO().eventSubscriptionDAO()),
+            new EntityPolicyContext.WriteFields(ALERT_PATCH_FIELDS, ALERT_UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
@@ -94,12 +110,14 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   private EntityReference getTemplateReference(EventSubscription subscription) {
     List<EntityReference> templateRefs =
-        findTo(
-            subscription.getId(),
-            Entity.EVENT_SUBSCRIPTION,
-            Relationship.USES,
-            Entity.NOTIFICATION_TEMPLATE);
-
+        relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    subscription.getId(),
+                    Entity.EVENT_SUBSCRIPTION,
+                    Relationship.USES,
+                    Entity.NOTIFICATION_TEMPLATE),
+                Include.NON_DELETED);
     return templateRefs.isEmpty() ? null : templateRefs.get(0);
   }
 
@@ -111,7 +129,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
           .sort(Comparator.comparing(ArgumentsInput::getName));
       listOrEmpty(entity.getInput().getActions())
           .sort(Comparator.comparing(ArgumentsInput::getName));
-
       // Sort Input Args
       listOrEmpty(entity.getInput().getFilters())
           .forEach(
@@ -122,26 +139,22 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
               filter ->
                   listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
     }
-
     if (update && !nullOrEmpty(entity.getFilteringRules())) {
       entity.setFilteringRules(
           validateAndBuildFilteringConditions(
               entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
     }
-
     // Validate custom template if assigned
     EntityReference templateRef = entity.getNotificationTemplate();
     if (templateRef != null) {
       NotificationTemplate template =
           Entity.getEntity(
               Entity.NOTIFICATION_TEMPLATE, templateRef.getId(), "", Include.NON_DELETED);
-
       if (template.getProvider() == ProviderType.SYSTEM) {
         throw new IllegalArgumentException(
             "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
       }
     }
-
     validateFilterRules(entity);
   }
 
@@ -170,8 +183,9 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
-    EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
-    long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
+    EventSubscription eventSubscription =
+        getByName(null, eventSubscriptionName, fieldPolicy().parse("*"));
+    long latestOffset = context().dependencies().daos().changeEventDAO().getLatestOffset();
     long currentTime = System.currentTimeMillis();
     // Upsert Offset
     EventSubscriptionOffset eventSubscriptionOffset =
@@ -180,7 +194,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             .withStartingOffset(latestOffset)
             .withStartingTimestamp(currentTime)
             .withTimestamp(currentTime);
-
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -188,7 +201,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             OFFSET_EXTENSION,
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
-
     EventSubscriptionScheduler.getInstance().updateEventSubscription(eventSubscription);
     return eventSubscriptionOffset;
   }
@@ -198,7 +210,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     // Ensure all destinations have unique IDs before storage (handles all operations: POST, PUT,
     // PATCH)
     ensureDestinationIds(entity);
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
@@ -210,11 +222,18 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    context()
+        .schema()
+        .dao()
+        .insertMany(
+            context().schema().dao().getTableName(),
+            context().schema().dao().getNameHashColumn(),
+            fqns,
+            jsons);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<EventSubscription> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<EventSubscription> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(EventSubscription::getId).toList();
     deleteFromMany(ids, Entity.EVENT_SUBSCRIPTION, Relationship.USES, Entity.NOTIFICATION_TEMPLATE);
@@ -224,116 +243,161 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void storeRelationships(EventSubscription entity) {
     EntityReference templateRef = entity.getNotificationTemplate();
     if (templateRef != null) {
-      addRelationship(
-          entity.getId(),
-          templateRef.getId(),
-          Entity.EVENT_SUBSCRIPTION,
-          Entity.NOTIFICATION_TEMPLATE,
-          Relationship.USES);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  entity.getId(),
+                  templateRef.getId(),
+                  Entity.EVENT_SUBSCRIPTION,
+                  Entity.NOTIFICATION_TEMPLATE,
+                  Relationship.USES),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   @Override
-  public EntityRepository<EventSubscription>.EntityUpdater getUpdater(
+  public EntityUpdater<EventSubscription> getUpdater(
       EventSubscription original,
       EventSubscription updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new EventSubscriptionUpdater(original, updated, operation);
+    return new EventSubscriptionUpdater(original, updated, operation).mutation();
   }
 
-  public class EventSubscriptionUpdater extends EntityUpdater {
+  public class EventSubscriptionUpdater implements EntitySpecificMutation<EventSubscription> {
+
     public EventSubscriptionUpdater(
-        EventSubscription original, EventSubscription updated, Operation operation) {
-      super(original, updated, operation);
+        EventSubscription original, EventSubscription updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("notificationTemplate", this::updateTemplateRelationship);
-
-      compareAndUpdate(
-          "input", () -> recordChange("input", original.getInput(), updated.getInput(), true));
-      compareAndUpdate(
+    public void update(
+        EntityUpdater<EventSubscription> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate("notificationTemplate", this::updateTemplateRelationship);
+      entityUpdate.compareAndUpdate(
+          "input",
+          () ->
+              entityUpdate.recordChange(
+                  "input",
+                  entityUpdate.getOriginal().getInput(),
+                  entityUpdate.getUpdated().getInput(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "batchSize",
-          () -> recordChange("batchSize", original.getBatchSize(), updated.getBatchSize()));
-      if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
-        compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "batchSize",
+                  entityUpdate.getOriginal().getBatchSize(),
+                  entityUpdate.getUpdated().getBatchSize()));
+      if (!entityUpdate
+          .getOriginal()
+          .getAlertType()
+          .equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+        entityUpdate.compareAndUpdate(
             "filteringRules",
             () ->
-                recordChange(
+                entityUpdate.recordChange(
                     "filteringRules",
-                    original.getFilteringRules(),
-                    updated.getFilteringRules(),
+                    entityUpdate.getOriginal().getFilteringRules(),
+                    entityUpdate.getUpdated().getFilteringRules(),
                     true));
-        compareAndUpdate(
-            "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
-        compareAndUpdate(
+        entityUpdate.compareAndUpdate(
+            "enabled",
+            () ->
+                entityUpdate.recordChange(
+                    "enabled",
+                    entityUpdate.getOriginal().getEnabled(),
+                    entityUpdate.getUpdated().getEnabled()));
+        entityUpdate.compareAndUpdate(
             "destinations",
             () ->
-                recordChange(
+                entityUpdate.recordChange(
                     "destinations",
-                    original.getDestinations(),
-                    encryptWebhookSecretKey(updated.getDestinations()),
+                    entityUpdate.getOriginal().getDestinations(),
+                    encryptWebhookSecretKey(entityUpdate.getUpdated().getDestinations()),
                     true,
                     objectMatch,
                     false));
-        compareAndUpdate(
+        entityUpdate.compareAndUpdate(
             "trigger",
-            () -> recordChange("trigger", original.getTrigger(), updated.getTrigger(), true));
-        compareAndUpdate(
+            () ->
+                entityUpdate.recordChange(
+                    "trigger",
+                    entityUpdate.getOriginal().getTrigger(),
+                    entityUpdate.getUpdated().getTrigger(),
+                    true));
+        entityUpdate.compareAndUpdate(
             "config",
-            () -> recordChange("config", original.getConfig(), updated.getConfig(), true));
+            () ->
+                entityUpdate.recordChange(
+                    "config",
+                    entityUpdate.getOriginal().getConfig(),
+                    entityUpdate.getUpdated().getConfig(),
+                    true));
       }
     }
 
     private void updateTemplateRelationship() {
-      EntityReference origTemplate = original.getNotificationTemplate();
-      EntityReference updatedTemplate = updated.getNotificationTemplate();
-
+      EntityReference origTemplate = entityUpdate.getOriginal().getNotificationTemplate();
+      EntityReference updatedTemplate = entityUpdate.getUpdated().getNotificationTemplate();
       // No change: both null or same template ID
       if (hasSameTemplate(origTemplate, updatedTemplate)) {
         return;
       }
-
       // Template removed: delete existing USES relationship
       if (updatedTemplate == null) {
-        deleteRelationship(
-            original.getId(),
-            Entity.EVENT_SUBSCRIPTION,
-            origTemplate.getId(),
-            Entity.NOTIFICATION_TEMPLATE,
-            Relationship.USES);
-        recordChange("notificationTemplate", origTemplate, null);
+        relationshipWrites()
+            .delete(
+                new EntityRelationshipWriter.Edge(
+                    entityUpdate.getOriginal().getId(),
+                    origTemplate.getId(),
+                    Entity.EVENT_SUBSCRIPTION,
+                    Entity.NOTIFICATION_TEMPLATE,
+                    Relationship.USES));
+        entityUpdate.recordChange("notificationTemplate", origTemplate, null);
         return;
       }
-
       // Template added: create new USES relationship
       if (origTemplate == null) {
-        addRelationship(
-            updated.getId(),
-            updatedTemplate.getId(),
-            Entity.EVENT_SUBSCRIPTION,
-            Entity.NOTIFICATION_TEMPLATE,
-            Relationship.USES);
-        recordChange("notificationTemplate", null, updatedTemplate);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    entityUpdate.getUpdated().getId(),
+                    updatedTemplate.getId(),
+                    Entity.EVENT_SUBSCRIPTION,
+                    Entity.NOTIFICATION_TEMPLATE,
+                    Relationship.USES),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
+        entityUpdate.recordChange("notificationTemplate", null, updatedTemplate);
         return;
       }
-
       // Template changed: replace old relationship with new one
-      deleteRelationship(
-          original.getId(),
-          Entity.EVENT_SUBSCRIPTION,
-          origTemplate.getId(),
-          Entity.NOTIFICATION_TEMPLATE,
-          Relationship.USES);
-      addRelationship(
-          updated.getId(),
-          updatedTemplate.getId(),
-          Entity.EVENT_SUBSCRIPTION,
-          Entity.NOTIFICATION_TEMPLATE,
-          Relationship.USES);
-      recordChange("notificationTemplate", origTemplate, updatedTemplate);
+      relationshipWrites()
+          .delete(
+              new EntityRelationshipWriter.Edge(
+                  entityUpdate.getOriginal().getId(),
+                  origTemplate.getId(),
+                  Entity.EVENT_SUBSCRIPTION,
+                  Entity.NOTIFICATION_TEMPLATE,
+                  Relationship.USES));
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  entityUpdate.getUpdated().getId(),
+                  updatedTemplate.getId(),
+                  Entity.EVENT_SUBSCRIPTION,
+                  Entity.NOTIFICATION_TEMPLATE,
+                  Relationship.USES),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
+      entityUpdate.recordChange("notificationTemplate", origTemplate, updatedTemplate);
     }
 
     private boolean hasSameTemplate(EntityReference orig, EntityReference updated) {
@@ -341,5 +405,18 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       if (orig == null || updated == null) return false;
       return orig.getId().equals(updated.getId());
     }
+
+    private final EntityUpdater<EventSubscription> entityUpdate;
+
+    public EntityUpdater<EventSubscription> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<EventSubscription> entityContext;
+
+  @Override
+  public final EntityPolicyContext<EventSubscription> context() {
+    return entityContext;
   }
 }

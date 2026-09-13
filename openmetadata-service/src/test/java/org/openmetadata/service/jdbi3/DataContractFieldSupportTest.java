@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,6 +46,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.ReadBundle;
+import org.openmetadata.service.entity.read.ReadBundleContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -54,60 +59,91 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 class DataContractFieldSupportTest {
 
   @Mock private CollectionDAO mockCollectionDAO;
+
   @Mock private CollectionDAO.EntityRelationshipDAO mockRelationshipDAO;
+
   @Mock private EntityDAO<Table> mockEntityDAO;
+
   @Mock private EntityRelationshipRepository mockEntityRelRepo;
 
   private TestTableRepository repository;
 
-  static class TestTableRepository extends EntityRepository<Table> {
+  @Repository()
+  static class TestTableRepository implements EntityPolicy<Table> {
+
     TestTableRepository(CollectionDAO collectionDAO, EntityDAO<Table> entityDAO) {
-      super("/tables", "table", Table.class, entityDAO, "", "", Set.of());
+      this.entityContext =
+          new EntityPolicyContext<>(
+              new EntityPolicyContext.Schema<>("/tables", "table", Table.class, entityDAO),
+              new EntityPolicyContext.WriteFields("", "", Set.of()),
+              EntityModuleDependencies.standard());
+      EntityModuleFactory.initialize(this, true);
     }
 
     @Override
-    protected void setFields(Table entity, Fields fields, RelationIncludes relationIncludes) {}
+    public void setFields(Table entity, Fields fields, RelationIncludes relationIncludes) {}
 
     @Override
-    protected void clearFields(Table entity, Fields fields) {}
+    public void clearFields(Table entity, Fields fields) {}
 
     @Override
-    protected void prepare(Table entity, boolean update) {}
+    public void prepare(Table entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Table entity, boolean update) {}
+    public void storeEntity(Table entity, boolean update) {}
 
     @Override
-    protected void storeRelationships(Table entity) {}
+    public void storeRelationships(Table entity) {}
 
     EntityReference callGetDataContract(Table entity, Include include) {
-      return getDataContract(entity, include);
+      return relationshipFields().dataContract(entity, include);
     }
 
     EntityReference callGetDataContractNoArg(Table entity) {
-      return getDataContract(entity);
+      return relationshipFields().dataContract(entity);
+    }
+
+    private final EntityPolicyContext<Table> entityContext;
+
+    @Override
+    public final EntityPolicyContext<Table> context() {
+      return entityContext;
     }
   }
 
-  static class TestBotRepository extends EntityRepository<Bot> {
+  @Repository()
+  static class TestBotRepository implements EntityPolicy<Bot> {
+
     TestBotRepository(CollectionDAO collectionDAO, EntityDAO<Bot> entityDAO) {
-      super("/bots", "bot", Bot.class, entityDAO, "", "", Set.of());
+      this.entityContext =
+          new EntityPolicyContext<>(
+              new EntityPolicyContext.Schema<>("/bots", "bot", Bot.class, entityDAO),
+              new EntityPolicyContext.WriteFields("", "", Set.of()),
+              EntityModuleDependencies.standard());
+      EntityModuleFactory.initialize(this, true);
     }
 
     @Override
-    protected void setFields(Bot entity, Fields fields, RelationIncludes relationIncludes) {}
+    public void setFields(Bot entity, Fields fields, RelationIncludes relationIncludes) {}
 
     @Override
-    protected void clearFields(Bot entity, Fields fields) {}
+    public void clearFields(Bot entity, Fields fields) {}
 
     @Override
-    protected void prepare(Bot entity, boolean update) {}
+    public void prepare(Bot entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Bot entity, boolean update) {}
+    public void storeEntity(Bot entity, boolean update) {}
 
     @Override
-    protected void storeRelationships(Bot entity) {}
+    public void storeRelationships(Bot entity) {}
+
+    private final EntityPolicyContext<Bot> entityContext;
+
+    @Override
+    public final EntityPolicyContext<Bot> context() {
+      return entityContext;
+    }
   }
 
   @BeforeEach
@@ -125,7 +161,7 @@ class DataContractFieldSupportTest {
 
   @Test
   void constructor_setsSupportsDataContract() {
-    assertTrue(repository.supportsDataContract);
+    assertTrue(repository.context().supports(Entity.FIELD_DATA_CONTRACT));
   }
 
   @Test
@@ -135,10 +171,8 @@ class DataContractFieldSupportTest {
     EntityReference existingContract =
         new EntityReference().withId(UUID.randomUUID()).withType(DATA_CONTRACT);
     table.setDataContract(existingContract);
-
     Fields fields = new Fields(Set.of(FIELD_OWNERS));
     repository.setFieldsInternal(table, fields, RelationIncludes.fromInclude(NON_DELETED));
-
     assertEquals(existingContract, table.getDataContract());
   }
 
@@ -148,20 +182,16 @@ class DataContractFieldSupportTest {
     UUID contractId = UUID.randomUUID();
     Table table = new Table();
     table.setId(entityId);
-
     CollectionDAO.EntityRelationshipRecord record =
         CollectionDAO.EntityRelationshipRecord.builder().id(contractId).type(DATA_CONTRACT).build();
     when(mockRelationshipDAO.findTo(
             entityId, "table", Relationship.CONTAINS.ordinal(), DATA_CONTRACT))
         .thenReturn(List.of(record));
-
     EntityReference contractRef = new EntityReference().withId(contractId).withType(DATA_CONTRACT);
     when(mockEntityRelRepo.getEntityReferences(eq(List.of(record)), any(Include.class)))
         .thenReturn(List.of(contractRef));
-
     Fields fields = new Fields(Set.of(FIELD_DATA_CONTRACT));
     repository.setFieldsInternal(table, fields, RelationIncludes.fromInclude(NON_DELETED));
-
     assertNotNull(table.getDataContract());
     assertEquals(contractId, table.getDataContract().getId());
   }
@@ -171,16 +201,13 @@ class DataContractFieldSupportTest {
     UUID entityId = UUID.randomUUID();
     Table table = new Table();
     table.setId(entityId);
-
     when(mockRelationshipDAO.findTo(
             entityId, "table", Relationship.CONTAINS.ordinal(), DATA_CONTRACT))
         .thenReturn(Collections.emptyList());
     when(mockEntityRelRepo.getEntityReferences(eq(Collections.emptyList()), any(Include.class)))
         .thenReturn(Collections.emptyList());
-
     Fields fields = new Fields(Set.of(FIELD_DATA_CONTRACT));
     repository.setFieldsInternal(table, fields, RelationIncludes.fromInclude(NON_DELETED));
-
     assertNull(table.getDataContract());
   }
 
@@ -191,10 +218,8 @@ class DataContractFieldSupportTest {
     EntityReference existingContract =
         new EntityReference().withId(UUID.randomUUID()).withType(DATA_CONTRACT);
     table.setDataContract(existingContract);
-
     Fields fields = new Fields(Set.of(FIELD_OWNERS));
     repository.clearFieldsInternal(table, fields);
-
     assertNull(table.getDataContract());
   }
 
@@ -205,10 +230,8 @@ class DataContractFieldSupportTest {
     EntityReference existingContract =
         new EntityReference().withId(UUID.randomUUID()).withType(DATA_CONTRACT);
     table.setDataContract(existingContract);
-
     Fields fields = new Fields(Set.of(FIELD_DATA_CONTRACT));
     repository.clearFieldsInternal(table, fields);
-
     assertEquals(existingContract, table.getDataContract());
   }
 
@@ -217,8 +240,7 @@ class DataContractFieldSupportTest {
   void getDataContract_returnsNullWhenNotSupported() {
     EntityDAO<Bot> mockBotDAO = mock(EntityDAO.class);
     TestBotRepository botRepo = new TestBotRepository(mockCollectionDAO, mockBotDAO);
-
-    assertNull(botRepo.getDataContract(new Bot(), NON_DELETED));
+    assertNull(botRepo.relationshipFields().dataContract(new Bot(), NON_DELETED));
   }
 
   @Test
@@ -227,17 +249,14 @@ class DataContractFieldSupportTest {
     UUID contractId = UUID.randomUUID();
     Table table = new Table();
     table.setId(entityId);
-
     CollectionDAO.EntityRelationshipRecord record =
         CollectionDAO.EntityRelationshipRecord.builder().id(contractId).type(DATA_CONTRACT).build();
     when(mockRelationshipDAO.findTo(
             entityId, "table", Relationship.CONTAINS.ordinal(), DATA_CONTRACT))
         .thenReturn(List.of(record));
-
     EntityReference contractRef = new EntityReference().withId(contractId).withType(DATA_CONTRACT);
     when(mockEntityRelRepo.getEntityReferences(eq(List.of(record)), any(Include.class)))
         .thenReturn(List.of(contractRef));
-
     EntityReference result = repository.callGetDataContractNoArg(table);
     assertNotNull(result);
     assertEquals(contractId, result.getId());
@@ -249,7 +268,6 @@ class DataContractFieldSupportTest {
     UUID contractId = UUID.randomUUID();
     Table table = new Table();
     table.setId(entityId);
-
     EntityReference contractRef = new EntityReference().withId(contractId).withType(DATA_CONTRACT);
     ReadBundle bundle = new ReadBundle();
     bundle.putRelations(entityId, FIELD_DATA_CONTRACT, NON_DELETED, List.of(contractRef));
@@ -267,10 +285,8 @@ class DataContractFieldSupportTest {
   void findToBatch_appliesIncludeConditionNonDeleted() {
     CollectionDAO.EntityRelationshipDAO dao =
         mock(CollectionDAO.EntityRelationshipDAO.class, Mockito.CALLS_REAL_METHODS);
-
     List<String> fromIds = List.of(UUID.randomUUID().toString());
     dao.findToBatch(fromIds, "table", DATA_CONTRACT, Relationship.CONTAINS.ordinal(), NON_DELETED);
-
     verify(dao)
         .findToBatchWithCondition(
             fromIds,
@@ -284,10 +300,8 @@ class DataContractFieldSupportTest {
   void findToBatch_appliesIncludeConditionAll() {
     CollectionDAO.EntityRelationshipDAO dao =
         mock(CollectionDAO.EntityRelationshipDAO.class, Mockito.CALLS_REAL_METHODS);
-
     List<String> fromIds = List.of(UUID.randomUUID().toString());
     dao.findToBatch(fromIds, "table", DATA_CONTRACT, Relationship.CONTAINS.ordinal(), ALL);
-
     verify(dao)
         .findToBatchWithCondition(
             fromIds, Relationship.CONTAINS.ordinal(), "table", DATA_CONTRACT, "");
@@ -297,10 +311,8 @@ class DataContractFieldSupportTest {
   void findToBatch_appliesIncludeConditionDeleted() {
     CollectionDAO.EntityRelationshipDAO dao =
         mock(CollectionDAO.EntityRelationshipDAO.class, Mockito.CALLS_REAL_METHODS);
-
     List<String> fromIds = List.of(UUID.randomUUID().toString());
     dao.findToBatch(fromIds, "table", DATA_CONTRACT, Relationship.CONTAINS.ordinal(), DELETED);
-
     verify(dao)
         .findToBatchWithCondition(
             fromIds, Relationship.CONTAINS.ordinal(), "table", DATA_CONTRACT, "AND deleted = TRUE");

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -38,13 +37,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeSummaryMap;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Path("/v1/changeSummary")
@@ -106,16 +108,22 @@ public class ChangeSummaryResource {
           @DefaultValue("0")
           @Min(0)
           int offset) {
-
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     ResourceContext<?> resourceContext = new ResourceContext<>(entityType, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
     EntityInterface entity =
-        (EntityInterface) repository.get(uriInfo, id, repository.getFields("changeDescription"));
-
+        (EntityInterface)
+            repository
+                .reads()
+                .byId(
+                    id,
+                    new EntityReadService.Query(
+                        uriInfo,
+                        repository.fieldPolicy().parse("changeDescription"),
+                        RelationIncludes.fromInclude(Include.NON_DELETED),
+                        false));
     return buildResponse(entity, fieldPrefix, limit, offset);
   }
 
@@ -164,17 +172,14 @@ public class ChangeSummaryResource {
           @DefaultValue("0")
           @Min(0)
           int offset) {
-
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     ResourceContext<?> resourceContext = new ResourceContext<>(entityType, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
     EntityInterface entity =
         (EntityInterface)
-            repository.getByName(uriInfo, fqn, repository.getFields("changeDescription"));
-
+            repository.getByName(uriInfo, fqn, repository.fieldPolicy().parse("changeDescription"));
     return buildResponse(entity, fieldPrefix, limit, offset);
   }
 
@@ -185,11 +190,9 @@ public class ChangeSummaryResource {
         changeDescription != null ? changeDescription.getChangeSummary() : null;
     Map<String, ChangeSummary> changeSummary =
         changeSummaryMap != null ? changeSummaryMap.getAdditionalProperties() : null;
-
     if (changeSummary == null || changeSummary.isEmpty()) {
       return Response.ok(Map.of("changeSummary", Map.of(), "totalEntries", 0)).build();
     }
-
     // Apply field prefix filter
     Map<String, ChangeSummary> filtered;
     if (fieldPrefix != null && !fieldPrefix.isEmpty()) {
@@ -202,7 +205,6 @@ public class ChangeSummaryResource {
     } else {
       filtered = changeSummary;
     }
-
     // Apply pagination
     Map<String, ChangeSummary> paginated = new LinkedHashMap<>();
     int count = 0;
@@ -219,10 +221,14 @@ public class ChangeSummaryResource {
     }
     return Response.ok(
             Map.of(
-                "changeSummary", paginated,
-                "totalEntries", filtered.size(),
-                "offset", offset,
-                "limit", limit))
+                "changeSummary",
+                paginated,
+                "totalEntries",
+                filtered.size(),
+                "offset",
+                offset,
+                "limit",
+                limit))
         .build();
   }
 }

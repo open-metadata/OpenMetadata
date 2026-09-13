@@ -69,7 +69,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.cache.EntityCaches;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -233,8 +233,9 @@ public class IngestionPipelineResourceIT
     legacyConfig.remove("type");
     pipeline.getSourceConfig().setConfig(legacyConfig);
     Entity.getCollectionDAO().ingestionPipelineDAO().update(pipeline);
-    EntityRepository.invalidateCacheForEntity(
-        Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
+    EntityCaches.invalidations()
+        .referencesChanged(
+            Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
 
     assertNull(
         JsonUtils.getMap(getEntity(pipeline.getId().toString()).getSourceConfig().getConfig())
@@ -242,8 +243,9 @@ public class IngestionPipelineResourceIT
 
     IngestionPipelineMigrationUtil.MigrationResult migrationResult =
         IngestionPipelineMigrationUtil.backfillSourceConfigTypes(Entity.getCollectionDAO());
-    EntityRepository.invalidateCacheForEntity(
-        Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
+    EntityCaches.invalidations()
+        .referencesChanged(
+            Entity.INGESTION_PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName());
 
     assertTrue(migrationResult.repaired() >= 1);
     assertStoredSourceConfigType(pipeline.getId(), "DatabaseMetadata");

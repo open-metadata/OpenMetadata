@@ -52,8 +52,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
@@ -67,11 +67,17 @@ class DistributedSearchIndexExecutorTest {
   private static final String SERVER_ID = "server-a";
 
   private CollectionDAO collectionDAO;
+
   private SearchIndexJobDAO jobDAO;
+
   private SearchIndexPartitionDAO partitionDAO;
+
   private DistributedSearchIndexCoordinator coordinator;
+
   private JobRecoveryManager recoveryManager;
+
   private DistributedSearchIndexExecutor executor;
+
   private MockedStatic<ServerIdentityResolver> serverIdentityMock;
 
   private static void prepare(IndexingFailureRecorder mock, Context context) {
@@ -85,15 +91,12 @@ class DistributedSearchIndexExecutorTest {
     partitionDAO = mock(SearchIndexPartitionDAO.class);
     coordinator = mock(DistributedSearchIndexCoordinator.class);
     recoveryManager = mock(JobRecoveryManager.class);
-
     ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
     when(resolver.getServerId()).thenReturn(SERVER_ID);
     serverIdentityMock = mockStatic(ServerIdentityResolver.class);
     serverIdentityMock.when(ServerIdentityResolver::getInstance).thenReturn(resolver);
-
     when(collectionDAO.searchIndexJobDAO()).thenReturn(jobDAO);
     when(collectionDAO.searchIndexPartitionDAO()).thenReturn(partitionDAO);
-
     executor = new DistributedSearchIndexExecutor(collectionDAO);
     setField("coordinator", coordinator);
     setField("recoveryManager", recoveryManager);
@@ -114,17 +117,14 @@ class DistributedSearchIndexExecutorTest {
     ReindexingProgressListener listener = mock(ReindexingProgressListener.class);
     UUID appId = UUID.randomUUID();
     DistributedJobNotifier notifier = mock(DistributedJobNotifier.class);
-
     assertEquals(0, executor.getListenerCount());
     assertSame(executor, executor.addListener(listener));
     assertEquals(1, executor.getListenerCount());
     assertSame(executor, executor.removeListener(listener));
     assertEquals(0, executor.getListenerCount());
-
     executor.setAppContext(appId, 55L);
     executor.setJobNotifier(notifier);
     executor.updateStagedIndexMapping(Map.of("table", "staged-table"));
-
     assertFalse(executor.isStopped());
     assertNull(executor.getFailureRecorder());
     assertNull(executor.getEntityTracker());
@@ -144,7 +144,6 @@ class DistributedSearchIndexExecutorTest {
             .totalRecords(40)
             .build();
     SearchIndexJob initialized = created.withStatus(IndexJobStatus.READY);
-
     when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
     when(coordinator.tryAcquireReindexLock(any())).thenReturn(true);
     when(coordinator.createJob(any(), any(), eq("admin"), any())).thenReturn(created);
@@ -152,14 +151,12 @@ class DistributedSearchIndexExecutorTest {
             created.getId(), ReindexingConfiguration.builder().build()))
         .thenReturn(initialized);
     when(coordinator.transferReindexLock(any(), eq(created.getId()))).thenReturn(true);
-
     SearchIndexJob result =
         executor.createJob(
             Set.of("table"),
             new EventPublisherJob().withEntities(Set.of("table")),
             "admin",
             ReindexingConfiguration.builder().build());
-
     assertSame(initialized, result);
     assertSame(initialized, executor.getCurrentJob());
   }
@@ -173,7 +170,6 @@ class DistributedSearchIndexExecutorTest {
             .startedAt(123L)
             .build();
     when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.of(blocker));
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -183,7 +179,6 @@ class DistributedSearchIndexExecutorTest {
                     new EventPublisherJob().withEntities(Set.of("table")),
                     "admin",
                     ReindexingConfiguration.builder().build()));
-
     assertTrue(exception.getMessage().contains(blocker.getId().toString()));
     verifyNoInteractions(coordinator);
   }
@@ -192,12 +187,10 @@ class DistributedSearchIndexExecutorTest {
   void createJobReportsRunningJobWhenLockCannotBeAcquired() {
     SearchIndexJob running =
         SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
-
     when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
     when(coordinator.tryAcquireReindexLock(any())).thenReturn(false);
     when(coordinator.getRecentJobs(List.of(IndexJobStatus.RUNNING, IndexJobStatus.READY), 1))
         .thenReturn(List.of(running));
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -207,7 +200,6 @@ class DistributedSearchIndexExecutorTest {
                     new EventPublisherJob().withEntities(Set.of("table")),
                     "admin",
                     ReindexingConfiguration.builder().build()));
-
     assertTrue(exception.getMessage().contains(running.getId().toString()));
   }
 
@@ -217,7 +209,6 @@ class DistributedSearchIndexExecutorTest {
     when(coordinator.tryAcquireReindexLock(any())).thenReturn(false);
     when(coordinator.getRecentJobs(List.of(IndexJobStatus.RUNNING, IndexJobStatus.READY), 1))
         .thenReturn(List.of());
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -227,7 +218,6 @@ class DistributedSearchIndexExecutorTest {
                     new EventPublisherJob().withEntities(Set.of("table")),
                     "admin",
                     ReindexingConfiguration.builder().build()));
-
     assertTrue(exception.getMessage().contains("another operation may be in progress"));
   }
 
@@ -238,7 +228,6 @@ class DistributedSearchIndexExecutorTest {
         SearchIndexJob.builder().id(jobId).status(IndexJobStatus.INITIALIZING).build();
     SearchIndexJob initialized =
         SearchIndexJob.builder().id(jobId).status(IndexJobStatus.READY).totalRecords(20).build();
-
     when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
     when(coordinator.tryAcquireReindexLock(any())).thenReturn(true);
     when(coordinator.createJob(any(), any(), anyString(), any())).thenReturn(created);
@@ -246,7 +235,6 @@ class DistributedSearchIndexExecutorTest {
     when(coordinator.transferReindexLock(any(), eq(jobId))).thenReturn(false);
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new SearchIndexPartitionDAO.AggregatedStatsRecord(20, 10, 8, 2, 3, 1, 1, 1, 0));
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -256,9 +244,7 @@ class DistributedSearchIndexExecutorTest {
                     new EventPublisherJob().withEntities(Set.of("table")),
                     "admin",
                     ReindexingConfiguration.builder().build()));
-
     assertTrue(exception.getMessage().contains("Failed to transfer reindex lock"));
-
     ArgumentCaptor<UUID> tempJobCaptor = ArgumentCaptor.forClass(UUID.class);
     verify(coordinator).tryAcquireReindexLock(tempJobCaptor.capture());
     verify(coordinator).releaseReindexLock(tempJobCaptor.getValue());
@@ -285,7 +271,6 @@ class DistributedSearchIndexExecutorTest {
             .incrementRecovered()
             .build();
     when(recoveryManager.performStartupRecovery()).thenReturn(recovery);
-
     assertSame(recovery, executor.performStartupRecovery());
   }
 
@@ -294,9 +279,7 @@ class DistributedSearchIndexExecutorTest {
     SearchIndexJob job =
         SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
     when(coordinator.getJob(job.getId())).thenReturn(Optional.of(job));
-
     Optional<SearchIndexJob> result = executor.joinJob(job.getId());
-
     assertTrue(result.isPresent());
     assertSame(job, result.get());
     assertSame(job, executor.getCurrentJob());
@@ -311,10 +294,8 @@ class DistributedSearchIndexExecutorTest {
     List<PartitionWorker> activeWorkers = (List<PartitionWorker>) getField("activeWorkers");
     activeWorkers.add(worker);
     setField("currentJob", job);
-
     executor.stop();
     executor.stop();
-
     assertTrue(executor.isStopped());
     verify(worker, times(1)).stop();
     verify(coordinator, times(1)).requestStop(job.getId());
@@ -335,9 +316,7 @@ class DistributedSearchIndexExecutorTest {
         mock(java.util.concurrent.ExecutorService.class);
     when(workerExecutor.isShutdown()).thenReturn(false);
     setField("workerExecutor", workerExecutor);
-
     executor.stop();
-
     verify(workerExecutor, times(1)).shutdownNow();
   }
 
@@ -350,9 +329,7 @@ class DistributedSearchIndexExecutorTest {
         mock(java.util.concurrent.ExecutorService.class);
     when(workerExecutor.isShutdown()).thenReturn(true);
     setField("workerExecutor", workerExecutor);
-
     executor.stop();
-
     verify(workerExecutor, never()).shutdownNow();
   }
 
@@ -364,10 +341,8 @@ class DistributedSearchIndexExecutorTest {
     SearchIndexJob refreshed = current.withSuccessRecords(12).withFailedRecords(1);
     setField("currentJob", current);
     when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(refreshed);
-
     SearchIndexJob job = executor.getJobWithFreshStats();
     executor.updateStagedIndexMapping(Map.of("table", "staged_table"));
-
     assertSame(refreshed, job);
     verify(coordinator).updateStagedIndexMapping(jobId, Map.of("table", "staged_table"));
   }
@@ -378,7 +353,6 @@ class DistributedSearchIndexExecutorTest {
     ReindexContext stagedIndexContext = mock(ReindexContext.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
     RecreateIndexHandler recreateHandler = mock(RecreateIndexHandler.class);
-
     when(coordinator.getPartitions(jobId, null))
         .thenReturn(
             List.of(
@@ -388,14 +362,11 @@ class DistributedSearchIndexExecutorTest {
     when(stagedIndexContext.getEntities()).thenReturn(Set.of("table", "dashboard"));
     setField("entityTracker", new EntityCompletionTracker(jobId));
     setField("stagedIndexContext", stagedIndexContext);
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.createReindexHandler()).thenReturn(recreateHandler);
-
       invokePrivate("initializeEntityTracker", new Class<?>[] {UUID.class}, jobId);
     }
-
     EntityCompletionTracker tracker = executor.getEntityTracker();
     assertNotNull(tracker);
     assertEquals(2, tracker.getStatus("table").totalPartitions());
@@ -409,7 +380,6 @@ class DistributedSearchIndexExecutorTest {
     ReindexContext stagedIndexContext = mock(ReindexContext.class);
     DefaultRecreateHandler recreateHandler = mock(DefaultRecreateHandler.class);
     SearchRepository searchRepository = mock(SearchRepository.class);
-
     when(coordinator.getPartitions(jobId, null))
         .thenReturn(List.of(partition(jobId, "table", PartitionStatus.PENDING)));
     when(stagedIndexContext.getEntities()).thenReturn(Set.of("table"));
@@ -421,16 +391,12 @@ class DistributedSearchIndexExecutorTest {
     when(stagedIndexContext.getParentAliases("table")).thenReturn(List.of("table_parent"));
     setField("entityTracker", new EntityCompletionTracker(jobId));
     setField("stagedIndexContext", stagedIndexContext);
-
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.createReindexHandler()).thenReturn(recreateHandler);
-
       invokePrivate("initializeEntityTracker", new Class<?>[] {UUID.class}, jobId);
     }
-
     executor.getEntityTracker().recordPartitionComplete("table", false);
-
     verify(recreateHandler).promoteEntityIndex(any(EntityReindexContext.class), eq(true));
   }
 
@@ -445,25 +411,20 @@ class DistributedSearchIndexExecutorTest {
     when(stagedIndexContext.getCanonicalAlias("table")).thenReturn(Optional.of("table_alias"));
     when(stagedIndexContext.getExistingAliases("table")).thenReturn(Set.of("table_existing"));
     when(stagedIndexContext.getParentAliases("table")).thenReturn(List.of("table_parent"));
-
     setField("stagedIndexContext", stagedIndexContext);
     setField("indexPromotionHandler", defaultHandler);
-
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", false);
-
     ArgumentCaptor<EntityReindexContext> contextCaptor =
         ArgumentCaptor.forClass(EntityReindexContext.class);
     verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(false));
     assertEquals("table", contextCaptor.getValue().getEntityType());
     assertEquals("staged_table", contextCaptor.getValue().getStagedIndex());
     assertTrue(contextCaptor.getValue().getParentAliases().contains("table_parent"));
-
     setField("indexPromotionHandler", genericHandler);
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);
     verify(genericHandler).finalizeReindex(any(EntityReindexContext.class), eq(true));
-
     when(stagedIndexContext.getStagedIndex("topic")).thenReturn(Optional.empty());
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "topic", true);
@@ -474,7 +435,6 @@ class DistributedSearchIndexExecutorTest {
   void promoteEntityIndexReturnsWithoutContextAndSwallowsHandlerFailures() throws Exception {
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);
-
     ReindexContext stagedIndexContext = mock(ReindexContext.class);
     DefaultRecreateHandler defaultHandler = mock(DefaultRecreateHandler.class);
     when(stagedIndexContext.getStagedIndex("table")).thenReturn(Optional.of("staged_table"));
@@ -486,13 +446,10 @@ class DistributedSearchIndexExecutorTest {
     doThrow(new IllegalStateException("promotion failed"))
         .when(defaultHandler)
         .promoteEntityIndex(any(EntityReindexContext.class), eq(true));
-
     setField("stagedIndexContext", stagedIndexContext);
     setField("indexPromotionHandler", defaultHandler);
-
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);
-
     verify(defaultHandler).promoteEntityIndex(any(EntityReindexContext.class), eq(true));
   }
 
@@ -502,12 +459,11 @@ class DistributedSearchIndexExecutorTest {
         ReindexingConfiguration.builder().fieldFetchThreads(3).docBuildThreads(4).build();
     OpenSearchBulkSink openSearchSink = mock(OpenSearchBulkSink.class);
     ElasticSearchBulkSink elasticSearchSink = mock(ElasticSearchBulkSink.class);
-
-    try (MockedStatic<EntityRepository> entityRepositoryMock = mockStatic(EntityRepository.class);
+    try (MockedStatic<EntityPolicySupport> entityRepositoryMock =
+            mockStatic(EntityPolicySupport.class);
         MockedStatic<OpenSearchBulkSink> openSearchMock = mockStatic(OpenSearchBulkSink.class);
         MockedStatic<ElasticSearchBulkSink> elasticSearchMock =
             mockStatic(ElasticSearchBulkSink.class)) {
-
       invokePrivate(
           "applyPoolSizes",
           new Class<?>[] {
@@ -532,9 +488,8 @@ class DistributedSearchIndexExecutorTest {
           "resetPoolSizes",
           new Class<?>[] {org.openmetadata.service.apps.bundles.searchIndex.BulkSink.class},
           elasticSearchSink);
-
-      entityRepositoryMock.verify(() -> EntityRepository.setFieldFetchPoolSize(3), times(2));
-      entityRepositoryMock.verify(EntityRepository::resetFieldFetchPoolSize, times(2));
+      entityRepositoryMock.verify(() -> EntityPolicySupport.setFieldFetchPoolSize(3), times(2));
+      entityRepositoryMock.verify(EntityPolicySupport::resetFieldFetchPoolSize, times(2));
       openSearchMock.verify(() -> OpenSearchBulkSink.setDocBuildPoolSize(4));
       openSearchMock.verify(OpenSearchBulkSink::resetDocBuildPoolSize);
       elasticSearchMock.verify(() -> ElasticSearchBulkSink.setDocBuildPoolSize(4));
@@ -544,11 +499,11 @@ class DistributedSearchIndexExecutorTest {
 
   @Test
   void resetPoolSizesSwallowsStaticResetFailures() throws Exception {
-    try (MockedStatic<EntityRepository> entityRepositoryMock = mockStatic(EntityRepository.class)) {
+    try (MockedStatic<EntityPolicySupport> entityRepositoryMock =
+        mockStatic(EntityPolicySupport.class)) {
       entityRepositoryMock
-          .when(EntityRepository::resetFieldFetchPoolSize)
+          .when(EntityPolicySupport::resetFieldFetchPoolSize)
           .thenThrow(new IllegalStateException("reset failed"));
-
       invokePrivate(
           "resetPoolSizes",
           new Class<?>[] {org.openmetadata.service.apps.bundles.searchIndex.BulkSink.class},
@@ -567,7 +522,6 @@ class DistributedSearchIndexExecutorTest {
     setField("currentJob", readyJob);
     setField("jobNotifier", notifier);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(failedStart));
-
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
@@ -576,7 +530,6 @@ class DistributedSearchIndexExecutorTest {
                     bulkSink,
                     stagedContext("table"),
                     ReindexingConfiguration.builder().entities(Set.of("table")).build()));
-
     assertTrue(exception.getMessage().contains(IndexJobStatus.FAILED.name()));
     verify(coordinator).startJob(jobId);
     verify(notifier, never()).notifyJobStarted(any(), anyString());
@@ -598,7 +551,6 @@ class DistributedSearchIndexExecutorTest {
     DistributedJobNotifier notifier = mock(DistributedJobNotifier.class);
     ReindexingMetrics metrics = mock(ReindexingMetrics.class);
     Timer.Sample timerSample = mock(Timer.Sample.class);
-
     setField("currentJob", runningJob);
     setField("jobNotifier", notifier);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(runningJob), Optional.of(runningJob));
@@ -606,16 +558,13 @@ class DistributedSearchIndexExecutorTest {
     when(coordinator.getPartitions(eq(jobId), any())).thenReturn(List.of());
     when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(runningJob);
     when(bulkSink.flushAndAwait(60)).thenReturn(true);
-
     try (MockedConstruction<DistributedJobStatsAggregator> aggregatorConstruction =
             mockConstruction(DistributedJobStatsAggregator.class);
         MockedConstruction<IndexingFailureRecorder> failureConstruction =
             mockConstruction(IndexingFailureRecorder.class);
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class)) {
-
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(metrics);
       when(metrics.startJobTimer()).thenReturn(timerSample);
-
       DistributedSearchIndexExecutor.ExecutionResult result =
           executor.execute(
               bulkSink,
@@ -624,7 +573,6 @@ class DistributedSearchIndexExecutorTest {
                   .entities(Set.of("table"))
                   .consumerThreads(1)
                   .build());
-
       assertEquals(IndexJobStatus.RUNNING, result.status());
       verify(notifier, never()).notifyJobStarted(any(), anyString());
       verify(aggregatorConstruction.constructed().get(0)).start();
@@ -640,7 +588,6 @@ class DistributedSearchIndexExecutorTest {
             () ->
                 executor.execute(
                     mock(BulkSink.class), null, ReindexingConfiguration.builder().build()));
-
     assertTrue(exception.getMessage().contains("No job to execute"));
   }
 
@@ -673,7 +620,6 @@ class DistributedSearchIndexExecutorTest {
     ReindexingMetrics metrics = mock(ReindexingMetrics.class);
     Timer.Sample timerSample = mock(Timer.Sample.class);
     AtomicInteger getJobCalls = new AtomicInteger();
-
     setField("currentJob", readyJob);
     setField("jobNotifier", notifier);
     when(notifier.getType()).thenReturn("redis");
@@ -690,17 +636,14 @@ class DistributedSearchIndexExecutorTest {
     when(coordinator.getPartitions(eq(jobId), any())).thenReturn(List.of());
     when(coordinator.getJobWithAggregatedStats(jobId)).thenReturn(completedJob);
     when(bulkSink.flushAndAwait(60)).thenReturn(true);
-
     try (MockedConstruction<DistributedJobStatsAggregator> aggregatorConstruction =
             mockConstruction(DistributedJobStatsAggregator.class);
         MockedConstruction<IndexingFailureRecorder> failureConstruction =
             mockConstruction(
                 IndexingFailureRecorder.class, DistributedSearchIndexExecutorTest::prepare);
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class)) {
-
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(metrics);
       when(metrics.startJobTimer()).thenReturn(timerSample);
-
       DistributedSearchIndexExecutor.ExecutionResult result =
           executor.execute(
               bulkSink,
@@ -710,17 +653,14 @@ class DistributedSearchIndexExecutorTest {
                   .consumerThreads(1)
                   .statsIntervalMs(1)
                   .build());
-
       assertEquals(IndexJobStatus.COMPLETED, result.status());
       assertEquals(15, result.successRecords());
       assertFalse(DistributedSearchIndexExecutor.isCoordinatingJob(jobId));
       assertSame(completedJob, executor.getCurrentJob());
-
       assertEquals(1, aggregatorConstruction.constructed().size());
       assertEquals(1, failureConstruction.constructed().size());
       aggregator = aggregatorConstruction.constructed().get(0);
       failureRecorder = failureConstruction.constructed().get(0);
-
       verify(coordinator).startJob(jobId);
       verify(notifier).notifyJobStarted(jobId, "SEARCH_INDEX");
       verify(notifier).notifyJobCompleted(jobId);
@@ -758,7 +698,6 @@ class DistributedSearchIndexExecutorTest {
     ReindexingMetrics metrics = mock(ReindexingMetrics.class);
     Timer.Sample timerSample = mock(Timer.Sample.class);
     AtomicReference<BulkSink.FailureCallback> callbackRef = new AtomicReference<>();
-
     executor.addListener(listener);
     setField("currentJob", runningJob);
     when(coordinator.getJob(jobId))
@@ -788,7 +727,6 @@ class DistributedSearchIndexExecutorTest {
     doThrow(new IllegalStateException("release failed"))
         .when(coordinator)
         .releaseReindexLock(jobId);
-
     try (MockedConstruction<DistributedJobStatsAggregator> aggregatorConstruction =
             mockConstruction(
                 DistributedJobStatsAggregator.class,
@@ -801,12 +739,10 @@ class DistributedSearchIndexExecutorTest {
                     doThrow(new IllegalStateException("close failed")).when(mock).close());
         MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class)) {
-
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
       when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(metrics);
       when(metrics.startJobTimer()).thenReturn(timerSample);
-
       DistributedSearchIndexExecutor.ExecutionResult result =
           executor.execute(
               bulkSink,
@@ -815,11 +751,9 @@ class DistributedSearchIndexExecutorTest {
                   .entities(Set.of("table"))
                   .consumerThreads(1)
                   .build());
-
       assertEquals(IndexJobStatus.FAILED, result.status());
       assertEquals(failedJob, executor.getCurrentJob());
       assertNotNull(callbackRef.get());
-
       IndexingFailureRecorder failureRecorder = failureConstruction.constructed().get(0);
       callbackRef
           .get()
@@ -833,7 +767,6 @@ class DistributedSearchIndexExecutorTest {
           .get()
           .onFailure(
               "table", "1", "table.fqn", "sink failed", IndexingFailureRecorder.FailureStage.SINK);
-
       verify(failureRecorder).recordProcessFailure("table", "1", "table.fqn", "process failed");
       verify(failureRecorder).recordSinkFailure("table", "1", "table.fqn", "sink failed");
       verify(aggregatorConstruction.constructed().get(0)).setProgressListener(any(), any());
@@ -861,7 +794,6 @@ class DistributedSearchIndexExecutorTest {
     DistributedJobNotifier notifier = mock(DistributedJobNotifier.class);
     ReindexingMetrics metrics = mock(ReindexingMetrics.class);
     Timer.Sample timerSample = mock(Timer.Sample.class);
-
     setField("currentJob", runningJob);
     setField("jobNotifier", notifier);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(stoppedJob));
@@ -873,16 +805,13 @@ class DistributedSearchIndexExecutorTest {
         .when(metrics)
         .recordJobStopped(timerSample);
     doThrow(new IllegalStateException("notify failed")).when(notifier).notifyJobCompleted(jobId);
-
     try (MockedConstruction<DistributedJobStatsAggregator> aggregatorConstruction =
             mockConstruction(DistributedJobStatsAggregator.class);
         MockedConstruction<IndexingFailureRecorder> failureConstruction =
             mockConstruction(IndexingFailureRecorder.class);
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class)) {
-
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(metrics);
       when(metrics.startJobTimer()).thenReturn(timerSample);
-
       Thread.currentThread().interrupt();
       try {
         DistributedSearchIndexExecutor.ExecutionResult result =
@@ -893,13 +822,11 @@ class DistributedSearchIndexExecutorTest {
                     .entities(Set.of("table"))
                     .consumerThreads(1)
                     .build());
-
         assertEquals(IndexJobStatus.STOPPED, result.status());
         assertSame(stoppedJob, executor.getCurrentJob());
       } finally {
         Thread.interrupted();
       }
-
       verify(aggregatorConstruction.constructed().get(0)).start();
       verify(aggregatorConstruction.constructed().get(0)).forceUpdate();
       verify(aggregatorConstruction.constructed().get(0)).stop();
@@ -930,7 +857,6 @@ class DistributedSearchIndexExecutorTest {
     BulkSink bulkSink = mock(BulkSink.class);
     ReindexingMetrics metrics = mock(ReindexingMetrics.class);
     Timer.Sample timerSample = mock(Timer.Sample.class);
-
     setField("currentJob", runningJob);
     when(coordinator.getJob(jobId))
         .thenReturn(Optional.of(runningJob), Optional.of(stoppingJob), Optional.of(stoppedJob));
@@ -944,16 +870,13 @@ class DistributedSearchIndexExecutorTest {
     doThrow(new IllegalStateException("cleanup failed"))
         .when(coordinator)
         .forceCompleteProcessingPartitions(jobId);
-
     try (MockedConstruction<DistributedJobStatsAggregator> aggregatorConstruction =
             mockConstruction(DistributedJobStatsAggregator.class);
         MockedConstruction<IndexingFailureRecorder> failureConstruction =
             mockConstruction(IndexingFailureRecorder.class);
         MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class)) {
-
       metricsMock.when(ReindexingMetrics::getInstance).thenReturn(metrics);
       when(metrics.startJobTimer()).thenReturn(timerSample);
-
       DistributedSearchIndexExecutor.ExecutionResult result =
           executor.execute(
               bulkSink,
@@ -962,7 +885,6 @@ class DistributedSearchIndexExecutorTest {
                   .entities(Set.of("table"))
                   .consumerThreads(1)
                   .build());
-
       assertEquals(IndexJobStatus.STOPPED, result.status());
       assertSame(stoppedJob, executor.getCurrentJob());
       verify(aggregatorConstruction.constructed().get(0)).forceUpdate();
@@ -982,10 +904,8 @@ class DistributedSearchIndexExecutorTest {
             Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
     when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING))
         .thenReturn(List.of(partition(jobId, "table", PartitionStatus.PROCESSING)));
-
     invokePrivate(
         "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
-
     // We wait for the participant to finish so the entity is promoted with a fully-built index; the
     // in-flight partition must NOT be force-cancelled (that would promote a partial index). The
     // completion check still runs so the job terminalizes once the partition actually finishes.
@@ -1000,10 +920,8 @@ class DistributedSearchIndexExecutorTest {
         .thenReturn(
             Optional.of(
                 SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
-
     invokePrivate(
         "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
-
     // A user-requested stop force-cancels in-flight partitions so the job can reach STOPPED.
     verify(coordinator).forceCompleteProcessingPartitions(jobId);
     verify(coordinator).checkAndUpdateJobCompletion(jobId);
@@ -1017,10 +935,8 @@ class DistributedSearchIndexExecutorTest {
         .thenReturn(
             Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
     when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING)).thenReturn(List.of());
-
     invokePrivate(
         "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
-
     // Nothing is still processing, so there is nothing to force-cancel; the completion check alone
     // takes the job terminal.
     verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
@@ -1037,18 +953,15 @@ class DistributedSearchIndexExecutorTest {
     BulkSink bulkSink = mock(BulkSink.class);
     AtomicLong totalSuccess = new AtomicLong();
     AtomicLong totalFailed = new AtomicLong();
-
     setField("currentJob", runningJob);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(runningJob), Optional.of(completedJob));
     when(coordinator.claimNextPartition(jobId)).thenReturn(Optional.of(partition));
-
     try (MockedConstruction<PartitionWorker> workerConstruction =
         mockConstruction(
             PartitionWorker.class,
             (mock, context) ->
                 when(mock.processPartition(partition))
                     .thenReturn(new PartitionWorker.PartitionResult(5, 2, false, 1, 1)))) {
-
       invokePrivate(
           "runWorkerLoop",
           new Class<?>[] {
@@ -1067,7 +980,6 @@ class DistributedSearchIndexExecutorTest {
           totalSuccess,
           totalFailed,
           ReindexingConfiguration.builder().build());
-
       assertEquals(5L, totalSuccess.get());
       assertEquals(2L, totalFailed.get());
       assertEquals(5L, ((AtomicLong) getField("coordinatorReaderSuccess")).get());
@@ -1088,7 +1000,6 @@ class DistributedSearchIndexExecutorTest {
     SearchIndexPartition pendingPartition = partition(jobId, "table", PartitionStatus.PENDING);
     SearchIndexPartition processingPartition =
         partition(jobId, "table", PartitionStatus.PROCESSING);
-
     setField("currentJob", runningJob);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(runningJob));
     when(coordinator.claimNextPartition(jobId)).thenReturn(Optional.empty());
@@ -1096,7 +1007,6 @@ class DistributedSearchIndexExecutorTest {
         .thenReturn(List.of(pendingPartition));
     when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING))
         .thenReturn(List.of(processingPartition));
-
     AtomicReference<Throwable> failure = new AtomicReference<>();
     Thread workerThread =
         Thread.ofPlatform()
@@ -1125,11 +1035,9 @@ class DistributedSearchIndexExecutorTest {
                     failure.set(t);
                   }
                 });
-
     Thread.sleep(1100);
     workerThread.interrupt();
     workerThread.join(2000);
-
     assertFalse(workerThread.isAlive());
     assertNull(failure.get());
     assertTrue(((Set<?>) getField("activePartitions")).isEmpty());
@@ -1143,18 +1051,15 @@ class DistributedSearchIndexExecutorTest {
         SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
     SearchIndexJob completedJob = runningJob.withStatus(IndexJobStatus.COMPLETED);
     SearchIndexPartition partition = partition(jobId, "table", PartitionStatus.PENDING);
-
     setField("currentJob", runningJob);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(runningJob), Optional.of(completedJob));
     when(coordinator.claimNextPartition(jobId)).thenReturn(Optional.of(partition));
-
     try (MockedConstruction<PartitionWorker> workerConstruction =
         mockConstruction(
             PartitionWorker.class,
             (mock, context) ->
                 when(mock.processPartition(partition))
                     .thenThrow(new IllegalStateException("boom")))) {
-
       invokePrivate(
           "runWorkerLoop",
           new Class<?>[] {
@@ -1173,7 +1078,6 @@ class DistributedSearchIndexExecutorTest {
           new AtomicLong(),
           new AtomicLong(),
           ReindexingConfiguration.builder().build());
-
       assertTrue(((Set<?>) getField("activePartitions")).isEmpty());
       assertTrue(((List<?>) getField("activeWorkers")).isEmpty());
       assertEquals(0, ((AtomicInteger) getField("coordinatorPartitionsCompleted")).get());
@@ -1186,7 +1090,6 @@ class DistributedSearchIndexExecutorTest {
     SearchIndexJob runningJob =
         SearchIndexJob.builder().id(UUID.randomUUID()).status(IndexJobStatus.RUNNING).build();
     setField("currentJob", runningJob);
-
     runLoopUntilInterrupted(
         "runStaleReclaimerLoop", new Class<?>[] {UUID.class}, runningJob.getId());
     runLoopUntilInterrupted("runLockRefreshLoop", new Class<?>[] {UUID.class}, runningJob.getId());
@@ -1197,9 +1100,7 @@ class DistributedSearchIndexExecutorTest {
   void markJobAsFailedDueToLostLockUsesZeroCountsWhenStatsMissing() throws Exception {
     UUID jobId = UUID.randomUUID();
     when(partitionDAO.getAggregatedStats(jobId.toString())).thenReturn(null);
-
     invokePrivate("markJobAsFailedDueToLostLock", new Class<?>[] {UUID.class}, jobId);
-
     verify(jobDAO)
         .update(
             eq(jobId.toString()),
@@ -1219,7 +1120,6 @@ class DistributedSearchIndexExecutorTest {
   void markJobAsFailedDueToLostLockSwallowsDaoFailures() throws Exception {
     when(collectionDAO.searchIndexJobDAO())
         .thenThrow(new IllegalStateException("job dao unavailable"));
-
     invokePrivate("markJobAsFailedDueToLostLock", new Class<?>[] {UUID.class}, UUID.randomUUID());
   }
 
@@ -1227,7 +1127,6 @@ class DistributedSearchIndexExecutorTest {
   void markJobAsFailedSwallowsDaoFailures() throws Exception {
     when(collectionDAO.searchIndexJobDAO())
         .thenThrow(new IllegalStateException("job dao unavailable"));
-
     invokePrivate(
         "markJobAsFailed", new Class<?>[] {UUID.class, String.class}, UUID.randomUUID(), "failed");
   }
@@ -1237,7 +1136,6 @@ class DistributedSearchIndexExecutorTest {
     DistributedSearchIndexExecutor.ExecutionResult result =
         new DistributedSearchIndexExecutor.ExecutionResult(
             IndexJobStatus.COMPLETED, 20, 15, 5, 100L, 145L);
-
     assertEquals(75.0, result.getSuccessRate());
     assertEquals(45L, result.getDurationMs());
   }
@@ -1245,7 +1143,6 @@ class DistributedSearchIndexExecutorTest {
   @Test
   void interruptAndJoinHandlesNullAndInterruptedCaller() throws Exception {
     invokePrivate("interruptAndJoin", new Class<?>[] {Thread.class, String.class}, null, "missing");
-
     Thread worker =
         Thread.ofPlatform()
             .start(
@@ -1256,7 +1153,6 @@ class DistributedSearchIndexExecutorTest {
                     Thread.currentThread().interrupt();
                   }
                 });
-
     Thread.currentThread().interrupt();
     invokePrivate(
         "interruptAndJoin", new Class<?>[] {Thread.class, String.class}, worker, "worker");
@@ -1286,16 +1182,13 @@ class DistributedSearchIndexExecutorTest {
                     workerFailure.set(t);
                   }
                 });
-
     long start = System.nanoTime();
     invokePrivate(
         "interruptAndJoin", new Class<?>[] {Thread.class, String.class}, worker, "stubborn");
     long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-
     assertTrue(elapsedMs >= 4_500, "join should wait close to the timeout before returning");
     assertTrue(worker.isAlive());
     assertNull(workerFailure.get());
-
     keepRunning.set(false);
     worker.interrupt();
     worker.join(1_000);
@@ -1312,14 +1205,11 @@ class DistributedSearchIndexExecutorTest {
     setField("currentJob", running);
     setField("latchPollIntervalSeconds", 1L);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(failed));
-
     CountDownLatch neverDrains = new CountDownLatch(1);
-
     long start = System.nanoTime();
     invokePrivate(
         "awaitWorkers", new Class<?>[] {CountDownLatch.class, UUID.class}, neverDrains, jobId);
     long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-
     assertTrue(elapsedMs < 30_000, "orchestrator must unwind, not hang, on a wedged worker");
     assertTrue(executor.isStopped(), "terminal detection must trigger stop()");
     verify(coordinator).requestStop(jobId);
@@ -1334,16 +1224,12 @@ class DistributedSearchIndexExecutorTest {
         SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build();
     setField("currentJob", running);
     setField("latchPollIntervalSeconds", 1L);
-
     when(coordinator.getJob(jobId))
         .thenThrow(new RuntimeException("transient db error"))
         .thenReturn(Optional.of(failed));
-
     CountDownLatch neverDrains = new CountDownLatch(1);
-
     invokePrivate(
         "awaitWorkers", new Class<?>[] {CountDownLatch.class, UUID.class}, neverDrains, jobId);
-
     assertTrue(
         executor.isStopped(), "a transient read error must not abort; later clean poll unwinds");
     verify(coordinator).requestStop(jobId);
@@ -1352,30 +1238,25 @@ class DistributedSearchIndexExecutorTest {
   @Test
   void isJobTerminalOrStoppingReflectsJobState() throws Exception {
     UUID jobId = UUID.randomUUID();
-
     when(coordinator.getJob(jobId)).thenReturn(Optional.empty());
     assertTrue(
         (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
-
     when(coordinator.getJob(jobId))
         .thenReturn(
             Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build()));
     assertTrue(
         (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
-
     when(coordinator.getJob(jobId))
         .thenReturn(
             Optional.of(
                 SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
     assertTrue(
         (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
-
     when(coordinator.getJob(jobId))
         .thenReturn(
             Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
     assertFalse(
         (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
-
     when(coordinator.getJob(jobId)).thenThrow(new RuntimeException("transient db error"));
     assertFalse(
         (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId),
@@ -1417,14 +1298,12 @@ class DistributedSearchIndexExecutorTest {
     ReindexingMetrics metrics = mock(ReindexingMetrics.class);
     Timer.Sample sample = mock(Timer.Sample.class);
     Class<?>[] sig = {ReindexingMetrics.class, Timer.Sample.class, IndexJobStatus.class};
-
     // PROMOTING is the drained hand-off state execute() ends on (the strategy promotes and flips it
     // terminal afterwards). It must record a COMPLETED run — pre-fix it fell through to
     // recordJobFailed, misreporting every successful distributed reindex as a failure.
     invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.PROMOTING);
     verify(metrics).recordJobCompleted(sample);
     verify(metrics, never()).recordJobFailed(sample);
-
     invokePrivate("recordTerminalMetric", sig, metrics, sample, IndexJobStatus.FAILED);
     verify(metrics).recordJobFailed(sample);
   }
@@ -1462,11 +1341,9 @@ class DistributedSearchIndexExecutorTest {
                     failure.set(t);
                   }
                 });
-
     Thread.sleep(100);
     loopThread.interrupt();
     loopThread.join(2_000);
-
     assertFalse(loopThread.isAlive());
     assertNull(failure.get());
   }

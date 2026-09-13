@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashSet;
 import org.junit.jupiter.api.Test;
@@ -57,12 +56,8 @@ class McpServiceRepositoryTest {
                       "domains",
                       "ingestionRunner")));
       org.mockito.Mockito.when(dao.mcpServiceDAO()).thenReturn(mcpServiceDAO);
-
       McpServiceRepository repo = new McpServiceRepository();
-
-      Field supportsSearchField = EntityRepository.class.getDeclaredField("supportsSearch");
-      supportsSearchField.setAccessible(true);
-      assertTrue((boolean) supportsSearchField.get(repo));
+      assertTrue(repo.context().options().isSupportsSearch());
     }
   }
 }

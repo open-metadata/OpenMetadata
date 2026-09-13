@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -81,6 +80,20 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityPatchService;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -111,60 +124,79 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
-public class UserRepository extends EntityRepository<User> {
+@Repository()
+public class UserRepository implements EntityPolicy<User> {
+
   private static final int MAX_TASK_CLEANUP_RETRIES = 3;
+
   private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
+
   private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
+
   private static final IntervalFunction TASK_CLEANUP_RETRY_INTERVAL_FUNCTION =
       attempt -> {
         long retryDelayMillis =
             INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS << Math.max(0, (int) attempt - 1);
         return Math.min(retryDelayMillis, MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS);
       };
+
   private static final RetryConfig TASK_CLEANUP_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(MAX_TASK_CLEANUP_RETRIES)
           .intervalFunction(TASK_CLEANUP_RETRY_INTERVAL_FUNCTION)
           .retryOnException(UserRepository::isTransientDeadlock)
           .build();
+
   static final String ROLES_FIELD = "roles";
+
   static final String TEAMS_FIELD = "teams";
+
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
+
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
+
   static final String USER_PATCH_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+
   static final String USER_UPDATE_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
+
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
+
   private volatile EntityReference organization;
+
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+
   private final UserPreferencesRepository userPreferencesRepository =
       new UserPreferencesRepository();
 
   public UserRepository() {
-    super(
-        UserResource.COLLECTION_PATH,
-        USER,
-        User.class,
-        Entity.getCollectionDAO().userDAO(),
-        USER_PATCH_FIELDS,
-        USER_UPDATE_FIELDS);
-    this.quoteFqn = true;
-    supportsSearch = true;
-
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                UserResource.COLLECTION_PATH,
+                USER,
+                User.class,
+                Entity.getCollectionDAO().userDAO()),
+            new EntityPolicyContext.WriteFields(USER_PATCH_FIELDS, USER_UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setQuoteFqn(true);
+    context().options().setSupportsSearch(true);
     // Register bulk field fetchers for User-specific fields
-    this.fieldFetchers.put("teams", this::fetchAndSetTeams);
-    this.fieldFetchers.put("roles", this::fetchAndSetRoles);
-    this.fieldFetchers.put("owns", this::fetchAndSetOwns);
-    this.fieldFetchers.put("follows", this::fetchAndSetFollows);
-    this.fieldFetchers.put("personas", this::fetchAndSetPersonas);
-    this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
-    this.fieldFetchers.put("inheritedPersonas", this::fetchAndSetInheritedPersonas);
-    this.fieldFetchers.put("domains", this::fetchAndSetDomains);
-
-    if (searchRepository != null) {
-      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    this.fieldLoading().register("teams", this::fetchAndSetTeams);
+    this.fieldLoading().register("roles", this::fetchAndSetRoles);
+    this.fieldLoading().register("owns", this::fetchAndSetOwns);
+    this.fieldLoading().register("follows", this::fetchAndSetFollows);
+    this.fieldLoading().register("personas", this::fetchAndSetPersonas);
+    this.fieldLoading().register("defaultPersona", this::fetchAndSetDefaultPersona);
+    this.fieldLoading().register("inheritedPersonas", this::fetchAndSetInheritedPersonas);
+    this.fieldLoading().register("domains", this::fetchAndSetDomains);
+    if (context().dependencies().search() != null) {
+      inheritedFieldEntitySearch =
+          new DefaultInheritedFieldEntitySearch(context().dependencies().search());
     }
   }
 
@@ -183,7 +215,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
-    Set<String> tempFields = getAllowedFieldsCopy();
+    Set<String> tempFields = fieldPolicy().allowedCopy();
     if (fields != null && fields.equals("*")) {
       tempFields.add(AUTH_MECHANISM_FIELD);
       return new Fields(tempFields);
@@ -193,31 +225,42 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public User getByName(UriInfo uriInfo, String name, Fields fields) {
-    return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
+    return EntityPolicy.super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
   }
 
   private List<EntityReference> getDomains(UUID teamId) {
     // Team does not have domain. 'domains' is the field for user as team can belong to multiple
     // domains
-    return findFrom(teamId, USER, Relationship.HAS, Entity.DOMAIN);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(teamId, USER, Relationship.HAS, Entity.DOMAIN),
+            Include.NON_DELETED);
   }
 
   @Override
-  protected void storeDomains(User entity, List<EntityReference> exclude) {
+  public void storeDomains(User entity, List<EntityReference> exclude) {
     for (EntityReference domainRef : listOrEmpty(entity.getDomains())) {
       // Add relationship domain --- has ---> entity
       LOG.info(
           "Adding domain {} for user {}:{}",
           domainRef.getFullyQualifiedName(),
-          entityType,
+          context().schema().entityType(),
           entity.getId());
-      addRelationship(
-          domainRef.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  domainRef.getId(),
+                  entity.getId(),
+                  Entity.DOMAIN,
+                  context().schema().entityType(),
+                  Relationship.HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   public User getByEmail(UriInfo uriInfo, String email, Fields fields) {
-    String userString = daoCollection.userDAO().findUserByEmail(email);
+    String userString = context().dependencies().daos().userDAO().findUserByEmail(email);
     if (userString == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
@@ -231,7 +274,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public User getUserByNameAndEmail(UriInfo uriInfo, String name, String email, Fields fields) {
-    String userString = daoCollection.userDAO().findUserByNameAndEmail(name, email);
+    String userString =
+        context().dependencies().daos().userDAO().findUserByNameAndEmail(name, email);
     if (userString == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
@@ -244,20 +288,22 @@ public class UserRepository extends EntityRepository<User> {
     return withHref(uriInfo, entityClone);
   }
 
-  /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
+  /**
+   * Ensures that the default roles are added for POST, PUT and PATCH operations.
+   */
   @Override
   public void prepare(User user, boolean update) {
     validateTeams(user);
     if (!update) {
       validateGroupTeams(user.getTeams());
     }
-    validateRoles(user.getRoles());
+    referenceValidation().roles(user.getRoles());
   }
 
   @Override
   public void restorePatchAttributes(User original, User updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated
         .withInheritedRoles(original.getInheritedRoles())
         .withInheritedPersonas(original.getInheritedPersonas())
@@ -266,13 +312,14 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getInheritedRoles(User user) {
     if (Boolean.TRUE.equals(user.getIsBot())) {
-      return Collections.emptyList(); // No inherited roles for bots
+      // No inherited roles for bots
+      return Collections.emptyList();
     }
     return SubjectContext.getRolesForTeams(getTeams(user));
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona");
   }
 
@@ -283,27 +330,30 @@ public class UserRepository extends EntityRepository<User> {
       secretsManager.encryptAuthenticationMechanism(
           user.getName(), user.getAuthenticationMechanism());
     }
-
-    store(user, update);
+    persistence().store(user, update);
   }
 
   @Override
   public void storeEntities(List<User> entities) {
     List<String> fqns = new ArrayList<>(entities.size());
     List<String> jsons = new ArrayList<>(entities.size());
-
     for (User user : entities) {
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       if (secretsManager != null && Boolean.TRUE.equals(user.getIsBot())) {
         secretsManager.encryptAuthenticationMechanism(
             user.getName(), user.getAuthenticationMechanism());
       }
-
       fqns.add(user.getFullyQualifiedName());
       jsons.add(serializeForStorage(user));
     }
-
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    context()
+        .schema()
+        .dao()
+        .insertMany(
+            context().schema().dao().getTableName(),
+            context().schema().dao().getNameHashColumn(),
+            fqns,
+            jsons);
   }
 
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
@@ -311,8 +361,14 @@ public class UserRepository extends EntityRepository<User> {
     JsonPatch patch =
         JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
-    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
-
+    userRepository
+        .patches()
+        .patch(
+            new EntityPatchService.Target.Id(orginalUser.getId()),
+            patch,
+            new EntityCommandActor(orginalUser.getUpdatedBy(), null),
+            null,
+            new EntityPatchService.Options(null, null));
     // Update lastActivityTime immediately on login for metrics visibility
     // This ensures user metrics show activity right after login
     if (!orginalUser.getIsBot()) {
@@ -330,13 +386,11 @@ public class UserRepository extends EntityRepository<User> {
     // This method is used for immediate updates (e.g., in tests)
     // For production use, UserActivityTracker should be used for batch updates
     String fqn = quoteName(userName.toLowerCase());
-
     LOG.debug(
         "Updating lastActivityTime for user: {} (fqn: {}) to: {}", userName, fqn, lastActivityTime);
-
     // Use the custom DAO method for optimized update
     // Note: @BindFQN will automatically hash the fqn, so we don't pre-hash it
-    daoCollection.userDAO().updateLastActivityTime(fqn, lastActivityTime);
+    context().dependencies().daos().userDAO().updateLastActivityTime(fqn, lastActivityTime);
   }
 
   @Transaction
@@ -344,20 +398,16 @@ public class UserRepository extends EntityRepository<User> {
     if (userActivityMap.isEmpty()) {
       return;
     }
-
     // Bulk update all users' activity times in a single query
     // This is much more efficient than individual updates
-    UserDAO userDAO = daoCollection.userDAO();
-
+    UserDAO userDAO = context().dependencies().daos().userDAO();
     // Build the CASE statement and collect nameHashes
     StringBuilder caseBuilder = new StringBuilder();
     List<String> nameHashes = new ArrayList<>();
-
     for (Map.Entry<String, Long> entry : userActivityMap.entrySet()) {
       // User FQNs are stored with quoteName applied, so we must match that format
       String fqn = quoteName(entry.getKey().toLowerCase());
       String fqnHash = FullyQualifiedName.buildHash(fqn);
-
       nameHashes.add(fqnHash);
       caseBuilder
           .append("WHEN '")
@@ -366,7 +416,6 @@ public class UserRepository extends EntityRepository<User> {
           .append(entry.getValue())
           .append(" ");
     }
-
     if (!nameHashes.isEmpty()) {
       String caseStatements = caseBuilder.toString();
       userDAO.updateLastActivityTimeBulk(caseStatements, nameHashes);
@@ -379,7 +428,7 @@ public class UserRepository extends EntityRepository<User> {
    * Relationships NOT in CSV (e.g., personas) are preserved to avoid data loss.
    */
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<User> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<User> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(User::getId).toList();
     deleteFromMany(ids, Entity.USER, Relationship.HAS, Entity.ROLE);
@@ -417,9 +466,9 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public EntityRepository<User>.EntityUpdater getUpdater(
-      User original, User updated, Operation operation, ChangeSource changeSource) {
-    return new UserUpdater(original, updated, operation);
+  public EntityUpdater<User> getUpdater(
+      User original, User updated, EntityOperation operation, ChangeSource changeSource) {
+    return new UserUpdater(original, updated, operation).mutation();
   }
 
   @Override
@@ -460,7 +509,7 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public String exportToCsv(String importingTeam, String user, boolean recursive)
       throws IOException {
-    Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    Team team = context().dependencies().daos().teamDAO().findEntityByName(importingTeam);
     return new UserCsv(team, user).exportCsv();
   }
 
@@ -475,7 +524,7 @@ public class UserRepository extends EntityRepository<User> {
   public CsvImportResult importFromCsv(
       String importingTeam, String csv, boolean dryRun, String user, boolean recursive)
       throws IOException {
-    Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    Team team = context().dependencies().daos().teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);
     return userCsv.importCsv(csv, dryRun);
   }
@@ -489,7 +538,7 @@ public class UserRepository extends EntityRepository<User> {
       boolean recursive,
       CsvImportProgressCallback callback)
       throws IOException {
-    Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    Team team = context().dependencies().daos().teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);
     return userCsv.importCsv(csv, dryRun);
   }
@@ -503,7 +552,11 @@ public class UserRepository extends EntityRepository<User> {
 
   public boolean isTeamJoinable(String teamId) {
     Team team =
-        daoCollection.teamDAO().findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
+        context()
+            .dependencies()
+            .daos()
+            .teamDAO()
+            .findEntityById(UUID.fromString(teamId), Include.NON_DELETED);
     return team.getIsJoinable();
   }
 
@@ -517,7 +570,8 @@ public class UserRepository extends EntityRepository<User> {
       }
       teams.sort(EntityUtil.compareEntityReference);
     } else {
-      user.setTeams(new ArrayList<>(List.of(getOrganization()))); // Organization is a default team
+      // Organization is a default team
+      user.setTeams(new ArrayList<>(List.of(getOrganization())));
     }
   }
 
@@ -533,13 +587,13 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  protected void entitySpecificCleanup(User entityInterface) {
+  public void entitySpecificCleanup(User entityInterface) {
     TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), USER);
   }
 
   /* Validate if the user is already part of the given team */
   public void validateTeamAddition(UUID userId, UUID teamId) {
-    User user = find(userId, NON_DELETED);
+    User user = lookup().byId(userId, NON_DELETED);
     List<EntityReference> teams = getTeams(user);
     Optional<EntityReference> team =
         teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
@@ -551,11 +605,11 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public boolean checkEmailAlreadyExists(String emailId) {
-    return daoCollection.userDAO().checkEmailExists(emailId) > 0;
+    return context().dependencies().daos().userDAO().checkEmailExists(emailId) > 0;
   }
 
   public boolean checkUserNameExists(String username) {
-    return daoCollection.userDAO().checkUserNameExists(username) > 0;
+    return context().dependencies().daos().userDAO().checkUserNameExists(username) > 0;
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
@@ -565,7 +619,6 @@ public class UserRepository extends EntityRepository<User> {
         new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
     String domain = SecurityUtil.getDomain(config);
     UserUtil.addUsers(authProvider, adminUsers, domain, true);
-
     // Create Test Users
     Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
     UserUtil.addUsers(authProvider, testUsers, domain, null);
@@ -574,13 +627,18 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getOwns(User user) {
     // Compile entities owned by the user
     List<EntityRelationshipRecord> ownedEntities =
-        daoCollection.relationshipDAO().findTo(user.getId(), USER, Relationship.OWNS.ordinal());
-
+        context()
+            .dependencies()
+            .daos()
+            .relationshipDAO()
+            .findTo(user.getId(), USER, Relationship.OWNS.ordinal());
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
       ownedEntities.addAll(
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
               .findTo(team.getId(), Entity.TEAM, Relationship.OWNS.ordinal()));
     }
@@ -589,16 +647,23 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getFollows(User user) {
-    return findTo(user.getId(), USER, Relationship.FOLLOWS, null);
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(user.getId(), USER, Relationship.FOLLOWS, null),
+            Include.NON_DELETED);
   }
 
   private List<EntityReference> getTeamChildren(UUID teamId) {
-    if (teamId.equals(
-        getOrganization().getId())) { // For organization all the parentless teams are children
-      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
+    if (teamId.equals(getOrganization().getId())) {
+      // For organization all the parentless teams are children
+      List<String> children =
+          context().dependencies().daos().teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
-    return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(teamId, TEAM, Relationship.PARENT_OF, TEAM),
+            Include.NON_DELETED);
   }
 
   public List<EntityReference> getGroupTeams(
@@ -661,12 +726,21 @@ public class UserRepository extends EntityRepository<User> {
 
   /* Get all the roles that user has been assigned and inherited from the team to User entity */
   private List<EntityReference> getRoles(User user) {
-    return findTo(user.getId(), USER, Relationship.HAS, Entity.ROLE);
+    return relationships()
+        .to(
+            new EntityRelationshipReader.Selection(
+                user.getId(), USER, Relationship.HAS, Entity.ROLE),
+            Include.NON_DELETED);
   }
 
   /* Get all the teams that user belongs to User entity */
   public List<EntityReference> getTeams(User user) {
-    List<EntityReference> teams = findFrom(user.getId(), USER, Relationship.HAS, Entity.TEAM);
+    List<EntityReference> teams =
+        relationships()
+            .from(
+                new EntityRelationshipReader.Selection(
+                    user.getId(), USER, Relationship.HAS, Entity.TEAM),
+                Include.NON_DELETED);
     // Filter deleted teams
     teams =
         listOrEmpty(teams).stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
@@ -678,12 +752,21 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public List<EntityReference> getPersonas(User user) {
-    return findFrom(user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(
+                user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA),
+            Include.NON_DELETED);
   }
 
   public EntityReference getDefaultPersona(User user) {
     EntityReference userDefaultPersona =
-        getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
+        relationships()
+            .singleFrom(
+                new EntityRelationshipReader.Selection(
+                    user.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA),
+                false,
+                true);
     if (userDefaultPersona != null) {
       return userDefaultPersona;
     }
@@ -706,7 +789,9 @@ public class UserRepository extends EntityRepository<User> {
     // Only GROUP teams can have defaultPersona (enforced on create/update), so no type check
     // needed.
     List<CollectionDAO.EntityRelationshipObject> personaRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(teamIds, Relationship.HAS.ordinal(), TEAM, Entity.PERSONA);
     Set<UUID> seen = new HashSet<>();
@@ -726,7 +811,12 @@ public class UserRepository extends EntityRepository<User> {
   private void assignRoles(User user, List<EntityReference> roles) {
     roles = listOrEmpty(roles);
     for (EntityReference role : roles) {
-      addRelationship(user.getId(), role.getId(), USER, Entity.ROLE, Relationship.HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  user.getId(), role.getId(), USER, Entity.ROLE, Relationship.HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
@@ -737,10 +827,14 @@ public class UserRepository extends EntityRepository<User> {
    */
   public void updateBotImpersonation(
       UUID botUserId, boolean allowImpersonation, EntityReference impersonationRole) {
-    User user = find(botUserId, Include.NON_DELETED, false);
+    User user = lookup().byId(botUserId, Include.NON_DELETED, false);
     user.setAllowImpersonation(allowImpersonation);
-    dao.update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
-    invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    context()
+        .schema()
+        .dao()
+        .update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
+    EntityCaches.invalidations()
+        .referencesChanged(USER, user.getId(), user.getFullyQualifiedName());
     updateImpersonationRole(user, allowImpersonation, impersonationRole);
     SubjectCache.invalidateUser(user.getName());
   }
@@ -748,10 +842,17 @@ public class UserRepository extends EntityRepository<User> {
   private void updateImpersonationRole(
       User user, boolean allowImpersonation, EntityReference impersonationRole) {
     if (allowImpersonation) {
-      addRelationship(user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     } else {
-      deleteRelationship(
-          user.getId(), USER, impersonationRole.getId(), Entity.ROLE, Relationship.HAS);
+      relationshipWrites()
+          .delete(
+              new EntityRelationshipWriter.Edge(
+                  user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS));
     }
   }
 
@@ -759,9 +860,15 @@ public class UserRepository extends EntityRepository<User> {
     teams = listOrEmpty(teams);
     for (EntityReference team : teams) {
       if (team.getId().equals(getOrganization().getId())) {
-        continue; // Default relationship user to organization team is not stored
+        // Default relationship user to organization team is not stored
+        continue;
       }
-      addRelationship(team.getId(), user.getId(), Entity.TEAM, USER, Relationship.HAS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  team.getId(), user.getId(), Entity.TEAM, USER, Relationship.HAS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
     if (teams.size() > 1) {
       // Remove organization team from the response
@@ -775,34 +882,47 @@ public class UserRepository extends EntityRepository<User> {
 
   private void assignPersonas(User user, List<EntityReference> personas) {
     for (EntityReference persona : listOrEmpty(personas)) {
-      addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.APPLIED_TO);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.APPLIED_TO),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   private void assignDefaultPersona(User user, EntityReference persona) {
     if (persona != null) {
-      addRelationship(
-          persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.DEFAULTS_TO);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.DEFAULTS_TO),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
   public ResultList<EntityReference> getUserAssets(UUID userId, int limit, int offset) {
-    User user = get(null, userId, getFields("id,teams"));
-
+    User user =
+        reads()
+            .byId(
+                userId,
+                new EntityReadService.Query(
+                    null,
+                    fieldPolicy().parse("id,teams"),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for user assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
-
     List<EntityReference> teams = user.getTeams();
     List<String> teamIds =
         teams != null
             ? teams.stream().map(EntityReference::getId).map(UUID::toString).toList()
             : new ArrayList<>();
-
     InheritedFieldQuery query =
         InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit);
-
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
             query,
@@ -810,12 +930,11 @@ public class UserRepository extends EntityRepository<User> {
               LOG.warn("Search fallback for user {} assets. Returning empty list.", userId);
               return new InheritedFieldResult(new ArrayList<>(), 0);
             });
-
     return new ResultList<>(result.entities(), null, null, result.total());
   }
 
   public ResultList<EntityReference> getUserAssetsByName(String userName, int limit, int offset) {
-    User user = getByName(null, userName, getFields("id"));
+    User user = getByName(null, userName, fieldPolicy().parse("id"));
     return getUserAssets(user.getId(), limit, offset);
   }
 
@@ -824,14 +943,13 @@ public class UserRepository extends EntityRepository<User> {
     if (!fields.contains(TEAMS_FIELD) || users == null || users.isEmpty()) {
       return;
     }
-
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
-
     List<CollectionDAO.EntityRelationshipObject> teamRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
-
     Map<UUID, EntityReference> teamRefsById =
         batchResolveRefs(
             Entity.TEAM, teamRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
@@ -843,7 +961,6 @@ public class UserRepository extends EntityRepository<User> {
         userToTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
       }
     }
-
     for (User user : users) {
       List<EntityReference> teamRefs = userToTeams.get(user.getId());
       if (teamRefs != null && !teamRefs.isEmpty()) {
@@ -869,14 +986,13 @@ public class UserRepository extends EntityRepository<User> {
     if (!fields.contains(ROLES_FIELD) || users == null || users.isEmpty()) {
       return;
     }
-
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
-
     List<CollectionDAO.EntityRelationshipObject> roleRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(userIds, Relationship.HAS.ordinal(), USER, Entity.ROLE);
-
     Map<UUID, EntityReference> roleRefsById =
         batchResolveRefs(
             Entity.ROLE, roleRecords.stream().map(r -> UUID.fromString(r.getToId())).toList());
@@ -888,9 +1004,7 @@ public class UserRepository extends EntityRepository<User> {
         userToRoles.computeIfAbsent(userId, k -> new ArrayList<>()).add(roleRef);
       }
     }
-
     Map<UUID, List<EntityReference>> userToTeams = batchFetchTeamsForUsers(userIds);
-
     for (User user : users) {
       List<EntityReference> roleRefs = userToRoles.get(user.getId());
       user.setRoles(roleRefs != null ? roleRefs : new ArrayList<>());
@@ -901,7 +1015,9 @@ public class UserRepository extends EntityRepository<User> {
   private Map<UUID, List<EntityReference>> batchFetchTeamsForUsers(List<String> userIds) {
     Map<UUID, List<EntityReference>> userToTeams = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> teamRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, Include.ALL);
     Map<UUID, EntityReference> teamRefsById =
@@ -937,22 +1053,23 @@ public class UserRepository extends EntityRepository<User> {
     if (!fields.contains("owns") || users == null || users.isEmpty()) {
       return;
     }
-
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
     String ownsEntityType = filter == null ? null : filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM);
     boolean directOwnsOnly =
         filter != null && Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM));
-
     // Get entities owned by users
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
         nullOrEmpty(ownsEntityType)
-            ? daoCollection
+            ? context()
+                .dependencies()
+                .daos()
                 .relationshipDAO()
                 .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL)
-            : daoCollection
+            : context()
+                .dependencies()
+                .daos()
                 .relationshipDAO()
                 .findToBatch(userIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
-
     // Also get entities owned by teams that users belong to
     // First get all teams for all users
     Map<UUID, List<EntityReference>> userTeams = new HashMap<>();
@@ -960,7 +1077,9 @@ public class UserRepository extends EntityRepository<User> {
       if (!fields.contains(TEAMS_FIELD)) {
         // If teams weren't already fetched, we need to get them
         List<CollectionDAO.EntityRelationshipObject> teamRecords =
-            daoCollection
+            context()
+                .dependencies()
+                .daos()
                 .relationshipDAO()
                 .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
         Map<UUID, EntityReference> teamRefsById =
@@ -983,7 +1102,6 @@ public class UserRepository extends EntityRepository<User> {
         }
       }
     }
-
     // Get entities owned by teams
     Set<String> allTeamIds =
         directOwnsOnly
@@ -993,16 +1111,19 @@ public class UserRepository extends EntityRepository<User> {
                 .map(EntityReference::getId)
                 .map(UUID::toString)
                 .collect(Collectors.toSet());
-
     List<CollectionDAO.EntityRelationshipObject> teamOwnsRecords = new ArrayList<>();
     if (!allTeamIds.isEmpty()) {
       teamOwnsRecords =
           nullOrEmpty(ownsEntityType)
-              ? daoCollection
+              ? context()
+                  .dependencies()
+                  .daos()
                   .relationshipDAO()
                   .findToBatchAllTypes(
                       new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL)
-              : daoCollection
+              : context()
+                  .dependencies()
+                  .daos()
                   .relationshipDAO()
                   .findToBatch(
                       new ArrayList<>(allTeamIds),
@@ -1010,10 +1131,8 @@ public class UserRepository extends EntityRepository<User> {
                       ownsEntityType,
                       Include.ALL);
     }
-
     // Map user to owned entities
     Map<UUID, List<EntityReference>> userToOwns = new HashMap<>();
-
     // Add directly owned entities
     for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
       UUID userId = UUID.fromString(record.getFromId());
@@ -1026,7 +1145,6 @@ public class UserRepository extends EntityRepository<User> {
         LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
       }
     }
-
     // Add team-owned entities
     Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : teamOwnsRecords) {
@@ -1040,7 +1158,6 @@ public class UserRepository extends EntityRepository<User> {
         LOG.warn("Failed to get entity reference for team-owned entity: {}", record.getToId(), e);
       }
     }
-
     // Combine user and team owned entities
     for (User user : users) {
       List<EntityReference> ownedEntities =
@@ -1064,7 +1181,7 @@ public class UserRepository extends EntityRepository<User> {
         && filter != null
         && (!nullOrEmpty(filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM))
             || Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM)))) {
-      fetchAndSetFieldsExcept(users, fields, Set.of("owns"));
+      fieldLoading().populate(users, fields, Set.of("owns"));
       fetchAndSetOwns(users, fields, filter);
       setInheritedFields(users, fields);
       for (User user : users) {
@@ -1072,21 +1189,20 @@ public class UserRepository extends EntityRepository<User> {
       }
       return;
     }
-    super.setFieldsInBulk(fields, users);
+    EntityPolicy.super.setFieldsInBulk(fields, users);
   }
 
   private void fetchAndSetFollows(List<User> users, Fields fields) {
     if (!fields.contains("follows") || users == null || users.isEmpty()) {
       return;
     }
-
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
-
     List<CollectionDAO.EntityRelationshipObject> followsRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatchAllTypes(userIds, Relationship.FOLLOWS.ordinal(), Include.ALL);
-
     Map<UUID, List<EntityReference>> userToFollows = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : followsRecords) {
       UUID userId = UUID.fromString(record.getFromId());
@@ -1099,7 +1215,6 @@ public class UserRepository extends EntityRepository<User> {
         LOG.warn("Failed to get entity reference for followed entity: {}", record.getToId(), e);
       }
     }
-
     for (User user : users) {
       List<EntityReference> followsRefs = userToFollows.get(user.getId());
       user.setFollows(followsRefs != null ? followsRefs : new ArrayList<>());
@@ -1110,14 +1225,13 @@ public class UserRepository extends EntityRepository<User> {
     if (!fields.contains("personas") || users == null || users.isEmpty()) {
       return;
     }
-
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
-
     List<CollectionDAO.EntityRelationshipObject> personaRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.APPLIED_TO.ordinal(), Entity.PERSONA, USER);
-
     Map<UUID, EntityReference> personaRefsById =
         batchResolveRefs(
             Entity.PERSONA,
@@ -1130,7 +1244,6 @@ public class UserRepository extends EntityRepository<User> {
         userToPersonas.computeIfAbsent(userId, k -> new ArrayList<>()).add(personaRef);
       }
     }
-
     for (User user : users) {
       List<EntityReference> personaRefs = userToPersonas.get(user.getId());
       user.setPersonas(personaRefs != null ? personaRefs : new ArrayList<>());
@@ -1141,14 +1254,13 @@ public class UserRepository extends EntityRepository<User> {
     if (!fields.contains("defaultPersona") || users == null || users.isEmpty()) {
       return;
     }
-
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
-
     List<CollectionDAO.EntityRelationshipObject> defaultPersonaRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.DEFAULTS_TO.ordinal(), Entity.PERSONA, USER);
-
     Map<UUID, EntityReference> defaultPersonaRefsById =
         batchResolveRefs(
             Entity.PERSONA,
@@ -1161,7 +1273,6 @@ public class UserRepository extends EntityRepository<User> {
         userToDefaultPersona.put(userId, personaRef);
       }
     }
-
     for (User user : users) {
       EntityReference defaultPersonaRef = userToDefaultPersona.get(user.getId());
       user.setDefaultPersona(defaultPersonaRef);
@@ -1172,12 +1283,10 @@ public class UserRepository extends EntityRepository<User> {
     if (!fields.contains("personas") || users == null || users.isEmpty()) {
       return;
     }
-
     // Step 1: Collect all team IDs across all users.
     // Use pre-loaded teams when available, batch-fetch only for users that need it.
     Map<UUID, List<UUID>> userToTeamIds = new HashMap<>();
     Set<String> allTeamIds = new HashSet<>();
-
     List<String> usersNeedingTeamFetch = new ArrayList<>();
     for (User user : users) {
       if (Boolean.TRUE.equals(user.getIsBot())) continue;
@@ -1190,13 +1299,13 @@ public class UserRepository extends EntityRepository<User> {
         usersNeedingTeamFetch.add(user.getId().toString());
       }
     }
-
     if (!usersNeedingTeamFetch.isEmpty()) {
       List<CollectionDAO.EntityRelationshipObject> teamRecords =
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .relationshipDAO()
               .findFromBatch(usersNeedingTeamFetch, Relationship.HAS.ordinal(), Entity.TEAM, USER);
-
       for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
         UUID userId = UUID.fromString(record.getToId());
         UUID teamId = UUID.fromString(record.getFromId());
@@ -1204,19 +1313,18 @@ public class UserRepository extends EntityRepository<User> {
         allTeamIds.add(teamId.toString());
       }
     }
-
     if (allTeamIds.isEmpty()) {
       users.forEach(u -> u.setInheritedPersonas(Collections.emptyList()));
       return;
     }
-
     // Step 2: Single batch query for all Team→Persona HAS relationships
     List<CollectionDAO.EntityRelationshipObject> personaRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(
                 new ArrayList<>(allTeamIds), Relationship.HAS.ordinal(), TEAM, Entity.PERSONA);
-
     Map<UUID, EntityReference> inheritedPersonaRefsById =
         batchResolveRefs(
             Entity.PERSONA,
@@ -1229,7 +1337,6 @@ public class UserRepository extends EntityRepository<User> {
         teamToPersona.put(teamId, personaRef);
       }
     }
-
     // Step 3: Distribute inherited personas to each user
     for (User user : users) {
       if (Boolean.TRUE.equals(user.getIsBot())) {
@@ -1253,14 +1360,13 @@ public class UserRepository extends EntityRepository<User> {
     if (!fields.contains("domains") || users == null || users.isEmpty()) {
       return;
     }
-
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
-
     List<CollectionDAO.EntityRelationshipObject> domainRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.DOMAIN, USER);
-
     Map<UUID, EntityReference> domainRefsById =
         batchResolveRefs(
             Entity.DOMAIN,
@@ -1273,7 +1379,6 @@ public class UserRepository extends EntityRepository<User> {
         userToDomains.computeIfAbsent(userId, k -> new ArrayList<>()).add(domainRef);
       }
     }
-
     for (User user : users) {
       List<EntityReference> domainRefs = userToDomains.get(user.getId());
       user.setDomains(domainRefs != null ? domainRefs : new ArrayList<>());
@@ -1281,8 +1386,11 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public static class UserCsv extends EntityCsv<User> {
+
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(USER, false);
+
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+
     public final Team team;
 
     UserCsv(Team importingTeam, String updatedBy) {
@@ -1366,15 +1474,13 @@ public class UserRepository extends EntityRepository<User> {
         Fields fields) {
       // Export the users by listing users for the entire team hierarchy
       ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("team", parentTeam);
-
       // Add users for the given team
-      List<User> userList = userRepository.listAll(fields, filter);
+      List<User> userList = userRepository.collections().all(fields, filter);
       if (!nullOrEmpty(userList)) {
         users.addAll(userList);
       }
-
       filter = new ListFilter(Include.NON_DELETED).addQueryParam("parentTeam", parentTeam);
-      List<Team> teamList = teamRepository.listAll(Fields.EMPTY_FIELDS, filter);
+      List<Team> teamList = teamRepository.collections().all(Fields.EMPTY_FIELDS, filter);
       for (Team teamEntry : teamList) {
         listUsers(teamRepository, userRepository, teamEntry.getName(), users, fields);
       }
@@ -1384,7 +1490,7 @@ public class UserRepository extends EntityRepository<User> {
     public String exportCsv() throws IOException {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
       TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
-      final Fields fields = userRepository.getFields("roles,teams");
+      final Fields fields = userRepository.fieldPolicy().parse("roles,teams");
       return exportCsv(
           listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
     }
@@ -1392,12 +1498,12 @@ public class UserRepository extends EntityRepository<User> {
     private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user)
         throws IOException {
       List<EntityReference> teams = getEntityReferences(printer, csvRecord, 6, Entity.TEAM);
-
       // Validate team being created is under the hierarchy of the team for which CSV is being
       // imported to
       for (EntityReference teamRef : listOrEmpty(teams)) {
         if (teamRef.getName().equals(team.getName())) {
-          continue; // Team is same as the team to which CSV is being imported, then it is in the
+          // Team is same as the team to which CSV is being imported, then it is in the
+          continue;
           // same hierarchy
         }
         // Else the parent should already exist
@@ -1426,8 +1532,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  protected void postDelete(User entity, boolean hardDelete) {
-    super.postDelete(entity, hardDelete);
+  public void postDelete(User entity, boolean hardDelete) {
+    EntityPolicy.super.postDelete(entity, hardDelete);
     // If the User is bot it's token needs to be invalidated
     if (Boolean.TRUE.equals(entity.getIsBot())) {
       BotTokenCache.invalidateToken(entity.getName());
@@ -1438,7 +1544,6 @@ public class UserRepository extends EntityRepository<User> {
       userPreferencesRepository.delete(entity.getId());
     }
     deleteSuggestionTasksForUser(entity);
-
     AsyncService.getInstance()
         .executeDatabaseTask(
             DatabaseOperation.USER_CLEANUP,
@@ -1493,15 +1598,24 @@ public class UserRepository extends EntityRepository<User> {
     // and its cache-invalidate hook — without explicit eviction the next GET on a
     // previously-read task returns the stale cached row even though the DB row is gone.
     // FQN is required because tasks expose both GET /v1/tasks/{id}
-    // (EntityRepository.CACHE_WITH_ID-keyed) and
-    // GET /v1/tasks/name/{taskId} (EntityRepository.CACHE_WITH_NAME-keyed); dropping only by id
+    // (EntityCaches.byId()-keyed) and
+    // GET /v1/tasks/name/{taskId} (EntityCaches.byName()-keyed); dropping only by id
     // would
     // leave a
     // by-name reader pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
-        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
+        context()
+            .dependencies()
+            .daos()
+            .taskDAO()
+            .listIdAndFqnByCreatorAndCategory(creatorId, category);
     retry.executeRunnable(
-        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+        () ->
+            context()
+                .dependencies()
+                .daos()
+                .taskDAO()
+                .deleteByCreatorAndCategory(creatorId, category));
     if (!tasksToInvalidate.isEmpty()) {
       invalidateTaskCacheForIds(tasksToInvalidate);
     }
@@ -1519,7 +1633,7 @@ public class UserRepository extends EntityRepository<User> {
       if (task.id == null) {
         continue;
       }
-      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+      EntityCaches.invalidations().referencesChanged(Entity.TASK, task.id, task.fqn);
       if (pubsub != null) {
         pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
       }
@@ -1550,10 +1664,17 @@ public class UserRepository extends EntityRepository<User> {
     return false;
   }
 
-  /** Handles entity updated from PUT and POST operation. */
-  public class UserUpdater extends EntityUpdater {
-    public UserUpdater(User original, User updated, Operation operation) {
-      super(original, updated, operation);
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class UserUpdater implements EntitySpecificMutation<User> {
+
+    public UserUpdater(User original, User updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     /**
@@ -1564,7 +1685,6 @@ public class UserRepository extends EntityRepository<User> {
       if (domains == null || domains.isEmpty()) {
         return domains;
       }
-
       // First filter out deleted domains, then populate valid references
       List<EntityReference> validDomains =
           domains.stream()
@@ -1581,7 +1701,6 @@ public class UserRepository extends EntityRepository<User> {
                     }
                   })
               .collect(Collectors.toList());
-
       return EntityUtil.populateEntityReferences(validDomains);
     }
 
@@ -1593,7 +1712,6 @@ public class UserRepository extends EntityRepository<User> {
       if (teams == null || teams.isEmpty()) {
         return teams;
       }
-
       // First filter out deleted teams, then populate valid references
       List<EntityReference> validTeams =
           teams.stream()
@@ -1610,62 +1728,94 @@ public class UserRepository extends EntityRepository<User> {
                     }
                   })
               .collect(Collectors.toList());
-
       return EntityUtil.populateEntityReferences(validTeams);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
+    public void update(EntityUpdater<User> entityUpdate, boolean consolidatingChanges) {
       // LowerCase Email
-      updated.setEmail(original.getEmail().toLowerCase());
-      compareAndUpdate(
+      entityUpdate.getUpdated().setEmail(entityUpdate.getOriginal().getEmail().toLowerCase());
+      entityUpdate.compareAndUpdate(
           "lastLoginTime",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "lastLoginTime",
-                  original.getLastLoginTime(),
-                  updated.getLastLoginTime(),
+                  entityUpdate.getOriginal().getLastLoginTime(),
+                  entityUpdate.getUpdated().getLastLoginTime(),
                   false,
                   objectMatch,
                   false));
-
-      compareAndUpdate("roles", () -> updateRoles(original, updated));
-      compareAndUpdate("teams", () -> updateTeams(original, updated));
-      compareAndUpdate("personas", () -> updatePersonas(original, updated));
-      compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
-      compareAndUpdate(
+      entityUpdate.compareAndUpdate(
+          "roles", () -> updateRoles(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "teams", () -> updateTeams(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "personas", () -> updatePersonas(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "defaultPersona",
+          () -> updateDefaultPersona(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
           "profile",
-          () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "profile",
+                  entityUpdate.getOriginal().getProfile(),
+                  entityUpdate.getUpdated().getProfile(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "timezone",
-          () -> recordChange("timezone", original.getTimezone(), updated.getTimezone()));
-      compareAndUpdate(
-          "isBot", () -> recordChange("isBot", original.getIsBot(), updated.getIsBot()));
-      compareAndUpdate(
-          "isAdmin", () -> recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "timezone",
+                  entityUpdate.getOriginal().getTimezone(),
+                  entityUpdate.getUpdated().getTimezone()));
+      entityUpdate.compareAndUpdate(
+          "isBot",
+          () ->
+              entityUpdate.recordChange(
+                  "isBot",
+                  entityUpdate.getOriginal().getIsBot(),
+                  entityUpdate.getUpdated().getIsBot()));
+      entityUpdate.compareAndUpdate(
+          "isAdmin",
+          () ->
+              entityUpdate.recordChange(
+                  "isAdmin",
+                  entityUpdate.getOriginal().getIsAdmin(),
+                  entityUpdate.getUpdated().getIsAdmin()));
+      entityUpdate.compareAndUpdate(
           "isEmailVerified",
           () ->
-              recordChange(
-                  "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
-      compareAndUpdate(ALLOW_IMPERSONATION_FIELD, this::updateAllowImpersonation);
-      compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
-      compareAndUpdate(
-          "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
-      compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
-      compareAndUpdateAny(
-          () -> SubjectCache.invalidateUserContext(updated.getName()),
+              entityUpdate.recordChange(
+                  "isEmailVerified",
+                  entityUpdate.getOriginal().getIsEmailVerified(),
+                  entityUpdate.getUpdated().getIsEmailVerified()));
+      entityUpdate.compareAndUpdate(ALLOW_IMPERSONATION_FIELD, this::updateAllowImpersonation);
+      entityUpdate.compareAndUpdate(
+          "personaPreferences",
+          () -> updatePersonaPreferences(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdate(
+          "authenticationMechanism",
+          () ->
+              updateAuthenticationMechanism(entityUpdate.getOriginal(), entityUpdate.getUpdated()));
+      entityUpdate.compareAndUpdateAny(
+          () -> SubjectCache.invalidateUser(entityUpdate.getUpdated().getName()), "roles", "teams");
+      entityUpdate.compareAndUpdateAny(
+          () -> SubjectCache.invalidateUserContext(entityUpdate.getUpdated().getName()),
           "personas",
           "defaultPersona");
     }
 
     private void updateAllowImpersonation() {
-      if (operation.isPut()) {
+      if (entityUpdate.getOperation().isPut()) {
         // CreateUser does not carry allowImpersonation; PUT must not wipe the stored grant
-        updated.setAllowImpersonation(original.getAllowImpersonation());
+        entityUpdate
+            .getUpdated()
+            .setAllowImpersonation(entityUpdate.getOriginal().getAllowImpersonation());
       } else if (!Objects.equals(
-          original.getAllowImpersonation(), updated.getAllowImpersonation())) {
+          entityUpdate.getOriginal().getAllowImpersonation(),
+          entityUpdate.getUpdated().getAllowImpersonation())) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.readOnlyAttribute(USER, ALLOW_IMPERSONATION_FIELD));
       }
@@ -1673,53 +1823,62 @@ public class UserRepository extends EntityRepository<User> {
 
     private void updateRoles(User original, User updated) {
       // Remove roles from original and add roles from updated
-      deleteFrom(original.getId(), USER, Relationship.HAS, Entity.ROLE);
+      relationshipWrites()
+          .deleteOutgoing(
+              new EntityRelationshipWriter.Selection(
+                  original.getId(), USER, Relationship.HAS, Entity.ROLE));
       assignRoles(updated, updated.getRoles());
-
       List<EntityReference> origRoles = listOrEmptyMutable(original.getRoles());
       List<EntityReference> updatedRoles = listOrEmptyMutable(updated.getRoles());
-
       origRoles.sort(EntityUtil.compareEntityReference);
       updatedRoles.sort(EntityUtil.compareEntityReference);
-
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           ROLES_FIELD, origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
     @Override
-    protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
+    public void domains(EntityUpdater<User> entityUpdate) {
+      if (entityUpdate.getOperation().isPut()
+          && !nullOrEmpty(entityUpdate.getOriginal().getDomains())
+          && entityUpdate.updatedByBot()) {
         // Revert change to non-empty domain if it is being updated by a bot
         // This is to prevent bots from overwriting the domain. Domain need to be
         // updated with a PATCH request
-        updated.setDomains(original.getDomains());
+        entityUpdate.getUpdated().setDomains(entityUpdate.getOriginal().getDomains());
         return;
       }
-
       List<EntityReference> origDomains =
-          filterValidDomains(listOrEmptyMutable(original.getDomains()));
+          filterValidDomains(listOrEmptyMutable(entityUpdate.getOriginal().getDomains()));
       // Skip domains inherited from teams,they are handled in setInheritedFields().
       List<EntityReference> updatedDomains =
-          filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
+          filterValidDomains(listOrEmptyMutable(entityUpdate.getUpdated().getDomains())).stream()
               .filter(domain -> domain.getInherited() == null || !domain.getInherited())
               .collect(Collectors.toList());
-      updated.setDomains(updatedDomains);
-
+      entityUpdate.getUpdated().setDomains(updatedDomains);
       // Remove Domains for the user
-      deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);
-
+      relationshipWrites()
+          .deleteIncoming(
+              new EntityRelationshipWriter.Selection(
+                  entityUpdate.getOriginal().getId(), USER, Relationship.HAS, Entity.DOMAIN));
       for (EntityReference domain : updatedDomains) {
-        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+        relationshipWrites()
+            .add(
+                new EntityRelationshipWriter.Edge(
+                    domain.getId(),
+                    entityUpdate.getOriginal().getId(),
+                    Entity.DOMAIN,
+                    USER,
+                    Relationship.HAS),
+                EntityRelationshipWriter.Value.EMPTY,
+                false);
       }
-
       origDomains.sort(EntityUtil.compareEntityReference);
       updatedDomains.sort(EntityUtil.compareEntityReference);
-
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           FIELD_DOMAINS,
           origDomains,
           updatedDomains,
@@ -1732,43 +1891,41 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
       List<EntityReference> requestedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
       validateGroupTeams(requestedTeams);
-
       // Remove teams from original and add teams from updated
-      deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
+      relationshipWrites()
+          .deleteIncoming(
+              new EntityRelationshipWriter.Selection(
+                  original.getId(), USER, Relationship.HAS, Entity.TEAM));
       assignTeams(updated, requestedTeams);
       List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
-
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);
-
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange(
+      entityUpdate.recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
-
       // Update users and userCount in team search index
       Stream.concat(added.stream(), deleted.stream())
           .forEach(
               teamRef -> {
                 EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntityIndex(team);
+                context().dependencies().search().updateEntityIndex(team);
               });
     }
 
     private void updatePersonas(User original, User updated) {
-      deleteTo(original.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+      relationshipWrites()
+          .deleteIncoming(
+              new EntityRelationshipWriter.Selection(
+                  original.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA));
       assignPersonas(updated, updated.getPersonas());
-
       List<EntityReference> origPersonas = listOrEmpty(original.getPersonas());
       List<EntityReference> updatedPersonas = listOrEmpty(updated.getPersonas());
-
       origPersonas.sort(EntityUtil.compareEntityReference);
       updatedPersonas.sort(EntityUtil.compareEntityReference);
-
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-
-      recordListChange(
+      entityUpdate.recordListChange(
           "personas",
           origPersonas,
           updatedPersonas,
@@ -1781,13 +1938,16 @@ public class UserRepository extends EntityRepository<User> {
       // Get the actual default persona from the database (not the system default)
       // The relationship is: persona --DEFAULTS_TO--> user, so we need to find FROM user
       EntityReference originalDefaultPersona =
-          getFromEntityRef(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
-
+          relationships()
+              .singleFrom(
+                  new EntityRelationshipReader.Selection(
+                      original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA),
+                  false,
+                  true);
       EntityReference updatedDefaultPersona = updated.getDefaultPersona();
       PersonaRepository personaRepository =
           (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
       Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
-
       // Only process defaultPersona changes if it's not just the system providing a default value
       // If the updated default persona is the system default and the original had no explicit
       // default,
@@ -1797,47 +1957,45 @@ public class UserRepository extends EntityRepository<User> {
               && systemDefaultPersona != null
               && updatedDefaultPersona.getId().equals(systemDefaultPersona.getId())
               && originalDefaultPersona == null;
-
       if (!isSystemDefaultBeingApplied) {
         if (originalDefaultPersona != null) {
           // Delete the relationship: persona --DEFAULTS_TO--> user
-          deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA);
+          relationshipWrites()
+              .deleteIncoming(
+                  new EntityRelationshipWriter.Selection(
+                      original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA));
         }
         assignDefaultPersona(updated, updatedDefaultPersona);
-        recordChange("defaultPersona", originalDefaultPersona, updatedDefaultPersona, true);
+        entityUpdate.recordChange(
+            "defaultPersona", originalDefaultPersona, updatedDefaultPersona, true);
       }
     }
 
     private void updatePersonaPreferences(User original, User updated) {
       var updatedPreferences = updated.getPersonaPreferences();
-
       if (updatedPreferences != null && !updatedPreferences.isEmpty()) {
         var userPersonas = updated.getPersonas();
         var assignedPersonaIds =
             userPersonas != null
                 ? userPersonas.stream().map(EntityReference::getId).collect(Collectors.toSet())
                 : new HashSet<UUID>();
-
         // Also include inherited persona IDs from team memberships
         var inheritedPersonas = updated.getInheritedPersonas();
         if (inheritedPersonas != null) {
           assignedPersonaIds.addAll(
               inheritedPersonas.stream().map(EntityReference::getId).collect(Collectors.toSet()));
         }
-
         // Get system default persona ID to allow preferences for it
         PersonaRepository personaRepository =
             (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
         Persona systemDefaultPersona = personaRepository.getSystemDefaultPersona();
         UUID systemDefaultPersonaId =
             systemDefaultPersona != null ? systemDefaultPersona.getId() : null;
-
         for (var pref : updatedPreferences) {
           // Allow preferences for assigned/inherited personas OR system default persona
           boolean isAssignedPersona = assignedPersonaIds.contains(pref.getPersonaId());
           boolean isSystemDefaultPersona =
               systemDefaultPersonaId != null && systemDefaultPersonaId.equals(pref.getPersonaId());
-
           if (!isAssignedPersona && !isSystemDefaultPersona) {
             LOG.warn("Persona with ID {} is not assigned to this user", pref.getPersonaId());
           }
@@ -1846,8 +2004,7 @@ public class UserRepository extends EntityRepository<User> {
           }
         }
       }
-
-      recordChange(
+      entityUpdate.recordChange(
           "personaPreferences",
           original.getPersonaPreferences(),
           updated.getPersonaPreferences(),
@@ -1858,13 +2015,27 @@ public class UserRepository extends EntityRepository<User> {
       AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
       if (origAuthMechanism == null && updatedAuthMechanism != null) {
-        recordChange(
+        entityUpdate.recordChange(
             AUTH_MECHANISM_FIELD, original.getAuthenticationMechanism(), "new-encrypted-value");
       } else if (origAuthMechanism != null
           && updatedAuthMechanism != null
           && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
-        recordChange(AUTH_MECHANISM_FIELD, "old-encrypted-value", "new-encrypted-value");
+        entityUpdate.recordChange(
+            AUTH_MECHANISM_FIELD, "old-encrypted-value", "new-encrypted-value");
       }
     }
+
+    private final EntityUpdater<User> entityUpdate;
+
+    public EntityUpdater<User> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<User> entityContext;
+
+  @Override
+  public final EntityPolicyContext<User> context() {
+    return entityContext;
   }
 }

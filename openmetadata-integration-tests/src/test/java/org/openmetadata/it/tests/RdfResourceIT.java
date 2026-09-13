@@ -76,8 +76,8 @@ public class RdfResourceIT {
   }
 
   @AfterAll
-  static void disableRdf() {
-    RdfUpdater.disable();
+  static void restoreRdf() {
+    RdfTestUtils.restoreSuiteConfiguration();
   }
 
   @Test

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -66,6 +65,18 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.InheritedReferences;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityBatchFields;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -74,29 +85,34 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
+@Repository()
+public class DatabaseSchemaRepository implements EntityPolicy<DatabaseSchema> {
 
   public static final String DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION =
       "databaseSchema.databaseSchemaProfilerConfig";
 
   public static final String DATABASE_SCHEMA_PROFILER_CONFIG = "databaseSchemaProfilerConfig";
+
   private static final String RETENTION_PERIOD_FIELD = "retentionPeriod";
 
   public DatabaseSchemaRepository() {
-    super(
-        DatabaseSchemaResource.COLLECTION_PATH,
-        Entity.DATABASE_SCHEMA,
-        DatabaseSchema.class,
-        Entity.getCollectionDAO().databaseSchemaDAO(),
-        "",
-        "");
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DatabaseSchemaResource.COLLECTION_PATH,
+                Entity.DATABASE_SCHEMA,
+                DatabaseSchema.class,
+                Entity.getCollectionDAO().databaseSchemaDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // A recursive hard-delete of an ancestor (database service / database) removes schema/table
     // docs from search (deleteOrUpdateChildren by service.id / database.id) and field_relationship
     // /
     // tag_usage via the root cleanup() FQN prefix, so the bulk path skips the per-entity search
     // dispatch and FQN-satellite deletes.
-    descendantsCoveredByAncestorCascade = true;
+    context().options().setDescendantsCoveredByAncestorCascade(true);
   }
 
   @Override
@@ -111,22 +127,22 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  protected List<String> getFieldsStrippedFromStorageJson() {
+  public List<String> getFieldsStrippedFromStorageJson() {
     return List.of("service");
   }
 
   @Override
   public void storeEntity(DatabaseSchema schema, boolean update) {
-    store(schema, update);
+    persistence().store(schema, update);
   }
 
   @Override
   public void storeEntities(List<DatabaseSchema> schemas) {
-    storeMany(schemas);
+    persistence().insertMany(schemas);
   }
 
   @Override
-  protected void clearEntitySpecificRelationshipsForMany(List<DatabaseSchema> entities) {
+  public void clearEntitySpecificRelationshipsForMany(List<DatabaseSchema> entities) {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(DatabaseSchema::getId).toList();
     deleteToMany(ids, Entity.DATABASE_SCHEMA, Relationship.CONTAINS, Entity.DATABASE);
@@ -135,16 +151,20 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void storeRelationships(DatabaseSchema schema) {
     EntityReference database = schema.getDatabase();
-    addRelationship(
-        database.getId(),
-        schema.getId(),
-        database.getType(),
-        Entity.DATABASE_SCHEMA,
-        Relationship.CONTAINS);
+    relationshipWrites()
+        .add(
+            new EntityRelationshipWriter.Edge(
+                database.getId(),
+                schema.getId(),
+                database.getType(),
+                Entity.DATABASE_SCHEMA,
+                Relationship.CONTAINS),
+            EntityRelationshipWriter.Value.EMPTY,
+            false);
   }
 
   @Override
-  protected void storeEntitySpecificRelationshipsForMany(List<DatabaseSchema> entities) {
+  public void storeEntitySpecificRelationshipsForMany(List<DatabaseSchema> entities) {
     List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
     for (DatabaseSchema schema : entities) {
       if (schema.getDatabase() == null || schema.getDatabase().getId() == null) {
@@ -165,7 +185,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   private List<EntityReference> getTables(DatabaseSchema schema) {
     return schema == null
         ? Collections.emptyList()
-        : findTo(schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, TABLE);
+        : relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    schema.getId(), Entity.DATABASE_SCHEMA, Relationship.CONTAINS, TABLE),
+                Include.NON_DELETED);
   }
 
   @Override
@@ -178,7 +202,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             : schema.getDatabaseSchemaProfilerConfig());
     schema.withUsageSummary(
         fields.contains("usageSummary")
-            ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), schema.getId())
+            ? EntityUtil.getLatestUsage(context().dependencies().daos().usageDAO(), schema.getId())
             : null);
   }
 
@@ -195,22 +219,23 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (hasDefaultFields(schema)) {
       return;
     }
-
     EntityReference databaseRef = schema.getDatabase();
     if (databaseRef == null || databaseRef.getId() == null) {
-      databaseRef = getContainer(schema.getId());
+      databaseRef = relationships().container(schema.getId(), null);
     }
-
     EntityReference serviceRef = schema.getService();
     if ((serviceRef == null || serviceRef.getId() == null)
         && databaseRef != null
         && databaseRef.getId() != null) {
       // Fast path: schema JSON already stores database ref, resolve service directly from database.
       serviceRef =
-          getFromEntityRef(
-              databaseRef.getId(), Entity.DATABASE, Relationship.CONTAINS, null, false);
+          relationships()
+              .singleFrom(
+                  new EntityRelationshipReader.Selection(
+                      databaseRef.getId(), Entity.DATABASE, Relationship.CONTAINS, null),
+                  false,
+                  true);
     }
-
     // Fallback for legacy rows with incomplete parent refs.
     if ((serviceRef == null || serviceRef.getId() == null)
         && databaseRef != null
@@ -218,7 +243,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       Database database = Entity.getEntity(databaseRef, "", Include.ALL);
       serviceRef = database.getService();
     }
-
     schema.withDatabase(databaseRef).withService(serviceRef);
   }
 
@@ -226,26 +250,20 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void setFieldsInBulk(Fields fields, List<DatabaseSchema> entities) {
     // Bulk fetch and set default fields for all schemas
     fetchAndSetDefaultFields(entities);
-
     // Fetch common fields like owners, tags, domain, etc.
-    fetchAndSetFields(entities, fields);
-
+    fieldLoading().populate(entities, fields);
     // Set other fields if requested
     if (fields.contains("tables")) {
       fetchAndSetTables(entities);
     }
-
     if (fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)) {
       fetchAndSetDatabaseSchemaProfilerConfigs(entities);
     }
-
     if (fields.contains("usageSummary")) {
       fetchAndSetUsageSummaries(entities);
     }
-
     // Inherit fields from parent
     setInheritedFields(entities, fields);
-
     // Clear fields not requested
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
@@ -254,11 +272,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schemas == null || schemas.isEmpty()) {
       return;
     }
-
     // Database and service references are part of default response contract for list/get.
     boolean includeDatabaseDetails = true;
     boolean includeServiceDetails = true;
-
     List<DatabaseSchema> schemasMissingDefaults =
         schemas.stream()
             .filter(
@@ -273,7 +289,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schemasMissingDefaults.isEmpty()) {
       return;
     }
-
     var databaseRefsMap = batchFetchDatabases(schemasMissingDefaults, includeDatabaseDetails);
     Map<UUID, EntityReference> databaseToServiceRefs =
         includeServiceDetails
@@ -283,7 +298,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                     .collect(Collectors.toSet()),
                 true)
             : Collections.emptyMap();
-
     schemasMissingDefaults.forEach(
         schema -> {
           var databaseRef = databaseRefsMap.get(schema.getId());
@@ -302,15 +316,15 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (databaseIds == null || databaseIds.isEmpty()) {
       return serviceMap;
     }
-
     List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 databaseIds.stream().map(UUID::toString).toList(),
                 Relationship.CONTAINS.ordinal(),
                 Include.ALL);
-
     for (CollectionDAO.EntityRelationshipObject record : records) {
       if (record.getFromEntity() == null
           || record.getFromId() == null
@@ -325,7 +339,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 .withType(record.getFromEntity()));
       }
     }
-
     if (includeDetails) {
       Map<String, Set<UUID>> serviceIdsByType = new HashMap<>();
       for (CollectionDAO.EntityRelationshipObject record : records) {
@@ -338,7 +351,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             .computeIfAbsent(record.getFromEntity(), ignored -> new HashSet<>())
             .add(UUID.fromString(record.getFromId()));
       }
-
       Map<String, Map<UUID, EntityReference>> serviceRefsByType = new HashMap<>();
       for (Map.Entry<String, Set<UUID>> entry : serviceIdsByType.entrySet()) {
         List<EntityReference> refs =
@@ -350,7 +362,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 .collect(
                     Collectors.toMap(EntityReference::getId, ref -> ref, (left, right) -> left)));
       }
-
       for (CollectionDAO.EntityRelationshipObject record : records) {
         Map<UUID, EntityReference> refsForType = serviceRefsByType.get(record.getFromEntity());
         if (refsForType == null) {
@@ -376,18 +387,18 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       return databaseMap;
     }
     var relations =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(
                 entityListToStrings(schemas), Relationship.CONTAINS.ordinal(), Include.ALL);
-
     var databaseIds =
         relations.stream()
             .filter(relation -> Entity.DATABASE.equals(relation.getFromEntity()))
             .map(relation -> UUID.fromString(relation.getFromId()))
             .distinct()
             .toList();
-
     Map<UUID, EntityReference> databaseRefMap = new HashMap<>();
     if (includeDetails) {
       // Batch fetch all database entity references
@@ -395,7 +406,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       databaseRefMap.putAll(
           databaseRefs.stream().collect(Collectors.toMap(EntityReference::getId, ref -> ref)));
     }
-
     // Map schemas to their databases
     relations.forEach(
         relation -> {
@@ -412,7 +422,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             }
           }
         });
-
     return databaseMap;
   }
 
@@ -420,17 +429,16 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schemas == null || schemas.isEmpty()) {
       return;
     }
-
     // Get all schema IDs
     List<String> schemaIds =
         schemas.stream().map(schema -> schema.getId().toString()).distinct().toList();
-
     // Bulk fetch all table relationships
     List<CollectionDAO.EntityRelationshipObject> tableRelations =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findToBatch(schemaIds, Relationship.CONTAINS.ordinal(), Entity.DATABASE_SCHEMA, TABLE);
-
     // Group table IDs by schema
     Map<UUID, List<UUID>> schemaToTableIds = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject relation : tableRelations) {
@@ -438,11 +446,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       UUID tableId = UUID.fromString(relation.getToId());
       schemaToTableIds.computeIfAbsent(schemaId, k -> new ArrayList<>()).add(tableId);
     }
-
     // Get all unique table IDs
     List<UUID> allTableIds =
         schemaToTableIds.values().stream().flatMap(List::stream).distinct().toList();
-
     // Bulk fetch all table references
     Map<UUID, EntityReference> tableReferences = new HashMap<>();
     if (!allTableIds.isEmpty()) {
@@ -452,7 +458,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         tableReferences.put(ref.getId(), ref);
       }
     }
-
     // Set tables on each schema
     for (DatabaseSchema schema : schemas) {
       List<UUID> tableIds = schemaToTableIds.get(schema.getId());
@@ -473,10 +478,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schemas == null || schemas.isEmpty()) {
       return;
     }
-
     // Since bulk fetch is not available for extensions, we'll optimize by caching results
     Map<UUID, DatabaseSchemaProfilerConfig> configCache = new HashMap<>();
-
     for (DatabaseSchema schema : schemas) {
       DatabaseSchemaProfilerConfig config = getProfilerConfigForSchema(schema, configCache);
       schema.setDatabaseSchemaProfilerConfig(config);
@@ -488,12 +491,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schema.getId() == null) {
       return null;
     }
-
     // Check if already in cache
     if (configCache.containsKey(schema.getId())) {
       return configCache.get(schema.getId());
     }
-
     // Fetch and cache the config
     DatabaseSchemaProfilerConfig config = fetchProfilerConfig(schema.getId());
     configCache.put(schema.getId(), config);
@@ -503,7 +504,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   private DatabaseSchemaProfilerConfig fetchProfilerConfig(UUID schemaId) {
     try {
       String configJson =
-          daoCollection
+          context()
+              .dependencies()
+              .daos()
               .entityExtensionDAO()
               .getExtension(schemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
       if (configJson != null) {
@@ -519,16 +522,15 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schemas == null || schemas.isEmpty()) {
       return;
     }
-
     var usageMap =
-        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(schemas));
-
+        EntityUtil.getLatestUsageForEntities(
+            context().dependencies().daos().usageDAO(), EntityBatchFields.ids(schemas));
     schemas.forEach(schema -> schema.withUsageSummary(usageMap.get(schema.getId())));
   }
 
   @Override
-  protected boolean requiresParentForInheritance(DatabaseSchema schema, Fields fields) {
-    return super.requiresParentForInheritance(schema, fields)
+  public boolean requiresParentForInheritance(DatabaseSchema schema, Fields fields) {
+    return EntityPolicy.super.requiresParentForInheritance(schema, fields)
         || (shouldResolveRetentionInheritance(fields) && schema.getRetentionPeriod() == null);
   }
 
@@ -537,14 +539,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (schema.getDatabase() == null || schema.getDatabase().getId() == null) {
       return;
     }
-
-    boolean needsOwnersOrDomains = super.requiresParentForInheritance(schema, fields);
+    boolean needsOwnersOrDomains = EntityPolicy.super.requiresParentForInheritance(schema, fields);
     boolean needsRetention =
         shouldResolveRetentionInheritance(fields) && schema.getRetentionPeriod() == null;
     if (!needsOwnersOrDomains && !needsRetention) {
       return;
     }
-
     String inheritanceFields =
         needsOwnersOrDomains
             ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
@@ -555,8 +555,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       return;
     }
     if (needsOwnersOrDomains) {
-      inheritOwners(schema, fields, database);
-      inheritDomains(schema, fields, database);
+      InheritedReferences.apply(InheritedReferences.Field.OWNERS, schema, fields, database);
+      InheritedReferences.apply(InheritedReferences.Field.DOMAINS, schema, fields, database);
     }
     if (needsRetention) {
       schema.withRetentionPeriod(database.getRetentionPeriod());
@@ -566,24 +566,24 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void restorePatchAttributes(DatabaseSchema original, DatabaseSchema updated) {
     // Patch can't make changes to following fields. Ignore the changes
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withService(original.getService());
   }
 
   @Override
-  protected EntityReference getParentReference(DatabaseSchema entity) {
+  public EntityReference getParentReference(DatabaseSchema entity) {
     return entity.getDatabase();
   }
 
   @Override
-  protected String getInheritableFields() {
+  public String getInheritableFields() {
     return "owners,domains,retentionPeriod";
   }
 
   @Override
-  protected void applyInheritance(DatabaseSchema entity, Fields fields, EntityInterface parent) {
-    inheritOwners(entity, fields, parent);
-    inheritDomains(entity, fields, parent);
+  public void applyInheritance(DatabaseSchema entity, Fields fields, EntityInterface parent) {
+    InheritedReferences.apply(InheritedReferences.Field.OWNERS, entity, fields, parent);
+    InheritedReferences.apply(InheritedReferences.Field.DOMAINS, entity, fields, parent);
     if (parent instanceof Database database) {
       entity.withRetentionPeriod(
           entity.getRetentionPeriod() == null
@@ -598,12 +598,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public EntityRepository<DatabaseSchema>.EntityUpdater getUpdater(
+  public EntityUpdater<DatabaseSchema> getUpdater(
       DatabaseSchema original,
       DatabaseSchema updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new DatabaseSchemaUpdater(original, updated, operation);
+    return new DatabaseSchemaUpdater(original, updated, operation).mutation();
   }
 
   private void populateDatabase(DatabaseSchema schema) {
@@ -622,11 +622,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public void entityRelationshipReindex(DatabaseSchema original, DatabaseSchema updated) {
-    super.entityRelationshipReindex(original, updated);
-
+    EntityPolicy.super.entityRelationshipReindex(original, updated);
     // Update search indexes of assets and entity on databaseSchema displayName change
     if (!Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      searchRepository
+      context()
+          .dependencies()
+          .search()
           .getSearchClient()
           .reindexAcrossIndices("databaseSchema.fullyQualifiedName", original.getEntityReference());
     }
@@ -641,27 +642,31 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public String exportToCsv(
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
-    DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
-
+    // Validate database schema
+    DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS);
     // Get tables under this schema
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
     List<Table> tables =
-        tableRepository.listAllForCSV(
-            tableRepository.getFields("owners,tags,domains,extension"),
-            schema.getFullyQualifiedName());
+        tableRepository
+            .collections()
+            .forCsv(
+                tableRepository.fieldPolicy().parse("owners,tags,domains,extension"),
+                schema.getFullyQualifiedName());
     tables.forEach(
         table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
     tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-
     // Get stored procedures under this schema
     StoredProcedureRepository spRepository =
         (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
     List<StoredProcedure> storedProcedures =
-        spRepository.listAllForCSV(
-            spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
-            schema.getFullyQualifiedName());
+        spRepository
+            .collections()
+            .forCsv(
+                spRepository
+                    .fieldPolicy()
+                    .parse("owners,tags,domains,extension,storedProcedureCode"),
+                schema.getFullyQualifiedName());
     storedProcedures.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-
     // Export all entities using a single CSV
     return new DatabaseSchemaCsv(schema, user, recursive)
         .exportAllCsv(tables, storedProcedures, recursive, callback);
@@ -678,7 +683,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       throws IOException {
     DatabaseSchema schema = null;
     try {
-      schema = getByName(null, name, getFields("database,service"));
+      schema = getByName(null, name, fieldPolicy().parse("database,service"));
     } catch (EntityNotFoundException e) {
       if (!dryRun) {
         throw e;
@@ -688,7 +693,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         schema = new DatabaseSchema().withName(name);
       }
     }
-
     DatabaseSchemaCsv schemaCsv = new DatabaseSchemaCsv(schema, user, recursive);
     List<CSVRecord> records;
     if (recursive) {
@@ -699,41 +703,57 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     return schemaCsv.importCsv(records, dryRun, callback);
   }
 
-  public class DatabaseSchemaUpdater extends EntityUpdater {
+  public class DatabaseSchemaUpdater implements EntitySpecificMutation<DatabaseSchema> {
+
     public DatabaseSchemaUpdater(
-        DatabaseSchema original, DatabaseSchema updated, Operation operation) {
-      super(original, updated, operation);
+        DatabaseSchema original, DatabaseSchema updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<DatabaseSchema> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "retentionPeriod",
+                  entityUpdate.getOriginal().getRetentionPeriod(),
+                  entityUpdate.getUpdated().getRetentionPeriod()));
+      entityUpdate.compareAndUpdate(
           "sourceUrl",
-          () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "sourceUrl",
+                  entityUpdate.getOriginal().getSourceUrl(),
+                  entityUpdate.getUpdated().getSourceUrl()));
+      entityUpdate.compareAndUpdate(
           "sourceHash",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "sourceHash",
-                  original.getSourceHash(),
-                  updated.getSourceHash(),
+                  entityUpdate.getOriginal().getSourceHash(),
+                  entityUpdate.getUpdated().getSourceHash(),
                   false,
                   EntityUtil.objectMatch,
                   false));
+    }
+
+    private final EntityUpdater<DatabaseSchema> entityUpdate;
+
+    public EntityUpdater<DatabaseSchema> mutation() {
+      return entityUpdate;
     }
   }
 
   public DatabaseSchema addDatabaseSchemaProfilerConfig(
       UUID databaseSchemaId, DatabaseSchemaProfilerConfig databaseSchemaProfilerConfig) {
     // Validate the request content
-    DatabaseSchema databaseSchema = find(databaseSchemaId, Include.NON_DELETED);
-
+    DatabaseSchema databaseSchema = lookup().byId(databaseSchemaId, Include.NON_DELETED);
     ProfileSampleConfig profileSampleConfig = databaseSchemaProfilerConfig.getProfileSampleConfig();
     if (!nullOrEmpty(profileSampleConfig) && !nullOrEmpty(profileSampleConfig.getConfig())) {
       ProfileSampleConfig.SampleConfigType sampleConfigType =
@@ -749,8 +769,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         }
       }
     }
-
-    daoCollection
+    context()
+        .dependencies()
+        .daos()
         .entityExtensionDAO()
         .insert(
             databaseSchemaId,
@@ -764,7 +785,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchemaProfilerConfig getDatabaseSchemaProfilerConfig(
       DatabaseSchema databaseSchema) {
     return JsonUtils.readValue(
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .entityExtensionDAO()
             .getExtension(databaseSchema.getId(), DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION),
         DatabaseSchemaProfilerConfig.class);
@@ -772,8 +795,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public DatabaseSchema deleteDatabaseSchemaProfilerConfig(UUID databaseSchemaId) {
     // Validate the request content
-    DatabaseSchema database = find(databaseSchemaId, Include.NON_DELETED);
-    daoCollection
+    DatabaseSchema database = lookup().byId(databaseSchemaId, Include.NON_DELETED);
+    context()
+        .dependencies()
+        .daos()
         .entityExtensionDAO()
         .delete(databaseSchemaId, DATABASE_SCHEMA_PROFILER_CONFIG_EXTENSION);
     setFieldsInternal(database, Fields.EMPTY_FIELDS);
@@ -781,9 +806,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   public static class DatabaseSchemaCsv extends EntityCsv<Table> {
+
     public final CsvDocumentation DOCUMENTATION;
+
     public final List<CsvHeader> HEADERS;
+
     private final DatabaseSchema schema;
+
     private final boolean recursive;
 
     public DatabaseSchemaCsv(DatabaseSchema schema, String user, boolean recursive) {
@@ -805,11 +834,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         throws IOException {
       // Create CSV file
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
-
       int total = tables.size() + storedProcedures.size();
       int exported = 0;
       int batchNumber = 0;
-
       // Add tables with entityType = table and include columns
       TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
       for (Table table : tables) {
@@ -820,7 +847,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           tableRepository.exportColumnsRecursively(table, csvFile);
         }
         exported++;
-
         if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
           batchNumber++;
           if (callback != null) {
@@ -831,12 +857,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           }
         }
       }
-
       // Add stored procedures with entityType = storedProcedure
       for (StoredProcedure sp : storedProcedures) {
         addEntityToCSV(csvFile, sp, STORED_PROCEDURE);
         exported++;
-
         if (exported % DEFAULT_BATCH_SIZE == 0 || exported == total) {
           batchNumber++;
           if (callback != null) {
@@ -847,7 +871,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           }
         }
       }
-
       return CsvUtil.formatCsv(csvFile);
     }
 
@@ -879,12 +902,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       if (recursive) {
         addField(recordList, entityType);
         addField(recordList, entity.getFullyQualifiedName());
-
-        addField(recordList, ""); // column specific fields, empty for entity
-        addField(recordList, ""); // column specific fields, empty for entity
-        addField(recordList, ""); // column specific fields, empty for entity
-        addField(recordList, ""); // column specific fields, empty for entity
-
+        // column specific fields, empty for entity
+        addField(recordList, "");
+        // column specific fields, empty for entity
+        addField(recordList, "");
+        // column specific fields, empty for entity
+        addField(recordList, "");
+        // column specific fields, empty for entity
+        addField(recordList, "");
         if (STORED_PROCEDURE.equals(entityType)) {
           StoredProcedure sp = (StoredProcedure) entity;
           String code =
@@ -894,7 +919,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                       && sp.getStoredProcedureCode().getLanguage() != null
                   ? sp.getStoredProcedureCode().getLanguage().toString()
                   : "";
-
           addField(recordList, code);
           addField(recordList, language);
         } else {
@@ -944,7 +968,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   .withDatabaseSchema(schema.getEntityReference());
         }
       }
-
       // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, certification,
       // retentionPeriod,
       // sourceUrl, domain
@@ -957,9 +980,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
                   Pair.of(5, TagLabel.TagSource.GLOSSARY),
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-
       AssetCertification certification = getCertificationLabels(csvRecord.get(7));
-
       table
           .withName(csvRecord.get(0))
           .withFullyQualifiedName(tableFqn)
@@ -973,7 +994,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
           .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11));
-
       if (processRecord) {
         createEntity(printer, csvRecord, table, TABLE);
       }
@@ -983,14 +1003,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       if (csvRecord == null) {
-        return; // Error has already been logged by getNextRecord, just skip this record
+        // Error has already been logged by getNextRecord, just skip this record
+        return;
       }
-
       // Get entityType and fullyQualifiedName if provided
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : TABLE;
       String entityFQN = csvRecord.size() > 13 ? csvRecord.get(13) : null;
       rowEntityType = entityType;
-
       if (TABLE.equals(entityType)) {
         createTableEntity(printer, csvRecord, entityFQN);
       } else if (STORED_PROCEDURE.equals(entityType)) {
@@ -1006,5 +1025,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     protected void addRecord(CsvFile csvFile, Table entity) {
       addEntityToCSV(csvFile, entity, TABLE);
     }
+  }
+
+  private final EntityPolicyContext<DatabaseSchema> entityContext;
+
+  @Override
+  public final EntityPolicyContext<DatabaseSchema> context() {
+    return entityContext;
   }
 }

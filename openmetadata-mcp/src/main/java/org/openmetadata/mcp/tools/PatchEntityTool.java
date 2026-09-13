@@ -17,7 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -41,9 +43,13 @@ import org.openmetadata.service.util.RestUtil;
 public class PatchEntityTool implements McpTool {
 
   private static final String PATCH_PARAM = "patch";
+
   private static final String OP_KEY = "op";
+
   private static final String PATH_KEY = "path";
+
   private static final String VALUE_KEY = "value";
+
   private static final String FROM_KEY = "from";
 
   // Resources that do lifecycle work outside EntityRepository.patch(), which a direct repository
@@ -77,15 +83,23 @@ public class PatchEntityTool implements McpTool {
           Entity.USER,
           Entity.WORKFLOW);
 
-  /** The members RFC 6902 requires for each operation, beyond {@code op} itself. */
+  /**
+   * The members RFC 6902 requires for each operation, beyond {@code op} itself.
+   */
   private static final Map<String, List<String>> REQUIRED_MEMBERS =
       Map.of(
-          "add", List.of(PATH_KEY, VALUE_KEY),
-          "replace", List.of(PATH_KEY, VALUE_KEY),
-          "test", List.of(PATH_KEY, VALUE_KEY),
-          "remove", List.of(PATH_KEY),
-          "move", List.of(PATH_KEY, FROM_KEY),
-          "copy", List.of(PATH_KEY, FROM_KEY));
+          "add",
+          List.of(PATH_KEY, VALUE_KEY),
+          "replace",
+          List.of(PATH_KEY, VALUE_KEY),
+          "test",
+          List.of(PATH_KEY, VALUE_KEY),
+          "remove",
+          List.of(PATH_KEY),
+          "move",
+          List.of(PATH_KEY, FROM_KEY),
+          "copy",
+          List.of(PATH_KEY, FROM_KEY));
 
   @Override
   public Map<String, Object> execute(
@@ -94,36 +108,36 @@ public class PatchEntityTool implements McpTool {
     String fqn = (String) params.get("fqn");
     requireTarget(entityType, fqn);
     requireGenericPatchLifecycle(entityType);
-
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
-
     // The permission comes from the patch itself: the operations it carries decide which
     // MetadataOperations are checked, exactly as the REST resource does it.
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, jsonPatch),
         new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
-
     // The response carries the patched entity, so this write answers a read as well: apply the
     // per-entity visibility rules the authorize() above cannot see, since they live outside the
     // policy model.
     CommonUtils.enforceEntityVisibility(entityType, fqn, securityContext);
-
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     String userName = securityContext.getUserPrincipal().getName();
     RestUtil.PatchResponse<? extends EntityInterface> response =
-        repository.patch(
-            null,
-            fqn,
-            userName,
-            jsonPatch,
-            // AUTOMATED, not MANUAL: the write is made by an agent through MCP, not by a person
-            // editing in the UI. RecognizerFeedbackRepository draws the same line - a human review
-            // is MANUAL, anything machine-made is AUTOMATED - and the change summary is what tells
-            // a stewardship report which is which.
-            ChangeSource.AUTOMATED,
-            null,
-            ImpersonationContext.getImpersonatedBy());
+        repository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Name(fqn),
+                jsonPatch,
+                new EntityCommandActor(userName, ImpersonationContext.getImpersonatedBy()),
+                null,
+                new EntityPatchService
+                    . // AUTOMATED, not MANUAL: the write is made by an agent through MCP,
+                    Options( // not by a person
+                    // editing in the UI. RecognizerFeedbackRepository draws the same line - a human
+                    // review
+                    // is MANUAL, anything machine-made is AUTOMATED - and the change summary is
+                    // what tells
+                    // a stewardship report which is which.
+                    ChangeSource.AUTOMATED, null));
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
     return McpResponseUtils.compactPatch(response.entity(), response.changeType());
   }

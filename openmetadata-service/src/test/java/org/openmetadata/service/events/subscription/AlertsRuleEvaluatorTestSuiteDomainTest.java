@@ -33,7 +33,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
@@ -79,15 +79,15 @@ class AlertsRuleEvaluatorTestSuiteDomainTest {
   }
 
   /** testCase declares domains; without this the #31331 guard skips the read under a static mock. */
-  private static EntityRepository<EntityInterface> repositoryDeclaringDomains() {
-    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+  private static EntityPolicy<EntityInterface> repositoryDeclaringDomains() {
+    EntityPolicy<EntityInterface> repository = mock(EntityPolicy.class);
     when(repository.isSupportsDomains()).thenReturn(true);
     return repository;
   }
 
   @Test
   void matchesDomainCarriedOnlyByTheStoredTestSuite() {
-    EntityRepository<EntityInterface> repository = repositoryDeclaringDomains();
+    EntityPolicy<EntityInterface> repository = repositoryDeclaringDomains();
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock
           .when(() -> Entity.getEntityClassFromType(Entity.TEST_CASE))
@@ -123,7 +123,7 @@ class AlertsRuleEvaluatorTestSuiteDomainTest {
 
   @Test
   void doesNotMatchWhenNeitherTestCaseNorSuiteCarriesTheDomain() {
-    EntityRepository<EntityInterface> repository = repositoryDeclaringDomains();
+    EntityPolicy<EntityInterface> repository = repositoryDeclaringDomains();
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock
           .when(() -> Entity.getEntityClassFromType(Entity.TEST_CASE))

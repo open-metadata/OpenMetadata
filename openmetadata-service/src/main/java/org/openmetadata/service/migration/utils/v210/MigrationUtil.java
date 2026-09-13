@@ -65,7 +65,7 @@ public class MigrationUtil {
   public static void addCreateConversationRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      Policy policy = repository.lookup().byName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
       if (policy.getRules() == null) {
         policy.setRules(new ArrayList<>());
       }

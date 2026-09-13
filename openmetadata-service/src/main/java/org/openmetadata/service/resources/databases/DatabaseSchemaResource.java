@@ -956,7 +956,7 @@ public class DatabaseSchemaResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    DatabaseSchema databaseSchema = repository.find(id, Include.NON_DELETED);
+    DatabaseSchema databaseSchema = repository.lookup().byId(id, Include.NON_DELETED);
     return addHref(
         uriInfo,
         databaseSchema.withDatabaseSchemaProfilerConfig(

@@ -36,22 +36,30 @@ import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 final class AIGovernanceWorkflowService {
 
   private static final Set<String> SUPPORTED_TYPES =
       Set.of(Entity.AI_APPLICATION, Entity.LLM_MODEL, Entity.MCP_SERVER);
+
   private static final String STATUS_PENDING_APPROVAL = "PendingApproval";
+
   private static final String STATUS_APPROVED = "Approved";
+
   private static final String STATUS_REJECTED = "Rejected";
 
   private final Authorizer authorizer;
@@ -153,15 +161,23 @@ final class AIGovernanceWorkflowService {
 
   private EntityInterface loadEntityByFqn(String entityType, String fqn) {
     assertSupported(entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    return repository.getByName(null, fqn, repository.getFields("owners,tags,domains,extension"));
+    EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    return repository.getByName(
+        null, fqn, repository.fieldPolicy().parse("owners,tags,domains,extension"));
   }
 
   private EntityInterface loadEntity(String entityType, String id) {
     assertSupported(entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    return repository.get(
-        null, UUID.fromString(id), repository.getFields("owners,tags,domains,extension"));
+    EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    return repository
+        .reads()
+        .byId(
+            UUID.fromString(id),
+            new EntityReadService.Query(
+                null,
+                repository.fieldPolicy().parse("owners,tags,domains,extension"),
+                RelationIncludes.fromInclude(Include.NON_DELETED),
+                false));
   }
 
   private void assertSupported(String entityType) {
@@ -187,9 +203,16 @@ final class AIGovernanceWorkflowService {
     String updatedJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
     authorizePatch(securityContext, entityType, entity.getId(), patch);
-
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    return repository.patch(null, entity.getId(), user, patch).entity();
+    EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    return repository
+        .patches()
+        .patch(
+            new EntityPatchService.Target.Id(entity.getId()),
+            patch,
+            new EntityCommandActor(user, null),
+            null,
+            new EntityPatchService.Options(null, null))
+        .entity();
   }
 
   private void authorizeViewByFqn(SecurityContext securityContext, String entityType, String fqn) {

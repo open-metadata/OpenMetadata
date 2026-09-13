@@ -6,46 +6,85 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.resources.datainsight.DataInsightChartResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
-public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
+@Repository()
+public class DataInsightChartRepository implements EntityPolicy<DataInsightChart> {
+
   public static final String LAST_SESSION = "lastSession";
+
   public static final String DATA_ENTITY_TYPE = "data.entityType";
+
   public static final String TIMESTAMP = "timestamp";
+
   public static final String ENTITY_COUNT = "entityCount";
+
   public static final String DATA_ENTITY_COUNT = "data.entityCount";
+
   public static final String ENTITY_TYPE = "entityType";
+
   public static final String SERVICE_NAME = "serviceName";
+
   public static final String DATA_SERVICE_NAME = "data.serviceName";
+
   public static final String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
+
   public static final String DATA_COMPLETED_DESCRIPTIONS = "data.completedDescriptions";
+
   public static final String HAS_OWNER_FRACTION = "hasOwnerFraction";
+
   public static final String DATA_HAS_OWNER = "data.hasOwner";
+
   public static final String ENTITY_TIER = "entityTier";
+
   public static final String DATA_ENTITY_TIER = "data.entityTier";
+
   public static final String DATA_TEAM = "data.team";
+
   public static final String DATA_USER_NAME = "data.userName";
+
   public static final String DATA_PAGE_VIEWS = "data.totalPageView";
+
   public static final String DATA_SESSIONS = "data.totalSessions";
+
   public static final String SESSIONS = "sessions";
+
   public static final String PAGE_VIEWS = "pageViews";
+
   public static final String DATA_LAST_SESSION = "data.lastSession";
+
   public static final String SESSION_DURATION = "sessionDuration";
+
   public static final String DATA_TOTAL_SESSION_DURATION = "data.totalSessionDuration";
+
   public static final String DATA_VIEWS = "data.views";
+
   public static final String ENTITY_FQN = "entityFqn";
+
   public static final String DATA_ENTITY_FQN = "data.entityFqn";
+
   public static final String OWNER = "owners";
+
   public static final String DATA_OWNER = "data.owner";
+
   public static final String USER_NAME = "userName";
+
   public static final String TEAM = "team";
+
   public static final String ENTITY_HREF = "entityHref";
+
   public static final String DATA_ENTITY_HREF = "data.entityHref";
+
   public static final List<String> SUPPORTS_TEAM_FILTER =
       Arrays.asList(
           "TotalEntitiesByType",
@@ -72,13 +111,16 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
       listOf(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString());
 
   public DataInsightChartRepository() {
-    super(
-        DataInsightChartResource.COLLECTION_PATH,
-        DATA_INSIGHT_CHART,
-        DataInsightChart.class,
-        Entity.getCollectionDAO().dataInsightChartDAO(),
-        "",
-        "");
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DataInsightChartResource.COLLECTION_PATH,
+                DATA_INSIGHT_CHART,
+                DataInsightChart.class,
+                Entity.getCollectionDAO().dataInsightChartDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
@@ -99,7 +141,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
 
   @Override
   public void storeEntity(DataInsightChart entity, boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
@@ -110,11 +152,25 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    context()
+        .schema()
+        .dao()
+        .insertMany(
+            context().schema().dao().getTableName(),
+            context().schema().dao().getNameHashColumn(),
+            fqns,
+            jsons);
   }
 
   @Override
   public void storeRelationships(DataInsightChart entity) {
     // No relationships to store beyond what is stored in the super class
+  }
+
+  private final EntityPolicyContext<DataInsightChart> entityContext;
+
+  @Override
+  public final EntityPolicyContext<DataInsightChart> context() {
+    return entityContext;
   }
 }

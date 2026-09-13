@@ -40,6 +40,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
 import org.openmetadata.service.search.SearchClient;
@@ -51,18 +57,25 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataInsightSystemChartRepository extends EntityRepository<DataInsightCustomChart> {
+@Repository()
+public class DataInsightSystemChartRepository implements EntityPolicy<DataInsightCustomChart> {
+
   private static final Logger LOG = LoggerFactory.getLogger(DataInsightSystemChartRepository.class);
 
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
   // Streaming constants
   private static final String CHART_DATA_STREAM_CHANNEL = "chartDataStream";
-  private static final long STREAM_DURATION_MS = 10 * 60 * 1000; // 10 minutes
-  private static final long UPDATE_INTERVAL_MS = 10 * 1000; // 2 seconds
+
+  // 10 minutes
+  private static final long STREAM_DURATION_MS = 10 * 60 * 1000;
+
+  // 2 seconds
+  private static final long UPDATE_INTERVAL_MS = 10 * 1000;
 
   // Streaming service fields
   private ScheduledExecutorService scheduler;
+
   private final Map<String, StreamingSession> activeSessions;
 
   /**
@@ -133,13 +146,16 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       "\\b(count|sum|min|max|avg|unique)+\\((k='([^']*)')?,?\\s*(q='([^']*)')?\\)?";
 
   public DataInsightSystemChartRepository() {
-    super(
-        DataInsightSystemChartResource.COLLECTION_PATH,
-        DATA_INSIGHT_CUSTOM_CHART,
-        DataInsightCustomChart.class,
-        Entity.getCollectionDAO().dataInsightCustomChartDAO(),
-        "",
-        "");
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                DataInsightSystemChartResource.COLLECTION_PATH,
+                DATA_INSIGHT_CUSTOM_CHART,
+                DataInsightCustomChart.class,
+                Entity.getCollectionDAO().dataInsightCustomChartDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
     // Lazy initialization: do not create scheduler here
     this.activeSessions = new ConcurrentHashMap<>();
   }
@@ -185,7 +201,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   private static final String AI_AUTOMATION = "aiAutomation";
 
   private static final String NO_RUNS_STATUS = "NO_RUNS";
+
   private static final long AUTOMATION_STATUS_WINDOW_MS = 24 * 60 * 60 * 1000L;
+
   // Service types AutoPilot creates automations for; the automation hangs off the service.
   private static final List<String> SERVICE_TYPES_WITH_AUTOMATIONS =
       List.of(Entity.DATABASE_SERVICE, Entity.DASHBOARD_SERVICE, Entity.MESSAGING_SERVICE);
@@ -225,7 +243,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return automationStatus;
   }
 
-  /** The service owns its automations through a CONTAINS relationship. */
+  /**
+   * The service owns its automations through a CONTAINS relationship.
+   */
   private List<EntityReference> listServiceAutomations(String serviceType, String serviceName) {
     if (nullOrEmpty(serviceType)
         || nullOrEmpty(serviceName)
@@ -235,30 +255,41 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     EntityInterface service =
         (EntityInterface) Entity.getEntityByName(serviceType, serviceName, "", Include.NON_DELETED);
     return Entity.getEntityRepository(serviceType)
-        .findTo(service.getId(), serviceType, Relationship.CONTAINS, AI_AUTOMATION);
+        .relationships()
+        .to(
+            new EntityRelationshipReader.Selection(
+                service.getId(), serviceType, Relationship.CONTAINS, AI_AUTOMATION),
+            Include.NON_DELETED);
   }
 
   private Map<String, Object> buildAutomationStatus(
       EntityReference automation, IngestionPipelineRepository pipelineRepository) {
     try {
       List<EntityReference> pipelines =
-          pipelineRepository.findTo(
-              automation.getId(), AI_AUTOMATION, Relationship.CONTAINS, INGESTION_PIPELINE);
+          pipelineRepository
+              .relationships()
+              .to(
+                  new EntityRelationshipReader.Selection(
+                      automation.getId(), AI_AUTOMATION, Relationship.CONTAINS, INGESTION_PIPELINE),
+                  Include.NON_DELETED);
       if (pipelines.isEmpty()) {
         return null;
       }
       IngestionPipeline pipeline =
-          pipelineRepository.get(
-              null,
-              pipelines.get(0).getId(),
-              pipelineRepository.getFields("id,fullyQualifiedName"));
-
+          pipelineRepository
+              .reads()
+              .byId(
+                  pipelines.get(0).getId(),
+                  new EntityReadService.Query(
+                      null,
+                      pipelineRepository.fieldPolicy().parse("id,fullyQualifiedName"),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       Map<String, Object> status = new HashMap<>();
       status.put("appId", automation.getId().toString());
       status.put("appName", automation.getName());
       status.put("displayName", automation.getDisplayName());
       status.put("type", AI_AUTOMATION);
-
       ResultList<PipelineStatus> statuses =
           pipelineRepository.listExternalAppStatus(
               pipeline.getFullyQualifiedName(),
@@ -281,7 +312,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     }
   }
 
-  /** The live panel reads AppRunRecord statuses, so map the pipeline state onto that vocabulary. */
+  /**
+   * The live panel reads AppRunRecord statuses, so map the pipeline state onto that vocabulary.
+   */
   private static String toAppRunStatus(PipelineStatusType state) {
     if (state == null) {
       return NO_RUNS_STATUS;
@@ -305,21 +338,17 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     List<Map> combinedStatus = new ArrayList<>();
     final int pageSize = 100;
     final int maxResults = 5000;
-
     try {
       if (serviceName == null || serviceName.trim().isEmpty()) {
         return combinedStatus;
       }
-
       // Get the ingestion pipeline repository
       IngestionPipelineRepository ingestionPipelineRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-
       if (ingestionPipelineRepository == null) {
         LOG.warn("IngestionPipelineRepository not available");
         return combinedStatus;
       }
-
       // Search for ingestion pipelines by service name using search
       SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
       if (searchClient != null) {
@@ -329,18 +358,15 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             var response =
                 searchClient.searchByField(
                     "service.name.keyword", serviceName, INGESTION_PIPELINE, false, from, pageSize);
-
             if (response == null || response.getStatus() != 200) {
               break;
             }
-
             String responseBody =
                 (String) ((OutboundJaxrsResponse) response).getContext().getEntity();
             List<Map> pageStatuses = parseIngestionPipelineResponse(responseBody);
             if (pageStatuses.isEmpty()) {
               break;
             }
-
             combinedStatus.addAll(pageStatuses);
             if (pageStatuses.size() < pageSize) {
               break;
@@ -350,7 +376,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           LOG.error("Error searching for ingestion pipelines for service: {}", serviceName, e);
         }
       }
-
       // Fallback: try to get pipeline status directly if search fails
       try {
         // This would require implementing a method to get pipelines by service name
@@ -359,11 +384,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       } catch (Exception e) {
         LOG.error("Error in fallback method for service: {}", serviceName, e);
       }
-
     } catch (Exception e) {
       LOG.error("Error fetching ingestion pipeline status for service: {}", serviceName, e);
     }
-
     return combinedStatus;
   }
 
@@ -376,31 +399,25 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    */
   private List<Map> getWorkflowInstances(String entityLink, long startTime, long endTime) {
     List<Map> workflowInstances = new ArrayList<>();
-
     try {
       if (entityLink == null || entityLink.trim().isEmpty()) {
         return workflowInstances;
       }
-
       // Get the workflow instance repository
       WorkflowInstanceRepository workflowInstanceRepository =
           (WorkflowInstanceRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-
       if (workflowInstanceRepository == null) {
         LOG.warn("WorkflowInstanceRepository not available");
         return workflowInstances;
       }
-
       // Create filter for workflow instances
       ListFilter filter = new ListFilter(null);
       filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash("AutoPilotWorkflow"));
       filter.addQueryParam("entityLink", entityLink);
-
       // Fetch workflow instances
       ResultList<WorkflowInstance> instances =
           workflowInstanceRepository.list(null, startTime, endTime, 100, filter, false);
-
       if (instances != null && instances.getData() != null) {
         for (WorkflowInstance instance : instances.getData()) {
           Map<String, Object> instanceData = new HashMap<>();
@@ -413,18 +430,14 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           instanceData.put("variables", instance.getVariables());
           instanceData.put("entityLink", entityLink);
           instanceData.put("type", "workflow");
-
           workflowInstances.add(instanceData);
         }
       }
-
       LOG.info(
           "Found {} workflow instances for entity link: {}", workflowInstances.size(), entityLink);
-
     } catch (Exception e) {
       LOG.error("Error fetching workflow instances for entity link: {}", entityLink, e);
     }
-
     return workflowInstances;
   }
 
@@ -455,7 +468,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
   @Override
   public void storeEntity(DataInsightCustomChart entity, boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
@@ -466,7 +479,14 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    context()
+        .schema()
+        .dao()
+        .insertMany(
+            context().schema().dao().getTableName(),
+            context().schema().dao().getNameHashColumn(),
+            fqns,
+            jsons);
   }
 
   @Override
@@ -484,26 +504,19 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     try {
       JsonObject existingJson = JsonParser.parseString(existingFilter).getAsJsonObject();
       JsonObject userJson = JsonParser.parseString(userFilter).getAsJsonObject();
-
       JsonObject existingQuery = existingJson.getAsJsonObject("query");
       JsonObject userQuery = userJson.getAsJsonObject("query");
-
       if (existingQuery == null) return userFilter;
       if (userQuery == null) return existingFilter;
-
       JsonArray mustArray = new JsonArray();
       mustArray.add(existingQuery);
       mustArray.add(userQuery);
-
       JsonObject boolObj = new JsonObject();
       boolObj.add("must", mustArray);
-
       JsonObject combinedQuery = new JsonObject();
       combinedQuery.add("bool", boolObj);
-
       JsonObject result = new JsonObject();
       result.add("query", combinedQuery);
-
       return result.toString();
     } catch (Exception e) {
       LOG.warn("Failed to combine filters, using user filter as fallback: {}", e.getMessage());
@@ -554,11 +567,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     if (chartNames == null) {
       return result;
     }
-
     for (String chartName : chartNames.split(",")) {
       DataInsightCustomChart chart =
           Entity.getEntityByName(DATA_INSIGHT_CUSTOM_CHART, chartName, "", Include.NON_DELETED);
-
       if (chart != null) {
         if (chart.getChartDetails() != null && filter != null) {
           HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
@@ -638,20 +649,17 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       UUID userId,
       Long startTime,
       Long endTime) {
-
     // Validate input
     if (chartNames == null || chartNames.trim().isEmpty()) {
       Map<String, Object> errorResponse = new HashMap<>();
       errorResponse.put("error", "chartNames parameter is required");
       return errorResponse;
     }
-
     // Check if there's already an active streaming session for the same criteria
     StreamingSession existingSession = findActiveSession(chartNames, serviceName, entityLink);
     if (existingSession != null) {
       // Add this user to the existing session
       existingSession.addUser(userId);
-
       LOG.info(
           "Adding user {} to existing streaming session {} for charts: {} and service: {}. Total users: {}",
           userId,
@@ -659,7 +667,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           chartNames,
           serviceName,
           existingSession.getUserCount());
-
       // Send initial status message to the new user
       sendMessageToUser(
           userId,
@@ -676,10 +683,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               existingSession.getEntityLink(),
               existingSession.getDataStartTime(),
               existingSession.getDataEndTime()));
-
       // Calculate remaining time for existing session
       long remainingTime = existingSession.getRemainingTime();
-
       Map<String, Object> response = new HashMap<>();
       response.put("sessionId", existingSession.getSessionId());
       response.put("status", "joined_existing");
@@ -691,10 +696,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       response.put("endTime", existingSession.getDataEndTime());
       response.put("totalUsers", existingSession.getUserCount());
       response.put("serviceName", existingSession.getServiceName());
-
       return response;
     }
-
     // Set default time range if not provided (last 24 hours)
     if (startTime == null || endTime == null) {
       long currentTime = System.currentTimeMillis();
@@ -702,22 +705,20 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         endTime = currentTime;
       }
       if (startTime == null) {
-        startTime = currentTime - (24 * 60 * 60 * 1000); // 24 hours ago
+        // 24 hours ago
+        startTime = currentTime - (24 * 60 * 60 * 1000);
       }
     }
-
     // Validate time range
     if (startTime >= endTime) {
       Map<String, Object> errorResponse = new HashMap<>();
       errorResponse.put("error", "startTime must be less than endTime");
       return errorResponse;
     }
-
     try {
       String sessionId =
           startStreaming(
               chartNames, serviceName, serviceType, filter, entityLink, userId, startTime, endTime);
-
       Map<String, Object> response = new HashMap<>();
       response.put("sessionId", sessionId);
       response.put("status", "started");
@@ -730,9 +731,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       response.put("endTime", endTime);
       response.put("totalUsers", 1);
       response.put("serviceName", serviceName);
-
       return response;
-
     } catch (Exception e) {
       LOG.error("Error starting chart data streaming", e);
       Map<String, Object> errorResponse = new HashMap<>();
@@ -754,7 +753,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       Long startTime,
       Long endTime) {
     String sessionId = UUID.randomUUID().toString();
-
     LOG.info(
         "Starting chart data streaming session {} for user {} with charts: {} and entityLink: {} (time range: {} to {})",
         sessionId,
@@ -763,7 +761,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         entityLink,
         startTime,
         endTime);
-
     StreamingSession session =
         new StreamingSession(
             sessionId,
@@ -776,7 +773,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             startTime,
             endTime);
     activeSessions.put(sessionId, session);
-
     // Send initial status message to all users in the session
     sendMessageToAllUsers(
         session,
@@ -788,19 +784,15 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         getIngestionPipelineStatus(serviceName),
         getAutomationStatus(serviceType, serviceName),
         getWorkflowInstances(entityLink, startTime, endTime));
-
     // Schedule the streaming task
     ScheduledFuture<?> future =
         getScheduler()
             .scheduleAtFixedRate(
                 () -> streamChartData(session), 0, UPDATE_INTERVAL_MS, TimeUnit.MILLISECONDS);
-
     session.setFuture(future);
-
     // Schedule session cleanup after 10 minutes
     getScheduler()
         .schedule(() -> stopStreaming(sessionId), STREAM_DURATION_MS, TimeUnit.MILLISECONDS);
-
     return sessionId;
   }
 
@@ -814,11 +806,9 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           "Stopping chart data streaming session {} with {} users",
           sessionId,
           session.getUserCount());
-
       if (session.getFuture() != null) {
         session.getFuture().cancel(true);
       }
-
       sendMessageToAllUsers(
           session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of(), List.of());
       activeSessions.remove(sessionId);
@@ -833,29 +823,24 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    */
   public Map<String, Object> stopChartDataStreaming(String sessionId, UUID userId) {
     Map<String, Object> response = new HashMap<>();
-
     StreamingSession session = activeSessions.get(sessionId);
     if (session == null) {
       response.put("error", "Streaming session not found");
       response.put("notFound", true);
       return response;
     }
-
     // Check if the user is part of this session
     if (!session.getUserIds().contains(userId)) {
       response.put("error", "User is not authorized to stop this streaming session");
       return response;
     }
-
     LOG.info(
         "User {} stopping chart data streaming session {} with {} users",
         userId,
         sessionId,
         session.getUserCount());
-
     // Remove the user from the session
     session.removeUser(userId);
-
     // If no users left, stop the entire session
     if (session.getUserCount() == 0) {
       if (session.getFuture() != null) {
@@ -864,7 +849,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       sendMessageToAllUsers(
           session, "COMPLETED", null, null, 0L, 0L, List.of(), List.of(), List.of());
       activeSessions.remove(sessionId);
-
       response.put("status", "stopped");
       response.put("message", "Streaming session stopped successfully");
       response.put("sessionId", sessionId);
@@ -881,14 +865,12 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           getAutomationStatus(session.getServiceType(), session.getServiceName()),
           getWorkflowInstances(
               session.getEntityLink(), session.getDataStartTime(), session.getDataEndTime()));
-
       response.put("status", "user_removed");
       response.put("message", "User removed from streaming session");
       response.put("sessionId", sessionId);
       response.put("remainingUsers", session.getUserCount());
       response.put("serviceName", session.getServiceName());
     }
-
     return response;
   }
 
@@ -898,16 +880,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   private void streamChartData(StreamingSession session) {
     try {
       long remainingTime = session.getRemainingTime();
-
       if (remainingTime <= 0) {
         stopStreaming(session.getSessionId());
         return;
       }
-
       // Use the user-provided time range
       long startTime = session.getDataStartTime();
       long endTime = session.getDataEndTime();
-
       // Fetch chart data using the existing repository method
       Map<String, DataInsightCustomChartResultList> chartData =
           listChartData(
@@ -917,14 +896,11 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
               session.getFilter(),
               true,
               session.getServiceName());
-
       // Fetch ingestion pipeline status for the service
       List<Map> ingestionPipelineStatus = getIngestionPipelineStatus(session.getServiceName());
-
       // Fetch workflow instances for the entity link
       List<Map> workflowInstances =
           getWorkflowInstances(session.getEntityLink(), startTime, endTime);
-
       // Send the data to all users in the session
       sendMessageToAllUsers(
           session,
@@ -936,7 +912,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           ingestionPipelineStatus,
           getAutomationStatus(session.getServiceType(), session.getServiceName()),
           workflowInstances);
-
     } catch (IOException e) {
       LOG.error("Error streaming chart data for session {}", session.getSessionId(), e);
       sendMessageToAllUsers(
@@ -994,9 +969,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
             ingestionPipelineStatus,
             appStatus,
             workflowInstances);
-
     String messageJson = JsonUtils.pojoToJson(message);
-
     if (WebSocketManager.getInstance() != null) {
       WebSocketManager.getInstance().sendToOne(userId, CHART_DATA_STREAM_CHANNEL, messageJson);
     }
@@ -1054,16 +1027,31 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * Inner class to represent a streaming session with multiple users
    */
   private static class StreamingSession {
+
     private final String sessionId;
+
     private final String chartNames;
+
     private final String serviceName;
+
     private final String serviceType;
+
     private final String filter;
+
     private final String entityLink;
-    private final Set<UUID> userIds; // Multiple users can share the same session
-    private final long startTime; // Session start time
-    private final long dataStartTime; // Data range start time
-    private final long dataEndTime; // Data range end time
+
+    // Multiple users can share the same session
+    private final Set<UUID> userIds;
+
+    // Session start time
+    private final long startTime;
+
+    // Data range start time
+    private final long dataStartTime;
+
+    // Data range end time
+    private final long dataEndTime;
+
     private ScheduledFuture<?> future;
 
     public StreamingSession(
@@ -1082,11 +1070,15 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.serviceType = serviceType;
       this.filter = filter;
       this.entityLink = entityLink;
-      this.userIds = ConcurrentHashMap.newKeySet(); // Thread-safe set
+      // Thread-safe set
+      this.userIds = ConcurrentHashMap.newKeySet();
       this.userIds.add(userId);
-      this.startTime = System.currentTimeMillis(); // Session start time
-      this.dataStartTime = dataStartTime; // Data range start time
-      this.dataEndTime = dataEndTime; // Data range end time
+      // Session start time
+      this.startTime = System.currentTimeMillis();
+      // Data range start time
+      this.dataStartTime = dataStartTime;
+      // Data range end time
+      this.dataEndTime = dataEndTime;
     }
 
     public void addUser(UUID userId) {
@@ -1155,5 +1147,12 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     public void setFuture(ScheduledFuture<?> future) {
       this.future = future;
     }
+  }
+
+  private final EntityPolicyContext<DataInsightCustomChart> entityContext;
+
+  @Override
+  public final EntityPolicyContext<DataInsightCustomChart> context() {
+    return entityContext;
   }
 }

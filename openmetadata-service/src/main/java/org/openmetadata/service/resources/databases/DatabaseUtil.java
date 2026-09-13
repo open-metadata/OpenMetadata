@@ -16,8 +16,10 @@ package org.openmetadata.service.resources.databases;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -96,13 +98,12 @@ public final class DatabaseUtil {
   }
 
   public static void validateColumnNames(List<Column> columns) {
-    List<String> columnNames = new ArrayList<>();
-    for (Column c : columns) {
-      if (columnNames.contains(c.getName())) {
-        throw new IllegalArgumentException(
-            String.format("Column name %s is repeated", c.getName()));
+    final Set<String> columnNames = new HashSet<>();
+    for (final Column column : columns) {
+      final String name = column.getName();
+      if (!columnNames.add(name)) {
+        throw new IllegalArgumentException(String.format("Column name %s is repeated", name));
       }
-      columnNames.add(c.getName());
     }
   }
 

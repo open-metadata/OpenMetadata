@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static java.lang.Boolean.FALSE;
@@ -44,6 +43,15 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
@@ -52,17 +60,22 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
-public class PolicyRepository extends EntityRepository<Policy> {
+@Repository()
+public class PolicyRepository implements EntityPolicy<Policy> {
+
   public static final String ENABLED = "enabled";
 
   public PolicyRepository() {
-    super(
-        PolicyResource.COLLECTION_PATH,
-        POLICY,
-        Policy.class,
-        Entity.getCollectionDAO().policyDAO(),
-        "",
-        "");
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                PolicyResource.COLLECTION_PATH,
+                POLICY,
+                Policy.class,
+                Entity.getCollectionDAO().policyDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
   }
 
   @Override
@@ -76,29 +89,26 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (policies == null || policies.isEmpty()) {
       return;
     }
-
     if (fields.contains("teams")) {
       fetchAndSetTeams(policies);
     }
-
     if (fields.contains("roles")) {
       fetchAndSetRoles(policies);
     }
-
     // Handle standard fields that are managed by the parent class
-    super.setFieldsInBulk(fields, policies);
+    EntityPolicy.super.setFieldsInBulk(fields, policies);
   }
 
   private void fetchAndSetTeams(List<Policy> policies) {
     List<String> policyIds =
         policies.stream().map(Policy::getId).map(UUID::toString).distinct().toList();
-
     // Bulk fetch teams - relationship is Team HAS Policy (Team=from, Policy=to)
     List<CollectionDAO.EntityRelationshipObject> teamRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(policyIds, Relationship.HAS.ordinal(), Entity.TEAM, POLICY);
-
     // Create a map of policy ID to team references
     Map<UUID, List<EntityReference>> policyToTeams = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
@@ -108,7 +118,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
               Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
       policyToTeams.computeIfAbsent(policyId, k -> new ArrayList<>()).add(teamRef);
     }
-
     // Set teams on policies
     for (Policy policy : policies) {
       List<EntityReference> teams = policyToTeams.get(policy.getId());
@@ -119,13 +128,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   private void fetchAndSetRoles(List<Policy> policies) {
     List<String> policyIds =
         policies.stream().map(Policy::getId).map(UUID::toString).distinct().toList();
-
     // Bulk fetch roles - relationship is Role HAS Policy (Role=from, Policy=to)
     List<CollectionDAO.EntityRelationshipObject> roleRecords =
-        daoCollection
+        context()
+            .dependencies()
+            .daos()
             .relationshipDAO()
             .findFromBatch(policyIds, Relationship.HAS.ordinal(), Entity.ROLE, POLICY);
-
     // Create a map of policy ID to role references
     Map<UUID, List<EntityReference>> policyToRoles = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : roleRecords) {
@@ -135,7 +144,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
               Entity.ROLE, UUID.fromString(record.getFromId()), Include.ALL);
       policyToRoles.computeIfAbsent(policyId, k -> new ArrayList<>()).add(roleRef);
     }
-
     // Set roles on policies
     for (Policy policy : policies) {
       List<EntityReference> roles = policyToRoles.get(policy.getId());
@@ -151,12 +159,20 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   /* Get all the teams that use this policy */
   private List<EntityReference> getTeams(Policy policy) {
-    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.TEAM);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(
+                policy.getId(), POLICY, Relationship.HAS, Entity.TEAM),
+            Include.NON_DELETED);
   }
 
   /* Get all the roles that use this policy */
   private List<EntityReference> getRoles(Policy policy) {
-    return findFrom(policy.getId(), POLICY, Relationship.HAS, Entity.ROLE);
+    return relationships()
+        .from(
+            new EntityRelationshipReader.Selection(
+                policy.getId(), POLICY, Relationship.HAS, Entity.ROLE),
+            Include.NON_DELETED);
   }
 
   @Override
@@ -166,7 +182,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
   @Override
   public void storeEntity(Policy policy, boolean update) {
-    store(policy, update);
+    persistence().store(policy, update);
   }
 
   @Override
@@ -175,13 +191,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   @Override
-  public EntityRepository<Policy>.EntityUpdater getUpdater(
-      Policy original, Policy updated, Operation operation, ChangeSource changeSource) {
-    return new PolicyUpdater(original, updated, operation);
+  public EntityUpdater<Policy> getUpdater(
+      Policy original, Policy updated, EntityOperation operation, ChangeSource changeSource) {
+    return new PolicyUpdater(original, updated, operation).mutation();
   }
 
   @Override
-  protected void preDelete(Policy entity, String updateBy) {
+  public void preDelete(Policy entity, String updateBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.POLICY));
@@ -197,16 +213,13 @@ public class PolicyRepository extends EntityRepository<Policy> {
     if (nullOrEmpty(rules)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_RULES_IN_POLICY);
     }
-
     // Validate all the expressions in the rule
     for (Rule rule : rules) {
       CompiledRule.validateExpression(rule.getCondition(), Boolean.class, update);
       rule.getResources().sort(String.CASE_INSENSITIVE_ORDER);
       rule.getOperations().sort(Comparator.comparing(MetadataOperation::value));
-
       // Remove redundant resources
       rule.setResources(filterRedundantResources(rule.getResources()));
-
       // Remove redundant operations
       rule.setOperations(filterRedundantOperations(rule.getOperations()));
     }
@@ -230,7 +243,6 @@ public class PolicyRepository extends EntityRepository<Policy> {
       operations =
           operations.stream().filter(o -> o.equals(VIEW_ALL) || !isViewOperation(o)).toList();
     }
-
     // If EDIT_ALL is in the operation list, remove all the other specific edit operations that are
     // redundant
     boolean containsEditAll = operations.stream().anyMatch(o -> o.equals(EDIT_ALL));
@@ -241,21 +253,34 @@ public class PolicyRepository extends EntityRepository<Policy> {
     return new ArrayList<>(operations);
   }
 
-  /** Handles entity updated from PUT and POST operation. */
-  public class PolicyUpdater extends EntityUpdater {
-    public PolicyUpdater(Policy original, Policy updated, Operation operation) {
-      super(original, updated, operation);
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class PolicyUpdater implements EntitySpecificMutation<Policy> {
+
+    public PolicyUpdater(Policy original, Policy updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
-          ENABLED, () -> recordChange(ENABLED, original.getEnabled(), updated.getEnabled()));
-      compareAndUpdate(
+    public void update(EntityUpdater<Policy> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
+          ENABLED,
+          () ->
+              entityUpdate.recordChange(
+                  ENABLED,
+                  entityUpdate.getOriginal().getEnabled(),
+                  entityUpdate.getUpdated().getEnabled()));
+      entityUpdate.compareAndUpdate(
           "rules",
           () -> {
-            updateRules(original.getRules(), updated.getRules());
+            updateRules(
+                entityUpdate.getOriginal().getRules(), entityUpdate.getUpdated().getRules());
             SubjectCache.invalidateAll();
           });
     }
@@ -265,27 +290,24 @@ public class PolicyRepository extends EntityRepository<Policy> {
       if (!nullOrEmpty(updatedRules)) {
         Set<String> ruleNames =
             updatedRules.stream().map(Rule::getName).collect(Collectors.toSet());
-
         if (ruleNames.size() != updatedRules.size()) {
           throw new BadRequestException(
               "Policy contains duplicate Rules. Please use unique name for Rules.");
         }
       }
-
       // Record change description
       List<Rule> deletedRules = new ArrayList<>();
       List<Rule> addedRules = new ArrayList<>();
-
-      recordListChange("rules", origRules, updatedRules, addedRules, deletedRules, ruleMatch);
-
+      entityUpdate.recordListChange(
+          "rules", origRules, updatedRules, addedRules, deletedRules, ruleMatch);
       // Record changes based on updatedRule
       for (Rule updated : updatedRules) {
         Rule stored =
             origRules.stream().filter(c -> ruleMatch.test(c, updated)).findAny().orElse(null);
-        if (stored == null) { // New Rule added
+        if (stored == null) {
+          // New Rule added
           continue;
         }
-
         updateRuleDescription(stored, updated);
         updateRuleEffect(stored, updated);
         updateRuleOperations(stored, updated);
@@ -296,27 +318,40 @@ public class PolicyRepository extends EntityRepository<Policy> {
 
     private void updateRuleDescription(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, FIELD_DESCRIPTION);
-      recordChange(ruleField, stored.getDescription(), updated.getDescription());
+      entityUpdate.recordChange(ruleField, stored.getDescription(), updated.getDescription());
     }
 
     private void updateRuleEffect(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "effect");
-      recordChange(ruleField, stored.getEffect(), updated.getEffect());
+      entityUpdate.recordChange(ruleField, stored.getEffect(), updated.getEffect());
     }
 
     private void updateRuleOperations(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "operations");
-      recordChange(ruleField, stored.getOperations(), updated.getOperations());
+      entityUpdate.recordChange(ruleField, stored.getOperations(), updated.getOperations());
     }
 
     private void updateRuleResources(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "resources");
-      recordChange(ruleField, stored.getResources(), updated.getResources());
+      entityUpdate.recordChange(ruleField, stored.getResources(), updated.getResources());
     }
 
     private void updateRuleCondition(Rule stored, Rule updated) {
       String ruleField = getRuleField(stored, "condition");
-      recordChange(ruleField, stored.getCondition(), updated.getCondition());
+      entityUpdate.recordChange(ruleField, stored.getCondition(), updated.getCondition());
     }
+
+    private final EntityUpdater<Policy> entityUpdate;
+
+    public EntityUpdater<Policy> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<Policy> entityContext;
+
+  @Override
+  public final EntityPolicyContext<Policy> context() {
+    return entityContext;
   }
 }

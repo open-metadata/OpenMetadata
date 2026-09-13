@@ -40,6 +40,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -54,6 +55,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
+import org.openmetadata.service.entity.write.EntityPatchFixture;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -69,6 +75,7 @@ import org.pac4j.oidc.metadata.IOidcOpMetadataResolver;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AuthenticationCodeFlowHandlerTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
 
   private static final String TEST_SERVER_URL = "https://om.test";
   private static final String MCP_CALLBACK = "/mcp/callback";
@@ -558,6 +565,7 @@ class AuthenticationCodeFlowHandlerTest {
 
   private void stubUserNotFoundAndEchoCreate(MockedStatic<Entity> mockedEntity) {
     UserRepository userRepository = mock(UserRepository.class);
+    lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
 
@@ -571,14 +579,14 @@ class AuthenticationCodeFlowHandlerTest {
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
 
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-    when(userRepository.findByNameOrNull(any(), any())).thenReturn(null);
-    when(userRepository.createOrUpdate(eq(null), any(User.class), any()))
-        .thenAnswer(
-            invocation ->
-                new PutResponse<>(
-                    Response.Status.CREATED,
-                    invocation.getArgument(1, User.class),
-                    EventType.ENTITY_CREATED));
+    EntityCreationFixture.attach(userRepository)
+        .onUpsert(
+            request -> {
+              assertEquals(new EntityCommandActor(Entity.ADMIN_USER_NAME, null), request.actor());
+              assertEquals(false, request.importMode());
+              return new PutResponse<>(
+                  Response.Status.CREATED, request.entity(), EventType.ENTITY_CREATED);
+            });
   }
 
   private User invokeGetOrCreateOidcUser(
@@ -771,12 +779,14 @@ class AuthenticationCodeFlowHandlerTest {
     UserRepository userRepository = mock(UserRepository.class);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      stubRoleLookup(mockedEntity, userRepository);
+      final var patches = stubRoleLookup(mockedEntity, userRepository);
 
       invokeSyncRolesFromProvider(
           handlerWithRolesFromProvider(true), user, claims("roles", List.of()));
 
-      verify(userRepository).patch(eq(null), eq(user.getId()), eq("alice"), any());
+      assertEquals(1, patches.requests().size());
+      assertEquals(
+          new EntityPatchService.Target.Id(user.getId()), patches.requests().getFirst().target());
     }
 
     assertEquals(List.of(), roleNames(user));
@@ -894,8 +904,10 @@ class AuthenticationCodeFlowHandlerTest {
     return claims;
   }
 
-  private static void stubRoleLookup(
+  private static EntityPatchFixture<User> stubRoleLookup(
       MockedStatic<Entity> mockedEntity, UserRepository userRepository, String... roleNames) {
+    final var patches = new EntityPatchFixture<User>(request -> null);
+    org.mockito.Mockito.lenient().when(userRepository.patches()).thenReturn(patches);
     mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
     for (String roleName : roleNames) {
       mockedEntity
@@ -906,6 +918,7 @@ class AuthenticationCodeFlowHandlerTest {
                   .withName(roleName)
                   .withFullyQualifiedName(roleName));
     }
+    return patches;
   }
 
   private static User userWithRoles(String name, String... roleNames) {

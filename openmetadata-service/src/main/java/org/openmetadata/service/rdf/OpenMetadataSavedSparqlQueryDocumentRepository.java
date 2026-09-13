@@ -19,6 +19,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 
 final class OpenMetadataSavedSparqlQueryDocumentRepository
@@ -38,7 +39,7 @@ final class OpenMetadataSavedSparqlQueryDocumentRepository
 
   @Override
   public Document findByFqn(final String fullyQualifiedName) {
-    return repository.findByNameOrNull(fullyQualifiedName, Include.ALL);
+    return repository.lookup().byNameOrNull(fullyQualifiedName, Include.ALL);
   }
 
   @Override
@@ -51,12 +52,17 @@ final class OpenMetadataSavedSparqlQueryDocumentRepository
     if (current == null) {
       updated.setId(UUID.randomUUID());
       updated.setUpdatedAt(clock.millis());
-      persisted = repository.create(uriInfo, updated, userName, null);
+      persisted =
+          repository.creates().create(uriInfo, updated, new EntityCommandActor(userName, null));
     } else {
       updated.setId(current.getId());
       updated.setVersion(current.getVersion());
-      repository.prepareInternal(updated, true);
-      persisted = repository.createOrUpdate(uriInfo, updated, userName).getEntity();
+      repository.preparation().prepare(updated, true);
+      persisted =
+          repository
+              .creates()
+              .upsert(uriInfo, updated, new EntityCommandActor(userName, null), false)
+              .getEntity();
     }
     return persisted;
   }

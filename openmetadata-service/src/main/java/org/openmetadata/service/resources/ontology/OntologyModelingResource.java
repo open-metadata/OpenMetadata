@@ -27,14 +27,17 @@ import java.util.Objects;
 import org.openmetadata.schema.api.data.OntologyIriPreview;
 import org.openmetadata.schema.api.data.OntologyIriPreviewRequest;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.ontology.OntologyIriMinter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/ontology/modeling")
 @Tag(name = "Ontology Modeling", description = "Governed Ontology modeling utilities.")
@@ -62,7 +65,15 @@ public final class OntologyModelingResource {
       @Valid final OntologyIriPreviewRequest request) {
     final GlossaryRepository repository = glossaryRepository();
     final Glossary glossary =
-        repository.get(null, request.getGlossaryId(), repository.getFields(""));
+        repository
+            .reads()
+            .byId(
+                request.getGlossaryId(),
+                new EntityReadService.Query(
+                    null,
+                    repository.fieldPolicy().parse(""),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     authorizeView(securityContext, repository, glossary);
     return iriMinter.preview(glossary, request);
   }

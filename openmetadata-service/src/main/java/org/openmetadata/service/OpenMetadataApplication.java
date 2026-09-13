@@ -105,6 +105,7 @@ import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
+import org.openmetadata.service.entity.cache.EntityCaches;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
@@ -117,9 +118,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityCacheRepair;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -335,7 +334,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Rebuild caches with configured limits (cacheMemory section in openmetadata.yaml)
     CacheConfiguration cacheConfig = catalogConfig.getCacheMemoryConfiguration();
-    EntityRepository.initCaches(cacheConfig);
+    EntityCaches.configure(cacheConfig);
     SubjectCache.initCaches(cacheConfig.getAuthCacheMaxEntries());
     OpenSearchSearchManager.initRbacCache(cacheConfig.getRbacCacheMaxEntries());
     auditLogRepository = new AuditLogRepository(Entity.getCollectionDAO());
@@ -1309,15 +1308,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     @Override
     public void start() {
-      EntityCacheRepair.start();
+      EntityCaches.repairs().start();
       LOG.info("Starting the application");
     }
 
     @Override
     public void stop() throws InterruptedException, SchedulerException {
-      LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
-      LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
-      EntityCacheRepair.shutdown();
+      LOG.info("Cache with Id Stats {}", EntityCaches.byId().stats());
+      LOG.info("Cache with name Stats {}", EntityCaches.byName().stats());
+      EntityCaches.repairs().shutdown();
       EventSubscriptionScheduler.shutDown();
       RdfUpdater.stop();
       AsyncService.getInstance().shutdown();

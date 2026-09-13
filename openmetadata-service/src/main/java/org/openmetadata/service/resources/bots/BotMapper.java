@@ -10,14 +10,18 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public class BotMapper implements EntityMapper<Bot, CreateBot> {
+
   @Override
   public Bot createToEntity(CreateBot create, String user) {
     BotRepository repository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
@@ -32,10 +36,15 @@ public class BotMapper implements EntityMapper<Bot, CreateBot> {
       List<CollectionDAO.EntityRelationshipRecord> userBotRelationship =
           retrieveBotRelationshipsFor(botUser);
       bot =
-          repository.get(
-              null,
-              userBotRelationship.stream().findFirst().orElseThrow().getId(),
-              EntityUtil.Fields.EMPTY_FIELDS);
+          repository
+              .reads()
+              .byId(
+                  userBotRelationship.stream().findFirst().orElseThrow().getId(),
+                  new EntityReadService.Query(
+                      null,
+                      EntityUtil.Fields.EMPTY_FIELDS,
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       throw new IllegalArgumentException(
           CatalogExceptionMessage.userAlreadyBot(botUser.getName(), bot.getName()));
     }
@@ -67,19 +76,24 @@ public class BotMapper implements EntityMapper<Bot, CreateBot> {
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
     BotRepository repository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
-    return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
+    return repository
+        .relationships()
+        .fromRecords(
+            new EntityRelationshipReader.Selection(
+                user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT));
   }
 
   private User retrieveUser(Bot bot) {
-    EntityRepository<? extends EntityInterface> userRepository =
+    EntityPolicy<? extends EntityInterface> userRepository =
         Entity.getEntityRepository(Entity.USER);
     return (User)
-        userRepository.findByNameOrNull(
-            bot.getBotUser().getFullyQualifiedName(), Include.NON_DELETED);
+        userRepository
+            .lookup()
+            .byNameOrNull(bot.getBotUser().getFullyQualifiedName(), Include.NON_DELETED);
   }
 
   private Bot retrieveBot(String botName) {
     BotRepository repository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
-    return repository.findByNameOrNull(botName, Include.NON_DELETED);
+    return repository.lookup().byNameOrNull(botName, Include.NON_DELETED);
   }
 }

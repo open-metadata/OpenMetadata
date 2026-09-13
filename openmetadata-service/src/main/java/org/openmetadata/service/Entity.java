@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -53,6 +52,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.entity.EntityModule;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityCollectionReader;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.DomainSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -61,7 +64,6 @@ import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ConversationRepository;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -87,65 +89,111 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public final class Entity {
+
   private static volatile boolean initializedRepositories = false;
+
   @Getter @Setter private static CollectionDAO collectionDAO;
+
   @Getter @Setter private static JobDAO jobDAO;
+
   @Getter @Setter private static Jdbi jdbi;
-  public static final String SEPARATOR = "."; // Fully qualified name separator
+
+  // Fully qualified name separator
+  public static final String SEPARATOR = ".";
 
   // Canonical entity name to corresponding EntityRepository map
-  private static final Map<String, EntityRepository<? extends EntityInterface>>
-      ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityPolicy<? extends EntityInterface>> ENTITY_REPOSITORY_MAP =
+      new HashMap<>();
+
   private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
   @Getter @Setter private static TokenRepository tokenRepository;
+
   @Getter @Setter private static PolicyRepository policyRepository;
+
   @Getter @Setter private static RoleRepository roleRepository;
+
   @Getter @Setter private static ConversationRepository conversationRepository;
+
   @Getter @Setter private static LineageRepository lineageRepository;
+
   @Getter @Setter private static UsageRepository usageRepository;
+
   @Getter @Setter private static SystemRepository systemRepository;
+
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
+
   @Getter @Setter private static SearchRepository searchRepository;
+
   @Getter @Setter private static AuditLogRepository auditLogRepository;
+
   @Getter @Setter private static TypeRepository typeRepository;
+
   @Getter @Setter private static EntityRelationshipRepository entityRelationshipRepository;
+
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
   public static final String FIELD_SERVICE = "service";
+
   public static final String FIELD_OWNERS = "owners";
+
   public static final String FIELD_NAME = "name";
+
   public static final String FIELD_DESCRIPTION = "description";
+
   public static final String FIELD_FOLLOWERS = "followers";
+
   public static final String FIELD_VOTES = "votes";
+
   public static final String FIELD_TAGS = "tags";
+
   public static final String FIELD_TIER = "tier";
+
   public static final String FIELD_DELETED = "deleted";
+
   public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
+
   public static final String FIELD_DISPLAY_NAME = "displayName";
+
   public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
+
   public static final String FIELD_FULLY_QUALIFIED_NAME_HASH = "fqnHash";
+
   public static final String FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD = "fqnHash.keyword";
+
   public static final String FIELD_EXTENSION = "extension";
+
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
+
   public static final String FIELD_CHILDREN = "children";
+
   public static final String FIELD_PARENT = "parent";
+
   public static final String FIELD_REVIEWERS = "reviewers";
+
   public static final String FIELD_EXPERTS = "experts";
+
   public static final String FIELD_DOMAINS = "domains";
+
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
+
   public static final String FIELD_DATA_CONTRACT = "dataContract";
+
   public static final String FIELD_ASSETS = "assets";
 
   public static final String FIELD_STYLE = "style";
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
+
   public static final String FIELD_CERTIFICATION = "certification";
+
   public static final String FIELD_ENTITY_STATUS = "entityStatus";
+
   public static final String FIELD_ENTITY_TYPE = "entityType";
+
   public static final String FIELD_SERVICE_TYPE = "serviceType";
 
   public static final String FIELD_DISABLED = "disabled";
@@ -160,106 +208,178 @@ public final class Entity {
   // Service entities
   //
   public static final String DATABASE_SERVICE = "databaseService";
+
   public static final String MESSAGING_SERVICE = "messagingService";
+
   public static final String DASHBOARD_SERVICE = "dashboardService";
+
   public static final String PIPELINE_SERVICE = "pipelineService";
+
   public static final String STORAGE_SERVICE = "storageService";
+
   public static final String MLMODEL_SERVICE = "mlmodelService";
+
   public static final String METADATA_SERVICE = "metadataService";
+
   public static final String SEARCH_SERVICE = "searchService";
+
   public static final String SECURITY_SERVICE = "securityService";
+
   public static final String API_SERVICE = "apiService";
+
   public static final String DRIVE_SERVICE = "driveService";
+
   public static final String LLM_SERVICE = "llmService";
+
   public static final String MCP_SERVICE = "mcpService";
+
   //
   // Data asset entities
   //
   public static final String TABLE = "table";
+
   public static final String STORED_PROCEDURE = "storedProcedure";
+
   public static final String DATABASE = "database";
+
   public static final String DATABASE_SCHEMA = "databaseSchema";
+
   public static final String METRIC = "metric";
+
   public static final String DASHBOARD = "dashboard";
+
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
+
   public static final String PIPELINE = "pipeline";
+
   public static final String TASK = "task";
+
   public static final String CONVERSATION = "conversation";
+
   public static final String CHART = "chart";
+
   public static final String APPLICATION = "app";
+
   public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
+
   public static final String REPORT = "report";
+
   public static final String TOPIC = "topic";
+
   public static final String SEARCH_INDEX = "searchIndex";
 
   public static final String API_COLLECTION = "apiCollection";
+
   public static final String API_ENDPOINT = "apiEndpoint";
 
   public static final String API = "api";
+
   public static final String MLMODEL = "mlmodel";
+
   public static final String CONTAINER = "container";
+
   public static final String QUERY = "query";
+
   public static final String QUERY_COST_RECORD = "queryCostRecord";
+
   public static final String DIRECTORY = "directory";
+
   public static final String FILE = "file";
+
   public static final String SPREADSHEET = "spreadsheet";
+
   public static final String WORKSHEET = "worksheet";
+
   public static final String FOLDER = "folder";
+
   public static final String CONTEXT_FILE = "contextFile";
+
   public static final String CONTEXT_FILE_CONTENT = "contextFileContent";
 
   public static final String GLOSSARY = "glossary";
+
   public static final String GLOSSARY_TERM = "glossaryTerm";
+
   public static final String RELATIONSHIP_TYPE = "relationshipType";
+
   public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
+
   public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
+
   public static final String TAG = "tag";
+
   public static final String CLASSIFICATION = "classification";
+
   public static final String TYPE = "type";
 
   //
   // AI entities
   //
   public static final String AI_APPLICATION = "aiApplication";
+
   public static final String LLM_MODEL = "llmModel";
+
   public static final String PROMPT_TEMPLATE = "promptTemplate";
+
   public static final String AGENT_EXECUTION = "agentExecution";
+
   public static final String AI_GOVERNANCE_POLICY = "aiGovernancePolicy";
+
   public static final String AI_GOVERNANCE_FRAMEWORK = "aiGovernanceFramework";
+
   public static final String AI_FRAMEWORK_CONTROL = "aiFrameworkControl";
+
   public static final String AUDIT_REPORT = "auditReport";
+
   public static final String MCP_SERVER = "mcpServer";
+
   public static final String MCP_EXECUTION = "mcpExecution";
+
   public static final String TEST_DEFINITION = "testDefinition";
+
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
+
   public static final String TEST_SUITE = "testSuite";
+
   public static final String KPI = "kpi";
+
   public static final String TEST_CASE = "testCase";
+
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
+
   public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
+
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
+
   public static final String PAGE = "page";
+
   public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
 
   //
   // Column entity types (for custom properties)
   //
   public static final String TABLE_COLUMN = "tableColumn";
+
   public static final String DASHBOARD_DATA_MODEL_COLUMN = "dashboardDataModelColumn";
 
   //
   // Policy entity
   //
   public static final String POLICY = "policy";
+
   public static final String POLICIES = "policies";
 
   //
   // Role, team and user entities
   //
   public static final String ROLE = "role";
+
   public static final String USER = "user";
+
   public static final String TEAM = "team";
+
   public static final String PERSONA = "persona";
+
   public static final String BOT = "bot";
 
   //
@@ -271,58 +391,91 @@ public final class Entity {
   // Domain related entities
   //
   public static final String DOMAIN = "domain";
+
   public static final String DATA_PRODUCT = "dataProduct";
+
   public static final String DATA_CONTRACT = "dataContract";
+
   public static final String DATA_CONTRACT_RESULT = "dataContractResult";
+
   public static final String INTAKE_FORM = "intakeForm";
 
   //
   // Other entities
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
+
   public static final String NOTIFICATION_TEMPLATE = "notificationTemplate";
+
   public static final String THREAD = "THREAD";
+
   public static final String SUGGESTION = "SUGGESTION";
+
   public static final String ANNOUNCEMENT = "announcement";
+
   public static final String TASK_FORM_SCHEMA = "taskFormSchema";
+
   public static final String WORKFLOW = "workflow";
+
   public static final String WORKFLOW_DEFINITION = "workflowDefinition";
 
   //
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
+
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
+
   public static final String TEST_CASE_RESULT = "testCaseResult";
+
   public static final String TEST_CASE_DIMENSION_RESULT = "testCaseDimensionResult";
+
   public static final String PIPELINE_EXECUTION = "pipelineExecution";
+
   public static final String ENTITY_PROFILE = "entityProfile";
+
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
+
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =
       "webAnalyticUserActivityReportData";
+
   public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
+
   public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA =
       "aggregatedCostAnalysisReportData";
+
   public static final String WORKFLOW_INSTANCE = "workflowInstance";
+
   public static final String WORKFLOW_INSTANCE_STATE = "workflowInstanceState";
+
   public static final String AUDIT_LOG = "auditLog";
 
   //
   // Reserved names in OpenMetadata
   //
   public static final String ADMIN_ROLE = "Admin";
+
   public static final String ADMIN_USER_NAME = "admin";
+
   public static final String ORGANIZATION_NAME = "Organization";
+
   public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
+
   public static final String INGESTION_BOT_NAME = "ingestion-bot";
+
   public static final String ALL_RESOURCES = "All";
 
   public static final String DOCUMENT = "document";
+
   public static final String LEARNING_RESOURCE = "learningResource";
+
   public static final String CONTEXT_MEMORY = "contextMemory";
+
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
+
   // entity type to service entity name map
   static final Map<String, String> ENTITY_SERVICE_TYPE_MAP = new HashMap<>();
+
   public static final List<String> PARENT_ENTITY_TYPES = new ArrayList<>();
 
   static {
@@ -339,7 +492,6 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DRIVE, DRIVE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.LLM, LLM_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.MCP, MCP_SERVICE);
-
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(TABLE, DATABASE_SERVICE);
@@ -362,7 +514,6 @@ public final class Entity {
     ENTITY_SERVICE_TYPE_MAP.put(WORKSHEET, DRIVE_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(LLM_MODEL, LLM_SERVICE);
     ENTITY_SERVICE_TYPE_MAP.put(MCP_SERVER, MCP_SERVICE);
-
     PARENT_ENTITY_TYPES.addAll(
         listOf(
             DATABASE_SERVICE,
@@ -400,7 +551,8 @@ public final class Entity {
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
-          continue; // Don't instantiate abstract classes
+          // Don't instantiate abstract classes
+          continue;
         }
         try {
           clz.getDeclaredConstructor().newInstance();
@@ -452,13 +604,12 @@ public final class Entity {
   }
 
   public static <T extends EntityInterface> void registerEntity(
-      Class<T> clazz, String entity, EntityRepository<T> entityRepository) {
+      Class<T> clazz, String entity, EntityPolicy<T> entityRepository) {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity(entity));
-
     LOG.debug("Registering entity {} {}", clazz, entity);
   }
 
@@ -470,7 +621,6 @@ public final class Entity {
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     EntityIndexCapabilityRegistry.register(EntityIndexCapability.forTimeSeries(entity));
-
     LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
 
@@ -503,7 +653,7 @@ public final class Entity {
    * request terminates unexpectedly before repository-level finally blocks run.
    */
   public static void clearRepositoryThreadLocals() {
-    for (EntityRepository<? extends EntityInterface> repository : ENTITY_REPOSITORY_MAP.values()) {
+    for (EntityPolicy<? extends EntityInterface> repository : ENTITY_REPOSITORY_MAP.values()) {
       repository.clearParentCache();
     }
   }
@@ -528,11 +678,10 @@ public final class Entity {
           .withType(entityType)
           .withFullyQualifiedName(entityType + "." + id);
     }
-
     // For regular entities, use the standard repository
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    include = repository.supportsSoftDelete ? include : Include.ALL;
-    return repository.getReference(id, include);
+    EntityPolicy<? extends EntityInterface> repository = getEntityRepository(entityType);
+    include = repository.context().supports(Entity.FIELD_DELETED) ? include : Include.ALL;
+    return repository.lookup().referenceById(id, include);
   }
 
   public static List<EntityReference> getEntityReferencesByIds(
@@ -549,11 +698,10 @@ public final class Entity {
                       .withFullyQualifiedName(entityType + "." + id))
           .collect(Collectors.toList());
     }
-
     // For regular entities, use the standard repository
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    include = repository.supportsSoftDelete ? include : Include.ALL;
-    return repository.getReferences(ids, include);
+    EntityPolicy<? extends EntityInterface> repository = getEntityRepository(entityType);
+    include = repository.context().supports(Entity.FIELD_DELETED) ? include : Include.ALL;
+    return repository.lookup().referencesByIds(ids, include);
   }
 
   public static EntityReference getEntityReferenceByName(
@@ -561,14 +709,13 @@ public final class Entity {
     if (fqn == null) {
       return null;
     }
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
-    return repository.getReferenceByName(fqn, include);
+    EntityPolicy<? extends EntityInterface> repository = getEntityRepository(entityType);
+    return repository.lookup().referenceByName(fqn, include);
   }
 
   public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
-    EntityRepository<? extends EntityInterface> repository =
-        getEntityRepository(reference.getType());
-    return repository.getOwners(reference);
+    EntityPolicy<? extends EntityInterface> repository = getEntityRepository(reference.getType());
+    return repository.relationshipFields().owners(reference, Include.NON_DELETED);
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
@@ -580,19 +727,19 @@ public final class Entity {
       return;
     }
     String entityType = ref.getType();
-    EntityRepository<?> entityRepository = getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = getEntityRepository(entityType);
     URI href = entityRepository.getHref(uriInfo, ref.getId());
     ref.withHref(href);
   }
 
   public static Fields getFields(String entityType, List<String> fields) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    return entityRepository.getFields(String.join(",", fields));
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.fieldPolicy().parse(String.join(",", fields));
   }
 
   public static Fields getOnlySupportedFields(String entityType, List<String> fields) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    return entityRepository.getOnlySupportedFields(String.join(",", fields));
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.fieldPolicy().supported(String.join(",", fields));
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
@@ -609,33 +756,34 @@ public final class Entity {
     if (CollectionUtils.isEmpty(refs)) {
       return new ArrayList<>();
     }
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(refs.get(0).getType());
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(refs.get(0).getType());
     @SuppressWarnings("unchecked")
     List<T> entities =
         (List<T>)
-            entityRepository.get(
-                null,
-                refs.stream().map(EntityReference::getId).toList(),
-                entityRepository.getFields(fields),
-                include);
+            entityRepository
+                .collections()
+                .byIds(
+                    refs.stream().map(EntityReference::getId).toList(),
+                    new EntityCollectionReader.Projection(
+                        null, entityRepository.fieldPolicy().parse(fields), include));
     return entities;
   }
 
   @SuppressWarnings("unchecked")
   public static <T> T getEntityForInheritance(
       String entityType, UUID id, String fields, Include include) {
-    EntityRepository<?> repo = Entity.getEntityRepository(entityType);
-    return (T) repo.getForInheritance(id, repo.getFields(fields), include);
+    EntityPolicy<?> repo = Entity.getEntityRepository(entityType);
+    return (T) repo.getForInheritance(id, repo.fieldPolicy().parse(fields), include);
   }
 
   @SuppressWarnings("unchecked")
   public static <T> List<T> getEntitiesForInheritance(
       List<EntityReference> refs, String fields, Include include) {
     if (CollectionUtils.isEmpty(refs)) return new ArrayList<>();
-    EntityRepository<?> repo = Entity.getEntityRepository(refs.get(0).getType());
-    Fields parsedFields = repo.getFields(fields);
+    EntityPolicy<?> repo = Entity.getEntityRepository(refs.get(0).getType());
+    Fields parsedFields = repo.fieldPolicy().parse(fields);
     List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
-    List<?> parents = repo.find(ids, include);
+    List<?> parents = repo.lookup().byIds(ids, include);
     repo.fetchInheritableRelationshipsUntyped(parents, parsedFields);
     repo.setInheritedFieldsUntyped(parents, parsedFields);
     return (List<T>) parents;
@@ -669,13 +817,20 @@ public final class Entity {
   @SuppressWarnings("unchecked")
   public static <T> T getEntityOrNull(
       String entityType, UUID id, String fields, RelationIncludes relationIncludes) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     T entity;
     try {
       entity =
           (T)
-              entityRepository.get(
-                  null, id, entityRepository.getFields(fields), relationIncludes, true);
+              entityRepository
+                  .reads()
+                  .byId(
+                      id,
+                      new EntityReadService.Query(
+                          null,
+                          entityRepository.fieldPolicy().parse(fields),
+                          relationIncludes,
+                          true));
     } catch (EntityNotFoundException e) {
       LOG.debug("{} {} not found while reading fields '{}'", entityType, id, fields);
       entity = null;
@@ -687,13 +842,24 @@ public final class Entity {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
 
-  /** Retrieve the entity using id from given entity reference and fields */
+  /**
+   * Retrieve the entity using id from given entity reference and fields
+   */
   public static <T> T getEntity(
       String entityType, UUID id, String fields, Include include, boolean fromCache) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
     T entity =
-        (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, fromCache);
+        (T)
+            entityRepository
+                .reads()
+                .byId(
+                    id,
+                    new EntityReadService.Query(
+                        null,
+                        entityRepository.fieldPolicy().parse(fields),
+                        RelationIncludes.fromInclude(include),
+                        fromCache));
     return entity;
   }
 
@@ -701,15 +867,24 @@ public final class Entity {
     return getEntity(entityType, id, fields, include, true);
   }
 
-  /** Retrieve the entity using id from given entity reference and fields */
+  /**
+   * Retrieve the entity using id from given entity reference and fields
+   */
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include, boolean fromCache) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
     T entity =
         (T)
-            entityRepository.getByName(
-                null, fqn, entityRepository.getFields(fields), include, fromCache);
+            entityRepository
+                .reads()
+                .byName(
+                    fqn,
+                    new EntityReadService.Query(
+                        null,
+                        entityRepository.fieldPolicy().parse(fields),
+                        RelationIncludes.fromInclude(include),
+                        fromCache));
     return entity;
   }
 
@@ -717,11 +892,13 @@ public final class Entity {
     return findByNameOrNull(entityType, fqn, include);
   }
 
-  /** Retrieve the entity using id from given entity reference and fields */
+  /**
+   * Retrieve the entity using id from given entity reference and fields
+   */
   public static <T> T findByNameOrNull(String entityType, String fqn, Include include) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.findByNameOrNull(fqn, include);
+    T entity = (T) entityRepository.lookup().byNameOrNull(fqn, include);
     return entity;
   }
 
@@ -739,29 +916,51 @@ public final class Entity {
   // certain fields are already sent in the csv
   public static <T> T getEntityByNameWithExcludedFields(
       String entityType, String fqn, String excludeFields, Include include, boolean fromCache) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
     T entity =
         (T)
-            entityRepository.getByNameWithExcludedFields(
-                null, fqn, excludeFields, include, fromCache);
+            entityRepository
+                .reads()
+                .byName(
+                    fqn,
+                    new EntityReadService.Query(
+                        null,
+                        entityRepository.fieldPolicy().excluding(excludeFields),
+                        RelationIncludes.fromInclude(include),
+                        fromCache));
     return entity;
   }
 
   public static <T> List<T> getEntityByNames(
       String entityType, List<String> tagFQNs, String fields, Include include) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     @SuppressWarnings("unchecked")
     List<T> entities =
         (List<T>)
-            entityRepository.getByNames(null, tagFQNs, entityRepository.getFields(fields), include);
+            entityRepository
+                .collections()
+                .byNames(
+                    tagFQNs,
+                    new EntityCollectionReader.Projection(
+                        null, entityRepository.fieldPolicy().parse(fields), include));
     return entities;
   }
 
-  /** Retrieve the corresponding entity repository for a given entity name. */
-  public static EntityRepository<? extends EntityInterface> getEntityRepository(
+  /**
+   * Resolves the native services using the existing registration and priority selection.
+   */
+  public static EntityModule<? extends EntityInterface> getEntityModule(
       @NonNull String entityType) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+    return getEntityRepository(entityType);
+  }
+
+  /**
+   * Retrieve the corresponding entity repository for a given entity name.
+   */
+  public static EntityPolicy<? extends EntityInterface> getEntityRepository(
+      @NonNull String entityType) {
+    EntityPolicy<? extends EntityInterface> entityRepository =
         ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
@@ -770,7 +969,9 @@ public final class Entity {
     return entityRepository;
   }
 
-  /** Check if an entity type has a registered repository */
+  /**
+   * Check if an entity type has a registered repository
+   */
   public static boolean hasEntityRepository(@NonNull String entityType) {
     return ENTITY_REPOSITORY_MAP.containsKey(entityType)
         || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
@@ -784,7 +985,7 @@ public final class Entity {
    * its reference is missing.
    */
   public static boolean isSearchIndexable(EntityInterface entity) {
-    return repositoryPolicyAllows(entity, EntityRepository::isSearchIndexable);
+    return repositoryPolicyAllows(entity, EntityPolicy::isSearchIndexable);
   }
 
   /**
@@ -794,18 +995,17 @@ public final class Entity {
    * null-handling match {@link #isSearchIndexable}.
    */
   public static boolean isVectorEmbeddable(EntityInterface entity) {
-    return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
+    return repositoryPolicyAllows(entity, EntityPolicy::isVectorEmbeddable);
   }
 
   private static boolean repositoryPolicyAllows(
       EntityInterface entity,
-      BiPredicate<EntityRepository<? extends EntityInterface>, EntityInterface> policy) {
+      BiPredicate<EntityPolicy<? extends EntityInterface>, EntityInterface> policy) {
     boolean allowed = false;
     EntityReference entityReference = entity == null ? null : entity.getEntityReference();
     String entityType = entityReference == null ? null : entityReference.getType();
     if (entityType != null) {
-      EntityRepository<? extends EntityInterface> repository =
-          ENTITY_REPOSITORY_MAP.get(entityType);
+      EntityPolicy<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
       allowed = repository == null || policy.test(repository, entity);
     }
     return allowed;
@@ -837,10 +1037,12 @@ public final class Entity {
     return entityTimeSeriesRepository;
   }
 
-  /** Retrieve the corresponding entity repository for a given entity name. */
-  public static EntityRepository<? extends EntityInterface> getServiceEntityRepository(
+  /**
+   * Retrieve the corresponding entity repository for a given entity name.
+   */
+  public static EntityPolicy<? extends EntityInterface> getServiceEntityRepository(
       @NonNull ServiceType serviceType) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityPolicy<? extends EntityInterface> entityRepository =
         ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
@@ -860,24 +1062,23 @@ public final class Entity {
   }
 
   public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
-    EntityRepository<? extends EntityInterface> entityRepository = getEntityRepository(entityType);
+    EntityPolicy<? extends EntityInterface> entityRepository = getEntityRepository(entityType);
     return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
-    EntityRepository<?> dao = getEntityRepository(entityType);
+    final EntityModule<?> module = getEntityModule(entityType);
     try {
-      dao.find(entityId, Include.ALL);
-      dao.delete(updatedBy, entityId, recursive, hardDelete);
+      module.deletes().byId(updatedBy, entityId, recursive, hardDelete);
     } catch (EntityNotFoundException e) {
       LOG.warn("Entity {} is already deleted.", entityId);
     }
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
-    EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.restoreEntity(updatedBy, entityId);
+    final EntityModule<?> module = getEntityModule(entityType);
+    module.restores().restore(updatedBy, entityId);
   }
 
   public static <T> String getEntityTypeFromClass(Class<T> clz) {
@@ -908,7 +1109,9 @@ public final class Entity {
     return new HashSet<>(Arrays.asList(propertyOrder.value()));
   }
 
-  /** Returns true if the entity supports activity feeds, announcement, and tasks */
+  /**
+   * Returns true if the entity supports activity feeds, announcement, and tasks
+   */
   public static boolean supportsFeed(String entityType) {
     return listOf(
             TABLE,
@@ -933,8 +1136,11 @@ public final class Entity {
         .contains(entityType);
   }
 
-  /** Class for getting validated entity list from a queryParam with list of entities. */
+  /**
+   * Class for getting validated entity list from a queryParam with list of entities.
+   */
   public static class EntityList {
+
     private EntityList() {}
 
     public static List<String> getEntityList(String name, String entitiesParam) {
@@ -960,16 +1166,16 @@ public final class Entity {
     }
   }
 
-  /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
+  /**
+   * Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation
+   */
   private static List<Class<?>> getRepositories() {
     List<Class<?>> unnamedRepositories = new ArrayList<>();
     Map<String, Class<?>> namedRepositories = new HashMap<>();
-
     for (Class<?> clz :
         ClasspathScanIndex.getInstance().getClassesWithAnnotation(Repository.class)) {
       Repository annotation = clz.getAnnotation(Repository.class);
       String name = annotation.name();
-
       if (name.isEmpty()) {
         unnamedRepositories.add(clz);
       } else {
@@ -980,7 +1186,6 @@ public final class Entity {
         }
       }
     }
-
     List<Class<?>> result = new ArrayList<>(unnamedRepositories);
     result.addAll(namedRepositories.values());
     return result;
@@ -988,12 +1193,11 @@ public final class Entity {
 
   public static <T extends FieldInterface> void populateEntityFieldTags(
       String entityType, List<T> fields, String fqnPrefix, boolean setTags) {
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
     // Get Flattened Fields
     List<T> flattenedFields = getFlattenedEntityField(fields);
-
     // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
+    Map<String, List<TagLabel>> allTags = repository.tags().readByPrefix(fqnPrefix, ".%");
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
         List<TagLabel> columnTag =
@@ -1039,7 +1243,7 @@ public final class Entity {
   }
 
   public static boolean entityHasField(String entityType, String field) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getAllowedFields().contains(field);
   }
 
@@ -1047,16 +1251,15 @@ public final class Entity {
     List<ServiceEntityInterface> allServices = new ArrayList<>();
     Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
     serviceTypes.remove(ServiceType.METADATA);
-
     for (ServiceType serviceType : serviceTypes) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityPolicy<? extends EntityInterface> repository =
           Entity.getServiceEntityRepository(serviceType);
       ListFilter filter = new ListFilter(Include.ALL);
       List<ServiceEntityInterface> services =
-          (List<ServiceEntityInterface>) repository.listAll(repository.getFields("id"), filter);
+          (List<ServiceEntityInterface>)
+              repository.collections().all(repository.fieldPolicy().parse("id"), filter);
       allServices.addAll(services);
     }
-
     return allServices;
   }
 

@@ -14,10 +14,19 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.ai.AIFrameworkControlResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -25,18 +34,22 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Repository
-public class AIFrameworkControlRepository extends EntityRepository<AIFrameworkControl> {
+public class AIFrameworkControlRepository implements EntityPolicy<AIFrameworkControl> {
+
   private static final String FIELDS = "evidenceRequirements,framework";
 
   public AIFrameworkControlRepository() {
-    super(
-        AIFrameworkControlResource.COLLECTION_PATH,
-        Entity.AI_FRAMEWORK_CONTROL,
-        AIFrameworkControl.class,
-        Entity.getCollectionDAO().aiFrameworkControlDAO(),
-        FIELDS,
-        FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                AIFrameworkControlResource.COLLECTION_PATH,
+                Entity.AI_FRAMEWORK_CONTROL,
+                AIFrameworkControl.class,
+                Entity.getCollectionDAO().aiFrameworkControlDAO()),
+            new EntityPolicyContext.WriteFields(FIELDS, FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
   }
 
   @Override
@@ -54,7 +67,7 @@ public class AIFrameworkControlRepository extends EntityRepository<AIFrameworkCo
 
   @Override
   public void restorePatchAttributes(AIFrameworkControl original, AIFrameworkControl updated) {
-    super.restorePatchAttributes(original, updated);
+    EntityPolicy.super.restorePatchAttributes(original, updated);
     updated.withFramework(original.getFramework());
   }
 
@@ -65,44 +78,78 @@ public class AIFrameworkControlRepository extends EntityRepository<AIFrameworkCo
 
   @Override
   public void storeEntity(AIFrameworkControl control, boolean update) {
-    store(control, update);
+    persistence().store(control, update);
   }
 
   @Override
   public void storeRelationships(AIFrameworkControl control) {}
 
   @Override
-  public EntityRepository<AIFrameworkControl>.EntityUpdater getUpdater(
+  public EntityUpdater<AIFrameworkControl> getUpdater(
       AIFrameworkControl original,
       AIFrameworkControl updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new AIFrameworkControlUpdater(original, updated, operation);
+    return new AIFrameworkControlUpdater(original, updated, operation).mutation();
   }
 
-  public class AIFrameworkControlUpdater extends EntityUpdater {
+  public class AIFrameworkControlUpdater implements EntitySpecificMutation<AIFrameworkControl> {
+
     public AIFrameworkControlUpdater(
-        AIFrameworkControl original, AIFrameworkControl updated, Operation operation) {
-      super(original, updated, operation);
+        AIFrameworkControl original, AIFrameworkControl updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("code", () -> recordChange("code", original.getCode(), updated.getCode()));
-      compareAndUpdate(
+    public void update(
+        EntityUpdater<AIFrameworkControl> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
+          "code",
+          () ->
+              entityUpdate.recordChange(
+                  "code",
+                  entityUpdate.getOriginal().getCode(),
+                  entityUpdate.getUpdated().getCode()));
+      entityUpdate.compareAndUpdate(
           "category",
-          () -> recordChange("category", original.getCategory(), updated.getCategory()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "category",
+                  entityUpdate.getOriginal().getCategory(),
+                  entityUpdate.getUpdated().getCategory()));
+      entityUpdate.compareAndUpdate(
           "framework",
-          () -> recordChange("framework", original.getFramework(), updated.getFramework(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "framework",
+                  entityUpdate.getOriginal().getFramework(),
+                  entityUpdate.getUpdated().getFramework(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "evidenceRequirements",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "evidenceRequirements",
-                  original.getEvidenceRequirements(),
-                  updated.getEvidenceRequirements(),
+                  entityUpdate.getOriginal().getEvidenceRequirements(),
+                  entityUpdate.getUpdated().getEvidenceRequirements(),
                   true));
     }
+
+    private final EntityUpdater<AIFrameworkControl> entityUpdate;
+
+    public EntityUpdater<AIFrameworkControl> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<AIFrameworkControl> entityContext;
+
+  @Override
+  public final EntityPolicyContext<AIFrameworkControl> context() {
+    return entityContext;
   }
 }

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -58,6 +57,17 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.metadata.InheritedReferences;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityColumnMutation;
+import org.openmetadata.service.entity.write.EntityColumnUpdater;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.FileResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -65,28 +75,36 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class FileRepository extends EntityRepository<File> {
+@Repository()
+public class FileRepository implements EntityPolicy<File> {
+
   public static final String COLUMN_FIELD = "columns";
+
   public static final String FILE_SAMPLE_DATA_EXTENSION = "file.sampleData";
+
   static final String PATCH_FIELDS = "columns";
+
   static final String UPDATE_FIELDS = "columns";
+
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
 
   public FileRepository() {
-    super(
-        FileResource.COLLECTION_PATH,
-        Entity.FILE,
-        File.class,
-        Entity.getCollectionDAO().fileDAO(),
-        PATCH_FIELDS,
-        UPDATE_FIELDS,
-        CHANGE_SUMMARY_FIELDS);
-    supportsSearch = true;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                FileResource.COLLECTION_PATH,
+                Entity.FILE,
+                File.class,
+                Entity.getCollectionDAO().fileDAO()),
+            new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, CHANGE_SUMMARY_FIELDS),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
     // the root cleanup() FQN prefix (FQNs are service-nested). See
     // EntityRepository#descendantsCoveredByAncestorCascade.
-    descendantsCoveredByAncestorCascade = true;
+    context().options().setDescendantsCoveredByAncestorCascade(true);
   }
 
   @Override
@@ -114,12 +132,10 @@ public class FileRepository extends EntityRepository<File> {
     DriveService driveService = Entity.getEntity(file.getService(), "", Include.NON_DELETED);
     file.setService(driveService.getEntityReference());
     file.setServiceType(driveService.getServiceType());
-
     // Validate parent directory if provided
     if (file.getDirectory() != null) {
       Directory directory = Entity.getEntity(file.getDirectory(), "service", Include.NON_DELETED);
       file.setDirectory(directory.getEntityReference());
-
       // Ensure the directory belongs to the same service
       if (!directory.getService().getId().equals(driveService.getId())) {
         LOG.error(
@@ -137,8 +153,8 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
-  protected ObjectNode storageJsonNode(File file) {
-    ObjectNode node = super.storageJsonNode(file);
+  public ObjectNode storageJsonNode(File file) {
+    ObjectNode node = EntityPolicy.super.storageJsonNode(file);
     stripColumnTags(node.get("columns"));
     return node;
   }
@@ -158,28 +174,39 @@ public class FileRepository extends EntityRepository<File> {
 
   @Override
   public void storeEntity(File file, boolean update) {
-    store(file, update);
+    persistence().store(file, update);
   }
 
   @Override
   public void storeEntities(List<File> files) {
-    storeMany(files);
+    persistence().insertMany(files);
   }
 
   @Override
   public void storeRelationships(File file) {
     // Add relationship from service to file
-    addRelationship(
-        file.getService().getId(),
-        file.getId(),
-        file.getService().getType(),
-        FILE,
-        Relationship.CONTAINS);
-
+    relationshipWrites()
+        .add(
+            new EntityRelationshipWriter.Edge(
+                file.getService().getId(),
+                file.getId(),
+                file.getService().getType(),
+                FILE,
+                Relationship.CONTAINS),
+            EntityRelationshipWriter.Value.EMPTY,
+            false);
     // Add relationship from directory to file if present
     if (file.getDirectory() != null) {
-      addRelationship(
-          file.getDirectory().getId(), file.getId(), DIRECTORY, FILE, Relationship.CONTAINS);
+      relationshipWrites()
+          .add(
+              new EntityRelationshipWriter.Edge(
+                  file.getDirectory().getId(),
+                  file.getId(),
+                  DIRECTORY,
+                  FILE,
+                  Relationship.CONTAINS),
+              EntityRelationshipWriter.Value.EMPTY,
+              false);
     }
   }
 
@@ -189,10 +216,10 @@ public class FileRepository extends EntityRepository<File> {
     if (nullOrEmpty(file.getDomains())) {
       if (file.getDirectory() != null) {
         Directory directory = Entity.getEntity(file.getDirectory(), "domains,service", Include.ALL);
-        inheritDomains(file, fields, directory);
+        InheritedReferences.apply(InheritedReferences.Field.DOMAINS, file, fields, directory);
       } else {
         DriveService service = Entity.getEntity(file.getService(), FIELD_DOMAINS, Include.ALL);
-        inheritDomains(file, fields, service);
+        InheritedReferences.apply(InheritedReferences.Field.DOMAINS, file, fields, service);
       }
     }
   }
@@ -211,7 +238,10 @@ public class FileRepository extends EntityRepository<File> {
     if (fields.contains(COLUMN_FIELD) && file.getColumns() != null) {
       ColumnUtil.setColumnFQN(file.getFullyQualifiedName(), file.getColumns());
       Entity.populateEntityFieldTags(
-          entityType, file.getColumns(), file.getFullyQualifiedName(), fields.contains(FIELD_TAGS));
+          context().schema().entityType(),
+          file.getColumns(),
+          file.getFullyQualifiedName(),
+          fields.contains(FIELD_TAGS));
     }
     if (fields.contains("sampleData")) {
       file.withSampleData(getSampleData(file));
@@ -220,17 +250,21 @@ public class FileRepository extends EntityRepository<File> {
 
   private TableData getSampleData(File file) {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(file.getId(), FILE_SAMPLE_DATA_EXTENSION),
+        context()
+            .dependencies()
+            .daos()
+            .entityExtensionDAO()
+            .getExtension(file.getId(), FILE_SAMPLE_DATA_EXTENSION),
         TableData.class);
   }
 
   @Override
   public void applyTags(File file) {
     // Add file level tags by adding tag to file relationship
-    super.applyTags(file);
+    EntityPolicy.super.applyTags(file);
     // Apply tags to columns if present
     if (file.getColumns() != null) {
-      applyColumnTags(file.getColumns());
+      tagWrites().addColumns(file.getColumns());
     }
   }
 
@@ -240,30 +274,29 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      File original, File updated, Operation operation, ChangeSource changeSource) {
-    return new FileUpdater(original, updated, operation, changeSource);
+  public EntityUpdater<File> getUpdater(
+      File original, File updated, EntityOperation operation, ChangeSource changeSource) {
+    return new FileUpdater(original, updated, operation, changeSource).mutation();
   }
 
   private EntityReference getDirectory(File file) {
-    return getFromEntityRef(file.getId(), Relationship.CONTAINS, DIRECTORY, false);
+    return relationships().singleFrom(file.getId(), Relationship.CONTAINS, DIRECTORY, false);
   }
 
   private EntityReference getService(File file) {
-    return getFromEntityRef(file.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
+    return relationships()
+        .singleFrom(file.getId(), Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
   }
 
   @Transaction
   public File addSampleData(UUID fileId, TableData tableData) {
-    File file = find(fileId, Include.NON_DELETED);
-
+    File file = lookup().byId(fileId, Include.NON_DELETED);
     // Validate columns match if file has columns defined
     if (file.getColumns() != null && !file.getColumns().isEmpty()) {
       for (String columnName : tableData.getColumns()) {
         validateColumn(file, columnName);
       }
     }
-
     // Make sure each row has values for all columns
     for (List<Object> row : tableData.getRows()) {
       if (row.size() != tableData.getColumns().size()) {
@@ -273,8 +306,9 @@ public class FileRepository extends EntityRepository<File> {
                 tableData.getColumns().size(), row.size()));
       }
     }
-
-    daoCollection
+    context()
+        .dependencies()
+        .daos()
         .entityExtensionDAO()
         .insert(fileId, FILE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
     setFieldsInternal(file, EntityUtil.Fields.EMPTY_FIELDS);
@@ -282,10 +316,12 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   public File getSampleData(UUID fileId) {
-    File file = find(fileId, Include.NON_DELETED);
+    File file = lookup().byId(fileId, Include.NON_DELETED);
     TableData sampleData =
         JsonUtils.readValue(
-            daoCollection
+            context()
+                .dependencies()
+                .daos()
                 .entityExtensionDAO()
                 .getExtension(file.getId(), FILE_SAMPLE_DATA_EXTENSION),
             TableData.class);
@@ -296,8 +332,8 @@ public class FileRepository extends EntityRepository<File> {
 
   @Transaction
   public File deleteSampleData(UUID fileId) {
-    File file = find(fileId, Include.NON_DELETED);
-    daoCollection.entityExtensionDAO().delete(fileId, FILE_SAMPLE_DATA_EXTENSION);
+    File file = lookup().byId(fileId, Include.NON_DELETED);
+    context().dependencies().daos().entityExtensionDAO().delete(fileId, FILE_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(file, EntityUtil.Fields.EMPTY_FIELDS);
     return file;
   }
@@ -336,7 +372,9 @@ public class FileRepository extends EntityRepository<File> {
   }
 
   public static class FileCsv extends EntityCsv<File> {
+
     public static final List<CsvHeader> HEADERS;
+
     public static final CsvDocumentation DOCUMENTATION;
 
     static {
@@ -360,7 +398,6 @@ public class FileRepository extends EntityRepository<File> {
               new CsvHeader().withName("dataProducts"),
               new CsvHeader().withName("experts"),
               new CsvHeader().withName("reviewers"));
-
       DOCUMENTATION = new CsvDocumentation().withHeaders(HEADERS).withSummary("File");
     }
 
@@ -374,29 +411,25 @@ public class FileRepository extends EntityRepository<File> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-
       // Get file name and directory FQN
       String fileName = csvRecord.get(0);
-      String directoryFqn = csvRecord.get(3); // directory field
+      // directory field
+      String directoryFqn = csvRecord.get(3);
       String fileFqn = FullyQualifiedName.add(directoryFqn, fileName);
-
       File newFile;
       try {
         newFile = Entity.getEntityByName(FILE, fileFqn, "*", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         LOG.warn("File not found: {}, it will be created with Import.", fileFqn);
-
         // Get directory reference
         EntityReference directoryRef = getEntityReference(printer, csvRecord, 3, DIRECTORY);
         if (directoryRef == null) {
           importFailure(printer, "Directory not found for file: " + fileName, csvRecord);
           return;
         }
-
         // Get service from directory
         Directory directory =
             Entity.getEntity(DIRECTORY, directoryRef.getId(), "service", Include.NON_DELETED);
-
         newFile =
             new File()
                 .withService(directory.getService())
@@ -481,52 +514,114 @@ public class FileRepository extends EntityRepository<File> {
     }
   }
 
-  public class FileUpdater extends ColumnEntityUpdater {
+  public class FileUpdater implements EntityColumnMutation<File> {
+
     public FileUpdater(
-        File original, File updated, Operation operation, ChangeSource changeSource) {
-      super(original, updated, operation, changeSource);
+        File original, File updated, EntityOperation operation, ChangeSource changeSource) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, changeSource, false),
+              this);
+      this.columnUpdate = new EntityColumnUpdater<>(entityUpdate, this);
     }
 
     @Transaction
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate(
+    public void update(EntityUpdater<File> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate(
           "fileType",
-          () -> recordChange("fileType", original.getFileType(), updated.getFileType()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "fileType",
+                  entityUpdate.getOriginal().getFileType(),
+                  entityUpdate.getUpdated().getFileType()));
+      entityUpdate.compareAndUpdate(
           "mimeType",
-          () -> recordChange("mimeType", original.getMimeType(), updated.getMimeType()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "mimeType",
+                  entityUpdate.getOriginal().getMimeType(),
+                  entityUpdate.getUpdated().getMimeType()));
+      entityUpdate.compareAndUpdate(
           "fileExtension",
           () ->
-              recordChange(
-                  "fileExtension", original.getFileExtension(), updated.getFileExtension()));
-      compareAndUpdate("path", () -> recordChange("path", original.getPath(), updated.getPath()));
-      compareAndUpdate("size", () -> recordChange("size", original.getSize(), updated.getSize()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "fileExtension",
+                  entityUpdate.getOriginal().getFileExtension(),
+                  entityUpdate.getUpdated().getFileExtension()));
+      entityUpdate.compareAndUpdate(
+          "path",
+          () ->
+              entityUpdate.recordChange(
+                  "path",
+                  entityUpdate.getOriginal().getPath(),
+                  entityUpdate.getUpdated().getPath()));
+      entityUpdate.compareAndUpdate(
+          "size",
+          () ->
+              entityUpdate.recordChange(
+                  "size",
+                  entityUpdate.getOriginal().getSize(),
+                  entityUpdate.getUpdated().getSize()));
+      entityUpdate.compareAndUpdate(
           "checksum",
-          () -> recordChange("checksum", original.getChecksum(), updated.getChecksum()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "checksum",
+                  entityUpdate.getOriginal().getChecksum(),
+                  entityUpdate.getUpdated().getChecksum()));
+      entityUpdate.compareAndUpdate(
           "webViewLink",
-          () -> recordChange("webViewLink", original.getWebViewLink(), updated.getWebViewLink()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "webViewLink",
+                  entityUpdate.getOriginal().getWebViewLink(),
+                  entityUpdate.getUpdated().getWebViewLink()));
+      entityUpdate.compareAndUpdate(
           "downloadLink",
           () ->
-              recordChange("downloadLink", original.getDownloadLink(), updated.getDownloadLink()));
-      compareAndUpdate(
+              entityUpdate.recordChange(
+                  "downloadLink",
+                  entityUpdate.getOriginal().getDownloadLink(),
+                  entityUpdate.getUpdated().getDownloadLink()));
+      entityUpdate.compareAndUpdate(
           "isShared",
-          () -> recordChange("isShared", original.getIsShared(), updated.getIsShared()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "isShared",
+                  entityUpdate.getOriginal().getIsShared(),
+                  entityUpdate.getUpdated().getIsShared()));
+      entityUpdate.compareAndUpdate(
           "fileVersion",
-          () -> recordChange("fileVersion", original.getFileVersion(), updated.getFileVersion()));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "fileVersion",
+                  entityUpdate.getOriginal().getFileVersion(),
+                  entityUpdate.getUpdated().getFileVersion()));
+      entityUpdate.compareAndUpdate(
           "columns",
           () ->
-              updateColumns(
+              columnUpdate.updateColumns(
                   COLUMN_FIELD,
-                  original.getColumns(),
-                  updated.getColumns(),
+                  entityUpdate.getOriginal().getColumns(),
+                  entityUpdate.getUpdated().getColumns(),
                   EntityUtil.columnMatch));
     }
+
+    private final EntityUpdater<File> entityUpdate;
+
+    public EntityUpdater<File> mutation() {
+      return entityUpdate;
+    }
+
+    private final EntityColumnUpdater<File> columnUpdate;
+  }
+
+  private final EntityPolicyContext<File> entityContext;
+
+  @Override
+  public final EntityPolicyContext<File> context() {
+    return entityContext;
   }
 }

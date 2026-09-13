@@ -52,7 +52,7 @@ public class MigrationUtil {
                     return;
                   }
                   // Else, update the name
-                  App app = appRepository.find(appId, Include.ALL);
+                  App app = appRepository.lookup().byId(appId, Include.ALL);
                   updateAppExtension(handle, app, postgres);
                 } catch (EntityNotFoundException ex) {
                   // Clean up the old status data

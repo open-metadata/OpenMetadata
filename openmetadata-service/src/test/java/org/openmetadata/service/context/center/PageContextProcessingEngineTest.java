@@ -6,18 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -28,7 +25,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -37,7 +33,11 @@ import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadFixture;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -50,6 +50,8 @@ class PageContextProcessingEngineTest {
   @Mock private ScheduledExecutorService scheduler;
 
   private final UUID pageId = UUID.randomUUID();
+  private final List<Page> writes = new ArrayList<>();
+  private final List<EntityUtil.Fields> selections = new ArrayList<>();
   private final EntityUtil.Fields putFields =
       new EntityUtil.Fields(Set.of("relatedEntities"), "relatedEntities");
 
@@ -67,13 +69,33 @@ class PageContextProcessingEngineTest {
   }
 
   private void pageReturns(Page page) {
-    when(pageRepository.get(isNull(), eq(pageId), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(page);
+    when(pageRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (id, query) -> {
+                  assertEquals(pageId, id);
+                  assertNull(query.uri());
+                  assertEquals(Include.NON_DELETED, query.includes().getDefaultInclude());
+                  assertTrue(query.includes().getFieldIncludes().isEmpty());
+                  assertFalse(query.fromCache());
+                  selections.add(query.fields());
+                  return page;
+                }));
   }
 
   @BeforeEach
   void stubPutFields() {
     lenient().when(pageRepository.getPutFields()).thenReturn(putFields);
+    lenient()
+        .when(pageRepository.puts())
+        .thenReturn(
+            (uri, original, updated, actor, mode) -> {
+              assertNull(uri);
+              assertEquals(new EntityCommandActor(Entity.ADMIN_USER_NAME, null), actor);
+              assertEquals(EntityPutService.Mode.NORMAL, mode);
+              writes.add(JsonUtils.deepCopy(updated, Page.class));
+              return null;
+            });
   }
 
   @Test
@@ -154,10 +176,8 @@ class PageContextProcessingEngineTest {
 
     engine(10).runExtraction(pageId);
 
-    // getFields("") would leave relatedEntities/parent/children null on both sides of the update,
-    // and the updater reads a null managed field as a removal.
-    verify(pageRepository, atLeastOnce())
-        .get(isNull(), eq(pageId), eq(putFields), eq(Include.NON_DELETED), eq(false));
+    assertFalse(selections.isEmpty());
+    assertTrue(selections.stream().allMatch(putFields::equals));
   }
 
   @Test
@@ -165,7 +185,12 @@ class PageContextProcessingEngineTest {
     String body = "Onboarding runbook body";
     pageReturns(page(body, "stale-hash"));
     when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
+        .thenAnswer(
+            invocation -> {
+              assertEquals(
+                  PageProcessingStatus.Processing, writes.getFirst().getProcessingStatus());
+              return new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1);
+            });
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
         .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0, 0));
 
@@ -174,9 +199,6 @@ class PageContextProcessingEngineTest {
     List<Page> writes = capturedUpdates();
     assertEquals(PageProcessingStatus.Processing, writes.get(0).getProcessingStatus());
     assertNull(writes.get(0).getProcessingError());
-    InOrder order = inOrder(pageRepository, extractor);
-    order.verify(pageRepository).update(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
-    order.verify(extractor).derive(any(), any(), any());
   }
 
   @Test
@@ -188,12 +210,8 @@ class PageContextProcessingEngineTest {
 
     engine(10).runExtraction(pageId);
 
-    verify(pageRepository, never())
-        .update(
-            isNull(),
-            any(),
-            argThat(p -> p.getProcessingStatus() == PageProcessingStatus.Processing),
-            eq(Entity.ADMIN_USER_NAME));
+    assertTrue(
+        writes.stream().noneMatch(p -> p.getProcessingStatus() == PageProcessingStatus.Processing));
   }
 
   @Test
@@ -244,10 +262,7 @@ class PageContextProcessingEngineTest {
   }
 
   private List<Page> capturedUpdates() {
-    ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
-    verify(pageRepository, atLeastOnce())
-        .update(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
-    return captor.getAllValues();
+    return List.copyOf(writes);
   }
 
   @Test

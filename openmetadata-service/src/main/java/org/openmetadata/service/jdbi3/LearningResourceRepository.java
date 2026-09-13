@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -31,6 +30,15 @@ import org.openmetadata.schema.entity.learning.LearningResourceSource;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.learning.LearningResourceResource;
@@ -40,20 +48,26 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class LearningResourceRepository extends EntityRepository<LearningResource> {
+@Repository()
+public class LearningResourceRepository implements EntityPolicy<LearningResource> {
+
   private static final String UPDATE_FIELDS =
       "owners,reviewers,tags,contexts,categories,difficulty,source,estimatedDuration,status";
+
   private static final String PATCH_FIELDS = UPDATE_FIELDS;
 
   public LearningResourceRepository() {
-    super(
-        LearningResourceResource.COLLECTION_PATH,
-        Entity.LEARNING_RESOURCE,
-        LearningResource.class,
-        Entity.getCollectionDAO().learningResourceDAO(),
-        UPDATE_FIELDS,
-        PATCH_FIELDS);
-    supportsSearch = false;
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                LearningResourceResource.COLLECTION_PATH,
+                Entity.LEARNING_RESOURCE,
+                LearningResource.class,
+                Entity.getCollectionDAO().learningResourceDAO()),
+            new EntityPolicyContext.WriteFields(UPDATE_FIELDS, PATCH_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
+    context().options().setSupportsSearch(false);
   }
 
   /**
@@ -68,15 +82,14 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     for (LearningResource seedEntity : seedEntities) {
       setFullyQualifiedName(seedEntity);
       LearningResource existingEntity =
-          findByNameOrNull(seedEntity.getFullyQualifiedName(), Include.ALL);
-
+          lookup().byNameOrNull(seedEntity.getFullyQualifiedName(), Include.ALL);
       if (existingEntity == null) {
         // New entity - create it
         LOG.info("Creating new learning resource: {}", seedEntity.getName());
         seedEntity.setUpdatedBy(ADMIN_USER_NAME);
         seedEntity.setUpdatedAt(System.currentTimeMillis());
         seedEntity.setId(java.util.UUID.randomUUID());
-        create(null, seedEntity);
+        creates().create(null, seedEntity, new EntityCommandActor(null, null));
       } else {
         // Existing entity - check if update is needed by comparing key fields
         boolean needsUpdate = hasChanges(existingEntity, seedEntity);
@@ -86,7 +99,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
           seedEntity.setUpdatedBy(ADMIN_USER_NAME);
           seedEntity.setUpdatedAt(System.currentTimeMillis());
           seedEntity.setVersion(existingEntity.getVersion());
-          createOrUpdate(null, seedEntity, ADMIN_USER_NAME);
+          creates().upsert(null, seedEntity, new EntityCommandActor(ADMIN_USER_NAME, null), false);
         } else {
           LOG.debug("Learning resource {} is up to date", seedEntity.getName());
         }
@@ -107,18 +120,17 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   }
 
   @Override
-  protected void setFields(
-      LearningResource entity, Fields fields, RelationIncludes relationIncludes) {
+  public void setFields(LearningResource entity, Fields fields, RelationIncludes relationIncludes) {
     // No additional field resolution for now
   }
 
   @Override
   public void setFieldsInBulk(Fields fields, List<LearningResource> entities) {
-    super.setFieldsInBulk(fields, entities);
+    EntityPolicy.super.setFieldsInBulk(fields, entities);
   }
 
   @Override
-  protected void clearFields(LearningResource entity, Fields fields) {
+  public void clearFields(LearningResource entity, Fields fields) {
     // No-op
   }
 
@@ -140,7 +152,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
 
   @Override
   public void storeEntity(LearningResource entity, boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
@@ -151,7 +163,14 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(entity));
     }
-    dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
+    context()
+        .schema()
+        .dao()
+        .insertMany(
+            context().schema().dao().getTableName(),
+            context().schema().dao().getNameHashColumn(),
+            fqns,
+            jsons);
   }
 
   @Override
@@ -159,12 +178,12 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     // All relationships handled centrally (owners, reviewers, tags)
   }
 
-  public EntityRepository<LearningResource>.EntityUpdater getUpdater(
+  public EntityUpdater<LearningResource> getUpdater(
       LearningResource original,
       LearningResource updated,
-      Operation operation,
+      EntityOperation operation,
       ChangeSource changeSource) {
-    return new LearningResourceUpdater(original, updated, operation);
+    return new LearningResourceUpdater(original, updated, operation).mutation();
   }
 
   private void validateSource(LearningResourceSource source) {
@@ -188,7 +207,6 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     if (nullOrEmpty(contexts)) {
       throw BadRequestException.of("Learning resource requires at least one placement context");
     }
-
     Set<String> uniqueKeys = new HashSet<>();
     for (LearningResourceContext context : contexts) {
       if (context == null || StringUtils.isBlank(context.getPageId())) {
@@ -211,6 +229,7 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
   }
 
   public static class LearningResourceFilter extends ListFilter {
+
     public LearningResourceFilter(Include include) {
       super(include);
     }
@@ -403,36 +422,77 @@ public class LearningResourceRepository extends EntityRepository<LearningResourc
     }
   }
 
-  class LearningResourceUpdater extends EntityUpdater {
+  class LearningResourceUpdater implements EntitySpecificMutation<LearningResource> {
+
     LearningResourceUpdater(
-        LearningResource original, LearningResource updated, Operation operation) {
-      super(original, updated, operation);
+        LearningResource original, LearningResource updated, EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("categories", this::run);
-      compareAndUpdate(
+    public void update(EntityUpdater<LearningResource> entityUpdate, boolean consolidatingChanges) {
+      entityUpdate.compareAndUpdate("categories", this::run);
+      entityUpdate.compareAndUpdate(
           "contexts",
-          () -> recordChange("contexts", original.getContexts(), updated.getContexts(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "contexts",
+                  entityUpdate.getOriginal().getContexts(),
+                  entityUpdate.getUpdated().getContexts(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "difficulty",
-          () -> recordChange("difficulty", original.getDifficulty(), updated.getDifficulty()));
-      compareAndUpdate(
-          "source", () -> recordChange("source", original.getSource(), updated.getSource(), true));
-      compareAndUpdate(
+          () ->
+              entityUpdate.recordChange(
+                  "difficulty",
+                  entityUpdate.getOriginal().getDifficulty(),
+                  entityUpdate.getUpdated().getDifficulty()));
+      entityUpdate.compareAndUpdate(
+          "source",
+          () ->
+              entityUpdate.recordChange(
+                  "source",
+                  entityUpdate.getOriginal().getSource(),
+                  entityUpdate.getUpdated().getSource(),
+                  true));
+      entityUpdate.compareAndUpdate(
           "estimatedDuration",
           () ->
-              recordChange(
+              entityUpdate.recordChange(
                   "estimatedDuration",
-                  original.getEstimatedDuration(),
-                  updated.getEstimatedDuration()));
-      compareAndUpdate(
-          "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
+                  entityUpdate.getOriginal().getEstimatedDuration(),
+                  entityUpdate.getUpdated().getEstimatedDuration()));
+      entityUpdate.compareAndUpdate(
+          "status",
+          () ->
+              entityUpdate.recordChange(
+                  "status",
+                  entityUpdate.getOriginal().getStatus(),
+                  entityUpdate.getUpdated().getStatus()));
     }
 
     private void run() {
-      recordChange("categories", original.getCategories(), updated.getCategories());
+      entityUpdate.recordChange(
+          "categories",
+          entityUpdate.getOriginal().getCategories(),
+          entityUpdate.getUpdated().getCategories());
     }
+
+    private final EntityUpdater<LearningResource> entityUpdate;
+
+    public EntityUpdater<LearningResource> mutation() {
+      return entityUpdate;
+    }
+  }
+
+  private final EntityPolicyContext<LearningResource> entityContext;
+
+  @Override
+  public final EntityPolicyContext<LearningResource> context() {
+    return entityContext;
   }
 }

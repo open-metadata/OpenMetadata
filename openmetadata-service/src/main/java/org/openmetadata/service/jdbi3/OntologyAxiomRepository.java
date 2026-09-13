@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -18,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
@@ -26,6 +26,15 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityModuleDependencies;
+import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicyContext;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
+import org.openmetadata.service.entity.write.EntityUpdateRequest;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.ontology.OwlProfileGuard;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.ontology.OntologyAxiomResource;
@@ -34,19 +43,24 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Repository
-public class OntologyAxiomRepository extends EntityRepository<OntologyAxiom> {
+public class OntologyAxiomRepository implements EntityPolicy<OntologyAxiom> {
+
   private static final String UPDATE_FIELDS =
       "axiomType,subjectIri,expressions,propertyIri,targetIri,literal,provenance,entityStatus";
+
   private final OwlProfileGuard profileGuard;
 
   public OntologyAxiomRepository() {
-    super(
-        OntologyAxiomResource.COLLECTION_PATH,
-        Entity.ONTOLOGY_AXIOM,
-        OntologyAxiom.class,
-        Entity.getCollectionDAO().ontologyAxiomDAO(),
-        UPDATE_FIELDS,
-        UPDATE_FIELDS);
+    this.entityContext =
+        new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(
+                OntologyAxiomResource.COLLECTION_PATH,
+                Entity.ONTOLOGY_AXIOM,
+                OntologyAxiom.class,
+                Entity.getCollectionDAO().ontologyAxiomDAO()),
+            new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
+            EntityModuleDependencies.standard());
+    EntityModuleFactory.initialize(this, true);
     final RelationshipTypeResolver relationshipTypes =
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     profileGuard =
@@ -93,37 +107,53 @@ public class OntologyAxiomRepository extends EntityRepository<OntologyAxiom> {
 
   @Override
   public void storeEntity(final OntologyAxiom entity, final boolean update) {
-    store(entity, update);
+    persistence().store(entity, update);
   }
 
   @Override
   public void storeRelationships(final OntologyAxiom entity) {
-    addRelationship(
-        entity.getGlossary().getId(),
-        entity.getId(),
-        Entity.GLOSSARY,
-        Entity.ONTOLOGY_AXIOM,
-        Relationship.CONTAINS);
+    relationshipWrites()
+        .add(
+            new EntityRelationshipWriter.Edge(
+                entity.getGlossary().getId(),
+                entity.getId(),
+                Entity.GLOSSARY,
+                Entity.ONTOLOGY_AXIOM,
+                Relationship.CONTAINS),
+            EntityRelationshipWriter.Value.EMPTY,
+            false);
   }
 
   @Override
-  public EntityUpdater getUpdater(
+  public EntityUpdater<OntologyAxiom> getUpdater(
       final OntologyAxiom original,
       final OntologyAxiom updated,
-      final Operation operation,
+      final EntityOperation operation,
       final ChangeSource changeSource) {
-    return new OntologyAxiomUpdater(original, updated, operation);
+    return new OntologyAxiomUpdater(original, updated, operation).mutation();
   }
 
-  public class OntologyAxiomUpdater extends EntityUpdater {
+  public class OntologyAxiomUpdater implements EntitySpecificMutation<OntologyAxiom> {
+
     OntologyAxiomUpdater(
-        final OntologyAxiom original, final OntologyAxiom updated, final Operation operation) {
-      super(original, updated, operation);
+        final OntologyAxiom original,
+        final OntologyAxiom updated,
+        final EntityOperation operation) {
+      this.entityUpdate =
+          new EntityUpdater<>(
+              context().services().getUpdaterServices(),
+              new EntityUpdateRequest<>(original, updated, operation, null, false),
+              this);
     }
 
     @Override
-    public void entitySpecificUpdate(final boolean consolidatingChanges) {
-      if (!original.getGlossary().getId().equals(updated.getGlossary().getId())) {
+    public void update(
+        EntityUpdater<OntologyAxiom> entityUpdate, final boolean consolidatingChanges) {
+      if (!entityUpdate
+          .getOriginal()
+          .getGlossary()
+          .getId()
+          .equals(entityUpdate.getUpdated().getGlossary().getId())) {
         throw new BadRequestException("An ontology axiom cannot move between glossaries");
       }
       recordAxiomChanges();
@@ -132,25 +162,57 @@ public class OntologyAxiomRepository extends EntityRepository<OntologyAxiom> {
     }
 
     private void recordAxiomChanges() {
-      recordChange("axiomType", original.getAxiomType(), updated.getAxiomType());
-      recordChange("subjectIri", original.getSubjectIri(), updated.getSubjectIri());
-      recordChange("expressions", original.getExpressions(), updated.getExpressions(), true);
+      entityUpdate.recordChange(
+          "axiomType",
+          entityUpdate.getOriginal().getAxiomType(),
+          entityUpdate.getUpdated().getAxiomType());
+      entityUpdate.recordChange(
+          "subjectIri",
+          entityUpdate.getOriginal().getSubjectIri(),
+          entityUpdate.getUpdated().getSubjectIri());
+      entityUpdate.recordChange(
+          "expressions",
+          entityUpdate.getOriginal().getExpressions(),
+          entityUpdate.getUpdated().getExpressions(),
+          true);
     }
 
     private void recordAssertionChanges() {
-      recordChange("propertyIri", original.getPropertyIri(), updated.getPropertyIri());
-      recordChange("targetIri", original.getTargetIri(), updated.getTargetIri());
-      recordChange("literal", original.getLiteral(), updated.getLiteral());
+      entityUpdate.recordChange(
+          "propertyIri",
+          entityUpdate.getOriginal().getPropertyIri(),
+          entityUpdate.getUpdated().getPropertyIri());
+      entityUpdate.recordChange(
+          "targetIri",
+          entityUpdate.getOriginal().getTargetIri(),
+          entityUpdate.getUpdated().getTargetIri());
+      entityUpdate.recordChange(
+          "literal",
+          entityUpdate.getOriginal().getLiteral(),
+          entityUpdate.getUpdated().getLiteral());
     }
 
     private void recordGovernanceChanges() {
-      recordChange("provenance", original.getProvenance(), updated.getProvenance());
-      recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
+      entityUpdate.recordChange(
+          "provenance",
+          entityUpdate.getOriginal().getProvenance(),
+          entityUpdate.getUpdated().getProvenance());
+      entityUpdate.recordChange(
+          "entityStatus",
+          entityUpdate.getOriginal().getEntityStatus(),
+          entityUpdate.getUpdated().getEntityStatus());
+    }
+
+    private final EntityUpdater<OntologyAxiom> entityUpdate;
+
+    public EntityUpdater<OntologyAxiom> mutation() {
+      return entityUpdate;
     }
   }
 
   private record PersistentVocabularyIndex(CollectionDAO.OntologyAxiomDAO dao)
       implements OwlProfileGuard.VocabularyIndex {
+
     @Override
     public boolean isClass(final URI iri) {
       return iri != null && dao.countClassSubjects(iri.toString()) > 0;
@@ -160,5 +222,12 @@ public class OntologyAxiomRepository extends EntityRepository<OntologyAxiom> {
     public boolean isIndividual(final URI iri) {
       return iri != null && dao.countIndividualSubjects(iri.toString()) > 0;
     }
+  }
+
+  private final EntityPolicyContext<OntologyAxiom> entityContext;
+
+  @Override
+  public final EntityPolicyContext<OntologyAxiom> context() {
+    return entityContext;
   }
 }

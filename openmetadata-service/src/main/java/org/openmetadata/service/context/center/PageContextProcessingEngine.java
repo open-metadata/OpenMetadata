@@ -17,8 +17,12 @@ import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * {@link ContextProcessingEngine} for Page (Knowledge Center article) sources. A page's markdown
@@ -167,7 +171,14 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       Page updated = JsonUtils.deepCopy(current, Page.class);
       updated.setProcessingStatus(status);
       updated.setProcessingError(error);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
+      pageRepository
+          .puts()
+          .update(
+              null,
+              current,
+              updated,
+              new EntityCommandActor(Entity.ADMIN_USER_NAME, null),
+              EntityPutService.Mode.NORMAL);
     }
   }
 
@@ -209,7 +220,14 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       updated.setExtractionStats(stats);
       updated.setProcessingStatus(PageProcessingStatus.Processed);
       updated.setProcessingError(null);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
+      pageRepository
+          .puts()
+          .update(
+              null,
+              current,
+              updated,
+              new EntityCommandActor(Entity.ADMIN_USER_NAME, null),
+              EntityPutService.Mode.NORMAL);
     }
   }
 
@@ -224,7 +242,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   }
 
   /**
-   * Loads the page with the fields its own updater manages. Fetching with {@code getFields("")}
+   * Loads the page with the fields its own updater manages. Fetching with an empty field selection
    * leaves the relationship-backed fields (relatedEntities, parent, children) null, and the updater
    * reads a null managed field as a removal — so every stamp below silently deleted the article's
    * related data assets and bumped its version. Loading them here makes the stamp a true read-
@@ -234,8 +252,15 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     Page result = null;
     try {
       result =
-          pageRepository.get(
-              null, pageId, pageRepository.getPutFields(), Include.NON_DELETED, false);
+          pageRepository
+              .reads()
+              .byId(
+                  pageId,
+                  new EntityReadService.Query(
+                      null,
+                      pageRepository.getPutFields(),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
     } catch (EntityNotFoundException e) {
       result = null;
     }
