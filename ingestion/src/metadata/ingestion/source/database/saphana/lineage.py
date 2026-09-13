@@ -52,8 +52,12 @@ logger = ingestion_logger()
 # The cached statement with leading comments and whitespace removed, so a keyword match
 # can stay anchored to the start of the statement. Tools routinely prefix DML with a
 # comment, and the plan cache stores whatever whitespace it was submitted with.
+# The block-comment body is spelled out rather than using `.`, because HANA's ICU
+# regex does not let `.` cross a line terminator, which would leave a multi-line
+# header comment in place.
 _STATEMENT = (
-    r"LTRIM(UPPER(REPLACE_REGEXPR('^(\s*(/\*.*?\*/|--[^\n]*\n))+' IN STATEMENT_STRING WITH '' OCCURRENCE ALL))"
+    r"LTRIM(UPPER(REPLACE_REGEXPR('^(\s*(/\*(\*[^/]|[^*])*\*/|--[^\n]*\n))+'"
+    r" IN STATEMENT_STRING WITH '' OCCURRENCE ALL))"
     r", ' ' || CHAR(9) || CHAR(13) || CHAR(10))"
 )
 

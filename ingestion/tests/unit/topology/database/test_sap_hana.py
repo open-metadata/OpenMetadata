@@ -12,6 +12,7 @@
 Test SAP Hana source
 """
 
+import datetime
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
@@ -1685,3 +1686,46 @@ def test_cdata_pass_honours_process_view_lineage() -> None:
         list(source._iter())
 
     cdata.assert_not_called()
+
+
+def test_plan_cache_row_becomes_a_table_query() -> None:
+    """Run a real plan-cache row through the connector's own SQL path.
+
+    Covers the wiring the other tests mock out: the column aliases the query selects,
+    the row-to-TableQuery mapping, and the dialect the parser is handed. A regression
+    in any of those would otherwise pass every assertion in this file.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    statement = 'INSERT INTO "LT_ORDER_ARCHIVE" SELECT ORDER_ID, CUSTOMER_ID, AMOUNT FROM "LT_ORDER"'
+
+    class Row(dict):
+        def _asdict(self):
+            return dict(self)
+
+    # The aliases here are exactly the ones SAPHANA_QUERY_HISTORY_STATEMENT selects.
+    row = Row(
+        user_name=None,
+        database_name=None,
+        schema_name="GE370603",
+        aborted=None,
+        query_text=statement,
+        start_time=datetime.datetime(2026, 9, 10, 12, 0),
+        duration=1.0,
+        end_time=datetime.datetime(2026, 9, 10, 12, 0),
+    )
+
+    mock_connection = MagicMock()
+    mock_connection.execute.return_value = iter([row])
+    source.engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+    source.engine.connect.return_value.__exit__ = Mock()
+
+    with patch.object(SaphanaLineageSource, "get_engine", return_value=iter([source.engine])):
+        queries = list(source.yield_table_query())
+
+    assert len(queries) == 1
+    assert queries[0].query == statement
+    assert queries[0].databaseSchema == "GE370603"
+    assert queries[0].serviceName == "test_sap_hana"
+    # No HANA dialect exists, so the connector must hand the parser ANSI.
+    assert queries[0].dialect == Dialect.ANSI.value
