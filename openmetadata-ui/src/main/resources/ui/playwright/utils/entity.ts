@@ -39,6 +39,7 @@ import {
   resolveDescriptionBox,
   toastNotification,
   uuid,
+  waitForAntdModalToSettle,
 } from './common';
 import {
   customFormatDateTime,
@@ -1868,6 +1869,11 @@ export const deleteAnnouncement = async (page: Page) => {
   expect(modalText).toContain(
     'Are you sure you want to permanently delete this message?'
   );
+
+  // Reading the modal body proves it is mounted, not that it has stopped
+  // zooming in; a press begun mid-animation never dispatches a click and the
+  // DELETE below never arrives.
+  await waitForAntdModalToSettle(page);
 
   const deleteAnnouncementResponse = page.waitForResponse(
     (response) =>

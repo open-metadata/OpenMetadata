@@ -30,6 +30,7 @@ import {
   fillDescriptionBox,
   getDescriptionBox,
   uuid,
+  waitForAntdModalToSettle,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
@@ -893,6 +894,11 @@ export const deleteCreatedProperty = async (
 
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
+  // ...and that the dialog has stopped moving. `toBeVisible` is satisfied by
+  // the modal's first scaled frame, so a press begun then lands mousedown on
+  // the button and mouseup past it, no click is dispatched, and the PATCH
+  // below is waited for forever.
+  await waitForAntdModalToSettle(page);
 
   const patchResponse = page.waitForResponse(
     (res) =>
