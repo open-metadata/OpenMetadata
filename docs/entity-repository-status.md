@@ -1,6 +1,6 @@
 # Entity module implementation status
 
-Checkpoint: integration with `main` at `15b542e735c` and CI follow-up, 2026-09-12 UTC.
+Checkpoint: integration with `main` at `68606d705a` and acceptance follow-up, 2026-09-13 UTC.
 **Verification is in progress.**
 
 The worktree no longer contains `EntityRepository.java`, originally 13,569 lines.
@@ -21,11 +21,46 @@ Removing the file does not establish correctness or latency improvement.
 | Entity policies and retirement of common repository and updater inheritance | Implemented; clean production compilation and packaged selection pass |
 | Architecture and Java extension migration guide | Available in [entity-module-migration.md](entity-module-migration.md) |
 | Final policy callers | Search/RDF offset readers and custom result pages migrated; 14 unused helpers and two migrated helpers removed |
-| Main merge validation | 1,406 service passes; 620 MCP passes and ten upstream dependency setup errors; 220 integration passes per database with Redis |
-| CI follow-up validation | Full service: 10,346 passes; parallel integration selection: 473 passes across three profiles; UI: 31 unit tests and three tour flows pass |
-| Downstream Collate compilation | Open; Collate's repository families and callers still require migration to the composed Java APIs |
+| Main merge validation | Latest service CI: 10,363 passes and one skip; current local MCP: 630 passes; earlier merge selection: 220 integration passes per database with Redis |
+| CI follow-up validation | Parallel integration selection: 473 passes across three profiles; guided tours pass; pagination persistence passes three local browser runs |
+| Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `993d0655e3` / Collate `52b1372694` |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
+
+## Current acceptance follow-up
+
+The native [service unit build](https://github.com/open-metadata/OpenMetadata/actions/runs/34765135922)
+passes 10,363 tests with one skip. The matching companion
+[backend build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34765679621)
+and [governance/data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34765680560)
+both pass. Collate's 13 repository families and their callers now use the composed APIs.
+The native wrappers still dispatch Collate `main`; coordinated rollout remains necessary
+until both pull requests are merged. No workflow changes or status overrides were made.
+
+The ten MCP setup errors described below reproduce on the current dependency graph.
+`IdTokenValidatorTest` now serves its JWKS responses through the JDK HTTP server,
+removing the incompatible MockWebServer test dependency while retaining real HTTP and
+cryptographic validation. All 630 MCP tests and module Spotless checks pass.
+
+The native pagination trace showed a dropdown option detaching while Playwright waited
+for actionability. Its unbounded click prevented the outer retry from reopening the menu.
+The click now has a bounded timeout, and retries preserve an already open menu. All three
+local browser runs verify table page size 25, Explore page size 50, and persistence on the
+Users page. Full Playwright lint passes with no errors.
+
+Collate's hybrid-runner failure occurs before its browser tests: MinIO cannot pull the
+configured Docker Hub image. An isolated ARM64 Kind cluster reproduces `ImagePullBackOff`.
+The companion fix pins the same server release and a matching client release from Quay,
+updates the obsolete bucket-policy command, and stops setup immediately on failure with
+pod/event diagnostics. Shell regressions preserve the original failure exit codes; a real
+Argo workflow uploads an artifact that can be retrieved with the expected contents.
+These local checks still require verification in the final companion CI run.
+
+The remaining acceptance work is the current-artifact performance matrix and whole
+changed-class coverage. Earlier column and relationship tail measurements remain open;
+pool acquisition inside JDBI's synchronized lazy-handle initialization is an investigation
+lead, not an established fix or a latency acceptance result. The historical measurements
+and failures below retain their original revision and artifact scope.
 
 ## Main integration checkpoint
 
