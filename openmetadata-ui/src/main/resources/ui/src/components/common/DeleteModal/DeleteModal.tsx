@@ -24,11 +24,17 @@ import { Trash01 } from '@untitledui/icons';
 import { useTranslation } from 'react-i18next';
 import { DeleteModalProps } from './DeleteModal.interface';
 
+// antd's @zindex-modal / @zindex-modal-mask are both 1000; this only needs
+// to beat that when a consumer opts in via `elevated` (see DeleteModalProps).
+const BASE_Z_INDEX = 999;
+const ELEVATED_Z_INDEX = 1001;
+
 export const DeleteModal = ({
   open,
   entityTitle,
   message,
   isDeleting = false,
+  elevated = false,
   onCancel,
   onDelete,
 }: DeleteModalProps) => {
@@ -39,7 +45,7 @@ export const DeleteModal = ({
       data-testid="delete-modal"
       isDismissable={!isDeleting}
       isOpen={open}
-      style={{ zIndex: 999 }}
+      style={{ zIndex: elevated ? ELEVATED_Z_INDEX : BASE_Z_INDEX }}
       onOpenChange={(isOpen) => !isOpen && !isDeleting && onCancel()}>
       <Modal>
         <Dialog width={400} onClose={onCancel}>

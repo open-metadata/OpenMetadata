@@ -470,7 +470,7 @@
   },
   "playwright/e2e/Features/Tasks/TaskComments.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 24
+      "count": 17
     }
   },
   "playwright/e2e/Features/Tasks/TaskCreation.spec.ts": {
