@@ -4671,7 +4671,6 @@
     "tier-coverage-widget-description": "Tier coverage for all data assets in the service. <0>learn more.</0>",
     "tier-distribution-description": "Tier captures the business importance of the data.",
     "tier-distribution-widget-description": "Overview of all tier distribution for all data assets in the service. <0>learn more.</0>",
-    "time-format-description": "Choose how times are displayed across the application on this device.",
     "time-line-data-retention-description": "Timeline of data retention",
     "to-add-new-line": "to add a new line",
     "token-expired-on": "Expired on {{date}}.",

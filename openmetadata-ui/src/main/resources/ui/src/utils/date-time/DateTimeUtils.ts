@@ -13,11 +13,11 @@
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import {
-    DAY_SECONDS,
-    HOUR_SECONDS,
-    MINUTE_SECONDS,
-    MONTH_SECONDS,
-    YEAR_SECONDS
+  DAY_SECONDS,
+  HOUR_SECONDS,
+  MINUTE_SECONDS,
+  MONTH_SECONDS,
+  YEAR_SECONDS,
 } from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
@@ -30,6 +30,7 @@ import i18next from '../i18next/LocalUtil';
 type CronstrueModule = typeof import('cronstrue');
 let cronstrueModule: CronstrueModule | null = null;
 let cronstruePromise: Promise<CronstrueModule> | null = null;
+
 const loadCronstrue = (): Promise<CronstrueModule> => {
   if (cronstrueModule) {
     return Promise.resolve(cronstrueModule);
@@ -49,24 +50,21 @@ export const getLoadedCronstrue = (): CronstrueModule | null => cronstrueModule;
 export const ensureCronstrueLoaded = loadCronstrue;
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
-export const DATE_TIME_WITH_OFFSET_FORMAT =
-  "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
-export const DATE_TIME_WEEKDAY_WITH_ORDINAL =
-  "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
-export const DATE_TIME_WITH_OFFSET_SHORT =
-  "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 2025, 12:00 AM (UTC+05:30)
+export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
+export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
+export const DATE_TIME_WITH_OFFSET_SHORT = "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 2025, 12:00 AM (UTC+05:30)
 
 /**
  * Resolves the time format to use, in precedence order:
  * 1. The logged-in user's on-device preference (`timeFormat` in UserPreferences).
  * 2. The tenant-wide default fetched at boot (server `timeFormat` config).
  * 3. `12h` fallback.
- * 
+ *
  * NOTE: This function reads the time format non-reactively via .getState().
- * Components using utility formatters directly will not automatically re-render 
- * when the user toggles the time format preference. They will reflect the new 
+ * Components using utility formatters directly will not automatically re-render
+ * when the user toggles the time format preference. They will reflect the new
  * format on their next render cycle (e.g., via navigation or unrelated state changes).
- * For fully reactive time formatting, components should subscribe to the time 
+ * For fully reactive time formatting, components should subscribe to the time
  * format preference via useCurrentUserPreferences() and pass it to customFormatDateTime.
  */
 export const getActiveTimeFormat = (): '12h' | '24h' => {
@@ -82,33 +80,35 @@ export const getActiveTimeFormat = (): '12h' | '24h' => {
 /**
  * Maps the time tokens of a luxon format string to the requested
  * 12h/24h representation; date tokens are left untouched.
+ *
  * e.g. getMappedTimeFormat("MMM dd, yyyy, hh:mm a '(UTC'ZZ')'", '24h')
- *  => "MMM dd, yyyy, HH:mm '(UTC'ZZ')'"
+ *      => "MMM dd, yyyy, HH:mm '(UTC'ZZ')'"
  */
 export const getMappedTimeFormat = (
   format: string,
   timeFormat: '12h' | '24h'
 ): string =>
   timeFormat === '24h'
-  ? format.replace(/(h{1,2}):mm a/g, (_, h: string) =>
-      h.length === 2 ? 'HH:mm' : 'H:mm'
-    )
-  : format.replace(/(H{1,2}):mm/g, (_, H: string) =>
-      H.length === 2 ? 'hh:mm a' : 'h:mm a'
-    );
+    ? format.replace(/(h{1,2}):mm a/g, (_, h: string) =>
+        h.length === 2 ? 'HH:mm' : 'H:mm'
+      )
+    : format.replace(/(H{1,2}):mm(?!:)/g, (_, H: string) =>
+        H.length === 2 ? 'hh:mm a' : 'h:mm a'
+      );
 
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
  */
-export const formatDateTime = (date?: number) => {
+export const formatDateTime = (date?: number, timeFormat?: '12h' | '24h') => {
   if (isNil(date)) {
     return '';
   }
+  const activeFormat = timeFormat ?? getActiveTimeFormat();
   const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
 
   return dateTime.toFormat(
-    getMappedTimeFormat(DATE_TIME_WITH_OFFSET_SHORT, getActiveTimeFormat())
+    getMappedTimeFormat(DATE_TIME_WITH_OFFSET_SHORT, activeFormat)
   );
 };
 
@@ -147,18 +147,20 @@ export const formatMonth = (date?: number) => {
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDateTimeLong = (timestamp?: number, format?: string) => {
+export const formatDateTimeLong = (
+  timestamp?: number,
+  format?: string,
+  timeFormat?: '12h' | '24h'
+) => {
   if (isNil(timestamp)) {
     return '';
   }
+  const activeFormat = timeFormat ?? getActiveTimeFormat();
 
   return DateTime.fromMillis(toNumber(timestamp), {
     locale: i18next.language,
   }).toFormat(
-    getMappedTimeFormat(
-      format ?? DATE_TIME_WITH_OFFSET_FORMAT,
-      getActiveTimeFormat()
-    )
+    getMappedTimeFormat(format ?? DATE_TIME_WITH_OFFSET_FORMAT, activeFormat)
   );
 };
 
@@ -187,18 +189,21 @@ export const getUtcOffsetLabel = (): string =>
  * @param timeStamp EPOCH millis
  * @returns Formatted date with timezone
  */
-export const formatDateTimeWithTimezone = (timeStamp: number): string => {
+export const formatDateTimeWithTimezone = (
+  timeStamp: number,
+  timeFormat?: '12h' | '24h'
+): string => {
   if (isNil(timeStamp)) {
     return '';
   }
+  const activeFormat = timeFormat ?? getActiveTimeFormat();
   const dateTime = DateTime.fromMillis(timeStamp, {
     locale: i18next.language,
   });
 
-  // FIX: Merge hour12 into the format options (first arg) so Luxon applies it correctly.
   return dateTime.toLocaleString({
     ...DateTime.DATETIME_FULL,
-    hour12: getActiveTimeFormat() === '12h',
+    hour12: activeFormat === '12h',
   });
 };
 
@@ -216,18 +221,20 @@ export const formatTimeDurationFromSeconds = (seconds: number) =>
  */
 export const customFormatDateTime = (
   milliseconds?: number,
-  format?: string
+  format?: string,
+  timeFormat?: '12h' | '24h'
 ) => {
   if (isNil(milliseconds)) {
     return '';
   }
   if (!format) {
-    return formatDateTime(milliseconds);
+    return formatDateTime(milliseconds, timeFormat);
   }
+  const activeFormat = timeFormat ?? getActiveTimeFormat();
 
   return DateTime.fromMillis(milliseconds, {
     locale: i18next.language,
-  }).toFormat(getMappedTimeFormat(format, getActiveTimeFormat()));
+  }).toFormat(getMappedTimeFormat(format, activeFormat));
 };
 
 /**
@@ -289,7 +296,6 @@ export const getRelativeCalendar = (
 
 export const getCurrentISODate = () =>
   DateTime.now().toISO({ includeOffset: false });
-
 export const getCurrentMillis = () => DateTime.now().toMillis();
 export const getCurrentUnixInteger = () => DateTime.now().toUnixInteger();
 export const getEpochMillisForPastDays = (days: number) =>
@@ -298,12 +304,10 @@ export const getEpochMillisForFutureDays = (days: number) =>
   DateTime.now().plus({ days }).toMillis();
 export const getUnixSecondsForPastDays = (days: number) =>
   DateTime.now().minus({ days }).toUnixInteger();
-
 export const getDaysRemaining = (timestamp: number) =>
   toInteger(
     -DateTime.now().diff(DateTime.fromMillis(timestamp), ['days']).days
   );
-
 export const isValidDateFormat = (format: string) => {
   try {
     const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
@@ -313,7 +317,6 @@ export const isValidDateFormat = (format: string) => {
     return false;
   }
 };
-
 export const getIntervalInMilliseconds = (
   startTime: number,
   endTime: number
@@ -324,7 +327,6 @@ export const getIntervalInMilliseconds = (
 
   return interval.milliseconds;
 };
-
 export const calculateInterval = (
   startTime: number,
   endTime: number
@@ -386,7 +388,6 @@ export const convertMillisecondsToHumanReadableFormat = (
   const isNegative = milliseconds < 0;
   const absoluteMilliseconds = Math.abs(milliseconds);
   const duration = Duration.fromMillis(absoluteMilliseconds);
-
   const units: Array<{ value: number; suffix: string }> = [
     { value: Math.floor(duration.as('years')), suffix: 'Y' },
     { value: Math.floor(duration.as('months')) % 12, suffix: 'M' },
@@ -395,14 +396,12 @@ export const convertMillisecondsToHumanReadableFormat = (
     { value: Math.floor(duration.as('minutes')) % 60, suffix: 'm' },
     { value: Math.floor(duration.as('seconds')) % 60, suffix: 's' },
   ];
-
   if (showMilliseconds) {
     units.push({
       value: Math.floor(duration.as('milliseconds')) % 1000,
       suffix: 'ms',
     });
   }
-
   const result = units
     .filter((unit) => unit.value > 0)
     .map((unit) => `${unit.value}${unit.suffix}`);
@@ -435,7 +434,6 @@ export const convertSecondsToHumanReadableFormat = (
   const isNegative = seconds < 0;
   let remainingSeconds = Math.abs(seconds);
   const result: string[] = [];
-
   const unitDivisors: Array<{ unitSeconds: number; suffix: string }> = [
     { unitSeconds: YEAR_SECONDS, suffix: 'Y' },
     { unitSeconds: MONTH_SECONDS, suffix: 'M' },
@@ -443,7 +441,6 @@ export const convertSecondsToHumanReadableFormat = (
     { unitSeconds: HOUR_SECONDS, suffix: 'h' },
     { unitSeconds: MINUTE_SECONDS, suffix: 'm' },
   ];
-
   unitDivisors.forEach(({ unitSeconds, suffix }) => {
     const value = Math.floor(remainingSeconds / unitSeconds);
     if (value > 0) {
@@ -451,13 +448,12 @@ export const convertSecondsToHumanReadableFormat = (
       remainingSeconds -= value * unitSeconds;
     }
   });
-
   const secs = Math.floor(remainingSeconds);
   if (secs > 0) {
     result.push(`${secs}s`);
   }
 
-    return buildHumanReadableResult(
+  return buildHumanReadableResult(
     result,
     length,
     isNegative,

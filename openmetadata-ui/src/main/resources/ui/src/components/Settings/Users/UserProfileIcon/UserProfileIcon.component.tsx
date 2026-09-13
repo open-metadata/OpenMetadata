@@ -30,12 +30,12 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
-    getImageWithResolutionAndFallback,
-    ImageQuality
+  getImageWithResolutionAndFallback,
+  ImageQuality,
 } from '../../../../utils/ProfilerUtils';
 import {
-    getTeamAndUserDetailsPath,
-    getUserPath
+  getTeamAndUserDetailsPath,
+  getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
@@ -48,7 +48,7 @@ import './user-profile-icon.less';
 // the shared AI menu styling unchanged while matching the Classic mode row.
 const CLASSIC_THEME_SWITCHER_CLASS =
   'tw:w-full tw:pl-6 tw:[&>div>p]:text-xs tw:[&>div>p]:font-semibold';
-  
+
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -245,7 +245,13 @@ export const UserProfileIcon = () => {
       <div
         className="w-full d-flex items-center justify-between cursor-pointer"
         data-testid={`time-format-${format}`}
-        onClick={() => handleTimeFormatChange(format)}>
+        role="button"
+        tabIndex={0}
+        onClick={() => handleTimeFormatChange(format)}
+        onKeyDown={handleKeyboardActivation(
+          () => handleTimeFormatChange(format),
+          true
+        )}>
         <Typography.Text>{label}</Typography.Text>
         <Radio checked={activeTimeFormat === format} />
       </div>
@@ -492,6 +498,7 @@ export const UserProfileIcon = () => {
         data-testid="dropdown-profile"
         icon={
           isImgUrlValid ? (
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- onError load fallback
             <img
               alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"
