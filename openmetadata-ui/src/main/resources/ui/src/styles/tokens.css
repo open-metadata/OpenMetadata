@@ -96,6 +96,7 @@
   --om-font-weight-bold: 700;
   --om-font-weight-extrabold: 800;
   --om-font-weight-black: 900;
+  --om-letter-spacing-wide: 0.08em;
   --om-line-height-none: 1;
   --om-line-height-tight: 1.25;
   --om-line-height-snug: 1.375;
