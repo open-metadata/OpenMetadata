@@ -506,8 +506,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/18 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Metric', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Metric', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Formula / expression',
@@ -522,8 +524,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/27 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Glossary Term', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Glossary Term', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Synonyms',
@@ -537,8 +541,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/143 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Table', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Table', { exact: true })
+    );
     for (const section of [
       'Description',
       'Schema',
@@ -570,8 +576,10 @@ test.describe.serial('Persona AI Context', () => {
     );
     await adminPage.getByTestId('delete-condition-button').last().click();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await chooseSelectOption(
+      entitySelect,
+      entityTypePopup.getByText('Article', { exact: true })
+    );
     await adminPage.getByTestId('context-rule-max-assets').fill('25');
 
     const createRuleRequest = adminPage.waitForRequest(
