@@ -28,10 +28,27 @@ Dark mode is controlled by a `.dark-mode` CSS class applied to a parent element 
 ### Rules
 
 - **Prefer semantic tokens over raw palette classes.** Tokens adapt to dark mode automatically and encode intent (e.g. "this is a primary surface") rather than a raw shade.
-- **Use `tw:dark:*` for explicit design decisions only** — when the token system does not express what you need, or when a specific component intentionally deviates from the default token mapping.
+- **Use `tw:dark:*` for explicit design decisions only** — when the token system does not express what you need, or when a specific component intentionally deviates from the default token mapping. The token audit reports every occurrence as a warning for review.
 - **Never hardcode hex values** inline or in style props.
+- **Do not create a parallel `--ai-*` namespace.** AI mode uses shared `--color-*` semantic tokens; the token audit reports `--ai-*` usage as a warning.
 - **Use utility colors** (`tw:bg-utility-brand-*`) for data-bound UI (badges, tags, charts) — these also invert automatically.
 - **Use foreground tokens** (`tw:text-fg-*`) for SVG icons, not text tokens.
+
+### Intentional fixed-color and dark-override review
+
+Warnings are review prompts, not build failures. A PR that intentionally keeps a fixed color or
+adds a `tw:dark:*` override must record:
+
+- the owner and tracking issue;
+- the exact component, value, and affected state;
+- why no shared semantic or utility token expresses the requirement;
+- the light and dark surfaces used for visual verification;
+- the contrast result when the value affects text, controls, focus, or status feedback;
+- a follow-up migration ticket when the exception is temporary.
+
+Fixed colors are limited to customer branding, artwork, stored user colors, and categorical or
+data-bound visualization colors. Neutral surfaces, text, borders, shadows, and interaction states
+must use shared semantic tokens.
 
 ---
 
