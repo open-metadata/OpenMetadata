@@ -490,3 +490,81 @@ describe('elasticSearchFormat – custom properties without an entity-type segme
     expect(json).toContain(SCOPED_TO_TABLE);
   });
 });
+
+describe('elasticSearchFormat – entityReference custom properties', () => {
+  const refConfig = {
+    ...BasicConfig,
+    fields: {
+      ...BasicConfig.fields,
+      extension: {
+        subfields: {
+          apiCollection: {
+            subfields: {
+              'testApiCp.displayName.keyword': {
+                __omPropertyType: 'entityReference',
+              },
+              'testApiCp.name.keyword': {
+                __omPropertyType: 'entityReference',
+              },
+              'testApiCp.fullyQualifiedName.keyword': {
+                __omPropertyType: 'array<entityReference>',
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  const REF_FIELD = 'extension.apiCollection.testApiCp.displayName.keyword';
+
+  const queryFor = (field) =>
+    JSON.stringify(
+      elasticSearchFormat(
+        makeTree('select_equals', ['address'], field),
+        refConfig
+      )
+    );
+
+  it('should read displayName from stringValue, where the indexer puts it', () => {
+    const json = queryFor(REF_FIELD);
+
+    expect(json).toContain('"customPropertiesTyped.name":"testApiCp"');
+    expect(json).toContain(
+      '"customPropertiesTyped.stringValue":{"value":"address"'
+    );
+    expect(json).not.toContain('refName');
+  });
+
+  // The picker's options come from a terms aggregation over `displayName.keyword`, which carries a
+  // `lowercase_normalizer`. `customPropertiesTyped.*` has none and keeps the original case, so an
+  // exact keyword term could never match the lower-cased option the user actually picked.
+  it('should match a reference ignoring case', () => {
+    const json = queryFor(REF_FIELD);
+
+    expect(json).toContain('"case_insensitive":true');
+  });
+
+  it('should read name from refName', () => {
+    const json = queryFor('extension.apiCollection.testApiCp.name.keyword');
+
+    expect(json).toContain(
+      '"customPropertiesTyped.refName":{"value":"address"'
+    );
+  });
+
+  it('should read fullyQualifiedName from refFqn', () => {
+    const json = queryFor(
+      'extension.apiCollection.testApiCp.fullyQualifiedName.keyword'
+    );
+
+    expect(json).toContain('"customPropertiesTyped.refFqn":{"value":"address"');
+  });
+
+  it('should keep the property name free of the sub-field suffix', () => {
+    const json = queryFor(REF_FIELD);
+
+    expect(json).not.toContain('"customPropertiesTyped.name":"displayName"');
+    expect(json).not.toContain('"customPropertiesTyped.name":"keyword"');
+  });
+});

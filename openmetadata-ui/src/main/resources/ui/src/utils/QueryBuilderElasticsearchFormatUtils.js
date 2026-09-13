@@ -271,6 +271,10 @@ function buildParameters(
  * @returns {string} - The base property name
  * @private
  */
+// The entityReference sub-fields a custom-property field can name.
+const DISPLAY_NAME_SUFFIX = '.displayName';
+const FQN_SUFFIX = '.fullyQualifiedName';
+
 function getBasePropertyName(propertyName) {
   // Handle table-cp pattern: propertyName.rows.columnName.keyword -> propertyName.rows.columnName
   // Backend stores separate entries for each column with names like "propertyName.rows.columnName"
@@ -291,11 +295,11 @@ function getBasePropertyName(propertyName) {
   // Known nested field suffixes for complex custom property types
   const nestedSuffixes = [
     '.displayName.keyword',
-    '.displayName',
+    DISPLAY_NAME_SUFFIX,
     '.name.keyword',
     '.name',
     '.fullyQualifiedName.keyword',
-    '.fullyQualifiedName',
+    FQN_SUFFIX,
     '.start',
     '.end',
     '.keyword',
@@ -311,6 +315,32 @@ function getBasePropertyName(propertyName) {
   }
 
   return baseName;
+}
+
+/**
+ * The nested sub-field holding the part of an entityReference a field names.
+ *
+ * `SearchIndexUtils.populateEntityRefFields` splits a reference across the
+ * nested doc: `name` into refName, `fullyQualifiedName` into refFqn and
+ * `displayName` into stringValue. Reading refName for all three matched a
+ * displayName against a name and returned nothing.
+ *
+ * @param {string} propertyName - The full property name, `.keyword` and all
+ * @returns {string} - The customPropertiesTyped sub-field to query
+ * @private
+ */
+function getEntityRefNestedField(propertyName) {
+  const path = String(propertyName ?? '').replace(/\.keyword$/, '');
+
+  if (path.endsWith(DISPLAY_NAME_SUFFIX)) {
+    return 'stringValue';
+  }
+
+  if (path.endsWith(FQN_SUFFIX)) {
+    return 'refFqn';
+  }
+
+  return 'refName';
 }
 
 /**
@@ -331,7 +361,10 @@ function getFieldTypeInfoFromOmType(omPropertyType, propertyName) {
   switch (omPropertyType) {
     case 'entityReference':
     case 'array<entityReference>':
-      return { fieldType: 'entityReference', nestedField: 'refName' };
+      return {
+        fieldType: 'entityReference',
+        nestedField: getEntityRefNestedField(propertyName),
+      };
     case 'hyperlink-cp':
       return { fieldType: 'hyperlink', nestedField: 'stringValue' };
     case 'table-cp':
@@ -371,11 +404,14 @@ function getFieldTypeInfo(propertyName) {
   // are not misclassified. For full disambiguation when the property name itself
   // is `owner.name`, callers should pass the type via getFieldTypeInfoFromOmType.
   if (
-    propertyName.endsWith('.displayName') ||
+    propertyName.endsWith(DISPLAY_NAME_SUFFIX) ||
     propertyName.endsWith('.name') ||
-    propertyName.endsWith('.fullyQualifiedName')
+    propertyName.endsWith(FQN_SUFFIX)
   ) {
-    return { fieldType: 'entityReference', nestedField: 'refName' };
+    return {
+      fieldType: 'entityReference',
+      nestedField: getEntityRefNestedField(propertyName),
+    };
   }
 
   // Hyperlink fields: propertyName.url.keyword or propertyName.displayText.keyword
@@ -466,7 +502,13 @@ function isRangeOperator(operator) {
  * @private
  */
 // eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
-function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
+function buildNestedTypedQuery(
+  propertyName,
+  nestedField,
+  value,
+  operator,
+  caseInsensitive = false
+) {
   const mustClauses = [
     { term: { 'customPropertiesTyped.name': propertyName } },
   ];
@@ -497,7 +539,11 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
     // Exact match
     const termValue = Array.isArray(value) ? value[0] : value;
     mustClauses.push({
-      term: { [`customPropertiesTyped.${nestedField}`]: termValue },
+      term: {
+        [`customPropertiesTyped.${nestedField}`]: caseInsensitive
+          ? { value: termValue, case_insensitive: true }
+          : termValue,
+      },
     });
   }
 
@@ -647,12 +693,12 @@ function buildExtensionQuery(
       operator
     );
   } else if (fieldType === 'entityReference') {
-    // EntityReference: use refName for exact match queries
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
-      'refName',
+      nestedField ?? 'refName',
       value,
-      operator
+      operator,
+      true
     );
   } else if (
     (fieldType === 'hyperlink' || fieldType === 'table') &&
