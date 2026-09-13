@@ -2,9 +2,64 @@
 
 Partial performance evidence for the completed composition implementation; its latency gate remains open.
 
+## Metrics and RDF follow-up (2026-09-13)
+
+The current frozen service is
+`854c3d28e74c6284f768cda27801c78b164249500577a2969b495b3e32ca34ae`.
+Compared with the preceding `6c304617…` package, only `TableMetadataLoader`, its new
+private result record and `RdfIndexingFields` have different class bytes; all runtime
+dependencies are unchanged. The original baseline remains `306263df…` from `b50e9277f9`.
+
+Table and column metrics now use one batched extension query. Exact dotted extension
+prefixes preserve their separate scopes, and table-only requests retain the narrow
+query. Real database tests fail the original two-query implementation and pass the
+one-query budget at widths 3/100/1,000 and for multiple tables. RDF field selection
+also retains dedicated mapper inputs, restoring foreign-key projection.
+
+The current warm, cold and L1-cold comparisons cover 78 reads on both databases,
+with five measured requests per workload and no read commits or rollbacks. No
+statement total exceeds the original baseline. Cold comparisons have 69 lower and
+nine equal totals on each database; warm comparisons have 45 lower/33 equal on
+PostgreSQL and 46 lower/32 equal on MySQL, while L1-cold has 45 lower/33 equal on each.
+For five warm requests on 100-column tables:
+
+| Workload | Original statements | Current statements |
+| --- | ---: | ---: |
+| Table and column custom metrics | 505 | 5 |
+| List with custom metrics | 525 | 25 |
+| Expanded table, admin, ID (PostgreSQL) | 1,036 | 35 |
+| Cached full-table columns | 0 | 0 |
+
+All 60 mutation/CSV workloads pass two measured requests per revision on each
+database. All 54 synchronous SQL totals fall, and single create, PUT, PATCH,
+delete and restore retain one owning commit per request. Existing bulk/import
+flush and feed boundaries remain distinct; asynchronous counters exclude worker SQL.
+
+These results do not close the complete SQL gate. The preceding-stage runs used a
+different workload order; certification bundle coverage changes 24 warm/L1-cold
+totals, requiring a comparison from matching cache state. PostgreSQL steady Redis
+outage has no higher totals, but one recovery workload records a query spike.
+Earlier failed MySQL warmups stop before the API call, at the benchmark's cache-reset
+control endpoint. Their traces remain retained and are excluded from acceptance.
+
+A real HTTP regression reproduces dropped connections with the control listener's
+one-slot queue. Its queue and listener backlog are now bounded at 32, with one worker
+retaining serialized reset/SQL effects. All 32 benchmark protocol tests pass, including
+burst acknowledgements and authentication. No retries hide failed API requests.
+The frozen v6 control manifest is
+`8ecaa4c68647a6edda4750423ff260ebc09233a700deaabf749e297279a2369b`;
+the shared v10 client manifest is
+`d7be9d1e33cff6bde65b00749d1260d73e14a94bb5a24556a9259dbacbdf52f5`.
+Fresh matching control runs are required before accepting the recovery comparison.
+
+All measurements above are instrumented SQL diagnostics, with raw data under
+`.context/entity-acceptance/metrics-*`. They overlap builds/tests and do not measure
+accepted latency. Five-pair latency, capacity/load, overload/recovery and allocation
+comparisons remain open on the current artifact.
+
 ## Post-merge SQL verification (2026-09-13)
 
-The current service package has SHA-256
+The preceding column-read stage has service SHA-256
 `6c3046171bc03246335a5504bc2777c40a1b449d7ed68bfb1ead09f824a2519e`.
 Its source includes the merge with `main` at `68606d705a` and the column-page
 owner lookup fix. The original service remains `306263df…` from `b50e9277f9`.
@@ -17,12 +72,13 @@ authorization still runs for every request. Real API regressions verify paginati
 omitted/empty/metadata fields, actual stored profiles, owner access and non-owner
 PII masking. The benchmark adds 36 column-page workloads across widths 3, 100
 and 1,000, ID/FQN lookups, admin/reader principals and basic/metadata/profile fields.
-The current manifest contains 138 workloads, and all 26 benchmark protocol tests pass.
+The manifest contains 138 workloads; the current protocol test count is recorded above.
 
-All 78 read workloads passed five measured requests on each revision: 780
-responses, no errors, and no read commits or rollbacks. Statement totals fell
-in 69 cases, stayed equal in nine and increased in none. The following totals
-are for **five measured requests** on 100-column fixtures:
+All 78 read workloads passed five measured requests on each revision in warm,
+cold and L1-cold modes on both PostgreSQL and MySQL: 4,680 responses, no errors,
+and no read commits or rollbacks. Each of the six comparisons has 69 lower,
+nine equal and zero higher statement totals. The following PostgreSQL warm
+totals are for **five measured requests** on 100-column fixtures:
 
 | Workload | Original statements | Current statements |
 | --- | ---: | ---: |
@@ -42,8 +98,9 @@ required relationship reads. The full-table column workload already issues zero
 SQL on both artifacts, so this endpoint fix does not resolve that workload's
 earlier p99 concern.
 
-All 60 mutation/CSV workloads also passed two measured requests on each revision:
-240 responses and no errors. All 54 synchronous workloads used fewer statements.
+All 60 mutation/CSV workloads also passed two measured requests on each revision
+on both databases: 480 responses and no errors. All 54 synchronous workloads
+used fewer statements in each comparison.
 Single create, PUT, PATCH, delete and restore operations each retained one owning
 commit per request. Bulk and import totals include their existing flush and feed
 boundaries; they must not be described as one commit for an entire multi-flush API.
@@ -51,12 +108,26 @@ Unchanged bulk records one owning commit instead of zero on the original artifac
 its SQL work remains nonzero. The six asynchronous cases count only HTTP
 acceptance/completion polling, not background mutation SQL or commits.
 
-These runs use Java 21, fixed 1 GB G1 heaps, durable PostgreSQL 16, OpenSearch 3.4
-and Redis 7. They are **SQL diagnostics, not latency acceptance**: other builds and
+These runs use Java 21, fixed 1 GB G1 heaps, durable PostgreSQL 16 or MySQL 8.3,
+OpenSearch 3.4 and Redis 7. They are **SQL diagnostics, not latency acceptance**: other builds and
 regression suites were active. The final database/cache/load/tail and allocation
 matrix remains open. Raw results and comparisons are retained under
 `.context/entity-acceptance/` as `{original,fixed}-{read,page,write}-sql.csv` and
-`{read,write}-sql-comparison.csv`, with per-workload counters and input hashes.
+the cold, L1-cold and MySQL variants, with per-workload counters and input hashes.
+
+Separate Redis outage/recovery runs retain their own scope. All read responses
+pass in the repeated runs on both databases, but some statement totals increase
+around cache-state transitions. Those comparisons do not yet establish SQL
+parity. The benchmark now exposes the provider's availability and records up
+to 512 DAO method counters per diagnostic window, without SQL text or bound
+values, to distinguish steady unavailable/recovered states from the transitions.
+
+The first original-artifact recovery attempt failed during a warmup and did not
+retain its HTTP status. It remains an incomplete comparison. Failed warmups now
+write ordered request traces before aborting; successful warmups retain their
+existing path, and failed warmups never start measurement. The frozen v9 client
+manifest SHA-256 is
+`1240a089744b44c258a6aa05c67a2a0b0639d58aefecceae5ac861f5d1cb65e5`.
 
 ## Pre-merge final-package SQL verification
 

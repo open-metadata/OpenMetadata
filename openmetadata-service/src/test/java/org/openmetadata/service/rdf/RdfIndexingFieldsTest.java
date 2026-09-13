@@ -37,4 +37,21 @@ class RdfIndexingFieldsTest {
         List.of("columns", "domains", "followers", "owners"),
         RdfIndexingFields.forSupportedFields(supportedFields));
   }
+
+  @Test
+  void retainsInputsOfDedicatedRdfMappers() {
+    final Set<String> supportedFields =
+        Set.of(
+            "tableConstraints",
+            "profile",
+            "pipelineStatus",
+            "usageSummary",
+            "changeDescription",
+            "testCaseResult",
+            Entity.FIELD_VOTES);
+
+    assertEquals(
+        List.of("pipelineStatus", "profile", "tableConstraints", "usageSummary"),
+        RdfIndexingFields.forSupportedFields(supportedFields));
+  }
 }

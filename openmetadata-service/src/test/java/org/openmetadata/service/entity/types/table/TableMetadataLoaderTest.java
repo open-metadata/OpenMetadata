@@ -3,6 +3,7 @@ package org.openmetadata.service.entity.types.table;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecordWithId;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class TableMetadataLoaderTest {
@@ -76,6 +78,53 @@ class TableMetadataLoaderTest {
   }
 
   @Test
+  void metricScopesAndTablesRemainDistinctWhenColumnNamesOverlap() {
+    final UUID otherId = UUID.randomUUID();
+    final Table first = new Table().withId(tableId).withColumns(List.of(column("selected")));
+    final Table second = new Table().withId(otherId).withColumns(List.of(column("selected")));
+    final CustomMetric tableMetric =
+        new CustomMetric().withName("shared").withColumnName("selected").withExpression("count(*)");
+    final CustomMetric columnMetric =
+        new CustomMetric().withName("shared").withColumnName("selected").withExpression("sum(x)");
+    final CustomMetric otherMetric =
+        new CustomMetric().withName("other").withColumnName("selected");
+    storedMetrics(
+        List.of(
+            batchMetric(tableId, TableMetadataLoader.TABLE_EXTENSION, tableMetric),
+            batchMetric(tableId, TableMetadataLoader.TABLE_COLUMN_EXTENSION, columnMetric),
+            batchMetric(otherId, TableMetadataLoader.TABLE_COLUMN_EXTENSION, otherMetric),
+            new ExtensionRecordWithId(
+                tableId,
+                "customMetrics.table.tableish.unrelated",
+                JsonUtils.pojoToJson("unrelated"))));
+
+    loader.loadMetrics(List.of(first, second), true);
+
+    assertEquals(List.of(tableMetric), first.getCustomMetrics());
+    assertEquals(List.of(columnMetric), first.getColumns().getFirst().getCustomMetrics());
+    assertEquals(List.of(), second.getCustomMetrics());
+    assertEquals(List.of(otherMetric), second.getColumns().getFirst().getCustomMetrics());
+  }
+
+  @Test
+  void tableOnlyMetricsDoNotReadOrDecodeColumnMetrics() {
+    final CustomMetric expected = new CustomMetric().withName("table_metric");
+    final CustomMetric retained = new CustomMetric().withName("retained");
+    final Column column = column("selected").withCustomMetrics(List.of(retained));
+    final Table table = new Table().withId(tableId).withColumns(List.of(column));
+    storedMetrics(
+        List.of(
+            batchMetric(tableId, TableMetadataLoader.TABLE_EXTENSION, expected),
+            new ExtensionRecordWithId(
+                tableId, "customMetrics.table.column.unread", JsonUtils.pojoToJson("unread"))));
+
+    loader.loadMetrics(List.of(table), false);
+
+    assertEquals(List.of(expected), table.getCustomMetrics());
+    assertEquals(List.of(retained), column.getCustomMetrics());
+  }
+
+  @Test
   void malformedExtensionDoesNotPreventLaterColumnsFromLoading() {
     final Column malformed = column("malformed").withExtension(Map.of("stale", true));
     final Column valid = column("valid");
@@ -129,5 +178,26 @@ class TableMetadataLoaderTest {
 
   private ExtensionRecord metricRecord(final CustomMetric metric) {
     return new ExtensionRecord(metric.getName(), JsonUtils.pojoToJson(metric));
+  }
+
+  private ExtensionRecordWithId batchMetric(
+      final UUID id, final String scope, final CustomMetric metric) {
+    return new ExtensionRecordWithId(
+        id,
+        TableMetadataLoader.CUSTOM_METRICS_EXTENSION + scope + "." + metric.getName(),
+        JsonUtils.pojoToJson(metric));
+  }
+
+  private void storedMetrics(final List<ExtensionRecordWithId> records) {
+    when(dao.getExtensionsBatch(anyList(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              final List<String> ids = invocation.getArgument(0);
+              final String prefix = invocation.getArgument(1);
+              return records.stream()
+                  .filter(record -> ids.contains(record.id().toString()))
+                  .filter(record -> record.extensionName().startsWith(prefix + "."))
+                  .toList();
+            });
   }
 }

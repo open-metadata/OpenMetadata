@@ -13,6 +13,7 @@
 
 package org.openmetadata.it.tests;
 
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -113,6 +115,38 @@ public class AppsResourceIT {
       // Best-effort wait — the app may be continuously running under parallel test load.
       // The subsequent trigger call handles "already running" with its own retry.
     }
+  }
+
+  private AppRunRecord waitForTriggeredRunCompletion(
+      final String appName, final long triggeredAfter) {
+    final HttpClient client = SdkClients.adminClient().getHttpClient();
+    return Awaitility.await("Complete the triggered app run: " + appName)
+        .atMost(Duration.ofMinutes(5))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptionsMatching(
+            exception ->
+                exception instanceof ApiException apiException
+                    && apiException.getStatusCode() == HTTP_NOT_FOUND)
+        .until(
+            () ->
+                client.execute(
+                    HttpMethod.GET,
+                    "/v1/apps/name/" + appName + "/runs/latest",
+                    null,
+                    AppRunRecord.class),
+            run -> isCompletedRun(run, triggeredAfter));
+  }
+
+  private static boolean isCompletedRun(final AppRunRecord run, final long triggeredAfter) {
+    return run != null
+        && run.getStartTime() != null
+        && run.getStartTime() >= triggeredAfter
+        && run.getEndTime() != null
+        && run.getStatus() != null
+        && switch (run.getStatus()) {
+          case COMPLETED, SUCCESS, FAILED, STOPPED -> true;
+          default -> false;
+        };
   }
 
   @Test
@@ -369,6 +403,7 @@ public class AppsResourceIT {
 
     waitForAppJobCompletion(appName);
 
+    final long triggeredAfter = System.currentTimeMillis();
     // Wait for any in-flight job to finish, then trigger
     Awaitility.await("Trigger " + appName)
         .atMost(Duration.ofMinutes(2))
@@ -381,23 +416,8 @@ public class AppsResourceIT {
               return true;
             });
 
-    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
-    Awaitility.await("Wait for app run record to be available")
-        .atMost(Duration.ofSeconds(30))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              AppRunRecord run =
-                  httpClient.execute(
-                      HttpMethod.GET,
-                      "/v1/apps/name/" + appName + "/runs/latest",
-                      null,
-                      AppRunRecord.class);
-              assertNotNull(run);
-              assertNotNull(run.getStatus());
-            });
+    final AppRunRecord run = waitForTriggeredRunCompletion(appName, triggeredAfter);
+    assertNotNull(run.getStatus());
   }
 
   @Test
@@ -407,6 +427,7 @@ public class AppsResourceIT {
 
     waitForAppJobCompletion(appName);
 
+    final long triggeredAfter = System.currentTimeMillis();
     Map<String, Object> config = new HashMap<>();
     config.put("batchSize", 1234);
 
@@ -423,23 +444,9 @@ public class AppsResourceIT {
               return true;
             });
 
-    Awaitility.await("Wait for app run with custom config")
-        .atMost(Duration.ofSeconds(30))
-        .pollDelay(Duration.ofMillis(500))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              AppRunRecord run =
-                  httpClient.execute(
-                      HttpMethod.GET,
-                      "/v1/apps/name/" + appName + "/runs/latest",
-                      null,
-                      AppRunRecord.class);
-              assertNotNull(run);
-              assertNotNull(run.getConfig());
-              assertEquals(1234, run.getConfig().get("batchSize"));
-            });
+    final AppRunRecord run = waitForTriggeredRunCompletion(appName, triggeredAfter);
+    assertNotNull(run.getConfig());
+    assertEquals(1234, run.getConfig().get("batchSize"));
   }
 
   @Test

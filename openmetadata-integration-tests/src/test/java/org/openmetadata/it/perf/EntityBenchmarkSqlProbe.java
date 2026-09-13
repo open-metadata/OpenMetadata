@@ -4,7 +4,9 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
@@ -16,7 +18,14 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 /** Explicitly enabled diagnostic windows; never installed during latency comparisons. */
 final class EntityBenchmarkSqlProbe implements SqlLogger, AutoCloseable {
-  record Counts(long statements, long commits, long rollbacks, long emptyCommits) {}
+  record Counts(
+      long statements,
+      long commits,
+      long rollbacks,
+      long emptyCommits,
+      Map<String, Long> methods) {}
+
+  private static final String DIRECT_STATEMENT = "direct";
 
   private final Jdbi jdbi;
   private final SqlLogger logger;
@@ -25,6 +34,8 @@ final class EntityBenchmarkSqlProbe implements SqlLogger, AutoCloseable {
   private final LongAdder commits = new LongAdder();
   private final LongAdder rollbacks = new LongAdder();
   private final LongAdder emptyCommits = new LongAdder();
+  private final Cache<String, LongAdder> methods =
+      CacheBuilder.newBuilder().maximumSize(512).build();
   private final Cache<Connection, LongAdder> activeTransactions =
       CacheBuilder.newBuilder().maximumSize(1024).weakKeys().build();
   private volatile boolean active = true;
@@ -38,7 +49,12 @@ final class EntityBenchmarkSqlProbe implements SqlLogger, AutoCloseable {
   }
 
   Counts counts() {
-    return new Counts(statements.sum(), commits.sum(), rollbacks.sum(), emptyCommits.sum());
+    final Map<String, Long> methodCounts =
+        methods.asMap().entrySet().stream()
+            .collect(
+                Collectors.toUnmodifiableMap(Map.Entry::getKey, entry -> entry.getValue().sum()));
+    return new Counts(
+        statements.sum(), commits.sum(), rollbacks.sum(), emptyCommits.sum(), methodCounts);
   }
 
   private void record(LongAdder counter) {
@@ -49,13 +65,27 @@ final class EntityBenchmarkSqlProbe implements SqlLogger, AutoCloseable {
 
   @Override
   public void logBeforeExecution(StatementContext context) {
-    record(statements);
+    recordStatement(context);
     final LongAdder transactionStatements =
         activeTransactions.getIfPresent(context.getConnection());
     if (transactionStatements != null) {
       transactionStatements.increment();
     }
     logger.logBeforeExecution(context);
+  }
+
+  private void recordStatement(final StatementContext context) {
+    if (active && RequestLatencyContext.getContext() != null) {
+      statements.increment();
+      final var extension = context.getExtensionMethod();
+      final String name =
+          extension == null
+              ? DIRECT_STATEMENT
+              : extension.getMethod().getDeclaringClass().getName()
+                  + "#"
+                  + extension.getMethod().getName();
+      methods.asMap().computeIfAbsent(name, ignored -> new LongAdder()).increment();
+    }
   }
 
   @Override

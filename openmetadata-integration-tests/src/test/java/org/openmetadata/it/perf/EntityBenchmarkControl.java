@@ -25,7 +25,11 @@ import org.testcontainers.containers.GenericContainer;
 
 /** Local benchmark controls run outside measured API requests and never enter the application. */
 public final class EntityBenchmarkControl implements AutoCloseable {
+  private static final int CONTROL_BACKLOG = 32;
+
   public record Endpoint(URI uri, String token) {}
+
+  record CacheState(boolean configured, boolean available) {}
 
   record Heap(
       long used,
@@ -41,9 +45,12 @@ public final class EntityBenchmarkControl implements AutoCloseable {
 
   private static EntityBenchmarkSqlProbe sqlProbe;
 
-  private EntityBenchmarkControl() throws IOException {
-    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 1);
-    executor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1));
+  EntityBenchmarkControl(final Path endpointFile) throws IOException {
+    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), CONTROL_BACKLOG);
+    // Reset and SQL clients share this listener; accept bursts while serializing control effects.
+    executor =
+        new ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(CONTROL_BACKLOG));
     endpoint =
         new Endpoint(
             URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
@@ -51,13 +58,13 @@ public final class EntityBenchmarkControl implements AutoCloseable {
     server.setExecutor(executor);
     server.createContext("/", this::handle);
     server.start();
+    writeEndpoint(endpointFile);
   }
 
   public static void main(String[] args) throws Exception {
     if (args.length != 1)
       throw new IllegalArgumentException("Expected the benchmark manifest path");
-    try (var control = new EntityBenchmarkControl()) {
-      control.writeEndpoint(Path.of(args[0] + ".control.json"));
+    try (var control = new EntityBenchmarkControl(Path.of(args[0] + ".control.json"))) {
       Runtime.getRuntime().addShutdownHook(new Thread(control::close));
       EntityBenchmarkServer.main(args);
     }
@@ -116,6 +123,9 @@ public final class EntityBenchmarkControl implements AutoCloseable {
         redis().getDockerClient().unpauseContainerCmd(redis().getContainerId()).exec();
         yield "ok";
       }
+      case "/cache-state" -> JsonUtils.pojoToJson(
+          new CacheState(
+              TestSuiteBootstrap.isRedisEnabled(), CacheBundle.getCacheProvider().available()));
       case "/heap" -> JsonUtils.pojoToJson(heap());
       case "/sql-start" -> startSqlProbe();
       case "/sql-stop" -> stopSqlProbe();

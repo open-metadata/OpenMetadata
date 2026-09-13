@@ -51,10 +51,17 @@ class TableMetadataReadIT {
     insertMetric(
         table,
         new CustomMetric().withName("column_sum").withColumnName("c0").withExpression("sum(c0)"));
+    Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .insert(
+            table.getId(),
+            TableRepository.CUSTOM_METRICS_EXTENSION + "table.tableish.unrelated",
+            "customMetric",
+            JsonUtils.pojoToJson("This extension is outside the requested metric scopes"));
 
     ReadResult<Table> result = read(table, "columns,customMetrics");
 
-    assertEquals(2, result.extensionQueries());
+    assertEquals(1, result.extensionQueries());
     assertMetrics(result.value(), columnCount);
     assertMetrics(
         SdkClients.adminClient().tables().get(table.getId().toString(), "columns,customMetrics"),
@@ -108,7 +115,7 @@ class TableMetadataReadIT {
               return tables;
             });
 
-    assertEquals(2, result.extensionQueries());
+    assertEquals(1, result.extensionQueries());
     assertEquals("first", first.getColumns().getFirst().getCustomMetrics().getFirst().getName());
     assertEquals("second", second.getColumns().getFirst().getCustomMetrics().getFirst().getName());
     assertEquals(List.of(), first.getCustomMetrics());

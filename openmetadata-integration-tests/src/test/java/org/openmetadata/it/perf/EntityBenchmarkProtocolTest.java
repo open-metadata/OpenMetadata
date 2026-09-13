@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -30,6 +31,27 @@ import org.openmetadata.schema.utils.JsonUtils;
 @Isolated("Configures benchmark scheduling through system properties")
 class EntityBenchmarkProtocolTest {
   @TempDir Path directory;
+
+  @Test
+  void workloadOrderIsStableAcrossDifferentManifestOrders() throws Exception {
+    final HttpServer server = server();
+    final var received = new ConcurrentLinkedQueue<String>();
+    server.createContext(
+        "/",
+        exchange -> {
+          received.add(exchange.getRequestURI().getPath());
+          respond(exchange, 200, "{}");
+        });
+    server.start();
+    try {
+      final var alpha = new Workload("alpha", List.of(), request("GET", "/alpha", null, 200));
+      final var beta = new Workload("beta", List.of(), request("GET", "/beta", null, 200));
+      measure(server, List.of(beta, alpha), 1, 0, "1000");
+      assertEquals(List.of("/alpha", "/beta"), List.copyOf(received));
+    } finally {
+      server.stop(0);
+    }
+  }
 
   @Test
   void workloadCredentialsReplaceTheDefaultAuthorizationHeader() throws Exception {
@@ -100,6 +122,49 @@ class EntityBenchmarkProtocolTest {
       } else {
         System.setProperty("entityBenchmark.scheduling", previous);
       }
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void failedWarmupRetainsItsHttpStatusWithoutStartingMeasurement() throws Exception {
+    final HttpServer server = server();
+    final AtomicInteger received = new AtomicInteger();
+    server.createContext(
+        "/read",
+        exchange -> {
+          received.incrementAndGet();
+          respond(exchange, 503, "{}");
+        });
+    server.start();
+    try {
+      final var workload = new Workload("read", List.of(), request("GET", "/read", null, 200));
+      assertThrows(IllegalStateException.class, () -> measure(server, workload, 2, 1));
+      final List<String> trace =
+          Files.readAllLines(directory.resolve("result.csv.read.warmup.requests.csv"));
+      assertEquals(2, trace.size());
+      assertTrue(trace.getLast().endsWith(",503,false"));
+      assertEquals(1, received.get());
+      assertFalse(Files.exists(directory.resolve("result.csv")));
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  void disconnectedWarmupRetainsZeroStatusWithoutStartingMeasurement() throws Exception {
+    final HttpServer server = server();
+    server.createContext("/read", HttpExchange::close);
+    server.start();
+    try {
+      final var workload = new Workload("read", List.of(), request("GET", "/read", null, 200));
+      assertThrows(IllegalStateException.class, () -> measure(server, workload, 2, 1));
+      final List<String> trace =
+          Files.readAllLines(directory.resolve("result.csv.read.warmup.requests.csv"));
+      assertEquals(2, trace.size());
+      assertTrue(trace.getLast().endsWith(",0,false"));
+      assertFalse(Files.exists(directory.resolve("result.csv")));
+    } finally {
       server.stop(0);
     }
   }
@@ -227,14 +292,18 @@ class EntityBenchmarkProtocolTest {
 
   private void measure(HttpServer server, Workload workload, int samples, int warmup, String rate)
       throws Exception {
+    measure(server, List.of(workload), samples, warmup, rate);
+  }
+
+  private void measure(
+      HttpServer server, List<Workload> workloads, int samples, int warmup, String rate)
+      throws Exception {
     final Path manifest = directory.resolve("manifest.json");
     Files.writeString(
         manifest,
         JsonUtils.pojoToJson(
             new EntityBenchmarkManifest(
-                "http://127.0.0.1:" + server.getAddress().getPort(),
-                "test-token",
-                List.of(workload))));
+                "http://127.0.0.1:" + server.getAddress().getPort(), "test-token", workloads)));
     EntityApiBenchmark.main(
         new String[] {
           manifest.toString(),

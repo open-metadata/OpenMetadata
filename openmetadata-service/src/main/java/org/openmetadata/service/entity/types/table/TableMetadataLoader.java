@@ -15,6 +15,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecordWithId;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -27,6 +28,10 @@ public final class TableMetadataLoader {
   public static final String TABLE_EXTENSION = "table.table";
   public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
 
+  private static final String TABLE_METRICS_PREFIX = CUSTOM_METRICS_EXTENSION + TABLE_EXTENSION;
+  private static final String COLUMN_METRICS_PREFIX =
+      CUSTOM_METRICS_EXTENSION + TABLE_COLUMN_EXTENSION;
+
   private final Supplier<EntityExtensionDAO> extensions;
 
   public TableMetadataLoader(final Supplier<EntityExtensionDAO> extensions) {
@@ -38,17 +43,15 @@ public final class TableMetadataLoader {
       return;
     }
     final List<String> ids = tables.stream().map(table -> table.getId().toString()).toList();
-    final Map<UUID, List<CustomMetric>> tableMetrics = loadMetricsByTable(ids, TABLE_EXTENSION);
+    final MetricsByTable metrics = loadMetricsByTable(ids, includeColumns);
     tables.forEach(
-        table -> table.setCustomMetrics(tableMetrics.getOrDefault(table.getId(), List.of())));
-    if (includeColumns) {
-      final Map<UUID, List<CustomMetric>> columnMetrics =
-          loadMetricsByTable(ids, TABLE_COLUMN_EXTENSION);
-      tables.forEach(
-          table ->
-              applyColumnMetrics(
-                  table.getColumns(), columnMetrics.getOrDefault(table.getId(), List.of())));
-    }
+        table -> {
+          table.setCustomMetrics(metrics.tableMetrics().getOrDefault(table.getId(), List.of()));
+          if (includeColumns) {
+            applyColumnMetrics(
+                table.getColumns(), metrics.columnMetrics().getOrDefault(table.getId(), List.of()));
+          }
+        });
   }
 
   public void loadColumnMetrics(final UUID tableId, final List<Column> columns) {
@@ -64,17 +67,30 @@ public final class TableMetadataLoader {
     }
   }
 
-  private Map<UUID, List<CustomMetric>> loadMetricsByTable(
-      final List<String> ids, final String scope) {
-    final Map<UUID, List<CustomMetric>> metrics = new HashMap<>();
-    for (final var record :
-        extensions.get().getExtensionsBatch(ids, CUSTOM_METRICS_EXTENSION + scope)) {
-      metrics
-          .computeIfAbsent(record.id(), ignored -> new ArrayList<>())
-          .add(JsonUtils.readValue(record.extensionJson(), CustomMetric.class));
+  private MetricsByTable loadMetricsByTable(final List<String> ids, final boolean includeColumns) {
+    final MetricsByTable metrics =
+        new MetricsByTable(new HashMap<>(), includeColumns ? new HashMap<>() : Map.of());
+    final String prefix =
+        includeColumns ? CUSTOM_METRICS_EXTENSION + "table" : TABLE_METRICS_PREFIX;
+    for (final var record : extensions.get().getExtensionsBatch(ids, prefix)) {
+      if (record.extensionName().startsWith(TABLE_METRICS_PREFIX + ".")) {
+        addMetric(metrics.tableMetrics(), record);
+      } else if (includeColumns && record.extensionName().startsWith(COLUMN_METRICS_PREFIX + ".")) {
+        addMetric(metrics.columnMetrics(), record);
+      }
     }
     return metrics;
   }
+
+  private void addMetric(
+      final Map<UUID, List<CustomMetric>> metrics, final ExtensionRecordWithId record) {
+    metrics
+        .computeIfAbsent(record.id(), ignored -> new ArrayList<>())
+        .add(JsonUtils.readValue(record.extensionJson(), CustomMetric.class));
+  }
+
+  private record MetricsByTable(
+      Map<UUID, List<CustomMetric>> tableMetrics, Map<UUID, List<CustomMetric>> columnMetrics) {}
 
   private void applyColumnMetrics(final List<Column> columns, final List<CustomMetric> metrics) {
     if (nullOrEmpty(columns)) {

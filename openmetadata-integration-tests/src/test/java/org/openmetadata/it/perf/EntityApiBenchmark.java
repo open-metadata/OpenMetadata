@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -13,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.LockSupport;
 import org.openmetadata.it.perf.EntityBenchmarkHttp.Context;
 import org.openmetadata.it.perf.EntityBenchmarkManifest.Request;
@@ -21,6 +23,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 
 /** Version-neutral HTTP measurements. Run in a separate JVM from each benchmark server. */
 public final class EntityApiBenchmark {
+  private static final int MAX_REPORTED_IO_ERRORS = 5;
+  private final AtomicInteger reportedIoErrors = new AtomicInteger();
   private final EntityBenchmarkManifest manifest;
   private final EntityBenchmarkHttp http;
   private final EntityBenchmarkGate gate;
@@ -84,6 +88,7 @@ public final class EntityApiBenchmark {
     final List<Workload> selected =
         manifest.workloads().stream()
             .filter(workload -> workload.name().matches(expression))
+            .sorted(Comparator.comparing(Workload::name))
             .toList();
     if (selected.isEmpty()) {
       throw new IllegalArgumentException("No workload matches the requested expression");
@@ -95,11 +100,20 @@ public final class EntityApiBenchmark {
     final Sampling sampling = options.sampling();
     final List<Context> prepared = prepare(workload, sampling.warmup() + sampling.samples());
     final Measurement warmup = run(workload, sampling.warmup(), sampling.rate(), 0, prepared);
-    requireSuccessfulRequests(warmup.errors(), "Warmup for " + workload.name());
+    requireSuccessfulWarmup(workload, options, warmup);
     try (var observation =
         EntityBenchmarkObservation.open(
             Path.of(options.output() + "." + workload.name() + ".sql.json"))) {
       return run(workload, sampling.samples(), sampling.rate(), sampling.warmup(), prepared);
+    }
+  }
+
+  private static void requireSuccessfulWarmup(
+      final Workload workload, final Options options, final Measurement warmup) throws IOException {
+    if (warmup.errors() > 0) {
+      warmup.writeRequests(
+          Path.of(options.output() + "." + workload.name() + ".warmup.requests.csv"));
+      requireSuccessfulRequests(warmup.errors(), "Warmup for " + workload.name());
     }
   }
 
@@ -268,9 +282,21 @@ public final class EntityApiBenchmark {
       }
       return new Sample(completed - requestStarted, success, submissionDelay, status);
     } catch (IOException exception) {
-      return new Sample(System.nanoTime() - requestStarted, false, submissionDelay, status);
+      final long completed = System.nanoTime();
+      reportIoFailure(workload, exception);
+      return new Sample(completed - requestStarted, false, submissionDelay, status);
     } finally {
       inFlight.release();
+    }
+  }
+
+  private void reportIoFailure(final Workload workload, final IOException exception) {
+    if (reportedIoErrors.getAndIncrement() < MAX_REPORTED_IO_ERRORS) {
+      System.getLogger(EntityApiBenchmark.class.getName())
+          .log(
+              System.Logger.Level.WARNING,
+              "Benchmark I/O failure for " + workload.name(),
+              exception);
     }
   }
 

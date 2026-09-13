@@ -4,7 +4,7 @@ Checkpoint: integration with `main` at `68606d705a` and acceptance follow-up, 20
 **Verification is in progress.**
 
 The worktree no longer contains `EntityRepository.java`, originally 13,569 lines.
-Its responsibilities now live in 209 focused components (23,223 lines), including seven startup
+Its responsibilities now live in 209 focused components (23,239 lines), including seven startup
 assemblies and entity policy interfaces. All 74 direct production subclasses use
 `EntityPolicy`. All 69 updater subclasses use composed mutation policies;
 13 service repositories implement `EntityServicePolicy` and share service components.
@@ -21,19 +21,20 @@ Removing the file does not establish correctness or latency improvement.
 | Entity policies and retirement of common repository and updater inheritance | Implemented; clean production compilation and packaged selection pass |
 | Architecture and Java extension migration guide | Available in [entity-module-migration.md](entity-module-migration.md) |
 | Final policy callers | Search/RDF offset readers and custom result pages migrated; 14 unused helpers and two migrated helpers removed |
-| Main merge validation | Current local service suite: 10,363 passes and one skip; MCP: 630 passes; all three integration CI profiles pass at native `78cd7f33c9` |
+| Main merge validation | Metrics-stage local service suite: 10,365 passes and one skip; MCP: 630 passes; all three integration CI profiles pass at native `47786d0cdc` |
 | CI follow-up validation | Column/transaction/cache selection: 79 passes per database with Redis and 29 without Redis; pagination passes three local browser runs; RDF readiness recovery passes all 14 graph browser cases |
-| Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `993d0655e3` / Collate `52b1372694` |
+| Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `47786d0cdc` / Collate `3c38b73212`; refreshed full service unit suite passes 4,193 cases with six skips |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
 
 ## Current acceptance follow-up
 
-The native [service unit build](https://github.com/open-metadata/OpenMetadata/actions/runs/34771883391)
-passes 10,363 tests with one skip. The matching companion
-[backend build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34765679621)
-and [governance/data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34765680560)
-both pass. Collate's 13 repository families and their callers now use the composed APIs.
+At native `47786d0cdc`, all three backend integration profiles, RDF browser CI,
+the main and nightly UI browser checks, and formatting checks pass. The matching
+companion `3c38b73212`
+[backend build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34775900186)
+and [governance/data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34775900407)
+also pass. Collate's 13 repository families and their callers use the composed APIs.
 The native wrappers still dispatch Collate `main`; coordinated rollout remains necessary
 until both pull requests are merged. No workflow changes or status overrides were made.
 
@@ -65,8 +66,10 @@ and requiring a successful response with the relationship present. An isolated
 HTTP proxy reproduces the original failure, then verifies recovery after one
 injected 500 against a real PostgreSQL/Redis/Fuseki application. All 14 Knowledge
 Graph browser tests pass, including the live graph case. The local query succeeds
-with CI's inference configuration; this fixes readiness recovery, not the
-unconfirmed underlying cause of CI's server error.
+with CI's inference configuration. The full
+[RDF browser CI](https://github.com/open-metadata/OpenMetadata/actions/runs/34775785322)
+also passes at native `47786d0cdc`. This fixes readiness recovery; the underlying
+cause of the earlier server error remains unconfirmed.
 
 The paginated table-column endpoints no longer resolve owners when profiles are
 unrequested. Their authorization still runs. Eight real API cases cover both ID
@@ -76,21 +79,48 @@ per database with Redis (one cache-mode assumption abort) and 29 without Redis
 (two cache-mode assumption aborts), with no failures. Single owning commits,
 rollback/replay and deferred Redis publication remain covered.
 
-The current service package is
-`6c3046171bc03246335a5504bc2777c40a1b449d7ed68bfb1ead09f824a2519e`.
-The [post-merge SQL comparison](entity-repository-performance.md#post-merge-sql-verification-2026-09-13)
-validates 78 read and 60 mutation/CSV workloads against the original artifact.
-All 1,020 measured responses pass. Read SQL totals fall in 69 cases and remain
-equal in nine; all 54 synchronous mutation/CSV totals fall. These instrumented
-runs overlap other work and do not establish latency acceptance.
+Table and column custom metrics now share one batched extension query. Classification
+uses the persisted extension key, preserving table identity, overlapping column names
+and table-only field selection. The original implementation fails all four new
+one-query budgets; the replacement passes widths 3/100/1,000 and multi-table loading
+on both databases. The metrics-stage full service suite passes 10,365 cases with one
+skip. Governance and search selections add 363 and 411 passes respectively, with
+their recorded skips and cache/configuration assumption aborts.
 
-Fresh JaCoCo data from the complete service unit suite and these focused API
-selections matches the current package without class-file warnings. It represents
-all 506 changed service sources and 1,108 executable classes, including nested
-classes; 523 remain below 90% in this limited integration selection. At source-file
-level, 181 of 209 entity components reach 90%. Broader consumer suites are being
-refreshed separately; historical pre-merge coverage is not substituted for them.
-The whole changed-class gate remains open.
+RDF indexing now retains the fields required by dedicated mappers, including table
+constraints used for foreign-key triples. A focused test and the real foreign-key
+projection test reproduce the missing-field regression before the fix. The final
+RDF/CSV unit selection passes all 890 cases, and the real RDF selection passes all
+115 cases. Two existing SQL access assertions also fail on the original artifact
+and are excluded from that selection. RDF teardown restores the suite configuration;
+inference fixtures use the same named graph as persisted entity projections.
+
+Two application-trigger tests now await completion of their own indexing run before
+returning. Their previous early return interfered with later column-grid reads.
+The combined application/column-grid selection passes all 44 cases on each database;
+the earlier broad suites with that failure remain recorded as failed runs.
+
+The current service package is
+`854c3d28e74c6284f768cda27801c78b164249500577a2969b495b3e32ca34ae`.
+The [current SQL comparison](entity-repository-performance.md#metrics-and-rdf-follow-up-2026-09-13)
+retains the original artifact and separately records the preceding stage. Both
+databases have no higher SQL totals against the original in warm, cold and L1-cold
+read comparisons; all 54 synchronous mutation/CSV totals fall. Single-entity
+mutations retain one owning commit. Cache coverage and recovery spikes still need
+controlled follow-up. Instrumented SQL runs do not establish latency acceptance.
+
+The latest native coverage report matches all 506 changed service sources and 1,109
+executable classes without class-file warnings. All 209 extracted component source
+files reach 90%, but 382 changed executable classes remain below the whole-class
+threshold. The diagnostic report includes completed failing broad suites and is not
+regression acceptance. Collate's refreshed unit data plus matching historical API
+executions cover 50.14% of changed-source lines; 114 of 168 executable classes remain
+below 90%. Neither coverage gate is complete.
+
+The Collate refresh also aligns its JUnit modules through one BOM, rebuilds the local
+spec dependency and corrects stale default-value/date expectations. All 4,193 service
+unit cases pass, with six skips; all 28 MCP cases pass and 76 integration sources
+compile. Final coordinated CI must validate these follow-up changes and the new native pin.
 
 The remaining acceptance work is the current-artifact performance matrix and whole
 changed-class coverage. Earlier column and relationship tail measurements remain open;
@@ -202,6 +232,8 @@ explicitly checks that the profiler target is visible before advancing.
 
 All three production-bundle tour flows pass, with recordings and traces retained under
 `.context/ci-fixes-2/tour-production-2-results/`; the profiler step was visually checked.
+The [captured Help-entry tour](assets/entity-repository-tour.webm) shows the complete
+guided flow, including the profiler target at step 13, against the local test fixture.
 The table page and permission-hook suites pass all 31 unit tests. The production UI
 build, changed-file formatting and full Playwright lint pass. The broad TypeScript
 check still fails, with identical diagnostics when the changed files are replaced

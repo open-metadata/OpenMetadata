@@ -3,13 +3,40 @@ package org.openmetadata.it.perf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 
 class EntityBenchmarkSqlProbeTest {
+  @Test
+  void attributesRequestStatementsToDaoMethodsWithoutRecordingBoundValues() {
+    final Jdbi jdbi = database().installPlugin(new SqlObjectPlugin());
+    final SampleDao dao = jdbi.onDemand(SampleDao.class);
+    try (var probe = new EntityBenchmarkSqlProbe(jdbi)) {
+      RequestLatencyContext.startRequest("benchmark", "PUT");
+      dao.insert(1, 713);
+      assertEquals(713, dao.amount(1));
+      assertEquals(713, dao.amount(1));
+      RequestLatencyContext.clearContext();
+      assertEquals(713, dao.amount(1));
+      final var methods = JsonUtils.readTree(JsonUtils.pojoToJson(probe.counts())).path("methods");
+      assertEquals(1, methods.path(SampleDao.class.getName() + "#insert").asInt());
+      assertEquals(2, methods.path(SampleDao.class.getName() + "#amount").asInt());
+      assertEquals(2, methods.size());
+      assertEquals(3, probe.counts().statements());
+    } finally {
+      RequestLatencyContext.clearContext();
+    }
+  }
+
   @Test
   void countsRequestSqlAndOwningTransactionsWithoutBackgroundOrPostWindowWork() {
     final Jdbi jdbi = database();
@@ -33,13 +60,15 @@ class EntityBenchmarkSqlProbeTest {
     } finally {
       RequestLatencyContext.clearContext();
     }
-    assertEquals(new EntityBenchmarkSqlProbe.Counts(3, 1, 1, 0), probe.counts());
+    assertEquals(
+        new EntityBenchmarkSqlProbe.Counts(3, 1, 1, 0, Map.of("direct", 3L)), probe.counts());
     final int amount =
         jdbi.withHandle(
             handle -> handle.createQuery("SELECT amount FROM sample").mapTo(Integer.class).one());
     assertEquals(2, amount);
     jdbi.useTransaction(handle -> handle.execute("UPDATE sample SET amount = 4"));
-    assertEquals(new EntityBenchmarkSqlProbe.Counts(3, 1, 1, 0), probe.counts());
+    assertEquals(
+        new EntityBenchmarkSqlProbe.Counts(3, 1, 1, 0, Map.of("direct", 3L)), probe.counts());
   }
 
   @Test
@@ -51,7 +80,8 @@ class EntityBenchmarkSqlProbeTest {
       assertThrows(
           UnableToExecuteStatementException.class,
           () -> jdbi.useTransaction(handle -> handle.execute("INSERT INTO sample VALUES (1, 1)")));
-      assertEquals(new EntityBenchmarkSqlProbe.Counts(1, 0, 1, 0), probe.counts());
+      assertEquals(
+          new EntityBenchmarkSqlProbe.Counts(1, 0, 1, 0, Map.of("direct", 1L)), probe.counts());
     } finally {
       RequestLatencyContext.clearContext();
     }
@@ -63,7 +93,7 @@ class EntityBenchmarkSqlProbeTest {
     try (var probe = new EntityBenchmarkSqlProbe(jdbi)) {
       RequestLatencyContext.startRequest("benchmark", "PUT");
       jdbi.useTransaction(handle -> {});
-      assertEquals(new EntityBenchmarkSqlProbe.Counts(0, 1, 0, 1), probe.counts());
+      assertEquals(new EntityBenchmarkSqlProbe.Counts(0, 1, 0, 1, Map.of()), probe.counts());
     } finally {
       RequestLatencyContext.clearContext();
     }
@@ -74,5 +104,13 @@ class EntityBenchmarkSqlProbeTest {
     jdbi.useHandle(
         handle -> handle.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY, amount INTEGER)"));
     return jdbi;
+  }
+
+  public interface SampleDao {
+    @SqlUpdate("INSERT INTO sample VALUES (:id, :amount)")
+    void insert(@Bind("id") int id, @Bind("amount") int amount);
+
+    @SqlQuery("SELECT amount FROM sample WHERE id = :id")
+    int amount(@Bind("id") int id);
   }
 }
