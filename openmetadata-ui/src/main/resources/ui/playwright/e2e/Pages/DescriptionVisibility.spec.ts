@@ -34,6 +34,7 @@ import {
   toastNotification,
   uuid,
   visitGlossaryPage,
+  waitForAntdModalToSettle,
 } from '../../utils/common';
 import {
   selectDataProduct,
@@ -359,6 +360,7 @@ test.describe(
         .getByRole('dialog')
         .getByRole('button', { name: 'Add' });
       await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
+      await waitForAntdModalToSettle(adminPage);
       await expect(addButton).toBeEnabled();
       await addButton.click();
 

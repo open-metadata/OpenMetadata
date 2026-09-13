@@ -19,6 +19,7 @@ import {
   descriptionBox,
   fillDescriptionBox,
   redirectToHomePage,
+  waitForAntdModalToSettle,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { createQueryByTableName, queryFilters } from '../../utils/query';
@@ -172,6 +173,7 @@ test('Query Entity', async ({ page }) => {
     await page.locator('.ant-modal-body').waitFor({
       state: 'detached',
     });
+    await waitForAntdModalToSettle(page);
 
     // Update Tags
     await page.getByTestId('add-tag').click();

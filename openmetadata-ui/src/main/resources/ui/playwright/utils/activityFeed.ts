@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { getDescriptionBox } from './common';
+import { getDescriptionBox, waitForAntdModalToSettle } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import { TaskDetails } from './task';
@@ -80,6 +80,7 @@ export const deleteFeedComments = async (page: Page, feed: Locator) => {
   await page.locator('[data-testid="delete-message"]').click();
 
   await page.locator('[role="dialog"].ant-modal').waitFor();
+  await waitForAntdModalToSettle(page);
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/conversations/*/replies/*'

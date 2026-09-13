@@ -545,6 +545,22 @@ export const waitForAntdPopupToSettle = async (page: Page) => {
   ).toHaveCount(0);
 };
 
+/**
+ * Blocks until every open Ant Design modal has finished its enter animation.
+ *
+ * Waiting for a modal to be `visible` is satisfied by its first scaled frame.
+ * A press begun then puts mousedown on a control inside the dialog and mouseup
+ * where that control has since moved to, so the browser never synthesises a
+ * click: the control takes focus and nothing happens. rc-motion strips the
+ * `-appear`/`-enter` classes on `animationend`, so their absence is the signal
+ * that the dialog's geometry is final.
+ */
+export const waitForAntdModalToSettle = async (page: Page) => {
+  await expect(
+    page.locator('.ant-modal[class*="-appear"], .ant-modal[class*="-enter"]')
+  ).toHaveCount(0);
+};
+
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,

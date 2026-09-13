@@ -18,7 +18,11 @@ import {
   verifyAuditEntryHasValidUUIDs,
   waitForAuditLogEntry,
 } from '../../utils/auditLogs';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  waitForAntdModalToSettle,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -721,6 +725,7 @@ test.describe(
         await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
+        await waitForAntdModalToSettle(page);
       });
 
       await test.step('Verify modal displays description and date picker', async () => {
@@ -822,6 +827,7 @@ test.describe(
         await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
+        await waitForAntdModalToSettle(page);
       });
 
       await test.step('Select date range and verify export includes search term', async () => {
@@ -868,6 +874,7 @@ test.describe(
         await page.locator('.ant-modal-content').waitFor({
           state: 'visible',
         });
+        await waitForAntdModalToSettle(page);
 
         const dateRangePicker = page.getByTestId('export-date-range-picker');
         await dateRangePicker.click();
