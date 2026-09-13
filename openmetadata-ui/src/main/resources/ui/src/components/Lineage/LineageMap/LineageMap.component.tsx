@@ -2147,7 +2147,6 @@ const LineageMapCanvas = ({
       )}
       <ReactFlow
         fitView
-        onlyRenderVisibleElements
         className="custom-react-flow lineage-map-react-flow tw:h-full tw:w-full"
         data-testid="react-flow-component"
         deleteKeyCode={null}
@@ -2161,6 +2160,13 @@ const LineageMapCanvas = ({
         nodeTypes={nodeTypes}
         nodes={renderedNodes}
         nodesConnectable={canEditScene}
+        // Off under Playwright. Virtualisation makes a node outside the
+        // viewport absent from the DOM rather than merely off-screen, so "is
+        // this node in the graph" silently becomes a question about where the
+        // camera is pointing: assertions fail on a correct graph and no wait
+        // fixes it, because nothing re-renders. Tests that genuinely care about
+        // the viewport have toBeInViewport.
+        onlyRenderVisibleElements={!import.meta.env.PW_E2E_BUILD}
         selectNodesOnDrag={false}
         onConnect={handleConnect}
         onConnectEnd={() => setIsCreatingEdge(false)}
