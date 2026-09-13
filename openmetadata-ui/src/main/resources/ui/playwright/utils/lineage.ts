@@ -159,6 +159,109 @@ export const performZoomOut = async (page: Page, xTimes = 10) => {
   }
 };
 
+/**
+ * Drags the React Flow camera by (dx, dy) without touching a node.
+ *
+ * The grip has to be a point the pane itself owns: starting the drag on a node
+ * moves that node instead of the camera, and starting it on a connection handle
+ * begins drawing an edge.
+ */
+const panCanvas = async (page: Page, dx: number, dy: number) => {
+  const paneBounds = await page.locator('.react-flow__pane').boundingBox();
+  if (!paneBounds) {
+    throw new Error('The lineage canvas has no bounds');
+  }
+
+  const grip = await page.evaluate((bounds) => {
+    for (let row = 0.2; row <= 0.85; row += 0.1) {
+      for (let column = 0.4; column <= 0.9; column += 0.1) {
+        const x = bounds.x + bounds.width * column;
+        const y = bounds.y + bounds.height * row;
+        if (
+          document
+            .elementFromPoint(x, y)
+            ?.classList.contains('react-flow__pane')
+        ) {
+          return { x, y };
+        }
+      }
+    }
+
+    return null;
+  }, paneBounds);
+
+  if (!grip) {
+    throw new Error('The lineage canvas has no empty point to drag from');
+  }
+
+  await page.mouse.move(grip.x, grip.y);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + dx, grip.y + dy, { steps: 8 });
+  await page.mouse.up();
+};
+
+/**
+ * Pans until the marker's midpoint is the point the canvas actually receives.
+ *
+ * Edit mode paints a 110px node palette over the pane's left edge
+ * (`.entity-lineage.sidebar.open` is absolute at `left: 0` with a z-index above
+ * the canvas), while fitView measures the whole pane. A midpoint that lands in
+ * that strip still satisfies `toBeInViewport` — that compares against the
+ * viewport rectangle, not against what is painted on top — so the coordinate
+ * click below goes to the palette instead: the edge is never selected, the
+ * toolbar never opens, and the caller's retry loop repeats the same dead click
+ * until the test times out.
+ */
+const clearMidpointOfOverlays = async (page: Page, marker: Locator) => {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const box = await marker.boundingBox();
+    if (!box) {
+      return false;
+    }
+
+    const shift = await page.evaluate(
+      ([pointX, pointY]) => {
+        const top = document.elementFromPoint(pointX, pointY);
+        const flow = document.querySelector('.react-flow');
+        if (!top || !flow || top.closest('.react-flow')) {
+          return null;
+        }
+
+        // Climb to the outermost element that is still only the overlay: the
+        // first ancestor that also wraps the canvas is the shared container,
+        // and shifting by its width would throw the graph off screen.
+        let overlay = top;
+        while (
+          overlay.parentElement &&
+          overlay.parentElement !== document.body &&
+          !overlay.parentElement.contains(flow)
+        ) {
+          overlay = overlay.parentElement;
+        }
+        const bounds = overlay.getBoundingClientRect();
+        const margin = 8;
+        const right = bounds.right - pointX + margin;
+        const left = pointX - bounds.left + margin;
+        const down = bounds.bottom - pointY + margin;
+        const up = pointY - bounds.top + margin;
+        const dx = right <= left ? right : -left;
+        const dy = down <= up ? down : -up;
+
+        return Math.abs(dx) <= Math.abs(dy) ? { dx, dy: 0 } : { dx: 0, dy };
+      },
+      [box.x + box.width / 2, box.y + box.height / 2]
+    );
+
+    if (!shift) {
+      return true;
+    }
+
+    await panCanvas(page, shift.dx, shift.dy);
+  }
+
+  return false;
+};
+
 const clickCanvasEdge = async (page: Page, marker: Locator) => {
   await fitToScreen(page);
   await expect(marker).toBeInViewport();
@@ -183,6 +286,11 @@ const clickCanvasEdge = async (page: Page, marker: Locator) => {
     await page.mouse.wheel(0, -500 * Math.log2(1 / zoom));
     await expect.poll(getZoom).toBeGreaterThanOrEqual(0.99);
   }
+
+  expect(
+    await clearMidpointOfOverlays(page, marker),
+    'the edge midpoint stayed behind an overlay'
+  ).toBe(true);
 
   await expect(marker).toBeInViewport();
 
