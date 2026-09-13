@@ -12,16 +12,16 @@
  */
 
 import {
-    Box,
-    Button,
-    EmptyPlaceholder,
-    PaginationCardWithControls,
-    Popover,
-    PopoverTrigger,
-    Skeleton,
-    Table,
-    TableCard,
-    Tooltip
+  Box,
+  Button,
+  EmptyPlaceholder,
+  PaginationCardWithControls,
+  Popover,
+  PopoverTrigger,
+  Skeleton,
+  Table,
+  TableCard,
+  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -31,8 +31,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
 import {
-    NO_PERMISSION_FOR_ACTION,
-    NO_PERMISSION_TO_VIEW
+  NO_PERMISSION_FOR_ACTION,
+  NO_PERMISSION_TO_VIEW,
 } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -45,13 +45,13 @@ import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
-    checkPermission,
-    LIST_CAP,
-    userPermissions
+  checkPermission,
+  LIST_CAP,
+  userPermissions,
 } from '../../../../../../utils/PermissionsUtils';
 import {
-    getPolicyWithFqnPath,
-    getRoleWithFqnPath
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
 } from '../../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
@@ -185,7 +185,9 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (!viewPolicyPermission) {
       return (
         <Tooltip key={key} title={t(NO_PERMISSION_TO_VIEW)}>
-          <Box className="tw:text-sm tw:truncate tw:block">{getEntityName(policy)}</Box>
+          <Box className="tw:text-sm tw:truncate tw:block">
+            {getEntityName(policy)}
+          </Box>
         </Tooltip>
       );
     }
@@ -193,7 +195,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (onNavigate) {
       return (
         <Button
-          className='tw:truncate tw:block'
+          className="tw:truncate tw:block"
           color="link-color"
           key={key}
           size="sm"
@@ -211,7 +213,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     return (
       <Link
-        className='tw:truncate tw:block'
+        className="tw:truncate tw:block"
         key={key}
         to={getPolicyWithFqnPath(policy.fullyQualifiedName || '')}>
         {getEntityName(policy)}
@@ -229,22 +231,18 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     }
 
     return (
-      <Box
-        data-testid="policy-link"
-        direction="row"
-        gap={1}
-        wrap="wrap">
+      <Box data-testid="policy-link" direction="row" gap={1} wrap="wrap">
         {policies.slice(0, LIST_CAP).map(renderPolicyItem)}
         {hasMore && (
           <PopoverTrigger>
             <Button
-              className='tw:py-0.5 tw:bg-tertiary'
+              className="tw:py-0.5 tw:bg-tertiary"
               color="secondary"
               data-testid="plus-more-count"
               size="xs">
               {`+${listLength - LIST_CAP} more`}
             </Button>
-            <Popover className='tw:max-h-80! tw:overflow-scroll'>
+            <Popover className="tw:max-h-80! tw:overflow-scroll">
               <Box className="tw:p-3" direction="col" gap={1}>
                 {policies.slice(LIST_CAP).map(renderPolicyItem)}
               </Box>
@@ -270,7 +268,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
             {getEntityName(role)}
           </Button>
         ) : (
-          <Tooltip placement="top" title={getEntityName(role)} triggerClassName="tw:block tw:w-full">
+          <Tooltip
+            placement="top"
+            title={getEntityName(role)}
+            triggerClassName="tw:block tw:w-full">
             <Link
               className="tw:block tw:truncate link-hover"
               data-testid="role-name"
@@ -282,7 +283,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       case 'description':
         return role.description ? (
-          <RichTextEditorPreviewerV1 markdown={role.description} maxLength={200} />
+          <RichTextEditorPreviewerV1
+            markdown={role.description}
+            maxLength={200}
+          />
         ) : (
           <span className="tw:text-sm tw:text-secondary">--</span>
         );
@@ -324,7 +328,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
           ))}
         </Box>
       ) : (
-        <Box align="center" className="tw:min-h-32 tw:relative" justify="center">
+        <Box
+          align="center"
+          className="tw:min-h-32 tw:relative"
+          justify="center">
           <EmptyPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.role-plural'),
@@ -343,7 +350,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       data-testid="roles-list-container"
       direction="col"
       gap={4}>
-      <TableCard.Root className='tw:flex tw:flex-col' size="compact">
+      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
         <div className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.role-plural')}
@@ -355,6 +362,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
                 <Table.Head
                   className={col.className}
                   id={col.id}
+                  isRowHeader={col.id === 'name'}
                   key={col.id}
                   label={col.label}
                 />

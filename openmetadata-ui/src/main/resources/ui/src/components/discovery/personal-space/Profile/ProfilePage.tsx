@@ -25,22 +25,22 @@ import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
 import {
-    EXTENSION_POINTS,
-    PluginEntityDetailsContext,
-    TabContribution
+  EXTENSION_POINTS,
+  PluginEntityDetailsContext,
+  TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
-    DEFAULT_PROFILE_NAV_ID,
-    ProfileHeaderOverride,
-    ProfileNavGroup,
-    ProfileNavId,
-    ProfileNavItem,
-    PROFILE_NAV_GROUP_LABEL,
-    PROFILE_NAV_ITEMS
+  DEFAULT_PROFILE_NAV_ID,
+  ProfileHeaderOverride,
+  ProfileNavGroup,
+  ProfileNavId,
+  ProfileNavItem,
+  PROFILE_NAV_GROUP_LABEL,
+  PROFILE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
 
@@ -61,6 +61,7 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     DEFAULT_PROFILE_NAV_ID
   );
+  const [contentKey, setContentKey] = useState(0);
   // Allows panels (e.g. Access Control) to override the header breadcrumbs
   // and title without needing a separate route.
   const [headerOverride, setHeaderOverride] =
@@ -170,6 +171,7 @@ const ProfilePage: React.FC = () => {
   const handleNavSelect = useCallback((id: ProfileNavId) => {
     setSelectedId(id);
     setHeaderOverride(null);
+    setContentKey((k) => k + 1);
   }, []);
 
   const activeItem =
@@ -218,7 +220,8 @@ const ProfilePage: React.FC = () => {
                   ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden tw:flex tw:flex-col'
                   : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0'
               }
-              data-testid="profile-content-body">
+              data-testid="profile-content-body"
+              key={`${selectedId}-${contentKey}`}>
               {activeItem.render({
                 userData,
                 isProfileLoading,

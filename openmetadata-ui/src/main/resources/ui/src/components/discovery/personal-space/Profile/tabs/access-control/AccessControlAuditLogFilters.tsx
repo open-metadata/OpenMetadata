@@ -12,13 +12,11 @@
  */
 
 import { Box } from '@openmetadata/ui-core-components';
-import { debounce } from 'lodash';
+import { debounce, startCase } from 'lodash';
 import { DateTime } from 'luxon';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-    AuditLogFiltersProps
-} from '../../../../../../components/AuditLog/AuditLogFilters.interface';
+import { AuditLogFiltersProps } from '../../../../../../components/AuditLog/AuditLogFilters.interface';
 import DatePickerMenu from '../../../../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import QuickFilterDropdown from '../../../../../../components/Explore/QuickFilterDropdown';
 import { SearchDropdownOption } from '../../../../../../components/SearchDropdown/SearchDropdown.interface';
@@ -27,19 +25,25 @@ import { SearchIndex } from '../../../../../../enums/search.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
-    AuditLogActiveFilter,
-    AuditLogFilterCategoryType
+  AuditLogActiveFilter,
+  AuditLogFilterCategoryType,
 } from '../../../../../../types/auditLogs.interface';
 import { formatUsersResponse } from '../../../../../../utils/APIUtils';
 import {
-    buildParamsFromFilters,
-    getAuditLogCategoryLabel
+  buildParamsFromFilters,
+  getAuditLogCategoryLabel,
 } from '../../../../../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../../../../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { ENTITY_TYPE_SEARCH_OPTIONS } from './AccessControl.constants';
+
+const BOT_DISPLAY_NAME_MAP: Record<string, string> = {
+  aiautomationapplicationbot: 'AI Automation Application Bot',
+  'autoclassification-bot': 'Auto Classification Bot',
+  automatorapplicationbot: 'Automator Application Bot',
+};
 
 const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
   activeFilters,
@@ -223,7 +227,10 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
       setBotOptions(
         bots.map((bot) => ({
           key: bot.name,
-          label: getEntityName(bot) || bot.name,
+          label:
+            BOT_DISPLAY_NAME_MAP[
+              (getEntityName(bot) || bot.name).toLowerCase()
+            ] ?? startCase(getEntityName(bot) || bot.name),
         }))
       );
     } catch {

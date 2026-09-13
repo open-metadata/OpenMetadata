@@ -12,39 +12,33 @@
  */
 
 import {
-    Autocomplete,
-    Box,
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    HookForm,
-    Select,
-    SelectItemType,
-    Typography
+  Autocomplete,
+  Box,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  Select,
+  SelectItemType,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { startCase, uniq } from 'lodash';
-import React, {
-    FC,
-    useCallback,
-    useEffect,
-    useMemo,
-    useState
-} from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    Effect,
-    Operation,
-    Rule
+  Effect,
+  Operation,
+  Rule,
 } from '../../../../../../generated/api/policies/createPolicy';
 import { ResourceDescriptor } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { Function } from '../../../../../../generated/type/function';
 import {
-    getPolicyFunctions,
-    getPolicyResources,
-    validateRuleCondition
+  getPolicyFunctions,
+  getPolicyResources,
+  validateRuleCondition,
 } from '../../../../../../rest/rolesAPIV1';
 import { ALL_TYPE_RESOURCE_LIST } from '../../../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../../../utils/StringUtils';
@@ -77,7 +71,9 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       required: true,
       placeholder: t('label.rule-name'),
       props: { 'data-testid': 'rule-name' },
-      rules: { required: t('label.field-required', { field: t('label.rule-name') }) },
+      rules: {
+        required: t('label.field-required', { field: t('label.rule-name') }),
+      },
     },
   ];
 
@@ -131,7 +127,10 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       )
       .filter((op) => op !== Operation.All);
 
-    const allItem: SelectItemType = { id: Operation.All, label: t('label.all') };
+    const allItem: SelectItemType = {
+      id: Operation.All,
+      label: t('label.all'),
+    };
     const childItems: SelectItemType[] = ops.map((op) => ({
       id: op,
       label: op,
@@ -170,7 +169,10 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
       } else {
         setRuleData((prev: Rule) => ({
           ...prev,
-          resources: uniq([...(prev.resources ?? []).filter((r) => r !== 'All'), val]),
+          resources: uniq([
+            ...(prev.resources ?? []).filter((r) => r !== 'All'),
+            val,
+          ]),
           operations: [],
         }));
       }
@@ -311,7 +313,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
           {t('label.description')}
         </Typography>
         <RichTextEditor
-          className="tw:[&_.ProseMirror]:min-h-[4rem] tw:[&_.ProseMirror]:max-h-[4rem] tw:[&_.ProseMirror]:overflow-y-auto"
+          className="new-form-style"
           data-testid="rule-description"
           initialValue={ruleData.description ?? ''}
           onTextChange={(value) =>
