@@ -492,6 +492,10 @@ describe('elasticSearchFormat – custom properties without an entity-type segme
 });
 
 describe('elasticSearchFormat – entityReference custom properties', () => {
+  // Synthetic: the builder only ever keys a reference property by `.displayName.keyword`
+  // (AdvancedSearchClassBase.resolveCustomPropertySubfieldsKey), so these three keys never coexist
+  // in a real config. They sit side by side here only to drive all three suffixes through one
+  // config — reading them as siblings would suggest a reload ambiguity that cannot occur.
   const refConfig = {
     ...BasicConfig,
     fields: {
