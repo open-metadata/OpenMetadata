@@ -25,7 +25,7 @@
  * so cleanup always runs in afterAll even when a test fails mid-way.
  */
 
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import {
   CUSTOM_PROPERTIES_ENTITIES,
   NAME_SUFFIX,
@@ -101,6 +101,7 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { createTable } from '../../utils/KnowledgeCenter';
 import {
   openMatchingFieldsPanel,
@@ -115,6 +116,38 @@ import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomProperti
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+/**
+ * `setValueForProperty` PATCHes the entity and returns; its search document
+ * catches up asynchronously. The search-settings tests below then query for
+ * that property value, so running them against a document that predates the
+ * PATCH finds nothing — and with no hits the Explore page renders no
+ * entity-type tab at all, which surfaces as a three-minute wait on
+ * `<type>s-tab` rather than a readable assertion. Gate on the indexed document
+ * reaching the version the PATCH produced.
+ */
+const waitForCustomPropertyIndexed = async (
+  page: Page,
+  endpoint: EntityTypeEndpoint,
+  entityId: string,
+  fullyQualifiedName: string,
+  index: string
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  try {
+    const response = await apiContext.get(`/api/v1/${endpoint}/${entityId}`);
+
+    expect(response.status()).toBe(200);
+
+    const { version } = (await response.json()) as { version: number };
+    await waitForSearchIndexed(apiContext, fullyQualifiedName, index, {
+      minVersion: version,
+      timeout: 60_000,
+    });
+  } finally {
+    await afterAction();
+  }
+};
 
 type CustomPropertyEntity =
   (typeof CUSTOM_PROPERTIES_ENTITIES)[keyof typeof CUSTOM_PROPERTIES_ENTITIES];
@@ -3377,6 +3410,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           });
 
           await expect(page.getByText(dashboardPropertyValue)).toBeVisible();
+
+          await waitForCustomPropertyIndexed(
+            page,
+            EntityTypeEndpoint.Dashboard,
+            responseData.id ?? '',
+            responseData.fullyQualifiedName ?? '',
+            'dashboard_search_index'
+          );
         });
 
         await test.step('Configure search settings for Dashboard custom property', async () => {
@@ -3515,6 +3556,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
             propertyType: 'string',
             endpoint: EntityTypeEndpoint.Pipeline,
           });
+
+          await waitForCustomPropertyIndexed(
+            page,
+            EntityTypeEndpoint.Pipeline,
+            responseData.id ?? '',
+            responseData.fullyQualifiedName ?? '',
+            'pipeline_search_index'
+          );
         });
 
         await test.step('Configure search settings for Pipeline custom property', async () => {
