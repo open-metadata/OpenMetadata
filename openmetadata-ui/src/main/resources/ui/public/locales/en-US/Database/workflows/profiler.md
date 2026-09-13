@@ -117,7 +117,7 @@ $$section
 
 **This parameter is effective when Profile Sample Type is ROWS**
 
-When using the ROWS sampling type choose wheather to randomized the sample or. Non randomized sample will be faster to compute.
+When using the ROWS sampling type choose whether to randomize the sample or not. Non randomized sample will be faster to compute.
 
 Defaults to `True`
 $$
