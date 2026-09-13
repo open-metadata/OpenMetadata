@@ -21,15 +21,15 @@ Removing the file does not establish correctness or latency improvement.
 | Entity policies and retirement of common repository and updater inheritance | Implemented; clean production compilation and packaged selection pass |
 | Architecture and Java extension migration guide | Available in [entity-module-migration.md](entity-module-migration.md) |
 | Final policy callers | Search/RDF offset readers and custom result pages migrated; 14 unused helpers and two migrated helpers removed |
-| Main merge validation | Latest service CI: 10,363 passes and one skip; current local MCP: 630 passes; earlier merge selection: 220 integration passes per database with Redis |
-| CI follow-up validation | Parallel integration selection: 473 passes across three profiles; guided tours pass; pagination persistence passes three local browser runs |
+| Main merge validation | Current local service suite: 10,363 passes and one skip; MCP: 630 passes; all three integration CI profiles pass at native `78cd7f33c9` |
+| CI follow-up validation | Column/transaction/cache selection: 79 passes per database with Redis and 29 without Redis; pagination passes three local browser runs; RDF readiness recovery passes all 14 graph browser cases |
 | Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `993d0655e3` / Collate `52b1372694` |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
 
 ## Current acceptance follow-up
 
-The native [service unit build](https://github.com/open-metadata/OpenMetadata/actions/runs/34765135922)
+The native [service unit build](https://github.com/open-metadata/OpenMetadata/actions/runs/34771883391)
 passes 10,363 tests with one skip. The matching companion
 [backend build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34765679621)
 and [governance/data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34765680560)
@@ -54,7 +54,43 @@ The companion fix pins the same server release and a matching client release fro
 updates the obsolete bucket-policy command, and stops setup immediately on failure with
 pod/event diagnostics. Shell regressions preserve the original failure exit codes; a real
 Argo workflow uploads an artifact that can be retrieved with the expected contents.
-These local checks still require verification in the final companion CI run.
+The follow-up companion CI successfully completes Argo setup in the hybrid runner
+and all three PostgreSQL browser shards. Full companion validation must still be
+checked at the final coordinated revisions.
+
+The new native RDF failure occurs in a readiness probe: an HTTP 500 makes the
+assertion inside the polling callback abort immediately. The probe now returns
+the HTTP status and body to the polling matcher, retaining the 60-second bound
+and requiring a successful response with the relationship present. An isolated
+HTTP proxy reproduces the original failure, then verifies recovery after one
+injected 500 against a real PostgreSQL/Redis/Fuseki application. All 14 Knowledge
+Graph browser tests pass, including the live graph case. The local query succeeds
+with CI's inference configuration; this fixes readiness recovery, not the
+unconfirmed underlying cause of CI's server error.
+
+The paginated table-column endpoints no longer resolve owners when profiles are
+unrequested. Their authorization still runs. Eight real API cases cover both ID
+and FQN lookups, omitted/empty fields, metadata, persisted profiles, owner access
+and non-owner PII masking. The expanded transaction/cache selection passes 79 cases
+per database with Redis (one cache-mode assumption abort) and 29 without Redis
+(two cache-mode assumption aborts), with no failures. Single owning commits,
+rollback/replay and deferred Redis publication remain covered.
+
+The current service package is
+`6c3046171bc03246335a5504bc2777c40a1b449d7ed68bfb1ead09f824a2519e`.
+The [post-merge SQL comparison](entity-repository-performance.md#post-merge-sql-verification-2026-09-13)
+validates 78 read and 60 mutation/CSV workloads against the original artifact.
+All 1,020 measured responses pass. Read SQL totals fall in 69 cases and remain
+equal in nine; all 54 synchronous mutation/CSV totals fall. These instrumented
+runs overlap other work and do not establish latency acceptance.
+
+Fresh JaCoCo data from the complete service unit suite and these focused API
+selections matches the current package without class-file warnings. It represents
+all 506 changed service sources and 1,108 executable classes, including nested
+classes; 523 remain below 90% in this limited integration selection. At source-file
+level, 181 of 209 entity components reach 90%. Broader consumer suites are being
+refreshed separately; historical pre-merge coverage is not substituted for them.
+The whole changed-class gate remains open.
 
 The remaining acceptance work is the current-artifact performance matrix and whole
 changed-class coverage. Earlier column and relationship tail measurements remain open;

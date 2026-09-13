@@ -2,7 +2,63 @@
 
 Partial performance evidence for the completed composition implementation; its latency gate remains open.
 
-## Final-package SQL verification
+## Post-merge SQL verification (2026-09-13)
+
+The current service package has SHA-256
+`6c3046171bc03246335a5504bc2777c40a1b449d7ed68bfb1ead09f824a2519e`.
+Its source includes the merge with `main` at `68606d705a` and the column-page
+owner lookup fix. The original service remains `306263df…` from `b50e9277f9`.
+Both runtime dependency sets and integration fixtures were copied into immutable,
+hash-verified snapshots before starting the servers.
+
+Column pages previously loaded owners even when no profiles were requested.
+The ID and FQN endpoints now load those owners only for profile requests;
+authorization still runs for every request. Real API regressions verify pagination,
+omitted/empty/metadata fields, actual stored profiles, owner access and non-owner
+PII masking. The benchmark adds 36 column-page workloads across widths 3, 100
+and 1,000, ID/FQN lookups, admin/reader principals and basic/metadata/profile fields.
+The current manifest contains 138 workloads, and all 26 benchmark protocol tests pass.
+
+All 78 read workloads passed five measured requests on each revision: 780
+responses, no errors, and no read commits or rollbacks. Statement totals fell
+in 69 cases, stayed equal in nine and increased in none. The following totals
+are for **five measured requests** on 100-column fixtures:
+
+| Workload | Original statements | Current statements |
+| --- | ---: | ---: |
+| Column page, basic, admin, ID or FQN | 20 | 0 |
+| Column page, basic, reader, ID or FQN | 20 | 15 |
+| Column page, metadata, admin, ID or FQN | 35 | 15 |
+| Column page, metadata, reader, ID or FQN | 35 | 30 |
+| Column page, profile, either principal and lookup | 30 | 25 |
+| Expanded table, admin, ID | 1,036 | 40 |
+| Expanded table, reader, ID or FQN | 1,040 | 45 |
+| Cached full-table columns | 0 | 0 |
+| Relationships | 20 | 15 |
+
+The profile benchmark fixtures have no persisted samples; the real-profile and
+PII behavior is covered by `TableColumnReadIT`. Reader authorization retains its
+required relationship reads. The full-table column workload already issues zero
+SQL on both artifacts, so this endpoint fix does not resolve that workload's
+earlier p99 concern.
+
+All 60 mutation/CSV workloads also passed two measured requests on each revision:
+240 responses and no errors. All 54 synchronous workloads used fewer statements.
+Single create, PUT, PATCH, delete and restore operations each retained one owning
+commit per request. Bulk and import totals include their existing flush and feed
+boundaries; they must not be described as one commit for an entire multi-flush API.
+Unchanged bulk records one owning commit instead of zero on the original artifact;
+its SQL work remains nonzero. The six asynchronous cases count only HTTP
+acceptance/completion polling, not background mutation SQL or commits.
+
+These runs use Java 21, fixed 1 GB G1 heaps, durable PostgreSQL 16, OpenSearch 3.4
+and Redis 7. They are **SQL diagnostics, not latency acceptance**: other builds and
+regression suites were active. The final database/cache/load/tail and allocation
+matrix remains open. Raw results and comparisons are retained under
+`.context/entity-acceptance/` as `{original,fixed}-{read,page,write}-sql.csv` and
+`{read,write}-sql-comparison.csv`, with per-workload counters and input hashes.
+
+## Pre-merge final-package SQL verification
 
 The final `7c3bd8bb…` package and original `306263df…` package each passed all
 78 workload protocols at widths 3, 100 and 1,000 with Redis enabled. Each workload

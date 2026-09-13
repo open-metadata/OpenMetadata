@@ -77,6 +77,28 @@ final class EntityBenchmarkReadWorkloads {
             prefix + "expanded" + suffix,
             List.of(),
             new Request("GET", lookup.path() + "?fields=" + EXPANDED_FIELDS, headers, null, 200)));
+    addColumnPages(workloads, lookup, columnCount, headers);
+  }
+
+  private static void addColumnPages(
+      final List<Workload> workloads,
+      final Lookup lookup,
+      final int columnCount,
+      final Map<String, String> headers) {
+    final String principal = headers.isEmpty() ? "admin" : "reader";
+    final String suffix = "." + principal + "." + lookup.name() + "." + columnCount;
+    final String path = lookup.path() + "/columns?limit=50";
+    for (final var projection :
+        List.of(
+            new Lookup("basic", ""),
+            new Lookup("metadata", "&fields=tags,customMetrics,extension"),
+            new Lookup("profile", "&fields=profile,tags"))) {
+      workloads.add(
+          new Workload(
+              "columns.page." + projection.name() + suffix,
+              List.of(),
+              new Request("GET", path + projection.path(), headers, null, 200)));
+    }
   }
 
   private static void add(final List<Workload> workloads, final String name, final String path) {

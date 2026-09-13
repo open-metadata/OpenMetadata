@@ -12,10 +12,51 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 
 class EntityBenchmarkReadWorkloadsTest {
+  @ParameterizedTest
+  @ValueSource(ints = {3, 100, 1000})
+  void columnPagesExerciseBothLookupsAndPrincipalsAtEveryWidth(final int columnCount)
+      throws Exception {
+    final var table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withFullyQualifiedName("service.database.schema.table")
+            .withDatabaseSchema(
+                new EntityReference().withFullyQualifiedName("service.database.schema"));
+    final var pages =
+        EntityBenchmarkReadWorkloads.create(table, columnCount, "reader-token").stream()
+            .filter(workload -> workload.name().startsWith("columns.page."))
+            .toList();
+    assertEquals(12, pages.size());
+    final AtomicInteger readers = new AtomicInteger();
+    final AtomicInteger names = new AtomicInteger();
+    final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext(
+        "/v1/tables", exchange -> serveColumnPage(exchange, table, readers, names));
+    server.start();
+    try {
+      final var manifest =
+          new EntityBenchmarkManifest(
+              "http://127.0.0.1:" + server.getAddress().getPort(), "admin-token", pages);
+      final var http = new EntityBenchmarkHttp(manifest);
+      for (final var workload : pages) {
+        assertTrue(workload.name().endsWith("." + columnCount));
+        final var reply =
+            http.send(workload.request(), new EntityBenchmarkHttp.Context("page", null), true);
+        assertTrue(reply.succeeds(workload.request(), workload.checks()), workload.name());
+      }
+      assertEquals(6, readers.get());
+      assertEquals(6, names.get());
+    } finally {
+      server.stop(0);
+    }
+  }
+
   @Test
   void detailWorkloadsExerciseBothLookupFormsAndBothPrincipals() throws Exception {
     final var table =
@@ -72,6 +113,33 @@ class EntityBenchmarkReadWorkloadsTest {
         query == null
             || (query.startsWith("fields=")
                 && Set.of(query.substring("fields=".length()).split(",")).equals(expanded));
+    if (reader) readers.incrementAndGet();
+    if (byName) names.incrementAndGet();
+    try (exchange) {
+      exchange.sendResponseHeaders(
+          (reader || admin) && (byId || byName) && projection ? 200 : 400, -1);
+    }
+  }
+
+  private static void serveColumnPage(
+      final HttpExchange exchange,
+      final Table table,
+      final AtomicInteger readers,
+      final AtomicInteger names)
+      throws IOException {
+    final String path = exchange.getRequestURI().getPath();
+    final boolean byName =
+        path.equals("/v1/tables/name/" + table.getFullyQualifiedName() + "/columns");
+    final boolean byId = path.equals("/v1/tables/" + table.getId() + "/columns");
+    final String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+    final boolean reader = "Bearer reader-token".equals(authorization);
+    final boolean admin = "Bearer admin-token".equals(authorization);
+    final boolean projection =
+        Set.of(
+                "limit=50",
+                "limit=50&fields=tags,customMetrics,extension",
+                "limit=50&fields=profile,tags")
+            .contains(exchange.getRequestURI().getQuery());
     if (reader) readers.incrementAndGet();
     if (byName) names.incrementAndGet();
     try (exchange) {
