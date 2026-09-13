@@ -38,12 +38,12 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
-    getImageWithResolutionAndFallback,
-    ImageQuality
+  getImageWithResolutionAndFallback,
+  ImageQuality,
 } from '../../../../utils/ProfilerUtils';
 import {
-    getTeamAndUserDetailsPath,
-    getUserPath
+  getTeamAndUserDetailsPath,
+  getUserPath,
 } from '../../../../utils/RouterUtils';
 import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
