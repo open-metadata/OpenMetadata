@@ -31,12 +31,15 @@ from metadata.ingestion.models.ometa_lineage import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import test_connection_common
-from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ParsedLineage,
     parse_registry,
 )
-from metadata.ingestion.source.database.saphana.models import SapHanaLineageModel
+from metadata.ingestion.source.database.saphana.models import (
+    SYS_BIC_SCHEMA_NAME,
+    SapHanaLineageModel,
+)
 from metadata.ingestion.source.database.saphana.queries import (
     SAPHANA_LINEAGE,
     SAPHANA_QUERY_HISTORY_STATEMENT,
@@ -77,7 +80,8 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
     - Analytic View and Attribute View based on a Table
     - Calculation View based on an Analytic, Attribute or Calculation View, or a Table
 
-    The two never describe the same object, so every edge has exactly one origin.
+    On-premise exposes the repository models as _SYS_BIC runtime views, so the SQL pass
+    skips that schema and the two never describe the same object.
     """
 
     sql_stmt = SAPHANA_QUERY_HISTORY_STATEMENT
@@ -154,6 +158,20 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 "processQueryLineage is enabled, and that the ingestion user holds CATALOG READ, without "
                 "which SYS.M_SQL_PLAN_CACHE only returns the ingestion user's own statements."
             )
+
+    def view_lineage_producer(self) -> Iterable[TableView]:
+        """Leave the repository models to the CDATA pass.
+
+        On-premise exposes calculation, analytic and attribute views as runtime views in
+        _SYS_BIC, and metadata ingestion stores a definition for them like any other
+        view. Both passes would then describe the same entity, one from SQL and one from
+        the XML model, so the two are partitioned here rather than allowed to overlap.
+        """
+        for view in super().view_lineage_producer():
+            if view.schema_name == SYS_BIC_SCHEMA_NAME:
+                self.status.filter(view.table_name, "Repository model, handled by the _SYS_REPO pass")
+                continue
+            yield view
 
     def yield_query_lineage(self) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """Query-history lineage, guarded so a restricted plan cache is not fatal.

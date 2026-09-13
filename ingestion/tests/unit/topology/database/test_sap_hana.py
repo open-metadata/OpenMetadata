@@ -47,7 +47,7 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
@@ -1756,3 +1756,27 @@ def test_plan_cache_row_becomes_a_table_query() -> None:
     assert queries[0].serviceName == "test_sap_hana"
     # No HANA dialect exists, so the connector must hand the parser ANSI.
     assert queries[0].dialect == Dialect.ANSI.value
+
+
+def test_view_pass_skips_repository_models() -> None:
+    """The two passes must not both describe a _SYS_BIC view.
+
+    On-premise surfaces calculation, analytic and attribute views as runtime views in
+    _SYS_BIC, and metadata ingestion stores a definition for them. Without this
+    partition the SQL pass would parse that definition while the CDATA pass emits XML
+    lineage for the same entity, producing duplicate or conflicting edges.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    repository_view = TableView(
+        table_name="pkg/CV_SALES", schema_name="_SYS_BIC", db_name="H00", view_definition="select 1 from dummy"
+    )
+    plain_view = TableView(
+        table_name="LT_V_CHAINED", schema_name="GE370603", db_name="H00", view_definition="select 1 from dummy"
+    )
+
+    with patch.object(LineageSource, "view_lineage_producer", return_value=iter([repository_view, plain_view])):
+        produced = list(source.view_lineage_producer())
+
+    assert [view.table_name for view in produced] == ["LT_V_CHAINED"]
+    assert len(source.status.filtered) == 1
