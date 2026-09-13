@@ -101,8 +101,8 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { waitForSearchIndexed } from '../../utils/polling';
 import { createTable } from '../../utils/KnowledgeCenter';
+import { waitForSearchIndexed } from '../../utils/polling';
 import {
   openMatchingFieldsPanel,
   setSliderValue,
