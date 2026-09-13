@@ -279,6 +279,8 @@ export const deleteEdge = async (
   const addPipeline = page.getByTestId('add-pipeline');
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
+  const fromNodeId = get(fromNode, 'entityResponseData.id');
+  const toNodeId = get(toNode, 'entityResponseData.id');
 
   // clickEdgeBetweenNodes fires a synthetic click on a react-flow edge label,
   // and that takes no actionability wait: when the graph re-lays out between
@@ -353,15 +355,33 @@ export const deleteEdge = async (
       new URL(response.url()).pathname.startsWith('/api/v1/lineage/')
   );
   await confirmation.getByTestId('confirm-button').click();
-  expect((await deleteRes).ok()).toBe(true);
+  const deleteResponse = await deleteRes;
+  expect(deleteResponse.ok()).toBe(true);
   await expect(confirmation).toBeHidden();
 
   // Confirm THIS edge is the one that went. The canvas click is by coordinate,
-  // so a stale midpoint can select a neighbour: without this the run deletes
+  // so a stale midpoint can select a neighbour: without a check the run deletes
   // some other edge, reports success, and only fails several iterations later
   // when the edge it skipped is asked for and no longer exists.
-  await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, true)).toHaveCount(0);
-  await expect(edgeMarker(page, fromNodeFqn, toNodeFqn, false)).toHaveCount(0);
+  //
+  // Check the request, not the canvas. Whether the marker disappears says
+  // nothing about which edge went: the canvas refetches the scene immediately
+  // after the DELETE and that read can still contain the edge -- measured on
+  // this branch at 265ms and 774ms after a 200, with the scene response body
+  // still listing it -- and nothing refetches again, so the stale render never
+  // resolves on its own. The request path names the ids the server actually
+  // acted on, which is the thing this guard is for.
+  const deletedPath = new URL(deleteResponse.url()).pathname.split('/');
+  const deletedFromId = deletedPath[deletedPath.length - 3];
+  const deletedToId = deletedPath[deletedPath.length - 1];
+
+  expect(
+    deletedFromId,
+    'the delete removed an edge from a different node'
+  ).toBe(fromNodeId);
+  expect(deletedToId, 'the delete removed an edge to a different node').toBe(
+    toNodeId
+  );
 };
 
 export const deleteEdgeBetweenNodesViaAPI = (
