@@ -39,6 +39,7 @@ import {
   getApiContext,
   getEntityTypeSearchIndexMapping,
   toastNotification,
+  waitForAntdPopupToSettle,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { parseCSV } from './entityImport';
@@ -434,6 +435,14 @@ export const fitToScreen = async (page: Page) => {
   const fitToScreenItem = page.getByRole('menuitem', { name: 'Fit to screen' });
 
   await page.getByTestId('fit-screen').click();
+  await expect(fitToScreenItem).toBeVisible();
+  // Ant grows this menu scaleY(0.8) -> scaleY(1), so a click computed against
+  // the scaled menu lands beside the item. The menu closes anyway, so the
+  // detach wait below still passes and the whole call becomes a silent no-op --
+  // which is how a lineage node stays outside the viewport through a dozen
+  // re-fits and verifyNodePresent waits out its retry on a node React Flow
+  // never rendered.
+  await waitForAntdPopupToSettle(page);
   await fitToScreenItem.click();
 
   // The menu closes with an exit animation, so without this it lingers in the
