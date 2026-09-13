@@ -234,7 +234,11 @@ test.describe('Data asset lineage', () => {
     test(`verify pipeline, export and removal for entity - ${startCase(
       key
     )}`, async ({ page }) => {
-      test.setTimeout(5 * 60 * 1000);
+      // Matches the create-lineage sibling above. Five minutes was not enough:
+      // the Table variant ran 5.2m, and deleteEdge now verifies the toolbar
+      // opened on the edge it aimed at and waits out the dialog's zoom before
+      // pressing Remove, both of which cost time this budget did not have.
+      test.setTimeout(8 * 60 * 1000);
       // The hierarchical lineage map lays the graph out wider than the default
       // 1280x720 viewport, so fit-to-screen settles with edge markers outside
       // the view and clickCanvasEdge's in-viewport assertion never passes. The

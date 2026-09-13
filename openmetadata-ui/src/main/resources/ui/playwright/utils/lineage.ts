@@ -1459,18 +1459,31 @@ export const verifyPlatformLineageForEntity = async (
     .click();
   await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
 
-  const focusSceneResponse = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
-      new URL(response.url()).searchParams.get('focusFqn') === fromFqn
-  );
+  // The scene for this focus is very often already in the query cache — the
+  // entity's own lineage tab fetched exactly this focusFqn earlier in the same
+  // test — and navigating here then re-renders from cache without issuing a
+  // request at all. Requiring one makes the wait hang until the test dies, so
+  // assert it only when it actually happens; the node assertions below are
+  // what prove the scene arrived either way.
+  const focusSceneResponse = page
+    .waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+        new URL(response.url()).searchParams.get('focusFqn') === fromFqn,
+      { timeout: 30_000 }
+    )
+    .catch(() => null);
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
   await expect
     .poll(() =>
       new URL(page.url()).pathname.endsWith(`/${encodeURIComponent(fromFqn)}`)
     )
     .toBe(true);
-  expect((await focusSceneResponse).ok()).toBeTruthy();
+
+  const focusScene = await focusSceneResponse;
+  if (focusScene) {
+    expect(focusScene.ok()).toBeTruthy();
+  }
 
   await page.getByTestId('lineage-layer-btn').click();
 
