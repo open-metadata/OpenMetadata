@@ -26,6 +26,36 @@ import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';
 // import doesn't leak into files that Playwright's `--list` walks.
 initCoreI18n(i18next);
 
+// Ant Design 4 has no global motion switch — that arrived with v5's token
+// system — so collapse the durations instead.
+//
+// This is deliberately NOT `animation: none`. rc-motion drives every Ant
+// overlay off `animationend`/`transitionend`; remove the animation and the
+// event never fires, so the overlay never sheds its motion classes and sits
+// there inert at `pointer-events: none`. That was tried on this branch and had
+// to be reverted. A 1ms duration still fires both events, just immediately,
+// which is what rc-motion is waiting for.
+//
+// The race this closes: `toBeVisible()` on an overlay is satisfied by its first
+// scaled frame, so a press begun then lands mousedown on a control and mouseup
+// where that control has since moved to, and the browser never synthesises a
+// click. Six separate CI failures on this branch were that one mechanism.
+const collapsePlaywrightMotion = () => {
+  if (!import.meta.env.PW_E2E_BUILD) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.setAttribute('data-testid', 'playwright-motion-collapse');
+  style.textContent = `*, *::before, *::after {
+    animation-delay: 0s !important;
+    animation-duration: 1ms !important;
+    transition-delay: 0s !important;
+    transition-duration: 1ms !important;
+  }`;
+  document.head.append(style);
+};
+
 const recordPlaywrightAppBoot = () => {
   if (!import.meta.env.PW_E2E_BUILD) {
     return;
@@ -58,6 +88,7 @@ if (!container) {
   throw new Error('Failed to find the root element');
 }
 
+collapsePlaywrightMotion();
 recordPlaywrightAppBoot();
 
 // The SSO "Test Login" popup returns to the configured callback URL. When this
