@@ -472,6 +472,14 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
+    // One filter round-trip per entity type in allEntities — open the dropdown,
+    // wait out the aggregation, Update, wait for getLineageByEntityCount, then
+    // assert one row shown and the rest hidden. That is well over a dozen
+    // iterations, which does not fit the 60s default: this failed at 1.1m with
+    // the clock stopping mid-assertion rather than on a missing row. Two
+    // siblings in this file already carry the same allowance.
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
