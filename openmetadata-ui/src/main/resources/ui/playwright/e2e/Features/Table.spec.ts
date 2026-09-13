@@ -261,8 +261,15 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.scrollIntoViewIfNeeded();
-    await expect(pageSizeDropdown).toBeInViewport();
+    // Scroll inside the retry: the schema's tables keep rendering after the
+    // loaders clear, and a row growing above the pagination pushes it back out
+    // of the viewport, so a single scroll settles on a position the layout then
+    // abandons. The assertion is unchanged — the control still has to end up on
+    // screen before the hover below can open its menu.
+    await expect(async () => {
+      await pageSizeDropdown.scrollIntoViewIfNeeded();
+      await expect(pageSizeDropdown).toBeInViewport();
+    }).toPass({ timeout: 30_000 });
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
     await expect(pageSizeDropdown).toHaveText('15 / Page');
