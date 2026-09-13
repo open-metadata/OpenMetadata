@@ -543,7 +543,20 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
     '';
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
-  await lineageNode.waitFor({ state: 'attached' });
+  // LineageMap renders with React Flow's onlyRenderVisibleElements, so a node
+  // outside the current viewport is not merely off-screen -- it is absent from
+  // the DOM, and scrollIntoViewIfNeeded cannot reveal what was never rendered.
+  // Verifying several nodes in a row pans the canvas as it goes, so the later
+  // ones can end up outside the viewport that the last fit established; re-fit
+  // until this node renders instead of waiting out the test on one the canvas
+  // has moved away from.
+  await expect(async () => {
+    if ((await lineageNode.count()) === 0) {
+      await fitToScreen(page);
+    }
+    await expect(lineageNode).toBeAttached({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
+
   await lineageNode.scrollIntoViewIfNeeded();
 
   await expect(lineageNode).toBeVisible();
