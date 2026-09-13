@@ -37,6 +37,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   connectEdgeBetweenNodesViaAPI,
+  expectLineageNodeVisible,
   fitToScreen,
   openImpactAnalysisTab,
   rearrangeNodes,
@@ -1045,7 +1046,7 @@ test.describe('Lineage Filters', () => {
       .fill(topicEntity.entity.name);
 
     const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+    await expectLineageNodeVisible(page, topicFqn);
     await page.getByTestId(`option-${topicFqn}`).click();
 
     await page.locator('.lineage-entity-panel').waitFor();

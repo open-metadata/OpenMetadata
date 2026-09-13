@@ -25,6 +25,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   dismissLineageMapOnboarding,
+  expectLineageNodeVisible,
   performZoomOut,
   verifyExportLineagePNG,
   visitLineageTab,
@@ -117,7 +118,7 @@ test.describe('Entity Lineage tab', () => {
       await expect(
         page.locator('[data-testid="lineage-details"]')
       ).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${nodeFqn}`)).toBeVisible();
+      await expectLineageNodeVisible(page, nodeFqn);
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.LINEAGE);
@@ -142,7 +143,7 @@ test.describe('Entity Lineage tab', () => {
       expect((await databaseSceneResponse).ok()).toBeTruthy();
 
       await expect(page.getByTestId('lineage-details')).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${schemaFqn}`)).toBeVisible();
+      await expectLineageNodeVisible(page, schemaFqn);
     }
   );
 

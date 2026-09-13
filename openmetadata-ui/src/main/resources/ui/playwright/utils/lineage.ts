@@ -544,6 +544,41 @@ export const connectEntityEdgeBetweenNodesViaAPI = (
   );
 };
 
+/**
+ * Assert a lineage node is on the canvas.
+ *
+ * LineageMap renders with React Flow's onlyRenderVisibleElements, so a node
+ * outside the viewport is absent from the DOM rather than merely off-screen: a
+ * bare toBeVisible fails for a node that is in the graph but out of frame,
+ * which reads as "the lineage is wrong" when it only means the camera moved.
+ * Widen the frame and re-check instead of asserting against whatever the last
+ * interaction happened to leave on screen.
+ */
+export const expectLineageNodeVisible = async (
+  page: Page,
+  fqn: string | undefined
+) => {
+  if (!fqn) {
+    throw new Error(
+      'expectLineageNodeVisible was given no fully qualified name'
+    );
+  }
+
+  const node = page.getByTestId(`lineage-node-${fqn}`);
+
+  await expect(async () => {
+    if ((await node.count()) === 0) {
+      if ((await page.getByTestId('fit-screen').count()) > 0) {
+        await fitToScreen(page);
+      } else {
+        await performZoomOut(page);
+      }
+    }
+
+    await expect(node).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
+};
+
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name =
@@ -1452,7 +1487,7 @@ export const verifyPlatformLineageForEntity = async (
   await expect(fromNode).toBeVisible();
 
   if (toFqn) {
-    await expect(page.getByTestId(`lineage-node-${toFqn}`)).toBeVisible();
+    await expectLineageNodeVisible(page, toFqn);
   }
 };
 

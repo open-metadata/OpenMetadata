@@ -33,6 +33,7 @@ import {
   connectEdgeBetweenNodesViaAPI,
   editLineage,
   editLineageClick,
+  expectLineageNodeVisible,
   fitToScreen,
   removeColumnLineage,
   visitLineageTab,
@@ -1035,8 +1036,8 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await fitToScreen(page);
 
-      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+      await expectLineageNodeVisible(page, tableFqn);
+      await expectLineageNodeVisible(page, topicFqn);
       await expect(
         page.getByTestId(`lineage-node-${dashboardFqn}`)
       ).toBeVisible();
