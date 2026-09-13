@@ -83,13 +83,16 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
     sql_stmt = SAPHANA_QUERY_HISTORY_STATEMENT
 
     # Anchored rather than wildcarded, so a SELECT that merely quotes the keyword does
-    # not match. CREATE TABLE ... AS SELECT is missing by necessity: no DDL is cached.
+    # not match. Keyword pairs allow anything between them, because SQL permits any
+    # whitespace there and formatted statements routinely wrap the line.
+    #
+    # CREATE TABLE ... AS SELECT is missing by necessity: no DDL is cached.
     filters = f"""
         AND (
-            {_STATEMENT} LIKE 'INSERT INTO%SELECT%'
+            {_STATEMENT} LIKE 'INSERT%INTO%SELECT%'
             OR {_STATEMENT} LIKE 'UPSERT%SELECT%'
             OR {_STATEMENT} LIKE 'REPLACE%SELECT%'
-            OR {_STATEMENT} LIKE 'MERGE INTO%'
+            OR {_STATEMENT} LIKE 'MERGE%INTO%'
             OR {_STATEMENT} LIKE 'UPDATE%SET%'
         )
         """

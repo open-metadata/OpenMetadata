@@ -1522,8 +1522,8 @@ def test_query_filters_select_only_data_movement() -> None:
     """
     filters = SaphanaLineageSource.filters
 
-    assert "INSERT INTO%SELECT%" in filters
-    assert "MERGE INTO%" in filters
+    assert "INSERT%INTO%SELECT%" in filters
+    assert "MERGE%INTO%" in filters
     # A plain SELECT moves nothing and would only add noise.
     assert "'SELECT%'" not in filters
 
@@ -1609,6 +1609,33 @@ def test_query_history_failure_is_contained() -> None:
     assert "CATALOG READ" in results[0].left.error
 
 
+def test_iter_reaches_the_repository_pass_after_a_query_failure() -> None:
+    """The failure must be contained inside _iter, not just inside the one method.
+
+    Asserting on yield_query_lineage alone would stay green if _iter stopped before
+    the repository pass, which is the regression that actually costs lineage.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+    reached = []
+
+    def explode(*_, **__):
+        raise RuntimeError("insufficient privilege: SYS.M_SQL_PLAN_CACHE")
+
+    def record_cdata():
+        reached.append("cdata")
+        return iter([])
+
+    with (
+        patch.object(LineageSource, "yield_query_lineage", side_effect=explode),
+        patch.object(LineageSource, "yield_view_lineage", return_value=iter([])),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", side_effect=record_cdata),
+    ):
+        results = list(source._iter())
+
+    assert reached == ["cdata"]
+    assert any(either.left is not None for either in results)
+
+
 def test_view_pass_failure_still_surfaces() -> None:
     """A view-pass failure must not be swallowed.
 
@@ -1641,8 +1668,8 @@ def test_query_filters_match_real_statement_shapes() -> None:
     assert "REPLACE_REGEXPR" in filters
     assert "LTRIM(" in filters
     # Still anchored afterwards, so a quoted keyword mid-statement does not match.
-    assert "LIKE 'INSERT INTO%SELECT%'" in filters
-    assert "LIKE '%INSERT INTO" not in filters
+    assert "LIKE 'INSERT%INTO%SELECT%'" in filters
+    assert "LIKE '%INSERT" not in filters
 
 
 def test_real_plan_cache_statement_resolves_to_lineage() -> None:
