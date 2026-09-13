@@ -12,20 +12,28 @@
  */
 
 import {
-    Box,
-    EmptyPlaceholder,
-    Skeleton,
-    Typography
+  Box,
+  EmptyPlaceholder,
+  Skeleton,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { compact, startCase } from 'lodash';
-import { FC, isValidElement, lazy, ReactNode, Suspense, useCallback, useMemo } from 'react';
+import {
+  FC,
+  isValidElement,
+  lazy,
+  ReactNode,
+  Suspense,
+  useCallback,
+  useMemo,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
-    ChangeDescription,
-    FieldChange
+  ChangeDescription,
+  FieldChange,
 } from '../../generated/type/changeEvent';
 import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
 import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
@@ -33,16 +41,16 @@ import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import {
-    getDomainPath,
-    getTagPath,
-    getTeamsWithFqnPath,
-    getUserPath
+  getDomainPath,
+  getTagPath,
+  getTeamsWithFqnPath,
+  getUserPath,
 } from '../../utils/RouterUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
-    AuditLogListItemProps,
-    AuditLogListProps
+  AuditLogListItemProps,
+  AuditLogListProps,
 } from './AuditLogList.interface';
 
 const RichTextEditorPreviewerV1 = lazy(
@@ -322,7 +330,12 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box align="center" data-testid="item-header" direction="row" gap={1} wrap="wrap">
+    <Box
+      align="center"
+      data-testid="item-header"
+      direction="row"
+      gap={1}
+      wrap="wrap">
       {userLink}
       <Typography className="tw:text-quaternary">–</Typography>
       <Typography
@@ -391,7 +404,12 @@ const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
   entityType,
   timestamp,
 }) => (
-  <Box align="center" className="tw:mt-1" data-testid="item-meta" direction="row" gap={2}>
+  <Box
+    align="center"
+    className="tw:mt-1"
+    data-testid="item-meta"
+    direction="row"
+    gap={2}>
     {entityType && (
       <Typography
         className="tw:text-fg-brand-primary"
@@ -500,7 +518,8 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
       }
 
       if (isDescriptionField(fieldName)) {
-        const markdown = typeof value === 'string' ? value : formatChangeValue(value);
+        const markdown =
+          typeof value === 'string' ? value : formatChangeValue(value);
 
         return (
           <Suspense fallback={<span>{formatChangeValue(value)}</span>}>
@@ -625,9 +644,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     }
 
     return (
-      <Typography size="text-sm">
-        {entityLabel ?? entityFQN ?? '--'}
-      </Typography>
+      <Typography size="text-sm">{entityLabel ?? entityFQN ?? '--'}</Typography>
     );
   }, [normalizedType, entityFQN, entityLabel, log]);
 
@@ -659,7 +676,10 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           width="32"
         />
       </div>
-      <Box className="tw:flex-1 tw:min-w-0 tw:items-start" direction="col" gap={1}>
+      <Box
+        className="tw:flex-1 tw:min-w-0 tw:items-start"
+        direction="col"
+        gap={1}>
         <AuditLogItemHeader
           eventType={eventType}
           impersonatedBy={log.impersonatedBy}
@@ -730,31 +750,39 @@ const AuditLogList: FC<AuditLogListProps> = ({
         ]
       : undefined;
 
+    let emptyContent: React.ReactNode;
+
+    if (hasActiveSearch) {
+      emptyContent = (
+        <EmptyPlaceholder
+          actions={clearAction}
+          description={t('message.check-spelling-or-try-different-term')}
+          icon={<NoSearch className="tw:text-quaternary" />}
+          title={t('label.no-matching-results')}
+        />
+      );
+    } else if (hasActiveFilters) {
+      emptyContent = (
+        <EmptyPlaceholder
+          actions={clearAction}
+          description={t('message.no-results-for-filters-description')}
+          icon={<NoSearch className="tw:text-quaternary" />}
+          title={t('label.no-result-for-these-filter-plural')}
+        />
+      );
+    } else {
+      emptyContent = (
+        <EmptyPlaceholder
+          description={t('message.no-audit-logs-description')}
+          title={t('label.no-audit-logs-yet')}
+          variant="blank"
+        />
+      );
+    }
+
     return (
       <div data-testid="audit-log-list">
-        <div className="tw:p-8">
-          {hasActiveSearch ? (
-            <EmptyPlaceholder
-              actions={clearAction}
-              description={t('message.check-spelling-or-try-different-term')}
-              icon={<NoSearch className="tw:text-quaternary" />}
-              title={t('label.no-matching-results')}
-            />
-          ) : hasActiveFilters ? (
-            <EmptyPlaceholder
-              actions={clearAction}
-              description={t('message.no-results-for-filters-description')}
-              icon={<NoSearch className="tw:text-quaternary" />}
-              title={t('label.no-result-for-these-filter-plural')}
-            />
-          ) : (
-            <EmptyPlaceholder
-              description={t('message.no-audit-logs-description')}
-              title={t('label.no-audit-logs-yet')}
-              variant="blank"
-            />
-          )}
-        </div>
+        <div className="tw:p-8">{emptyContent}</div>
       </div>
     );
   }

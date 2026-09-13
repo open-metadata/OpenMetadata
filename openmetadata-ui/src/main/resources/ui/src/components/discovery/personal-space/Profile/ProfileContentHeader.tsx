@@ -13,10 +13,10 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
-    Box,
-    Breadcrumbs,
-    FeaturedIcon,
-    Typography
+  Box,
+  Breadcrumbs,
+  FeaturedIcon,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import React, { FC, useMemo } from 'react';
 
@@ -112,7 +112,9 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           </Typography>
         </Box>
         {actions && (
-          <Box className="tw:ml-auto tw:flex tw:items-center tw:gap-2" direction="row">
+          <Box
+            className="tw:ml-auto tw:flex tw:items-center tw:gap-2"
+            direction="row">
             {actions}
           </Box>
         )}

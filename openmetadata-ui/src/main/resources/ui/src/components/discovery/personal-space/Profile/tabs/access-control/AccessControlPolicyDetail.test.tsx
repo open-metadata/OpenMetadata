@@ -59,15 +59,18 @@ jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
   hardDeleteEntity: jest.fn().mockResolvedValue(true),
 }));
 
-jest.mock('../../../../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: () => ({
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      EditAll: true,
-      Delete: true,
-      ViewAll: true,
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({
+    usePermissionProvider: () => ({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        EditAll: true,
+        Delete: true,
+        ViewAll: true,
+      }),
     }),
-  }),
-}));
+  })
+);
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),

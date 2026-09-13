@@ -228,6 +228,14 @@ interface RuleCardProps {
   onEdit: (rule: Rule) => void;
 }
 
+function getPermissionTooltipTitle(
+  canEdit: boolean,
+  allowed: string,
+  denied: string
+): string {
+  return String(canEdit ? allowed : denied);
+}
+
 const RuleCard: FC<RuleCardProps> = ({
   canEditAll,
   isLoadingOnSave,
@@ -255,8 +263,10 @@ const RuleCard: FC<RuleCardProps> = ({
         <Box direction="row" gap={1}>
           <Tooltip
             placement="left"
-            title={String(
-              canEditAll ? t('label.edit') : t(NO_PERMISSION_FOR_ACTION)
+            title={getPermissionTooltipTitle(
+              canEditAll,
+              t('label.edit'),
+              t(NO_PERMISSION_FOR_ACTION)
             )}>
             <Button
               color="tertiary"
@@ -269,8 +279,10 @@ const RuleCard: FC<RuleCardProps> = ({
           </Tooltip>
           <Tooltip
             placement="left"
-            title={String(
-              canEditAll ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+            title={getPermissionTooltipTitle(
+              canEditAll,
+              t('label.delete'),
+              t(NO_PERMISSION_FOR_ACTION)
             )}>
             <Button
               color="tertiary"
@@ -357,7 +369,7 @@ const renderRoleOrTeamCell = (
           color="link-color"
           data-testid={`link-${name}`}
           onPress={() => onNavigateToDetail(item)}>
-            {name}
+          {name}
         </Button>
       );
     }
@@ -904,6 +916,144 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     }
   }, [policy, onNavigate]);
 
+  const renderRulesTab = useCallback(
+    () => (
+      <Box direction="col" gap={3}>
+        {canEditAll && !isAddingRule && !editingRule && (
+          <Box direction="row" justify="end">
+            <Button
+              color="primary"
+              data-testid="add-rule"
+              size="sm"
+              onPress={handleStartAdd}>
+              {t('label.add-entity', { entity: t('label.rule') })}
+            </Button>
+          </Box>
+        )}
+
+        {(isAddingRule || editingRule) && (
+          <Box
+            className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
+            direction="col"
+            gap={4}>
+            <Typography
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
+              {editingRule
+                ? t('label.edit-entity', { entity: t('label.rule') })
+                : t('label.add-entity', { entity: t('label.rule') })}
+            </Typography>
+            <AccessControlRuleForm
+              ruleData={ruleData}
+              setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
+            />
+            <Box direction="row" gap={3} justify="end">
+              <Button color="tertiary" size="sm" onPress={handleCancelRuleForm}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                isLoading={isLoadingOnSave}
+                size="sm"
+                onPress={handleSaveRule}>
+                {t('label.save')}
+              </Button>
+            </Box>
+          </Box>
+        )}
+
+        {policy?.rules?.length ? (
+          policy.rules.map((rule) => (
+            <RuleCard
+              canEditAll={canEditAll}
+              isLoadingOnSave={isLoadingOnSave}
+              key={rule.name ?? ''}
+              rule={rule}
+              t={t}
+              onDelete={handleDeleteRule}
+              onEdit={handleEditRule}
+            />
+          ))
+        ) : (
+          <EmptyPlaceholder
+            title={t('label.no-entity-found', {
+              entity: t('label.rule-plural'),
+            })}
+          />
+        )}
+      </Box>
+    ),
+    [
+      canEditAll,
+      editingRule,
+      handleCancelRuleForm,
+      handleDeleteRule,
+      handleEditRule,
+      handleSaveRule,
+      handleStartAdd,
+      isAddingRule,
+      isLoadingOnSave,
+      policy,
+      ruleData,
+      setRuleData,
+      t,
+    ]
+  );
+
+  const renderRolesTab = useCallback(
+    () => (
+      <RoleOrTeamTable
+        canEditAll={canEditAll}
+        columns={detailColumns}
+        emptyTitle={t('label.no-entity-found', {
+          entity: t('label.role-plural'),
+        })}
+        isLoadingOnSave={isLoadingOnSave}
+        items={policy?.roles ?? []}
+        kind="role"
+        label={t('label.role-plural')}
+        t={t}
+        onNavigateToDetail={(item) =>
+          onNavigate({
+            type: 'roles-detail',
+            fqn: item.fullyQualifiedName ?? item.name ?? '',
+            name: getEntityName(item),
+          })
+        }
+        onRemove={handleEntityRemove}
+      />
+    ),
+    [
+      canEditAll,
+      detailColumns,
+      handleEntityRemove,
+      isLoadingOnSave,
+      onNavigate,
+      policy,
+      t,
+    ]
+  );
+
+  const renderTeamsTab = useCallback(
+    () => (
+      <RoleOrTeamTable
+        canEditAll={canEditAll}
+        columns={detailColumns}
+        emptyTitle={t('label.no-entity-found', {
+          entity: t('label.team-plural'),
+        })}
+        isLoadingOnSave={isLoadingOnSave}
+        items={policy?.teams ?? []}
+        kind="team"
+        label={t('label.team-plural')}
+        t={t}
+        onRemove={handleEntityRemove}
+      />
+    ),
+    [canEditAll, detailColumns, handleEntityRemove, isLoadingOnSave, policy, t]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -913,6 +1063,12 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   }
 
   const policyName = getEntityName(policy);
+
+  const tabRenderers: Record<PolicyTab, () => React.ReactNode> = {
+    rules: renderRulesTab,
+    roles: renderRolesTab,
+    teams: renderTeamsTab,
+  };
 
   return (
     <Box data-testid="policy-detail-container" direction="col" gap={4}>
@@ -947,115 +1103,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       <Box
         className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:w-full"
         direction="col">
-        {activeTab === 'rules' && (
-          <Box direction="col" gap={3}>
-            {canEditAll && !isAddingRule && !editingRule && (
-              <Box direction="row" justify="end">
-                <Button
-                  color="primary"
-                  data-testid="add-rule"
-                  size="sm"
-                  onPress={handleStartAdd}>
-                  {t('label.add-entity', { entity: t('label.rule') })}
-                </Button>
-              </Box>
-            )}
-
-            {(isAddingRule || editingRule) && (
-              <Box
-                className="tw:border tw:border-secondary tw:rounded-xl tw:p-4"
-                direction="col"
-                gap={4}>
-                <Typography
-                  className="tw:text-primary"
-                  size="text-sm"
-                  weight="semibold">
-                  {editingRule
-                    ? t('label.edit-entity', { entity: t('label.rule') })
-                    : t('label.add-entity', { entity: t('label.rule') })}
-                </Typography>
-                <AccessControlRuleForm
-                  ruleData={ruleData}
-                  setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
-                />
-                <Box direction="row" gap={3} justify="end">
-                  <Button
-                    color="tertiary"
-                    size="sm"
-                    onPress={handleCancelRuleForm}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    color="primary"
-                    isLoading={isLoadingOnSave}
-                    size="sm"
-                    onPress={handleSaveRule}>
-                    {t('label.save')}
-                  </Button>
-                </Box>
-              </Box>
-            )}
-
-            {policy.rules?.length ? (
-              policy.rules.map((rule) => (
-                <RuleCard
-                  canEditAll={canEditAll}
-                  isLoadingOnSave={isLoadingOnSave}
-                  key={rule.name ?? ''}
-                  rule={rule}
-                  t={t}
-                  onDelete={handleDeleteRule}
-                  onEdit={handleEditRule}
-                />
-              ))
-            ) : (
-              <EmptyPlaceholder
-                title={t('label.no-entity-found', {
-                  entity: t('label.rule-plural'),
-                })}
-              />
-            )}
-          </Box>
-        )}
-
-        {activeTab === 'roles' && (
-          <RoleOrTeamTable
-            canEditAll={canEditAll}
-            columns={detailColumns}
-            emptyTitle={t('label.no-entity-found', {
-              entity: t('label.role-plural'),
-            })}
-            isLoadingOnSave={isLoadingOnSave}
-            items={policy.roles ?? []}
-            kind="role"
-            label={t('label.role-plural')}
-            t={t}
-            onNavigateToDetail={(item) =>
-              onNavigate({
-                type: 'roles-detail',
-                fqn: item.fullyQualifiedName ?? item.name ?? '',
-                name: getEntityName(item),
-              })
-            }
-            onRemove={handleEntityRemove}
-          />
-        )}
-
-        {activeTab === 'teams' && (
-          <RoleOrTeamTable
-            canEditAll={canEditAll}
-            columns={detailColumns}
-            emptyTitle={t('label.no-entity-found', {
-              entity: t('label.team-plural'),
-            })}
-            isLoadingOnSave={isLoadingOnSave}
-            items={policy.teams ?? []}
-            kind="team"
-            label={t('label.team-plural')}
-            t={t}
-            onRemove={handleEntityRemove}
-          />
-        )}
+        {tabRenderers[activeTab]()}
       </Box>
 
       {selectedEntity && (

@@ -15,14 +15,17 @@ import { SelectItemType } from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import { SearchDropdownOption } from '../../../../../../components/SearchDropdown/SearchDropdown.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
-import { Effect, Rule } from '../../../../../../generated/api/policies/createPolicy';
+import {
+  Effect,
+  Rule,
+} from '../../../../../../generated/api/policies/createPolicy';
 import { EntityIconSize } from '../../../../../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../../../../../utils/EntityNameUtils';
 import { getCanonicalEntityType } from '../../../../../../utils/ExplorePureUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import {
-    PERMISSION_OPERATIONS,
-    PERMISSION_RESOURCES
+  PERMISSION_OPERATIONS,
+  PERMISSION_RESOURCES,
 } from '../../../../../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.constants';
 import { EntityTypeOption } from './AccessControl.types';
 
@@ -88,10 +91,12 @@ const POLICY_ENTITY_TYPES = [
   EntityType.KPI,
 ] as const;
 
-export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = POLICY_ENTITY_TYPES.map((et) => ({
-  value: et,
-  label: getEntityNameLabel(et),
-}));
+export const ENTITY_TYPE_OPTIONS: EntityTypeOption[] = POLICY_ENTITY_TYPES.map(
+  (et) => ({
+    value: et,
+    label: getEntityNameLabel(et),
+  })
+);
 
 export const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
   ENTITY_TYPE_OPTIONS.map((o) => ({

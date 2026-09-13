@@ -13,7 +13,12 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Button } from '@openmetadata/ui-core-components';
-import { AuditLogs as AuditLogsIcon, PermissionDebugger as AccessControlIcon, Policy as PoliciesIcon, Role as RolesIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  AuditLogs as AuditLogsIcon,
+  PermissionDebugger as AccessControlIcon,
+  Policy as PoliciesIcon,
+  Role as RolesIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,11 +40,16 @@ import AccessControlRolesPanel from './AccessControlRolesPanel';
 
 export type { AccessControlView };
 
+const ROLES_DETAIL = 'roles-detail' as const;
+const POLICIES_DETAIL = 'policies-detail' as const;
+
 interface AccessControlPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
-const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => {
+const AccessControlPanel: FC<AccessControlPanelProps> = ({
+  onHeaderChange,
+}) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [view, setView] = React.useState<AccessControlView>({
@@ -107,10 +117,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
     let policyName = '';
     let isDetailView = false;
 
-    if (view.type === 'roles-detail') {
+    if (view.type === ROLES_DETAIL) {
       roleName = view.name;
       isDetailView = true;
-    } else if (view.type === 'policies-detail') {
+    } else if (view.type === POLICIES_DETAIL) {
       policyName = view.name;
       isDetailView = true;
     }
@@ -131,26 +141,19 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       landing: [settingsItem, { id: 'current', label: acLabel }],
       roles: [...base, { id: 'current', label: rolesLabel }],
       'roles-add': [...base, rolesItem, { id: 'current', label: addRole }],
-      'roles-detail': [
-        ...base,
-        rolesItem,
-        { id: 'current', label: roleName },
-      ],
+      [ROLES_DETAIL]: [...base, rolesItem, { id: 'current', label: roleName }],
       policies: [...base, { id: 'current', label: policiesLabel }],
       'policies-add': [
         ...base,
         policiesItem,
         { id: 'current', label: addPolicy },
       ],
-      'policies-detail': [
+      [POLICIES_DETAIL]: [
         ...base,
         policiesItem,
         { id: 'current', label: policyName },
       ],
-      'permission-debugger': [
-        ...base,
-        { id: 'current', label: debuggerLabel },
-      ],
+      'permission-debugger': [...base, { id: 'current', label: debuggerLabel }],
       'audit-logs': [...base, { id: 'current', label: auditLogsLabel }],
     };
 
@@ -158,10 +161,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       landing: AccessControlIcon,
       roles: RolesIcon,
       'roles-add': RolesIcon,
-      'roles-detail': RolesIcon,
+      [ROLES_DETAIL]: RolesIcon,
       policies: PoliciesIcon,
       'policies-add': PoliciesIcon,
-      'policies-detail': PoliciesIcon,
+      [POLICIES_DETAIL]: PoliciesIcon,
       'permission-debugger': AccessControlIcon,
       'audit-logs': AuditLogsIcon,
     };
@@ -170,10 +173,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       landing: acLabel,
       roles: rolesLabel,
       'roles-add': addRole,
-      'roles-detail': roleName,
+      [ROLES_DETAIL]: roleName,
       policies: policiesLabel,
       'policies-add': addPolicy,
-      'policies-detail': policyName,
+      [POLICIES_DETAIL]: policyName,
       'permission-debugger': debuggerLabel,
       'audit-logs': auditLogsLabel,
     };
@@ -182,10 +185,10 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       landing: t('message.access-control-description'),
       roles: t('message.page-sub-header-for-roles'),
       'roles-add': t('message.page-sub-header-for-roles'),
-      'roles-detail': t('message.page-sub-header-for-roles'),
+      [ROLES_DETAIL]: t('message.page-sub-header-for-roles'),
       policies: t('message.page-sub-header-for-policies'),
       'policies-add': t('message.page-sub-header-for-policies'),
-      'policies-detail': t('message.page-sub-header-for-policies'),
+      [POLICIES_DETAIL]: t('message.page-sub-header-for-policies'),
       'permission-debugger': t(
         'message.page-sub-header-for-permission-debugger'
       ),
@@ -241,7 +244,9 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
     })();
 
     const titleInputForView = isDetailView ? detailHeaderTitleInput : undefined;
-    const titleSuffixForView = isDetailView ? detailHeaderTitleSuffix : undefined;
+    const titleSuffixForView = isDetailView
+      ? detailHeaderTitleSuffix
+      : undefined;
 
     onHeaderChange({
       breadcrumbs: crumbsByType[view.type] ?? base,
@@ -269,7 +274,9 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
 
   // Audit logs manages its own height/scroll and injects its own header actions.
   if (isAuditLogsView) {
-    return <AccessControlAuditLogsPanel onSetHeaderActions={setPanelHeaderActions} />;
+    return (
+      <AccessControlAuditLogsPanel onSetHeaderActions={setPanelHeaderActions} />
+    );
   }
 
   // All other views use the page-level padded scroll container.
@@ -286,14 +293,14 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       return <AccessControlAddRoleForm onNavigate={onNavigate} />;
     }
 
-    if (view.type === 'roles-detail') {
+    if (view.type === ROLES_DETAIL) {
       return (
         <AccessControlRoleDetail
           fqn={view.fqn}
           onNavigate={onNavigate}
           onRename={(newName) =>
             setView((prev) =>
-              prev.type === 'roles-detail' ? { ...prev, name: newName } : prev
+              prev.type === ROLES_DETAIL ? { ...prev, name: newName } : prev
             )
           }
           onSetHeaderActions={setDetailHeaderActions}
@@ -311,14 +318,14 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
       return <AccessControlAddPolicyForm onNavigate={onNavigate} />;
     }
 
-    if (view.type === 'policies-detail') {
+    if (view.type === POLICIES_DETAIL) {
       return (
         <AccessControlPolicyDetail
           fqn={view.fqn}
           onNavigate={onNavigate}
           onRename={(newName) =>
             setView((prev) =>
-              prev.type === 'policies-detail' ? { ...prev, name: newName } : prev
+              prev.type === POLICIES_DETAIL ? { ...prev, name: newName } : prev
             )
           }
           onSetHeaderActions={setDetailHeaderActions}
@@ -336,9 +343,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({ onHeaderChange }) => 
   })();
 
   return (
-    <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">
-      {content}
-    </div>
+    <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">{content}</div>
   );
 };
 

@@ -12,18 +12,24 @@
  */
 
 import {
-    Autocomplete,
-    Box,
-    Button,
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    HookForm,
-    SelectItemType,
-    Typography
+  Autocomplete,
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  SelectItemType,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useFilter } from 'react-aria';
 import type { Key } from 'react-aria-components';
 import { useForm } from 'react-hook-form';
@@ -34,8 +40,8 @@ import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { addRole, getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -70,7 +76,9 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
       required: true,
       placeholder: t('label.role-name'),
       props: { 'data-testid': 'role-name-input' },
-      rules: { required: t('label.field-required', { field: t('label.name') }) },
+      rules: {
+        required: t('label.field-required', { field: t('label.name') }),
+      },
     },
   ];
 

@@ -14,25 +14,31 @@
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import {
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    DateRangePicker,
-    Dialog,
-    Input,
-    Modal,
-    ModalOverlay,
-    PaginationCardWithControls,
-    ProgressBarBase,
-    Typography
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  DateRangePicker,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+  PaginationCardWithControls,
+  ProgressBarBase,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchLg, XClose } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../../../../../assets/svg/ic-download.svg';
 import AuditLogList from '../../../../../../components/AuditLog/AuditLogList.component';
@@ -40,28 +46,31 @@ import '../../../../../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../../../../../components/common/Banner/Banner';
 import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
-    PAGE_SIZE_BASE,
-    PAGE_SIZE_LARGE,
-    PAGE_SIZE_MEDIUM,
-    SOCKET_EVENTS
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+  SOCKET_EVENTS,
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import { Paging } from '../../../../../../generated/type/paging';
 import {
-    exportAuditLogs,
-    getAuditLogExportJob,
-    getAuditLogExportResult,
-    getAuditLogs
+  exportAuditLogs,
+  getAuditLogExportJob,
+  getAuditLogExportResult,
+  getAuditLogs,
 } from '../../../../../../rest/auditLogAPI';
 import {
-    AuditLogActiveFilter,
-    AuditLogEntry,
-    AuditLogListParams,
-    AuditLogListResponse
+  AuditLogActiveFilter,
+  AuditLogEntry,
+  AuditLogListParams,
+  AuditLogListResponse,
 } from '../../../../../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../../../../../utils/AuditLogUtils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
-import { showErrorToast, showSuccessToast } from '../../../../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+} from '../../../../../../utils/ToastUtils';
 import { EXPORT_POLL_INTERVAL_MS } from './AccessControl.constants';
 import type { ExportJob } from './AccessControl.types';
 import AccessControlAuditLogFilters from './AccessControlAuditLogFilters';
@@ -75,9 +84,9 @@ interface AccessControlAuditLogsPanelProps {
   onSetHeaderActions?: (actions: React.ReactNode) => void;
 }
 
-const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = ({
-  onSetHeaderActions,
-}) => {
+const AccessControlAuditLogsPanel: React.FC<
+  AccessControlAuditLogsPanelProps
+> = ({ onSetHeaderActions }) => {
   const { t } = useTranslation();
   const { socket } = useWebSocketConnector();
 
@@ -98,7 +107,10 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
   const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportDateRange, setExportDateRange] = useState<{ start: DateValue; end: DateValue } | null>(null);
+  const [exportDateRange, setExportDateRange] = useState<{
+    start: DateValue;
+    end: DateValue;
+  } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
@@ -431,9 +443,9 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
 
   return (
     <Box
-      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6" data-testid="audit-logs-page"
+      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6"
+      data-testid="audit-logs-page"
       direction="col">
-
       {/* Card wrapping filters + log list */}
       <Card className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden tw:mb-3">
         {/* Filters row inside card */}
@@ -481,9 +493,7 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
                       data-testid={`filter-chip-${filter.category}`}
                       direction="row"
                       gap={1}>
-                      <Typography
-                        className="tw:text-tertiary"
-                        weight="medium">
+                      <Typography className="tw:text-tertiary" weight="medium">
                         {filter.categoryLabel}:{' '}
                       </Typography>
                       <Box className="tw:max-w-80">
@@ -539,7 +549,11 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
             <PaginationCardWithControls
               page={currentPage}
               pageSize={pageSize}
-              pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+              pageSizeOptions={[
+                PAGE_SIZE_BASE,
+                PAGE_SIZE_MEDIUM,
+                PAGE_SIZE_LARGE,
+              ]}
               total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
               onPageChange={(newPage) => {
                 if (newPage > currentPage && paging.after) {
@@ -574,10 +588,7 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
                 {t('message.export-audit-logs-description')}
               </Typography>
               <Box direction="col" gap={2}>
-                <Typography
-                  as="p"
-                  className="tw:text-gray-400"
-                  size="text-md">
+                <Typography as="p" className="tw:text-gray-400" size="text-md">
                   {`${t('label.date-range')} *`}
                 </Typography>
                 {/* maxValue/value/onChange bridge two separate instances of @internationalized/date
@@ -593,7 +604,10 @@ const AccessControlAuditLogsPanel: React.FC<AccessControlAuditLogsPanelProps> = 
                   onChange={(range: any) =>
                     setExportDateRange(
                       range
-                        ? { start: range.start as DateValue, end: range.end as DateValue }
+                        ? {
+                            start: range.start as DateValue,
+                            end: range.end as DateValue,
+                          }
                         : null
                     )
                   }

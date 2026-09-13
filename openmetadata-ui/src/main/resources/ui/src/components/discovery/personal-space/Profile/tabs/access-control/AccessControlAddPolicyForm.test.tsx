@@ -42,7 +42,10 @@ jest.mock('./AccessControlRuleForm', () => () => (
 
 // Mock core-ui components with native HTML to avoid react-aria provider requirements
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
+  Box: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
     <div {...props}>{children}</div>
   ),
   Button: ({
@@ -76,6 +79,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     placeholder?: string;
   }) => (
     <input
+      aria-label={placeholder ?? 'input'}
       data-testid={testId}
       placeholder={placeholder}
       value={value}

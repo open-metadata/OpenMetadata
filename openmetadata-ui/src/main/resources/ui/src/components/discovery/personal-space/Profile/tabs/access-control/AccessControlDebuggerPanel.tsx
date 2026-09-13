@@ -12,10 +12,13 @@
  */
 
 import {
-    Box, Button, Card, Input,
-    Select,
-    SelectItemType,
-    Typography
+  Box,
+  Button,
+  Card,
+  Input,
+  Select,
+  SelectItemType,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -24,10 +27,10 @@ import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
-    evaluatePermission,
-    getPermissionDebugInfo,
-    PermissionDebugInfo,
-    PermissionEvaluationDebugInfo
+  evaluatePermission,
+  getPermissionDebugInfo,
+  PermissionDebugInfo,
+  PermissionEvaluationDebugInfo,
 } from '../../../../../../rest/permissionAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -77,7 +80,9 @@ const AccessControlDebuggerPanel: React.FC = () => {
         const options = response.hits.hits.map(
           (hit: { _source: { name: string; displayName?: string } }) => ({
             id: hit._source.name,
-            label: `${hit._source.displayName || hit._source.name} (${hit._source.name})`,
+            label: `${hit._source.displayName || hit._source.name} (${
+              hit._source.name
+            })`,
           })
         );
 
@@ -160,154 +165,200 @@ const AccessControlDebuggerPanel: React.FC = () => {
 
     return (
       <>
-      <Card
-        className="tw:mt-4 tw:overflow-hidden"
-        data-testid="evaluation-result">
-        <Box
-          className={`tw:px-6 tw:py-4 tw:border-b-2 ${
-            evaluationInfo.allowed
-              ? 'tw:bg-green-50 tw:border-green-500'
-              : 'tw:bg-red-50 tw:border-red-500'
-          }`}>
-          <Typography className="tw:text-primary" size="text-md" weight="semibold">
-            {t('label.permission-evaluation-result')}
-          </Typography>
-        </Box>
-        <Box className="tw:p-6" direction="col" gap={4}>
-          <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="col" gap={2}>
-            <Typography className="tw:text-primary" size="text-lg" weight="semibold">
-              {`${t('label.decision')}: ${evaluationInfo.finalDecision}`}
-            </Typography>
-            <Typography className="tw:text-tertiary" size="text-sm">
-              {`${t('label.user')} `}
-              <strong>{evaluationInfo.user.name}</strong>
-              {` ${t('label.is')} `}
-              <strong className={allowedColor}>
-                {evaluationInfo.allowed
-                  ? t('label.allowed')
-                  : t('label.denied')}
-              </strong>
-              {` ${t('label.to-perform')} `}
-              <strong>{evaluationInfo.operation}</strong>
-              {` ${t('label.on')} `}
-              <strong>{evaluationInfo.resource}</strong>
-              {evaluationInfo.resourceId &&
-                ` (${evaluationInfo.resourceId})`}
+        <Card
+          className="tw:mt-4 tw:overflow-hidden"
+          data-testid="evaluation-result">
+          <Box
+            className={`tw:px-6 tw:py-4 tw:border-b-2 ${
+              evaluationInfo.allowed
+                ? 'tw:bg-green-50 tw:border-green-500'
+                : 'tw:bg-red-50 tw:border-red-500'
+            }`}>
+            <Typography
+              className="tw:text-primary"
+              size="text-md"
+              weight="semibold">
+              {t('label.permission-evaluation-result')}
             </Typography>
           </Box>
-
-          {evaluationInfo.summary && (
-            <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="row" gap={4} wrap='wrap'>
-              <Typography className="tw:text-secondary" size="text-sm">
-                {`${t('label.policies-evaluated')}: ${evaluationInfo.summary.totalPoliciesEvaluated}`}
+          <Box className="tw:p-6" direction="col" gap={4}>
+            <Box
+              className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
+              direction="col"
+              gap={2}>
+              <Typography
+                className="tw:text-primary"
+                size="text-lg"
+                weight="semibold">
+                {`${t('label.decision')}: ${evaluationInfo.finalDecision}`}
               </Typography>
-              <Typography className="tw:text-secondary" size="text-sm">
-                {`${t('label.rules-evaluated')}: ${evaluationInfo.summary.totalRulesEvaluated}`}
-              </Typography>
-              <Typography className="tw:text-secondary" size="text-sm">
-                {`${t('label.matching-rule-plural')}: ${evaluationInfo.summary.matchingRules}`}
-              </Typography>
-              <Typography className="tw:text-secondary" size="text-sm">
-                {`${t('label.allow-rule-plural')}: ${evaluationInfo.summary.allowRules}`}
-              </Typography>
-              <Typography className="tw:text-secondary" size="text-sm">
-                {`${t('label.deny-rule-plural')}: ${evaluationInfo.summary.denyRules}`}
-              </Typography>
-              <Typography className="tw:text-secondary" size="text-sm">
-                {t('label.time-ms', {
-                  milliseconds: evaluationInfo.summary.evaluationTimeMs,
-                })}
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {`${t('label.user')} `}
+                <strong>{evaluationInfo.user.name}</strong>
+                {` ${t('label.is')} `}
+                <strong className={allowedColor}>
+                  {evaluationInfo.allowed
+                    ? t('label.allowed')
+                    : t('label.denied')}
+                </strong>
+                {` ${t('label.to-perform')} `}
+                <strong>{evaluationInfo.operation}</strong>
+                {` ${t('label.on')} `}
+                <strong>{evaluationInfo.resource}</strong>
+                {evaluationInfo.resourceId && ` (${evaluationInfo.resourceId})`}
               </Typography>
             </Box>
-          )}
 
-          <Box direction="col" gap={2}>
-            <Typography className="tw:text-primary" size="text-sm" weight="semibold">
-              {`${t('label.evaluation-step-plural')}:`}
-            </Typography>
-            {evaluationInfo.evaluationSteps.map((step) => {
-              const stepEffectColor =
-                step.effect.toUpperCase() === 'ALLOW'
-                  ? 'tw:text-green-600'
-                  : 'tw:text-red-600';
-
-              return (
-                <Card
-                  className="tw:p-4 tw:bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500" direction="col" gap={2}
-                  key={step.stepNumber}>
-                  <Box align="center" direction="row" gap={2} wrap="wrap">
-                    <Typography className="tw:text-secondary" size="text-sm">
-                      {`${t('label.step')} ${step.stepNumber}: `}
-                    </Typography>
-                    <Typography className="tw:text-primary" size="text-sm" weight="semibold">
-                      {step.policy.name}
-                    </Typography>
-                    <Typography className="tw:text-secondary" size="text-sm">
-                      {`- ${t('label.rule')}: ${step.rule}`}
-                    </Typography>
-                  </Box>
-                  <Typography className="tw:text-secondary" size="text-sm">
-                    {`${t('label.source')}: ${step.source} (${step.sourceEntity.name})`}
-                  </Typography>
-                  <Typography className="tw:text-secondary" size="text-sm">
-                    {`${t('label.effect')}: `}
-                    <strong className={stepEffectColor}>{step.effect}</strong>
-                  </Typography>
-                  <Typography className="tw:text-secondary" size="text-sm">
-                    {`${t('label.matched')}: `}
-                    <strong>
-                      {step.matched ? t('label.yes') : t('label.no')}
-                    </strong>
-                  </Typography>
-                  <Typography className="tw:text-tertiary" size="text-xs">
-                    {step.matchReason}
-                  </Typography>
-                  {step.conditionEvaluations.length > 0 && (
-                    <Box direction="col" gap={1}>
-                      <Typography className="tw:text-secondary" size="text-sm">
-                        {`${t('label.condition-plural')}:`}
-                      </Typography>
-                      {step.conditionEvaluations.map((cond) => (
-                        <Box
-                          align="center"
-                          direction="row"
-                          gap={2}
-                          key={cond.condition}>
-                          <Typography className="tw:text-xs tw:font-mono tw:bg-secondary tw:px-1 tw:rounded">
-                            {cond.condition}
-                          </Typography>
-                          <Typography className="tw:text-secondary" size="text-xs">
-                            {` → ${cond.result ? t('label.true') : t('label.false')}`}
-                          </Typography>
-                          <Typography className="tw:text-tertiary" size="text-xs">
-                            {`(${cond.evaluationDetails})`}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Card>
-              );
-            })}
-          </Box>
-
-          {evaluationInfo.summary?.reasonsForDecision && (
-            <Box className="tw:bg-tertiary tw:p-4 tw:rounded-lg" direction="col" gap={2}>
-              <Typography className="tw:text-primary" size="text-sm" weight="semibold">
-                {`${t('label.reasons-for-decision')}:`}
-              </Typography>
-              {evaluationInfo.summary.reasonsForDecision.map((reason) => (
-                <Typography
-                  className="tw:text-secondary"
-                  key={reason}
-                  size="text-sm">
-                  {`• ${reason}`}
+            {evaluationInfo.summary && (
+              <Box
+                className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
+                direction="row"
+                gap={4}
+                wrap="wrap">
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {`${t('label.policies-evaluated')}: ${
+                    evaluationInfo.summary.totalPoliciesEvaluated
+                  }`}
                 </Typography>
-              ))}
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {`${t('label.rules-evaluated')}: ${
+                    evaluationInfo.summary.totalRulesEvaluated
+                  }`}
+                </Typography>
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {`${t('label.matching-rule-plural')}: ${
+                    evaluationInfo.summary.matchingRules
+                  }`}
+                </Typography>
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {`${t('label.allow-rule-plural')}: ${
+                    evaluationInfo.summary.allowRules
+                  }`}
+                </Typography>
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {`${t('label.deny-rule-plural')}: ${
+                    evaluationInfo.summary.denyRules
+                  }`}
+                </Typography>
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {t('label.time-ms', {
+                    milliseconds: evaluationInfo.summary.evaluationTimeMs,
+                  })}
+                </Typography>
+              </Box>
+            )}
+
+            <Box direction="col" gap={2}>
+              <Typography
+                className="tw:text-primary"
+                size="text-sm"
+                weight="semibold">
+                {`${t('label.evaluation-step-plural')}:`}
+              </Typography>
+              {evaluationInfo.evaluationSteps.map((step) => {
+                const stepEffectColor =
+                  step.effect.toUpperCase() === 'ALLOW'
+                    ? 'tw:text-green-600'
+                    : 'tw:text-red-600';
+
+                return (
+                  <Card
+                    className="tw:p-4 tw:bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500"
+                    direction="col"
+                    gap={2}
+                    key={step.stepNumber}>
+                    <Box align="center" direction="row" gap={2} wrap="wrap">
+                      <Typography className="tw:text-secondary" size="text-sm">
+                        {`${t('label.step')} ${step.stepNumber}: `}
+                      </Typography>
+                      <Typography
+                        className="tw:text-primary"
+                        size="text-sm"
+                        weight="semibold">
+                        {step.policy.name}
+                      </Typography>
+                      <Typography className="tw:text-secondary" size="text-sm">
+                        {`- ${t('label.rule')}: ${step.rule}`}
+                      </Typography>
+                    </Box>
+                    <Typography className="tw:text-secondary" size="text-sm">
+                      {`${t('label.source')}: ${step.source} (${
+                        step.sourceEntity.name
+                      })`}
+                    </Typography>
+                    <Typography className="tw:text-secondary" size="text-sm">
+                      {`${t('label.effect')}: `}
+                      <strong className={stepEffectColor}>{step.effect}</strong>
+                    </Typography>
+                    <Typography className="tw:text-secondary" size="text-sm">
+                      {`${t('label.matched')}: `}
+                      <strong>
+                        {step.matched ? t('label.yes') : t('label.no')}
+                      </strong>
+                    </Typography>
+                    <Typography className="tw:text-tertiary" size="text-xs">
+                      {step.matchReason}
+                    </Typography>
+                    {step.conditionEvaluations.length > 0 && (
+                      <Box direction="col" gap={1}>
+                        <Typography
+                          className="tw:text-secondary"
+                          size="text-sm">
+                          {`${t('label.condition-plural')}:`}
+                        </Typography>
+                        {step.conditionEvaluations.map((cond) => (
+                          <Box
+                            align="center"
+                            direction="row"
+                            gap={2}
+                            key={cond.condition}>
+                            <Typography className="tw:text-xs tw:font-mono tw:bg-secondary tw:px-1 tw:rounded">
+                              {cond.condition}
+                            </Typography>
+                            <Typography
+                              className="tw:text-secondary"
+                              size="text-xs">
+                              {` → ${
+                                cond.result ? t('label.true') : t('label.false')
+                              }`}
+                            </Typography>
+                            <Typography
+                              className="tw:text-tertiary"
+                              size="text-xs">
+                              {`(${cond.evaluationDetails})`}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Card>
+                );
+              })}
             </Box>
-          )}
-        </Box>
-      </Card>
+
+            {evaluationInfo.summary?.reasonsForDecision && (
+              <Box
+                className="tw:bg-tertiary tw:p-4 tw:rounded-lg"
+                direction="col"
+                gap={2}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {`${t('label.reasons-for-decision')}:`}
+                </Typography>
+                {evaluationInfo.summary.reasonsForDecision.map((reason) => (
+                  <Typography
+                    className="tw:text-secondary"
+                    key={reason}
+                    size="text-sm">
+                    {`• ${reason}`}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </Card>
       </>
     );
   };
@@ -318,10 +369,9 @@ const AccessControlDebuggerPanel: React.FC = () => {
       data-testid="admin-permission-debugger"
       direction="col"
       gap={4}>
-
       {/* Card 1: Select a user */}
       <Card className="tw:p-6" direction="col" gap={4}>
-        <Typography weight='semibold'>
+        <Typography weight="semibold">
           {t('label.select-user-to-debug-permissions')}
         </Typography>
 
@@ -335,9 +385,7 @@ const AccessControlDebuggerPanel: React.FC = () => {
               entity: t('label.user'),
             })}
             onInputChange={(v) => searchUsers(v)}
-            onSelectionChange={(key) =>
-              key && handleUserSelect(String(key))
-            }>
+            onSelectionChange={(key) => key && handleUserSelect(String(key))}>
             {(item) => (
               <Select.Item id={item.id} key={item.id}>
                 {item.label}
@@ -348,7 +396,9 @@ const AccessControlDebuggerPanel: React.FC = () => {
 
         {selectedUsername && (
           <Typography className="tw:text-secondary" size="text-sm">
-            {`${t('label.selected-entity', { entity: t('label.user-lowercase') })}: `}
+            {`${t('label.selected-entity', {
+              entity: t('label.user-lowercase'),
+            })}: `}
             <strong>{selectedUsername}</strong>
           </Typography>
         )}
@@ -357,7 +407,10 @@ const AccessControlDebuggerPanel: React.FC = () => {
       {/* Card 2: Evaluate Permission */}
       <Card className="tw:overflow-hidden">
         <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
-          <Typography className="tw:text-primary" size="text-sm" weight="semibold">
+          <Typography
+            className="tw:text-primary"
+            size="text-sm"
+            weight="semibold">
             {t('label.evaluate-permission')}
           </Typography>
         </Box>
@@ -368,13 +421,12 @@ const AccessControlDebuggerPanel: React.FC = () => {
             </Typography>
           ) : (
             <Box direction="col" gap={4}>
-              <Box
-                align="start"
-                direction="row"
-                gap={4}
-                wrap="wrap">
+              <Box align="start" direction="row" gap={4} wrap="wrap">
                 <Box className="tw:min-w-48" direction="col" gap={1}>
-                  <Typography className="tw:text-secondary" size="text-sm" weight="medium">
+                  <Typography
+                    className="tw:text-secondary"
+                    size="text-sm"
+                    weight="medium">
                     {`${t('label.resource')} *`}
                   </Typography>
                   <Select
@@ -401,7 +453,10 @@ const AccessControlDebuggerPanel: React.FC = () => {
                 </Box>
 
                 <Box className="tw:min-w-48" direction="col" gap={1}>
-                  <Typography className="tw:text-secondary" size="text-sm" weight="medium">
+                  <Typography
+                    className="tw:text-secondary"
+                    size="text-sm"
+                    weight="medium">
                     {`${t('label.operation')} *`}
                   </Typography>
                   <Select
@@ -428,8 +483,13 @@ const AccessControlDebuggerPanel: React.FC = () => {
                 </Box>
 
                 <Box className="tw:min-w-64" direction="col" gap={1}>
-                  <Typography className="tw:text-secondary" size="text-sm" weight="medium">
-                    {`${t('label.resource-fqn-or-id')} (${t('label.optional')})`}
+                  <Typography
+                    className="tw:text-secondary"
+                    size="text-sm"
+                    weight="medium">
+                    {`${t('label.resource-fqn-or-id')} (${t(
+                      'label.optional'
+                    )})`}
                   </Typography>
                   <Input
                     placeholder={t('label.enter-resource-fqn-or-id')}
@@ -460,25 +520,38 @@ const AccessControlDebuggerPanel: React.FC = () => {
       {selectedUsername && (
         <Card className="tw:overflow-hidden tw:w-full">
           <Box className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary">
-            <Typography className="tw:text-primary" size="text-sm" weight="semibold">
+            <Typography
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
               {`${t('label.permissions-for')} ${selectedUsername}`}
             </Typography>
           </Box>
           <Box className="tw:p-6">
-            {loadingPermissions ? (
-              <Box className="tw:py-8" justify="center">
-                <Loader />
-              </Box>
-            ) : permissionInfo ? (
-              <AccessControlUserPermissions
-                isLoggedInUser={false}
-                username={selectedUsername}
-              />
-            ) : (
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('message.select-user-first')}
-              </Typography>
-            )}
+            {(() => {
+              if (loadingPermissions) {
+                return (
+                  <Box className="tw:py-8" justify="center">
+                    <Loader />
+                  </Box>
+                );
+              }
+
+              if (permissionInfo) {
+                return (
+                  <AccessControlUserPermissions
+                    isLoggedInUser={false}
+                    username={selectedUsername}
+                  />
+                );
+              }
+
+              return (
+                <Typography className="tw:text-tertiary" size="text-sm">
+                  {t('message.select-user-first')}
+                </Typography>
+              );
+            })()}
           </Box>
         </Card>
       )}

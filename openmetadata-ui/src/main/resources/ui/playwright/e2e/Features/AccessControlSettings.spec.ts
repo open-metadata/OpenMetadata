@@ -50,7 +50,9 @@ const openAccessControlSettings = async (page: Page): Promise<void> => {
   await page.getByTestId('ai-profile-page').waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('profile-nav-access-control').click();
-  await page.getByTestId('access-control-landing').waitFor({ state: 'visible' });
+  await page
+    .getByTestId('access-control-landing')
+    .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -62,7 +64,9 @@ const navigateToRolesPanel = async (page: Page): Promise<void> => {
 
 const navigateToPoliciesPanel = async (page: Page): Promise<void> => {
   await page.getByTestId('access-control-card-policies').click();
-  await page.getByTestId('policies-list-container').waitFor({ state: 'visible' });
+  await page
+    .getByTestId('policies-list-container')
+    .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -75,7 +79,7 @@ const navigateToRoleDetail = async (
   roleName: string
 ): Promise<void> => {
   const container = page.getByTestId('roles-list-container');
-  const roleRow = container.getByTestId(`role-${roleName}`)
+  const roleRow = container.getByTestId(`role-${roleName}`);
   await getElementWithPagination(page, roleRow, false, 50, container);
   await roleRow.getByTestId('role-name').click();
   await page.getByTestId('role-detail-container').waitFor({ state: 'visible' });
@@ -94,7 +98,9 @@ const navigateToPolicyDetail = async (
   const policyRow = container.getByTestId(`policy-${policyName}`);
   await getElementWithPagination(page, policyRow, false, 50, container);
   await policyRow.getByTestId('policy-name').click();
-  await page.getByTestId('policy-detail-container').waitFor({ state: 'visible' });
+  await page
+    .getByTestId('policy-detail-container')
+    .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -138,15 +144,13 @@ test.describe(
       await test.step('Roles card navigates to roles list', async () => {
         await page.getByTestId('access-control-card-roles').click();
         await waitForAllLoadersToDisappear(page);
-        await expect(
-          page.getByTestId('roles-list-container')
-        ).toBeVisible();
+        await expect(page.getByTestId('roles-list-container')).toBeVisible();
       });
 
       await test.step('Policies card navigates to policies list', async () => {
         await page
           .getByTestId('profile-content-header')
-          .getByText('Access Control', { exact: true } )
+          .getByText('Access Control', { exact: true })
           .click();
         await waitForAllLoadersToDisappear(page);
         await page
@@ -154,15 +158,13 @@ test.describe(
           .waitFor({ state: 'visible' });
         await page.getByTestId('access-control-card-policies').click();
         await waitForAllLoadersToDisappear(page);
-        await expect(
-          page.getByTestId('policies-list-container')
-        ).toBeVisible();
+        await expect(page.getByTestId('policies-list-container')).toBeVisible();
       });
 
       await test.step('Permission Debugger card navigates to debugger panel', async () => {
         await page
           .getByTestId('profile-content-header')
-          .getByText('Access Control', { exact: true } )
+          .getByText('Access Control', { exact: true })
           .click();
         await waitForAllLoadersToDisappear(page);
         await page
@@ -180,7 +182,7 @@ test.describe(
       await test.step('Audit Logs card navigates to audit logs panel', async () => {
         await page
           .getByTestId('profile-content-header')
-          .getByText('Access Control', { exact: true } )
+          .getByText('Access Control', { exact: true })
           .click();
         await waitForAllLoadersToDisappear(page);
         await page
@@ -228,9 +230,7 @@ test.describe(
       await test.step('Select a policy', async () => {
         const policyAutocomplete = page.getByTestId('role-policies-select');
         await policyAutocomplete.click();
-        await policyAutocomplete
-          .getByRole('combobox')
-          .fill('Data Consumer');
+        await policyAutocomplete.getByRole('combobox').fill('Data Consumer');
         await page
           .getByRole('option', { name: DEFAULT_POLICIES.dataConsumerPolicy })
           .click();
@@ -277,7 +277,13 @@ test.describe(
           {
             op: 'add',
             path: '/roles',
-            value: [{ id: role.responseData.id, type: 'role', name: role.responseData.name }],
+            value: [
+              {
+                id: role.responseData.id,
+                type: 'role',
+                name: role.responseData.name,
+              },
+            ],
           },
         ],
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -298,14 +304,14 @@ test.describe(
 
       await test.step('Teams tab shows empty state', async () => {
         await clickDetailTab(page, 'teams');
-        await expect(
-          page.getByText('No Teams found')
-        ).toBeVisible();
+        await expect(page.getByText('No Teams found')).toBeVisible();
       });
 
       await test.step('Users tab shows pre-added user', async () => {
         await clickDetailTab(page, 'users');
-        await expect(page.getByRole('gridcell', { name: adminUser.name})).toBeVisible();
+        await expect(
+          page.getByRole('gridcell', { name: adminUser.name })
+        ).toBeVisible();
       });
 
       await role.delete(apiContext);
@@ -327,9 +333,7 @@ test.describe(
 
       await test.step('Click edit description and fill', async () => {
         await page.getByTestId('edit-description-btn').click();
-        const editor = page.locator(
-          '.om-block-editor[contenteditable="true"]'
-        );
+        const editor = page.locator('.om-block-editor[contenteditable="true"]');
         await editor.waitFor({ state: 'visible' });
         await editor.clear();
         await editor.fill(updatedDescription);
@@ -373,9 +377,7 @@ test.describe(
 
       await test.step('Click rename button and fill new name', async () => {
         await page.getByTestId('rename-role-btn').click();
-        await page
-          .getByTestId('rename-input')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('rename-input').waitFor({ state: 'visible' });
         const renameInput = page
           .getByTestId('rename-input')
           .getByRole('textbox');
@@ -477,9 +479,7 @@ test.describe(
 
       await test.step('Click remove button for the policy', async () => {
         await page.getByTestId(`remove-${policyDisplayName}`).click();
-        await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
       });
 
       await test.step('Confirm removal', async () => {
@@ -519,7 +519,13 @@ test.describe(
           {
             op: 'add',
             path: '/roles',
-            value: [{ id: role.responseData.id, type: 'role', name: role.responseData.name }],
+            value: [
+              {
+                id: role.responseData.id,
+                type: 'role',
+                name: role.responseData.name,
+              },
+            ],
           },
         ],
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -531,7 +537,9 @@ test.describe(
       await clickDetailTab(page, 'users');
 
       await test.step('User row is visible', async () => {
-        await expect(page.getByRole('gridcell', { name: 'admin' })).toBeVisible();
+        await expect(
+          page.getByRole('gridcell', { name: 'admin' })
+        ).toBeVisible();
       });
 
       await test.step('Click remove and confirm', async () => {
@@ -542,15 +550,15 @@ test.describe(
             r.status() === 200
         );
         await page.getByTestId(`remove-${adminUser.name}`).click();
-        await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
         await page.getByTestId('confirm-button').click();
         await patchPromise;
       });
 
       await test.step('User row is gone', async () => {
-        await expect(page.getByRole('gridcell', { name: 'admin' })).not.toBeVisible();
+        await expect(
+          page.getByRole('gridcell', { name: 'admin' })
+        ).not.toBeVisible();
       });
 
       await role.delete(apiContext);
@@ -572,11 +580,15 @@ test.describe(
 
       await test.step('Find role row via pagination and click delete', async () => {
         const roleRow = rolesContainer.getByTestId(`role-${roleName}`);
-        await getElementWithPagination(page, roleRow, false, 50, rolesContainer);
+        await getElementWithPagination(
+          page,
+          roleRow,
+          false,
+          50,
+          rolesContainer
+        );
         await roleRow.getByTestId(`delete-action-${roleName}`).click();
-        await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
       });
 
       await test.step('Confirm deletion and verify toast', async () => {
@@ -609,9 +621,7 @@ test.describe(
 
       await test.step('Click delete role button in header', async () => {
         await page.getByTestId('delete-role-btn').click();
-        await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
       });
 
       await test.step('Confirm deletion and verify navigation back to list', async () => {
@@ -665,10 +675,7 @@ test.describe(
       });
 
       await test.step('Fill rule fields', async () => {
-        await page
-          .getByTestId('rule-name')
-          .getByRole('textbox')
-          .fill(ruleName);
+        await page.getByTestId('rule-name').getByRole('textbox').fill(ruleName);
 
         const resourcesAutocomplete = page.getByTestId('resources');
         await resourcesAutocomplete.click();
@@ -718,7 +725,9 @@ test.describe(
       await role.create(apiContext, [policy.responseData.name]);
 
       const orgTeam = await apiContext
-        .get('/api/v1/teams/name/Organization?fields=id,name,displayName,policies')
+        .get(
+          '/api/v1/teams/name/Organization?fields=id,name,displayName,policies'
+        )
         .then((r) => r.json());
 
       // Link the policy to the Organization team by patching the team's policies list.
@@ -726,9 +735,28 @@ test.describe(
       // policy.teams field reflects which teams include this policy.
       const existingPolicies: { id: string; type: string; name: string }[] =
         orgTeam.policies ?? [];
-      const teamPatchOp = existingPolicies.length === 0
-        ? { op: 'add', path: '/policies', value: [{ id: policy.responseData.id, type: 'policy', name: policy.responseData.name }] }
-        : { op: 'add', path: '/policies/-', value: { id: policy.responseData.id, type: 'policy', name: policy.responseData.name } };
+      const teamPatchOp =
+        existingPolicies.length === 0
+          ? {
+              op: 'add',
+              path: '/policies',
+              value: [
+                {
+                  id: policy.responseData.id,
+                  type: 'policy',
+                  name: policy.responseData.name,
+                },
+              ],
+            }
+          : {
+              op: 'add',
+              path: '/policies/-',
+              value: {
+                id: policy.responseData.id,
+                type: 'policy',
+                name: policy.responseData.name,
+              },
+            };
       await apiContext.patch(`/api/v1/teams/${orgTeam.id}`, {
         data: [teamPatchOp],
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -776,9 +804,7 @@ test.describe(
 
       await test.step('Click edit description and fill new value', async () => {
         await page.getByTestId('edit-description-btn').click();
-        const editor = page.locator(
-          '.om-block-editor[contenteditable="true"]'
-        );
+        const editor = page.locator('.om-block-editor[contenteditable="true"]');
         await editor.waitFor({ state: 'visible' });
         await editor.clear();
         await editor.fill(updatedDescription);
@@ -822,9 +848,7 @@ test.describe(
 
       await test.step('Click rename button and fill new name', async () => {
         await page.getByTestId('rename-policy-btn').click();
-        await page
-          .getByTestId('rename-input')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('rename-input').waitFor({ state: 'visible' });
         const renameInput = page
           .getByTestId('rename-input')
           .getByRole('textbox');
@@ -962,9 +986,7 @@ test.describe(
       });
 
       await test.step('Verify updated rule card appears', async () => {
-        await expect(
-          page.getByTestId(`rule-${updatedRuleName}`)
-        ).toBeVisible();
+        await expect(page.getByTestId(`rule-${updatedRuleName}`)).toBeVisible();
         await expect(
           page.getByTestId(`rule-${existingRuleName}`)
         ).not.toBeVisible();
@@ -1024,7 +1046,10 @@ test.describe(
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
-      await role.create(apiContext, [policy.responseData.name, DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await role.create(apiContext, [
+        policy.responseData.name,
+        DEFAULT_POLICY_FQNS.dataConsumerPolicy,
+      ]);
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -1038,10 +1063,10 @@ test.describe(
       });
 
       await test.step('Click remove and confirm', async () => {
-        await page.getByTestId(`remove-${role.responseData.displayName}`).click();
         await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+          .getByTestId(`remove-${role.responseData.displayName}`)
+          .click();
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/roles') &&
@@ -1072,16 +1097,37 @@ test.describe(
       await policy.create(apiContext, VIEW_ALL_RULE);
 
       const orgTeam = await apiContext
-        .get('/api/v1/teams/name/Organization?fields=id,name,displayName,policies')
+        .get(
+          '/api/v1/teams/name/Organization?fields=id,name,displayName,policies'
+        )
         .then((r) => r.json());
 
       // Link the policy to the Organization team by patching the team's policies.
       // The canonical direction: teams own their policy list so policy.teams is derived.
       const existingTeamPolicies: { id: string; type: string; name: string }[] =
         orgTeam.policies ?? [];
-      const addPolicyOp = existingTeamPolicies.length === 0
-        ? { op: 'add', path: '/policies', value: [{ id: policy.responseData.id, type: 'policy', name: policy.responseData.name }] }
-        : { op: 'add', path: '/policies/-', value: { id: policy.responseData.id, type: 'policy', name: policy.responseData.name } };
+      const addPolicyOp =
+        existingTeamPolicies.length === 0
+          ? {
+              op: 'add',
+              path: '/policies',
+              value: [
+                {
+                  id: policy.responseData.id,
+                  type: 'policy',
+                  name: policy.responseData.name,
+                },
+              ],
+            }
+          : {
+              op: 'add',
+              path: '/policies/-',
+              value: {
+                id: policy.responseData.id,
+                type: 'policy',
+                name: policy.responseData.name,
+              },
+            };
       await apiContext.patch(`/api/v1/teams/${orgTeam.id}`, {
         data: [addPolicyOp],
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -1098,9 +1144,7 @@ test.describe(
 
       await test.step('Click remove and confirm', async () => {
         await page.getByTestId(`remove-${orgTeam.name}`).click();
-        await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/teams') &&
@@ -1143,12 +1187,8 @@ test.describe(
           50,
           policiesContainer
         );
-        await policyRow
-          .getByTestId(`delete-action-${policyName}`)
-          .click();
-        await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+        await policyRow.getByTestId(`delete-action-${policyName}`).click();
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
       });
 
       await test.step('Confirm deletion and verify toast', async () => {
@@ -1181,9 +1221,7 @@ test.describe(
 
       await test.step('Click delete policy button in header', async () => {
         await page.getByTestId('delete-policy-btn').click();
-        await page
-          .getByTestId('delete-modal')
-          .waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
       });
 
       await test.step('Confirm deletion and verify navigation back to list', async () => {
@@ -1215,9 +1253,7 @@ test.describe(
       page,
     }) => {
       await openAccessControlSettings(page);
-      await page
-        .getByTestId('access-control-card-permission-debugger')
-        .click();
+      await page.getByTestId('access-control-card-permission-debugger').click();
       await page
         .getByTestId('admin-permission-debugger')
         .waitFor({ state: 'visible' });
@@ -1231,8 +1267,7 @@ test.describe(
       await test.step('Select a user and wait for permissions to load', async () => {
         const permissionsPromise = page.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/permissions/debug') &&
-            r.status() === 200
+            r.url().includes('/api/v1/permissions/debug') && r.status() === 200
         );
         // ComboBox has no data-testid — locate by placeholder text
         const userCombobox = page.getByPlaceholder(/search.*user/i);
@@ -1278,12 +1313,10 @@ test.describe(
       });
 
       await test.step('Evaluation result card is visible with decision', async () => {
-        await expect(
-          page.getByTestId('evaluation-result')
-        ).toBeVisible();
-        await expect(
-          page.getByTestId('evaluation-result')
-        ).toContainText(/allowed|denied/i);
+        await expect(page.getByTestId('evaluation-result')).toBeVisible();
+        await expect(page.getByTestId('evaluation-result')).toContainText(
+          /allowed|denied/i
+        );
       });
 
       await test.step('Summary stats are shown in the result card', async () => {
@@ -1293,9 +1326,9 @@ test.describe(
       });
 
       await test.step('At least one evaluation step is listed', async () => {
-        await expect(
-          page.getByTestId('evaluation-result')
-        ).toContainText(/step 1/i);
+        await expect(page.getByTestId('evaluation-result')).toContainText(
+          /step 1/i
+        );
       });
     });
   }
@@ -1313,8 +1346,7 @@ test.describe(
       // Hoist the initial-load listener before navigation so we don't miss it.
       const initialLoadPromise = page.waitForResponse(
         (r) =>
-          r.url().includes('/api/v1/audit/logs') &&
-          !r.url().includes('/export')
+          r.url().includes('/api/v1/audit/logs') && !r.url().includes('/export')
       );
       await openAccessControlSettings(page);
       await page.getByTestId('access-control-card-audit-logs').click();
@@ -1363,9 +1395,7 @@ test.describe(
         await entityTypeFilterPromise;
 
         // Filter chip for entity type should now be visible
-        await expect(
-          page.getByTestId('filter-chip-entityType')
-        ).toBeVisible();
+        await expect(page.getByTestId('filter-chip-entityType')).toBeVisible();
 
         // Remove the filter chip and verify it disappears
         const removeFilterPromise = page.waitForResponse(
@@ -1425,7 +1455,9 @@ test.describe(
       await test.step('Selecting a date range enables the export button and triggers export API', async () => {
         // Open the calendar
         await page.getByTestId('export-date-range-picker').click();
-        const dropdown = page.getByRole('button', { name: 'Calendar Date range picker' });
+        const dropdown = page.getByRole('button', {
+          name: 'Calendar Date range picker',
+        });
         await dropdown.waitFor({ state: 'visible' });
         await dropdown.click();
 
@@ -1441,9 +1473,8 @@ test.describe(
         ).toBeEnabled();
 
         // Click export and wait for the export-job creation API call
-        const exportPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/audit/logs/export')
+        const exportPromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/audit/logs/export')
         );
         await modalFooter.getByRole('button', { name: 'Export' }).click();
         await exportPromise;

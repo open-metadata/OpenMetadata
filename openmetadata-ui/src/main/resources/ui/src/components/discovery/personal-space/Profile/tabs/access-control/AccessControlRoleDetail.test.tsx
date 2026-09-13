@@ -43,15 +43,18 @@ jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
   hardDeleteEntity: jest.fn().mockResolvedValue(true),
 }));
 
-jest.mock('../../../../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: () => ({
-    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-      EditAll: true,
-      Delete: true,
-      ViewAll: true,
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({
+    usePermissionProvider: () => ({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        EditAll: true,
+        Delete: true,
+        ViewAll: true,
+      }),
     }),
-  }),
-}));
+  })
+);
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -117,7 +120,9 @@ describe('AccessControlRoleDetail', () => {
   });
 
   it('shows loader initially', () => {
-    const { getRoleByName } = jest.requireMock('../../../../../../rest/rolesAPIV1');
+    const { getRoleByName } = jest.requireMock(
+      '../../../../../../rest/rolesAPIV1'
+    );
     (getRoleByName as jest.Mock).mockReturnValue(new Promise(() => {}));
 
     renderComponent();
@@ -176,7 +181,9 @@ describe('AccessControlRoleDetail', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('remove-DataStewardPolicy')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('remove-DataStewardPolicy')
+      ).toBeInTheDocument();
     });
 
     await userEvent.click(screen.getByTestId('remove-DataStewardPolicy'));

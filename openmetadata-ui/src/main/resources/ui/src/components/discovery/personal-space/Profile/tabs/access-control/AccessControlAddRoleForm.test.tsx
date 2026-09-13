@@ -43,7 +43,10 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
 
 // Mock core-ui components with native HTML to avoid react-aria provider requirements
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => (
+  Box: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
     <div {...props}>{children}</div>
   ),
   Button: ({
@@ -77,6 +80,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     placeholder?: string;
   }) => (
     <input
+      aria-label={placeholder ?? 'input'}
       data-testid={testId}
       placeholder={placeholder}
       value={value}
@@ -91,7 +95,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   SelectItemType: {},
   TextArea: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
-    <textarea data-testid={testId} />
+    <textarea aria-label="text-area" data-testid={testId} />
   ),
 }));
 

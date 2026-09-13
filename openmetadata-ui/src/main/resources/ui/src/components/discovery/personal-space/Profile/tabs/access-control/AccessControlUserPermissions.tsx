@@ -12,27 +12,31 @@
  */
 
 import {
-    Accordion,
-    AccordionHeader,
-    AccordionItem,
-    AccordionPanel,
-    Badge, Box, Card, Typography
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Badge,
+  Box,
+  Card,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { TFunction } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-    DirectRolePermission,
-    getMyPermissionDebugInfo,
-    getPermissionDebugInfo,
-    InheritedPermission,
-    PermissionDebugInfo,
-    PolicyInfo,
-    RolePermission,
-    RuleInfo,
-    TeamPermission
+  DirectRolePermission,
+  getMyPermissionDebugInfo,
+  getPermissionDebugInfo,
+  InheritedPermission,
+  PermissionDebugInfo,
+  PolicyInfo,
+  RolePermission,
+  RuleInfo,
+  TeamPermission,
 } from '../../../../../../rest/permissionAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -47,7 +51,7 @@ interface AccessControlUserPermissionsProps {
 const ruleEffectColor = (effect: string) =>
   effect === 'ALLOW' ? 'success' : 'error';
 
-const renderRule = (rule: RuleInfo, index: number) => (
+const renderRule = (rule: RuleInfo, index: number, t: TFunction) => (
   <Box className="tw:mb-3" direction="col" gap={2} key={index}>
     <Box align="center" direction="row" gap={2} wrap="wrap">
       <Typography className="tw:text-primary" size="text-sm" weight="semibold">
@@ -60,7 +64,7 @@ const renderRule = (rule: RuleInfo, index: number) => (
     {!isEmpty(rule.operations) && (
       <Box align="center" direction="row" gap={1} wrap="wrap">
         <Typography className="tw:text-secondary tw:mr-1" size="text-sm">
-          Operations:
+          {`${t('label.operation-plural')}:`}
         </Typography>
         {rule.operations.map((op) => (
           <Badge key={op} size="sm" type="modern">
@@ -72,7 +76,7 @@ const renderRule = (rule: RuleInfo, index: number) => (
     {!isEmpty(rule.resources) && (
       <Box align="center" direction="row" gap={1} wrap="wrap">
         <Typography className="tw:text-secondary tw:mr-1" size="text-sm">
-          Resources:
+          {`${t('label.resource-plural')}:`}
         </Typography>
         {rule.resources.map((res) => (
           <Badge key={res} size="sm" type="modern">
@@ -84,7 +88,7 @@ const renderRule = (rule: RuleInfo, index: number) => (
     {rule.condition && (
       <Box align="center" direction="row" gap={2}>
         <Typography className="tw:text-secondary" size="text-sm">
-          Condition:
+          {`${t('label.condition')}:`}
         </Typography>
         <code className="tw:bg-secondary tw:px-1 tw:rounded tw:text-sm">
           {rule.condition}
@@ -94,10 +98,9 @@ const renderRule = (rule: RuleInfo, index: number) => (
   </Box>
 );
 
-const renderPolicy = (policy: PolicyInfo, index: number) => {
+const renderPolicy = (policy: PolicyInfo, index: number, t: TFunction) => {
   const nonAllowColor = policy.effect === 'DENY' ? 'error' : 'warning';
-  const policyColor =
-    policy.effect === 'ALLOW' ? 'success' : nonAllowColor;
+  const policyColor = policy.effect === 'ALLOW' ? 'success' : nonAllowColor;
 
   return (
     <AccordionItem id={`policy-${index}`} key={index}>
@@ -117,8 +120,10 @@ const renderPolicy = (policy: PolicyInfo, index: number) => {
         </Box>
       </AccordionHeader>
       <AccordionPanel>
-        <Box className="tw:w-full" direction='col'>
-          {policy.rules.map((rule, ruleIndex) => renderRule(rule, ruleIndex))}
+        <Box className="tw:w-full" direction="col">
+          {policy.rules.map((rule, ruleIndex) =>
+            renderRule(rule, ruleIndex, t)
+          )}
         </Box>
       </AccordionPanel>
     </AccordionItem>
@@ -138,7 +143,9 @@ const SectionCard = ({
         {title}
       </Typography>
     </Box>
-    <Box className="tw:p-6" direction='col' gap={4}>{children}</Box>
+    <Box className="tw:p-6" direction="col" gap={4}>
+      {children}
+    </Box>
   </Card>
 );
 
@@ -182,18 +189,26 @@ const AccessControlUserPermissions: React.FC<
             <Typography className="tw:text-secondary" size="text-sm">
               {t('label.total-role-plural')}
             </Typography>
-            <Typography className="tw:text-primary" size="text-xl" weight="bold">
+            <Typography
+              className="tw:text-primary"
+              size="text-xl"
+              weight="bold">
               {String(summary.totalRoles)}
             </Typography>
             <Typography className="tw:text-secondary" size="text-sm">
-              {`${summary.directRoles} ${t('label.direct-lowercase')}, ${summary.inheritedRoles} ${t('label.inherited')}`}
+              {`${summary.directRoles} ${t('label.direct-lowercase')}, ${
+                summary.inheritedRoles
+              } ${t('label.inherited')}`}
             </Typography>
           </Box>
           <Box direction="col" gap={1}>
             <Typography className="tw:text-secondary" size="text-sm">
               {t('label.policy-plural')}
             </Typography>
-            <Typography className="tw:text-primary" size="text-xl" weight="bold">
+            <Typography
+              className="tw:text-primary"
+              size="text-xl"
+              weight="bold">
               {String(summary.totalPolicies)}
             </Typography>
             <Typography className="tw:text-secondary" size="text-sm">
@@ -204,18 +219,26 @@ const AccessControlUserPermissions: React.FC<
             <Typography className="tw:text-secondary" size="text-sm">
               {t('label.team-plural')}
             </Typography>
-            <Typography className="tw:text-primary" size="text-xl" weight="bold">
+            <Typography
+              className="tw:text-primary"
+              size="text-xl"
+              weight="bold">
               {String(summary.teamCount)}
             </Typography>
             <Typography className="tw:text-secondary" size="text-sm">
-              {`${t('label.max-hierarchy-depth')}: ${summary.maxHierarchyDepth}`}
+              {`${t('label.max-hierarchy-depth')}: ${
+                summary.maxHierarchyDepth
+              }`}
             </Typography>
           </Box>
         </Box>
 
         {!isEmpty(summary.effectiveOperations) && (
-          <Box className="tw:mb-3" direction='col' gap={2}>
-            <Typography className="tw:text-primary tw:mb-2" size="text-sm" weight="semibold">
+          <Box className="tw:mb-3" direction="col" gap={2}>
+            <Typography
+              className="tw:text-primary tw:mb-2"
+              size="text-sm"
+              weight="semibold">
               {`${t('label.allowed-operation-plural')}:`}
             </Typography>
             <Box direction="row" gap={1} wrap="wrap">
@@ -229,8 +252,11 @@ const AccessControlUserPermissions: React.FC<
         )}
 
         {!isEmpty(summary.deniedOperations) && (
-          <Box direction='col' gap={2}>
-            <Typography className="tw:text-primary tw:mb-2" size="text-sm" weight="semibold">
+          <Box direction="col" gap={2}>
+            <Typography
+              className="tw:text-primary tw:mb-2"
+              size="text-sm"
+              weight="semibold">
               {`${t('label.denied-operation-plural')}:`}
             </Typography>
             <Box direction="row" gap={1} wrap="wrap">
@@ -255,13 +281,15 @@ const AccessControlUserPermissions: React.FC<
       <SectionCard title={t('label.direct-role-plural')}>
         {permissionInfo?.directRoles.map(
           (rolePermission: DirectRolePermission) => (
-            <Box className="tw:mb-6" direction='col' key={rolePermission.role.id}>
-              <Box
-                align="center"
-                className="tw:mb-3"
-                direction="row"
-                gap={2}>
-                <Typography className="tw:text-secondary" size="text-sm" weight="semibold">
+            <Box
+              className="tw:mb-6"
+              direction="col"
+              key={rolePermission.role.id}>
+              <Box align="center" className="tw:mb-3" direction="row" gap={2}>
+                <Typography
+                  className="tw:text-secondary"
+                  size="text-sm"
+                  weight="semibold">
                   {`${t('label.role')}:`}
                 </Typography>
                 <Link
@@ -275,7 +303,7 @@ const AccessControlUserPermissions: React.FC<
               {rolePermission.policies.length > 0 && (
                 <Accordion allowsMultipleExpanded>
                   {rolePermission.policies.map((policy, policyIndex) =>
-                    renderPolicy(policy, policyIndex)
+                    renderPolicy(policy, policyIndex, t)
                   )}
                 </Accordion>
               )}
@@ -297,7 +325,10 @@ const AccessControlUserPermissions: React.FC<
         direction="row"
         gap={2}
         wrap="wrap">
-        <Typography className="tw:text-secondary" size="text-sm" weight="semibold">
+        <Typography
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="semibold">
           {`${t('label.role')}:`}
         </Typography>
         <Link
@@ -319,7 +350,7 @@ const AccessControlUserPermissions: React.FC<
       {rolePermission.policies.length > 0 && (
         <Accordion allowsMultipleExpanded>
           {rolePermission.policies.map((policy, policyIndex) =>
-            renderPolicy(policy, policyIndex)
+            renderPolicy(policy, policyIndex, t)
           )}
         </Accordion>
       )}
@@ -335,14 +366,17 @@ const AccessControlUserPermissions: React.FC<
       <SectionCard title={t('label.team-permission-plural')}>
         {permissionInfo?.teamPermissions.map(
           (teamPermission: TeamPermission) => (
-            <Box direction='col' gap={2} key={teamPermission.team.id}>
+            <Box direction="col" gap={2} key={teamPermission.team.id}>
               <Box
                 align="center"
                 className="tw:mb-3"
                 direction="row"
                 gap={2}
                 wrap="wrap">
-                <Typography className="tw:text-secondary" size="text-sm" weight="semibold">
+                <Typography
+                  className="tw:text-secondary"
+                  size="text-sm"
+                  weight="semibold">
                   {`${t('label.team')}:`}
                 </Typography>
                 <Link
@@ -357,7 +391,9 @@ const AccessControlUserPermissions: React.FC<
                 </Badge>
                 {teamPermission.hierarchyLevel > 0 && (
                   <Badge color="warning" size="sm" type="color">
-                    {`${t('label.level')} ${teamPermission.hierarchyLevel} ${t('label.inherited')}`}
+                    {`${t('label.level')} ${teamPermission.hierarchyLevel} ${t(
+                      'label.inherited'
+                    )}`}
                   </Badge>
                 )}
               </Box>
@@ -383,7 +419,9 @@ const AccessControlUserPermissions: React.FC<
                           {getEntityName(team)}
                         </Link>
                         {idx < teamPermission.teamHierarchy.length - 1 && (
-                          <Typography className="tw:text-secondary" size="text-sm">
+                          <Typography
+                            className="tw:text-secondary"
+                            size="text-sm">
                             →
                           </Typography>
                         )}
@@ -394,7 +432,10 @@ const AccessControlUserPermissions: React.FC<
 
               {!isEmpty(teamPermission.rolePermissions) && (
                 <Box className="tw:mt-3 tw:mb-3">
-                  <Typography className="tw:text-primary tw:mb-3" size="text-sm" weight="semibold">
+                  <Typography
+                    className="tw:text-primary tw:mb-3"
+                    size="text-sm"
+                    weight="semibold">
                     {`${t('label.team-role-plural')}:`}
                   </Typography>
                   {teamPermission.rolePermissions.map(
@@ -405,13 +446,16 @@ const AccessControlUserPermissions: React.FC<
               )}
 
               {!isEmpty(teamPermission.directPolicies) && (
-                <Box className="tw:mt-3 tw:mb-3" direction='col' gap={2}>
-                  <Typography className="tw:text-primary tw:mb-3" size="text-sm" weight="semibold">
+                <Box className="tw:mt-3 tw:mb-3" direction="col" gap={2}>
+                  <Typography
+                    className="tw:text-primary tw:mb-3"
+                    size="text-sm"
+                    weight="semibold">
                     {`${t('label.direct-team-policy-plural')}:`}
                   </Typography>
                   <Accordion allowsMultipleExpanded>
                     {teamPermission.directPolicies.map((policy, policyIndex) =>
-                      renderPolicy(policy, policyIndex)
+                      renderPolicy(policy, policyIndex, t)
                     )}
                   </Accordion>
                 </Box>
@@ -436,13 +480,14 @@ const AccessControlUserPermissions: React.FC<
           (inherited: InheritedPermission) => (
             <Box
               className="tw:mb-4"
-              key={`${inherited.permissionType}-${inherited.source?.id ?? 'none'}`}>
-              <Box
-                align="center"
-                className="tw:mb-1"
-                direction="row"
-                gap={2}>
-                <Typography className="tw:text-secondary" size="text-sm" weight="semibold">
+              key={`${inherited.permissionType}-${
+                inherited.source?.id ?? 'none'
+              }`}>
+              <Box align="center" className="tw:mb-1" direction="row" gap={2}>
+                <Typography
+                  className="tw:text-secondary"
+                  size="text-sm"
+                  weight="semibold">
                   {`${t('label.type')}:`}
                 </Typography>
                 <Badge color="gray" size="sm" type="color">
@@ -453,11 +498,7 @@ const AccessControlUserPermissions: React.FC<
                 {inherited.description}
               </Typography>
               {inherited.source && (
-                <Box
-                  align="center"
-                  className="tw:mb-2"
-                  direction="row"
-                  gap={1}>
+                <Box align="center" className="tw:mb-2" direction="row" gap={1}>
                   <Typography className="tw:text-secondary" size="text-sm">
                     {`${t('label.source')}:`}
                   </Typography>
@@ -473,7 +514,7 @@ const AccessControlUserPermissions: React.FC<
               {inherited.policies.length > 0 && (
                 <Accordion allowsMultipleExpanded>
                   {inherited.policies.map((policy, policyIndex) =>
-                    renderPolicy(policy, policyIndex)
+                    renderPolicy(policy, policyIndex, t)
                   )}
                 </Accordion>
               )}
@@ -485,7 +526,7 @@ const AccessControlUserPermissions: React.FC<
   };
 
   return (
-    <Box className="tw:w-full" direction='col'>
+    <Box className="tw:w-full" direction="col">
       {renderSummary()}
       {renderDirectRoles()}
       {renderTeamPermissions()}

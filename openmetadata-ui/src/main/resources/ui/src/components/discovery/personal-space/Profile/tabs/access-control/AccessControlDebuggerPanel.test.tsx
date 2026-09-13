@@ -106,7 +106,9 @@ describe('AccessControlDebuggerPanel', () => {
 
     // Both the left (permissions) column and the right (evaluate) column should
     // show the placeholder when no user is selected.
-    const placeholders = screen.getAllByText(/select.*user.*first|select-user-first/i);
+    const placeholders = screen.getAllByText(
+      /select.*user.*first|select-user-first/i
+    );
 
     expect(placeholders.length).toBeGreaterThanOrEqual(1);
   });
@@ -142,6 +144,8 @@ describe('AccessControlDebuggerPanel', () => {
 
     expect(container).toBeInTheDocument();
     // The component should render the user search + two columns below it
-    expect(container.querySelectorAll('.tw\\:flex-1').length).toBeGreaterThanOrEqual(2);
+    expect(
+      container.querySelectorAll('.tw\\:flex-1').length
+    ).toBeGreaterThanOrEqual(2);
   });
 });

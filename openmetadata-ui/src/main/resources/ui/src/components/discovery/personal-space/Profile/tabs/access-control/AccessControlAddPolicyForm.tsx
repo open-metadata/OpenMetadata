@@ -12,13 +12,13 @@
  */
 
 import {
-    Box,
-    Button,
-    FieldProp,
-    FieldTypes,
-    FormFields,
-    HookForm,
-    Typography
+  Box,
+  Button,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
@@ -27,14 +27,14 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import {
-    CreatePolicy,
-    Rule
+  CreatePolicy,
+  Rule,
 } from '../../../../../../generated/api/policies/createPolicy';
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import {
-    showErrorToast,
-    showSuccessToast
+  showErrorToast,
+  showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -50,9 +50,9 @@ interface AccessControlAddPolicyFormProps {
   onNavigate: (view: AccessControlView) => void;
 }
 
-const AccessControlAddPolicyForm: React.FC<
-  AccessControlAddPolicyFormProps
-> = ({ onNavigate }) => {
+const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
+  onNavigate,
+}) => {
   const { t } = useTranslation();
   const descEditorRef = useRef<EditorContentRef>(null);
 
@@ -69,7 +69,9 @@ const AccessControlAddPolicyForm: React.FC<
       required: true,
       placeholder: t('label.policy-name'),
       props: { 'data-testid': 'policy-name-input' },
-      rules: { required: t('label.field-required', { field: t('label.name') }) },
+      rules: {
+        required: t('label.field-required', { field: t('label.name') }),
+      },
     },
   ];
 
@@ -140,7 +142,9 @@ const AccessControlAddPolicyForm: React.FC<
 
             {/* Rule section */}
             <Box direction="col" gap={3}>
-              <Box className="tw:border-t tw:border-secondary tw:pt-4" direction="col">
+              <Box
+                className="tw:border-t tw:border-secondary tw:pt-4"
+                direction="col">
                 <Typography
                   className="tw:text-primary"
                   size="text-sm"
