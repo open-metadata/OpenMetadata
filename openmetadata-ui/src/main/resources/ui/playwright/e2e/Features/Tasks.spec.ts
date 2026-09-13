@@ -22,7 +22,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { getTableFqn } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
 import { okJson, settleAll } from '../../utils/apiResponse';
-import { getApiContext } from '../../utils/common';
+import { dismissHoverPopovers, getApiContext } from '../../utils/common';
 import {
   assignDomainToEntity,
   selectDomainFromNavbar,
@@ -352,6 +352,7 @@ test.describe('Task Workflow Tests', () => {
       await expect(
         getTaskCard(page, second.responseData!.taskId)
       ).toBeVisible();
+      await dismissHoverPopovers(page);
       await page.getByTestId('user-profile-page-task-filter-icon').click();
       await expect(
         page.getByTestId('open-tasks').locator('.task-count-text')

@@ -548,6 +548,24 @@ export const waitForAntdPopupToSettle = async (page: Page) => {
 };
 
 /**
+ * Parks the pointer clear of the page content and waits for hover popovers to go.
+ *
+ * Clicking an item inside an overlay leaves the pointer at that item's
+ * coordinates. When the overlay unmounts, whatever it was covering receives the
+ * hover, and an `EntityPopOverCard` underneath opens at `z-index: 9999` over the
+ * trigger that was just used. Nothing moves the pointer afterwards, so the card
+ * never gets a `mouseleave`: it stays up intercepting pointer events, and the
+ * next click retries against `.ant-popover-inner-content` until the test times
+ * out rather than failing on anything the test is about.
+ */
+export const dismissHoverPopovers = async (page: Page) => {
+  await page.mouse.move(0, 0);
+  await expect(
+    page.locator('.ant-popover:not(.ant-popover-hidden)')
+  ).toHaveCount(0);
+};
+
+/**
  * Blocks until every open Ant Design modal has finished its enter animation.
  *
  * Waiting for a modal to be `visible` is satisfied by its first scaled frame.

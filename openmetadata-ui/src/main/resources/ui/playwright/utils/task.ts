@@ -12,7 +12,13 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { clickOutside, fillDescriptionBox, toastNotification } from './common';
+import {
+  clickOutside,
+  dismissHoverPopovers,
+  fillDescriptionBox,
+  toastNotification,
+  waitForAntdPopupToSettle,
+} from './common';
 
 export type TaskDetails = {
   term: string;
@@ -210,6 +216,27 @@ export const createTagTask = async (
   await toastNotification(page, /Task created successfully./);
 };
 
+/**
+ * Opens the task status filter and picks one of its options.
+ *
+ * The filter sits directly above the task list, so the pointer left parked on a
+ * task link keeps an `EntityPopOverCard` open right over where this dropdown
+ * renders; the option is then permanently unclickable. Clearing the hover first
+ * and letting the menu finish growing is what makes the choice land.
+ */
+export const selectTaskStatusFilter = async (
+  page: Page,
+  filter: Locator,
+  optionTestId: 'open-tasks' | 'closed-tasks'
+) => {
+  await dismissHoverPopovers(page);
+  await filter.click();
+  const option = page.getByTestId(optionTestId);
+  await expect(option).toBeVisible();
+  await waitForAntdPopupToSettle(page);
+  await option.click();
+};
+
 export const checkTaskCountInActivityFeed = async (
   page: Page,
   openTask = 0,
@@ -218,6 +245,7 @@ export const checkTaskCountInActivityFeed = async (
   await page.locator('.ant-skeleton-element').first().waitFor({
     state: 'detached',
   });
+  await dismissHoverPopovers(page);
   await page.getByTestId('user-profile-page-task-filter-icon').click();
   const openTaskItem = page
     .locator('.task-tab-custom-dropdown .task-count-text')

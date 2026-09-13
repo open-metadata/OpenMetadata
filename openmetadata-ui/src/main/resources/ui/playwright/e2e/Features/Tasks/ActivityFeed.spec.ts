@@ -36,7 +36,7 @@ import {
 } from '../../../utils/common';
 import { followEntity } from '../../../utils/entity';
 import { waitForPageLoaded } from '../../../utils/polling';
-import { getTaskCard } from '../../../utils/task';
+import { getTaskCard, selectTaskStatusFilter } from '../../../utils/task';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 const openEntityTasks = async (
@@ -252,12 +252,10 @@ test.describe('Entity activity and tasks', () => {
     await data.member.login(page);
     await openEntityTasks(page, data.table);
     const filter = page.getByTestId('user-profile-page-task-filter-icon');
-    await filter.click();
-    await page.getByTestId('closed-tasks').click();
+    await selectTaskStatusFilter(page, filter, 'closed-tasks');
     await expect(getTaskCard(page, closed.responseData!.taskId)).toBeVisible();
     await expect(getTaskCard(page, open.responseData!.taskId)).toHaveCount(0);
-    await filter.click();
-    await page.getByTestId('open-tasks').click();
+    await selectTaskStatusFilter(page, filter, 'open-tasks');
     await expect(getTaskCard(page, open.responseData!.taskId)).toBeVisible();
     await expect(getTaskCard(page, closed.responseData!.taskId)).toHaveCount(0);
   });
