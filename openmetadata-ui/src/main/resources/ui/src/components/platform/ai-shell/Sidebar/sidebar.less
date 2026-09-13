@@ -67,27 +67,24 @@
 
 @ask-recent-chats-card-radius: 10px;
 
-// Colors reference Tailwind v4 theme tokens emitted at `:root` by
-// `@openmetadata/ui-core-components/globals.css`. The `--tw-` prefix
-// comes from this app's `tailwind.css` (`prefix(tw)`).
-// `@ask-bg-hover` stays literal — overlay convention, no semantic token.
+// Use shared roles where Gate 0 defines a light-preserving mapping. The
+// palette-backed page, selected, brand, and badge roles remain pending #6564.
 @ask-bg-page: var(--tw-color-utility-gray-blue-50);
-@ask-bg-card: var(--tw-color-bg-primary);
+@ask-bg-card: var(--om-color-bg-surface);
 @ask-bg-active: var(--tw-color-gray-blue-100);
-@ask-bg-hover: rgba(0, 0, 0, 0.04);
-@ask-text-primary: var(--tw-color-text-primary);
-@ask-text-secondary: var(--tw-color-text-secondary);
-@ask-text-tertiary: var(--tw-color-text-tertiary);
-@ask-text-quaternary: var(--tw-color-text-quaternary);
+@ask-bg-hover: var(--om-color-interactive-hover);
+@ask-text-primary: var(--om-color-text-primary);
+@ask-text-secondary: var(--om-color-text-secondary);
+@ask-text-tertiary: var(--om-color-text-tertiary);
+@ask-text-quaternary: var(--om-color-text-quaternary);
 @ask-brand: var(--tw-color-brand-600);
 @ask-brand-active: var(--tw-color-brand-800);
 @ask-brand-50: var(--tw-color-brand-50);
-@ask-border-secondary: var(--tw-color-border-secondary);
+@ask-border-secondary: var(--om-color-border-secondary);
 
 // Utility palette — used by the count badges on nav items.
 @ask-util-gray-50: var(--tw-color-gray-50);
 @ask-util-gray-200: var(--tw-color-gray-200);
-@ask-util-gray-600: var(--tw-color-gray-600);
 @ask-util-gray-700: var(--tw-color-gray-700);
 
 @ask-transition-duration: 200ms;
@@ -927,14 +924,14 @@
 
     &:not(&--active):not(&--interactive-icon):not(&--recent-chats):hover {
       background: @ask-bg-hover;
-      color: @ask-util-gray-600;
+      color: @ask-text-tertiary;
 
       svg {
         width: 22px;
         height: 22px;
 
         * {
-          stroke: @ask-util-gray-600;
+          stroke: @ask-text-tertiary;
         }
       }
     }
@@ -1292,14 +1289,14 @@
 
     &:not(&--active):hover {
       background: @ask-bg-hover;
-      color: @ask-util-gray-600;
+      color: @ask-text-tertiary;
 
       svg {
         width: 22px;
         height: 22px;
 
         * {
-          stroke: @ask-util-gray-600;
+          stroke: @ask-text-tertiary;
         }
       }
     }
