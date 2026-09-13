@@ -15,6 +15,7 @@ import { BadgeColors } from '@openmetadata/ui-core-components';
 import { ComponentType, SVGProps } from 'react';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { ExtensionPointRegistry } from '../../../utils/ExtensionPointRegistry';
 import { PluginRouteProps } from '../../Settings/Applications/plugins/AppPlugin';
 
 /**
@@ -180,6 +181,18 @@ export interface AppModule {
 
   /** Routes owned by this module. Flattened into the app-mode route tree. */
   routes: PluginRouteProps[];
+
+  /**
+   * Optional resolver that splices contributed routes (from a module-owned
+   * extension point, e.g. `EXTENSION_POINTS.CONNECTIONS_ROUTES`) into
+   * `routes` at a module-chosen position — typically ahead of a generic
+   * `:tab`-style catch-all so a plugin's more specific path wins
+   * react-router matching. When present, the app-mode route builder
+   * (`AppModeRoutes`) calls this instead of reading `routes` directly,
+   * passing the shared `ExtensionPointRegistry`. Modules without
+   * contribution points omit this and rely on the static `routes` array.
+   */
+  resolveRoutes?: (registry: ExtensionPointRegistry) => PluginRouteProps[];
 
   /** Optional sub-navigation panel. */
   subNav?: SubNavConfig;

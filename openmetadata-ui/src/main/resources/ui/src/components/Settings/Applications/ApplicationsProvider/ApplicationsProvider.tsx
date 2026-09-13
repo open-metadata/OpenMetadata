@@ -42,6 +42,15 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   // Create extension registry (singleton for the app lifecycle)
   const [extensionRegistry] = useState(() => new ExtensionPointRegistry());
+  // `extensionRegistry` keeps one identity for the whole app lifecycle —
+  // `contribute()` mutates its internal Map in place, which triggers no
+  // re-render by itself. A consumer that memoizes on `extensionRegistry`
+  // (e.g. `AppModeRoutes`'s route table) would recompute once, before any
+  // plugin's `contributeExtensions` has run (see the effect below), then
+  // NEVER again, permanently missing every contribution. Bumping this after
+  // registration gives those consumers a dependency that actually changes,
+  // so they recompute exactly once with contributions in place.
+  const [contributionsVersion, setContributionsVersion] = useState(0);
 
   const fetchApplicationList = useCallback(async () => {
     try {
@@ -97,7 +106,11 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [fetchApplicationList, hasPermissions, setApplicationsLoaded]);
 
-  // Let plugins contribute to extension points
+  // Let plugins contribute to extension points. Runs after commit, so a
+  // memoized consumer keyed on `extensionRegistry`'s identity alone would
+  // recompute using its render-time (pre-contribution) state — bump
+  // `contributionsVersion` so such consumers have a deps entry that changes
+  // once contributions are actually in.
   useEffect(() => {
     installedPluginInstances.forEach((plugin) => {
       try {
@@ -106,6 +119,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         // Silently ignore errors during plugin contribution
       }
     });
+    setContributionsVersion((version) => version + 1);
   }, [installedPluginInstances, extensionRegistry]);
 
   const appContext = useMemo(() => {
@@ -114,8 +128,15 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       plugins: installedPluginInstances,
       extensionRegistry,
+      contributionsVersion,
     };
-  }, [applications, isLoading, installedPluginInstances, extensionRegistry]);
+  }, [
+    applications,
+    isLoading,
+    installedPluginInstances,
+    extensionRegistry,
+    contributionsVersion,
+  ]);
 
   return (
     <ApplicationsContext.Provider value={appContext}>
