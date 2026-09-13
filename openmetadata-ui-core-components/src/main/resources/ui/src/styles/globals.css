@@ -89,6 +89,9 @@
     0px 4px 4px -2px rgba(10, 13, 18, 0.04);
   --shadow-3xl: 0px 32px 64px -12px rgba(10, 13, 18, 0.14),
     0px 5px 5px -2.5px rgba(10, 13, 18, 0.04);
+  --shadow-card: var(--shadow-xs);
+  --shadow-raised: var(--shadow-lg);
+  --shadow-overlay: var(--shadow-xl);
 
   --shadow-skeumorphic: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
     0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset;
@@ -720,6 +723,8 @@
   --color-text-disabled: var(--color-text-disabled, theme(--color-gray-500));
   --color-text-placeholder: var(--color-text-placeholder, theme(--color-gray-500));
   --color-text-placeholder_subtle: var(--color-text-placeholder_subtle, theme(--color-gray-300));
+  --color-text-link: var(--color-text-link, theme(--color-brand-600));
+  --color-text-link-hover: var(--color-text-link-hover, theme(--color-brand-700));
   --color-text-primary_on-brand: var(--color-text-primary_on-brand, theme(--color-white));
   --color-text-secondary_on-brand: var(--color-text-secondary_on-brand, theme(--color-brand-200));
   --color-text-tertiary_on-brand: var(--color-text-tertiary_on-brand, theme(--color-brand-200));
@@ -734,12 +739,18 @@
   --color-border-primary: var(--color-border-primary, theme(--color-gray-300));
   --color-border-secondary: var(--color-border-secondary, theme(--color-gray-200));
   --color-border-secondary_alt: var(--color-border-secondary_alt, rgb(0 0 0 / 0.08));
+  --color-border-subtle: var(--color-border-subtle, theme(--color-border-secondary_alt));
+  --color-border-hover: var(--color-border-hover, theme(--color-gray-400));
   --color-border-tertiary: var(--color-border-tertiary, theme(--color-gray-100));
   --color-border-error: var(--color-border-error, theme(--color-error-500));
   --color-border-error_subtle: var(--color-border-error_subtle, theme(--color-error-300));
+  --color-border-error-subtle: var(--color-border-error-subtle, theme(--color-error-300));
+  --color-border-warning-subtle: var(--color-border-warning-subtle, theme(--color-warning-300));
+  --color-border-success-subtle: var(--color-border-success-subtle, theme(--color-success-300));
   --color-border-disabled: var(--color-border-disabled, theme(--color-gray-300));
   --color-border-disabled_subtle: var(--color-border-disabled_subtle, theme(--color-gray-200));
   --color-border-brand: var(--color-border-brand, theme(--color-brand-500));
+  --color-border-brand-subtle: var(--color-border-brand-subtle, theme(--color-brand-300));
   --color-border-brand_alt: var(--color-border-brand_alt, theme(--color-brand-600));
 
   /* FOREGROUND COLORS */
@@ -791,6 +802,11 @@
   --color-bg-disabled_subtle: var(--color-bg-disabled_subtle, theme(--color-gray-50));
   --color-bg-active: var(--color-bg-active, theme(--color-gray-50));
   --color-bg-overlay: var(--color-bg-overlay, theme(--color-gray-950));
+  --color-bg-page: var(--color-bg-page, theme(--color-bg-primary));
+  --color-bg-canvas: var(--color-bg-canvas, theme(--color-bg-secondary));
+  --color-bg-surface: var(--color-bg-surface, theme(--color-bg-primary));
+  --color-bg-raised: var(--color-bg-raised, theme(--color-bg-primary));
+  --color-bg-overlay-surface: var(--color-bg-overlay-surface, theme(--color-bg-primary));
   --color-bg-brand-primary: var(--color-bg-brand-primary, theme(--color-brand-50));
   --color-bg-brand-primary_alt: var(--color-bg-brand-primary_alt, theme(--color-brand-50));
   --color-bg-brand-secondary: var(--color-bg-brand-secondary, theme(--color-brand-100));
@@ -847,6 +863,11 @@
   --background-color-disabled: var(--background-color-disabled, theme(--color-bg-disabled));
   --background-color-disabled_subtle: var(--background-color-disabled_subtle, theme(--color-bg-disabled_subtle));
   --background-color-overlay: var(--background-color-overlay, theme(--color-bg-overlay));
+  --background-color-page: var(--background-color-page, theme(--color-bg-page));
+  --background-color-canvas: var(--background-color-canvas, theme(--color-bg-canvas));
+  --background-color-surface: var(--background-color-surface, theme(--color-bg-surface));
+  --background-color-raised: var(--background-color-raised, theme(--color-bg-raised));
+  --background-color-overlay-surface: var(--background-color-overlay-surface, theme(--color-bg-overlay-surface));
   --background-color-brand-primary: var(--background-color-brand-primary, theme(--color-bg-brand-primary));
   --background-color-brand-primary_alt: var(--background-color-brand-primary_alt, theme(--color-bg-brand-primary_alt));
   --background-color-brand-secondary: var(--background-color-brand-secondary, theme(--color-bg-brand-secondary));
@@ -884,6 +905,8 @@
   --text-color-disabled: var(--text-color-disabled, theme(--color-text-disabled));
   --text-color-placeholder: var(--text-color-placeholder, theme(--color-text-placeholder));
   --text-color-placeholder_subtle: var(--text-color-placeholder_subtle, theme(--color-text-placeholder_subtle));
+  --text-color-link: var(--text-color-link, theme(--color-text-link));
+  --text-color-link-hover: var(--text-color-link-hover, theme(--color-text-link-hover));
   --text-color-brand-primary: var(--text-color-brand-primary, theme(--color-text-brand-primary));
   --text-color-brand-secondary: var(--text-color-brand-secondary, theme(--color-text-brand-secondary));
   --text-color-brand-secondary_hover: var(--text-color-brand-secondary_hover, theme(--color-text-brand-secondary_hover));
@@ -899,12 +922,18 @@
   --border-color-primary: var(--border-color-primary, theme(--color-border-primary));
   --border-color-secondary: var(--border-color-secondary, theme(--color-border-secondary));
   --border-color-secondary_alt: var(--border-color-secondary_alt, theme(--color-border-secondary_alt));
+  --border-color-subtle: var(--border-color-subtle, theme(--color-border-subtle));
+  --border-color-hover: var(--border-color-hover, theme(--color-border-hover));
   --border-color-tertiary: var(--border-color-tertiary, theme(--color-border-tertiary));
   --border-color-disabled: var(--border-color-disabled, theme(--color-border-disabled));
   --border-color-disabled_subtle: var(--border-color-disabled_subtle, theme(--color-border-disabled_subtle));
   --border-color-error: var(--border-color-error, theme(--color-border-error));
   --border-color-error_subtle: var(--border-color-error_subtle, theme(--color-border-error_subtle));
+  --border-color-error-subtle: var(--border-color-error-subtle, theme(--color-border-error-subtle));
+  --border-color-warning-subtle: var(--border-color-warning-subtle, theme(--color-border-warning-subtle));
+  --border-color-success-subtle: var(--border-color-success-subtle, theme(--color-border-success-subtle));
   --border-color-brand: var(--border-color-brand, theme(--color-border-brand));
+  --border-color-brand-subtle: var(--border-color-brand-subtle, theme(--color-border-brand-subtle));
   --border-color-brand_alt: var(--border-color-brand_alt, theme(--color-border-brand_alt));
   --border-color-brand-solid: var(--border-color-brand-solid, theme(--color-bg-brand-solid));
   --border-color-brand-solid_hover: var(--border-color-brand-solid_hover, theme(--color-bg-brand-solid_hover));
@@ -948,18 +977,19 @@
 
     /* UTILITY COLORS */
 
+    /* Keep the approved neutral palette dark-scoped so light and static canvas fallbacks do not change. */
     --color-gray-25: rgb(250 250 250);
-    --color-gray-50: rgb(247 247 247);
-    --color-gray-100: rgb(240 240 241);
-    --color-gray-200: rgb(236 236 237);
-    --color-gray-300: rgb(206 207 210);
-    --color-gray-400: rgb(148 151 156);
-    --color-gray-500: rgb(133 136 142);
-    --color-gray-600: rgb(97 101 108);
-    --color-gray-700: rgb(55 58 65);
-    --color-gray-800: rgb(34 38 47);
-    --color-gray-900: rgb(19 22 27);
-    --color-gray-950: rgb(12 14 18);
+    --color-gray-50: rgb(240 240 240);
+    --color-gray-100: rgb(224 224 224);
+    --color-gray-200: rgb(217 217 217);
+    --color-gray-300: rgb(191 191 191);
+    --color-gray-400: rgb(160 160 160);
+    --color-gray-500: rgb(128 128 128);
+    --color-gray-600: rgb(102 102 102);
+    --color-gray-700: rgb(46 46 46);
+    --color-gray-800: rgb(34 34 34);
+    --color-gray-900: rgb(25 25 25);
+    --color-gray-950: rgb(20 20 20);
 
     --color-utility-blue-50: theme(--color-blue-950);
     --color-utility-blue-100: theme(--color-blue-900);
@@ -1143,8 +1173,10 @@
     --color-text-brand-primary: theme(--color-gray-50);
     --color-text-brand-secondary: theme(--color-gray-300);
     --color-text-brand-tertiary: theme(--color-gray-400);
-    --color-text-placeholder: theme(--color-gray-500);
+    --color-text-placeholder: theme(--color-gray-400);
     --color-text-placeholder_subtle: theme(--color-gray-700);
+    --color-text-link: theme(--color-brand-300);
+    --color-text-link-hover: theme(--color-brand-200);
     --color-text-primary_on-brand: theme(--color-gray-50);
     --color-text-secondary_on-brand: theme(--color-gray-300);
     --color-text-tertiary_on-brand: theme(--color-gray-400);
@@ -1154,14 +1186,20 @@
     --color-text-error-primary_hover: theme(--color-error-300);
 
     /* BORDER COLORS */
-    --color-border-primary: theme(--color-gray-700);
+    --color-border-primary: theme(--color-gray-500);
     --color-border-secondary: theme(--color-gray-800);
-    --color-border-secondary_alt: theme(--color-gray-800);
+    --color-border-secondary_alt: --alpha(var(--color-white) / 8%);
+    --color-border-subtle: --alpha(var(--color-white) / 8%);
+    --color-border-hover: theme(--color-gray-400);
     --color-border-tertiary: theme(--color-gray-800);
     --color-border-brand: theme(--color-brand-400);
+    --color-border-brand-subtle: --alpha(var(--color-brand-400) / 35%);
     --color-border-brand_alt: theme(--color-gray-700);
     --color-border-error: theme(--color-error-400);
-    --color-border-error_subtle: theme(--color-error-500);
+    --color-border-error-subtle: --alpha(var(--color-error-400) / 35%);
+    --color-border-error_subtle: var(--color-border-error-subtle);
+    --color-border-warning-subtle: --alpha(var(--color-warning-400) / 35%);
+    --color-border-success-subtle: --alpha(var(--color-success-400) / 35%);
     --color-border-disabled: theme(--color-gray-700);
     --color-border-disabled_subtle: theme(--color-gray-800);
 
@@ -1192,33 +1230,39 @@
     --color-bg-primary: theme(--color-gray-950);
     --color-bg-primary-solid: theme(--color-bg-secondary);
     --color-bg-primary_alt: theme(--color-bg-secondary);
-    --color-bg-primary_hover: theme(--color-gray-800);
+    --color-bg-primary_hover: --alpha(var(--color-white) / 6%);
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
     --color-bg-secondary_subtle: theme(--color-gray-900);
-    --color-bg-secondary_hover: theme(--color-gray-800);
+    --color-bg-secondary_hover: --alpha(var(--color-white) / 6%);
     --color-bg-tertiary: theme(--color-gray-800);
     --color-bg-quaternary: theme(--color-gray-700);
-    --color-bg-error-primary: theme(--color-error-950);
+    /* Translucent feedback roles preserve the owning page, canvas, or surface elevation. */
+    --color-bg-error-primary: --alpha(var(--color-error-500) / 16%);
     --color-bg-error-secondary: theme(--color-error-600);
     --color-bg-error-solid: theme(--color-error-600);
     --color-bg-error-solid_hover: theme(--color-error-500);
-    --color-bg-warning-primary: theme(--color-warning-950);
+    --color-bg-warning-primary: --alpha(var(--color-warning-500) / 16%);
     --color-bg-warning-secondary: theme(--color-warning-600);
     --color-bg-warning-solid: theme(--color-warning-600);
-    --color-bg-success-primary: theme(--color-success-950);
+    --color-bg-success-primary: --alpha(var(--color-success-500) / 16%);
     --color-bg-success-secondary: theme(--color-success-600);
     --color-bg-success-solid: theme(--color-success-600);
-    --color-bg-active: theme(--color-gray-800);
+    --color-bg-active: --alpha(var(--color-white) / 10%);
     --color-bg-disabled: theme(--color-gray-800);
     --color-bg-disabled_subtle: theme(--color-gray-900);
-    --color-bg-brand-primary: theme(--color-brand-500);
+    --color-bg-brand-primary: --alpha(var(--color-brand-500) / 16%);
     --color-bg-brand-primary_alt: theme(--color-bg-secondary);
     --color-bg-brand-secondary: theme(--color-brand-600);
     --color-bg-secondary_alt: theme(--color-bg-primary);
     --color-bg-brand-solid: theme(--color-brand-600);
     --color-bg-brand-solid_hover: theme(--color-brand-500);
     --color-bg-overlay: theme(--color-gray-800);
+    --color-bg-page: theme(--color-gray-950);
+    --color-bg-canvas: theme(--color-gray-900);
+    --color-bg-surface: theme(--color-gray-800);
+    --color-bg-raised: theme(--color-gray-700);
+    --color-bg-overlay-surface: theme(--color-gray-800);
     --color-bg-brand-section: theme(--color-bg-secondary);
     --color-bg-brand-section_subtle: theme(--color-bg-primary);
 
@@ -1402,6 +1446,11 @@
     --tw-background-color-error-solid: var(--color-bg-error-solid);
     --tw-background-color-error-solid_hover: var(--color-bg-error-solid_hover);
     --tw-background-color-overlay: var(--color-bg-overlay);
+    --tw-background-color-page: var(--color-bg-page);
+    --tw-background-color-canvas: var(--color-bg-canvas);
+    --tw-background-color-surface: var(--color-bg-surface);
+    --tw-background-color-raised: var(--color-bg-raised);
+    --tw-background-color-overlay-surface: var(--color-bg-overlay-surface);
     --tw-background-color-primary-solid: var(--color-bg-primary-solid);
     --tw-background-color-primary: var(--color-bg-primary);
     --tw-background-color-primary_alt: var(--color-bg-primary_alt);
@@ -1429,10 +1478,16 @@
     --tw-border-color-disabled_subtle: var(--color-border-disabled_subtle);
     --tw-border-color-error: var(--color-border-error);
     --tw-border-color-error_subtle: var(--color-border-error_subtle);
+    --tw-border-color-error-subtle: var(--color-border-error-subtle);
+    --tw-border-color-warning-subtle: var(--color-border-warning-subtle);
+    --tw-border-color-success-subtle: var(--color-border-success-subtle);
     --tw-border-color-primary: var(--color-border-primary);
     --tw-border-color-secondary: var(--color-border-secondary);
     --tw-border-color-secondary_alt: var(--color-border-secondary_alt);
+    --tw-border-color-subtle: var(--color-border-subtle);
+    --tw-border-color-hover: var(--color-border-hover);
     --tw-border-color-tertiary: var(--color-border-tertiary);
+    --tw-border-color-brand-subtle: var(--color-border-brand-subtle);
 
     /* --tw-outline-color-* — Tailwind utility layer (outline-*) */
     --tw-outline-color-brand-solid: var(--color-bg-brand-solid);
@@ -1472,6 +1527,8 @@
     --tw-text-color-disabled: var(--color-text-disabled);
     --tw-text-color-error-primary: var(--color-text-error-primary);
     --tw-text-color-error-primary_hover: var(--color-text-error-primary_hover);
+    --tw-text-color-link: var(--color-text-link);
+    --tw-text-color-link-hover: var(--color-text-link-hover);
     --tw-text-color-placeholder: var(--color-text-placeholder);
     --tw-text-color-placeholder_subtle: var(--color-text-placeholder_subtle);
     --tw-text-color-primary: var(--color-text-primary);

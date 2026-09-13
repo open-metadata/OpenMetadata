@@ -72,6 +72,7 @@ const GROUPS = [
   { key: /^--om-radius-/, title: 'Radius', note: 'border-radius. See foundations/radius.md.' },
   { key: /^--om-font-size-/, title: 'Font size', note: 'font-size. See foundations/typography.md.' },
   { key: /^--om-font-weight-/, title: 'Font weight', note: 'font-weight.' },
+  { key: /^--om-letter-spacing-/, title: 'Letter spacing', note: 'letter-spacing. See foundations/typography.md.' },
   { key: /^--om-font-|^--om-line-height-/, title: 'Font family & line height', note: '' },
   { key: /^--om-shadow-/, title: 'Elevation', note: 'box-shadow. See foundations/elevation.md.' },
   { key: /^--om-z-/, title: 'z-index', note: 'stacking. Prefer the semantic ladder for new work.' },
