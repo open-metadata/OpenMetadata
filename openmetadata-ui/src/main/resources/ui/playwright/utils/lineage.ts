@@ -335,6 +335,12 @@ export const deleteEdge = async (
 
   const edgeDialog = page.getByTestId('add-edge-modal').getByRole('dialog');
   await expect(edgeDialog).toBeVisible();
+  // Ant zooms the dialog in, and toBeVisible is satisfied on the first scaled
+  // frame. A press begun then can put mousedown on the button and mouseup past
+  // it once the dialog settles, which focuses the button without ever
+  // dispatching a click -- the screenshot of this failure is exactly that:
+  // "Remove edge" wearing its focus ring, no confirmation behind it.
+  await expect(edgeDialog).not.toHaveClass(/ant-zoom-(appear|enter)/);
   await edgeDialog.getByTestId('remove-edge-button').click();
 
   const confirmation = page.getByTestId('delete-edge-confirmation-modal');
