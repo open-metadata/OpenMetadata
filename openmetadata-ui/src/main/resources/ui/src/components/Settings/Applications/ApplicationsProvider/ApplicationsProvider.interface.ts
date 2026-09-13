@@ -19,4 +19,15 @@ export type ApplicationsContextType = {
   isLoading: boolean;
   plugins: AppPlugin[];
   extensionRegistry: ExtensionPointRegistry;
+  /**
+   * Bumped by one right after installed plugins' `contributeExtensions` have
+   * all run against `extensionRegistry`. `extensionRegistry` is a single
+   * mutable instance for the app's lifetime — mutating its internal Map
+   * triggers no re-render on its own, so a `useMemo` keyed only on the
+   * registry's (unchanged) identity would never see new contributions.
+   * Consumers that derive a value from registry contributions (e.g.
+   * `AppModeRoutes`'s route table) must include this in their memo deps so
+   * they recompute exactly once after contributions land, instead of never.
+   */
+  contributionsVersion: number;
 };
