@@ -215,6 +215,32 @@ it('exposes a failed page without automatically retrying or advancing past it', 
   expect(get).toHaveBeenCalledTimes(2);
 });
 
+it('retries the failed page once the caller clears the paging error', async () => {
+  const failure = new Error('Search unavailable');
+  get
+    .mockResolvedValueOnce(searchResponse('article', 25, 51))
+    .mockRejectedValueOnce(failure)
+    .mockResolvedValueOnce(searchResponse('article', 25, 51, 25));
+  const { result } = renderHook(() => useKnowledgePageListing('article', true));
+  await waitFor(() => expect(result.current.knowledgePages).toHaveLength(25));
+  await act(async () => {
+    await result.current.fetchNextPage();
+  });
+
+  expect(result.current.error).toBe(failure);
+
+  act(() => {
+    result.current.clearPagingError();
+  });
+  await act(async () => {
+    await result.current.fetchNextPage();
+  });
+
+  expect(result.current.error).toBeUndefined();
+  expect(result.current.knowledgePages).toHaveLength(50);
+  expect(get).toHaveBeenCalledTimes(3);
+});
+
 it('clears results and discards pending data when permission is removed', async () => {
   const pending = deferred<ReturnType<typeof searchResponse>>();
   get.mockReturnValue(pending.promise);

@@ -295,6 +295,7 @@ const KnowledgePageListComponent = forwardRef<
       isLoading,
       isLoadingMore,
       error,
+      clearPagingError,
       fetchNextPage,
     } = useKnowledgePageListing(
       searchQuery,
@@ -496,8 +497,17 @@ const KnowledgePageListComponent = forwardRef<
     useEffect(() => {
       if (isInView) {
         void fetchNextPage();
+
+        return;
       }
-    }, [isInView, fetchNextPage]);
+
+      // Scrolling away from the end of the list is what re-arms pagination: a
+      // page that failed once must not freeze infinite scroll for the rest of
+      // the session, but clearing the error while the sentinel is still on
+      // screen would re-enter this effect and retry the failing request
+      // immediately.
+      clearPagingError();
+    }, [isInView, fetchNextPage, clearPagingError]);
 
     const items: MenuProps['items'] = [
       {

@@ -124,12 +124,23 @@ export const useKnowledgePageListing = (
     return fetchPage(offset.current + PAGE_SIZE_MEDIUM);
   }, [enabled, error, hasMore, isLoading, isLoadingMore, fetchPage]);
 
+  // `error` has to keep blocking fetchNextPage: the caller's sentinel effect
+  // re-runs on every identity change of that callback, so an error that
+  // cleared itself would be re-entered the moment the failed request settled
+  // and would retry in a tight loop against a failing endpoint. Recovery is a
+  // separate entry point the caller drives from a gesture instead, so one
+  // failed page cannot freeze infinite scroll for the rest of the session.
+  const clearPagingError = useCallback(() => {
+    setError(undefined);
+  }, []);
+
   return {
     knowledgePages,
     setKnowledgePages,
     isLoading,
     isLoadingMore,
     error,
+    clearPagingError,
     fetchNextPage,
   };
 };
