@@ -13,6 +13,7 @@
 import test, { expect, Locator, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
+  chooseSelectOption,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -408,8 +409,10 @@ test.describe(
           ).toHaveCount(0);
 
           // Add dbt
-          await page.getByTestId('test-platforms').click();
-          await page.getByRole('option', { name: 'dbt', exact: true }).click();
+          await chooseSelectOption(
+            page.getByTestId('test-platforms'),
+            page.getByRole('option', { name: 'dbt', exact: true })
+          );
 
           // Close dropdown
           await page.keyboard.press('Escape');

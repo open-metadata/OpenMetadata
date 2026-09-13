@@ -37,6 +37,7 @@ import { Type } from '../../../../src/generated/entity/type';
 import { expect, test } from '../../../support/fixtures/base';
 import { okJson } from '../../../utils/apiResponse';
 import {
+  chooseSelectOption as chooseCoreSelectOption,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -117,8 +118,10 @@ const chooseSelectOption = async (
   optionName: string
 ): Promise<void> => {
   // The wrapper div contains a react-aria <button aria-haspopup="listbox">.
-  await page.getByTestId(wrapperTestId).getByRole('button').click();
-  await page.getByRole('option', { exact: true, name: optionName }).click();
+  await chooseCoreSelectOption(
+    page.getByTestId(wrapperTestId),
+    page.getByRole('option', { exact: true, name: optionName })
+  );
 };
 
 /**
@@ -322,10 +325,14 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const refInput = form
       .getByTestId('custom-property-entity-ref-config')
       .locator('input');
-    await refInput.click();
-    await page.getByRole('option', { exact: true, name: 'User' }).click();
-    await refInput.click();
-    await page.getByRole('option', { exact: true, name: 'Team' }).click();
+    await chooseCoreSelectOption(
+      refInput,
+      page.getByRole('option', { exact: true, name: 'User' })
+    );
+    await chooseCoreSelectOption(
+      refInput,
+      page.getByRole('option', { exact: true, name: 'Team' })
+    );
 
     await fillDescriptionBox(page, `Entity Reference List property ${name}`);
     await submitAddForm(page);

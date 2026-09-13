@@ -15,7 +15,7 @@ import test, { expect, Page, Route } from '@playwright/test';
 import { readFile } from 'fs/promises';
 import { parse } from 'papaparse';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage } from '../../utils/common';
+import { chooseSelectOption, createNewPage } from '../../utils/common';
 import { getEncodedFqn } from '../../utils/entity';
 interface GraphData {
   nodes: {
@@ -69,8 +69,10 @@ const chooseView = async (page: Page, name: string) => {
     Balanced: 'graph-presentation-chooser',
   };
   const chooser = choosers[name] ?? 'graph-label-chooser';
-  await page.getByTestId(chooser).getByRole('button').click();
-  await page.getByRole('option', { name, exact: true }).click();
+  await chooseSelectOption(
+    page.getByTestId(chooser),
+    page.getByRole('option', { name, exact: true })
+  );
   await expect(page.getByRole('listbox')).toHaveCount(0);
   await page.getByTestId(chooser).getByRole('button').focus();
   await page.keyboard.press('Escape');
@@ -1249,8 +1251,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .click();
     await expect(page.locator('.kg-node-group.kg-node-gap')).toHaveCount(1);
     await expect(page.locator('[data-edge-id]')).toHaveCount(324);
-    await coverage.click();
-    await page.getByRole('option', { name: 'Not mapped', exact: true }).click();
+    await chooseSelectOption(
+      coverage,
+      page.getByRole('option', { name: 'Not mapped', exact: true })
+    );
     await expect(page.getByTestId('graph-status')).toContainText(
       '316 entities'
     );
