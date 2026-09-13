@@ -38,6 +38,7 @@ import {
   toastNotification,
   uuid,
   visitOwnProfilePage,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -247,6 +248,12 @@ test.describe('Teams Page', () => {
       );
       await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
+
+      // UserSelectableList lives in an Ant Popover, which zooms in. Pressing a
+      // row mid-animation puts mousedown on it and mouseup past it, so the
+      // deselect never registers, the update below sends an unchanged member
+      // list, and the row this step is trying to remove is still there.
+      await waitForAntdPopupToSettle(page);
 
       // Select the user to remove
       await page

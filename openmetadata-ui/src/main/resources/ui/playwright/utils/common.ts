@@ -520,8 +520,8 @@ export const clickOutside = async (page: Page) => {
 };
 
 /**
- * Blocks until every open Ant Design overlay — dropdown menus and select
- * popups alike — has finished its enter animation.
+ * Blocks until every open Ant Design overlay — dropdown menus, select popups
+ * and popovers alike — has finished its enter animation.
  *
  * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
  * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
@@ -540,7 +540,9 @@ export const waitForAntdPopupToSettle = async (page: Page) => {
       '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
         '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"], ' +
         '.ant-select-dropdown:not(.ant-select-dropdown-hidden)[class*="-appear"], ' +
-        '.ant-select-dropdown:not(.ant-select-dropdown-hidden)[class*="-enter"]'
+        '.ant-select-dropdown:not(.ant-select-dropdown-hidden)[class*="-enter"], ' +
+        '.ant-popover:not(.ant-popover-hidden)[class*="-appear"], ' +
+        '.ant-popover:not(.ant-popover-hidden)[class*="-enter"]'
     )
   ).toHaveCount(0);
 };
