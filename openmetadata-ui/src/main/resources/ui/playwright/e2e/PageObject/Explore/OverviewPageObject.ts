@@ -388,10 +388,7 @@ export class OverviewPageObject extends RightPanelBase {
     owner: string,
     type: 'Teams' | 'Users' = 'Users'
   ): Promise<OverviewPageObject> {
-    await this.editOwnersIcon.click();
-
-    await this.selectOwnerTabs.waitFor({ state: 'visible' });
-    await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
+    await this.openOwnerSelector();
 
     if (type === 'Users') {
       await expect
@@ -670,10 +667,7 @@ export class OverviewPageObject extends RightPanelBase {
       Teams: 'team',
     };
 
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.editOwnersIcon.click({ force: true });
-
-    await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
+    await this.openOwnerSelector();
 
     if (type === 'Users') {
       const isAlreadyActive = await this.selectOwnerUsersTab.getAttribute(

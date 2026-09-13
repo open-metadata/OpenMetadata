@@ -182,7 +182,9 @@ jobs:
 
       - name: Commit and push changes
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Not GITHUB_TOKEN: pushes made with it never trigger workflow runs,
+          # so every required check stays pending and the PR can't merge.
+          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
           HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref || github.event.inputs.branch }}
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
         run: |
