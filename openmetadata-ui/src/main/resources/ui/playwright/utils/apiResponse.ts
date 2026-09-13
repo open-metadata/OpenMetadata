@@ -133,6 +133,14 @@ export const buildFqn = (...segments: string[]): string =>
  * `fqnSegments` are the entity's raw name parts, outermost first. They are quoted
  * and joined here so no call site has to know the FQN escaping rules.
  */
+// Node reports a keep-alive socket the server closed mid-request as a thrown
+// transport error rather than a response, and Playwright does not retry a POST.
+const TRANSPORT_FAILURE =
+  /socket hang up|ECONNRESET|EPIPE|socket disconnected|connection closed/i;
+
+const isTransportFailure = (error: unknown): boolean =>
+  error instanceof Error && TRANSPORT_FAILURE.test(error.message);
+
 export const createOrFetch = async <T = ResponseBody>(
   apiContext: APIRequestContext,
   options: {
@@ -145,7 +153,21 @@ export const createOrFetch = async <T = ResponseBody>(
   }
 ): Promise<T> => {
   const { label, createPath, fqnSegments, data, fetchPath, fields } = options;
-  const createResponse = await apiContext.post(createPath, { data });
+  // Retry once on a dead connection. The entity may already have been created
+  // before the socket died, and that is exactly the conflict the 409 branch
+  // below recovers from, so the retry cannot double-create — it either lands
+  // the entity or lands on its own conflict. Anything that is not a transport
+  // failure still propagates untouched.
+  let createResponse;
+  try {
+    createResponse = await apiContext.post(createPath, { data });
+  } catch (error) {
+    if (!isTransportFailure(error)) {
+      throw error;
+    }
+
+    createResponse = await apiContext.post(createPath, { data });
+  }
 
   if (createResponse.status() === 409) {
     const entityFqn = buildFqn(...fqnSegments);
