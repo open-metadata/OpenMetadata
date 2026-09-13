@@ -1,0 +1,13 @@
+database,phase,workloads,lower_read_sql,equal_read_sql,higher_read_sql,lower_synchronous_write_sql,higher_synchronous_write_sql,comparison_sha256
+postgres,warm,78,69,9,0,,,e4cf99094afa2458e85cc3bf4b69503082e8f0af04497841017fcbb7df57982e
+postgres,cold,78,69,9,0,,,9f92cd023442b869777ae56e2df4ccc9b1b92874d2c6dca16b7a366b4f178b5d
+postgres,l1_cold,78,69,9,0,,,6cd02e868498d4a72d2908b59f60e0d36140bdcb166483422f307697ed2876e6
+postgres,outage,78,69,9,0,,,b41cdfa7d2a8fafb39a79e26bc546d3ccea468f7e220dd63950f947d039d61bd
+postgres,recovered,78,69,9,0,,,e4cf99094afa2458e85cc3bf4b69503082e8f0af04497841017fcbb7df57982e
+postgres,writes,60,,,,54,0,45ad38c1398d6947d20bccb7f3e96d06ca114dd827fb68e54f0c6639ac71d42d
+mysql,warm,78,69,9,0,,,b16ac3bcdcb8cf99cac2a239a51620ac436d4e530aafb98ea115e3913998f38b
+mysql,cold,78,69,9,0,,,6cb01743d22663da51a4fd171474b8c14caec8395d0d8fd3f875a2e33dee5fff
+mysql,l1_cold,78,69,9,0,,,b16ac3bcdcb8cf99cac2a239a51620ac436d4e530aafb98ea115e3913998f38b
+mysql,outage,78,69,9,0,,,23f94dbc68bca8cd00ca7213498391a1942de6699f4a80403fde379be0e3c8c5
+mysql,recovered,78,69,9,0,,,d1fb83a6b527c5995b40f7de86ecc4696f43ad380681e704596584520b59645d
+mysql,writes,60,,,,54,0,16c2515872b062012fd5af881ec9825054391dc68c8a0dbc5a19fb88b622e068

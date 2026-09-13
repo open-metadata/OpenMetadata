@@ -16,18 +16,18 @@ query. Real database tests fail the original two-query implementation and pass t
 one-query budget at widths 3/100/1,000 and for multiple tables. RDF field selection
 also retains dedicated mapper inputs, restoring foreign-key projection.
 
-The current warm, cold and L1-cold comparisons cover 78 reads on both databases,
-with five measured requests per workload and no read commits or rollbacks. No
-statement total exceeds the original baseline. Cold comparisons have 69 lower and
-nine equal totals on each database; warm comparisons have 45 lower/33 equal on
-PostgreSQL and 46 lower/32 equal on MySQL, while L1-cold has 45 lower/33 equal on each.
+Matching v6 control/v10 client comparisons cover 78 reads on both databases in warm,
+cold, L1-cold, Redis-unavailable and recovered states. Each comparison has five measured
+requests per workload, 69 lower SQL totals and nine equal totals, with no read commits
+or rollbacks. No statement total exceeds the original baseline. The ten read comparisons
+and two mutation comparisons contain 8,280 measured responses with no errors.
 For five warm requests on 100-column tables:
 
 | Workload | Original statements | Current statements |
 | --- | ---: | ---: |
 | Table and column custom metrics | 505 | 5 |
 | List with custom metrics | 525 | 25 |
-| Expanded table, admin, ID (PostgreSQL) | 1,036 | 35 |
+| Expanded table, admin, ID (PostgreSQL) | 1,035 | 35 |
 | Cached full-table columns | 0 | 0 |
 
 All 60 mutation/CSV workloads pass two measured requests per revision on each
@@ -35,12 +35,20 @@ database. All 54 synchronous SQL totals fall, and single create, PUT, PATCH,
 delete and restore retain one owning commit per request. Existing bulk/import
 flush and feed boundaries remain distinct; asynchronous counters exclude worker SQL.
 
-These results do not close the complete SQL gate. The preceding-stage runs used a
-different workload order; certification bundle coverage changes 24 warm/L1-cold
-totals, requiring a comparison from matching cache state. PostgreSQL steady Redis
-outage has no higher totals, but one recovery workload records a query spike.
-Earlier failed MySQL warmups stop before the API call, at the benchmark's cache-reset
-control endpoint. Their traces remain retained and are excluded from acceptance.
+These results cover the configured-Redis workload matrix; Redis-disabled measurements
+and background-worker SQL remain outside that matrix. Earlier comparisons used a
+different workload order and recorded cache-coverage/recovery discrepancies. The matching
+control runs resolve those discrepancies without changing production cache behavior.
+One warm PostgreSQL run recorded a single extra settings lookup; two complete paired
+repetitions each have 69 lower and nine equal totals, including equal counts for that
+workload. `SettingsCache` expires entries after three minutes, so expiry timing is a
+plausible explanation, rather than a demonstrated extra query per API request.
+
+The Mac entered maintenance sleep during the first baseline outage runs. Their timeouts
+remain recorded as failed, invalid measurements. Fresh outage/recovery runs hold a
+scoped idle-sleep assertion and compare wall/monotonic clocks; both complete without a
+clock discontinuity. Cache-state observations verify unavailability and recovery.
+Earlier failed MySQL warmups also exposed dropped cache-reset control connections.
 
 A real HTTP regression reproduces dropped connections with the control listener's
 one-slot queue. Its queue and listener backlog are now bounded at 32, with one worker
@@ -50,12 +58,82 @@ The frozen v6 control manifest is
 `8ecaa4c68647a6edda4750423ff260ebc09233a700deaabf749e297279a2369b`;
 the shared v10 client manifest is
 `d7be9d1e33cff6bde65b00749d1260d73e14a94bb5a24556a9259dbacbdf52f5`.
-Fresh matching control runs are required before accepting the recovery comparison.
+All twelve matching SQL comparisons now pass. Raw counts, DAO-method attribution,
+state transitions and input hashes remain under `.context/entity-acceptance/` in
+`final-sql-comparison.json`, `final-*-comparison.csv` and `awake-*`.
+The [SQL comparison summary](assets/entity-repository-sql-comparisons.csv) records
+each configuration and the SHA-256 of its complete workload-count comparison.
 
-All measurements above are instrumented SQL diagnostics, with raw data under
-`.context/entity-acceptance/metrics-*`. They overlap builds/tests and do not measure
-accepted latency. Five-pair latency, capacity/load, overload/recovery and allocation
-comparisons remain open on the current artifact.
+All measurements above are instrumented SQL diagnostics and do not measure accepted
+latency. The preceding `.context/entity-acceptance/metrics-*` evidence retains its
+original configuration and does not replace these matching runs.
+
+### Warm single-client latency
+
+Five alternating pairs on each database cover `get.columns.100` and
+`get.relationships.100`, with 500 warmups and 2,000 measured requests per workload per
+round. All 80,000 measured responses pass. Both servers use the frozen artifacts,
+Java 21, fixed 1 GB G1 heaps, durable database storage, OpenSearch 3.4 and warm Redis;
+SQL probes, profiling, local builds and test suites are inactive during measurement.
+All twenty client invocations complete without a clock discontinuity.
+
+| Database | Workload | Paired p50 ratio | Paired p95 ratio | Paired p99 ratio |
+| --- | --- | ---: | ---: | ---: |
+| PostgreSQL | Columns, width 100 | 0.982 | 0.964 | 0.991 |
+| PostgreSQL | Relationships, width 100 | 0.849 | 0.871 | 0.838 |
+| MySQL | Columns, width 100 | 1.033 | 1.065 | 1.049 |
+| MySQL | Relationships, width 100 | 0.904 | 0.897 | 0.913 |
+
+Ratios are medians of candidate/baseline ratios for the five pairs; values above one
+mean slower. MySQL column p50 is slower in all five pairs, p95 in four, and p99 in
+three. This requires investigation. Baseline column p99 also varies from 5.55–8.09 ms
+on PostgreSQL and 4.69–6.27 ms on MySQL; lower paired medians alone do not establish
+baseline repeatability or latency acceptance. The full-table column read has zero SQL
+on both artifacts. Relationship gains cannot compensate for another API's regression.
+
+A second five-pair MySQL column run follows 30,000 additional conditioning/profile
+requests on each server. It measures 5,000 requests after 1,000 warmups per round,
+with no active recording or SQL probe. All 50,000 measured responses pass; paired
+p50/p95/p99 medians are 0.923/0.887/0.901, with four of five pairs faster for each
+percentile. The earlier consistent slowdown does not repeat, but baseline p99 spans
+4.99–37.05 ms and host snapshots show concurrent background activity. Neither series
+establishes a repeatable baseline, so this remains an open measurement issue rather
+than a demonstrated latency fix. The
+[repeat summaries](assets/entity-repository-mysql-column-repeat.csv) retain every pair,
+including the slow baseline run.
+
+Raw results, ranked requests, heap/GC snapshots and configuration hashes are retained in
+`.context/entity-acceptance/final-tail-single-client-postgres/` and
+`final-tail-single-client-mysql-v2/`; the forty
+[paired workload summaries](assets/entity-repository-warm-read-pairs.csv) are also checked in.
+Wider API/cache/width coverage, baseline capacity,
+25%/50%/75% offered load, overload/recovery and allocation comparisons remain open.
+
+### Allocation follow-up
+
+A separate JFR profile captures 20,000 successful warm column reads per revision after
+10,000 conditioning requests. Full stacks confirm the original serializes both
+request-cache aliases separately, while the composed path uses the shared serialization.
+ETag fingerprint serialization and hashing remain visible costs on both revisions.
+The sampled allocation weights include background work and cannot establish exact
+per-request allocation or latency acceptance.
+
+Two isolated ETag prototypes retain the existing validator for 27 combinations of table
+width and text, including Unicode, unpaired surrogates and encoder-buffer boundaries.
+Five rotating rounds measure 500 operations per shape after 2,000 warmups per variant:
+
+| Columns | Current bytes/op | HexFormat bytes/op | Streaming digest bytes/op |
+| --- | ---: | ---: | ---: |
+| 3 | 3,648 | 2,704 | 4,201 |
+| 100 | 21,176 | 20,176 | 10,784 |
+| 1,000 | 410,168 | 409,168 | 11,960 |
+
+These are median allocations on a warmed platform thread, not virtual-thread API
+measurements. Hex formatting removes temporary strings; streaming avoids materializing
+the complete fingerprint and UTF-8 byte array, but allocates more for the smallest
+fixture. Neither prototype is adopted. Refinement and API comparisons are still required
+before changing production ETags. Recordings and probe results remain under
+`.context/entity-acceptance/final-mysql-column-profile/` and `etag-allocation.log`.
 
 ## Post-merge SQL verification (2026-09-13)
 

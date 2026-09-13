@@ -21,20 +21,21 @@ Removing the file does not establish correctness or latency improvement.
 | Entity policies and retirement of common repository and updater inheritance | Implemented; clean production compilation and packaged selection pass |
 | Architecture and Java extension migration guide | Available in [entity-module-migration.md](entity-module-migration.md) |
 | Final policy callers | Search/RDF offset readers and custom result pages migrated; 14 unused helpers and two migrated helpers removed |
-| Main merge validation | Metrics-stage local service suite: 10,365 passes and one skip; MCP: 630 passes; all three integration CI profiles pass at native `47786d0cdc` |
+| Main merge validation | Metrics-stage local service suite: 10,365 passes and one skip; MCP: 630 passes; all three integration CI profiles pass at native `49d9290397` |
 | CI follow-up validation | Column/transaction/cache selection: 79 passes per database with Redis and 29 without Redis; pagination passes three local browser runs; RDF readiness recovery passes all 14 graph browser cases |
-| Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `47786d0cdc` / Collate `3c38b73212`; refreshed full service unit suite passes 4,193 cases with six skips |
+| Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `49d9290397` / Collate `4def2335b1`; refreshed full service unit suite passes 4,193 cases with six skips |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
 
 ## Current acceptance follow-up
 
-At native `47786d0cdc`, all three backend integration profiles, RDF browser CI,
+At native `49d9290397`, all three backend integration profiles, RDF browser CI,
 the main and nightly UI browser checks, and formatting checks pass. The matching
-companion `3c38b73212`
-[backend build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34775900186)
-and [governance/data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34775900407)
-also pass. Collate's 13 repository families and their callers use the composed APIs.
+companion `4def2335b1`
+[backend build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34783136491)
+and [governance/data-access-request build](https://github.com/open-metadata/openmetadata-collate/actions/runs/34783137512)
+also pass. All 37 applicable companion checks pass. Collate's 13 repository families
+and their callers use the composed APIs.
 The native wrappers still dispatch Collate `main`; coordinated rollout remains necessary
 until both pull requests are merged. No workflow changes or status overrides were made.
 
@@ -56,8 +57,8 @@ updates the obsolete bucket-policy command, and stops setup immediately on failu
 pod/event diagnostics. Shell regressions preserve the original failure exit codes; a real
 Argo workflow uploads an artifact that can be retrieved with the expected contents.
 The follow-up companion CI successfully completes Argo setup in the hybrid runner
-and all three PostgreSQL browser shards. Full companion validation must still be
-checked at the final coordinated revisions.
+and all three PostgreSQL browser shards. These checks also pass at companion
+`4def2335b1` with the current native implementation.
 
 The new native RDF failure occurs in a readiness probe: an HTTP 500 makes the
 assertion inside the polling callback abort immediately. The probe now returns
@@ -104,26 +105,44 @@ The current service package is
 `854c3d28e74c6284f768cda27801c78b164249500577a2969b495b3e32ca34ae`.
 The [current SQL comparison](entity-repository-performance.md#metrics-and-rdf-follow-up-2026-09-13)
 retains the original artifact and separately records the preceding stage. Both
-databases have no higher SQL totals against the original in warm, cold and L1-cold
-read comparisons; all 54 synchronous mutation/CSV totals fall. Single-entity
-mutations retain one owning commit. Cache coverage and recovery spikes still need
-controlled follow-up. Instrumented SQL runs do not establish latency acceptance.
+databases have no higher SQL totals against the original in warm, cold, L1-cold,
+unavailable and recovered Redis read comparisons; all 54 synchronous mutation/CSV
+totals fall. The twelve comparisons contain 8,280 successful measured responses.
+Single-entity mutations retain one owning commit. Redis-disabled measurements and
+background-worker SQL remain outside this matrix. Instrumented SQL runs do not
+establish latency acceptance.
 
 The latest native coverage report matches all 506 changed service sources and 1,109
-executable classes without class-file warnings. All 209 extracted component source
-files reach 90%, but 382 changed executable classes remain below the whole-class
+executable classes without class-file warnings. All 455 executable classes belonging
+to the 209 extracted component source files reach 90%, but 377 other changed executable
+classes remain below the whole-class
 threshold. The diagnostic report includes completed failing broad suites and is not
 regression acceptance. Collate's refreshed unit data plus matching historical API
 executions cover 50.14% of changed-source lines; 114 of 168 executable classes remain
 below 90%. Neither coverage gate is complete.
 
+Ten lineage API classes pass 184 cases on each database with Redis, with three skips
+and no failures or assumption aborts. Ten additional unit cases cover invalid hydration
+requests, malformed graph identities, dangling edges and synthetic counts restricted
+to authorized aggregations. `LineageHydrator` reaches 97.16% line coverage, up from
+4.26%; these executions move five more classes above the threshold. Production class
+bytes remain identical to the frozen `854c3d28…` package.
+
 The Collate refresh also aligns its JUnit modules through one BOM, rebuilds the local
 spec dependency and corrects stale default-value/date expectations. All 4,193 service
 unit cases pass, with six skips; all 28 MCP cases pass and 76 integration sources
-compile. Final coordinated CI must validate these follow-up changes and the new native pin.
+compile. The final coordinated backend and governance CI runs pass for these changes
+and the new native pin.
 
 The remaining acceptance work is the current-artifact performance matrix and whole
-changed-class coverage. Earlier column and relationship tail measurements remain open;
+changed-class coverage. Fresh five-pair warm single-client comparisons cover column
+and relationship reads at width 100 on each database, with 80,000 measured responses
+and no errors. MySQL column p50 is initially slower in all five pairs (median paired
+ratio 1.033); a second five-pair run adds 50,000 successful responses and is faster in
+four pairs. Baseline p99 varies from 4.99 to 37.05 ms, so repeatability remains unresolved.
+Relationship paired medians improve, but baseline variability and the unmeasured
+configurations preclude complete acceptance. Earlier
+column and relationship tail measurements remain open;
 pool acquisition inside JDBI's synchronized lazy-handle initialization is an investigation
 lead, not an established fix or a latency acceptance result. The historical measurements
 and failures below retain their original revision and artifact scope.
