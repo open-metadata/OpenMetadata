@@ -1063,10 +1063,9 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         timeout: 60_000,
       });
       await page.reload({ waitUntil: 'domcontentloaded' });
-      await expect(page.getByTestId('metric-status-pill')).toContainText(
-        'In Review',
-        { timeout: 60_000 }
-      );
+      await expect(
+        page.locator('.status-badge-label').filter({ hasText: 'In Review' })
+      ).toBeVisible({ timeout: 60_000 });
     } finally {
       if (metric) {
         await apiContext.delete(
