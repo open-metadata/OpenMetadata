@@ -2,6 +2,7 @@
   "name": "open-metadata",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "engines": {
     "node": ">=22.0.0",
     "yarn": "^1.22.0"
