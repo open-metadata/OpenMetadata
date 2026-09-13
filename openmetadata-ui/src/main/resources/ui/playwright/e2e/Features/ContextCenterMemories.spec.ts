@@ -14,6 +14,7 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
+  chooseSelectOption,
   createNewPage,
   getApiContext,
   redirectToHomePage,
@@ -475,8 +476,10 @@ test.describe(
           .fill('This memory has all optional fields populated.');
 
         // Select type: Note
-        await dialog.getByTestId('memory-type-select').click();
-        await page.getByRole('option', { name: /note/i }).click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-type-select'),
+          page.getByRole('option', { name: /note/i })
+        );
 
         const createResPromise = page.waitForResponse(
           (res) =>
@@ -1316,9 +1319,11 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
-        await dialog.getByTestId('memory-type-select').click();
         const faqOption = page.getByRole('option', { name: /faq/i });
-        await faqOption.click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-type-select'),
+          faqOption
+        );
         await faqOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
@@ -1355,9 +1360,11 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await dialog.getByTestId('memory-visibility-select').click();
         const privateOption = page.getByRole('option', { name: /private/i });
-        await privateOption.click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-visibility-select'),
+          privateOption
+        );
         await privateOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
@@ -1559,8 +1566,10 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await dialog.getByTestId('memory-visibility-select').click();
-        await page.getByRole('option', { name: /private/i }).click();
+        await chooseSelectOption(
+          dialog.getByTestId('memory-visibility-select'),
+          page.getByRole('option', { name: /private/i })
+        );
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${visBadgeMemoryId}`)
