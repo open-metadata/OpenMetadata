@@ -62,6 +62,8 @@ import {
 import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -283,7 +285,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
     </Box>
 
     {isEditing ? (
-      <Box direction="col" gap={2}>
+      <Box data-testid="edit-description-modal" direction="col" gap={2}>
         <RichTextEditor
           className="new-form-style"
           initialValue={description ?? ''}
@@ -449,8 +451,9 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     getEntityPermissionByFqn(ResourceEntity.ROLE, fqn).then(setRolePermission);
   }, [fqn, getEntityPermissionByFqn]);
 
-  const canEditAll = rolePermission?.EditAll ?? false;
-  const canDelete = rolePermission?.Delete ?? false;
+  const { canEditAll, canDelete } = getDerivedPermissionFlags(
+    rolePermission ?? DEFAULT_ENTITY_PERMISSION
+  );
 
   const handleSaveRename = useCallback(async () => {
     if (!role || !renameValue.trim()) {

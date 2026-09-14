@@ -81,10 +81,11 @@ describe('profileNavConfig', () => {
     expect(PROFILE_NAV_GROUP_LABEL.administration).toBe('label.administration');
   });
 
-  it('renders groups in account → administration → credentials order', () => {
+  it('renders groups in account → administration → workspace → credentials order', () => {
     expect(PROFILE_NAV_GROUP_ORDER).toEqual([
       'account',
       'administration',
+      'workspace',
       'credentials',
     ]);
   });

@@ -97,6 +97,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TextArea: ({ 'data-testid': testId }: { 'data-testid'?: string }) => (
     <textarea aria-label="text-area" data-testid={testId} />
   ),
+  FieldTypes: { TEXT: 'text', SELECT: 'select', TEXTAREA: 'textarea' },
+  HookForm: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  FormFields: ({
+    fields,
+  }: {
+    fields: Array<{ name: string; props?: Record<string, unknown> }>;
+  }) => (
+    <>
+      {fields.map((f) => (
+        <input key={f.name} {...(f.props ?? {})} />
+      ))}
+    </>
+  ),
 }));
 
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';

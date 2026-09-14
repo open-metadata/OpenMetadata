@@ -24,7 +24,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, startCase, uniq } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { Key } from 'react-aria-components';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -236,7 +243,9 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   const handleConditionSearch = (value: string) => {
     const allOptions = buildConditionOptions(policyFunctions);
     setConditionOptions(
-      value ? allOptions.filter((opt) => opt.label?.includes(value)) : allOptions
+      value
+        ? allOptions.filter((opt) => opt.label?.includes(value))
+        : allOptions
     );
   };
 

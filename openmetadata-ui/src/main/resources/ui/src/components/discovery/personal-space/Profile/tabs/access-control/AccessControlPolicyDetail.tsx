@@ -61,6 +61,8 @@ import {
 } from '../../../../../../rest/teamsAPI';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -135,7 +137,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
       )}
     </Box>
     {isEditing ? (
-      <Box direction="col" gap={2}>
+      <Box data-testid="edit-description-modal" direction="col" gap={2}>
         <RichTextEditor
           className="new-form-style"
           initialValue={description ?? ''}
@@ -687,9 +689,13 @@ const usePolicyDetail = (fqn: string) => {
     []
   );
 
+  const { canDelete, canEditAll } = getDerivedPermissionFlags(
+    policyPermission ?? DEFAULT_ENTITY_PERMISSION
+  );
+
   return {
-    canDelete: policyPermission?.Delete ?? false,
-    canEditAll: policyPermission?.EditAll ?? false,
+    canDelete,
+    canEditAll,
     editingRule,
     fetchPolicy,
     handleCancelRuleForm,

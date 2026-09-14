@@ -179,7 +179,7 @@ describe('AuditLogList', () => {
   it('should display entity type badges', () => {
     renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
 
-    const entityTypeBadges = document.querySelectorAll('.entity-type-badge');
+    const entityTypeBadges = screen.getAllByTestId('entity-type-badge');
 
     expect(entityTypeBadges).toHaveLength(2);
     expect(entityTypeBadges[0]).toHaveTextContent('Table');
@@ -188,7 +188,7 @@ describe('AuditLogList', () => {
   it('should display relative timestamps', () => {
     renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
 
-    const timestamps = document.querySelectorAll('.timestamp');
+    const timestamps = screen.getAllByTestId('timestamp');
 
     expect(timestamps).toHaveLength(2);
   });

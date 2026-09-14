@@ -89,6 +89,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Typography: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   ),
+  FieldTypes: { TEXT: 'text', SELECT: 'select', TEXTAREA: 'textarea' },
+  HookForm: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  FormFields: ({
+    fields,
+  }: {
+    fields: Array<{ name: string; props?: Record<string, unknown> }>;
+  }) => (
+    <>
+      {fields.map((f) => (
+        <input key={f.name} {...(f.props ?? {})} />
+      ))}
+    </>
+  ),
 }));
 
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';

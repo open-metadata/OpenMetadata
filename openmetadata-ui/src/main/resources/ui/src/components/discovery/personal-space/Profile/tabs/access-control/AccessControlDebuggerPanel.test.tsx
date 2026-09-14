@@ -139,13 +139,11 @@ describe('AccessControlDebuggerPanel', () => {
   it('renders two-column layout', () => {
     renderComponent();
 
-    // Both columns should be present (permissions + evaluation)
+    // Both sections should be present (user search + permission evaluation)
     const container = screen.getByTestId('admin-permission-debugger');
 
     expect(container).toBeInTheDocument();
-    // The component should render the user search + two columns below it
-    expect(
-      container.querySelectorAll('.tw\\:flex-1').length
-    ).toBeGreaterThanOrEqual(2);
+    // The component renders at least the user search card and the evaluation card
+    expect(container.children.length).toBeGreaterThanOrEqual(2);
   });
 });
