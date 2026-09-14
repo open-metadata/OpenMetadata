@@ -15,6 +15,7 @@ import {
   Button,
   ButtonUtility,
   Dot,
+  Owner,
   Popover,
   PopoverTrigger,
   Tooltip,
@@ -24,9 +25,9 @@ import { Database01, Globe01, User03 } from '@untitledui/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DataAssetHeaderDetailsRowProps } from './DataAssetHeaderDetailsRow.interface';
@@ -49,6 +50,7 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
 }) => {
   /* eslint-enable sonarjs/cyclomatic-complexity */
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const [tierPopoverOpen, setTierPopoverOpen] = useState(false);
   const tier = getTierTags(tags ?? []);
   const firstDomain = domains?.[0];
@@ -144,13 +146,12 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
           <User03 className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-utility-gray-500" />
         </Tooltip>
         {owners && owners.length > 0 ? (
-          <OwnerLabel
+          <Owner
             hasPermission={false}
             isCompactView={false}
-            multiple={{ user: true, team: true }}
-            owners={owners}
+            owners={toOwnersWithHref(owners)}
+            renderOwnerContent={renderOwnerContent}
             showLabel={false}
-            onUpdate={onUpdateOwners}
           />
         ) : (
           <Typography

@@ -169,19 +169,33 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
+jest.mock(
+  '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest
+      .fn()
+      .mockImplementation(
+        ({ onUpdate }: { onUpdate: (v: unknown[]) => void }) => (
+          <button
+            data-testid="owner-update-trigger"
+            type="button"
+            onClick={() => onUpdate([])}>
+            Edit Owner
+          </button>
+        )
+      ),
+  })
+);
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest
     .fn()
-    .mockImplementation(({ children, onUpdate, placeHolder, ...rest }) => (
-      <button
-        {...rest}
-        data-testid={OWNER_COMPONENT_TEST_ID}
-        type="button"
-        onClick={onUpdate}>
-        <div data-testid="placeholder">{placeHolder}</div>
-        {children}
-      </button>
-    )),
+    .mockImplementation(
+      ({ selectorContent }: { selectorContent?: React.ReactNode }) => (
+        <div data-testid="owner-component">{selectorContent}</div>
+      )
+    ),
 }));
 
 jest.mock('../Severity/Severity.component', () => {
@@ -265,7 +279,9 @@ describe('Incident Manager Page Header component', () => {
   it('should trigger onOwnerUpdate', async () => {
     render(<IncidentManagerPageHeader {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId(OWNER_COMPONENT_TEST_ID));
+    // Click the UserTeamSelectableList trigger inside the owner component,
+    // which calls onOwnerUpdate via its onUpdate prop
+    fireEvent.click(screen.getAllByTestId('owner-update-trigger')[0]);
 
     expect(mockOnOwnerUpdate).toHaveBeenCalled();
   });
