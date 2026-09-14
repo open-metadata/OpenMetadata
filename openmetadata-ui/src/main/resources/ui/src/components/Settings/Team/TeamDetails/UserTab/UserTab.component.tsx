@@ -49,7 +49,6 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -173,19 +172,27 @@ export const UserTab = ({
       pageNumber: currentPage,
       pageSize,
       // Scope the search to this team's whole subtree: the team itself plus every descendant team
-      // (descendantTeams is computed on the team, empty for a Group team). Matching each user's
-      // direct teams.id against that set finds members inherited from sub-groups, mirroring the
-      // Users tab list. minimum_should_match=1 makes it an OR (IN) over the team ids.
-      queryFilter: getTermQuery(
-        {
-          'teams.id': [
-            currentTeam.id,
-            ...(currentTeam.descendantTeams?.map((team) => team.id) ?? []),
-          ],
+      // (descendantTeams is computed on the team, empty for a Group team). A single `terms` (IN)
+      // clause over teams.id matches members inherited from sub-groups, mirroring the Users tab
+      // list — one clause regardless of subtree size (a per-id `should` list would risk ES/OS
+      // max_clause_count for a BusinessUnit with a very large subtree).
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                terms: {
+                  'teams.id': [
+                    currentTeam.id,
+                    ...(currentTeam.descendantTeams?.map((team) => team.id) ??
+                      []),
+                  ],
+                },
+              },
+            ],
+          },
         },
-        'should',
-        1
-      ),
+      },
       searchIndex: SearchIndex.USER,
     })
       .then((res) => {
