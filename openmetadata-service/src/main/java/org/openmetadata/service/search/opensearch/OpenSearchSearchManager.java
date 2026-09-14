@@ -130,6 +130,16 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     RBAC_CACHE_V2 = buildRbacCache(maxEntries);
   }
 
+  /**
+   * Invalidates the cached RBAC queries built for search/browse. The cache key includes the user's
+   * team and role membership, so any change to those memberships must drop the cached query or
+   * access-controlled search results keep reflecting the previous membership until the 5-minute
+   * write expiry kicks in (see #33137).
+   */
+  public static void invalidateRbacCache() {
+    RBAC_CACHE_V2.invalidateAll();
+  }
+
   private static Cache<String, Query> buildRbacCache(int maxEntries) {
     return CacheBuilder.newBuilder()
         .maximumSize(maxEntries)
