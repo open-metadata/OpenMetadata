@@ -54,12 +54,19 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'credentials',
 ];
 
+/**
+ * Dynamic overrides a panel can push up to ProfilePage so ProfileContentHeader
+ * can reflect the panel's internal state (e.g. multi-level breadcrumbs, entity icon).
+ * All fields are optional — panels provide only what they need to override.
+ */
 export interface ProfileHeaderOverride {
-  breadcrumbs: BreadcrumbItemType[];
-  title: string;
-  description: string;
-  icon: FC<{ className?: string }>;
-  onBreadcrumbAction?: (id: string | number) => void;
+  breadcrumbs?: BreadcrumbItemType[];
+  title?: string;
+  description?: string;
+  icon?: FC<{ className?: string }>;
+  /** Pre-rendered icon node; takes precedence over `icon` in ProfileContentHeader. */
+  iconNode?: React.ReactNode;
+  onBreadcrumbAction?: (id: Key) => void;
   /** Action buttons rendered on the right of the header title row. */
   actions?: React.ReactNode;
   /** When set, renders in place of the title text (e.g. an inline rename input). */
@@ -67,19 +74,6 @@ export interface ProfileHeaderOverride {
   /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
   titleSuffix?: React.ReactNode;
 }
-
-/**
- * Dynamic overrides a panel can push up to ProfilePage so ProfileContentHeader
- * can reflect the panel's internal state (e.g. multi-level breadcrumbs).
- */
-export type HeaderOverride = {
-  title?: string;
-  description?: string;
-  breadcrumbs?: BreadcrumbItemType[];
-  onBreadcrumbAction?: (id: Key) => void;
-  iconNode?: React.ReactNode;
-  actions?: React.ReactNode;
-};
 
 /**
  * Context handed to each nav item's `render`. Mirrors the data ProfilePage

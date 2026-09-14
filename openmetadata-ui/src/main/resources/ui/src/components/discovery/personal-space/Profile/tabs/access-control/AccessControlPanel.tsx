@@ -20,6 +20,7 @@ import {
   Role as RolesIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
+import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -195,7 +196,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
       'audit-logs': t('message.page-sub-header-for-audit-logs'),
     };
 
-    const onBreadcrumbAction = (id: string | number) => {
+    const onBreadcrumbAction = (id: Key) => {
       if (id === 'access-control') {
         setView({ type: 'landing' });
       } else if (id === 'roles') {

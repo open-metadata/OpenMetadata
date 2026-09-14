@@ -99,11 +99,6 @@ const ProfilePage: React.FC = () => {
     fetchUser();
   }, [fetchUser]);
 
-  // Reset dynamic header overrides whenever the user switches to a different tab.
-  useEffect(() => {
-    setHeaderOverride({});
-  }, [selectedId]);
-
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
       if (!userData) {
@@ -215,6 +210,7 @@ const ProfilePage: React.FC = () => {
               breadcrumbs={headerBreadcrumbs}
               description={headerDescription}
               icon={headerIcon}
+              iconNode={headerOverride?.iconNode}
               title={headerTitle}
               titleInput={headerOverride?.titleInput}
               titleSuffix={headerOverride?.titleSuffix}
