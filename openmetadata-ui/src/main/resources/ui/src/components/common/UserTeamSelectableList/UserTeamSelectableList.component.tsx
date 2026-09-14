@@ -366,7 +366,11 @@ export const UserTeamSelectableList = ({
 
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setPopupVisible(true);
+    // Open through handleOpenChange, not a bare setPopupVisible: when a consumer
+    // controls the popover via `popoverProps.open` (e.g. DqFilterChip), `isOpen`
+    // reads that prop and ignores `popupVisible`, so the picker only opens if the
+    // controlled parent is told to open via `popoverProps.onOpenChange(true)`.
+    handleOpenChange(true);
   };
 
   const defaultTrigger = hasPermission ? (
@@ -385,7 +389,7 @@ export const UserTeamSelectableList = ({
   const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      setPopupVisible(true);
+      handleOpenChange(true);
     }
   };
 
