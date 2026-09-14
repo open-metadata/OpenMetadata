@@ -907,6 +907,83 @@ describe('BulkEntityImportPage', () => {
       });
     });
 
+    it('should exit validation via REST polling when the job reports FAILED and no websocket frame arrives', async () => {
+      const csvAPI = require('../../../rest/csvAPI');
+      mockValidateCsvString.mockResolvedValue({
+        jobId: '1',
+        message: 'Import is in progress.',
+      });
+      mockGetImportValidateAPIEntityType.mockReturnValue(
+        jest.fn().mockResolvedValue({
+          jobId: '1',
+          message: 'Import is in progress.',
+        })
+      );
+      csvAPI.getCsvAsyncJob.mockResolvedValue({
+        jobId: '1',
+        operation: 'IMPORT',
+        status: 'FAILED',
+        error: 'boom',
+      });
+
+      renderComponent();
+
+      await uploadCsv();
+      await startPreview();
+
+      // The poll sees FAILED and must leave the validating state without fetching a result.
+      await waitFor(() => {
+        expect(csvAPI.getCsvAsyncJob).toHaveBeenCalledWith(
+          '1',
+          expect.anything()
+        );
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByText('message.import-csv-processing-title')
+        ).not.toBeInTheDocument();
+      });
+
+      expect(csvAPI.getCsvAsyncImportResult).not.toHaveBeenCalled();
+    });
+
+    it('should exit validation via REST polling when the import result is 404 (released)', async () => {
+      const csvAPI = require('../../../rest/csvAPI');
+      mockValidateCsvString.mockResolvedValue({
+        jobId: '1',
+        message: 'Import is in progress.',
+      });
+      mockGetImportValidateAPIEntityType.mockReturnValue(
+        jest.fn().mockResolvedValue({
+          jobId: '1',
+          message: 'Import is in progress.',
+        })
+      );
+      csvAPI.getCsvAsyncJob.mockResolvedValue({
+        jobId: '1',
+        operation: 'IMPORT',
+        status: 'COMPLETED',
+      });
+      csvAPI.getCsvAsyncImportResult.mockRejectedValue({
+        response: { status: 404 },
+      });
+
+      renderComponent();
+
+      await uploadCsv();
+      await startPreview();
+
+      // A permanent 404 on the released result must not keep the modal validating forever.
+      await waitFor(() => {
+        expect(csvAPI.getCsvAsyncImportResult).toHaveBeenCalled();
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByText('message.import-csv-processing-title')
+        ).not.toBeInTheDocument();
+      });
+    });
+
     it('should handle websocket COMPLETED status with failure', async () => {
       renderComponent();
 

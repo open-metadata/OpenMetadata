@@ -1250,9 +1250,24 @@ const BulkEntityImportPage = () => {
 
     const abortController = new AbortController();
     const poll = () => {
-      reconcileImportJobFromPoll(jobId, abortController.signal).catch(() => {
-        // Transient poll failure: the interval retries and the websocket may still resolve.
-      });
+      reconcileImportJobFromPoll(jobId, abortController.signal).catch(
+        (error) => {
+          // A 404 means the job or its result is gone (cleaned up / released) and will never
+          // appear — leave the validating state instead of polling a permanent error.
+          if (
+            (error as AxiosError)?.response?.status === 404 &&
+            activeAsyncImportJobRef.current?.jobId === jobId
+          ) {
+            handleImportWebsocketResponseRef.current?.({
+              error: null,
+              jobId,
+              status: 'FAILED',
+            });
+          }
+
+          // Other errors are transient: the interval retries and the websocket may still resolve.
+        }
+      );
     };
 
     poll();
