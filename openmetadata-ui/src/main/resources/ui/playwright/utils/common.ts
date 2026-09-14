@@ -1515,8 +1515,20 @@ export const testPaginationNavigation = async (
     }
     await page.waitForLoadState('domcontentloaded');
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await pageSizeDropdown.hover();
-    await expect(menuItem).toBeVisible();
+    // Ant's Dropdown defaults to `trigger: ['hover']`, so the menu opens on
+    // `mouseenter` and on nothing else. A hover that does not cross an element
+    // boundary dispatches a mousemove and no enter event, and the wait below
+    // then spends its whole timeout on a trigger that was never triggered --
+    // the trace for this failure has the button enabled, marked as the hover
+    // target, and no `.ant-dropdown` overlay in any snapshot. Parking the
+    // pointer elsewhere first guarantees the crossing; retrying the pair costs
+    // nothing when the first attempt works. The metrics copy of this helper
+    // already carried a click fallback for the same reason.
+    await expect(async () => {
+      await page.mouse.move(0, 0);
+      await pageSizeDropdown.hover();
+      await expect(menuItem).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
     await waitForAntdPopupToSettle(page);
 
     const pageSizeChangePromise = page.waitForResponse(
