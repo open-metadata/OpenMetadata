@@ -13,10 +13,22 @@
 import { fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import {
+  renderDomainClassificationTagsCell,
+  renderDomainGlossaryTagsCell,
+  renderDomainOwnersCell,
+} from './domainFieldRenderers';
 import { useDomainTableColumns } from './useDomainTableColumns';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('./domainFieldRenderers', () => ({
+  ...jest.requireActual('./domainFieldRenderers'),
+  renderDomainOwnersCell: jest.fn(),
+  renderDomainGlossaryTagsCell: jest.fn(),
+  renderDomainClassificationTagsCell: jest.fn(),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -76,5 +88,29 @@ describe('useDomainTableColumns', () => {
     fireEvent.click(screen.getByText('Engineering'));
 
     expect(rowClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes showDashPlaceholder through for the owners column', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    result.current.renderCell(DOMAIN, 'owners');
+
+    expect(renderDomainOwnersCell).toHaveBeenCalledWith(DOMAIN, true);
+  });
+
+  it('renders the glossaryTerms column via renderDomainGlossaryTagsCell', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    result.current.renderCell(DOMAIN, 'glossaryTerms');
+
+    expect(renderDomainGlossaryTagsCell).toHaveBeenCalledWith(DOMAIN);
+  });
+
+  it('renders the tags column via renderDomainClassificationTagsCell', () => {
+    const { result } = renderHook(() => useDomainTableColumns());
+
+    result.current.renderCell(DOMAIN, 'tags');
+
+    expect(renderDomainClassificationTagsCell).toHaveBeenCalledWith(DOMAIN);
   });
 });

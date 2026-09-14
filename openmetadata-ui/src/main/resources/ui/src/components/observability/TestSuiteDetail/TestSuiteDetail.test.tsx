@@ -44,7 +44,7 @@ jest.mock('components/PageLayoutV1/PageLayoutV1', () => ({
 
 jest.mock('components/common/DocumentTitle/DocumentTitle', () => ({
   __esModule: true,
-  default: () => null,
+  default: jest.fn(() => null),
 }));
 
 jest.mock('components/common/Loader/Loader', () => ({
@@ -224,6 +224,14 @@ describe('TestSuiteDetail', () => {
     );
   });
 
+  it('should align the detail header card with the inset tab content', () => {
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('test-suite-header-container')).toHaveClass(
+      'tw:mx-4'
+    );
+  });
+
   it('should render the pipeline tab body when the pipeline tab is active', () => {
     mockUseTestSuiteDetailsPage.mockReturnValue({
       ...baseHookReturn,
@@ -271,6 +279,52 @@ describe('TestSuiteDetail', () => {
       'data-type',
       'PERMISSION'
     );
+  });
+
+  it('should render the permission placeholder before the undefined guard when permission is denied and testSuite is undefined', () => {
+    const DocumentTitleMock = jest.requireMock(
+      'components/common/DocumentTitle/DocumentTitle'
+    ).default;
+
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      testSuite: undefined,
+      isLoading: false,
+      testSuitePermissions: { ViewAll: false, ViewBasic: false },
+    });
+
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
+      'data-type',
+      'PERMISSION'
+    );
+    expect(DocumentTitleMock).not.toHaveBeenCalled();
+  });
+
+  it('should render ErrorPlaceHolder and skip the page shell when testSuite is undefined after a fetch error', () => {
+    const DocumentTitleMock = jest.requireMock(
+      'components/common/DocumentTitle/DocumentTitle'
+    ).default;
+
+    mockUseTestSuiteDetailsPage.mockReturnValue({
+      ...baseHookReturn,
+      testSuite: undefined,
+      isLoading: false,
+      testSuitePermissions: { ViewAll: true, ViewBasic: true },
+    });
+
+    render(<TestSuiteDetail />);
+
+    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
+      'data-type',
+      'default'
+    );
+    expect(
+      screen.queryByTestId('test-suite-detail-page')
+    ).not.toBeInTheDocument();
+    expect(DocumentTitleMock).not.toHaveBeenCalled();
   });
 
   it('should show the add test case button with edit permission', () => {

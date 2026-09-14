@@ -152,7 +152,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
     });
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
       await entity.visitEntityPage(page);
     });
 
@@ -542,7 +541,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             page
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeVisible();
 
@@ -582,7 +581,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             cleanupPanelContainer
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeHidden();
 
