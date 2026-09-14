@@ -46,6 +46,12 @@ describe('getFormDisplayLabel', () => {
     expect(getFormDisplayLabel('oauthConfig')).toBe('OAuth Config');
   });
 
+  it('collapses OpenMetadata, which startCase splits at the lower-to-upper boundary', () => {
+    expect(getFormDisplayLabel('OpenMetadata Storage')).toBe(
+      'OpenMetadata Storage'
+    );
+  });
+
   it('is idempotent, so an already-rendered label survives a second pass', () => {
     // selectOneOfOption (playwright/utils/serviceFormUtils.ts) is called with either a
     // schema title or the label it renders as, and both must resolve the same option.
