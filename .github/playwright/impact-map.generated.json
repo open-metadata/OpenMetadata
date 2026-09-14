@@ -4989,15 +4989,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/ContextRuleEditor/RuleQueryBuilderField.component.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Features/PersonaAIContextRules.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/PersonaAIContext/PersonaAIContext.component.tsx"
       ],
       "specs": [
@@ -6647,6 +6638,28 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph/KnowledgeGraph.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph/KnowledgeGraphViewControls.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryRelationsGraph.spec.ts",
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
+        "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
+        "playwright/e2e/Features/OntologyStudioInteractions.spec.ts",
+        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Learning/LearningDrawer/LearningDrawer.component.tsx"
       ],
       "specs": [
@@ -7923,6 +7936,21 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/ConditionBuilder/ConditionBuilder.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Flow/PersonaFlow.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/WorkflowBuilder/forms/DataAssetFormSection.tsx"
       ],
       "specs": [
@@ -8512,14 +8540,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/DataContracts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/TreeSelectWidget.tsx"
       ],
       "specs": [
@@ -8702,6 +8722,43 @@
       ],
       "specs": [
         "playwright/e2e/Pages/Users.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilder.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderGroupCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderGroupHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryBuilder/QueryBuilderCanvas/QueryBuilderRuleRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
@@ -9112,6 +9169,27 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/ConnectionServiceDetailsPage.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
+        "playwright/e2e/Flow/TestConnectionModal.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
+        "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
+        "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts"
       ]
     },
     {
@@ -11156,7 +11234,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
-        "playwright/e2e/Pages/DataContracts.spec.ts"
+        "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
       ]
     },
     {
@@ -11227,6 +11306,15 @@
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/queryBuilderWidgets/OMConjs.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Pages/DataContracts.spec.ts"
       ]
     }
   ],
