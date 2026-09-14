@@ -23,6 +23,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -35,6 +36,7 @@ import {
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -1250,6 +1252,158 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         `/service/dashboardServices/${serviceFqn}/versions/0.1?pageSize=15`
       );
       await testPaginationNavigation(page, '/api/v1/dashboards', 'table');
+    });
+  });
+
+  test.describe('Pagination tests for Impact Analysis page', () => {
+    const sourceTable = new TableClass();
+    // 16 downstream tables exceed PAGE_SIZE_BASE (15), making two pages
+    // available when the URL carries ?pageSize=15.
+    const downstreamTables: TableClass[] = Array.from(
+      { length: 16 },
+      () => new TableClass()
+    );
+    let sourceFqn: string;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all([
+        sourceTable.create(apiContext),
+        ...downstreamTables.map((t) => t.create(apiContext)),
+      ]);
+
+      sourceFqn = sourceTable.entityResponseData.fullyQualifiedName;
+
+      await Promise.all(
+        downstreamTables.map((t) =>
+          connectEdgeBetweenNodesViaAPI(
+            apiContext,
+            { id: sourceTable.entityResponseData.id, type: 'table' },
+            { id: t.entityResponseData.id, type: 'table' }
+          )
+        )
+      );
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await Promise.all([
+        sourceTable.delete(apiContext),
+        ...downstreamTables.map((t) => t.delete(apiContext)),
+      ]);
+
+      await afterAction();
+    });
+
+    test('should reset Impact Analysis table pagination to page 1 on search change', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      // ?pageSize=15 makes showPagination=true (16 nodes > 15) and allows
+      // navigating to page 2 before applying the search.
+      const impactAnalysisUrl = `/table/${encodeURIComponent(
+        sourceFqn
+      )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
+
+      await page.goto(impactAnalysisUrl);
+      await page
+        .locator('[data-testid="lineage-card-table"]')
+        .waitFor({ state: 'visible' });
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1');
+
+      // Navigate to page 2
+      const page2Response = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+      );
+      await page.getByTestId('next').click();
+      await page2Response;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeEnabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('2');
+
+      // Type in the search box — fix #32632: handleSearchValueChange calls
+      // handlePageChange(1) before setSearchValue so the fetch uses from=0.
+      const searchResetResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+      );
+      await page.getByTestId('searchbar').fill('pw-table');
+      await searchResetResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      // Pagination must have reset to page 1.
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1');
+    });
+
+    test('should reset Impact Analysis table pagination to page 1 on quick filter change', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      const impactAnalysisUrl = `/table/${encodeURIComponent(
+        sourceFqn
+      )}/lineage?mode=impact_analysis&dir=Downstream&depth=1&pageSize=15`;
+
+      await page.goto(impactAnalysisUrl);
+      await page
+        .locator('[data-testid="lineage-card-table"]')
+        .waitFor({ state: 'visible' });
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('previous')).toBeDisabled();
+
+      // Navigate to page 2
+      const page2Response = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/lineage/getLineageByEntityCount')
+      );
+      await page.getByTestId('next').click();
+      await page2Response;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('2');
+
+      // Open quick filters and pick a service type — all 16 downstream tables
+      // share the same Mysql service, so results stay ≥15 after filtering.
+      // Fix #32632: handleQuickFiltersValueSelect calls onPageReset() which
+      // resets currentPage to 1 before the narrowed fetch is issued.
+      await page.getByTestId('filters-button').click();
+      await page.getByTestId('search-dropdown-Service Type').click();
+
+      const mysqlOption = page.getByTitle('mysql', { exact: true });
+      await expect(mysqlOption).toBeVisible();
+      await mysqlOption.click();
+
+      const filterResetResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/lineage/getLineageByEntityCount') &&
+          response.request().method() === 'GET'
+      );
+      await page.getByRole('button', { name: 'Update' }).click();
+      await filterResetResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      // Pagination must have reset to page 1.
+      await expect(page.getByTestId('previous')).toBeDisabled();
+      await expect(
+        page.locator('[data-testid="page-indicator"]')
+      ).toContainText('1');
     });
   });
 });

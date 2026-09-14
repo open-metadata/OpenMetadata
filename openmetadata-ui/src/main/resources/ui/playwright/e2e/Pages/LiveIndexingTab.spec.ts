@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { openApplicationDetails } from '../../utils/applications';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
@@ -93,11 +94,7 @@ test.describe(
         await redirectToHomePage(page);
         await settingClick(page, GlobalSettingOptions.APPLICATIONS);
 
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await openApplicationDetails(page, 'search-indexing-application-card');
       });
 
       await test.step('Click Live Indexing tab', async () => {
@@ -144,11 +141,7 @@ test.describe(
         await redirectToHomePage(page);
         await settingClick(page, GlobalSettingOptions.APPLICATIONS);
 
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await openApplicationDetails(page, 'search-indexing-application-card');
       });
 
       await test.step('Verify empty state message when queue is empty', async () => {
@@ -214,11 +207,7 @@ test.describe(
         await redirectToHomePage(page);
         await settingClick(page, GlobalSettingOptions.APPLICATIONS);
 
-        await page
-          .locator(
-            '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-          )
-          .click();
+        await openApplicationDetails(page, 'search-indexing-application-card');
       });
 
       await test.step('Mock and verify retry queue data', async () => {
