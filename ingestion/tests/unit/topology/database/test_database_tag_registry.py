@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Database tag registration, lookup and scope ownership."""
 
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock
 from uuid import UUID
 
@@ -80,6 +81,42 @@ def test_disabled_tags_do_not_register_or_emit(source):
     assert source.get_database_tag_labels("db") is None
     assert source.tags_registry.stats()["pending"] == 0
     assert source.tags_registry.stats()["active_scopes"] == 0
+
+
+@pytest.mark.parametrize(
+    "node_name,hook",
+    [("database", "yield_database_tag"), ("databaseSchema", "yield_tag"), ("table", "yield_table_tags")],
+)
+def test_closing_tag_stage_releases_publication_and_preserves_pending(source, monkeypatch, node_name, hook):
+    monkeypatch.setattr(source, hook, lambda _: [])
+    for name in ("First", "Second"):
+        source.tags_registry.define(TagDefinition("Class", name, "", ""))
+
+    retained = {}
+
+    def retain_generator(method):
+        def capture(*args, **kwargs):
+            generator = method(*args, **kwargs)
+            retained.setdefault(method.__name__, generator)
+            return generator
+
+        return capture
+
+    # Retained iterators must close explicitly, without relying on CPython reference counting.
+    monkeypatch.setattr(source.tags_registry, "drain", retain_generator(source.tags_registry.drain))
+    monkeypatch.setattr(source, "_run_stage_processor", retain_generator(source._run_stage_processor))
+    stage = source._process_stage(getattr(source.topology, node_name).stages[0], "item")
+    assert next(stage).right.tag_request.name.root == "First"
+    stage.close()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        try:
+            remaining = pool.submit(lambda: list(source.tags_registry.drain())).result(timeout=5)
+        finally:
+            for generator in retained.values():
+                generator.close()
+    assert [record.tag_request.name.root for record in remaining] == ["First", "Second"]
+    assert source.tags_registry.stats()["pending"] == 0
 
 
 def test_shared_registration_resolves_system_tags(source):

@@ -15,7 +15,7 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, closing
 from typing import Annotated, Any, cast
 
 from pydantic import BaseModel, Field
@@ -236,7 +236,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         cached = instance_dict.get("tags_registry")
         if cached is not None:
             return cached
-        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+        return instance_dict.setdefault("tags_registry", TagRegistry())
 
     @property
     def tag_canonicalizer(self) -> TagCanonicalizer:
@@ -381,7 +381,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.includeTags:
             yield from self.yield_table_tags(table_name_and_type) or []
-            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
+            yield from self._drain_tag_definitions()
 
     def yield_database_schema_tag_details(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
@@ -389,7 +389,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.includeTags:
             yield from self.yield_tag(schema_name) or []
-            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
+            yield from self._drain_tag_definitions()
 
     def yield_database_tag_details(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
@@ -397,7 +397,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
-            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
+            yield from self._drain_tag_definitions()
+
+    def _drain_tag_definitions(self) -> Iterable[Either[OMetaTagAndClassification]]:
+        with closing(self.tags_registry.drain()) as definitions:
+            for record in definitions:
+                yield Either(left=None, right=record)
 
     @staticmethod
     def normalize_table_constraints(

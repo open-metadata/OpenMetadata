@@ -323,7 +323,7 @@ class TopologyRunnerMixin(Generic[C]):
         """Compute children nodes if any"""
         return [get_topology_node(child, self.topology) for child in node.children] if node.children else []
 
-    def _run_stage_processor(self, stage: NodeStage, node_entity: Any) -> Iterable[Entity]:
+    def _run_stage_processor(self, stage: NodeStage, node_entity: Any) -> Generator[Either[C], None, None]:
         """Run the stage processor"""
         try:
             stage_fn = getattr(self, stage.processor)
@@ -345,13 +345,14 @@ class TopologyRunnerMixin(Generic[C]):
         operation_metrics = OperationMetricsState()
         stage_start = perf_counter()
 
-        for entity_request in self._run_stage_processor(stage=stage, node_entity=node_entity) or []:
-            try:
-                # yield and make sure the data is updated
-                yield from self.sink_request(stage=stage, entity_request=entity_request)
-            except ValueError as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
+        with closing(self._run_stage_processor(stage=stage, node_entity=node_entity)) as requests:
+            for entity_request in requests:
+                try:
+                    # yield and make sure the data is updated
+                    yield from self.sink_request(stage=stage, entity_request=entity_request)
+                except ValueError as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Unexpected value error when processing stage: [{stage}]: {err}")
 
         # Track STAGE time - processing and sinking entities
         stage_time_ms = (perf_counter() - stage_start) * 1000

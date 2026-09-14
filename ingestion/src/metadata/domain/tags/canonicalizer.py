@@ -172,4 +172,9 @@ class TagCanonicalizer:
     @_es_retry
     def _es_search(self, entity_type: Any, search_string: str) -> Iterable[Any]:
         """Run an ES search by FQN with retries."""
-        return self._metadata.es_search_from_fqn(entity_type=entity_type, fqn_search_string=search_string) or []
+        return (
+            self._metadata.es_search_from_fqn(
+                entity_type=entity_type, fqn_search_string=search_string, raise_on_error=True
+            )
+            or []
+        )

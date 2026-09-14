@@ -10,14 +10,13 @@
 #  limitations under the License.
 """Unit tests for ``metadata.domain.tags.TagRegistry``.
 
-Covers attach/labels_for/drain/clear_scope/ensure_known semantics plus
-basic thread-safety stress scenarios. The OM client is mocked; no
-network or schema validation against a real backend.
+Covers definitions, attachments, bounded deduplication and scope cleanup,
+including concurrent registration.
 """
 
 import weakref
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import MagicMock
+from contextlib import closing
 
 import pytest
 
@@ -26,13 +25,8 @@ from metadata.generated.schema.type.tagLabel import LabelType, State
 
 
 @pytest.fixture
-def mock_metadata() -> MagicMock:
-    return MagicMock()
-
-
-@pytest.fixture
-def registry(mock_metadata: MagicMock) -> TagRegistry:
-    return TagRegistry(metadata=mock_metadata)
+def registry() -> TagRegistry:
+    return TagRegistry()
 
 
 def _attach_kwargs(
@@ -85,6 +79,64 @@ class TestAttachAndLabelsFor:
 
 
 class TestDrain:
+    def test_interrupted_drain_preserves_unconfirmed_definitions(self, registry: TagRegistry):
+        for name in ("First", "Second", "Third"):
+            registry.define(TagDefinition("Class", name, "", ""))
+
+        with closing(registry.drain()) as records:
+            assert next(records).tag_request.name.root == "First"
+            assert next(records).tag_request.name.root == "Second"
+
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            remaining = pool.submit(lambda: list(registry.drain())).result(timeout=5)
+        assert [record.tag_request.name.root for record in remaining] == ["Second", "Third"]
+        assert registry.stats()["pending"] == 0
+        assert list(registry.drain()) == []
+
+    def test_discovery_continues_during_drain_without_duplicate_pending_definitions(self):
+        registry = TagRegistry(cache_size=1)
+        first, second, third = [TagDefinition("Class", name, "", "") for name in ("First", "Second", "Third")]
+        registry.define(first)
+        registry.define(second)
+
+        with closing(registry.drain()) as records:
+            assert next(records).tag_request.name.root == "First"
+
+            def discover():
+                registry.define(first)
+                registry.define(third)
+                with registry.open_scope("svc.db.schema") as scope:
+                    registry.attach(scope=scope, entity_fqn="svc.db.schema.table", tag=third)
+                    return registry.labels_for("svc.db.schema.table")
+
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                labels = pool.submit(discover).result(timeout=5)
+            assert [label.tagFQN.root for label in labels] == ["Class.Third"]
+            assert [record.tag_request.name.root for record in records] == ["Second"]
+
+        assert [record.tag_request.name.root for record in registry.drain()] == ["Third"]
+        assert registry.stats()["known_tag_fqns"] == registry.stats()["tag_label_cache"] == 1
+
+    def test_drain_without_definitions_is_empty(self, registry: TagRegistry):
+        assert list(registry.drain()) == []
+
+    def test_repeated_definition_after_drain_is_not_reemitted(self, registry: TagRegistry):
+        tag = TagDefinition("Class", "Tag", "", "")
+        registry.define(tag)
+        assert [record.tag_request.name.root for record in registry.drain()] == ["Tag"]
+        registry.define(tag)
+        assert list(registry.drain()) == []
+
+    @pytest.mark.parametrize("classification,tag", [("class", "Tag"), ("Class", "tag")])
+    def test_definition_history_preserves_case_variants(self, registry: TagRegistry, classification, tag):
+        registry.define(TagDefinition("Class", "Tag", "", ""))
+        assert [record.tag_request.name.root for record in registry.drain()] == ["Tag"]
+        registry.define(TagDefinition(classification, tag, "", ""))
+        records = list(registry.drain())
+        assert [(record.classification_request.name.root, record.tag_request.name.root) for record in records] == [
+            (classification, tag)
+        ]
+
     def test_drain_yields_pending_then_clears(self, registry: TagRegistry):
         registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_a"))
         first = list(registry.drain())
@@ -161,67 +213,6 @@ class TestClearScope:
         registry.clear_scope("svc.db.schema")
         with pytest.raises(ScopeAlreadyClearedError):
             registry.attach(**kwargs)
-
-
-class TestEnsureKnown:
-    def test_is_known_empty_returns_false(self, registry: TagRegistry):
-        assert registry.is_known("Class.Tag") is False
-
-    def test_is_known_after_definition_returns_true(self, registry: TagRegistry):
-        registry.attach(
-            **_attach_kwargs(
-                registry,
-                "svc.db",
-                "svc.db.schema.tbl",
-                classification="Class",
-                tag="Tag",
-            )
-        )
-        assert registry.is_known("Class.Tag") is True
-
-    def test_is_known_is_case_sensitive(self, registry: TagRegistry):
-        # Reflects OM's case-sensitive identity rule.
-        registry.attach(
-            **_attach_kwargs(
-                registry,
-                "svc.db",
-                "svc.db.schema.tbl",
-                classification="Class",
-                tag="Tag",
-            )
-        )
-        assert registry.is_known("Class.Tag") is True
-        assert registry.is_known("class.tag") is False  # different tag server-side
-
-    def test_ensure_known_cache_hit_skips_io(self, registry: TagRegistry, mock_metadata: MagicMock):
-        registry.attach(
-            **_attach_kwargs(
-                registry,
-                "svc.db",
-                "svc.db.schema.tbl",
-                classification="Class",
-                tag="Tag",
-            )
-        )
-        assert registry.ensure_known("Class.Tag") is True
-        mock_metadata.get_by_name.assert_not_called()
-
-    def test_ensure_known_cache_miss_calls_get_by_name_once(self, registry: TagRegistry, mock_metadata: MagicMock):
-        mock_metadata.get_by_name.return_value = MagicMock()
-        assert registry.ensure_known("Other.Tag") is True
-        assert registry.ensure_known("Other.Tag") is True  # cached now
-        assert mock_metadata.get_by_name.call_count == 1
-
-    def test_ensure_known_404_returns_false_and_does_not_cache(self, registry: TagRegistry, mock_metadata: MagicMock):
-        mock_metadata.get_by_name.return_value = None
-        assert registry.ensure_known("Missing.Tag") is False
-        assert registry.ensure_known("Missing.Tag") is False
-        # Re-queries on each miss; not cached.
-        assert mock_metadata.get_by_name.call_count == 2
-
-    def test_ensure_known_swallows_exception(self, registry: TagRegistry, mock_metadata: MagicMock):
-        mock_metadata.get_by_name.side_effect = RuntimeError("network down")
-        assert registry.ensure_known("Crashed.Tag") is False
 
 
 class TestThreadSafety:
@@ -382,8 +373,8 @@ class TestInterning:
         assert label_first is label_second, "intern cache should survive clear_scope"
 
 
-def test_pending_definitions_survive_history_eviction(mock_metadata):
-    registry = TagRegistry(mock_metadata, cache_size=2)
+def test_pending_definitions_survive_history_eviction():
+    registry = TagRegistry(cache_size=2)
     for tag in ("A", "B", "C", "A"):
         registry.attach(**_attach_kwargs(registry, "svc.db", f"svc.db.{tag}", tag=tag))
     assert registry.stats()["pending"] == 3
@@ -393,8 +384,8 @@ def test_pending_definitions_survive_history_eviction(mock_metadata):
     assert [label.tagFQN.root for label in registry.labels_for("svc.db.A")] == ["TestClass.A", "TestClass.A"]
 
 
-def test_evicted_definition_is_reemitted_without_losing_live_labels(mock_metadata):
-    registry = TagRegistry(mock_metadata, cache_size=2)
+def test_evicted_definition_is_reemitted_without_losing_live_labels():
+    registry = TagRegistry(cache_size=2)
     for tag in ("A", "B", "C"):
         registry.attach(**_attach_kwargs(registry, "svc.db", f"svc.db.{tag}", tag=tag))
         assert [record.tag_request.name.root for record in registry.drain()] == [tag]
@@ -404,15 +395,11 @@ def test_evicted_definition_is_reemitted_without_losing_live_labels(mock_metadat
         assert [label.tagFQN.root for label in registry.labels_for(f"svc.db.{tag}")] == [f"TestClass.{tag}"]
 
 
-def test_recently_used_definition_is_retained(mock_metadata):
-    registry = TagRegistry(mock_metadata, cache_size=2)
-    for tag in ("A", "B", "A", "C", "A"):
+def test_recently_used_definition_is_retained():
+    registry = TagRegistry(cache_size=2)
+    for tag, expected in (("A", ["A"]), ("B", ["B"]), ("A", []), ("C", ["C"]), ("A", []), ("B", ["B"])):
         registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.table", tag=tag))
-        emitted = [record.tag_request.name.root for record in registry.drain()]
-        if tag == "A" and registry.stats()["live_labels"] > 1:
-            assert emitted == []
-    assert registry.is_known("TestClass.A")
-    assert not registry.is_known("TestClass.B")
+        assert [record.tag_request.name.root for record in registry.drain()] == expected
 
 
 def test_stale_scope_cannot_attach_or_close_replacement(registry):
@@ -444,8 +431,8 @@ def test_schema_close_preserves_parent_and_sibling(registry):
     assert registry.stats()["live_labels"] == 0
 
 
-def test_completed_scope_history_is_released(mock_metadata):
-    registry = TagRegistry(mock_metadata, cache_size=2)
+def test_completed_scope_history_is_released():
+    registry = TagRegistry(cache_size=2)
     references = []
     for number in range(30):
         with registry.open_scope(f"svc.db.schema_{number}") as scope:
@@ -470,9 +457,9 @@ def test_scope_cleanup_on_failure_preserves_pending_definition(registry):
 
 
 @pytest.mark.parametrize("cache_size", [0, -1])
-def test_registry_rejects_invalid_capacity(mock_metadata, cache_size):
+def test_registry_rejects_invalid_capacity(cache_size):
     with pytest.raises(ValueError, match="positive"):
-        TagRegistry(mock_metadata, cache_size=cache_size)
+        TagRegistry(cache_size=cache_size)
 
 
 def test_definition_without_entity_is_emitted(registry):
@@ -497,8 +484,8 @@ def test_attachment_does_not_queue_a_definition(registry):
     assert registry.labels_for("svc.db.schema.table") == []
 
 
-def test_standalone_definitions_survive_history_eviction(mock_metadata):
-    registry = TagRegistry(mock_metadata, cache_size=2)
+def test_standalone_definitions_survive_history_eviction():
+    registry = TagRegistry(cache_size=2)
     for name in ("A", "B", "C", "D"):
         registry.define(TagDefinition("Class", name, "", ""))
     assert [record.tag_request.name.root for record in registry.drain()] == ["A", "B", "C", "D"]

@@ -23,7 +23,7 @@ Safe for concurrent use across the topology's parallel schema workers.
 
 import threading
 from collections import OrderedDict
-from collections.abc import Iterable
+from collections.abc import Generator
 from typing import NamedTuple, cast
 
 from metadata.domain.tags.models import TagDefinition
@@ -45,7 +45,6 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -93,10 +92,9 @@ class TagScope:
 class TagRegistry:
     """Registry for Tag and Classification ingestion bookkeeping."""
 
-    def __init__(self, metadata: OpenMetadata, cache_size: int = 1000) -> None:
+    def __init__(self, cache_size: int = 1000) -> None:
         if cache_size < 1:
             raise ValueError("cache_size must be positive")
-        self._metadata = metadata
         self._cache_size = cache_size
         self._known_tag_fqns: OrderedDict[str, None] = OrderedDict()
         self._tag_label_cache: OrderedDict[_TagLabelKey, TagLabel] = OrderedDict()
@@ -104,6 +102,7 @@ class TagRegistry:
         self._scopes: dict[str, TagScope] = {}
 
         self._lock = threading.Lock()
+        self._drain_lock = threading.Lock()
 
     def open_scope(self, scope_fqn: str) -> TagScope:
         """Return an active scope, creating a new handle after a previous close."""
@@ -185,16 +184,21 @@ class TagRegistry:
         with self._lock:
             return [label for scope in self._scopes.values() for label in scope._labels_by_entity.get(entity_fqn, [])]
 
-    def drain(self) -> Iterable[OMetaTagAndClassification]:
-        """Yield all queued create payloads and clear the queue."""
-        with self._lock:
-            pending, self._pending = self._pending, {}
-            for tag_fqn in pending:
-                self._remember_locked(tag_fqn)
+    def drain(self) -> Generator[OMetaTagAndClassification, None, None]:
+        """Yield pending definitions; publish each before advancing and close on interruption."""
+        with self._drain_lock:
+            with self._lock:
+                pending = list(self._pending.items())
 
-        if pending:
-            logger.debug("TagRegistry: drained %d pending tag payloads.", len(pending))
-        yield from pending.values()
+            for tag_fqn, record in pending:
+                yield record
+                # Resuming confirms publication to the workflow queue, not successful persistence.
+                with self._lock:
+                    del self._pending[tag_fqn]
+                    self._remember_locked(tag_fqn)
+
+            if pending:
+                logger.debug("TagRegistry: drained %d pending tag payloads.", len(pending))
 
     def clear_scope(self, scope_fqn: str) -> None:
         """Close active scopes at or below ``scope_fqn``."""
@@ -222,41 +226,6 @@ class TagRegistry:
         self._known_tag_fqns.move_to_end(tag_fqn)
         if len(self._known_tag_fqns) > self._cache_size:
             self._known_tag_fqns.popitem(last=False)
-
-    def is_known(self, tag_fqn: str) -> bool:
-        """Return True if the tag FQN has been recorded (case-sensitive match)."""
-        with self._lock:
-            if tag_fqn in self._pending:
-                return True
-            if tag_fqn in self._known_tag_fqns:
-                self._known_tag_fqns.move_to_end(tag_fqn)
-                return True
-            return False
-
-    def ensure_known(self, tag_fqn: str) -> bool:
-        """Return True if the tag exists server-side, caching positive results.
-
-        Returns False (and does NOT cache) on 404 or transport error.
-        """
-        if self.is_known(tag_fqn):
-            return True
-
-        logger.debug("TagRegistry: cache miss for %s; fetching from OpenMetadata.", tag_fqn)
-        try:
-            entity = self._metadata.get_by_name(entity=Tag, fqn=tag_fqn)
-        except Exception:
-            logger.exception("TagRegistry: tag lookup failed for %s.", tag_fqn)
-            return False
-
-        if entity is None:
-            logger.warning(
-                "TagRegistry: tag %s not found in OpenMetadata; labels referencing it will be skipped.", tag_fqn
-            )
-            return False
-
-        with self._lock:
-            self._remember_locked(tag_fqn)
-        return True
 
     def stats(self) -> dict[str, int]:
         """Return current state counts for instrumentation."""

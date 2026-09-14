@@ -327,7 +327,7 @@ class ScopedSource(MockSource):
         self.queue = Queue()
         self.context = TopologyContextManager(self.topology)
         self.context.set_threads(threads)
-        self.registry = TagRegistry(metadata=None)
+        self.registry = TagRegistry()
         self.child_labels = []
 
     @contextmanager
