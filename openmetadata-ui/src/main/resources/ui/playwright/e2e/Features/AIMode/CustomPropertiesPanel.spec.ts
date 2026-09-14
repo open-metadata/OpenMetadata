@@ -419,3 +419,234 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     ).not.toBeVisible();
   });
 });
+
+// ── Permission tests ───────────────────────────────────────────────────────────
+
+/**
+ * Users without any `type` resource permission should not see the
+ * "Custom Properties" nav item in the AI profile sidebar at all.
+ * dataConsumer has no type-resource grants in the default policy set.
+ */
+test.describe('Custom Properties Panel — user without type permissions', () => {
+  test.use({ storageState: 'playwright/.auth/dataConsumer.json' });
+
+  test('Custom Properties nav item is not visible in sidebar', async ({
+    page,
+  }) => {
+    await enableAiAppMode(page);
+    await redirectToHomePage(page);
+    await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+
+    await page.getByTestId('ask-ai-user-menu-trigger').click();
+    await page.getByTestId('ai-user-menu-profile').click();
+    await page.getByTestId('ai-profile-page').waitFor();
+
+    await expect(
+      page.getByTestId('profile-nav-custom-properties')
+    ).not.toBeVisible();
+  });
+});
+
+/**
+ * A non-admin user whose role grants [Create, Delete, EditAll, ViewAll] on
+ * the `type` resource must be able to see the landing page, navigate to the
+ * Table detail, and see all three action buttons (Add, Edit, Delete).
+ *
+ * Strategy: beforeAll creates policy → role → user via the admin API, logs in
+ * as that user, and persists the browser state to a temp file so each test can
+ * start already authenticated without re-logging-in.
+ */
+
+const TYPE_USER_AUTH_FILE =
+  'playwright/.auth/temp-type-permissions-user.json';
+
+test.describe('Custom Properties Panel — non-admin user with type permissions', () => {
+  test.use({ storageState: TYPE_USER_AUTH_FILE });
+
+  let typeUserEmail: string;
+  let typeUserId: string;
+  let typeRoleId: string;
+  let typePolicyId: string;
+  let typePropertyName: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const typeUserPassword = 'User@OMD123';
+    const suffix = uuid();
+    typeUserEmail = `pw-type-user-${suffix}@test.com`;
+    typePropertyName = `cp_perm_${suffix}`;
+
+    // ── 1. Create policy → role → user + seed property via admin API ──────────
+    const adminContext = await browser.newContext({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    const adminPage = await adminContext.newPage();
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    try {
+      const policyRes = await apiContext.post('/api/v1/policies', {
+        data: {
+          name: `TypeFullAccess-${suffix}`,
+          rules: [
+            {
+              name: 'TypeFullAccessRule',
+              resources: ['type'],
+              operations: ['Create', 'Delete', 'EditAll', 'ViewAll'],
+              effect: 'allow',
+            },
+          ],
+        },
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const policy = await policyRes.json();
+      typePolicyId = policy.id;
+
+      const roleRes = await apiContext.post('/api/v1/roles', {
+        data: {
+          name: `TypeFullAccessRole-${suffix}`,
+          policies: [{ id: typePolicyId, type: 'policy' }],
+        },
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const role = await roleRes.json();
+      typeRoleId = role.id;
+
+      const userRes = await apiContext.post('/api/v1/users', {
+        data: {
+          name: `pw-type-user-${suffix}`,
+          email: typeUserEmail,
+          password: typeUserPassword,
+          roles: [{ id: typeRoleId, type: 'role' }],
+        },
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const user = await userRes.json();
+      typeUserId = user.id;
+
+      // Seed a String property on the Table type so the detail page is non-empty.
+      const typeDataRes = await apiContext.get(
+        `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
+      );
+      const typeData = await typeDataRes.json();
+      const stringTypeRes = await apiContext.get(
+        '/api/v1/metadata/types/name/string'
+      );
+      const stringType = await stringTypeRes.json();
+      await apiContext.put(`/api/v1/metadata/types/${typeData.id}`, {
+        data: {
+          name: typePropertyName,
+          description: 'Permission test property',
+          propertyType: { id: stringType.id, type: 'type' },
+        },
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } finally {
+      await afterAction();
+      await adminContext.close();
+    }
+
+    // ── 2. Log in as the new user and persist the browser state ───────────────
+    const userContext = await browser.newContext();
+    const userPage = await userContext.newPage();
+    await userPage.goto('/');
+    await userPage.getByTestId('email').fill(typeUserEmail);
+    await userPage.getByTestId('password').fill(typeUserPassword);
+    await userPage.getByTestId('login').click();
+    await userPage.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data'
+    );
+    await userContext.storageState({ path: TYPE_USER_AUTH_FILE });
+    await userContext.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const adminContext = await browser.newContext({
+      storageState: 'playwright/.auth/admin.json',
+    });
+    const adminPage = await adminContext.newPage();
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+
+    try {
+      // Remove the seeded property from the Table type.
+      const typeDataRes = await apiContext.get(
+        `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
+      );
+      const typeData = await typeDataRes.json();
+      const remaining = (typeData.customProperties ?? []).filter(
+        (p: { name: string }) => p.name !== typePropertyName
+      );
+      await apiContext.patch(`/api/v1/metadata/types/${typeData.id}`, {
+        data: [
+          { op: 'replace', path: '/customProperties', value: remaining },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+
+      if (typeUserId) {
+        await apiContext.delete(`/api/v1/users/${typeUserId}?hardDelete=true`);
+      }
+      if (typeRoleId) {
+        await apiContext.delete(`/api/v1/roles/${typeRoleId}`);
+      }
+      if (typePolicyId) {
+        await apiContext.delete(`/api/v1/policies/${typePolicyId}`);
+      }
+    } finally {
+      await afterAction();
+      await adminContext.close();
+    }
+  });
+
+  test('sidebar shows Custom Properties nav and landing page shows entity cards', async ({
+    page,
+  }) => {
+    await enableAiAppMode(page);
+    await redirectToHomePage(page);
+    await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+
+    await page.getByTestId('ask-ai-user-menu-trigger').click();
+    await page.getByTestId('ai-user-menu-profile').click();
+    await page.getByTestId('ai-profile-page').waitFor();
+
+    await expect(
+      page.getByTestId('profile-nav-custom-properties')
+    ).toBeVisible();
+    await page.getByTestId('profile-nav-custom-properties').click();
+
+    await page.getByTestId('custom-properties-landing').waitFor();
+
+    await expect(
+      page.getByTestId(`entity-type-card-${TABLE_FQN}`)
+    ).toBeVisible();
+  });
+
+  test('detail page shows Add, Edit, Delete buttons', async ({ page }) => {
+    await enableAiAppMode(page);
+    await redirectToHomePage(page);
+    await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+
+    await page.getByTestId('ask-ai-user-menu-trigger').click();
+    await page.getByTestId('ai-user-menu-profile').click();
+    await page.getByTestId('ai-profile-page').waitFor();
+    await page.getByTestId('profile-nav-custom-properties').click();
+    await page.getByTestId('custom-properties-landing').waitFor();
+
+    const typeResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`) &&
+        res.request().method() === 'GET'
+    );
+    await page.getByTestId(`entity-type-card-${TABLE_FQN}`).click();
+    await typeResponse;
+    await waitForAllLoadersToDisappear(page);
+    await page.getByTestId('custom-property-table').waitFor();
+
+    // User has Create → Add button visible.
+    await expect(page.getByTestId('add-custom-property-btn')).toBeVisible();
+
+    // User has EditAll + Delete → Edit and Delete buttons visible on the seeded row.
+    const row = page.locator('tr').filter({ hasText: typePropertyName });
+    await expect(row).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Edit' })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Delete' })).toBeVisible();
+  });
+});

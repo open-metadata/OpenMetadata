@@ -22,8 +22,11 @@ import Loader from '../../../../components/common/Loader/Loader';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
+import { userPermissions } from '../../../../utils/PermissionsUtils';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
@@ -48,6 +51,11 @@ import ProfileSideNav from './ProfileSideNav';
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { permissions } = usePermissionProvider();
+  const hasTypeViewPermission = userPermissions.hasViewPermissions(
+    ResourceEntity.TYPE,
+    permissions
+  );
   const { extensionRegistry } = useApplicationsProvider();
   // Seed userData from the application store so the page chrome renders
   // immediately on tab switch. The getUserByName fetch below refreshes
@@ -166,8 +174,10 @@ const ProfilePage: React.FC = () => {
         };
       });
 
-    return [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...contributed];
-  }, [extensionRegistry, userData]);
+    const workspaceItems = hasTypeViewPermission ? WORKSPACE_NAV_ITEMS : [];
+
+    return [...PROFILE_NAV_ITEMS, ...workspaceItems, ...contributed];
+  }, [extensionRegistry, hasTypeViewPermission, userData]);
 
   const activeItem =
     navItems.find((item) => item.id === selectedId) ?? navItems[0];
