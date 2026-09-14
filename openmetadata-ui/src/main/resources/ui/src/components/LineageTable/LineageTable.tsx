@@ -17,6 +17,7 @@ import {
   ButtonGroupItem,
   Card,
   Dropdown,
+  Owner,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -52,6 +53,7 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -78,7 +80,6 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
 import TableV2 from '../common/Table/TableV2';
@@ -114,6 +115,7 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -764,7 +766,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <OwnerLabel isCompactView={false} owners={owners} showLabel={false} />
+          <Owner
+            isCompactView={false}
+            owners={toOwnersWithHref(owners)}
+            renderOwnerContent={renderOwnerContent}
+            showLabel={false}
+          />
         ),
       },
       {
