@@ -77,7 +77,9 @@ public final class EntityMutationPlan<T extends EntityInterface> {
             FIELD_ENTITY_STATUS,
             (s, c) ->
                 values.governance().updateStatus(s, s.original, s.updated, c.consolidating())),
-        new EntityMutationPipeline.Step<>(FIELD_OWNERS, this::owners),
+        new EntityMutationPipeline.Step<>(
+            FIELD_OWNERS,
+            (s, c) -> metadata.ownership().updateOwners(s, s.original, s.updated, c.importing())),
         new EntityMutationPipeline.Step<>(
             FIELD_EXTENSION,
             (s, c) ->
@@ -99,15 +101,6 @@ public final class EntityMutationPlan<T extends EntityInterface> {
             (s, c) -> values.certification().update(s, s.original, s.updated)));
   }
 
-  private void owners(
-      final EntityUpdater<T> session, final EntityMutationPipeline.Context context) {
-    if (context.importing()) {
-      metadata.ownership().updateOwnersForImport(session, session.original, session.updated);
-    } else {
-      metadata.ownership().updateOwners(session, session.original, session.updated);
-    }
-  }
-
   private void tags(final EntityUpdater<T> session, final EntityMutationPipeline.Context context) {
     if (context.importing()) {
       session.updateTagsForImport(
@@ -127,7 +120,7 @@ public final class EntityMutationPlan<T extends EntityInterface> {
   private void domains(
       final EntityUpdater<T> session, final EntityMutationPipeline.Context context) {
     if (context.importing()) {
-      session.updateDomainsForImport();
+      metadata.ownership().updateDomains(session, session.original, session.updated, true);
     } else {
       session.updateDomains();
     }

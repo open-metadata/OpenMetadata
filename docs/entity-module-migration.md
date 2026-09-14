@@ -3,6 +3,16 @@
 The shared `EntityRepository` implementation has been retired from the worktree.
 See [implementation status](entity-repository-status.md) for the verified artifact
 and outstanding regression and performance gates.
+This guide describes the current SPI. The [accepted unified design](entity-repository-unified-design.md)
+reassesses its inherited defaults, exposed internals and repeated behavior. The
+first ownership slice is implemented; the replacement SPI and full pilot remain open.
+
+The shared `EntityOwnershipUpdates` helpers now accept the existing import-mode
+argument in `updateOwners` and `updateDomains`; separate `*ForImport` entry points
+are removed. Its session supplies `shouldCompare` and `getChangeDescription`,
+already provided by `EntityUpdater`. Existing entity-specific domain hook signatures
+are unchanged. Collate compiles against the new implementation without adding
+repository-specific ownership code.
 
 ## Construction and responsibilities
 

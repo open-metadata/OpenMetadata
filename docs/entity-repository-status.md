@@ -1,16 +1,21 @@
 # Entity module implementation status
 
-Checkpoint: integration with `main` at `68606d705a` and acceptance follow-up, 2026-09-14 UTC.
+Checkpoint: ownership decision slice and acceptance follow-up, 2026-09-14.
 **Verification is in progress.**
 
 The worktree no longer contains `EntityRepository.java`, originally 13,569 lines.
-Its responsibilities now live in 209 focused components (23,239 lines), including seven startup
+Its responsibilities now live in 209 components (23,230 lines), including seven startup
 assemblies and entity policy interfaces. All 74 direct production subclasses use
 `EntityPolicy`. All 69 updater subclasses use composed mutation policies;
 13 service repositories implement `EntityServicePolicy` and share service components.
 `ServiceEntityRepository` and `ColumnEntityUpdater` are removed. The shared
-`EntityUpdater` is final and contains 496 lines, the largest extracted component.
+`EntityUpdater` is final and contains 487 lines, the largest extracted component.
 Removing the file does not establish correctness or latency improvement.
+Architectural decoupling also remains incomplete: the policy inherits 207 default
+methods, raw persistence is public, and complete change calculation still invokes
+writes. The [accepted unified design](entity-repository-unified-design.md) compares
+the corrective options and defines a pilot with a production-code deletion budget;
+its first ownership decision slice is implemented below.
 
 | Deliverable | Status |
 | --- | --- |
@@ -24,10 +29,72 @@ Removing the file does not establish correctness or latency improvement.
 | Main merge validation | Metrics-stage local service suite: 10,365 passes and one skip; MCP: 630 passes; all three integration CI profiles pass at native `49d9290397` |
 | CI follow-up validation | Column/transaction/cache selection: 79 passes per database with Redis and 29 without Redis; pagination passes three local browser runs; RDF readiness recovery passes all 14 graph browser cases |
 | Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `49d9290397` / Collate `4def2335b1`; refreshed full service unit suite passes 4,193 cases with six skips |
+| Small extension API, pure complete diff, unified single/bulk/import semantics and independently constructed repositories | Open; ownership decisions are separated, the full corrective pilot remains incomplete |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
 
-## Current acceptance follow-up
+## Ownership decision slice
+
+`EntityOwnershipUpdates` calculates owner/domain deltas from loaded lists without
+database access. Normal and import updates share that calculation while retaining
+their distinct bot, PUT/PATCH, inheritance and field-selection rules. Prepared
+list deltas are recorded without comparing again. The shared reference recorder
+also stops rebuilding a `ListChange` supplied by its caller. Existing relationship
+writers, User/Team domain hooks, authorization, transaction ownership and Redis
+publication remain in place.
+
+The five affected production files shrink from 1,019 to 1,010 physical lines and
+from 883 to 877 nonblank lines. There are no new production files or per-repository
+implementations. Removed code includes the field dispatch table, import forwarding
+methods and redundant comparison plumbing; tests and documentation are counted
+separately.
+
+The final local service artifact is
+`95d2cc27ca6e383b4a7e8604770a6d9d233a07cb75c84afbd3d33cff9368aea4`.
+Validation results for this slice:
+
+| Check | Result |
+| --- | --- |
+| Native service unit suite | 10,388 passed, one configured skip |
+| MySQL/OpenSearch/Redis ownership, security and transaction selection | 83 passed, one cache-mode assumption abort |
+| PostgreSQL/OpenSearch/Redis matching selection | 83 passed, one cache-mode assumption abort |
+| PostgreSQL additional shared-write, column, optimistic-update and context-memory selection | 208 passed, 21 capability assumption aborts |
+| Collate service build and full unit selection | 4,193 passed, six configured skips, against identical native class bytes |
+| Collate PostgreSQL/OpenSearch/Redis compatibility selection on the final package | Five passed |
+| Spotless apply/check and whitespace validation | Passed |
+
+The two Redis selections retain the existing omission of a cascade-replay test
+that requires `cache=none`. The owner-validation query budgets still require one
+team read, including duplicate owners. Bulk source-hash no-ops still require zero
+SQL and zero transactions; nested writes, rollback/replay, optimistic conflicts
+and publication ordering are covered by the selected transaction suites.
+
+All 13 executable classes in the five changed production files meet 90% line
+coverage using completed passing runs with matching class identities: ownership
+and mutation-plan/specific-mutation classes are at 100%, `EntityChangeRecorder`
+at 92%, and `EntityUpdater` at 91.19%. This is the slice gate; it does not replace
+the outstanding full-PR coverage inventory below.
+
+The allocation probe compares the preceding native artifact against the new
+ownership code at widths 3/100/1,000 for no-op, PATCH, import, unselected and
+bot-preserved domain paths. All 15 cases allocate less across three JVM runs;
+median savings range from 376 to 584 bytes per operation. It uses persistence
+sinks and thread allocation counters, so it establishes neither an API latency
+improvement nor database/load acceptance. The full repeatability, latency and
+coverage gates below remain open.
+
+The probe used package `915a1828b2a462c251098d02a4d3be63645a2f0d700b29b476c35520040cb4d5`;
+all 4,232 production class files are byte-identical to the final package. The final
+package restores Maven-generated version and OpenAPI resources omitted by the
+initial direct-goal clean build. Raw runs, selectors, allocation sources, artifact
+manifests and the coverage report are retained under
+`.context/entity-acceptance/ownership-slice/` and its named snapshot/run directories.
+
+Complete consolidation still invokes the existing revert/write path. This slice
+does not claim fewer consolidation SQL writes, a replacement public API, independent
+construction, or completion of the Chart single/batch relationship pilot.
+
+## Preceding acceptance follow-up
 
 At native `49d9290397`, all three backend integration profiles, RDF browser CI,
 the main and nightly UI browser checks, and formatting checks pass. The matching
@@ -109,7 +176,7 @@ returning. Their previous early return interfered with later column-grid reads.
 The combined application/column-grid selection passes all 44 cases on each database;
 the earlier broad suites with that failure remain recorded as failed runs.
 
-The current service package is
+The preceding metrics/RDF service package is
 `854c3d28e74c6284f768cda27801c78b164249500577a2969b495b3e32ca34ae`.
 The [current SQL comparison](entity-repository-performance.md#metrics-and-rdf-follow-up-2026-09-13)
 retains the original artifact and separately records the preceding stage. Both
@@ -122,7 +189,7 @@ comparisons contain 10,320 successful measured responses. Single-entity mutation
 retain one owning commit. Background-worker SQL remains outside this matrix.
 Instrumented SQL runs do not establish latency acceptance.
 
-The full coverage checker now includes every changed production module. The native
+The full coverage checker includes every changed production module. At that checkpoint the native
 scope has 512 service/MCP sources and 1,115 executable classes; 349 remain below 90%.
 All 455 executable classes belonging to the extracted core components meet the
 threshold. Collate's scope includes its service and three changed plugins: 105

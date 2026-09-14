@@ -4,12 +4,14 @@ The shared repository and updater inheritance have been replaced by composed
 application services and entity policies. `EntityRepository`,
 `ServiceEntityRepository` and `ColumnEntityUpdater` are removed. The common
 repository originally contained 13,569 lines; the extracted package contains
-209 components, with the largest at 493 lines.
+209 components totaling 23,230 lines, with the largest at 487 lines.
 
-The code migration is implemented. Coverage and latency acceptance remain separate
-gates; see [current verification status](entity-repository-status.md). This document
-describes the resulting architecture. Java extension authors should also read the
-[module migration guide](entity-module-migration.md).
+The extraction is implemented. Architectural decoupling, coverage and latency
+acceptance remain open; see [current verification status](entity-repository-status.md).
+The [unified design](entity-repository-unified-design.md) evaluates the
+remaining inherited policy surface, duplicate behavior and public internal access.
+This document describes the current code. Java extension authors should also read
+the [module migration guide](entity-module-migration.md).
 
 ## Module construction and boundaries
 
@@ -99,7 +101,7 @@ the new interfaces.
 | Column mutations | `EntityColumnUpdates`, `ColumnValueUpdater`, `ColumnMatchIndex` |
 | Tag mutations | `EntityTagUpdates`, `EntityTagWriter` |
 | Shared value mutations | `EntityValueUpdates`, preserving sanitization, bot permissions and lifecycle version rules |
-| Ownership reconciliation | `EntityOwnershipUpdates`, preserving distinct PUT, import and inherited-reference rules |
+| Ownership reconciliation | `EntityOwnershipUpdates`, with data-only decisions shared by normal/import paths, preserving PUT, bot, inheritance and field-selection rules |
 | Reference validation | `EntityReferenceValidator`, preserving validation order, Include and mutable-reference contracts |
 | Governance mutations and review decisions | `EntityGovernanceUpdates`, `EntityReviewerPolicy`, preserving bot guards, lineage and approval rules |
 | Certification mutations | `EntityCertificationUpdates`, preserving cleanup, settings and calendar-period expiry |

@@ -295,10 +295,6 @@ public final class EntityUpdater<T extends EntityInterface>
         .domains(entity, () -> updated.getId(), originalDomains, newDomains);
   }
 
-  void updateDomainsForImport() {
-    context.metadata().plan().ownership().updateDomainsForImport(this, original, updated);
-  }
-
   void updateReviewers() {
     specific.reviewers(this);
   }
@@ -362,13 +358,8 @@ public final class EntityUpdater<T extends EntityInterface>
   @Override
   public final boolean recordReferenceChanges(
       String field, EntityChangeRecorder.ListChange<EntityReference> values) {
-    return recordListChange(
-        field,
-        values.original(),
-        values.updated(),
-        values.added(),
-        values.deleted(),
-        values.match());
+    return shouldCompare(field)
+        && EntityChangeRecorder.recordList(changeDescription, field, values);
   }
 
   public final <K> boolean recordListChange(

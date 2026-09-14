@@ -92,12 +92,27 @@ public final class EntityChangeRecorder {
 
   public static <K> boolean recordList(
       final ChangeDescription changes, final String field, final ListChange<K> values) {
+    return recordList(changes, field, values, index(values));
+  }
+
+  private static <K> Matches<K> index(final ListChange<K> values) {
     final Matches<K> references = EntityReferenceMatchIndex.forChange(values);
-    return recordList(
-        changes,
-        field,
-        values,
-        references == values ? ColumnMatchIndex.forChange(values) : references);
+    return references == values ? ColumnMatchIndex.forChange(values) : references;
+  }
+
+  public record ListDiff<K>(ListChange<K> values, List<K> modified) {
+    public boolean changed() {
+      return !values.added().isEmpty() || !values.deleted().isEmpty();
+    }
+  }
+
+  public static <K> ListDiff<K> diffList(final ListChange<K> values) {
+    return new ListDiff<>(values, compare(values, index(values)));
+  }
+
+  public static <K> boolean recordList(
+      final ChangeDescription changes, final String field, final ListDiff<K> difference) {
+    return recordListValues(changes, field, difference.values(), difference.modified());
   }
 
   public static <K> boolean recordList(
@@ -105,31 +120,25 @@ public final class EntityChangeRecorder {
       final String field,
       final ListChange<K> values,
       final Matches<K> matches) {
-    final List<K> updatedItems = new ArrayList<>();
-    collectDeleted(values, matches);
-    collectAddedAndUpdated(values, updatedItems, matches);
-    recordListValues(changes, field, values, updatedItems);
-    return !values.added().isEmpty() || !values.deleted().isEmpty();
+    return recordListValues(changes, field, values, compare(values, matches));
   }
 
-  private static <K> void collectDeleted(final ListChange<K> values, final Matches<K> matches) {
+  private static <K> List<K> compare(final ListChange<K> values, final Matches<K> matches) {
+    final List<K> updatedItems = new ArrayList<>();
     for (final K stored : values.original()) {
       if (matches.findUpdated(stored) == null) {
         values.deleted().add(stored);
       }
     }
-  }
-
-  private static <K> void collectAddedAndUpdated(
-      final ListChange<K> values, final List<K> changed, final Matches<K> matches) {
     for (final K updated : values.updated()) {
       final K stored = matches.findOriginal(updated);
       if (stored == null) {
         values.added().add(updated);
       } else if (!values.match().test(stored, updated)) {
-        changed.add(updated);
+        updatedItems.add(updated);
       }
     }
+    return updatedItems;
   }
 
   private static <K> K find(final List<K> candidates, final K item, final BiPredicate<K, K> match) {
@@ -139,7 +148,7 @@ public final class EntityChangeRecorder {
         .orElse(null);
   }
 
-  private static <K> void recordListValues(
+  private static <K> boolean recordListValues(
       final ChangeDescription changes,
       final String field,
       final ListChange<K> values,
@@ -157,5 +166,6 @@ public final class EntityChangeRecorder {
     if (!values.deleted().isEmpty()) {
       fieldDeleted(changes, field, JsonUtils.pojoToJson(values.deleted()));
     }
+    return !values.added().isEmpty() || !values.deleted().isEmpty();
   }
 }

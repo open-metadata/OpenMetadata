@@ -28,6 +28,8 @@ verdict cites an artifact that was checked to still exist):
 
 The [entity repository composition design](entity-repository-composition.md) describes the implemented
 Java 21 modules, mandatory single-transaction boundary, Redis compatibility, and API latency gates.
+The [accepted unified entity design](entity-repository-unified-design.md) compares the corrective
+architecture options, pattern choices, shared behavior and code-size acceptance criteria.
 The [entity module migration guide](entity-module-migration.md) documents policy construction,
 native operation ports, registration and Java extension changes.
 The [performance report](entity-repository-performance.md) records partial paired measurements and
