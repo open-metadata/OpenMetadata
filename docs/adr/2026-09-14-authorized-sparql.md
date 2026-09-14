@@ -81,6 +81,7 @@ These settle semantics only. No architecture is approved.
 - Hidden intermediates cannot contribute to paths, joins, or aggregates.
 - Metadata may be briefly stale through the existing async RDF updates, with no strict max-lag promise. A partial projection (for example during an in-place rebuild) is not acceptable for `COUNT`/`ASK`.
 - Authorize per request from catalog-backed policy attributes and the existing caches. No new RDF permission cache, and no extra RDF-induced revocation delay. A snapshot or pinned dataset is not a revocation mechanism.
+- For the proposed sanitized-model approach, rebuild the caller-specific model on every request, even for repeated queries. Reuse the existing RDF projection and authorization caches; do not regenerate the catalog graph or cache authorized models across requests. Measure rebuild cost before considering reuse. Any later model cache needs a separate design for bounded storage and invalidation on permission and policy-attribute changes, without adding revocation delay.
 - Least friction: no new permission version or synchronization infrastructure, and no broad projection redesign without proven need.
 - A new public endpoint and an internal retrieval method may be proposed. A missing retrieval method is implementable and does not make an option impossible.
 - `docs/adr/` is the approved location.
