@@ -3,7 +3,7 @@
 - **Status:** test-only prototype evidence for the proposed ADR [`docs/adr/2026-09-14-authorized-sparql.md`](adr/2026-09-14-authorized-sparql.md), candidate **L** of [`docs/rdf-authorization-research.md`](rdf-authorization-research.md). No production code, endpoint, schema, POM, or configuration changed. Not an approved architecture.
 - **Date / base:** 2026-09-14, on top of `9c2f27a7682`.
 - **Question:** On real projected triples, does a request-local model that physically contains only admitted facts give the ADR's answers for `COUNT`, `ASK`, paths, joins and `EXISTS`? Can a bounded retrieval from `graph/knowledge` build that model without guessing?
-- **Scope of this change:** the core model, its fixture and the semantic tests, run on in-process Jena. Two parts are planned as separate follow-ups: restricting caller queries to the sanitized model (a query profile), and an opt-in Fuseki 6.2.0 run.
+- **Scope:** the core model, its fixture and the semantic tests, plus a test-only query profile that confines queries to the sanitized model. Everything runs on in-process Jena. An opt-in Fuseki 6.2.0 run is planned as a separate follow-up.
 
 ## Short answer
 
@@ -19,9 +19,10 @@ All files are under `openmetadata-service/src/test/java/org/openmetadata/service
 
 | File | Role |
 | --- | --- |
-| `rdf/SanitizedModelExperimentTest.java` | 33 tests: the ADR A1–A4, A6 and A8 cases, owned nodes, tag policy, fail-closed cases, structured-node ownership conflicts. |
+| `rdf/SanitizedModelExperimentTest.java` | 56 tests: the ADR A1–A4, A6, A8 and A10 cases, owned nodes, tag policy, fail-closed cases, structured-node ownership conflicts, query-profile rejections. |
 | `rdf/SanitizedModelFixture.java` | Tables A–D and tags projected by the production `JsonLdTranslator` and `RdfRepository.buildLineageModel`. Also holds the catalog and the policy rules. |
 | `rdf/SanitizedModelBuilder.java` | The experiment itself: bounded retrieval, the per-fact admission map, and a fresh `Model`. |
+| `rdf/SanitizedQueryProfile.java` | Test-only query profile: `SELECT`/`ASK` only, confined to the model. |
 | `security/policyevaluator/PolicyContextFixture.java` | Builds `PolicyContext`, whose constructor is package-private. |
 
 ## Beginner walkthrough
@@ -46,7 +47,11 @@ The fixture: tables A, B, C and D, with `A om:upstream B`, `B om:upstream C`, `A
      - an approved type, for `rdf:type` only;
      - a node the caller may see.
      A hidden catalog resource drops the fact: `<A> om:upstream <B>` and `<A> prov:wasDerivedFrom <B>` disappear. Anything unknown fails the whole build, and every violation is reported at once.
-4. **Query the copy.** The admitted facts go into a fresh in-memory `Model` with no reasoner. The tests run fixed queries they wrote themselves. Nothing here accepts a caller's query. Restricting caller queries to the model (rejecting `SERVICE`, `GRAPH`, `FROM`, property and extension functions) is a separate follow-up.
+4. **Query the copy.** The admitted facts go into a fresh in-memory `Model` with no reasoner.
+   - Every test query passes the query profile first.
+   - The profile rejects `SERVICE`, `GRAPH`, `FROM`, `FROM NAMED`, property functions (ARQ, `text:`, `java:`, registered), extension functions and `CALL`, and anything other than `SELECT`/`ASK`.
+   - It also checks inside `EXISTS`, `BIND`, projections, `GROUP BY`, aggregates, `HAVING` and `ORDER BY`.
+   - Nothing else exists for the engine to read.
 
 ### Permission map used (explicit and partial)
 
@@ -75,8 +80,10 @@ Local test command: `mvn -pl openmetadata-service -am package -Dtest='SanitizedM
 | --- | --- |
 | RED: builder copied the whole knowledge graph (before the split, suite then included the query-profile cases) | The builder leaked: COUNT 2, paths through B, label `secret_b` visible, no fail-closed, no budget. |
 | RED: ownership regression (before the split) | Conflicting owners and kinds were accepted silently. Visible table D was accepted as a column of A. Hidden table B was reclassified as a column of A and failed only incidentally, on unmapped `dct:modified` for COLUMN. `om:hasChildColumn` had no column mapping. |
-| GREEN: this change, local | **33 tests, 0 failures, 0 errors, 0 skipped** |
-| Formatting | `mvn spotless:check -pl openmetadata-service -DspotlessFiles='.*/(SanitizedModel[A-Za-z0-9]*\|PolicyContextFixture)\.java'`: clean |
+| RED: query profile (before the split) | The first profile let `apf:strSplit` and `ORDER BY <fn>(…)` through. The ARQ namespace and explicit `ORDER BY`/TopN/`GROUP BY` walking were added before GREEN. |
+| GREEN: core model only, local | **33 tests, 0 failures, 0 errors, 0 skipped** |
+| GREEN: with query profile, local | **56 tests, 0 failures, 0 errors, 0 skipped**. Every core query also passes through the profile. |
+| Formatting | `mvn spotless:check -pl openmetadata-service -DspotlessFiles='.*/(SanitizedModel[A-Za-z0-9]*\|SanitizedQueryProfile\|PolicyContextFixture)\.java'`: clean |
 
 **Not measured:** heap, model memory, retrieval latency or evaluation latency per request.
 
@@ -91,6 +98,7 @@ Local test command: `mvn -pl openmetadata-service -am package -Dtest='SanitizedM
    - Hidden-only mutations leave all 8 canonical answers unchanged: relabelling B, edges to and from B, removing B's tag, adding a column to B. The unrestricted answers do change, so the test is sensitive.
    - Facts in an inferred graph and in the default graph are not retrieved.
    - The budget boundary is exact: `budget = retrieved` succeeds, `retrieved − 1` throws.
+   - 22 escape forms are rejected by the query profile.
 2. **Jena 6.2 zero-length paths differ from research row A2e.** `ASK { <urn:x:absent> om:upstream* <urn:x:absent> }` is **false** in Jena 6.2.0, even on the unrestricted graph. The research expected true. Hidden B therefore behaves exactly like an absent term in the sanitized model (`<B> om:upstream* <B>` is false, but true unrestricted). This is safe, but it shows that zero-length path results depend on whether the term is in the model.
 3. **Tag-application facts on shared tag nodes have no owner (blocking).**
    - `RdfPropertyMapper.addTagLabel` writes each asset's `labelType` and `state` onto the shared `entity/tag/{id}` node. The tag's own policy does not cover them, and neither does the asset's `tags` field, because they are no longer attached to the asset.
@@ -114,9 +122,10 @@ Local test command: `mvn -pl openmetadata-service -am package -Dtest='SanitizedM
 - Subject-keyed, budgeted retrieval from `graph/knowledge` avoids inferred and default graphs, and refuses to answer partially.
 - An explicit predicate → field → operation map, with order-independent ownership, can fail closed on unknown or conflicting facts. It found real gaps (Findings 3–5).
 - Tag-conditioned deny rules evaluated by OpenMetadata's `PolicyEvaluator` produce the visible set.
+- The test query profile rejects every tested way of reading outside the model: `SERVICE`, `GRAPH`, `FROM`, property and extension functions, including inside `EXISTS`, aggregates, `GROUP BY`, `HAVING` and `ORDER BY`.
 
 **Not proven (explicitly out of scope or not reached):**
-- **Confinement of caller queries.** No caller query surface exists here. Rejecting `SERVICE`, `GRAPH`, `FROM`, property and extension functions is a separate follow-up.
+- **The query profile as a security boundary.** It is a test helper, not reviewed as one. No endpoint uses it, and untested SPARQL forms are not covered by evidence.
 - **Retrieval from a remote Fuseki store.** It is not exercised here.
 - **Real policy integration end to end.** Not exercised: `SubjectCache` role/team/persona policy resolution, `DefaultAuthorizer` (admin, bot, domain and reviewer handling), `ResourceContext` entity loading, owner conditions such as `isOwner()`, and the search-side compiled RBAC filter. The catalog attributes (tags) are fixture values, not loaded from the database.
 - **Field coverage** beyond the predicates this fixture emits. Also unproven: the documented map for glossary terms, domains, owners, data products, usage, sample data, tests, queries, custom properties, lifecycle and certification.
@@ -129,19 +138,3 @@ Local test command: `mvn -pl openmetadata-service -am package -Dtest='SanitizedM
 ## Proposed next step (needs approval)
 
 Decide, with the #33224 owners, how two things are governed or re-projected: tag-application attributes on shared tag nodes (Finding 3) and edge-owned lineage details (Finding 4). Only then extend the map to the next field family, one family per commit. Scale, consistency and freshness measurements should wait until the map covers a representative asset.
-
-## Proposed commit message
-
-```text
-test(rdf): prototype sanitized request-local model for authorized SPARQL
-
-- Adds a test-only experiment for ADR candidate L: tables A-D projected by
-  the production translator, visible set decided by PolicyEvaluator with a
-  tag-conditioned deny rule, bounded subject-keyed retrieval from the
-  knowledge graph, and per-fact admission that fails closed on unmapped
-  facts or conflicting structured-node ownership.
-- Verifies COUNT, ASK, inverse/transitive/cyclic paths, joins, subqueries,
-  EXISTS and hidden-only mutation invariance against an independent
-  reference on in-process Jena, and records findings in
-  docs/rdf-authorization-experiment.md.
-```

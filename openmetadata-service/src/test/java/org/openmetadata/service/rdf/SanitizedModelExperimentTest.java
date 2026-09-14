@@ -26,7 +26,6 @@ import java.util.UUID;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -306,6 +305,44 @@ class SanitizedModelExperimentTest {
         () -> sanitized(SanitizedModelFixture.restrictedTablesHidden(), retrieved - 1));
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT * WHERE { SERVICE <http://example.org/sparql> { ?s ?p ?o } }",
+        "ASK { FILTER EXISTS { SERVICE <http://example.org/sparql> { ?s ?p ?o } } }",
+        "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }",
+        "ASK { FILTER NOT EXISTS { GRAPH <https://open-metadata.org/graph/knowledge> { ?s ?p ?o } } }",
+        "SELECT * FROM <https://open-metadata.org/graph/knowledge> WHERE { ?s ?p ?o }",
+        "SELECT * FROM NAMED <https://open-metadata.org/graph/knowledge> WHERE { ?s ?p ?o }",
+        "PREFIX text: <http://jena.apache.org/text#> SELECT * WHERE { ?s text:query 'secret' }",
+        "PREFIX apf: <http://jena.apache.org/ARQ/property#> SELECT * WHERE { ?s apf:strSplit ('a b' ' ') }",
+        "PREFIX list: <http://jena.apache.org/ARQ/list#> SELECT * WHERE { ?list list:member ?m }",
+        "SELECT * WHERE { ?s <java:org.example.Leak> ?o }",
+        "SELECT * WHERE { ?s ?p ?o FILTER(<http://example.org/fn>(?o)) }",
+        "SELECT (<http://example.org/fn>(?o) AS ?x) WHERE { ?s ?p ?o }",
+        "SELECT * WHERE { ?s ?p ?o BIND(<http://example.org/fn>(?o) AS ?x) }",
+        "SELECT ?s WHERE { ?s ?p ?o } GROUP BY ?s HAVING (<http://example.org/fn>(?s))",
+        "SELECT * WHERE { ?s ?p ?o } ORDER BY <http://example.org/fn>(?o)",
+        "SELECT * WHERE { ?s ?p ?o } ORDER BY <http://example.org/fn>(?o) LIMIT 1",
+        "SELECT (COUNT(<http://example.org/fn>(?o)) AS ?n) WHERE { ?s ?p ?o }",
+        "SELECT ?k WHERE { ?s ?p ?o } GROUP BY (<http://example.org/fn>(?o) AS ?k)",
+        "SELECT * WHERE { ?s ?p ?o FILTER(CALL(<http://example.org/fn>, ?o)) }",
+        "ASK { ?s ?p ?o FILTER NOT EXISTS { ?s ?q ?v FILTER(<http://example.org/fn>(?v)) } }",
+        "CONSTRUCT WHERE { ?s ?p ?o }",
+        "DESCRIBE <urn:x:absent>"
+      })
+  void queryProfileRejectsReadsOutsideTheSanitizedModel(final String query) {
+    assertThrows(
+        IllegalArgumentException.class, () -> SanitizedQueryProfile.requireSupported(query));
+  }
+
+  @Test
+  void queryProfileAcceptsPathsAggregatesAndExists() {
+    for (String query : INVARIANCE_QUERIES) {
+      assertDoesNotThrow(() -> SanitizedQueryProfile.requireSupported(resolve(PREFIXES + query)));
+    }
+  }
+
   private void assertOwnershipConflict(final String node) {
     final FactAdmissionException failure =
         assertThrows(FactAdmissionException.class, this::sanitized);
@@ -393,7 +430,7 @@ class SanitizedModelExperimentTest {
   }
 
   private static Query parse(final String template) {
-    return QueryFactory.create(resolve(PREFIXES + template));
+    return SanitizedQueryProfile.requireSupported(resolve(PREFIXES + template));
   }
 
   private static boolean ask(final Model model, final String template) {
