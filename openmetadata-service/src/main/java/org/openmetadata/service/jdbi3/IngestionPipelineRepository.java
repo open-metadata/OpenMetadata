@@ -19,6 +19,8 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -76,6 +78,7 @@ import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.logstorage.DefaultLogStorage;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
@@ -600,15 +603,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   boolean hasSourceConfigChanged(IngestionPipeline original, IngestionPipeline updated) {
-    if (original.getSourceConfig() == null && updated.getSourceConfig() == null) {
-      return false;
-    }
-    if (original.getSourceConfig() == null || updated.getSourceConfig() == null) {
-      return true;
-    }
-    String originalJson = JsonUtils.pojoToJson(original.getSourceConfig());
-    String updatedJson = JsonUtils.pojoToJson(updated.getSourceConfig());
-    return !originalJson.equals(updatedJson);
+    return !Objects.equals(sourceConfigForComparison(original), sourceConfigForComparison(updated));
+  }
+
+  private JsonNode sourceConfigForComparison(IngestionPipeline pipeline) {
+    final IngestionPipeline decrypted = buildIngestionPipelineDecrypted(pipeline);
+    final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(decrypted);
+    return stripAppPrivateConfig(node, decrypted.getPipelineType()).get("sourceConfig");
   }
 
   protected void deployPipelineBeforeUpdate(IngestionPipeline ingestionPipeline) {
@@ -703,13 +704,42 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  protected ObjectNode storageJsonNode(IngestionPipeline entity) {
+    return stripAppPrivateConfig(super.storageJsonNode(entity), entity.getPipelineType());
+  }
+
+  @Override
+  protected String serializeForVersionHistory(IngestionPipeline entity) {
+    final IngestionPipeline history = JsonUtils.deepCopy(entity, IngestionPipeline.class);
+    history.setOpenMetadataServerConnection(null);
+    SecretsManagerFactory.getSecretsManager().encryptIngestionPipelineForHistory(history);
+    return stripAppPrivateConfig(
+            (ObjectNode) JsonUtils.valueToTree(history), history.getPipelineType())
+        .toString();
+  }
+
+  private static ObjectNode stripAppPrivateConfig(ObjectNode node, PipelineType pipelineType) {
+    if (PipelineType.APPLICATION.equals(pipelineType)
+        && node.at("/sourceConfig/config") instanceof ObjectNode config) {
+      config.remove("appPrivateConfig");
+    }
+    return node;
+  }
+
+  @Override
   public void storeEntity(IngestionPipeline ingestionPipeline, boolean update) {
+    storeEntityWithVersion(ingestionPipeline, update, null);
+  }
+
+  @Override
+  protected void storeEntityWithVersion(
+      IngestionPipeline ingestionPipeline, boolean update, Double expectedVersion) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
       secretsManager.encryptIngestionPipeline(ingestionPipeline);
     }
-    store(ingestionPipeline, update);
+    store(ingestionPipeline, update, expectedVersion);
   }
 
   @Override
@@ -1216,6 +1246,9 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      if (isIndexBaselinePass()) {
+        lockPipelineForUpdate();
+      }
       compareAndUpdate("processingEngine", () -> updateProcessingEngine(original, updated));
       compareAndUpdate("sourceConfig", this::updateSourceConfig);
       compareAndUpdate(
@@ -1235,7 +1268,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
               updateEnableStreamableLogs(
                   original.getEnableStreamableLogs(), updated.getEnableStreamableLogs()));
 
-      deployIfRequired(original, updated);
+      if (isIndexBaselinePass()) {
+        deployIfRequired(original, updated);
+      }
+    }
+
+    private void lockPipelineForUpdate() {
+      // Keep deployment and managed-secret writes behind the same lock as the version check.
+      final IngestionPipeline stored =
+          dao.jsonToEntity(dao.findJsonByIdForUpdate(original.getId(), ALL), original.getId());
+      if (isUseOptimisticLocking() && !Objects.equals(stored.getVersion(), original.getVersion())) {
+        throw new PreconditionFailedException(
+            "The entity has been modified by another user. Please refresh and retry.");
+      }
     }
 
     private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
@@ -1302,12 +1347,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateSourceConfig() {
-      JSONObject origSourceConfig =
-          new JSONObject(JsonUtils.pojoToJson(original.getSourceConfig().getConfig()));
-      JSONObject updatedSourceConfig =
-          new JSONObject(JsonUtils.pojoToJson(updated.getSourceConfig().getConfig()));
-
-      if (!origSourceConfig.similar(updatedSourceConfig)) {
+      if (hasSourceConfigChanged(original, updated)) {
         recordChange("sourceConfig", "old-encrypted-value", "new-encrypted-value", true);
       }
     }

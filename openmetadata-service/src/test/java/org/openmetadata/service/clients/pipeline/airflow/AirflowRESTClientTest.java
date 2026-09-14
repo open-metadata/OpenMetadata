@@ -14,8 +14,12 @@ package org.openmetadata.service.clients.pipeline.airflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
@@ -33,8 +37,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.app.App;
@@ -43,11 +51,74 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.config.WorkflowConfigBuilder;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 
 class AirflowRESTClientTest {
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void applicationDeploymentRestoresOnlyOwningAppSecretsForBothRunners(boolean bound)
+      throws Exception {
+    final UUID id = UUID.randomUUID();
+    final IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withId(id)
+            .withName("test_runtime_app")
+            .withFullyQualifiedName("test_service.test_runtime_app")
+            .withPipelineType(PipelineType.APPLICATION)
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        new ApplicationPipeline()
+                            .withSourcePythonClass("test.source")
+                            .withAppConfig(Map.of("enabled", true))));
+    final IngestionPipeline persisted =
+        JsonUtils.readValue(JsonUtils.pojoToJson(pipeline), IngestionPipeline.class);
+    persisted.setOpenMetadataServerConnection(
+        new OpenMetadataConnection()
+            .withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken("test-bot-token")));
+    final IngestionPipelineRepository repository = mock(IngestionPipelineRepository.class);
+    when(repository.findFrom(id, Entity.INGESTION_PIPELINE, Relationship.HAS, Entity.APPLICATION))
+        .thenReturn(
+            bound ? List.of(new EntityReference().withName("test_runtime_app")) : List.of());
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        AirflowTestServer server = new AirflowTestServer()) {
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+          .thenReturn(repository);
+      final String prefix = "/pluginsv2/api/v2/openmetadata";
+      server.enqueue("GET", prefix + "/health-auth", 200, "{\"version\":\"2.0.0\"}");
+      server.enqueue("POST", prefix + "/deploy", 200, "{}");
+      assertEquals(200, newClient(server, "").deployPipeline(persisted, null).getCode());
+      final String body = server.requests("POST", prefix + "/deploy").getFirst().body();
+      final var airflowConfig = JsonUtils.readTree(body).at("/sourceConfig/config");
+      final var kubernetesConfig = WorkflowConfigBuilder.buildOMApplicationConfig(persisted, null);
+      if (bound) {
+        assertEquals("test-runtime-secret", airflowConfig.at("/appPrivateConfig/token").asText());
+        assertEquals(
+            Map.of("token", "test-runtime-secret"), kubernetesConfig.getAppPrivateConfig());
+      } else {
+        assertFalse(airflowConfig.has("appPrivateConfig"));
+        assertNull(kubernetesConfig.getAppPrivateConfig());
+      }
+      assertEquals("test.source", airflowConfig.path("sourcePythonClass").asText());
+      assertTrue(airflowConfig.at("/appConfig/enabled").asBoolean());
+      assertFalse(
+          JsonUtils.valueToTree(persisted).at("/sourceConfig/config").has("appPrivateConfig"));
+    }
+  }
 
   @Test
   void buildUriDetectsPluginsV2EndpointsAndReportsHealthyStatus() throws Exception {

@@ -40,10 +40,13 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.config.types.ApplicationWorkflowConfig;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.util.SSLUtil;
 
@@ -341,7 +344,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     HttpResponse<String> response;
     try {
       String deployUrl = buildURI("deploy").build().toString();
-      String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
+      String pipelinePayload = buildDeployPayload(ingestionPipeline);
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
         ingestionPipeline.setDeployed(true);
@@ -361,6 +364,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
             ingestionPipeline.getName(),
             Response.Status.fromStatusCode(response.statusCode()),
             response.body()));
+  }
+
+  private String buildDeployPayload(IngestionPipeline ingestionPipeline) {
+    if (!PipelineType.APPLICATION.equals(ingestionPipeline.getPipelineType())) {
+      return JsonUtils.pojoToJson(ingestionPipeline);
+    }
+    final IngestionPipeline deployment =
+        JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
+    deployment.setSourceConfig(
+        new SourceConfig()
+            .withConfig(
+                new ApplicationWorkflowConfig().buildApplicationPipeline(ingestionPipeline)));
+    return JsonUtils.pojoToJson(deployment);
   }
 
   @Override

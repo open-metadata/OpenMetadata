@@ -482,7 +482,36 @@ public class IngestionPipelineResource
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    final EntityHistory history = super.listVersionsInternal(securityContext, id);
+    history.setVersions(history.getVersions().stream().map(this::maskHistoryVersion).toList());
+    return history;
+  }
+
+  private Object maskHistoryVersion(Object version) {
+    final IngestionPipeline pipeline =
+        JsonUtils.readValue((String) version, IngestionPipeline.class);
+    maskHistoryPipeline(pipeline);
+    return JsonUtils.pojoToJson(pipeline);
+  }
+
+  private void maskHistoryPipeline(IngestionPipeline pipeline) {
+    pipeline.setOpenMetadataServerConnection(null);
+    EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(pipeline);
+  }
+
+  @Override
+  protected ResultList<IngestionPipeline> listEntityHistoryByTimestampInternal(
+      SecurityContext securityContext,
+      long startTs,
+      long endTs,
+      String before,
+      String after,
+      int limit) {
+    final ResultList<IngestionPipeline> history =
+        super.listEntityHistoryByTimestampInternal(
+            securityContext, startTs, endTs, before, after, limit);
+    history.getData().forEach(this::maskHistoryPipeline);
+    return history;
   }
 
   @GET
