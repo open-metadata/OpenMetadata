@@ -56,11 +56,18 @@ jest.mock('../../../../rest/testAPI', () => ({
     ),
 }));
 
+const mockShouldRenderDefaultGraph = jest.fn().mockReturnValue(true);
+
 jest.mock('./TestCaseResultTabClassBase', () => ({
   __esModule: true,
   default: {
     getAdditionalComponents: jest.fn().mockReturnValue([]),
     getAlertBanner: jest.fn().mockReturnValue(null),
+    shouldRenderDefaultGraph: jest
+      .fn()
+      .mockImplementation((...args: unknown[]) =>
+        mockShouldRenderDefaultGraph(...args)
+      ),
   },
 }));
 
@@ -95,6 +102,7 @@ describe('useTestCaseResultTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {};
+    mockShouldRenderDefaultGraph.mockReturnValue(true);
     mockUseTestCaseStore.testCase = MOCK_TEST_CASE_DATA as unknown as TestCase;
     mockUseTestCaseStore.testCasePermission = MOCK_PERMISSIONS;
   });
@@ -293,5 +301,22 @@ describe('useTestCaseResultTab', () => {
     });
 
     expect(result.current.isParameterEdit).toBe(false);
+  });
+
+  it('should surface the class base default-graph decision for the current test case', () => {
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.shouldRenderDefaultGraph).toBe(true);
+    expect(mockShouldRenderDefaultGraph).toHaveBeenCalledWith(
+      MOCK_TEST_CASE_DATA
+    );
+  });
+
+  it('should surface a suppressed default graph', () => {
+    mockShouldRenderDefaultGraph.mockReturnValue(false);
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.shouldRenderDefaultGraph).toBe(false);
   });
 });
