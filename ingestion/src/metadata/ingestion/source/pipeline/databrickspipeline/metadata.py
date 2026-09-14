@@ -124,12 +124,15 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return super().close()
 
     def get_pipelines_list(self) -> Iterable[DataBrickPipelineDetails]:
-        try:
-            for workflow in self.client.list_jobs() or []:
+        # A failure listing jobs is deliberately not caught here. A short job list is
+        # indistinguishable from a smaller workspace, and with markDeletedPipelines on
+        # the jobs that never arrived get removed from the catalogue.
+        for workflow in self.client.list_jobs() or []:
+            try:
                 yield DataBrickPipelineDetails(**workflow)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get jobs list due to : {exc}")
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to parse job %s due to : %s", workflow.get("job_id"), exc)
 
         # Fetch DLT pipelines directly (new)
         try:
