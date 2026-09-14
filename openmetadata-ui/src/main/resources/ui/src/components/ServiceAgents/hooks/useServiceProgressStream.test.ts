@@ -306,6 +306,41 @@ describe('useServiceProgressStream', () => {
     expect(capturedSignal?.aborted).toBe(true);
   });
 
+  it('opens a fresh connection for the next subscriber after a fatal error', async () => {
+    mockFetchEventSource.mockImplementation(async (_url, options) => {
+      await options?.onopen?.({ ok: false, status: 503 } as Response);
+    });
+
+    const first = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'fatalErrorService',
+        onEvent: jest.fn(),
+      })
+    );
+
+    await flushAsync();
+
+    expect(first.result.current.streamHealth).toBe('unavailable');
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
+
+    const second = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'fatalErrorService',
+        onEvent: jest.fn(),
+      })
+    );
+
+    await flushAsync();
+
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(2);
+
+    second.unmount();
+
+    expect(() => first.unmount()).not.toThrow();
+  });
+
   it('dispatches each frame to every subscriber of the shared connection', async () => {
     const onEventA = jest.fn();
     const onEventB = jest.fn();

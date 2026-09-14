@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import * as fs from 'fs';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import {
   fetchCompletedCsvAsyncJobResult,

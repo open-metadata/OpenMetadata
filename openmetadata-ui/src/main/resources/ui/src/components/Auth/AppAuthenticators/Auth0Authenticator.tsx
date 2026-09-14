@@ -12,7 +12,15 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -31,6 +39,21 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
       logout,
     } = useAuth0();
 
+    const renewIdToken = useCallback(async (): Promise<string> => {
+      let idToken = '';
+
+      // Need to emmit error if this fails
+      await getAccessTokenSilently();
+
+      const claims = await getIdTokenClaims();
+      if (claims) {
+        idToken = claims.__raw;
+        await setOidcToken(idToken);
+      }
+
+      return idToken;
+    }, [getAccessTokenSilently, getIdTokenClaims]);
+
     useImperativeHandle(ref, () => ({
       invokeLogin() {
         loginWithRedirect().catch((error) => {
@@ -48,21 +71,18 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
           handleSuccessfulLogout();
         }
       },
-      async renewIdToken(): Promise<string> {
-        let idToken = '';
-
-        // Need to emmit error if this fails
-        await getAccessTokenSilently();
-
-        const claims = await getIdTokenClaims();
-        if (claims) {
-          idToken = claims.__raw;
-          await setOidcToken(idToken);
-        }
-
-        return idToken;
-      },
+      renewIdToken,
     }));
+
+    // Register the renewer with TokenService from this authenticator's own
+    // mount effect (see BasicAuthAuthenticator for the full rationale) —
+    // avoids the ref-deps race in the parent that hangs cold-load 401s on
+    // Auth0.
+    useEffect(() => {
+      TokenService.getInstance().updateRenewToken(renewIdToken);
+
+      return () => TokenService.getInstance().updateRenewToken(null);
+    }, [renewIdToken]);
 
     return <Fragment>{children}</Fragment>;
   }

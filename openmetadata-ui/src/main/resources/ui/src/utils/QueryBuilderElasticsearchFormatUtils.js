@@ -22,6 +22,24 @@ import { Utils as extendConfigUtils } from '@react-awesome-query-builder/core';
 export const ES_7_SYNTAX = 'ES_7_SYNTAX';
 export const ES_6_SYNTAX = 'ES_6_SYNTAX';
 
+const EXACT_MATCH_OPERATORS = [
+  'equal',
+  'not_equal',
+  'select_equals',
+  'select_not_equals',
+  'multiselect_equals',
+  'multiselect_not_equals',
+];
+
+const NEGATED_OPERATORS = [
+  'not_equal',
+  'not_between',
+  'not_like',
+  'select_not_equals',
+  'multiselect_not_equals',
+  'multiselect_not_contains',
+];
+
 /**
  * Converts a string representation of top_left and bottom_right cords to
  * a ES geo_point required for query
@@ -59,6 +77,7 @@ function buildEsGeoPoint(geoPointString) {
  *
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildEsRangeParameters(value, operator) {
   // -- if value is greater than 1 then we assume this is a between operator : BUG this is wrong,
   // a selectable list can have multiple values
@@ -89,6 +108,7 @@ function buildEsRangeParameters(value, operator) {
       };
 
     case 'greater_or_equal':
+    case 'greater':
       return {
         gte: ''.concat(dateTime),
       };
@@ -96,11 +116,6 @@ function buildEsRangeParameters(value, operator) {
     case 'less':
       return {
         lt: ''.concat(dateTime),
-      };
-
-    case 'greater':
-      return {
-        gte: ''.concat(dateTime),
       };
 
     default:
@@ -389,12 +404,37 @@ function getFieldTypeInfo(propertyName) {
  * @returns {string|null} - The OM property type, or null
  * @private
  */
+/**
+ * A property's declared type, from whichever scope of the config holds it.
+ *
+ * Explore nests properties per entity type; a builder pinned to one type
+ * exposes them directly under `extension`. Both store the key flat, dots and
+ * all — a table-type property declares each column as
+ * `<property>.rows.<column>`. Picking a single scope by `entityType` returned
+ * no type for the pinned shape, and the path fallback then read a column's
+ * trailing `.name` as an entity reference: the query asked for `refName`
+ * instead of `stringValue` and matched nothing.
+ */
 function lookupOmPropertyType(config, entityType, propertyName) {
   const extensionGroup = config?.fields?.extension;
-  const entityGroup = extensionGroup?.subfields?.[entityType];
-  const fieldConfig = entityGroup?.subfields?.[propertyName];
+  const scopes = [
+    entityType ? extensionGroup?.subfields?.[entityType]?.subfields : null,
+    extensionGroup?.subfields,
+  ];
 
-  return fieldConfig?.__omPropertyType ?? null;
+  for (const scope of scopes) {
+    // The field key carries suffixes such as `.keyword` that the config key
+    // does not.
+    const found =
+      scope?.[propertyName]?.__omPropertyType ??
+      scope?.[getBasePropertyName(propertyName)]?.__omPropertyType;
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -425,6 +465,7 @@ function isRangeOperator(operator) {
  * @returns {object} - The nested ES query
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
   const mustClauses = [
     { term: { 'customPropertiesTyped.name': propertyName } },
@@ -491,6 +532,7 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
  * @returns {object} - The ES query for custom properties
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildExtensionQuery(
   propertyName,
   entityType,
@@ -510,7 +552,12 @@ function buildExtensionQuery(
 
   // Use customPropertiesTyped for structured queries
   // Handle text search operators first (like, not_like, regexp) - these need special query types
-  if (operator === 'like' || operator === 'not_like') {
+  if (
+    operator === 'like' ||
+    operator === 'not_like' ||
+    operator === 'multiselect_contains' ||
+    operator === 'multiselect_not_contains'
+  ) {
     // Contains/Not contains: use wildcard query on stringValue (keyword field)
     // All searchable values are now stored in stringValue for wildcard support
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -583,19 +630,14 @@ function buildExtensionQuery(
       mainQuery = existsQuery;
     }
 
-    // Return early with entityType filter
-    return {
-      bool: {
-        must: [
-          mainQuery,
-          {
-            term: {
-              entityType: entityType,
-            },
+    // Return early, narrowing by entity type only when the field carried one.
+    return entityType
+      ? {
+          bool: {
+            must: [mainQuery, { term: { entityType: entityType } }],
           },
-        ],
-      },
-    };
+        }
+      : mainQuery;
   } else if (fieldType === 'timeInterval' && nestedField) {
     // TimeInterval: query start or end field
     mainQuery = buildNestedTypedQuery(
@@ -612,17 +654,11 @@ function buildExtensionQuery(
       value,
       operator
     );
-  } else if (fieldType === 'hyperlink' && nestedField) {
-    // Hyperlink: both URL and displayText are stored in stringValue for exact/wildcard matching
-    mainQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
-  } else if (fieldType === 'table' && nestedField) {
-    // Table: row data is stored in both stringValue (for wildcard) and textValue (for full-text)
-    // Use stringValue for exact match queries
+  } else if (
+    (fieldType === 'hyperlink' || fieldType === 'table') &&
+    nestedField
+  ) {
+    // Hyperlink/Table: values are stored in stringValue for exact/wildcard matching
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
       'stringValue',
@@ -650,14 +686,7 @@ function buildExtensionQuery(
         minimum_should_match: 1,
       },
     };
-  } else if (
-    operator === 'equal' ||
-    operator === 'not_equal' ||
-    operator === 'select_equals' ||
-    operator === 'select_not_equals' ||
-    operator === 'multiselect_equals' ||
-    operator === 'multiselect_not_equals'
-  ) {
+  } else if (EXACT_MATCH_OPERATORS.includes(operator)) {
     // Exact match: pick the right typed field.
     // 1) If we know the OM property type, route directly: numeric types ->
     //    longValue/doubleValue, all others -> stringValue. This avoids the bug
@@ -695,32 +724,6 @@ function buildExtensionQuery(
         'equal'
       );
     }
-  } else if (
-    operator === 'multiselect_contains' ||
-    operator === 'multiselect_not_contains'
-  ) {
-    // Multiselect contains: use wildcard on stringValue (enum values are stored there)
-    const searchValue = Array.isArray(value) ? value[0] : value;
-    mainQuery = {
-      nested: {
-        path: 'customPropertiesTyped',
-        ignore_unmapped: true,
-        query: {
-          bool: {
-            must: [
-              { term: { 'customPropertiesTyped.name': basePropertyName } },
-              {
-                wildcard: {
-                  'customPropertiesTyped.stringValue': {
-                    value: '*' + searchValue + '*',
-                  },
-                },
-              },
-            ],
-          },
-        },
-      },
-    };
   } else {
     // Default text search: use match query on textValue
     const searchValue = Array.isArray(value) ? value[0] : value;
@@ -748,15 +751,7 @@ function buildExtensionQuery(
   }
 
   // Wrap in must_not if negated
-  if (
-    not ||
-    operator === 'not_equal' ||
-    operator === 'not_between' ||
-    operator === 'not_like' ||
-    operator === 'select_not_equals' ||
-    operator === 'multiselect_not_equals' ||
-    operator === 'multiselect_not_contains'
-  ) {
+  if (not || NEGATED_OPERATORS.includes(operator)) {
     mainQuery = {
       bool: {
         must_not: mainQuery.nested ? mainQuery : [mainQuery],
@@ -764,19 +759,14 @@ function buildExtensionQuery(
     };
   }
 
-  // Combine with entityType filter
-  return {
-    bool: {
-      must: [
-        mainQuery,
-        {
-          term: {
-            entityType: entityType,
-          },
+  // Combine with the entity-type filter only when the field carried one.
+  return entityType
+    ? {
+        bool: {
+          must: [mainQuery, { term: { entityType: entityType } }],
         },
-      ],
-    },
-  };
+      }
+    : mainQuery;
 }
 
 /**
@@ -790,6 +780,7 @@ function buildExtensionQuery(
  * @returns {object} - The ES rule
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildEsRule(fieldName, value, operator, config, valueSrc) {
   if (!fieldName || !operator || value === undefined) {
     return undefined;
@@ -808,13 +799,14 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     return undefined;
   }
 
-  if (
-    (operator === 'between' || operator === 'not_between') &&
-    (!Array.isArray(value) ||
-      value.length < 2 ||
-      value[0] === undefined ||
-      value[1] === undefined)
-  ) {
+  const isBetweenOperator =
+    operator === 'between' || operator === 'not_between';
+  const hasIncompleteRangeBounds =
+    !Array.isArray(value) ||
+    value.length < 2 ||
+    value[0] === undefined ||
+    value[1] === undefined;
+  if (isBetweenOperator && hasIncompleteRangeBounds) {
     return undefined;
   }
 
@@ -824,12 +816,40 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   let entityType = null;
   let extensionPropertyName = null;
 
-  if (fieldName.startsWith('extension.') && fieldName.split('.').length >= 3) {
+  if (fieldName.startsWith('extension.')) {
     const parts = fieldName.split('.');
-    entityType = parts[1];
-    extensionPropertyName = parts.slice(2).join('.');
-    actualFieldName = `${parts[0]}.${extensionPropertyName}`;
-    isNestedExtensionField = true;
+    // The entity-type segment is only present when the builder offers custom
+    // properties for every entity type (Explore): `extension.table.testCp`.
+    // A builder pinned to one entity type omits it: `extension.testCp`.
+    // Deciding positionally read `testCp` as the entity type and `keyword` as
+    // the property, so those builders matched nothing at all. Ask the config
+    // instead: an entity-type segment is a group, a property is a leaf.
+    // `omEntityType` is set only for a builder pinned to one entity type, and
+    // that is exactly when its keys omit the entity-type segment — so it
+    // decides, and the key's shape is only a fallback. Shape alone cannot: a
+    // table-type property is itself a struct (`testCp.rows.name`), so "the
+    // segment has subfields, therefore it is an entity type" read `testCp` as
+    // the entity and `rows` as the property, and the query matched nothing.
+    const pinnedEntityType = config?.settings?.omEntityType ?? null;
+    const extensionSubfields = config?.fields?.extension?.subfields;
+    const segment = extensionSubfields?.[parts[1]];
+    const hasEntityTypeSegment =
+      !pinnedEntityType &&
+      parts.length >= 3 &&
+      (segment ? Boolean(segment.subfields) : !extensionSubfields);
+
+    if (hasEntityTypeSegment) {
+      entityType = parts[1];
+      extensionPropertyName = parts.slice(2).join('.');
+    } else if (parts.length >= 2) {
+      entityType = pinnedEntityType;
+      extensionPropertyName = parts.slice(1).join('.');
+    }
+
+    if (extensionPropertyName) {
+      actualFieldName = `${parts[0]}.${extensionPropertyName}`;
+      isNestedExtensionField = true;
+    }
   }
 
   let op = operator;
@@ -852,34 +872,21 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   // Handle both value-based operators and unary operators (is_null, is_not_null)
   const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
   const hasValue = Array.isArray(value) && value.length > 0;
-  if (isNestedExtensionField && entityType && (hasValue || isUnaryOperator)) {
+  // No `entityType` requirement: a builder pinned to one entity type keys its
+  // custom properties without that segment, and demanding it sent those fields
+  // down the generic path, which cannot express a nested customPropertiesTyped
+  // query and produced no query at all.
+  if (isNestedExtensionField && (hasValue || isUnaryOperator)) {
     const omPropertyType = lookupOmPropertyType(
       config,
       entityType,
       extensionPropertyName
     );
 
-    // For range operators (between / not_between) the value is a two-element
-    // array [from, to]. Pass the full array so buildExtensionQuery can build a
-    // proper gte/lte range query. Numeric types (integer/number/timestamp) query
-    // longValue/doubleValue. Date types (date-cp/dateTime-cp/time-cp) are stored
-    // as formatted strings in stringValue; a keyword range is a lexicographic
-    // comparison, which is chronologically correct for the default big-endian,
-    // zero-padded formats (e.g. yyyy-MM-dd HH:mm:ss). Other types collapse to
-    // value[0] since only a single bound is meaningful.
-    const isBetweenOp = op === 'between';
-    const isRangeableOmType =
-      omPropertyType === 'integer' ||
-      omPropertyType === 'number' ||
-      omPropertyType === 'timestamp' ||
-      omPropertyType === 'date-cp' ||
-      omPropertyType === 'dateTime-cp' ||
-      omPropertyType === 'time-cp';
-    const extensionValue = hasValue
-      ? isBetweenOp && isRangeableOmType
-        ? value
-        : value[0]
-      : null;
+    let extensionValue = null;
+    if (hasValue) {
+      extensionValue = isRangeOperator(op) ? value : value[0];
+    }
 
     return buildExtensionQuery(
       extensionPropertyName,
@@ -1006,6 +1013,7 @@ function buildEsGroup(
   };
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   try {
     const extendedConfig = extendConfigUtils.ConfigUtils.extendConfig(
@@ -1045,20 +1053,16 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
             // serialize to a null clause, which the search engines reject.
             [useAndLogic ? 'must' : 'should']: value[0]
               .map((val) =>
-                buildEsRule(
-                  field,
-                  [val],
-                  operator,
-                  extendedConfig,
-                  valueSrc,
-                  syntax
-                )
+                buildEsRule(field, [val], operator, extendedConfig, valueSrc)
               )
               .filter((rule) => rule !== undefined),
           },
         };
       } else {
-        return buildEsRule(field, value, operator, config, valueSrc, syntax);
+        // extendedConfig, as in every other branch: buildEsRule resolves the field's widget
+        // through the config it is given, and a raw one resolves none — so a fully entered
+        // condition builds no clause at all when this runs on a rule node directly.
+        return buildEsRule(field, value, operator, extendedConfig, valueSrc);
       }
     }
 
@@ -1147,6 +1151,7 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
     .some((child) => hasUnfinishedRule(child, config, syntax));
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 export function elasticSearchFormatForJSONLogic(
   tree,
   config,

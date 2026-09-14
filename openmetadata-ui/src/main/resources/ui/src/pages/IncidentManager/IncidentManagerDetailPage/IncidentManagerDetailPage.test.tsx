@@ -15,15 +15,37 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestCase } from '../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
+
+// useTestCaseDetailPage (Task 8 Batch 9) now sources permissions from
+// useEntityPermissions rather than reading testCasePermission off the mocked store —
+// mock the hook directly, same pattern as useTestCaseDetailPage.test.tsx itself.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (permissions: OperationPermission) => {
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 const TEST_CASE_FQN =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
@@ -130,10 +152,12 @@ jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   }),
 }));
 
+const mockLocation = {
+  state: { breadcrumbData: [] as { name: string; url: string }[] },
+};
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => ({ state: { breadcrumbData: [] } }));
+  return jest.fn().mockImplementation(() => mockLocation);
 });
 
 const mockNavigate = jest.fn();
@@ -191,7 +215,17 @@ jest.mock(
   () =>
     jest
       .fn()
-      .mockImplementation(() => <div data-testid={HEADER_BREADCRUMB_TEST_ID} />)
+      .mockImplementation(
+        ({ items }: { items: { href?: string; label: string }[] }) => (
+          <nav data-testid={HEADER_BREADCRUMB_TEST_ID}>
+            {items.map((item) => (
+              <a href={item.href} key={`${item.href}-${item.label}`}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        )
+      )
 );
 jest.mock(
   '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
@@ -245,7 +279,9 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
 
 describe('IncidentManagerDetailPage', () => {
   beforeEach(() => {
+    mockLocation.state = { breadcrumbData: [] };
     mockUseTestCase.testCase = mockTestCaseData;
+    setMockPermissions(MOCK_PERMISSIONS);
     jest.mocked(useParams).mockReturnValue({
       fqn: TEST_CASE_FQN,
       tab: TestCasePageTabs.TEST_CASE_RESULTS,
@@ -291,6 +327,51 @@ describe('IncidentManagerDetailPage', () => {
     expect(
       await screen.findByTestId(INCIDENT_MANAGER_HEADER_TEST_ID)
     ).toBeInTheDocument();
+  });
+
+  it('should render the Data Quality origin breadcrumb', async () => {
+    mockLocation.state = {
+      breadcrumbData: [
+        {
+          name: 'Data Quality',
+          url: '/data-quality/test-cases',
+        },
+      ],
+    };
+
+    await act(async () => {
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
+    });
+
+    expect(
+      await screen.findByRole('link', { name: 'Data Quality' })
+    ).toHaveAttribute('href', '/data-quality/test-cases');
+  });
+
+  it('should render the test suite origin breadcrumb', async () => {
+    mockLocation.state = {
+      breadcrumbData: [
+        {
+          name: 'Test Suites',
+          url: '/data-quality/test-suites/bundle-suites',
+        },
+        {
+          name: 'Orders Bundle Suite',
+          url: '/test-suites/Orders.Bundle',
+        },
+      ],
+    };
+
+    await act(async () => {
+      render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
+    });
+
+    expect(
+      await screen.findByRole('link', { name: 'Test Suites' })
+    ).toHaveAttribute('href', '/data-quality/test-suites/bundle-suites');
+    expect(
+      await screen.findByRole('link', { name: 'Orders Bundle Suite' })
+    ).toHaveAttribute('href', '/test-suites/Orders.Bundle');
   });
 
   it('onClick of same tab, should not call navigate', async () => {
@@ -362,7 +443,7 @@ describe('IncidentManagerDetailPage', () => {
   });
 
   it("should render no permission message if user doesn't have permission", async () => {
-    mockUseTestCase.testCasePermission = DEFAULT_ENTITY_PERMISSION;
+    setMockPermissions(DEFAULT_ENTITY_PERMISSION);
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: Wrapper });
     });
@@ -371,7 +452,7 @@ describe('IncidentManagerDetailPage', () => {
       await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
     ).toHaveAttribute('data-type', 'PERMISSION');
 
-    mockUseTestCase.testCasePermission = MOCK_PERMISSIONS;
+    setMockPermissions(MOCK_PERMISSIONS);
   });
 
   it('should render no data placeholder message if there is no data', async () => {

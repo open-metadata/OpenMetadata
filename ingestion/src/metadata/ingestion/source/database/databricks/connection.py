@@ -16,7 +16,7 @@ Source connection handler
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -188,7 +188,7 @@ class DatabricksEngineWrapper:
             self._inspector = inspect(self.engine)
         return self._inspector
 
-    def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
+    def get_schemas(self, schema_name: str | None = None):
         """Get schemas and cache them"""
         if schema_name is not None:
             if self.first_catalog:
@@ -238,7 +238,7 @@ class DatabricksEngineWrapper:
             views = connection.execute(text(f"SHOW VIEWS IN `{catalog}`.`{schema}`"))
             return views.fetchmany(DEFAULT_SAMPLE_ROWS)
 
-    def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
+    def get_catalogs(self, catalog_name: str | None = None):
         """Get catalogs"""
         if catalog_name is not None:
             self.first_catalog = catalog_name

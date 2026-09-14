@@ -1,0 +1,254 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DorisConnection",
+  "description": "Doris Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DorisConnection",
+  "definitions": {
+    "dorisType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Doris"
+      ],
+      "default": "Doris"
+    },
+    "dorisScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": [
+        "doris"
+      ],
+      "default": "doris"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Doris",
+      "type": "string",
+      "enum": [
+        "Doris"
+      ]
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "default": "doris",
+      "type": "string",
+      "enum": [
+        "doris"
+      ]
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Doris. This user should have privileges to read all the metadata in Doris.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Doris.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Doris service.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+      "type": "string"
+    },
+    "sslConfig": {
+      "title": "SSL",
+      "description": "SSL Configuration details.",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsDBTExtraction": {
+      "description": "Supports DBT Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsViewLineageExtraction": {
+      "title": "Supports View Lineage",
+      "description": "Supports View Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "username"
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CollibraConnection",
+  "description": "Collibra Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.CollibraConnection",
+  "definitions": {
+    "collibraType": {
+      "description": "Collibra service type",
+      "type": "string",
+      "enum": [
+        "Collibra"
+      ],
+      "default": "Collibra"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "default": "Collibra",
+      "type": "string",
+      "enum": [
+        "Collibra"
+      ]
+    },
+    "username": {
+      "description": "Username to connect to the Collibra. This user should have privileges to read all the metadata in Collibra.",
+      "type": "string"
+    },
+    "password": {
+      "description": "Password to connect to the Collibra.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Host and port of the Collibra service.",
+      "type": "string",
+      "format": "uri"
+    },
+    "glossaryFilterPattern": {
+      "title": "Glossary Filter Pattern",
+      "description": "Regex to only include/exclude glossaries that match the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "domainFilterPattern": {
+      "title": "Domain Filter Pattern",
+      "description": "Regex to only include/exclude domains that match the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "enableEnrichment": {
+      "title": "Enable Asset Enrichment",
+      "description": "Enable enrichment of existing OpenMetadata assets with Collibra metadata (descriptions, tags, owners). When enabled, the connector will match Collibra assets to OpenMetadata entities and apply metadata without creating new assets.",
+      "type": "boolean",
+      "default": false
+    },
+    "connectionOptions": {
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "supportsMetadataExtraction": {
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "username",
+    "password",
+    "hostPort"
+  ],
+  "additionalProperties": false
+}

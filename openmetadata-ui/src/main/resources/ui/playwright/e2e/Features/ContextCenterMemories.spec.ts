@@ -17,6 +17,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import {
@@ -75,6 +76,11 @@ test.describe(
       const { apiContext, afterAction } = await createNewPage(browser);
 
       await linkedTable.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        linkedTable.entityResponseData.fullyQualifiedName,
+        'table_search_index'
+      );
 
       // dataConsumerPage is a per-test fixture and isn't resolved inside
       // beforeAll, so open a page against the same storage state directly.
@@ -442,8 +448,10 @@ test.describe(
           .fill('This memory has all optional fields populated.');
 
         // Select type: Note
-        await dialog.getByTestId('memory-type-select').click();
-        await page.getByRole('option', { name: /note/i }).click();
+        await selectOptionWithRetry(
+          dialog.getByTestId('memory-type-select'),
+          page.getByRole('option', { name: /note/i })
+        );
 
         const createResPromise = page.waitForResponse(
           (res) =>
@@ -561,6 +569,8 @@ test.describe(
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
         await page.getByRole('button', { name: /cancel/i }).click();
+        await expect(dialog).not.toBeVisible();
+        await expect(page).not.toHaveURL(/memory=/);
       });
     });
 
@@ -1280,7 +1290,9 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await dialog.getByTestId('memory-type-select').click();
-        await page.getByRole('option', { name: /faq/i }).click();
+        const faqOption = page.getByRole('option', { name: /faq/i });
+        await faqOption.click();
+        await faqOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${editMemoryId}`)
@@ -1317,7 +1329,9 @@ test.describe(
         await editVisibilityBtn.click();
 
         await dialog.getByTestId('memory-visibility-select').click();
-        await page.getByRole('option', { name: /private/i }).click();
+        const privateOption = page.getByRole('option', { name: /private/i });
+        await privateOption.click();
+        await privateOption.waitFor({ state: 'detached' });
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${editMemoryId}`)
@@ -1358,13 +1372,21 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
+        const initialSearchRes = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
-
+        await initialSearchRes;
+        await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await assetSearch.fill(table.name);
+        await searchResPromise;
         await waitForAllLoadersToDisappear(page);
 
         const option = page.getByRole('option', {
@@ -1504,8 +1526,10 @@ test.describe(
         );
         await editVisibilityBtn.click();
 
-        await dialog.getByTestId('memory-visibility-select').click();
-        await page.getByRole('option', { name: /private/i }).click();
+        await selectOptionWithRetry(
+          dialog.getByTestId('memory-visibility-select'),
+          page.getByRole('option', { name: /private/i })
+        );
 
         const updateResPromise = page.waitForResponse(
           new RegExp(`${MEMORIES_API}/${visBadgeMemoryId}`)
@@ -1651,7 +1675,11 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
+        const initialSearchRes0 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await initialSearchRes0;
         await page.getByText('Loading...').waitFor({ state: 'detached' });
         await expect(
           page.getByTestId('picker-popover').getByRole('textbox')
@@ -1671,15 +1699,19 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
+        const initialSearchRes1 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await initialSearchRes1;
         await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') && res.status() === 200
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1702,15 +1734,19 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
 
+        const initialSearchRes2 = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
+        );
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await initialSearchRes2;
         await page.getByText('Loading...').waitFor({ state: 'detached' });
         const assetSearch = page
           .getByTestId('picker-popover')
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') && res.status() === 200
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;
@@ -1821,8 +1857,8 @@ test.describe(
           .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
-        const searchResPromise = page.waitForResponse(
-          (res) => res.url().includes('/search/query') && res.status() === 200
+        const searchResPromise = page.waitForResponse((res) =>
+          res.url().includes('/search/query')
         );
         await assetSearch.fill(table.name);
         await searchResPromise;

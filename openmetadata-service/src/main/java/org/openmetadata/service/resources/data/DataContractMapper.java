@@ -52,6 +52,7 @@ public class DataContractMapper {
         .withSla(create.getSla())
         .withExtension(create.getExtension())
         .withOdcsQualityRules(create.getOdcsQualityRules())
+        .withOdcsElementExtensions(create.getOdcsElementExtensions())
         .withUpdatedBy(user)
         .withUpdatedAt(System.currentTimeMillis());
   }

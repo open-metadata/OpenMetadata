@@ -48,6 +48,96 @@ interface ProfileSectionUserDetailsCardProps {
   handleRestoreUser: () => Promise<void>;
 }
 
+interface ProfileManageOptionsProps {
+  userData: User;
+  isLoggedInUser: boolean;
+  isAdminUser: boolean | undefined;
+  showChangePasswordComponent: boolean;
+  t: ReturnType<typeof useTranslation>['t'];
+  onEditDisplayName: () => void;
+  onChangePassword: () => void;
+  onRestore: () => void;
+  onDelete: () => void;
+}
+
+const ProfileManageOptions = ({
+  userData,
+  isLoggedInUser,
+  isAdminUser,
+  showChangePasswordComponent,
+  t,
+  onEditDisplayName,
+  onChangePassword,
+  onRestore,
+  onDelete,
+}: ProfileManageOptionsProps) => (
+  <div style={{ width: '180px' }}>
+    {isLoggedInUser && (
+      <Button
+        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        data-testid="edit-displayname"
+        onClick={onEditDisplayName}>
+        <EditProfileIcon
+          className="m-r-xss"
+          style={{ marginRight: '10px' }}
+          {...ICON_DIMENSION_USER_PAGE}
+        />
+        <Typography.Text className="profile-manage-label">
+          {t('label.edit-entity', {
+            entity: t('label.display-name'),
+          })}
+        </Typography.Text>
+      </Button>
+    )}
+    {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
+      <Button
+        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        data-testid="change-password-button"
+        onClick={onChangePassword}>
+        <ChangePassword
+          className="m-r-xss"
+          style={{ marginRight: '10px' }}
+          {...ICON_DIMENSION_USER_PAGE}
+        />
+        <Typography.Text className="profile-manage-label">
+          {t('label.change-entity', {
+            entity: t('label.password-lowercase'),
+          })}
+        </Typography.Text>
+      </Button>
+    )}
+    {userData?.deleted ? (
+      <Button
+        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+        onClick={onRestore}>
+        <DeleteIcon
+          className="m-r-xss"
+          style={{ marginRight: '10px' }}
+          {...ICON_DIMENSION_USER_PAGE}
+        />
+        <Typography.Text className="profile-manage-label">
+          {t('label.restore')}
+        </Typography.Text>
+      </Button>
+    ) : (
+      isAdminUser && (
+        <Button
+          className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+          onClick={onDelete}>
+          <DeleteIcon
+            className="m-r-xss"
+            style={{ marginRight: '10px' }}
+            {...ICON_DIMENSION_USER_PAGE}
+          />
+          <Typography.Text className="profile-manage-label">
+            {t('label.delete-profile')}
+          </Typography.Text>
+        </Button>
+      )
+    )}
+  </div>
+);
+
 const ProfileSectionUserDetailsCard = ({
   userData,
   afterDeleteAction,
@@ -141,83 +231,29 @@ const ProfileSectionUserDetailsCard = ({
   };
 
   const manageProfileOptions = (
-    <div style={{ width: '180px' }}>
-      {isLoggedInUser && (
-        <Button
-          className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
-          data-testid="edit-displayname"
-          onClick={() => {
-            setEditProfile(!editProfile);
-            setisPopoverVisible(false);
-          }}>
-          <EditProfileIcon
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-          <Typography.Text className="profile-manage-label">
-            {t('label.edit-entity', {
-              entity: t('label.display-name'),
-            })}
-          </Typography.Text>
-        </Button>
-      )}
-      {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
-        <Button
-          className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
-          data-testid="change-password-button"
-          onClick={() => {
-            setIsChangePassword(true);
-            setisPopoverVisible(false);
-          }}>
-          <ChangePassword
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-          <Typography.Text className="profile-manage-label">
-            {t('label.change-entity', {
-              entity: t('label.password-lowercase'),
-            })}
-          </Typography.Text>
-        </Button>
-      )}
-      {userData?.deleted ? (
-        <Button
-          className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
-          onClick={() => {
-            setShowRestoreModal(true);
-            setisPopoverVisible(false);
-          }}>
-          <DeleteIcon
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-          <Typography.Text className="profile-manage-label">
-            {t('label.restore')}
-          </Typography.Text>
-        </Button>
-      ) : (
-        isAdminUser && (
-          <Button
-            className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
-            onClick={() => {
-              setIsDelete(true);
-              setisPopoverVisible(false);
-            }}>
-            <DeleteIcon
-              className="m-r-xss"
-              style={{ marginRight: '10px' }}
-              {...ICON_DIMENSION_USER_PAGE}
-            />
-            <Typography.Text className="profile-manage-label">
-              {t('label.delete-profile')}
-            </Typography.Text>
-          </Button>
-        )
-      )}
-    </div>
+    <ProfileManageOptions
+      isAdminUser={isAdminUser}
+      isLoggedInUser={isLoggedInUser}
+      showChangePasswordComponent={showChangePasswordComponent}
+      t={t}
+      userData={userData}
+      onChangePassword={() => {
+        setIsChangePassword(true);
+        setisPopoverVisible(false);
+      }}
+      onDelete={() => {
+        setIsDelete(true);
+        setisPopoverVisible(false);
+      }}
+      onEditDisplayName={() => {
+        setEditProfile(!editProfile);
+        setisPopoverVisible(false);
+      }}
+      onRestore={() => {
+        setShowRestoreModal(true);
+        setisPopoverVisible(false);
+      }}
+    />
   );
 
   const handleModalClose = async () => {

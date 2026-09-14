@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Config, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import { Config, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
@@ -45,6 +45,25 @@ interface ElasticsearchBoolQuery {
 }
 
 /* eslint-disable @typescript-eslint/no-use-before-define */
+// A must/should clause is valid when it is absent, or a non-empty array of valid conditions.
+function isValidRequiredClause(clause?: ElasticsearchCondition[]): boolean {
+  if (!Array.isArray(clause)) {
+    return true;
+  }
+
+  return clause.length > 0 && clause.every(isValidCondition);
+}
+
+function isValidMustNotClause(
+  mustNot?: ElasticsearchCondition | ElasticsearchCondition[]
+): boolean {
+  if (Array.isArray(mustNot)) {
+    return mustNot.every(isValidCondition);
+  }
+
+  return !mustNot || isValidCondition(mustNot);
+}
+
 function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
   if (!boolQuery) {
     return false;
@@ -52,35 +71,11 @@ function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
 
   const { must, should, must_not } = boolQuery;
 
-  if (Array.isArray(must)) {
-    if (must.length === 0) {
-      return false;
-    }
-    if (!must.every(isValidCondition)) {
-      return false;
-    }
-  }
-
-  if (Array.isArray(should)) {
-    if (should.length === 0) {
-      return false;
-    }
-    if (!should.every(isValidCondition)) {
-      return false;
-    }
-  }
-
-  if (Array.isArray(must_not)) {
-    if (!must_not.every(isValidCondition)) {
-      return false;
-    }
-  } else if (must_not) {
-    if (!isValidCondition(must_not)) {
-      return false;
-    }
-  }
-
-  return true;
+  return (
+    isValidRequiredClause(must) &&
+    isValidRequiredClause(should) &&
+    isValidMustNotClause(must_not)
+  );
 }
 /* eslint-enable @typescript-eslint/no-use-before-define */
 

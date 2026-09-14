@@ -15,7 +15,6 @@ OpenMetadata high-level API Policy test
 
 import uuid
 from copy import deepcopy
-from typing import List  # noqa: UP035
 
 import pytest
 
@@ -56,7 +55,7 @@ RESOURCE_BOT: str = "Bot"
 RESOURCE_PIPELINE: str = "Pipeline"
 RESOURCE_TABLE: str = "Table"
 
-ROLE_FIELDS: List[str] = ["policies", "teams", "users"]  # noqa: UP006
+ROLE_FIELDS: list[str] = ["policies", "teams", "users"]
 
 _RUN_ID = uuid.uuid4().hex[:8]
 POLICY_NAME = f"test-policy-{_RUN_ID}"

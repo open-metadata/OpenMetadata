@@ -13,14 +13,14 @@
 
 import axios from 'axios';
 import Qs from 'qs';
-import { getBasePath } from '../utils/HistoryUtils';
+import { getApiBaseUrl } from './apiBaseUrl';
 import {
   attachEtagInterceptor,
   DISABLE_ETAG_CONDITIONAL_READS_KEY,
 } from './etagInterceptor';
 
 const axiosClient = axios.create({
-  baseURL: `${getBasePath()}/api/v1`,
+  baseURL: getApiBaseUrl(),
   paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'comma' }),
 });
 

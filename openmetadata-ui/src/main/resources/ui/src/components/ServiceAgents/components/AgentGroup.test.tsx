@@ -11,13 +11,27 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ComponentProps } from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Agent } from '../AgentsPage.interface';
 import AgentGroup from './AgentGroup.component';
 
 jest.mock('./AgentCard.component', () =>
   jest.fn().mockImplementation(() => <p>AgentCard</p>)
+);
+
+jest.mock('./AgentCardSkeleton.component', () =>
+  jest.fn().mockImplementation(() => <p>AgentCardSkeleton</p>)
+);
+
+const mockAirflowStatus = jest.fn();
+
+jest.mock(
+  '../../../context/AirflowStatusProvider/AirflowStatusProvider',
+  () => ({
+    useAirflowStatus: () => mockAirflowStatus(),
+  })
 );
 
 const mockOnAction = jest.fn();
@@ -44,7 +58,13 @@ const baseAgent: Agent = {
   finishedAt: '1m ago',
 };
 
-const renderGroup = (agents: Agent[], emptyPlaceholder?: React.ReactNode) =>
+const mockOnRefresh = jest.fn();
+
+const renderGroup = (
+  agents: Agent[],
+  emptyPlaceholder?: React.ReactNode,
+  extraProps: Partial<ComponentProps<typeof AgentGroup>> = {}
+) =>
   render(
     <AgentGroup
       canCreateAgent
@@ -57,12 +77,50 @@ const renderGroup = (agents: Agent[], emptyPlaceholder?: React.ReactNode) =>
       onLogs={mockOnLogs}
       onRun={mockOnRun}
       onRunDetails={mockOnRunDetails}
+      {...extraProps}
     />
   );
 
 describe('AgentGroup', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+  });
+
+  it('should replace the add-agent slot with a placeholder while the status call is in flight', () => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: false,
+      isFetchingStatus: true,
+      platform: 'Airflow',
+    });
+
+    renderGroup([baseAgent], undefined, {
+      addAgentSlot: <button data-testid="add-agent-slot">add</button>,
+    });
+
+    expect(screen.getByTestId('add-agent-skeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-agent-slot')).toBeNull();
+    // The list itself does not wait on that status.
+    expect(screen.getByText('AgentCard')).toBeInTheDocument();
+  });
+
+  it('should render the add-agent slot once the status call has answered', () => {
+    mockAirflowStatus.mockReturnValue({
+      isAirflowAvailable: false,
+      isFetchingStatus: false,
+      platform: 'Airflow',
+    });
+
+    renderGroup([baseAgent], undefined, {
+      addAgentSlot: <button data-testid="add-agent-slot">add</button>,
+    });
+
+    expect(screen.getByTestId('add-agent-slot')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-agent-skeleton')).toBeNull();
   });
 
   it('should render a card per agent and no empty placeholder', () => {
@@ -91,6 +149,82 @@ describe('AgentGroup', () => {
     expect(
       screen.queryByTestId('agent-group-empty-placeholder')
     ).not.toBeInTheDocument();
+    expect(screen.queryByText('AgentCard')).not.toBeInTheDocument();
+  });
+
+  it('should not render the refresh control when no handler is given', () => {
+    renderGroup([baseAgent]);
+
+    expect(screen.queryByTestId('agent-group-refresh')).not.toBeInTheDocument();
+  });
+
+  it('should call the handler once per click on the refresh control', () => {
+    renderGroup([baseAgent], undefined, { onRefresh: mockOnRefresh });
+
+    fireEvent.click(screen.getByTestId('agent-group-refresh'));
+
+    expect(mockOnRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('should disable the refresh control while a refetch is in flight', () => {
+    renderGroup([baseAgent], undefined, {
+      isRefreshing: true,
+      onRefresh: mockOnRefresh,
+    });
+
+    const refreshButton = screen.getByTestId('agent-group-refresh');
+
+    expect(refreshButton).toBeDisabled();
+
+    fireEvent.click(refreshButton);
+
+    expect(mockOnRefresh).not.toHaveBeenCalled();
+  });
+
+  it('should place the refresh control before the add agent slot', () => {
+    renderGroup([baseAgent], undefined, {
+      addAgentSlot: <button data-testid="add-agent-slot">add</button>,
+      onRefresh: mockOnRefresh,
+    });
+
+    const refreshButton = screen.getByTestId('agent-group-refresh');
+    const addAgentSlot = screen.getByTestId('add-agent-slot');
+
+    const slotFollowsRefresh = Boolean(
+      refreshButton.compareDocumentPosition(addAgentSlot) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    );
+
+    expect(slotFollowsRefresh).toBe(true);
+  });
+
+  it('should render skeleton cards instead of the empty placeholder while loading', () => {
+    renderGroup([], <p>no agents</p>, { isLoading: true });
+
+    expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
+    expect(screen.getAllByText('AgentCardSkeleton')).toHaveLength(3);
+    expect(
+      screen.queryByTestId('agent-group-empty-placeholder')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('no agents')).not.toBeInTheDocument();
+  });
+
+  it('should keep the group header rendered while loading', () => {
+    renderGroup([], <p>no agents</p>, { isLoading: true });
+
+    expect(screen.getByTestId('agent-group')).toBeInTheDocument();
+  });
+
+  it('should honour skeletonCount', () => {
+    renderGroup([], undefined, { isLoading: true, skeletonCount: 5 });
+
+    expect(screen.getAllByText('AgentCardSkeleton')).toHaveLength(5);
+  });
+
+  it('should prefer the skeleton over already-loaded agents while loading', () => {
+    renderGroup([baseAgent], undefined, { isLoading: true });
+
+    expect(screen.getByTestId('agent-group-skeleton')).toBeInTheDocument();
     expect(screen.queryByText('AgentCard')).not.toBeInTheDocument();
   });
 });

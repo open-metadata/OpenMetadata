@@ -144,21 +144,50 @@ interface ProgressAggregate {
   eta: number | null;
 }
 
-const aggregateProgress = (steps: StepSummary[]): ProgressAggregate => {
+type EntityProgress = NonNullable<StepSummary['progress']>[string];
+
+// The workflow's progress tracker is a process-wide singleton, so every step of a run carries an
+// identical copy of the whole per-entity-type map. Summing over steps would multiply the counts by
+// the number of steps, so collapse to one entry per entity type (highest wins, in case a straggling
+// step reports a stale snapshot) before summing across the types.
+const collapseProgressByEntity = (
+  steps: StepSummary[]
+): Map<string, EntityProgress> => {
+  const progressByEntity = new Map<string, EntityProgress>();
+
+  for (const step of steps) {
+    for (const [entityType, progress] of Object.entries(step.progress ?? {})) {
+      const seen = progressByEntity.get(entityType);
+      if (!seen || (progress.processed ?? 0) > (seen.processed ?? 0)) {
+        progressByEntity.set(entityType, progress);
+      }
+    }
+  }
+
+  return progressByEntity;
+};
+
+const sumProgress = (
+  progressByEntity: Map<string, EntityProgress>
+): { assets: number; target: number; eta: number | null } => {
   let assets = 0;
   let target = 0;
   let eta: number | null = null;
 
-  for (const step of steps) {
-    const progressByEntity = Object.values(step.progress ?? {});
-    for (const progress of progressByEntity) {
-      assets += progress.processed ?? 0;
-      target += progress.total ?? 0;
-      if (progress.estimatedRemainingSeconds !== undefined) {
-        eta = Math.max(eta ?? 0, progress.estimatedRemainingSeconds);
-      }
+  for (const progress of progressByEntity.values()) {
+    assets += progress.processed ?? 0;
+    target += progress.total ?? 0;
+    if (progress.estimatedRemainingSeconds !== undefined) {
+      eta = Math.max(eta ?? 0, progress.estimatedRemainingSeconds);
     }
   }
+
+  return { assets, target, eta };
+};
+
+const aggregateProgress = (steps: StepSummary[]): ProgressAggregate => {
+  const progressByEntity = collapseProgressByEntity(steps);
+  const { assets, target, eta } = sumProgress(progressByEntity);
 
   return { assets, target: target > 0 ? target : Math.max(assets, 1), eta };
 };
@@ -169,18 +198,31 @@ interface StepTotalsAggregate {
   warnings: number;
 }
 
+/**
+ * A run reports one StepSummary per workflow step — `[source, ...steps]` — and every step counts the
+ * *same* rows flowing through it, so `records` (and `updated_records`/`filtered`) must be taken as the
+ * high-water mark across steps, never summed: a source+sink metadata run would otherwise report twice
+ * the assets it ingested. Max rather than "the sink's value" so it holds for source-only runs and does
+ * not depend on step naming.
+ *
+ * Failures and warnings are the opposite: each step raises its own, so those do sum.
+ */
+const maxStepField = (steps: StepSummary[], field: keyof StepSummary): number =>
+  steps.reduce(
+    (highest, step) => Math.max(highest, (step[field] as number) ?? 0),
+    0
+  );
+
 const aggregateStepTotals = (steps: StepSummary[]): StepTotalsAggregate => {
-  let assets = 0;
   let errors = 0;
   let warnings = 0;
 
   for (const step of steps) {
-    assets += step.records ?? 0;
     errors += step.errors ?? 0;
     warnings += step.warnings ?? 0;
   }
 
-  return { assets, errors, warnings };
+  return { assets: maxStepField(steps, 'records'), errors, warnings };
 };
 
 const buildRunningAgentFields = (
@@ -217,6 +259,10 @@ const emptyAgentProgressFields = (): Pick<
   eta: null,
 });
 
+// Runs render chronologically, oldest on the left. The window has to be taken newest-first and only
+// then reversed — capping an already-ascending list would keep the five *oldest* runs. `filter` runs
+// before `sort` so the sort works on its copy: `statuses` is `pipeline.pipelineStatuses`, whose `[0]`
+// every other consumer reads as the latest run.
 const buildRecentRuns = (statuses: PipelineStatus[]): AgentRecentRun[] =>
   statuses
     .filter(
@@ -224,11 +270,47 @@ const buildRecentRuns = (statuses: PipelineStatus[]): AgentRecentRun[] =>
         status.pipelineState &&
         COMPLETED_PIPELINE_STATES.has(status.pipelineState)
     )
+    .sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0))
     .slice(0, RECENT_RUNS_LIMIT)
+    .reverse()
     .map((status) => ({
       id: status.runId ?? String(status.timestamp),
       status: toRunStatus(status.pipelineState),
     }));
+
+interface AgentProgressAndCounts {
+  progressFields: Pick<
+    Agent,
+    'pct' | 'assets' | 'target' | 'eta' | 'finishedAt'
+  >;
+  errors: number;
+  warnings: number;
+}
+
+const computeAgentProgressAndCounts = (
+  latestStatus: PipelineStatus | undefined,
+  uiStatus: UiAgentStatus,
+  steps: StepSummary[]
+): AgentProgressAndCounts => {
+  let progressFields: AgentProgressAndCounts['progressFields'];
+
+  if (!latestStatus || uiStatus === 'queued') {
+    // A queued run has not started, so it has no counts and — crucially — is not 100% done.
+    // `buildFinishedAgentFields` hardcodes `pct: 100`, which made a queued agent read as complete and
+    // pulled the deployment card's "% complete across all agents" up with it.
+    progressFields = emptyAgentProgressFields();
+  } else if (uiStatus === 'running') {
+    progressFields = buildRunningAgentFields(steps);
+  } else {
+    progressFields = buildFinishedAgentFields(steps, latestStatus.endDate);
+  }
+
+  const { errors, warnings } = latestStatus
+    ? aggregateStepTotals(steps)
+    : { errors: 0, warnings: 0 };
+
+  return { progressFields, errors, warnings };
+};
 
 export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
   const agentType = getAgentTypeFromPipelineType(pipeline.pipelineType);
@@ -242,26 +324,11 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     : 'none';
   const steps = latestStatus?.status ?? [];
 
-  let progressFields: Pick<
-    Agent,
-    'pct' | 'assets' | 'target' | 'eta' | 'finishedAt'
-  >;
-  let errors = 0;
-  let warnings = 0;
-
-  if (!latestStatus) {
-    progressFields = emptyAgentProgressFields();
-  } else if (uiStatus === 'running') {
-    progressFields = buildRunningAgentFields(steps);
-  } else {
-    progressFields = buildFinishedAgentFields(steps, latestStatus.endDate);
-  }
-
-  if (latestStatus) {
-    const totals = aggregateStepTotals(steps);
-    errors = totals.errors;
-    warnings = totals.warnings;
-  }
+  const { progressFields, errors, warnings } = computeAgentProgressAndCounts(
+    latestStatus,
+    uiStatus,
+    steps
+  );
 
   return {
     id: pipeline.id ?? pipeline.fullyQualifiedName ?? pipeline.name,
@@ -277,6 +344,8 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     warnings,
     schedule: pipeline.airflowConfig?.scheduleInterval,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
+    currentRunId: pipeline.pipelineStatuses?.[0]?.runId,
+    lastRunAt: latestStatus?.timestamp,
     ...progressFields,
   };
 };
@@ -284,10 +353,11 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
 const sumStepField = (steps: StepSummary[], field: keyof StepSummary): number =>
   steps.reduce((sum, step) => sum + ((step[field] as number) ?? 0), 0);
 
+// Row counts are the same rows seen by each step, failures are per step — see `maxStepField`.
 const buildRunTotals = (steps: StepSummary[]): RunTotals => ({
-  records: sumStepField(steps, 'records'),
-  filtered: sumStepField(steps, 'filtered'),
-  updated: sumStepField(steps, 'updated_records'),
+  records: maxStepField(steps, 'records'),
+  filtered: maxStepField(steps, 'filtered'),
+  updated: maxStepField(steps, 'updated_records'),
   warnings: sumStepField(steps, 'warnings'),
   errors: sumStepField(steps, 'errors'),
 });

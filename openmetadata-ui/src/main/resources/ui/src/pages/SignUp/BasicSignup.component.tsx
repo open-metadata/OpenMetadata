@@ -94,6 +94,7 @@ const BasicSignUp = () => {
                   name="firstName"
                   rules={[{ whitespace: true, required: true }]}>
                   <Input
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- focus first signup field for usability
                     autoFocus
                     className="input-field"
                     placeholder={t('label.enter-entity', {

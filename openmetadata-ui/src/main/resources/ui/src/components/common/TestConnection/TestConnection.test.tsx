@@ -1275,6 +1275,7 @@ describe('Test Connection Component', () => {
       .length;
 
     await act(async () => {
+      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       resolveStalePoll({
         ...WORKFLOW_DETAILS,
         status: 'Failed',
@@ -1353,6 +1354,7 @@ describe('Test Connection Component', () => {
       onTestConnectionStatusChange.mock.calls.length;
 
     await act(async () => {
+      // eslint-disable-next-line sonarjs/no-extra-arguments -- deferred test resolver
       rejectStalePoll(new Error('stale run failed'));
     });
 

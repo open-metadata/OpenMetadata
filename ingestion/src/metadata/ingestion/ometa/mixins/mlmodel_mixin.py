@@ -15,7 +15,7 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from typing import Any, Dict, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -56,7 +56,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
 
     client: REST
 
-    def add_mlmodel_lineage(self, model: MlModel, description: Optional[str] = None) -> Dict[str, Any]:  # noqa: UP006, UP045
+    def add_mlmodel_lineage(self, model: MlModel, description: str | None = None) -> dict[str, Any]:
         """
         Iterates over MlModel's Feature Sources and
         add the lineage information.
@@ -95,7 +95,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         self,
         name: str,
         model,
-        description: Optional[str] = None,  # noqa: UP045
+        description: str | None = None,
         service_name: str = "scikit-learn",
     ) -> CreateMlModelRequest:
         """

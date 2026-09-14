@@ -42,6 +42,7 @@ public class OM {
     org.openmetadata.sdk.fluent.StoredProcedures.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Glossaries.setDefaultClient(client);
     org.openmetadata.sdk.fluent.GlossaryTerms.setDefaultClient(client);
+    org.openmetadata.sdk.fluent.GlossaryRelationTypes.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Classifications.setDefaultClient(client);
     org.openmetadata.sdk.fluent.Tags.setDefaultClient(client);
     org.openmetadata.sdk.fluent.DataProducts.setDefaultClient(client);

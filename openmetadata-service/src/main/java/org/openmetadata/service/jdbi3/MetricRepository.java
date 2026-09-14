@@ -66,8 +66,6 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
@@ -473,16 +471,6 @@ public class MetricRepository extends EntityRepository<Metric> {
       super(original, updated, operation);
     }
 
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
-    }
-
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -670,12 +658,6 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
   }
 
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    return super.getTaskWorkflow(threadContext);
-  }
-
   public static void checkUpdatedByReviewer(Metric metric, String updatedBy) {
     // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = metric.getReviewers();
@@ -708,19 +690,5 @@ public class MetricRepository extends EntityRepository<Metric> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(Metric metric) {
-    metric =
-        Entity.getEntityByName(
-            Entity.METRIC,
-            metric.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        metric.getFullyQualifiedName(),
-        new ArrayList<>(metric.getReviewers()),
-        metric.getUpdatedBy());
   }
 }

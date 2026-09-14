@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
-import { Thread } from '../../../../generated/entity/feed/thread';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { getIncidentDetails } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
@@ -79,7 +78,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
       status,
       passedRows,
       failedRows,
-      task: payloadData.task as Task | Thread | undefined,
+      task: payloadData.task as Task | undefined,
       totalRows,
       formattedDateTime,
       statusColor,

@@ -18,9 +18,10 @@ import os
 import time
 import traceback
 from abc import ABC
+from collections.abc import Callable, Iterable, Iterator
 from multiprocessing import Process, Queue
 from threading import Thread
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Any
 
 import networkx as nx
 from sqlalchemy import text
@@ -52,6 +53,7 @@ from metadata.ingestion.source.database.lineage_processors import (
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
+from metadata.utils.db_utils import ViewLineageExtension
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -84,7 +86,7 @@ class LineageSource(QueryParserSource, ABC):
     def generate_lineage_with_processes(  # noqa: C901
         producer_fn: Callable[[], Iterable[Any]],
         processor_fn: Callable[[Any, Queue], None],
-        args: Tuple[Any, ...],  # noqa: UP006
+        args: tuple[Any, ...],
         chunk_size: int = CHUNK_SIZE,
         processor_timeout: int = PROCESS_TIMEOUT,
         max_threads: int = MAX_ACTIVE_TIMED_OUT_THREADS,
@@ -357,7 +359,7 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_query_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink
@@ -426,6 +428,16 @@ class LineageSource(QueryParserSource, ABC):
                 continue
             yield view
 
+    def get_view_lineage_extension(self) -> ViewLineageExtension | None:
+        """
+        Extra view lineage this source contributes on top of what the SQL parsers report.
+
+        Some dialects express an edge outside of the query itself -- a Clickhouse
+        materialized view writes its rows into the table named by its `TO` clause -- and
+        those connectors return the builder of that edge here.
+        """
+        return None
+
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
         producer_fn = self.view_lineage_producer
@@ -439,6 +451,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.parsingTimeoutLimit,  # pyright: ignore[reportAttributeAccessIssue]
             self.source_config.overrideViewLineage,  # pyright: ignore[reportAttributeAccessIssue]
             self.get_query_parser_type(),
+            self.get_view_lineage_extension(),
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,
@@ -449,13 +462,13 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_procedure_lineage(
         self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    ) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         By default stored   procedure lineage is not supported.
         """
         logger.info(f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}")  # noqa: RUF010
 
-    def get_column_lineage(self, from_table: Table, to_table: Table) -> List[ColumnLineage]:  # noqa: UP006
+    def get_column_lineage(self, from_table: Table, to_table: Table) -> list[ColumnLineage]:
         """
         Get the column lineage from the fields
         """
@@ -478,8 +491,8 @@ class LineageSource(QueryParserSource, ABC):
         self,
         from_entity: Table,
         to_entity: Table,
-        column_lineage: List[ColumnLineage] = None,  # noqa: RUF013, UP006
-    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+        column_lineage: list[ColumnLineage] = None,  # noqa: RUF013
+    ) -> Either[AddLineageRequest] | None:
         """
         Get the add cross database lineage request
         """
@@ -504,7 +517,7 @@ class LineageSource(QueryParserSource, ABC):
         By default cross database lineage is not supported.
         """
 
-    def _iter(self, *_, **__) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+    def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
         """
         Based on the query logs, prepare the lineage
         and send it to the sink

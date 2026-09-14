@@ -22,8 +22,15 @@ import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
-import jsoncParser from 'jsonc-eslint-parser';
+import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
+import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
+import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
+import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs';
+import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
+import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
+import omPlaywright from './playwright/eslint-rules/index.mjs';
 
 export default [
   // Base recommended configs
@@ -41,7 +48,7 @@ export default [
       'mock-api/**',
       'src/antlr/generated/**',
       'src/generated/antlr/**',
-      'src/jsons/connectionSchemas/**',
+      'src/jsons/**',
       'src/generated/**',
       'coverage/**',
       'playwright/doc-generator/**',
@@ -100,6 +107,11 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      'openmetadata-i18n': openMetadataI18n,
+      'openmetadata-imports': openMetadataImports,
+      'openmetadata-performance': openMetadataPerformance,
+      'openmetadata-permissions': openMetadataPermissions,
+      'openmetadata-ui-patterns': openMetadataUiPatterns,
       sonarjs,
       'jsx-a11y': jsxA11y,
     },
@@ -166,13 +178,16 @@ export default [
           withinDescribe: 'it',
         },
       ],
-      'jest/no-disabled-tests': 'warn',
+      'jest/no-disabled-tests': 'error',
       'jest-formatting/padding-around-all': 'error',
 
       // TypeScript rules
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-use-before-define': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — safe reorders
+      // where possible, documented disables for mutual-recursion / derived-below
+      // cases. Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-use-before-define': 'error',
       'no-unused-expressions': 'off',
       '@typescript-eslint/no-unused-expressions': [
         'error',
@@ -189,14 +204,16 @@ export default [
           varsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      // Cleared to zero and locked by the ESLint-cleanup stack — every site is
+      // a real type (generated/ entities, precise props, unknown+guards,
+      // as-unknown-as fixture casts, derived component types). No suppressions.
+      // Promoted to error so CI blocks any regression.
+      '@typescript-eslint/no-explicit-any': 'error',
 
-      // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
-      // for no longer reproduces — verified running against this config, where
-      // it reports ~367 findings in a 400-file sample. `warn` because of that
-      // backlog; the repo convention is no user-facing string literals, so this
-      // should reach `error` once the backlog is worked down.
-      'i18next/no-literal-string': 'warn',
+      // No user-facing string literals — all copy goes through `t()`. Cleared to
+      // zero (mock/fixture files exempted below; decorative glyphs carry a
+      // documented disable) and enforced at error so CI blocks new hardcoded copy.
+      'i18next/no-literal-string': 'error',
 
       // Ban Tailwind `ring-*` for drawing edges. Rings compile to box-shadow, and WebKit
       // does not pixel-snap box-shadows, so a ring used as a border thins out and can
@@ -251,6 +268,29 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
+      // Design-system import discipline — warn while existing violations are
+      // migrated; promote to error once the backlog reaches zero.
+      //
+      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
+      // does not trigger the eslint --fix footgun in ui-checkstyle.
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {
+              group: ['@untitledui/icons', '@untitledui/icons/*'],
+              message:
+                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
+            },
+            {
+              group: ['**/assets/**/*.svg'],
+              message:
+                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
+            },
+          ],
+        },
+      ],
+
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.
       //
@@ -290,60 +330,177 @@ export default [
       'jsx-a11y/no-distracting-elements': 'error',
       'jsx-a11y/scope': 'error',
 
+      // --- blocking (error): brought to zero by the ESLint-cleanup stack and
+      // locked so they cannot regress. jsx-a11y + safe-mechanical sonarjs were
+      // cleared in the a11y/safe-mechanical PR; promoting to error keeps CI red
+      // on any new violation instead of letting the backlog silently grow back.
+      'jsx-a11y/control-has-associated-label': 'error',
+      'jsx-a11y/click-events-have-key-events': 'error',
+      'jsx-a11y/no-static-element-interactions': 'error',
+      'jsx-a11y/label-has-for': 'error',
+      'jsx-a11y/no-autofocus': 'error',
+      'jsx-a11y/anchor-has-content': 'error',
+      'jsx-a11y/no-noninteractive-element-interactions': 'error',
+      'jsx-a11y/interactive-supports-focus': 'error',
+      'jsx-a11y/anchor-is-valid': 'error',
+      'jsx-a11y/alt-text': 'error',
+      'jsx-a11y/no-redundant-roles': 'error',
+      'jsx-a11y/mouse-events-have-key-events': 'error',
+      'jsx-a11y/media-has-caption': 'error',
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'error',
+      'jsx-a11y/anchor-ambiguous-text': 'error',
+      // Downgraded to warn: rule flags pre-existing inherited title= (incl.
+      // false positives on member-expression components and required iframe
+      // titles); tracked for follow-up rather than blocking.
+      'openmetadata-ui-patterns/no-raw-title-attribute': 'warn',
+      'sonarjs/no-collapsible-if': 'error',
+      'sonarjs/no-extra-arguments': 'error',
+      'sonarjs/no-redundant-jump': 'error',
+      'sonarjs/no-duplicated-branches': 'error',
+      'sonarjs/no-identical-functions': 'error',
+      'sonarjs/prefer-object-literal': 'error',
+      'sonarjs/no-redundant-boolean': 'error',
+
       // --- warn tier: on, visible, not yet blocking. Counts are the measured
-      // backlog at the time of writing; they only go down.
-      'react-hooks/exhaustive-deps': 'warn', // 1694 across 595 files
-      'jsx-a11y/control-has-associated-label': 'warn', // 146
-      'jsx-a11y/click-events-have-key-events': 'warn', // 89
-      'jsx-a11y/no-static-element-interactions': 'warn', // 87
-      'jsx-a11y/label-has-for': 'warn', // 61
-      'jsx-a11y/no-autofocus': 'warn', // 45
-      'jsx-a11y/anchor-has-content': 'warn', // 12
-      'jsx-a11y/no-noninteractive-element-interactions': 'warn', // 8
-      'jsx-a11y/interactive-supports-focus': 'warn', // 7
-      'jsx-a11y/anchor-is-valid': 'warn', // 5
-      'jsx-a11y/alt-text': 'warn', // 3
-      'jsx-a11y/no-redundant-roles': 'warn', // 2
-      'jsx-a11y/mouse-events-have-key-events': 'warn', // 2
-      'jsx-a11y/media-has-caption': 'warn', // 2
-      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'warn', // 2
-      'jsx-a11y/anchor-ambiguous-text': 'warn', // 1
-      'sonarjs/no-duplicate-string': 'warn', // 640
+      // backlog at the time of writing; they only go down. Each is promoted to
+      // error by its own cleanup PR once its violations reach zero.
+      'react-hooks/exhaustive-deps': 'warn', // 1693 across 596 files
+      // Stock sonarjs flags i18n translation keys (t('label.…')), which must
+      // stay inline. Replaced by the i18n-aware variant below, which ignores
+      // t() keys and label./message./server. strings and is enforced at error.
+      'sonarjs/no-duplicate-string': 'off',
+      'openmetadata-i18n/no-duplicate-string': 'error',
       'sonarjs/cognitive-complexity': ['warn', 15], // 85
-      'sonarjs/no-collapsible-if': 'warn', // 21
-      'sonarjs/no-extra-arguments': 'warn', // 20
-      'sonarjs/no-redundant-jump': 'warn', // 14
-      'sonarjs/no-duplicated-branches': 'warn', // 9
-      'sonarjs/no-identical-functions': 'warn', // 6
-      'sonarjs/prefer-object-literal': 'warn', // 1
-      'sonarjs/no-redundant-boolean': 'warn', // 1
 
       // Complexity and structure. SonarCloud gates these on new code; these
       // surface the same findings locally and in the editor.
-      'sonarjs/cyclomatic-complexity': 'warn', // 54 in a 400-file sample
-      'sonarjs/expression-complexity': 'warn', // 15
-      'sonarjs/no-nested-conditional': 'warn', // 16
-      'sonarjs/no-nested-functions': 'warn', // 18
+      'sonarjs/cyclomatic-complexity': 'error', // cleared tree-wide; blocks regressions
+      // Promoted to error: all 141 over-complex expressions refactored by
+      // extracting sub-expressions into named consts (short-circuit preserved);
+      // backlog is zero and this ratchets it.
+      'sonarjs/expression-complexity': 'error',
+      // Promoted to error: all nested-ternary violations refactored to
+      // intermediate variables / if-else; backlog is zero and this ratchets it.
+      'sonarjs/no-nested-conditional': 'error',
+      // Promoted to error: all 75 deeply-nested functions refactored by
+      // hoisting the innermost callback to a shallower named scope; backlog is
+      // zero and this ratchets it.
+      'sonarjs/no-nested-functions': 'error',
 
-      // Security. Near-zero today — promote to error once confirmed at zero
-      // across the whole tree, not just a sample.
-      'sonarjs/no-clear-text-protocols': 'warn', // 18
-      'sonarjs/no-hardcoded-passwords': 'warn', // 0 in sample
-      'sonarjs/no-hardcoded-ip': 'warn', // 0 in sample
+      // Security. Enforced in production code. Test fixtures, mock data, and
+      // the sample-entity constants files legitimately embed http:// self-links,
+      // localhost IPs, and dummy credentials — those paths are exempted in a
+      // dedicated override below (matching how SonarQube excludes test sources
+      // from security scanning), so production stays clean at error.
+      'sonarjs/no-clear-text-protocols': 'error',
+      'sonarjs/no-hardcoded-passwords': 'error',
+      'sonarjs/no-hardcoded-ip': 'error',
       'sonarjs/no-invariant-returns': 'warn', // 0 in sample
 
       // React correctness and re-render cost — the enforceable slice of
-      // frontend-performance.md.
-      'react/no-array-index-key': 'warn', // 23
-      'react/jsx-no-constructed-context-values': 'warn', // 1
-      'react/no-unstable-nested-components': 'warn', // 1
-      'react/no-danger': 'warn', // 0 in sample
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      // frontend-performance.md. Cleared to zero by the ESLint-cleanup stack —
+      // stable keys, hoisted components, memoized context values; documented
+      // disables only where no real fix exists (static never-reordered lists,
+      // dangerouslySetInnerHTML on sanitized content). Promoted to error.
+      'react/no-array-index-key': 'error',
+      'react/jsx-no-constructed-context-values': 'error',
+      'react/no-unstable-nested-components': 'error',
+      'react/no-danger': 'error',
+      // Cleared to zero and locked by the ESLint-cleanup stack — redundant `!`
+      // removed / narrowed where safe, documented disables where the value is
+      // non-null by invariant. `!` is compile-time only, so no `!`→`?.` rewrites
+      // (that would change throw-on-null to silent undefined). Promoted to error.
+      '@typescript-eslint/no-non-null-assertion': 'error',
+
+      // Import architecture and request fan-out. These are warnings while the
+      // measured legacy backlog is worked down; they are reporting-only and do
+      // not rewrite source under --fix.
+      'openmetadata-imports/no-api-calls-in-iteration': 'warn',
+      'openmetadata-imports/no-circular-imports': 'warn',
+      'openmetadata-imports/no-cross-page-imports': 'warn',
+      'openmetadata-imports/no-hook-ui-imports': 'warn',
+      'openmetadata-imports/no-impure-pure-utils': 'warn',
+      'openmetadata-imports/no-internal-barrel-imports': 'warn',
+      'openmetadata-imports/no-lodash-default-import': 'warn',
+      'openmetadata-imports/no-lower-layer-page-imports': 'warn',
+      'openmetadata-imports/no-rest-ui-imports': 'warn',
+      'openmetadata-imports/review-sequential-api-calls': 'warn',
+
+      // Repository-specific performance invariants. These rules have no
+      // existing backlog and are reporting-only, so they can block without
+      // rewriting files under --fix.
+      'openmetadata-performance/require-suspense-fallback': 'error',
+      'openmetadata-performance/no-unbounded-module-cache': 'error',
 
       // NOT enabled: react/jsx-no-useless-fragment. It auto-fixes, so at any
       // severity `eslint --fix` would rewrite files and hard-fail the
       // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
       // commit first, then add it here at error.
+    },
+  },
+
+  // Route modules must preserve page-level code splitting. Type-only imports
+  // remain allowed because they do not create a runtime bundle edge.
+  {
+    files: ['src/components/AppRouter/**/*.{ts,tsx}'],
+    rules: {
+      'openmetadata-performance/no-eager-page-imports': 'error',
+    },
+  },
+
+  // Permission access restrictions: components and pages must use permission
+  // utilities instead of raw access. Guides the permission-refactor sweep (#6036).
+  //
+  // no-raw-permission-access promoted to 'error': Tasks 6-9 drove this rule's
+  // findings (MemberExpression, and now ObjectPattern destructuring) to 0
+  // across src/components and src/pages — verified at promotion time.
+  {
+    files: ['src/components/**/*.{ts,tsx}', 'src/pages/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.*'],
+    rules: {
+      'openmetadata-permissions/no-raw-permission-access': 'error',
+
+      // getPrioritizedEditPermission/getPrioritizedViewPermission are
+      // field-priority helpers meant to be consumed through the permission
+      // core (useEntityPermissions / getDerivedPermissionFlags), which
+      // expose the same prioritization as named canEditX/canViewX flags and
+      // a can(Operation.X) escape hatch. Calling the raw helpers directly
+      // from a component reimplements that logic ad hoc outside the core.
+      // DEFAULT_ENTITY_PERMISSION is deliberately NOT banned: it is the
+      // sanctioned fallback/placeholder object used throughout the already-
+      // converted code (e.g. before a permissions fetch resolves), unlike
+      // the two prioritization helpers.
+      //
+      // Deviation from the task brief: the brief assumed this would land at
+      // 'error', with the sweep having already driven direct call sites to
+      // (near) zero. Verification at promotion time found 40 files (45
+      // import specifiers) still importing these two functions directly
+      // from components/pages — not "a few, small" stragglers, and
+      // concentrated in a category the sweep never touched (the per-entity
+      // `*Version` components — TableVersion, ChartVersion, PipelineVersion,
+      // etc. — plus a handful of widgets and hooks). Converting 40 files'
+      // worth of permission derivation is its own sweep-scale task
+      // (mirroring Task 8), not something to fold silently into a
+      // lint-hardening/promotion task. Landing this specific restriction at
+      // 'warn' follows the repo's own documented convention (see the "warn
+      // tier" comment above) for a real, counted backlog that is not zero
+      // yet; promote to 'error' once a follow-up sweep clears it.
+      'no-restricted-imports': [
+        'warn', // 40 files (45 import specifiers) import getPrioritizedEditPermission/getPrioritizedViewPermission directly (measured via this rule at promotion time)
+        {
+          patterns: [
+            {
+              regex: '(^|/)utils/PermissionsUtils$',
+              importNames: [
+                'getPrioritizedEditPermission',
+                'getPrioritizedViewPermission',
+              ],
+              message:
+                'getPrioritizedEditPermission/getPrioritizedViewPermission are field-priority helpers for the permission core. Use the named canEditX/canViewX flags, or the can(Operation.X) escape hatch, from useEntityPermissions/getDerivedPermissionFlags instead.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -394,8 +551,15 @@ export default [
   // Playwright tests
   {
     files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
+    // The local plugin lives under playwright/ but is a linter, not a test:
+    // applying rules like no-positional-locator to its own source is
+    // meaningless, and its RuleTester fixtures deliberately contain the exact
+    // anti-patterns those rules look for.
+    ignores: ['**/playwright/eslint-rules/**'],
     plugins: {
+      'openmetadata-playwright': openMetadataPlaywright,
       playwright,
+      'om-playwright': omPlaywright,
     },
     rules: {
       // TypeScript/base rule overrides for Playwright files
@@ -457,18 +621,64 @@ export default [
       'playwright/no-networkidle': 'error',
       'playwright/no-page-pause': 'error',
       'playwright/no-focused-test': 'error',
+      'playwright/missing-playwright-await': 'error',
+      'playwright/valid-expect': 'error',
+      'playwright/no-element-handle': 'error',
+      'playwright/no-eval': 'error',
+      'playwright/prefer-web-first-assertions': 'error',
+      'playwright/no-useless-await': 'error',
 
-      // Playwright rules — aspirational (warn): existing violations to fix over time
-      'playwright/missing-playwright-await': 'warn',
-      'playwright/valid-expect': 'warn',
-      'playwright/no-wait-for-timeout': 'warn',
-      'playwright/no-force-option': 'warn',
-      'playwright/no-element-handle': 'warn',
-      'playwright/no-eval': 'warn',
-      'playwright/no-skipped-test': 'warn',
-      'playwright/prefer-web-first-assertions': 'warn',
-      'playwright/no-useless-await': 'warn',
-      'playwright/no-wait-for-selector': 'warn',
+      // A facet aggregation wait must name the value it is waiting for, not just
+      // the endpoint or field: a dropdown fires one aggregation when it opens and
+      // one per typed search, so a wait that names neither can resolve off the
+      // wrong one and run the test ahead of the request it queued (#31859). Warn
+      // rather than error while the remaining 27 call sites are migrated to
+      // playwright/utils/searchAggregation.ts.
+      'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
+
+      // Playwright rules — promoted to error behind the suppressions ratchet
+      // (see eslint-suppressions.json): existing violations are snapshotted,
+      // new ones fail lint.
+      'playwright/no-wait-for-timeout': 'error',
+      'playwright/no-force-option': 'error',
+      'playwright/no-skipped-test': 'error',
+      'playwright/no-wait-for-selector': 'error',
+
+      // Local OpenMetadata Playwright rules.
+      'om-playwright/no-awaited-wait-for-response': 'error',
+      'om-playwright/no-blanket-test-slow': 'error',
+      'om-playwright/no-positional-locator': 'error',
+      'om-playwright/justified-rule-disable': 'error',
+    },
+  },
+
+  // Custom rules that only make sense on e2e spec files
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    plugins: {
+      'om-playwright': omPlaywright,
+    },
+    rules: {
+      'om-playwright/require-assertion-per-test': 'error',
+    },
+  },
+
+  // Local ESLint plugin (playwright/eslint-rules/**): plain ESM, matching the
+  // repo's other rule plugins in eslint-rules/. Excluded from the Playwright
+  // test rules above, and needs the Node globals its RuleTester and node:test
+  // usage rely on.
+  //
+  // scripts/*.mjs is build-time tooling that runs under Node directly. It had
+  // no config block, so `process`/`console` were undefined there — an error
+  // only reachable when a scripts/ file lands in a changed-file lint, which the
+  // merge queue guarantees and a PR event does not. The .js tooling alongside
+  // it is CommonJS and needs a different fix; left alone deliberately.
+  {
+    files: ['playwright/eslint-rules/**/*.mjs', 'scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
     },
   },
 
@@ -502,16 +712,71 @@ export default [
     },
   },
 
+  // Test fixtures and mock data use literal and repeated strings as selectors and
+  // sample values, so production-facing string rules create noise without protecting
+  // user-visible copy.
+  {
+    files: [
+      'src/**/*.test.{ts,tsx}',
+      'src/**/*.mock.{ts,tsx,js}',
+      'src/**/mocks/**/*.{ts,tsx,js}',
+      'src/test/**/*.{ts,tsx,js}',
+    ],
+    rules: {
+      'i18next/no-literal-string': 'off',
+      'openmetadata-i18n/no-duplicate-string': 'off',
+    },
+  },
+
+  // Mock and fixture data legitimately repeats sample strings; no-duplicate-string
+  // targets production maintainability, so scope it off for these files (production
+  // constants/utils are NOT exempt — their duplicates are extracted to constants).
+  {
+    files: [
+      'src/**/*.mock.{ts,tsx}',
+      'src/**/mocks/**/*.{ts,tsx}',
+      'src/**/__mocks__/**/*.{ts,tsx}',
+      'src/constants/mockTourData.constants.ts',
+    ],
+    rules: {
+      'openmetadata-i18n/no-duplicate-string': 'off',
+    },
+  },
+
   // Test setup files
   {
     files: [
       'src/setupTests.js',
       'src/**/*.test.{js,jsx,ts,tsx}',
       'src/**/*.spec.{js,jsx,ts,tsx}',
+      'src/test/unit/mocks/**/*.{js,jsx,ts,tsx}',
       'playwright/**/*.spec.{js,jsx,ts,tsx}',
     ],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  // Security rules (clear-text protocols, hardcoded IPs/passwords) target
+  // production code paths. Test fixtures and mock data legitimately embed
+  // sample http:// self-links (mirroring backend responses), localhost IPs, and
+  // dummy credentials — exempt them, matching how SonarQube excludes test
+  // sources from security scanning. mockTourData is a 100%-mock guided-tour
+  // fixture whose sample links point at the local dev server (http://localhost),
+  // so it is exempt too; production constants files are NOT — their sample URLs
+  // were fixed to https and the rules stay enforced there.
+  {
+    files: [
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.mock.{ts,tsx}',
+      'src/**/mocks/**/*.{ts,tsx}',
+      'src/**/__mocks__/**/*.{ts,tsx}',
+      'src/constants/mockTourData.constants.ts',
+    ],
+    rules: {
+      'sonarjs/no-clear-text-protocols': 'off',
+      'sonarjs/no-hardcoded-ip': 'off',
+      'sonarjs/no-hardcoded-passwords': 'off',
     },
   },
 ];

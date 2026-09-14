@@ -47,6 +47,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Path("/v1/aiGovernanceFrameworks")
 @Tag(
@@ -68,6 +69,9 @@ public class AIGovernanceFrameworkResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     FrameworkSeedLoader.loadFromResources(repository, FrameworkSeedLoader.controlRepository());
   }
 

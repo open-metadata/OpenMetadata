@@ -223,11 +223,11 @@ export const UserTeamSelectableList = ({
   const init = async () => {
     if (popupVisible || popoverProps?.open) {
       if (ownerType === EntityType.USER) {
-        await getTeamCount();
         setActiveTab('users');
+        await getTeamCount();
       } else {
-        await getUserCount();
         setActiveTab('teams');
+        await getUserCount();
       }
     }
   };
@@ -274,7 +274,12 @@ export const UserTeamSelectableList = ({
   };
 
   useEffect(() => {
-    const activeOwners = isArray(owner) ? owner : owner ? [owner] : [];
+    let activeOwners: EntityReference[] = [];
+    if (isArray(owner)) {
+      activeOwners = owner;
+    } else if (owner) {
+      activeOwners = [owner];
+    }
     setSelectedUsers(activeOwners);
   }, [owner]);
 

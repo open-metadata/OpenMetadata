@@ -14,6 +14,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { TestCase } from '../../generated/tests/testCase';
+import { Include } from '../../generated/type/include';
 import { getTestCaseByFqn } from '../testAPI';
 
 // Inlined to avoid a circular import via {@code TestCaseClassBase} —
@@ -40,7 +41,7 @@ export const testCaseQueryKey = (fqn: string, fields: string[]) =>
   ['testCase', fqn, fields.join(',')] as const;
 
 export const testCaseQueryFn = (fqn: string, fields: string[]) => () =>
-  getTestCaseByFqn(fqn, { fields });
+  getTestCaseByFqn(fqn, { fields, include: Include.All });
 
 export const prefetchTestCaseByFqn = (
   queryClient: QueryClient,

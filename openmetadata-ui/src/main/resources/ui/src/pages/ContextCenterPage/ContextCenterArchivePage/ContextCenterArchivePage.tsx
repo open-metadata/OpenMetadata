@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -28,13 +29,19 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
 import {
   deleteDriveFile,
   listArchivedContextFiles,
   restoreDriveFile,
 } from '../../../rest/assetAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import {
+  CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -64,6 +71,18 @@ const ContextCenterArchivePage: FC = () => {
       { id: 'mine', label: t('label.created-by-me') },
     ],
     [t]
+  );
+
+  // Resource-level permission (usePermissionProvider().getResourcePermission(
+  // KNOWLEDGE_PAGE), itself OperationPermission-shaped) run through
+  // getDerivedPermissionFlags per the Batch 3 DatabaseSchemaTable.tsx / Batch 6
+  // MetricListPage.tsx precedent. `Create`/`Delete` (hasPermission/canDelete
+  // below) are untouched raw reads (not flagged by the rule). Pure rename: no
+  // field-specific EditX key exists on this resource-level permission object, so
+  // canEditAll matches the old raw `permissions?.EditAll` exactly.
+  const canEditAll = useMemo(
+    () => getDerivedPermissionFlags(permissions).canEditAll,
+    [permissions]
   );
 
   const fetchPermission = useCallback(async () => {
@@ -159,6 +178,12 @@ const ContextCenterArchivePage: FC = () => {
     async (item: ArchiveItem) => {
       try {
         await restoreDriveFile(item.id);
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        });
+        queryClient.invalidateQueries({
+          queryKey: CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+        });
         showSuccessToast(
           t('message.entity-restored-success', { entity: item.name })
         );
@@ -186,6 +211,9 @@ const ContextCenterArchivePage: FC = () => {
     try {
       setIsDeleting(true);
       await deleteDriveFile(itemToDelete.id, true);
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
@@ -206,6 +234,7 @@ const ContextCenterArchivePage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
+      <DocumentTitle title={t('label.archive')} />
       <div className="context-center-header-section tw:px-5">
         <ContextCenterHeader
           breadcrumbs={[
@@ -252,7 +281,7 @@ const ContextCenterArchivePage: FC = () => {
         <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden">
           <ArchiveView
             canDelete={permissions?.Delete}
-            canRestore={permissions?.EditAll}
+            canRestore={canEditAll}
             data={items}
             isLoading={isLoading}
             isLoadingMore={isLoadingMore}

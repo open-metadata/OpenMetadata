@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { isUndefined, toNumber, toString } from 'lodash';
+import { isUndefined, toNumber } from 'lodash';
 
 import type { RuleObject } from 'rc-field-form/es/interface';
 import type {
   Combination,
   StateValue,
   WorkflowExtraConfig,
-} from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
+} from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.types';
 import {
   CRON_COMBINATIONS,
   DAY_OF_MONTH_PATTERN,
@@ -52,27 +52,6 @@ export const getScheduleOptionsFromSchedules = (
 
     return '';
   });
-};
-
-export const getRange = (n: number) => {
-  return [...Array(n).keys()];
-};
-
-export const getRangeOptions = (n: number) => {
-  return getRange(n).map((v) => {
-    return {
-      label: `0${v}`.slice(-2),
-      value: toString(v),
-    };
-  });
-};
-
-export const getMinuteOptions = () => {
-  return getRangeOptions(60);
-};
-
-export const getHourOptions = () => {
-  return getRangeOptions(24);
 };
 
 export const getMinuteCron = (value: Partial<StateValue>) => {
@@ -160,6 +139,22 @@ export const getCronDefaultValue = (appName: string) => {
   return initialValue;
 };
 
+export const getDefaultScheduleFromPeriod = (
+  includePeriodOptions: string[]
+) => {
+  if (includePeriodOptions.includes('day')) {
+    return DEFAULT_SCHEDULE_CRON_DAILY;
+  } else if (includePeriodOptions.includes('week')) {
+    return DEFAULT_SCHEDULE_CRON_WEEKLY;
+  } else if (includePeriodOptions.includes('month')) {
+    return DEFAULT_SCHEDULE_CRON_MONTHLY;
+  } else if (includePeriodOptions.includes('hour')) {
+    return DEFAULT_SCHEDULE_CRON_HOURLY;
+  }
+
+  return DEFAULT_SCHEDULE_CRON_DAILY;
+};
+
 export const getDefaultScheduleValue = ({
   defaultSchedule,
   includePeriodOptions,
@@ -182,20 +177,20 @@ export const getDefaultScheduleValue = ({
   return getDefaultScheduleFromPeriod(includePeriodOptions);
 };
 
-export const getDefaultScheduleFromPeriod = (
-  includePeriodOptions: string[]
-) => {
-  if (includePeriodOptions.includes('day')) {
-    return DEFAULT_SCHEDULE_CRON_DAILY;
-  } else if (includePeriodOptions.includes('week')) {
-    return DEFAULT_SCHEDULE_CRON_WEEKLY;
-  } else if (includePeriodOptions.includes('month')) {
-    return DEFAULT_SCHEDULE_CRON_MONTHLY;
-  } else if (includePeriodOptions.includes('hour')) {
-    return DEFAULT_SCHEDULE_CRON_HOURLY;
-  }
+type CronPeriodFields = Pick<StateValue, 'min' | 'hour' | 'dow' | 'dom'>;
 
-  return DEFAULT_SCHEDULE_CRON_DAILY;
+const PERIOD_CRON_RESOLVERS: Record<
+  string,
+  (fields: CronPeriodFields, cronValue?: string[]) => Partial<CronPeriodFields>
+> = {
+  week: ({ dow }) => ({ dow: isNaN(toNumber(dow)) ? '1' : dow, dom: '*' }),
+  month: ({ dom }) => ({ dom: isNaN(toNumber(dom)) ? '1' : dom, dow: '*' }),
+  custom: (_fields, cronValue) => ({
+    min: cronValue?.[0] ?? '0',
+    hour: cronValue?.[1] ?? '0',
+    dom: cronValue?.[2] ?? '*',
+    dow: cronValue?.[4] ?? '*',
+  }),
 };
 
 export const getUpdatedStateFromFormState = <T>(
@@ -204,31 +199,17 @@ export const getUpdatedStateFromFormState = <T>(
 ) => {
   try {
     const newState = { ...currentState, ...formValues };
-    let { min, hour, dow, dom } = newState;
+    let { min, hour } = newState;
+    const { dow, dom } = newState;
 
     min = isNaN(toNumber(min)) ? '0' : min;
     hour = isNaN(toNumber(hour)) ? '0' : hour;
     const cronValue = newState.cron?.split(' ');
 
-    switch (newState.selectedPeriod) {
-      case 'week':
-        dow = isNaN(toNumber(dow)) ? '1' : dow;
-        dom = '*';
-
-        break;
-      case 'month':
-        dom = isNaN(toNumber(dom)) ? '1' : dom;
-        dow = '*';
-
-        break;
-      case 'custom':
-        min = cronValue?.[0] ?? '0';
-        hour = cronValue?.[1] ?? '0';
-        dom = cronValue?.[2] ?? '*';
-        dow = cronValue?.[4] ?? '*';
-
-        break;
-    }
+    const resolvePeriodFields = PERIOD_CRON_RESOLVERS[newState.selectedPeriod];
+    const periodFields = resolvePeriodFields
+      ? resolvePeriodFields({ min, hour, dow, dom }, cronValue)
+      : {};
 
     return {
       ...newState,
@@ -236,6 +217,7 @@ export const getUpdatedStateFromFormState = <T>(
       hour,
       dow,
       dom,
+      ...periodFields,
     };
   } catch {
     return { ...currentState, ...formValues };

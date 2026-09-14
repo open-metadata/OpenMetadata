@@ -89,6 +89,7 @@ export * from './base/video-player/play-button-icon';
 // Application components
 export * from './application/form-field/form-field.types';
 export * from './application/form-field/form-item-label';
+export * from './application/form-field/fields/color-picker-field';
 export * from './application/form-field/fields/icon-picker-field';
 export * from './application/form-field/field-doc-panel';
 export * from './application/form-field/field-doc-popover';
@@ -123,6 +124,8 @@ export type {
 } from './application/app-navigation/config';
 export * from './application/file-upload/file-upload';
 export * from './application/filter-bar/filter-bar';
+export * from './application/filter-select/filter-select';
+export * from './application/filter-select/filter-select.types';
 export * from './application/date-picker/calendar';
 export * from './application/date-picker/cell';
 export * from './application/date-picker/date-input';
@@ -132,6 +135,7 @@ export * from './application/date-picker/range-calendar';
 export * from './application/date-picker/range-preset';
 export * from './application/empty-placeholder/empty-placeholder';
 export * from './application/modals/modal';
+export * from './application/page-layout/page-layout';
 export * from './application/pagination/pagination';
 export * from './application/pagination/pagination-base';
 export * from './application/pagination/pagination-dot';
@@ -148,6 +152,12 @@ export type {
   ToastContent,
   ShowToastOptions,
 } from './application/toast/toast-store';
+
+// Common
+export * from './common/document-title/document-title';
+
+// Page header
+export * from './application/page-header/page-header';
 
 // Foundations
 export * from './foundations/dot-icon';

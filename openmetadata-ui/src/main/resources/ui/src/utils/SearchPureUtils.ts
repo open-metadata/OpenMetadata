@@ -48,6 +48,56 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   return commonAssets[searchIndex] || null;
 };
 
+// Resolves the display value of an aggregation bucket from a `_source` document.
+export const extractSourceValue = (
+  src: Record<string, unknown>,
+  path: string,
+  bucketKey: string
+): string | undefined => {
+  const parts = path.split('.');
+  let val: unknown = src;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (Array.isArray(val)) {
+      // Mid-traversal array: only the element whose resolved leaf value case-insensitively equals the bucket key
+      // belongs to this bucket.
+      const remainingPath = parts.slice(i).join('.');
+      const match = (val as unknown[]).find((item) => {
+        const leaf = extractSourceValue(
+          item as Record<string, unknown>,
+          remainingPath,
+          bucketKey
+        );
+
+        return leaf?.toLowerCase() === bucketKey.toLowerCase();
+      });
+
+      return match === undefined
+        ? undefined
+        : extractSourceValue(
+            match as Record<string, unknown>,
+            remainingPath,
+            bucketKey
+          );
+    } else if (val && typeof val === 'object' && part in (val as object)) {
+      val = (val as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  // Terminal value may be a string[] (e.g. `ownerDisplayName: ['Aaron Johnson']`): match the bucket key, or resolve
+  // nothing.
+  if (Array.isArray(val)) {
+    return (val as unknown[])
+      .filter((item): item is string => typeof item === 'string')
+      .find((item) => item.toLowerCase() === bucketKey.toLowerCase());
+  }
+
+  return typeof val === 'string' ? val : undefined;
+};
+
 export const parseBucketsData = (
   buckets: Array<Bucket>,
   sourceFields?: string,
@@ -71,10 +121,15 @@ export const parseBucketsData = (
         | undefined;
       const data = topHitsData?.hits?.hits?.[0]?._source;
 
-      return {
-        title: data?.[sourceFieldOptionType.label] as string,
-        value: data?.[sourceFieldOptionType.value] as string,
-      };
+      const value = (data?.[sourceFieldOptionType.value] ??
+        bucket.key) as string;
+
+      // displayName, then name, then the raw value.
+      const title = (data?.[sourceFieldOptionType.label] ??
+        data?.name ??
+        value) as string;
+
+      return { title, value };
     });
   }
 
@@ -93,15 +148,8 @@ export const parseBucketsData = (
 
     const actualValue =
       sourceFields && topHitsSource
-        ? sourceFields
-            .split('.')
-            .reduce(
-              (obj: unknown, key: string): unknown =>
-                obj && typeof obj === 'object' && obj !== null && key in obj
-                  ? (obj as Record<string, unknown>)[key]
-                  : undefined,
-              topHitsSource
-            ) ?? bucket.key
+        ? extractSourceValue(topHitsSource, sourceFields, bucket.key) ??
+          bucket.key
         : bucket.key;
 
     return {
@@ -235,3 +283,17 @@ export const getTermQuery = (
     },
   };
 };
+
+// One option shape for tag-like entities (tiers, tags, certifications).
+export const toTagSelectOptions = (
+  tags: Array<{
+    displayName?: string;
+    name?: string;
+    fullyQualifiedName?: string;
+  }>
+): Array<{ title: string; value: string }> =>
+  tags.map((tag) => {
+    const value = tag.fullyQualifiedName || tag.name || '';
+
+    return { title: tag.displayName || tag.name || value, value };
+  });

@@ -36,6 +36,8 @@ import { oidcTokenStorage } from './OidcTokenStorage';
 import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
 
+const OIDC_SCOPE = 'openid email profile';
+
 const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
@@ -64,11 +66,21 @@ export const getSilentRedirectUri = () => {
 export const getUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
 
   return {
     authority,
     client_id: clientId,
+    // Forward the server-configured response type; without it the oidc-client
+    // UserManager silently drops the field and every provider requests the
+    // implicit 'id_token' flow regardless of configuration (#29597).
+    response_type: responseType ?? 'id_token',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -88,7 +100,13 @@ export const getUserManagerConfig = (
 export const getCandidateUserManagerConfig = (
   authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
-  const { authority = '', clientId = '', callbackUrl, scope } = authClient;
+  const {
+    authority = '',
+    clientId = '',
+    callbackUrl,
+    scope,
+    responseType,
+  } = authClient;
   const testStore = new WebStorageStateStore({
     store: globalThis.localStorage,
     prefix: SSO_TEST_LOGIN_STORE_PREFIX,
@@ -98,8 +116,8 @@ export const getCandidateUserManagerConfig = (
     authority,
     client_id: clientId,
     redirect_uri: getRedirectUri(callbackUrl),
-    response_type: 'id_token',
-    scope: scope || 'openid email profile',
+    response_type: responseType ?? 'id_token',
+    scope: scope || OIDC_SCOPE,
     loadUserInfo: false,
     userStore: testStore,
     stateStore: testStore,
@@ -145,7 +163,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         providerName,
-        scope: 'openid email profile',
+        scope: OIDC_SCOPE,
         responseType,
         clientType,
         enableSelfSignup,
@@ -159,7 +177,7 @@ export const getAuthConfig = (
         clientId,
         callbackUrl: redirectUri,
         provider,
-        scope: 'openid email profile',
+        scope: OIDC_SCOPE,
         responseType,
         clientType,
         enableSelfSignup,
@@ -177,14 +195,15 @@ export const getAuthConfig = (
       };
 
       break;
+    // eslint-disable-next-line sonarjs/no-duplicated-branches -- distinct auth provider; config kept separate
     case AuthProvider.AwsCognito:
       config = {
         authority,
         clientId,
         callbackUrl: redirectUri,
         provider,
-        scope: 'openid email profile',
-        responseType: 'code',
+        scope: OIDC_SCOPE,
+        responseType,
         clientType,
         enableSelfSignup,
         enableAutoRedirect,

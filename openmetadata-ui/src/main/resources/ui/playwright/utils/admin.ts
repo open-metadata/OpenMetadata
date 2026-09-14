@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Browser, Page, request } from '@playwright/test';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { AdminClass } from '../support/user/AdminClass';
 import {
   getAuthContext,
@@ -39,7 +40,10 @@ export const authenticateAdminPage = async (page: Page) => {
     await admin.login(page);
   }
 
-  await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
+  await page.waitForURL(
+    (url) => url.pathname === '/' || url.pathname === '/my-data',
+    { waitUntil: 'domcontentloaded' }
+  );
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -133,6 +137,7 @@ export async function performAdminLogin(
         ? 'playwright/.auth/admin.json'
         : undefined,
   });
+  await installServerLoadReducers(page.context());
 
   try {
     await authenticateAdminPage(page);

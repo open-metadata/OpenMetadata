@@ -982,9 +982,20 @@ test.describe(
       });
 
       await test.step('Click failed segment and verify redirect to failed test cases', async () => {
-        const navFailed = page.waitForURL(
-          /\/data-quality\/test-cases.*testCaseStatus=Failed/
-        );
+        const expectedStatuses = [
+          TestCaseStatus.Failed,
+          TestCaseStatus.Aborted,
+        ];
+        const navFailed = page.waitForURL((url) => {
+          const selectedStatuses = url.searchParams.getAll('testCaseStatus[]');
+
+          return (
+            url.pathname === '/data-quality/test-cases' &&
+            expectedStatuses.every((status) =>
+              selectedStatuses.includes(status)
+            )
+          );
+        });
         await clickPieChartSegmentByIndex(
           page,
           ENTITY_HEALTH_PIE_CHART_TEST_ID,
@@ -992,7 +1003,9 @@ test.describe(
         );
         await navFailed;
         await expect(page).toHaveURL(/\/data-quality\/test-cases/);
-        expect(page.url()).toContain('testCaseStatus=Failed');
+        expect(
+          new URL(page.url()).searchParams.getAll('testCaseStatus[]')
+        ).toEqual(expectedStatuses);
       });
     });
 

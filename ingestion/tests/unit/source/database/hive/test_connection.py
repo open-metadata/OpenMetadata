@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Unit tests for Hive connection handling."""
 
+import ssl
 from unittest.mock import patch
 
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
@@ -21,6 +22,10 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.hive.connection import HiveConnection
+from metadata.ingestion.source.database.hive.custom_hive_connection import (
+    _get_http_ssl_context,
+    _get_ssl_socket_kwargs,
+)
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.hive.connection"
 
@@ -60,6 +65,34 @@ def test_get_client_runs_ssl_setup_when_manager_present():
     ):
         _ = HiveConnection(config).client
     assert mock_connection.call_args.kwargs["connection"].connectionArguments.root["use_ssl"] is True
+
+
+def test_hive_ssl_requires_certificate_verification_by_default():
+    assert _get_ssl_socket_kwargs()["cert_reqs"] == ssl.CERT_REQUIRED
+
+
+def test_hive_http_ssl_requires_certificate_verification_by_default():
+    assert _get_http_ssl_context().verify_mode == ssl.CERT_REQUIRED
+
+
+def test_hive_http_ssl_preserves_explicit_verification_mode():
+    assert _get_http_ssl_context(ssl_cert="none").verify_mode == ssl.CERT_NONE
+
+
+def test_hive_ssl_preserves_explicit_certificate_requirement():
+    socket_kwargs = _get_ssl_socket_kwargs(
+        ssl_certfile="client.pem",
+        ssl_keyfile="client.key",
+        ssl_ca_certs="ca.pem",
+        ssl_cert_reqs=ssl.CERT_OPTIONAL,
+    )
+
+    assert socket_kwargs == {
+        "certfile": "client.pem",
+        "keyfile": "client.key",
+        "ca_certs": "ca.pem",
+        "cert_reqs": ssl.CERT_OPTIONAL,
+    }
 
 
 def test_hive_url():

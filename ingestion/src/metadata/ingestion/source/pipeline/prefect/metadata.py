@@ -98,16 +98,21 @@ PREFECT_STATE_MAP = {
 }
 
 
-def _parse_timestamp(ts_str: str | None) -> Timestamp | None:
+def _parse_timestamp(ts_str: str | None) -> int | None:
     """Convert an ISO timestamp string to a Unix timestamp in milliseconds."""
     if not ts_str:
         return None
     try:
         dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        return Timestamp(int(dt.timestamp() * 1000))
+        return int(dt.timestamp() * 1000)
     except Exception:
         logger.debug("Failed to parse timestamp %r", ts_str, exc_info=True)
         return None
+
+
+def _as_timestamp(epoch_millis: int | None) -> Timestamp | None:
+    """Lift epoch millis into the schema Timestamp the entity models declare."""
+    return None if epoch_millis is None else Timestamp(epoch_millis)
 
 
 def _stable_task_names(task_runs: list[PrefectTaskRun]) -> dict[str, str]:
@@ -364,8 +369,8 @@ class PrefectSource(PipelineServiceSource):
             TaskStatus(  # pyright: ignore[reportCallIssue]
                 name=id_to_name[run.id],
                 executionStatus=PREFECT_STATE_MAP.get((run.state_type or "UNKNOWN").upper(), StatusType.Pending),
-                startTime=_parse_timestamp(run.start_time or run.expected_start_time),
-                endTime=_parse_timestamp(run.end_time),
+                startTime=_as_timestamp(_parse_timestamp(run.start_time or run.expected_start_time)),
+                endTime=_as_timestamp(_parse_timestamp(run.end_time)),
             )
             for run in task_runs
             if id_to_name[run.id] in valid_names
@@ -399,8 +404,8 @@ class PrefectSource(PipelineServiceSource):
             pipeline_status = PipelineStatus(  # pyright: ignore[reportCallIssue]
                 executionStatus=om_status,
                 taskStatus=self._build_task_status(task_runs, valid_names),
-                timestamp=start_time,
-                endTime=end_time,
+                timestamp=Timestamp(start_time),
+                endTime=_as_timestamp(end_time),
             )
             statuses.append(pipeline_status)
         return statuses

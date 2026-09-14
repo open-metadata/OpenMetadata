@@ -23,6 +23,14 @@ export const TEST_CASE_STATUS_ICON = {
   Success: SuccessIcon,
 };
 
+export const TEST_CASE_DELETION_MODE = {
+  HARD: 'hard',
+  SOFT: 'soft',
+} as const;
+
+export type TestCaseDeletionMode =
+  (typeof TEST_CASE_DELETION_MODE)[keyof typeof TEST_CASE_DELETION_MODE];
+
 const moveItemsToEnd = <T>(arr: T[], predicate: (item: T) => boolean): T[] => {
   const keep: T[] = [];
   const move: T[] = [];

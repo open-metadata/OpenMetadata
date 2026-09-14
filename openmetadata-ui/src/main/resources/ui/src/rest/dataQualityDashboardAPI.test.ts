@@ -13,10 +13,12 @@
 /* eslint-disable max-len */
 import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
 import { EntityType } from '../enums/entity.enum';
+import { TestCaseType } from '../enums/TestSuite.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import {
   buildDataQualityDashboardFilters,
+  buildDataQualityTableFilters,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
   buildMustEsFilterForTier,
@@ -45,14 +47,58 @@ jest.mock('../utils/DataQuality/DataQualityPureUtils', () => ({
   buildMustEsFilterForTags: jest.fn(),
   buildMustEsFilterForTier: jest.fn(),
   buildDataQualityDashboardFilters: jest.fn().mockReturnValue([]),
+  buildDataQualityTableFilters: jest.fn().mockReturnValue([]),
   buildMustEsFilterForDataProducts: jest.fn(),
 }));
 
 describe('dataQualityDashboardAPI', () => {
   describe('fetchTotalEntityCount', () => {
+    it('should exclude column-only test case filters from the table count query', async () => {
+      const filters = {
+        dataQualityDimension: 'Completeness',
+        serviceName: 'sample_service',
+        testCaseStatus: TestCaseStatus.Success,
+        testCaseType: TestCaseType.column,
+        testPlatforms: ['OpenMetadata'],
+      };
+      const { buildDataQualityTableFilters: actualBuildFilters } =
+        jest.requireActual(
+          '../utils/DataQuality/DataQualityPureUtils'
+        ) as typeof import('../utils/DataQuality/DataQualityPureUtils');
+      (buildDataQualityTableFilters as jest.Mock).mockImplementationOnce(
+        actualBuildFilters
+      );
+
+      await fetchTotalEntityCount(filters);
+
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  term: {
+                    'service.name.keyword': 'sample_service',
+                  },
+                },
+                {
+                  term: {
+                    deleted: false,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'table',
+        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        domain: undefined,
+      });
+    });
+
     it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
       const filters = { ownerFqn: 'owner1' };
-      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+      (buildDataQualityTableFilters as jest.Mock).mockReturnValueOnce([
         {
           term: {
             'owners.fullyQualifiedName': 'owner1',
@@ -62,9 +108,8 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTotalEntityCount(filters);
 
-      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
-        filters: { ownerFqn: 'owner1' },
-        isTableApi: true,
+      expect(buildDataQualityTableFilters).toHaveBeenCalledWith({
+        ownerFqn: 'owner1',
       });
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
@@ -87,7 +132,7 @@ describe('dataQualityDashboardAPI', () => {
 
     it('should call getDataQualityReport with correct query when tags are provided', async () => {
       const filters = { tags: ['tag1', 'tag2'] };
-      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+      (buildDataQualityTableFilters as jest.Mock).mockReturnValueOnce([
         {
           bool: {
             should: [
@@ -124,7 +169,7 @@ describe('dataQualityDashboardAPI', () => {
 
     it('should call getDataQualityReport with correct query when tier is provided', async () => {
       const filters = { tier: ['tier1', 'tier2'] };
-      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+      (buildDataQualityTableFilters as jest.Mock).mockReturnValueOnce([
         {
           bool: {
             should: [
@@ -161,7 +206,7 @@ describe('dataQualityDashboardAPI', () => {
 
     it('should call getDataQualityReport with correct query when all filters are provided', async () => {
       const filters = { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] };
-      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+      (buildDataQualityTableFilters as jest.Mock).mockReturnValueOnce([
         {
           term: {
             'owners.fullyQualifiedName': 'owner1',
@@ -181,9 +226,10 @@ describe('dataQualityDashboardAPI', () => {
 
       await fetchTotalEntityCount(filters);
 
-      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
-        filters: { ownerFqn: 'owner1', tags: ['tag1'], tier: ['tier1'] },
-        isTableApi: true,
+      expect(buildDataQualityTableFilters).toHaveBeenCalledWith({
+        ownerFqn: 'owner1',
+        tags: ['tag1'],
+        tier: ['tier1'],
       });
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
@@ -412,6 +458,122 @@ describe('dataQualityDashboardAPI', () => {
     },
   ];
 
+  describe('fetchEntityCoveredWithDQ status filtering', () => {
+    const filters = {
+      serviceName: 'sample_service',
+      testCaseStatus: TestCaseStatus.Success,
+    };
+    const { buildDataQualityDashboardFilters: actualBuildFilters } =
+      jest.requireActual(
+        '../utils/DataQuality/DataQualityPureUtils'
+      ) as typeof import('../utils/DataQuality/DataQualityPureUtils');
+
+    it('should exclude the selected status from the covered asset query', async () => {
+      (buildDataQualityDashboardFilters as jest.Mock).mockImplementationOnce(
+        actualBuildFilters
+      );
+
+      await fetchEntityCoveredWithDQ(filters, false);
+
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  term: {
+                    'service.name.keyword': 'sample_service',
+                  },
+                },
+                {
+                  term: {
+                    deleted: false,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'testCase',
+        aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
+        domain: undefined,
+      });
+    });
+
+    it('should use only failed statuses for the unhealthy asset query', async () => {
+      (buildDataQualityDashboardFilters as jest.Mock).mockImplementationOnce(
+        actualBuildFilters
+      );
+
+      await fetchEntityCoveredWithDQ(filters, true);
+
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  terms: {
+                    'testCaseResult.testCaseStatus': ['Failed', 'Aborted'],
+                  },
+                },
+                {
+                  term: {
+                    'service.name.keyword': 'sample_service',
+                  },
+                },
+                {
+                  term: {
+                    deleted: false,
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'testCase',
+        aggregationQuery: `bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN`,
+        domain: undefined,
+      });
+    });
+  });
+
+  describe('fetchTestCaseSummary status filtering', () => {
+    it('should send a terms query to the batch report for multiple statuses', async () => {
+      const statuses = [TestCaseStatus.Success, TestCaseStatus.Queued];
+      const { buildDataQualityDashboardFilters: actualBuildFilters } =
+        jest.requireActual(
+          '../utils/DataQuality/DataQualityPureUtils'
+        ) as typeof import('../utils/DataQuality/DataQualityPureUtils');
+      (buildDataQualityDashboardFilters as jest.Mock).mockImplementationOnce(
+        actualBuildFilters
+      );
+
+      await fetchTestCaseSummary({ testCaseStatus: statuses });
+
+      expect(batchedDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                {
+                  terms: {
+                    'testCaseResult.testCaseStatus': statuses,
+                  },
+                },
+                { term: { deleted: false } },
+              ],
+            },
+          },
+        }),
+        index: 'testCase',
+        aggregationQuery:
+          'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+        domain: undefined,
+      });
+    });
+  });
+
   testCases.map((testData) => {
     describe(`${testData.functionName}`, () => {
       it('should call getDataQualityReport with correct query when ownerFqn is provided', async () => {
@@ -535,11 +697,15 @@ describe('dataQualityDashboardAPI', () => {
           query: { term: { 'owners.name': 'owner1' } },
         },
       };
-      (buildMustEsFilterForOwner as jest.Mock).mockReturnValueOnce(ownerFilter);
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        ownerFilter,
+      ]);
 
       await fetchTestCaseSummaryByNoDimension({ ownerFqn: 'owner1' });
 
-      expect(buildMustEsFilterForOwner).toHaveBeenCalledWith('owner1');
+      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+        filters: { ownerFqn: 'owner1' },
+      });
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -569,11 +735,15 @@ describe('dataQualityDashboardAPI', () => {
           },
         },
       };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        tagsFilter,
+      ]);
 
       await fetchTestCaseSummaryByNoDimension({ tags: ['tag1', 'tag2'] });
 
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1', 'tag2']);
+      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+        filters: { tags: ['tag1', 'tag2'] },
+      });
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -596,12 +766,15 @@ describe('dataQualityDashboardAPI', () => {
           minimum_should_match: 1,
         },
       };
-      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        tierFilter,
+      ]);
 
       await fetchTestCaseSummaryByNoDimension({ tier: ['Tier.Tier1'] });
 
-      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
-      expect(buildMustEsFilterForTags).not.toHaveBeenCalled();
+      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+        filters: { tier: ['Tier.Tier1'] },
+      });
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -634,16 +807,19 @@ describe('dataQualityDashboardAPI', () => {
           minimum_should_match: 1,
         },
       };
-      (buildMustEsFilterForTags as jest.Mock).mockReturnValueOnce(tagsFilter);
-      (buildMustEsFilterForTier as jest.Mock).mockReturnValueOnce(tierFilter);
+      (buildDataQualityDashboardFilters as jest.Mock).mockReturnValueOnce([
+        tagsFilter,
+        tierFilter,
+      ]);
 
       await fetchTestCaseSummaryByNoDimension({
         tags: ['tag1'],
         tier: ['Tier.Tier1'],
       });
 
-      expect(buildMustEsFilterForTags).toHaveBeenCalledWith(['tag1']);
-      expect(buildMustEsFilterForTier).toHaveBeenCalledWith(['Tier.Tier1']);
+      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+        filters: { tags: ['tag1'], tier: ['Tier.Tier1'] },
+      });
       expect(batchedDataQualityReport).toHaveBeenCalledWith({
         q: JSON.stringify({
           query: {
@@ -693,6 +869,33 @@ describe('dataQualityDashboardAPI', () => {
           }),
         })
       );
+    });
+
+    it('should apply all test-case filters except the dimension itself', async () => {
+      const filters = {
+        dataQualityDimension: 'Accuracy',
+        entityFQN: 'service.db.schema.table',
+        serviceName: 'service',
+        startTs: 100,
+        endTs: 200,
+        testCaseStatus: TestCaseStatus.Success,
+        testCaseType: TestCaseType.table,
+        testPlatforms: ['OpenMetadata'],
+      };
+
+      await fetchTestCaseSummaryByNoDimension(filters);
+
+      expect(buildDataQualityDashboardFilters).toHaveBeenCalledWith({
+        filters: {
+          entityFQN: 'service.db.schema.table',
+          serviceName: 'service',
+          startTs: 100,
+          endTs: 200,
+          testCaseStatus: TestCaseStatus.Success,
+          testCaseType: TestCaseType.table,
+          testPlatforms: ['OpenMetadata'],
+        },
+      });
     });
   });
 

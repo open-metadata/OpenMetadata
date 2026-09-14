@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+const TEXT_8PX_CLASS = 'tw:text-[8px]';
+
 export const AVATAR_SIZE_CLASS_MAP: Record<number, string> = {
   16: 'tw:w-4 tw:h-4',
   18: 'tw:w-4.5 tw:h-4.5',
@@ -39,9 +41,9 @@ export const AVATAR_SIZE_NAME_MAP: Record<
 };
 
 export const AVATAR_FONT_SIZE_MAP: Record<number, string> = {
-  16: 'tw:text-[8px]',
-  18: 'tw:text-[8px]',
-  20: 'tw:text-[8px]',
+  16: TEXT_8PX_CLASS,
+  18: TEXT_8PX_CLASS,
+  20: TEXT_8PX_CLASS,
   24: 'tw:text-[10px]',
   32: 'tw:text-xs',
   40: 'tw:text-base',

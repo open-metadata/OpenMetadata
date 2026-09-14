@@ -404,10 +404,23 @@ const getFocusedMarkdown = (
   return fieldMarkdown || markdownContent;
 };
 
-const getConnectorDocsUrl = (markdownContent: string) => {
-  const docsPath = markdownContent.match(
-    /https:\/\/docs\.open-metadata\.org\/(?:latest\/|v[\d.x]+\/)?connectors\/([^"'\s)]+)/
-  )?.[1];
+const normalizeConnectorSlug = (value: string) =>
+  value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+const getConnectorDocsUrl = (markdownContent: string, serviceName: string) => {
+  const paths = [
+    ...markdownContent.matchAll(
+      /https:\/\/docs\.open-metadata\.org\/(?:latest\/|v[\d.x]+\/)?connectors\/([^"'\s)]+)/g
+    ),
+  ].map((match) => match[1]);
+
+  const normalizedServiceName = normalizeConnectorSlug(serviceName);
+  const docsPath =
+    paths.find(
+      (path) =>
+        normalizeConnectorSlug(path.split('/').pop() ?? '') ===
+        normalizedServiceName
+    ) ?? paths[0];
 
   return docsPath ? `${CONNECTORS_DOCS}/${docsPath}` : CONNECTORS_DOCS;
 };
@@ -483,6 +496,83 @@ const AuthGuidance = ({
     </div>
   </div>
 );
+
+const buildSectionDocDetails = (
+  section: FocusedSection,
+  activeFieldMarkdown: string,
+  hasAuthMethodGuidance: boolean,
+  t: TFunction
+): FocusedDocDetails => {
+  const sectionCopy = SECTION_DOC_COPY[section];
+  const showAuthGuidance =
+    section === 'authentication' && hasAuthMethodGuidance;
+
+  return {
+    eyebrow: t(sectionCopy.eyebrow),
+    title: t(sectionCopy.title),
+    description: t(sectionCopy.description, {
+      brandName: process.env.BRAND_NAME ?? 'OpenMetadata',
+    }),
+    markdown: section === 'identity' ? '' : activeFieldMarkdown,
+    showRequirements: section === 'connection',
+    beforeRequirements: showAuthGuidance ? (
+      <AuthGuidance
+        keyPairDescription={t('message.key-pair-auth-doc-description')}
+        keyPairLabel={t('label.key-pair')}
+        passwordDescription={t('message.password-auth-doc-description')}
+        passwordLabel={t('label.password')}
+      />
+    ) : undefined,
+  };
+};
+
+const buildFieldDocDetails = (
+  activeFieldName: string | undefined,
+  activeFieldMarkdown: string,
+  activeFieldMeta: ServiceDocPanelProp['activeFieldMeta'],
+  isWorkflow: boolean | undefined,
+  t: TFunction
+): FocusedDocDetails => {
+  const fieldTitle = getMarkdownHeading(activeFieldMarkdown);
+  const fieldBody = stripLeadingMarkdownHeading(activeFieldMarkdown);
+
+  if (activeFieldName && !activeFieldMarkdown) {
+    return {
+      eyebrow: getSectionEyebrow(
+        activeFieldName,
+        isWorkflow,
+        t,
+        activeFieldMeta?.section
+      ),
+      title: activeFieldMeta?.title ?? startCase(activeFieldName),
+      description:
+        activeFieldMeta?.description ??
+        t('message.openmetadata-docs-description'),
+      markdown: '',
+      showRequirements: false,
+    };
+  }
+
+  const fallbackTitle = activeFieldName
+    ? startCase(activeFieldName)
+    : t('label.setup-guide');
+  const hasFieldContent = fieldBody || fieldTitle;
+
+  return {
+    eyebrow: getSectionEyebrow(
+      activeFieldName,
+      isWorkflow,
+      t,
+      activeFieldMeta?.section
+    ),
+    title: fieldTitle ?? fallbackTitle,
+    description: hasFieldContent
+      ? t('message.focused-docs-fallback-description')
+      : t('message.openmetadata-docs-description'),
+    markdown: fieldBody,
+    showRequirements: !activeFieldName,
+  };
+};
 
 const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   serviceType,
@@ -669,65 +759,21 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     );
 
     if (section) {
-      const sectionCopy = SECTION_DOC_COPY[section];
-
-      return {
-        eyebrow: t(sectionCopy.eyebrow),
-        title: t(sectionCopy.title),
-        description: t(sectionCopy.description, {
-          brandName: process.env.BRAND_NAME ?? 'OpenMetadata',
-        }),
-        markdown: section === 'identity' ? '' : activeFieldMarkdown,
-        showRequirements: section === 'connection',
-        beforeRequirements:
-          section === 'authentication' && hasAuthMethodGuidance ? (
-            <AuthGuidance
-              keyPairDescription={t('message.key-pair-auth-doc-description')}
-              keyPairLabel={t('label.key-pair')}
-              passwordDescription={t('message.password-auth-doc-description')}
-              passwordLabel={t('label.password')}
-            />
-          ) : undefined,
-      };
+      return buildSectionDocDetails(
+        section,
+        activeFieldMarkdown,
+        hasAuthMethodGuidance,
+        t
+      );
     }
 
-    const fieldTitle = getMarkdownHeading(activeFieldMarkdown);
-    const fieldBody = stripLeadingMarkdownHeading(activeFieldMarkdown);
-
-    if (activeFieldName && !activeFieldMarkdown) {
-      return {
-        eyebrow: getSectionEyebrow(
-          activeFieldName,
-          isWorkflow,
-          t,
-          activeFieldMeta?.section
-        ),
-        title: activeFieldMeta?.title ?? startCase(activeFieldName),
-        description:
-          activeFieldMeta?.description ??
-          t('message.openmetadata-docs-description'),
-        markdown: '',
-        showRequirements: false,
-      };
-    }
-
-    return {
-      eyebrow: getSectionEyebrow(
-        activeFieldName,
-        isWorkflow,
-        t,
-        activeFieldMeta?.section
-      ),
-      title:
-        fieldTitle ??
-        (activeFieldName ? startCase(activeFieldName) : t('label.setup-guide')),
-      description:
-        fieldBody || fieldTitle
-          ? t('message.focused-docs-fallback-description')
-          : t('message.openmetadata-docs-description'),
-      markdown: fieldBody,
-      showRequirements: !activeFieldName,
-    };
+    return buildFieldDocDetails(
+      activeFieldName,
+      activeFieldMarkdown,
+      activeFieldMeta,
+      isWorkflow,
+      t
+    );
   }, [
     activeFieldMarkdown,
     activeFieldMeta,
@@ -753,8 +799,8 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   const connectorDocsUrl = useMemo(
-    () => getConnectorDocsUrl(markdownContent),
-    [markdownContent]
+    () => getConnectorDocsUrl(markdownContent, serviceName),
+    [markdownContent, serviceName]
   );
 
   const docsPanel = useMemo(() => {

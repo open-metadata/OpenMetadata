@@ -13,9 +13,14 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Table as TableType } from '../../generated/entity/data/table';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
+import { getNameFromFQN } from '../../utils/FqnUtils';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
+import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import IncidentManagerTable, {
   IncidentManagerTableProps,
 } from './IncidentManagerTable.component';
@@ -88,6 +93,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    // TooltipTrigger renders a real <button> wrapping its child (matching the
+    // real component), so DOM-nesting assertions below reflect the actual
+    // <button><a>...</a></button> structure the app produces.
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
   };
 });
 
@@ -292,12 +310,107 @@ describe('IncidentManagerTable', () => {
     expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData });
   });
 
-  it('should truncate the table link and expose the full name via title', () => {
+  it('should wrap the truncated table link in a Tooltip showing the table FQN', () => {
+    renderTable();
+
+    const tooltip = screen.getAllByTestId('tooltip')[0];
+    const tableLink = screen.getAllByTestId('table-link')[0];
+
+    // The trigger is a real anchor (a Link), wrapped in TooltipTrigger's
+    // <button> so hover/focus opens the tooltip - this deliberately nests
+    // <a> inside <button> (known, tracked separately on the shared
+    // component library side, not fixed here).
+    expect(tableLink.tagName).toBe('A');
+    expect(tableLink.parentElement?.tagName).toBe('BUTTON');
+    expect(tableLink).not.toHaveAttribute('title');
+    expect(tableLink).toHaveClass('tw:truncate');
+
+    // Tooltip shows the table's own FQN (Service.Database.Schema.Table, as
+    // returned by getPartialNameFromTableFQN), not the test case's FQN -
+    // the test case reference's fullyQualifiedName has the test case name
+    // appended and must not leak into the tooltip.
+    expect(tooltip).toHaveAttribute('title', 'PartialName');
+  });
+
+  it('should fall back to fullyQualifiedName when getNameFromFQN returns an empty string', () => {
+    (getNameFromFQN as jest.Mock).mockReturnValueOnce('');
+
     renderTable();
 
     const tableLink = screen.getAllByTestId('table-link')[0];
 
-    expect(tableLink).toHaveAttribute('title', 'NameFromFQN');
-    expect(tableLink).toHaveClass('tw:truncate');
+    // Should not render blank - falls back to ref.fullyQualifiedName via `||`
+    expect(tableLink).toHaveTextContent(
+      mockRecords[0].testCaseReference?.fullyQualifiedName ?? ''
+    );
+  });
+
+  it('should link the table trigger to the table profiler page', () => {
+    renderTable();
+
+    const tableLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) => props['data-testid'] === 'table-link'
+    );
+
+    expect(tableLinkCall?.[0].to).toEqual('entity-details-path');
+  });
+
+  describe('per-row permission wiring', () => {
+    const grantedPermissions: TestCasePermission[] = [
+      {
+        fullyQualifiedName: 'svc.db.schema.table.test_case_1',
+        EditAll: true,
+      } as TestCasePermission,
+    ];
+
+    it('grants edit access on the matching row when EditAll is true and the origin table is not deleted', () => {
+      renderTable({ testCasePermissions: grantedPermissions });
+
+      expect(Severity).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: true }),
+        expect.anything()
+      );
+      expect(TestCaseIncidentManagerStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: true }),
+        expect.anything()
+      );
+      expect(OwnerLabel).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: true }),
+        expect.anything()
+      );
+    });
+
+    it('denies edit access on the granted row when the origin table is soft-deleted, even with EditAll true', () => {
+      // Isolated to the single row that actually has a granted permissions entry — a second,
+      // unmatched row would fall back to DEFAULT_ENTITY_PERMISSION (already all-false) and
+      // mask a broken deleted-gating (toHaveBeenCalledWith only needs one matching call).
+      renderTable({
+        testCaseListData: { data: [mockRecords[0]], isLoading: false },
+        testCasePermissions: grantedPermissions,
+        tableDetails: { deleted: true } as TableType,
+      });
+
+      expect(Severity).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: false }),
+        expect.anything()
+      );
+      expect(TestCaseIncidentManagerStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: false }),
+        expect.anything()
+      );
+      expect(OwnerLabel).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: false }),
+        expect.anything()
+      );
+    });
+
+    it('denies edit access on a row with no matching permissions entry', () => {
+      renderTable({ testCasePermissions: [] });
+
+      expect(Severity).toHaveBeenCalledWith(
+        expect.objectContaining({ hasPermission: false }),
+        expect.anything()
+      );
+    });
   });
 });

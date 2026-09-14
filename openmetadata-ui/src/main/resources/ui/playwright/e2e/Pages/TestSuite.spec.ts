@@ -28,7 +28,7 @@ import {
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   removeSingleSelectDomain,
   toastNotification,
@@ -41,7 +41,6 @@ import {
 } from '../../utils/dataQuality';
 import {
   addMultiOwner,
-  escapeESReservedCharacters,
   removeOwnersFromList,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -159,8 +158,7 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
         '/api/v1/dataQuality/testSuites/search/list'
       ) &&
       responseUrl.searchParams.get('testSuiteType') === 'logical' &&
-      responseUrl.searchParams.get('q') ===
-        `*${escapeESReservedCharacters(bundleSuiteName)}*`
+      responseUrl.searchParams.get('q') === bundleSuiteName
     );
   });
 
@@ -207,7 +205,7 @@ test(
       await page
         .locator('[data-testid="test-suite-name"] input')
         .fill(NEW_TEST_SUITE.name);
-      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await fillDescriptionBox(page, NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }

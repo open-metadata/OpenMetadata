@@ -101,7 +101,7 @@ export const CustomizeDetailsPage = ({
               permissions={{} as OperationPermission}
               onDisplayNameUpdate={asyncNoop}
               onOwnerUpdate={asyncNoop}
-              onRestoreDataAsset={asyncNoop}
+              onRestoreDataAsset={async () => true}
               onTierUpdate={asyncNoop}
             />
           </Col>
