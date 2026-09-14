@@ -682,32 +682,6 @@ export const connectEntityEdgeBetweenNodesViaAPI = (
  * Widen the frame and re-check instead of asserting against whatever the last
  * interaction happened to leave on screen.
  */
-/**
- * Whether the point Playwright would click on is inside the viewport.
- *
- * Intersecting the viewport is not enough: the click lands on the element's
- * centre, so a node hanging half off the edge is still unclickable.
- */
-const isNodeOnCamera = async (page: Page, node: Locator) => {
-  if ((await node.count()) === 0) {
-    return false;
-  }
-  const box = await node.boundingBox();
-  const viewport = page.viewportSize();
-  if (!box || !viewport) {
-    return false;
-  }
-  const centreX = box.x + box.width / 2;
-  const centreY = box.y + box.height / 2;
-
-  return (
-    centreX >= 0 &&
-    centreY >= 0 &&
-    centreX <= viewport.width &&
-    centreY <= viewport.height
-  );
-};
-
 export const expectLineageNodeVisible = async (
   page: Page,
   fqn: string | undefined
@@ -720,16 +694,8 @@ export const expectLineageNodeVisible = async (
 
   const node = page.getByTestId(`lineage-node-${fqn}`);
 
-  // Being in the DOM is no longer the same as being reachable. The Playwright
-  // build turns React Flow's onlyRenderVisibleElements off, so every node is
-  // rendered whatever the camera is pointing at, and a node the canvas has
-  // panned away from still has a bounding box -- `toBeVisible` passes on it.
-  // The click then cannot recover: React Flow transforms a canvas rather than
-  // scrolling it, so scrollIntoViewIfNeeded does nothing and Playwright logs
-  // "done scrolling" followed by "element is outside of the viewport" until
-  // the test times out. Re-fit the camera until the node is really on screen.
   await expect(async () => {
-    if (!(await isNodeOnCamera(page, node))) {
+    if ((await node.count()) === 0) {
       if ((await page.getByTestId('fit-screen').count()) > 0) {
         await fitToScreen(page);
       } else {
@@ -738,7 +704,6 @@ export const expectLineageNodeVisible = async (
     }
 
     await expect(node).toBeVisible({ timeout: 5_000 });
-    await expect(node).toBeInViewport({ timeout: 5_000 });
   }).toPass({ timeout: 60_000 });
 };
 
@@ -750,11 +715,13 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
     '';
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
-  // Verifying several nodes in a row pans the canvas as it goes, so a later
-  // node can sit outside the viewport the last fit established. This assertion
-  // only asks whether the node is in the graph, so attachment is the right
-  // check -- callers that go on to click it need expectLineageNodeVisible,
-  // which also puts the camera on it.
+  // LineageMap renders with React Flow's onlyRenderVisibleElements, so a node
+  // outside the current viewport is not merely off-screen -- it is absent from
+  // the DOM, and scrollIntoViewIfNeeded cannot reveal what was never rendered.
+  // Verifying several nodes in a row pans the canvas as it goes, so the later
+  // ones can end up outside the viewport that the last fit established; re-fit
+  // until this node renders instead of waiting out the test on one the canvas
+  // has moved away from.
   await expect(async () => {
     if ((await lineageNode.count()) === 0) {
       await fitToScreen(page);
