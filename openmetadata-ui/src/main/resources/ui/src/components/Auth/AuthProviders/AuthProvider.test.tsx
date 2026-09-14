@@ -601,6 +601,107 @@ describe('Test axios response interceptor', () => {
     expect(mockAxios).toHaveBeenCalledWith(mockError.config);
     expect(result).toEqual({ data: 'ok' });
   });
+
+  // A non-positive configured token validity mints a JWT whose exp equals its iat, so
+  // /auth/refresh answers 200 with a token that is already dead. Retrying it 401s and
+  // drives another refresh: the UI spun forever with no error. Fail the cycle instead.
+  it('should not retry when the refreshed token is already expired', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'retried' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('deadOnArrivalToken');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: 1789075036,
+      isExpired: true,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: { message: 'Expired token!' },
+      },
+      config: {
+        url: '/tables/name/foo',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    await expect(errorHandler?.(mockError)).rejects.toBe(mockError);
+
+    // One refresh attempt, no retry with the dead token, and no second cycle.
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mockAxios).not.toHaveBeenCalled();
+
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: 0,
+      isExpired: true,
+      timeoutExpiry: 0,
+    });
+  });
+
+  it('should not reset opaque-token refresh cycles for unrelated successful responses', async () => {
+    const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+    const mockAxios = jest.fn().mockResolvedValue({ data: 'recovered' });
+
+    jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+    mockRefreshToken.mockReset();
+    mockRefreshToken.mockResolvedValue('opaqueToken');
+    mockExtractDetailsFromToken.mockReturnValue({
+      exp: undefined,
+      isExpired: false,
+      timeoutExpiry: 0,
+    });
+
+    await act(async () => {
+      render(<WrapperComponent />);
+    });
+
+    const [successHandler, errorHandler] = mockUse.mock.calls[0];
+    const mockError = {
+      response: {
+        status: 401,
+        data: { message: 'Expired token!' },
+      },
+      config: {
+        url: '/tables/name/foo',
+        headers: {},
+        baseURL: '',
+      },
+    };
+
+    // Establish a recovered cycle so this assertion does not depend on module state
+    // left by an earlier test or login attempt.
+    await expect(errorHandler?.(mockError)).resolves.toEqual({
+      data: 'recovered',
+    });
+
+    mockAxios.mockClear();
+    mockRefreshToken.mockClear();
+
+    let retryAttempts = 0;
+    mockAxios.mockImplementation(() => {
+      successHandler?.({ data: 'unrelated' } as AxiosResponse);
+      retryAttempts += 1;
+
+      return retryAttempts < 4
+        ? errorHandler?.(mockError)
+        : Promise.reject(mockError);
+    });
+
+    await expect(errorHandler?.(mockError)).rejects.toBe(mockError);
+
+    expect(mockRefreshToken).toHaveBeenCalledTimes(3);
+    expect(mockAxios).toHaveBeenCalledTimes(3);
+  });
 });
 
 // Regression tests for the visibility handler. Before this branch every
