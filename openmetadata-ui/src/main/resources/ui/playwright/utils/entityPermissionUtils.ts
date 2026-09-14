@@ -97,18 +97,26 @@ const checkElementVisibility = async (
               .locator(`button[data-testid="${testId}"]`)
           ) || [];
 
-        const containerButtons = await Promise.all(
-          containerLocators.map((locator) => locator.all())
-        );
+        // `.all()` resolves against whatever is in the DOM at that instant --
+        // unlike `expect(locator)`, it does not auto-wait. The containers and
+        // their buttons mount asynchronously, so on a loaded CI runner the list
+        // came back empty and `.some()` failed outright rather than waiting
+        // (chromium-14, "Topic allow common operations permissions"). Retry the
+        // whole read so the assertion measures the settled page.
+        await expect(async () => {
+          const containerButtons = await Promise.all(
+            containerLocators.map((locator) => locator.all())
+          );
 
-        const containerVisibilityChecks = await Promise.all(
-          containerButtons.flat().map((button) => button.isVisible())
-        );
+          const containerVisibilityChecks = await Promise.all(
+            containerButtons.flat().map((button) => button.isVisible())
+          );
 
-        // In allow case: any one of the matched buttons should be visible
-        expect(
-          containerVisibilityChecks.some((visible) => visible)
-        ).toBeTruthy();
+          // In allow case: any one of the matched buttons should be visible
+          expect(
+            containerVisibilityChecks.some((visible) => visible)
+          ).toBeTruthy();
+        }).toPass({ timeout: 15_000 });
 
         break;
       }
