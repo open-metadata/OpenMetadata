@@ -902,4 +902,14 @@ public interface SearchClient
   default void invalidateLineageCache(String fqn) {
     // Default no-op; concrete clients delegate to their LineageGraphBuilder cache
   }
+
+  /**
+   * Evicts the search-side RBAC query cache. The cache is keyed on the user's team/role membership,
+   * so a membership or policy change must drop those cached queries or access-controlled
+   * search/browse keeps reflecting the previous membership until the write expiry (#33137).
+   * Default no-op: backends without an RBAC query cache (e.g. Elasticsearch) have nothing to drop.
+   */
+  default void invalidateRbacCache() {
+    // Default no-op; concrete clients with an RBAC query cache override this.
+  }
 }
