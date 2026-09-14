@@ -221,3 +221,51 @@ def test_bigquery_time_unit_partition_default_intervals():
     assert partition.partitionInterval == 24, (
         "HOUR-granularity TIME_UNIT partitions should default to a 24-hour window."
     )
+
+    # MONTH granularity → 35-day window
+    month_entity = MockTable(
+        tablePartition=TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName="report_month",
+                    intervalType=PartitionIntervalTypes.TIME_UNIT,
+                    interval="MONTH",
+                )
+            ]
+        ),
+        tableProfilerConfig=None,
+    )
+    partition = get_partition_details(month_entity)
+
+    assert partition.enablePartitioning is True
+    assert partition.partitionColumnName == "report_month"
+    assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
+    assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY
+    assert partition.partitionInterval == 35, (
+        "MONTH-granularity TIME_UNIT partitions need a 35-day window so the most-recent "
+        "monthly partition (which may be 31+ days old mid-cycle) is still sampled."
+    )
+
+    # YEAR granularity → 370-day window
+    year_entity = MockTable(
+        tablePartition=TablePartition(
+            columns=[
+                PartitionColumnDetails(
+                    columnName="report_year",
+                    intervalType=PartitionIntervalTypes.TIME_UNIT,
+                    interval="YEAR",
+                )
+            ]
+        ),
+        tableProfilerConfig=None,
+    )
+    partition = get_partition_details(year_entity)
+
+    assert partition.enablePartitioning is True
+    assert partition.partitionColumnName == "report_year"
+    assert partition.partitionIntervalType == PartitionIntervalTypes.TIME_UNIT
+    assert partition.partitionIntervalUnit == PartitionIntervalUnit.DAY
+    assert partition.partitionInterval == 370, (
+        "YEAR-granularity TIME_UNIT partitions need a 370-day window so the current "
+        "yearly partition (up to ~365 days old at year-end) is still sampled."
+    )
