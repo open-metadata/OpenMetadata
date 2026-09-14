@@ -23,8 +23,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { startCase, uniq } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { debounce, startCase, uniq } from 'lodash';
+import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -95,6 +95,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   const [validationError, setValidationError] = useState('');
   const [isValidatingCondition, setIsValidating] = useState(false);
   const [isValidCondition, setIsValidCondition] = useState(false);
+  const currentConditionRef = useRef<string>('');
 
   const resourceItems = useMemo<SelectItemType[]>(() => {
     const resources = policyResources.filter(
@@ -233,42 +234,63 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   );
 
   const handleConditionSearch = (value: string) => {
-    if (value) {
-      setConditionOptions((prev) =>
-        prev.filter((opt) => opt.label?.includes(value))
-      );
-    } else {
-      setConditionOptions(buildConditionOptions(policyFunctions));
-    }
+    const allOptions = buildConditionOptions(policyFunctions);
+    setConditionOptions(
+      value ? allOptions.filter((opt) => opt.label?.includes(value)) : allOptions
+    );
   };
 
-  const handleConditionValidation = async (condition: string) => {
-    const defaultErrorText = t('message.field-text-is-invalid', {
-      fieldText: t('label.condition'),
-    });
+  const debouncedConditionValidation = useMemo(
+    () =>
+      debounce(async (condition: string) => {
+        const defaultErrorText = t('message.field-text-is-invalid', {
+          fieldText: t('label.condition'),
+        });
 
-    if (condition) {
-      setIsValidating(true);
-      try {
-        const response = await validateRuleCondition(condition);
-        const isOk = [200, 204].includes(response.status);
-        if (isOk) {
-          setValidationError('');
-          setIsValidCondition(true);
-        } else {
-          setValidationError(defaultErrorText);
+        if (condition !== currentConditionRef.current) {
+          return;
         }
-      } catch (error) {
-        setValidationError(getErrorText(error as AxiosError, defaultErrorText));
-        setIsValidCondition(false);
-      } finally {
-        setIsValidating(false);
-      }
-    } else {
-      setValidationError('');
-      setIsValidCondition(false);
-    }
-  };
+
+        if (condition) {
+          setIsValidating(true);
+          try {
+            const response = await validateRuleCondition(condition);
+            if (condition !== currentConditionRef.current) {
+              return;
+            }
+            const isOk = [200, 204].includes(response.status);
+            if (isOk) {
+              setValidationError('');
+              setIsValidCondition(true);
+            } else {
+              setValidationError(defaultErrorText);
+            }
+          } catch (error) {
+            if (condition !== currentConditionRef.current) {
+              return;
+            }
+            setValidationError(
+              getErrorText(error as AxiosError, defaultErrorText)
+            );
+            setIsValidCondition(false);
+          } finally {
+            if (condition === currentConditionRef.current) {
+              setIsValidating(false);
+            }
+          }
+        } else {
+          setValidationError('');
+          setIsValidCondition(false);
+        }
+      }, 300),
+    // t is stable from react-i18next; deps intentionally minimal to keep one debounced instance
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  useEffect(() => {
+    return () => debouncedConditionValidation.cancel();
+  }, [debouncedConditionValidation]);
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -422,13 +444,15 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
               setIsValidCondition(false);
             }
             handleConditionSearch(value);
-            handleConditionValidation(value);
+            currentConditionRef.current = value;
+            debouncedConditionValidation(value);
           }}
           onSelectionChange={(key) => {
             if (key) {
               const val = String(key);
               setRuleData((prev: Rule) => ({ ...prev, condition: val }));
-              handleConditionValidation(val);
+              currentConditionRef.current = val;
+              debouncedConditionValidation(val);
             }
           }}>
           {(item) => (

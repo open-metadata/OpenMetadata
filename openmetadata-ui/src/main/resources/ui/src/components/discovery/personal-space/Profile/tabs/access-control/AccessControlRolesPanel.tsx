@@ -25,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, uniqueId } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -180,7 +180,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   }, [pageSize]);
 
   const renderPolicyItem = (policy: EntityReference) => {
-    const key = uniqueId();
+    const key = policy.id ?? policy.fullyQualifiedName ?? policy.name;
 
     if (!viewPolicyPermission) {
       return (
