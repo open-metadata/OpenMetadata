@@ -954,9 +954,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
     LOG.info("Starting MinIO Testcontainer on-demand...");
     // Pin the MinIO image to a known-good release so a newly-published :latest tag
-    // cannot break integration tests without a code change.
+    // cannot break integration tests without a code change. Pull from quay.io: MinIO
+    // deleted the minio/minio repository from Docker Hub, and Docker Hub reports a
+    // removed repository as "pull access denied ... may require 'docker login'".
     MINIO_CONTAINER =
-        new GenericContainer<>("minio/minio:RELEASE.2024-01-16T16-07-38Z")
+        new GenericContainer<>("quay.io/minio/minio:RELEASE.2024-01-16T16-07-38Z")
             .withExposedPorts(9000)
             .withEnv("MINIO_ROOT_USER", "minio")
             .withEnv("MINIO_ROOT_PASSWORD", "minio123")

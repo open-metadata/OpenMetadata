@@ -455,20 +455,24 @@ test.describe(
       });
 
       await test.step('Select Status field and == operator', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field'),
+          ruleLocator.getByTestId('advanced-search-field-select'),
           'Status',
           true
         );
-        await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
+        await selectOption(
+          page,
+          ruleLocator.getByTestId('advanced-search-operator-select'),
+          '=='
+        );
       });
 
       await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
+        const ruleLocator = page.getByTestId('query-builder-rule-0');
         const triggerBtn = ruleLocator.locator(
-          '.widget--widget button[aria-haspopup="listbox"]'
+          '[data-testid=advanced-search-value] button[aria-haspopup="listbox"]'
         );
 
         await expect(triggerBtn).toBeVisible();
@@ -511,7 +515,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -575,7 +579,7 @@ test.describe(
           ruleIndex: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -616,7 +620,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -740,7 +744,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -783,7 +787,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -825,7 +829,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -867,7 +871,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -911,7 +915,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -954,7 +958,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -1307,7 +1311,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1382,7 +1386,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1457,7 +1461,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1499,7 +1503,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1541,7 +1545,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1640,34 +1644,36 @@ test.describe(
       await sidebarClick(page, SidebarItem.EXPLORE);
       await showAdvancedSearchDialog(page);
 
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
+      // Each drill level gets its own control in the row, suffixed by depth:
+      // Custom Properties -> Table -> the property.
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Custom Properties',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-1'),
         'Table',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         enumCPName,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         'Equals'
       );
 
       const comboboxInput = ruleLocator.locator(
-        '.rule--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       await expect(comboboxInput).toBeVisible({ timeout: 15000 });
@@ -1700,7 +1706,7 @@ test.describe(
 
       // Type to search — asyncFetch filters the full values array, not just the loaded page
       const searchInput = ruleLocator.locator(
-        '.rule--widget input[role="combobox"]'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
       await searchInput.fill(SECOND_PAGE_VALUE);
