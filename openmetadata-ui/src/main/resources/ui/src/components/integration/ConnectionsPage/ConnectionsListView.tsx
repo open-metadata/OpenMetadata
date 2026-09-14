@@ -14,6 +14,7 @@
 import {
   Button,
   EmptyPlaceholder,
+  Owner,
   PaginationCardWithControls,
   Table,
   Toggle,
@@ -40,8 +41,8 @@ import {
   SlotContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import ConnectionsFilterButton from './ConnectionsFilterButton';
@@ -421,11 +422,11 @@ const ConnectionsListView: React.FC<ConnectionsListViewProps> = ({
               on the "no owners" dash, making the column look unclickable. `showLabel` is dropped
               because it only applies to the non-compact layout. */}
           <div role="presentation" onClick={stopPropagationIfInteractive}>
-            <OwnerLabel
+            <Owner
               isCompactView
               showDashPlaceholder
               maxVisibleOwners={1}
-              owners={service.owners}
+              owners={toOwnerRefs(service.owners ?? [])}
             />
           </div>
         </Table.Cell>
