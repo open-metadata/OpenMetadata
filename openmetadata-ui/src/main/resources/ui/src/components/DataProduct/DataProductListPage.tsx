@@ -41,16 +41,16 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import {
-  getClassificationTags,
-  getGlossaryTags,
-} from '../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
   COMPACT_CELL_CLIP_CLASS,
   NAME_CELL_CLIP_CLASS,
+  renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
+  renderDomainGlossaryTagsCell,
+  renderDomainOwnersCell,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -63,10 +63,8 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
-import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -243,33 +241,15 @@ const DataProductListPage = ({
             dataProductListing.actionHandlers.onEntityClick
           );
         case 'owners':
-          return (
-            <OwnerLabel
-              showDashPlaceholder
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={entity.owners}
-              showLabel={false}
-            />
-          );
+          return renderDomainOwnersCell(entity, true);
         case 'glossaryTerms':
-          return <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
+          return renderDomainGlossaryTagsCell(entity);
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
-          return (
-            <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
-          );
+          return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return (
-            <OwnerLabel
-              showDashPlaceholder
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={entity.experts}
-              showLabel={false}
-            />
-          );
+          return renderDomainExpertsCell(entity, true);
         default:
           return null;
       }
