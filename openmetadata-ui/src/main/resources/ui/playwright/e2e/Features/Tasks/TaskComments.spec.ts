@@ -314,8 +314,18 @@ test('comment author deletes only the selected comment', async ({
   const card = panel
     .getByTestId('task-comment-card')
     .filter({ hasText: remove });
-  await card.hover();
-  await card.getByTestId('delete-task-comment').click();
+  // TaskDetailPanel renders the row's edit/delete icons behind `isHovered`, so
+  // they exist in the DOM only while the pointer is on the card. Anything that
+  // re-renders the comment list -- the refetch after the second comment lands,
+  // an activity-feed push -- resets that state and unmounts the icon, leaving a
+  // click issued after a one-shot hover waiting on a locator that will never
+  // resolve (chromium-19 burned its whole 60s timeout there). Re-hover on every
+  // attempt so a re-render costs a retry rather than the test.
+  await expect(async () => {
+    await card.hover();
+    await card.getByTestId('delete-task-comment').click({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+
   const response = waitForResponseWithStatus(
     page,
     (result) =>
