@@ -452,7 +452,8 @@ test.describe(
           user1.responseData.name
         );
         await page
-          .getByRole('listitem', { name: user1.getUserDisplayName() })
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.getUserDisplayName() })
           .click();
         for (const apiRes of ownerApiResponse) {
           const responseData = await apiRes;
