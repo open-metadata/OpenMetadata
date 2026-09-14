@@ -7744,6 +7744,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Users/CreateUser/CreateUser.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts"
@@ -10675,6 +10676,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/LoginPage/SignInPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Pages/Login.spec.ts"
       ]
@@ -10800,6 +10802,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ResetPassword/ResetPassword.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
@@ -10922,6 +10925,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/SignUp/BasicSignup.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Pages/Login.spec.ts"
       ]
     },
@@ -11117,6 +11121,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/TeamsPage/AddTeamForm.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
