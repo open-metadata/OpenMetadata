@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { okJson } from '../../../utils/apiResponse';
 import {
+  dismissToasts,
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -55,6 +56,11 @@ test.describe('Glossary P2 Tests', () => {
       // Use name with underscores and hyphens
       await page.fill('[data-testid="name"]', specialName);
       await fillDescriptionBox(page, 'Glossary with special characters');
+
+      // Save sits bottom-right of the form, under the fixed bottom-center toast
+      // region; an error toast left over from navigating to Glossary intercepts
+      // the click and never leaves on its own.
+      await dismissToasts(page);
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');

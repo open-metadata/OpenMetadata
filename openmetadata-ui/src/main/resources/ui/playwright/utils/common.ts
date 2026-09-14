@@ -546,6 +546,33 @@ export const waitForToastStackToClear = async (
 };
 
 /**
+ * Closes every toast currently on screen so a click on something beneath one is
+ * not swallowed.
+ *
+ * `waitForToastStackToClear` is the right tool when the stack drains on its own.
+ * An error toast does not: chromium-09 spent its entire 60s timeout retrying a
+ * click on the glossary form's Save button while an "Entity not found: glossary"
+ * toast sat over it at bottom-center. The toast was not even this test's -- the
+ * Glossary landing page raises it while restoring a glossary a parallel worker
+ * had already deleted -- so waiting for it to leave would have waited forever.
+ */
+export const dismissToasts = async (page: Page) => {
+  // Re-query between passes: closing one toast re-lays out the stack, and the
+  // handles collected before the click go stale.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const closeIcons = await page.getByTestId('alert-icon-close').all();
+
+    if (closeIcons.length === 0) {
+      return;
+    }
+
+    for (const closeIcon of closeIcons) {
+      await closeIcon.click({ timeout: 2_000 }).catch(() => undefined);
+    }
+  }
+};
+
+/**
  * Asserts that the page is showing no error toast, optionally narrowed to the
  * ones carrying `message`.
  *
