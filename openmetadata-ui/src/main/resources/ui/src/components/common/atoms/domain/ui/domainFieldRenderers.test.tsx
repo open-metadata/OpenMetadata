@@ -24,6 +24,14 @@ import { useDomainCardTemplates } from './useDomainCardTemplates';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: () => <span data-testid="avatar" />,
+  Owner: ({ showDashPlaceholder }: { showDashPlaceholder?: boolean }) => (
+    <div
+      data-show-dash={String(showDashPlaceholder)}
+      data-testid="owner-label"
+    />
+  ),
+  toOwnerRef: (ref: unknown) => ref,
+  toOwnerRefs: (refs: unknown[] = []) => refs,
   Box: ({
     children,
     onClick,
@@ -59,15 +67,6 @@ jest.mock('../../../../../utils/TooltipUtils', () => ({
 
 jest.mock('../../../../../utils/IconUtils', () => ({
   getEntityAvatarProps: () => ({}),
-}));
-
-jest.mock('../../../OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: ({ showDashPlaceholder }: { showDashPlaceholder?: boolean }) => (
-    <div
-      data-show-dash={String(showDashPlaceholder)}
-      data-testid="owner-label"
-    />
-  ),
 }));
 
 jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
@@ -137,8 +136,17 @@ describe('renderDomainNameCell', () => {
 });
 
 describe('renderDomainOwnersCell', () => {
-  it('forwards showDashPlaceholder to OwnerLabel', () => {
-    render(<>{renderDomainOwnersCell({ owners: [] }, true)}</>);
+  it('forwards showDashPlaceholder to Owner', () => {
+    render(
+      <>
+        {renderDomainOwnersCell(
+          { owners: [] },
+          () => [],
+          (_owner, chip) => chip,
+          { showDashPlaceholder: true }
+        )}
+      </>
+    );
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -146,8 +154,16 @@ describe('renderDomainOwnersCell', () => {
     );
   });
 
-  it('defaults showDashPlaceholder to undefined when the argument is omitted', () => {
-    render(<>{renderDomainOwnersCell({ owners: [] })}</>);
+  it('defaults showDashPlaceholder to undefined when no options are passed', () => {
+    render(
+      <>
+        {renderDomainOwnersCell(
+          { owners: [] },
+          () => [],
+          (_owner, chip) => chip
+        )}
+      </>
+    );
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
