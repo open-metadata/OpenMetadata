@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
@@ -62,6 +62,20 @@ export const ALL_OPERATIONS = [
 ];
 
 // Helper function to check element visibility based on configuration
+/**
+ * Opens the manage menu from a known-closed state.
+ *
+ * The trigger is a react-aria Dropdown, so pressing it toggles. The two configs
+ * that use it run back to back in the same loop, and the second one arrives with
+ * the menu already open -- when this was measured, delete-button was already in
+ * the DOM before its own click. A bare click would close the menu, leaving the
+ * assertion after it reading a menu that is not on screen.
+ */
+const openManageMenu = async (page: Page, manageButton: Locator) => {
+  await page.keyboard.press('Escape');
+  await manageButton.click();
+};
+
 const checkElementVisibility = async (
   testUserPage: Page,
   config: {
@@ -125,13 +139,18 @@ const checkElementVisibility = async (
         const manageButton = testUserPage.locator(
           '[data-testid="manage-button"]'
         );
-        if (await manageButton.isVisible()) {
-          await manageButton.click();
 
-          await expect(
-            testUserPage.locator(`[data-testid="${testId}"]`)
-          ).toBeVisible();
-        }
+        // Require the menu rather than skipping when it is missing. It is
+        // offered on every entity measured when the operation is allowed
+        // (fourteen of fourteen), and `isVisible()` is a point-in-time read, so
+        // the old guard made a skipped check indistinguishable from a passing
+        // one.
+        await expect(manageButton).toBeVisible();
+        await openManageMenu(testUserPage, manageButton);
+
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).toBeVisible();
 
         break;
       }
@@ -151,9 +170,15 @@ const checkElementVisibility = async (
     // Deny effect
     switch (type) {
       case 'direct': {
+        // `not.toBeVisible()` is also satisfied by an element that is simply not
+        // there yet, so on its own it cannot tell a denied page from an
+        // unrendered one. testCommonOperations now waits for the header before
+        // any of these run, and under deny these affordances are absent from the
+        // DOM rather than hidden -- measured zero on every entity -- so assert
+        // absence.
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`).first()
-        ).not.toBeVisible();
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).toHaveCount(0);
 
         break;
       }
@@ -195,13 +220,20 @@ const checkElementVisibility = async (
         const manageButton = testUserPage.locator(
           '[data-testid="manage-button"]'
         );
-        if (await manageButton.isVisible()) {
-          await manageButton.click();
 
-          await expect(
-            testUserPage.locator(`[data-testid="${testId}"]`)
-          ).not.toBeVisible();
+        // Denial takes two legitimate shapes here: no manage menu at all, or a
+        // menu that does not carry this action. Twelve of the fourteen entities
+        // measured render no manage-button under deny and only table and
+        // database render one, so its absence must not fail -- but the old
+        // `isVisible()` guard turned that into skipping the assertion outright
+        // for those twelve, which is indistinguishable from passing.
+        if ((await manageButton.count()) > 0) {
+          await openManageMenu(testUserPage, manageButton);
         }
+
+        await expect(
+          testUserPage.locator(`[data-testid="${testId}"]`)
+        ).toHaveCount(0);
 
         break;
       }
@@ -247,6 +279,16 @@ export const testCommonOperations = async (
   await expect(
     testUserPage.locator('[data-testid="entity-header-title"]')
   ).toBeVisible();
+
+  // The affordances these configs look for live in the entity header, which
+  // mounts with the entity's data rather than with the route. An absent button
+  // only means "denied" once that header is up -- before it, absence just means
+  // "not yet". owner-label and the tier control were present on all fourteen
+  // entities measured, under both allow and deny, so they mark that point.
+  await expect(
+    testUserPage.locator('[data-testid="owner-label"]')
+  ).not.toHaveCount(0);
+  await expect(testUserPage.locator('[data-testid="Tier"]')).not.toHaveCount(0);
 
   for (const config of testIdsConfigs) {
     await checkElementVisibility(testUserPage, config, effect);
