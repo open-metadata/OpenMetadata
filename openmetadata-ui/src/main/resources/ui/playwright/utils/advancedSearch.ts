@@ -356,7 +356,14 @@ export const fillRule = async (
               .count();
       };
 
-      await dropdownInput.fill(searchData);
+      // These widgets are react-aria (`Autocomplete`/`Select` from
+      // ui-core-components), and `fill` sets .value with one synthetic input
+      // event, which closes the popover -- the ArrowDown below was added to
+      // force it open again. A list reopened that way can be empty, because
+      // the query the fill kicked off is still in flight and nothing re-runs
+      // the filter. Real keystrokes keep it open and filter per character.
+      await dropdownInput.clear();
+      await dropdownInput.pressSequentially(searchData);
       await dropdownInput.press('ArrowDown');
       await expect
         .poll(countMatchingOptions, { timeout: 30_000 })
