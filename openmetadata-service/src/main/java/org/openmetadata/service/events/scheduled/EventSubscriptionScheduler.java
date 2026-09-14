@@ -387,8 +387,8 @@ public class EventSubscriptionScheduler {
             eventJson -> {
               ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
               return event != null
-                      && AlertUtil.checkIfChangeEventIsAllowed(
-                          event, filteringRules, startingTimestamp)
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
                   ? event
                   : null;
             })
@@ -493,8 +493,8 @@ public class EventSubscriptionScheduler {
             eventJson -> {
               ChangeEvent event = ChangeEventJsonUtils.readOrNull(eventJson, ChangeEvent.class);
               return event != null
-                      && AlertUtil.checkIfChangeEventIsAllowed(
-                          event, filteringRules, startingTimestamp)
+                      && AlertUtil.isChangeEventAllowed(
+                          event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
                   ? event
                   : null;
             })

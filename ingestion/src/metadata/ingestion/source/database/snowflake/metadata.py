@@ -86,6 +86,9 @@ from metadata.ingestion.source.database.snowflake.constants import (
     SNOWFLAKE_TAG_DESCRIPTION,
     TABLE_TYPE_URL_MAP,
 )
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -330,9 +333,14 @@ class SnowflakeSource(
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
+            quoted_database_name = self.engine.dialect.identifier_preparer.quote_identifier(
+                fqn.unquote_name(database_name)
+            )
             self.external_location_map = {
                 (row.database_name, row.schema_name, row.name): row.location
-                for row in conn.execute(text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)))
+                for row in conn.execute(
+                    text(SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=quoted_database_name))
+                )
             }
 
     def set_schema_tags_map(self, database_name: str) -> None:
@@ -346,10 +354,10 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_SCHEMA_TAGS.format(
-                            database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     schema_name = row.SCHEMA_NAME
                     if not row.TAG_VALUE:
@@ -377,10 +385,10 @@ class SnowflakeSource(
                 for row in conn.execute(
                     text(
                         SNOWFLAKE_FETCH_DATABASE_TAGS.format(
-                            database_name=database_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {"database_name": fqn.unquote_name(database_name)},
                 ):
                     db_name = row.DATABASE_NAME
                     if db_name not in self.database_tags_map:
@@ -603,25 +611,29 @@ class SnowflakeSource(
                 result = self.connection.execute(
                     text(
                         SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                            database_name=self.context.get().database,
-                            schema_name=schema_name,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
-                    )
+                    ),
+                    {
+                        "database_name": self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                        "schema_name": schema_name,
+                    },
                 )
 
             except Exception as exc:
                 try:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error fetching tags {exc}. Trying with quoted names")
+                    logger.warning("Error fetching tags %s. Retrying with unquoted context names", exc)
                     result = self.connection.execute(
                         text(
                             SNOWFLAKE_FETCH_TABLE_TAGS.format(
-                                database_name=f'"{self.context.get().database}"',
-                                schema_name=f'"{self.context.get().database_schema}"',
-                                account_usage=self.service_connection.accountUsageSchema,
+                                account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                             )
-                        )
+                        ),
+                        {
+                            "database_name": fqn.unquote_name(self.context.get().database),  # pyright: ignore[reportAttributeAccessIssue]
+                            "schema_name": fqn.unquote_name(self.context.get().database_schema),  # pyright: ignore[reportAttributeAccessIssue]
+                        },
                     )
                 except Exception as inner_exc:
                     logger.debug(traceback.format_exc())
@@ -961,7 +973,7 @@ class SnowflakeSource(
                         query.format(
                             database_name=self.context.get().database,
                             schema_name=self.context.get().database_schema,
-                            account_usage=self.service_connection.accountUsageSchema,
+                            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
                         )
                     )
                 ):
@@ -1246,8 +1258,10 @@ class SnowflakeSource(
         # For streams, we will use source table/view's columns
         # since stream does not define columns separately in Snowflake
         if table_type == TableType.Stream:
+            quoted_schema = self.engine.dialect.identifier_preparer.quote_identifier(fqn.unquote_name(schema_name))
             cursor = self.connection.execute(
-                text(SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name))
+                text(SNOWFLAKE_GET_STREAM.format(schema=quoted_schema)),
+                {"stream_name": table_name},
             )
             try:
                 result = cursor.fetchone()
@@ -1345,7 +1359,7 @@ class SnowflakeSource(
         return self.life_cycle_query.format(
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            account_usage=self.service_connection.accountUsageSchema,
+            account_usage=quote_account_usage_schema(self.service_connection.accountUsageSchema),
         )
 
     def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:

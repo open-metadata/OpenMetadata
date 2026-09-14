@@ -249,60 +249,55 @@ test.describe('Table pagination sorting search scenarios ', () => {
     );
   });
 
-  test(
-    'should persist page size',
-    { tag: '@quarantine' },
-    async ({ dataConsumerPage: page }) => {
-      await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+  test('should persist page size', async ({ dataConsumerPage: page }) => {
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
 
-      await waitForAllLoadersToDisappear(page);
+    await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-      const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-      await pageSizeDropdown.scrollIntoViewIfNeeded();
-      await expect(pageSizeDropdown).toBeVisible();
-      await expect(pageSizeDropdown).toBeEnabled();
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await expect(pageSizeDropdown).toBeVisible();
+    await expect(pageSizeDropdown).toBeEnabled();
 
-      // NextPrevious wraps the button in an Ant Dropdown with the default hover
-      // trigger, so a bare click only fires preventDefault. Hover + click-fallback
-      // + retry — a re-render that nudges the footer out from under the pointer
-      // otherwise leaves the menu closed for good.
-      const pageSizeMenu = page.getByRole('menu').filter({ hasText: '/ Page' });
-      const pageSizeOption = pageSizeMenu.getByRole('menuitem', {
-        name: '15 / Page',
-      });
-      await expect(async () => {
-        await pageSizeDropdown.hover();
-        if (!(await pageSizeMenu.isVisible())) {
-          await pageSizeDropdown.click();
-        }
-        await expect(pageSizeMenu).toBeVisible({ timeout: 2_000 });
-      }).toPass({ timeout: 15_000, intervals: [500, 1_000, 2_000] });
+    // NextPrevious wraps the button in an Ant Dropdown with the default hover
+    // trigger, so a bare click only fires preventDefault. Open and pick inside
+    // one retry: the menu can close between a visibility check and the click,
+    // and a click left outside the loop then waits on a hidden option for the
+    // rest of the test. Asserting the trigger's new label retries the whole
+    // open-and-pick when it did not take.
+    const pageSizeOption = page.getByRole('menuitem', { name: '15 / Page' });
+    await expect(async () => {
+      await pageSizeDropdown.hover();
+      if (!(await pageSizeOption.isVisible())) {
+        await pageSizeDropdown.click();
+      }
+      await expect(pageSizeOption).toBeVisible({ timeout: 2_000 });
+      await pageSizeOption.click({ timeout: 5_000 });
 
-      await pageSizeOption.click();
-      await waitForAllLoadersToDisappear(page);
+      await expect(pageSizeDropdown).toContainText('15 / Page');
+    }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+    await waitForAllLoadersToDisappear(page);
 
-      const linkInColumn = getFirstRowColumnLink(page);
-      const entityApiResponse = page.waitForResponse(
-        '/api/v1/permissions/table/name/*'
-      );
-      await linkInColumn.click();
+    const linkInColumn = getFirstRowColumnLink(page);
+    const entityApiResponse = page.waitForResponse(
+      '/api/v1/permissions/table/name/*'
+    );
+    await linkInColumn.click();
 
-      await entityApiResponse;
-      await waitForAllLoadersToDisappear(page);
+    await entityApiResponse;
+    await waitForAllLoadersToDisappear(page);
 
-      await page.goBack();
-      await waitForAllLoadersToDisappear(page);
-      await page
-        .getByTestId('page-size-selection-dropdown')
-        .scrollIntoViewIfNeeded();
+    await page.goBack();
+    await waitForAllLoadersToDisappear(page);
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
 
-      await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-        '15 / Page'
-      );
-    }
-  );
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
+  });
 });
 
 test.describe('Table & Data Model columns table pagination', () => {
@@ -456,22 +451,10 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     const glossaryRowSelector =
       '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.customer_id"]';
 
-    await expect
-      .poll(
-        async () => {
-          await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
-          await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await page.goto(tableRoute, { waitUntil: 'domcontentloaded' });
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await page.locator(glossaryRowSelector).waitFor({ state: 'visible' });
 
-          return await page.locator(glossaryRowSelector).count();
-        },
-        {
-          timeout: 60000,
-          intervals: [1000, 2000, 5000],
-        }
-      )
-      .toBeGreaterThan(0);
-
-    await waitForAllLoadersToDisappear(page);
     const glossaryTagsCell = page.locator(
       `${glossaryRowSelector} [data-testid*="glossary-tags"]`
     );

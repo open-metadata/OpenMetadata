@@ -361,6 +361,10 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
 
           batchFailed += batch.getErrors().size();
           source.updateStats(batchSuccess, batchFailed);
+          if (batchFailed > 0) {
+            workflowStats.addFailure(
+                "Failed to snapshot %d entities from %s".formatted(batchFailed, source.getName()));
+          }
 
           if (keysetCursor == null) {
             break;
@@ -429,7 +433,11 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       batch.add(tagged);
     }
     if (!batch.isEmpty()) {
+      int failedBefore = searchIndexSink.getStats().getFailedRecords();
       searchIndexSink.write(batch);
+      if (searchIndexSink.getStats().getFailedRecords() > failedBefore) {
+        workflowStats.addFailure("Search rejected Data Insights snapshot documents");
+      }
     }
   }
 
