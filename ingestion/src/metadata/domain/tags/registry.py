@@ -22,9 +22,11 @@ Safe for concurrent use across the topology's parallel schema workers.
 """
 
 import threading
+from collections import OrderedDict
 from collections.abc import Iterable
 from typing import NamedTuple, cast
 
+from metadata.domain.tags.models import TagDefinition
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
@@ -44,7 +46,6 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -67,19 +68,49 @@ class ScopeAlreadyClearedError(RuntimeError):
     """
 
 
+class TagScope:
+    """Tag attachments owned by one active source scope."""
+
+    def __init__(self, registry: "TagRegistry", scope_fqn: str) -> None:
+        self._registry = registry
+        self.fqn = scope_fqn
+        self.closed = False
+        self._labels_by_entity: dict[str, list[TagLabel]] = {}
+
+    def __enter__(self) -> "TagScope":
+        if self.closed:
+            raise ScopeAlreadyClearedError(f"Tag scope {self.fqn!r} is closed")
+        return self
+
+    def __exit__(self, *_) -> None:
+        self.close()
+
+    def close(self) -> None:
+        """Release this scope and its descendants."""
+        self._registry.close_scope(self)
+
+
 class TagRegistry:
     """Registry for Tag and Classification ingestion bookkeeping."""
 
-    def __init__(self, metadata: OpenMetadata) -> None:
+    def __init__(self, metadata: OpenMetadata, cache_size: int = 1000) -> None:
+        if cache_size < 1:
+            raise ValueError("cache_size must be positive")
         self._metadata = metadata
-
-        self._known_tag_fqns: set[str] = set()
-        self._tag_label_cache: dict[_TagLabelKey, TagLabel] = {}
-        self._pending: list[OMetaTagAndClassification] = []
-        self._cleared_scopes: set[str] = set()
-        self._labels_by_entity: dict[str, list[TagLabel]] = {}
+        self._cache_size = cache_size
+        self._known_tag_fqns: OrderedDict[str, None] = OrderedDict()
+        self._tag_label_cache: OrderedDict[_TagLabelKey, TagLabel] = OrderedDict()
+        self._pending: dict[str, OMetaTagAndClassification] = {}
+        self._scopes: dict[str, TagScope] = {}
 
         self._lock = threading.Lock()
+
+    def open_scope(self, scope_fqn: str) -> TagScope:
+        """Return an active scope, creating a new handle after a previous close."""
+        with self._lock:
+            if scope_fqn not in self._scopes:
+                self._scopes[scope_fqn] = TagScope(self, scope_fqn)
+            return self._scopes[scope_fqn]
 
     def _intern_tag_label_locked(
         self, *, classification_name: str, tag_name: str, label_type: LabelType, state: State
@@ -88,6 +119,7 @@ class TagRegistry:
         key = _TagLabelKey(classification_name, tag_name, label_type, state)
         cached = self._tag_label_cache.get(key)
         if cached is not None:
+            self._tag_label_cache.move_to_end(key)
             return cached
         tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name))
         cached = TagLabel(  # pyright: ignore[reportCallIssue]
@@ -97,83 +129,109 @@ class TagRegistry:
             source=TagSource.Classification,
         )
         self._tag_label_cache[key] = cached
+        if len(self._tag_label_cache) > self._cache_size:
+            self._tag_label_cache.popitem(last=False)
         return cached
+
+    def define(self, tag: TagDefinition) -> None:
+        """Queue a definition without attaching it to an entity."""
+        if not tag.tag_name or not tag.tag_name.strip():
+            return
+        tag_fqn = cast("str", fqn.build(None, Tag, classification_name=tag.classification_name, tag_name=tag.tag_name))
+        with self._lock:
+            if tag_fqn in self._known_tag_fqns:
+                self._known_tag_fqns.move_to_end(tag_fqn)
+            elif tag_fqn not in self._pending:
+                self._pending[tag_fqn] = self._build_pending_record(
+                    classification_name=tag.classification_name,
+                    classification_description=tag.classification_description,
+                    tag_name=tag.tag_name,
+                    tag_description=tag.tag_description,
+                )
 
     def attach(
         self,
         *,
-        scope_fqn: str,
+        scope: TagScope,
         entity_fqn: str,
-        classification_name: str,
-        tag_name: str,
-        classification_description: str,
-        tag_description: str,
+        tag: TagDefinition,
         label_type: LabelType = LabelType.Automated,
         state: State = State.Suggested,
     ) -> None:
         """Register a tag <-> entity association."""
-        if not tag_name or not tag_name.strip():
-            logger.debug("TagRegistry: skipping empty tag for classification %s", classification_name)
+        if not tag.tag_name or not tag.tag_name.strip():
+            logger.debug("TagRegistry: skipping empty tag for classification %s", tag.classification_name)
             return
 
         with self._lock:
-            if scope_fqn in self._cleared_scopes:
+            if scope._registry is not self:
+                raise ValueError("Tag scope belongs to another registry")
+            if scope.closed:
                 raise ScopeAlreadyClearedError(
-                    f"Tag attach called for cleared scope '{scope_fqn!r}' for entity '{entity_fqn!r}'"
+                    f"Tag attach called for closed scope {scope.fqn!r} for entity {entity_fqn!r}"
                 )
+            if entity_fqn != scope.fqn and not entity_fqn.startswith(scope.fqn + fqn.FQN_SEPARATOR):
+                raise ValueError("Tag entity must belong to its scope")
             tag_label = self._intern_tag_label_locked(
-                classification_name=classification_name,
-                tag_name=tag_name,
+                classification_name=tag.classification_name,
+                tag_name=tag.tag_name,
                 label_type=label_type,
                 state=state,
             )
-            self._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
-
-            tag_fqn = model_str(tag_label.tagFQN)
-            if tag_fqn not in self._known_tag_fqns:
-                self._known_tag_fqns.add(tag_fqn)
-                self._pending.append(
-                    self._build_pending_record(
-                        classification_name=classification_name,
-                        classification_description=classification_description,
-                        tag_name=tag_name,
-                        tag_description=tag_description,
-                    )
-                )
+            scope._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
 
     def labels_for(self, entity_fqn: str) -> list[TagLabel]:
         """Return tag labels attached to ``entity_fqn`` (idempotent; returns a copy)."""
         with self._lock:
-            return list(self._labels_by_entity.get(entity_fqn, []))
+            return [label for scope in self._scopes.values() for label in scope._labels_by_entity.get(entity_fqn, [])]
 
     def drain(self) -> Iterable[OMetaTagAndClassification]:
         """Yield all queued create payloads and clear the queue."""
         with self._lock:
-            pending, self._pending = self._pending, []
+            pending, self._pending = self._pending, {}
+            for tag_fqn in pending:
+                self._remember_locked(tag_fqn)
 
         if pending:
             logger.debug("TagRegistry: drained %d pending tag payloads.", len(pending))
-        yield from pending
+        yield from pending.values()
 
     def clear_scope(self, scope_fqn: str) -> None:
-        """Drop labels under ``scope_fqn`` and mark the scope cleared.
-
-        Subsequent ``attach`` calls for this scope will raise.
-        """
-        prefix = scope_fqn + fqn.FQN_SEPARATOR
-
+        """Close active scopes at or below ``scope_fqn``."""
         with self._lock:
-            self._cleared_scopes.add(scope_fqn)
-            kept = {k: v for k, v in self._labels_by_entity.items() if k != scope_fqn and not k.startswith(prefix)}
-            dropped = len(self._labels_by_entity) - len(kept)
-            self._labels_by_entity = kept
-        if dropped:
-            logger.debug("TagRegistry: cleared scope %s (%d entity labels dropped)", scope_fqn, dropped)
+            self._clear_scope_locked(scope_fqn)
+
+    def close_scope(self, scope: TagScope) -> None:
+        """Close a handle without affecting a newer scope with the same FQN."""
+        with self._lock:
+            if scope._registry is not self:
+                raise ValueError("Tag scope belongs to another registry")
+            if not scope.closed:
+                self._clear_scope_locked(scope.fqn)
+
+    def _clear_scope_locked(self, scope_fqn: str) -> None:
+        prefix = scope_fqn + fqn.FQN_SEPARATOR
+        for name in list(self._scopes):
+            if name == scope_fqn or name.startswith(prefix):
+                scope = self._scopes.pop(name)
+                scope.closed = True
+                scope._labels_by_entity.clear()
+
+    def _remember_locked(self, tag_fqn: str) -> None:
+        self._known_tag_fqns[tag_fqn] = None
+        self._known_tag_fqns.move_to_end(tag_fqn)
+        if len(self._known_tag_fqns) > self._cache_size:
+            self._known_tag_fqns.popitem(last=False)
 
     def is_known(self, tag_fqn: str) -> bool:
         """Return True if the tag FQN has been recorded (case-sensitive match)."""
         with self._lock:
-            return tag_fqn in self._known_tag_fqns
+            if tag_fqn in self._pending:
+                return True
+            if tag_fqn in self._known_tag_fqns:
+                self._known_tag_fqns.move_to_end(tag_fqn)
+                return True
+            return False
 
     def ensure_known(self, tag_fqn: str) -> bool:
         """Return True if the tag exists server-side, caching positive results.
@@ -197,7 +255,7 @@ class TagRegistry:
             return False
 
         with self._lock:
-            self._known_tag_fqns.add(tag_fqn)
+            self._remember_locked(tag_fqn)
         return True
 
     def stats(self) -> dict[str, int]:
@@ -207,9 +265,11 @@ class TagRegistry:
                 "known_tag_fqns": len(self._known_tag_fqns),
                 "tag_label_cache": len(self._tag_label_cache),
                 "pending": len(self._pending),
-                "cleared_scopes": len(self._cleared_scopes),
-                "live_entities": len(self._labels_by_entity),
-                "live_labels": sum(len(v) for v in self._labels_by_entity.values()),
+                "active_scopes": len(self._scopes),
+                "live_entities": sum(len(scope._labels_by_entity) for scope in self._scopes.values()),
+                "live_labels": sum(
+                    len(labels) for scope in self._scopes.values() for labels in scope._labels_by_entity.values()
+                ),
             }
 
     @staticmethod

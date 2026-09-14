@@ -63,6 +63,7 @@ from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import (
@@ -70,10 +71,11 @@ from metadata.ingestion.source.connections import (
     create_connection,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource, DatabaseServiceTopology
 from metadata.ingestion.source.database.databricks.ownership import (
     DatabricksOwnerResolver,
 )
+from metadata.ingestion.source.database.databricks.tags import DatabricksTagsMixin
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -104,7 +106,6 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 if TYPE_CHECKING:
     from metadata.ingestion.source.database.unitycatalog.connection import (
@@ -121,12 +122,19 @@ UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION = "Unity Catalog tags ingeste
 
 
 # pylint: disable=protected-access
-class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(ExternalTableLineageMixin, DatabricksTagsMixin, DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
     the unity catalog source
     """
+
+    topology = DatabaseServiceTopology()
+    context = TopologyContextManager(topology)
+    tag_description = UNITY_CATALOG_TAG
+    tag_classification_description = UNITY_CATALOG_TAG_CLASSIFICATION
+    valueless_tag_classification = UNITY_CATALOG_VALUELESS_CLASSIFICATION
+    valueless_tag_description = UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION
 
     @retry_with_docker_host()
     def __init__(
@@ -836,25 +844,6 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     f"of table [{table_name}], skipping it: {exc}"
                 )
 
-    @staticmethod
-    def _ometa_tag_call_args(tag_name: str, tag_value: str | None) -> dict:
-        """Map a Unity Catalog (tag_name, tag_value) pair onto OM's
-        classification/tag pair, falling back to UNITY_CATALOG_VALUELESS_CLASSIFICATION
-        when tag_value is empty or whitespace-only."""
-        if tag_value and str(tag_value).strip():
-            return {
-                "tags": [tag_value],
-                "classification_name": tag_name,
-                "tag_description": UNITY_CATALOG_TAG,
-                "classification_description": UNITY_CATALOG_TAG_CLASSIFICATION,
-            }
-        return {
-            "tags": [tag_name],
-            "classification_name": UNITY_CATALOG_VALUELESS_CLASSIFICATION,
-            "tag_description": UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
-            "classification_description": UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
-        }
-
     def _yield_tags_for_queries(
         self,
         query_tag_fqn_builder_mapping: tuple[tuple[str, Callable[[Any], list[Any]]], ...],
@@ -866,15 +855,14 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 for tag in self.sql_connection.execute(text(query)):
                     if not tag.tag_name:
                         continue
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
-                        **self._ometa_tag_call_args(tag.tag_name, tag.tag_value),
-                        metadata=self.metadata,
-                        system_tags=True,
+                    yield from self._register_tag(
+                        entity_fqn=fqn._build(*tag_fqn_builder(tag)),
+                        tag_name=tag.tag_name,
+                        tag_value=tag.tag_value,
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Error getting tags for {error_context}: {exc}")
+                logger.warning("Error getting tags for %s: %s", error_context, exc)
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Get Unity Catalog database/catalog tags using SQL query"""

@@ -16,7 +16,8 @@ generate the _run based on their topology.
 import math
 import time
 import traceback
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
+from contextlib import AbstractContextManager, closing, nullcontext
 from functools import singledispatchmethod
 from time import perf_counter
 from typing import Any, ClassVar, Generic, TypeVar, cast
@@ -233,6 +234,17 @@ class TopologyRunnerMixin(Generic[C]):
             node_progress.open(None)
 
         for node_entity in node_entities:
+            yield from self._process_node_entity(node, node_entity, child_nodes, node_progress)
+
+    def _node_scope(self, node: TopologyNode, node_entity: Any) -> AbstractContextManager:
+        """Own resources needed by one producer item and its children."""
+        return nullcontext()
+
+    def _process_node_entity(
+        self, node: TopologyNode, node_entity: Any, child_nodes: list[TopologyNode], node_progress: Any
+    ) -> Generator[Entity, None, None]:
+        """Process one producer item through its stages and children."""
+        with self._node_scope(node, node_entity):
             for stage in node.stages:
                 yield from self._process_stage(stage=stage, node_entity=node_entity)
 
@@ -298,28 +310,14 @@ class TopologyRunnerMixin(Generic[C]):
 
         operation_metrics = OperationMetricsState()
 
-        for node_entity in node_entities:
-            # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
-            for stage in node.stages:
-                for stage_result in self._process_stage(stage=stage, node_entity=node_entity):
-                    self.queue.put(stage_result)
-
-            # After all the stages are done, we clear the context if needed.
-            for stage in node.stages:
-                if stage.clear_context:
-                    self.context.get().clear_stage(stage=stage)
-
-            node_progress.advance_leaf()
-
-            with node_progress.enter_scope():
-                for child_result in self.process_nodes(child_nodes):
-                    self.queue.put(child_result)
-
-        # Merge thread-local metrics into global state before thread exits
-        operation_metrics.merge_thread_metrics()
-
-        # Finally we pop the context and finish the thread
-        self.context.pop()
+        try:
+            for node_entity in node_entities:
+                with closing(self._process_node_entity(node, node_entity, child_nodes, node_progress)) as results:
+                    for result in results:
+                        self.queue.put(result)
+        finally:
+            operation_metrics.merge_thread_metrics()
+            self.context.pop()
 
     def _get_child_nodes(self, node: TopologyNode) -> list[TopologyNode]:
         """Compute children nodes if any"""

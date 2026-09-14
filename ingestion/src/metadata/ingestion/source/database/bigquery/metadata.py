@@ -17,8 +17,10 @@ import os
 import threading
 import traceback
 from collections.abc import Iterable
+from typing import Literal
 
 from google import auth
+from google.cloud.bigquery.schema import SchemaField
 from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
@@ -70,6 +72,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -103,6 +106,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
@@ -116,8 +120,6 @@ from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
 from metadata.utils.sqlalchemy_utils import is_complex_type
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
-from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 
 # The databaseSchema node runs multi-threaded, so these caches are shared across schemas
 # being processed concurrently and must be keyed by the fully qualified name.
@@ -172,7 +174,7 @@ def get_system_data_type(col_type):
     return str(col_type)
 
 
-def get_columns(bq_schema):
+def get_columns(bq_schema, parent_path: tuple[str, ...] = ()):
     """
     get_columns method overwritten to include tag details
     """
@@ -192,9 +194,12 @@ def get_columns(bq_schema):
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": field.policy_tags,
         }
+        column_path = (*parent_path, field.name)
+        if field.policy_tags:
+            col_obj["policy_tag_column_path"] = column_path
         if getattr(field, "fields", None):
             # Nested Columns available
-            col_obj["children"] = get_columns(field.fields)
+            col_obj["children"] = get_columns(field.fields, column_path)
 
         col_list.append(col_obj)
     return col_list
@@ -225,6 +230,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
     """
+
+    topology = DatabaseServiceTopology()
+    context = TopologyContextManager(topology)
 
     @retry_with_docker_host()
     def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
@@ -621,47 +629,60 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
             logger.debug(traceback.format_exc())
 
+    def _register_tag(
+        self,
+        classification_name: str,
+        tag_name: str,
+        tag_type: Literal["Dataset", "Table", "Policy"],
+        entity_fqn: str | None = None,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Register a BigQuery tag definition and its optional asset attachment."""
+        try:
+            definition = self.define_tag(
+                classification_name=classification_name,
+                tag_name=tag_name,
+                tag_description=f"Bigquery {tag_type} {'Tag' if tag_type == 'Policy' else 'Label'}",
+                classification_description=f"BigQuery {tag_type} Classification",
+            )
+            if definition and entity_fqn:
+                self.attach_tag(entity_fqn=entity_fqn, tag=definition)
+        except Exception as exc:
+            yield Either(
+                right=None,
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to register BigQuery tag [{classification_name}.{tag_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+            )
+
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Build tag context"""
+        """Register dataset labels and available policy tag definitions."""
         try:
             dataset_obj = self.get_dataset_obj(schema_name)
-            if dataset_obj.labels:
-                for key, value in dataset_obj.labels.items():
-                    yield from get_ometa_tag_and_classification(
-                        tags=[value],
-                        classification_name=key,
-                        tag_description="Bigquery Dataset Label",
-                        classification_description="BigQuery Dataset Classification",
-                        include_tags=self.source_config.includeTags,
-                        metadata=self.metadata,
-                        system_tags=True,
-                    )
+            schema_fqn = fqn._build(
+                self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                schema_name,
+            )
+            for key, value in (dataset_obj.labels or {}).items():
+                yield from self._register_tag(key, value, "Dataset", schema_fqn)
 
             if not self.service_connection.includePolicyTags:
-                logger.info("'includePolicyTags' is set to false so skipping policy tag ingestion")
                 return
 
             self._prefetch_policy_tags()
-
-            for taxonomy_name, classification_name in self._taxonomy_cache.items():  # noqa: B007, PERF102
-                tags = self._taxonomy_to_tags.get(classification_name, [])
-                if tags:
-                    yield from get_ometa_tag_and_classification(
-                        tags=tags,
-                        classification_name=classification_name,
-                        tag_description="Bigquery Policy Tag",
-                        classification_description="BigQuery Policy Classification",
-                        include_tags=self.source_config.includeTags,
-                        metadata=self.metadata,
-                        system_tags=True,
-                    )
+            for classification_name in self._taxonomy_cache.values():
+                for tag_name in self._taxonomy_to_tags.get(classification_name, []):
+                    yield from self._register_tag(classification_name, tag_name, "Policy")
         except Exception as exc:
             yield Either(
+                right=None,
                 left=StackTraceError(
                     name="Tags and Classifications",
                     error=f"Skipping Policy Tag ingestion due to: {exc}",
                     stackTrace=traceback.format_exc(),
-                )
+                ),
             )
 
     def get_schema_description(self, schema_name: str) -> str | None:
@@ -769,18 +790,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 schema_name=schema_name,
             ),
         )
-        if self.source_config.includeTags:
-            dataset_obj = self.get_dataset_obj(schema_name)
-            if dataset_obj.labels:
-                database_schema_request_obj.tags = []
-                for label_classification, label_tag_name in dataset_obj.labels.items():
-                    tag_label = get_tag_label(
-                        metadata=self.metadata,
-                        tag_name=label_tag_name,
-                        classification_name=label_classification,
-                    )
-                    if tag_label:
-                        database_schema_request_obj.tags.append(tag_label)
+        database_schema_request_obj.tags = self.get_schema_tag_labels(schema_name)
         yield Either(right=database_schema_request_obj)
 
     def get_table_obj(self, table_name: str):
@@ -799,80 +809,74 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._table_obj_cache.put(cache_key, table_obj)
         return table_obj
 
-    def yield_table_tags(self, table_name_and_type: tuple[str, str]):
+    def yield_table_tags(self, table_name_and_type: tuple[str, str]) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type
         table_obj = self.get_table_obj(table_name=table_name)
-        if table_obj.labels:
-            for key, value in table_obj.labels.items():
-                yield from get_ometa_tag_and_classification(
-                    tags=[value],
-                    classification_name=key,
-                    tag_description="Bigquery Table Label",
-                    classification_description="BigQuery Table Classification",
-                    include_tags=self.source_config.includeTags,
-                    metadata=self.metadata,
-                    system_tags=True,
-                )
+        table_fqn = fqn._build(
+            self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+            self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+            self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+            table_name,
+        )
+        for key, value in (table_obj.labels or {}).items():
+            yield from self._register_tag(key, value, "Table", table_fqn)
+        if self.service_connection.includePolicyTags:
+            yield from self._register_column_policy_tags(table_obj.schema, table_fqn)
 
-    def get_tag_labels(self, table_name: str) -> list[TagLabel] | None:
-        """
-        This will only get executed if the tags context
-        is properly informed
-        """
-        table_tag_labels = super().get_tag_labels(table_name) or []
-        table_obj = self.get_table_obj(table_name=table_name)
-        if table_obj.labels:
-            for key, value in table_obj.labels.items():
-                tag_label = get_tag_label(
-                    metadata=self.metadata,
-                    tag_name=value,
-                    classification_name=key,
-                )
-                if tag_label:
-                    table_tag_labels.append(tag_label)
-        return table_tag_labels
-
-    def get_policy_tags_for_column(self, column: dict) -> dict:
+    def _get_policy_tag(self, policy_tag_name: str) -> dict[str, str] | None:
+        """Resolve a policy resource ID from the prefetched cache or Google API."""
+        cached = self._policy_tag_cache.get(policy_tag_name)
+        if cached:
+            return cached
+        if not self._policy_tag_client:
+            logger.warning("PolicyTagManagerClient not available for fallback fetch")
+            return None
         try:
-            if column.get("policy_tags"):
-                policy_tag_name = column["policy_tags"].names[0]
-
-                if policy_tag_name in self._policy_tag_cache:
-                    cached = self._policy_tag_cache[policy_tag_name]
-                    column["taxonomy"] = cached["taxonomy"]
-                    column["policy_tags"] = cached["display_name"]
-                    return column
-
-                logger.debug(f"Policy tag {policy_tag_name} not in cache, fetching from API")
-
-                if not self._policy_tag_client:
-                    logger.warning("PolicyTagManagerClient not available for fallback fetch")
-                    return column
-
-                taxonomy_name = policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
-                if not taxonomy_name:
-                    raise NotImplementedError(f"Taxonomy Name not present for {column['name']}")  # noqa: TRY301
-                column["taxonomy"] = self._policy_tag_client.get_taxonomy(name=taxonomy_name).display_name
-                column["policy_tags"] = self._policy_tag_client.get_policy_tag(name=policy_tag_name).display_name
-                return column
+            taxonomy_name = policy_tag_name.split("/policyTags/", maxsplit=1)[0]
+            return {
+                "taxonomy": self._policy_tag_client.get_taxonomy(name=taxonomy_name).display_name,
+                "display_name": self._policy_tag_client.get_policy_tag(name=policy_tag_name).display_name,
+            }
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+            logger.warning("Skipping Policy Tag %s: %s", policy_tag_name, exc)
+            return None
+
+    def _register_column_policy_tags(
+        self, fields: Iterable[SchemaField], table_fqn: str, parent_path: tuple[str, ...] = ()
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Attach policy tags to their complete nested column paths."""
+        for field in fields:
+            column_path = (*parent_path, field.name)
+            if field.policy_tags and field.policy_tags.names:
+                policy_tag = self._get_policy_tag(field.policy_tags.names[0])
+                if policy_tag:
+                    yield from self._register_tag(
+                        policy_tag["taxonomy"],
+                        policy_tag["display_name"],
+                        "Policy",
+                        fqn._build(*fqn.split(table_fqn), *column_path),
+                    )
+            if field.fields:
+                yield from self._register_column_policy_tags(field.fields, table_fqn, column_path)
 
     def get_column_tag_labels(self, table_name: str, column: dict) -> list[TagLabel] | None:
-        """
-        This will only get executed if the tags context
-        is properly informed
-        """
-        if self.service_connection.includePolicyTags and column.get("policy_tags"):
-            self.get_policy_tags_for_column(column)
-            return fetch_tag_labels_om(
-                metadata=self.metadata,
-                tags=[column["policy_tags"]],
-                classification_name=column["taxonomy"],
-                include_tags=self.source_config.includeTags and self.service_connection.includePolicyTags,
-            )
-        return None
+        """Read registered policy labels for a top-level or nested column."""
+        if (
+            not self.source_config.includeTags
+            or not self.service_connection.includePolicyTags
+            or not column.get("policy_tags")
+        ):
+            return None
+        column_path = column.get("policy_tag_column_path", (column["name"],))
+        entity_fqn = fqn._build(
+            self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+            self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+            self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+            table_name,
+            *column_path,
+        )
+        return self.get_tag_by_fqn(entity_fqn)
 
     def set_inspector(self, database_name: str):
         inspector_details = get_inspector_details(

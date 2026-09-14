@@ -15,12 +15,13 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from contextlib import AbstractContextManager
 from typing import Annotated, Any, cast
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
 
-from metadata.domain.tags import TagCanonicalizer, TagRegistry
+from metadata.domain.tags import TagCanonicalizer, TagDefinition, TagRegistry, TagScope
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -76,7 +77,6 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
-from metadata.utils.tag_utils import get_tag_label
 
 logger = ingestion_logger()
 
@@ -119,12 +119,10 @@ class DatabaseServiceTopology(ServiceTopology):
     database: Annotated[TopologyNode, Field(description="Database Node")] = TopologyNode(
         producer="get_database_names",
         stages=[
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_database_tag_details",
                 nullable=True,
-                store_all_in_context=True,
             ),
             NodeStage(
                 type_=Database,
@@ -139,12 +137,10 @@ class DatabaseServiceTopology(ServiceTopology):
     databaseSchema: Annotated[TopologyNode, Field(description="Database Schema Node")] = TopologyNode(  # noqa: N815
         producer="get_database_schema_names",
         stages=[
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_database_schema_tag_details",
                 nullable=True,
-                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DatabaseSchema,
@@ -158,19 +154,16 @@ class DatabaseServiceTopology(ServiceTopology):
             "mark_schemas_as_deleted",
             "mark_tables_as_deleted",
             "mark_stored_procedures_as_deleted",
-            "clear_database_tag_scope",
         ],
         threads=True,
     )
     table: Annotated[TopologyNode, Field(description="Main table processing logic")] = TopologyNode(
         producer="get_tables_name_and_type",
         stages=[
-            NodeStage(
+            NodeStage(  # pyright: ignore[reportCallIssue]
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_table_tag_details",
                 nullable=True,
-                store_all_in_context=True,
             ),
             NodeStage(
                 type_=Table,
@@ -193,7 +186,6 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
-        post_process=["clear_schema_tag_scope"],
     )
     stored_procedure: Annotated[TopologyNode, Field(description="Stored Procedure Node")] = TopologyNode(
         producer="get_stored_procedures",
@@ -254,6 +246,58 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         if cached is not None:
             return cached
         return instance_dict.setdefault("tag_canonicalizer", TagCanonicalizer(metadata=self.metadata))
+
+    def define_tag(
+        self,
+        *,
+        classification_name: str,
+        tag_name: str,
+        classification_description: str,
+        tag_description: str,
+    ) -> TagDefinition | None:
+        """Resolve and register a nonempty tag definition."""
+        if not tag_name or not tag_name.strip():
+            return None
+        tag = self.tag_canonicalizer.resolve(
+            classification_name=classification_name,
+            tag_name=tag_name,
+            classification_description=classification_description,
+            tag_description=tag_description,
+        )
+        self.tags_registry.define(tag)
+        return tag
+
+    def attach_tag(self, *, entity_fqn: str, tag: TagDefinition) -> None:
+        """Attach a resolved tag to its owning database or schema scope."""
+        scope = self._tag_scope_for_entity(entity_fqn)
+        self.tags_registry.attach(scope=scope, entity_fqn=entity_fqn, tag=tag)
+
+    def _tag_scope_for_entity(self, entity_fqn: str) -> TagScope:
+        parts = fqn.split(entity_fqn)
+        service = fqn.quote_name(self.context.get().database_service)  # pyright: ignore[reportAttributeAccessIssue]
+        if len(parts) < 2 or parts[0] != service:
+            raise ValueError("Tag entity must belong to the source service")
+        scope_fqn = fqn._build(*parts[:3])
+        return self.tags_registry.open_scope(scope_fqn)
+
+    def _node_scope(self, node: TopologyNode, node_entity: Any) -> AbstractContextManager:
+        if self.source_config.includeTags:
+            entity_type = self._get_entity_type_for_node(node)
+            if entity_type in ("Database", "DatabaseSchema"):
+                context = self.context.get()
+                names = {
+                    "service_name": context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    "database_name": node_entity if entity_type == "Database" else context.database,  # pyright: ignore[reportAttributeAccessIssue]
+                }
+                if entity_type == "DatabaseSchema":
+                    names["schema_name"] = node_entity
+                scope_fqn = fqn.build(
+                    None,
+                    entity_type=Database if entity_type == "Database" else DatabaseSchema,
+                    **names,
+                )
+                return self.tags_registry.open_scope(cast("str", scope_fqn))
+        return super()._node_scope(node, node_entity)
 
     @property
     def name(self) -> str:
@@ -337,6 +381,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.includeTags:
             yield from self.yield_table_tags(table_name_and_type) or []
+            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def yield_database_schema_tag_details(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
@@ -344,6 +389,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.includeTags:
             yield from self.yield_tag(schema_name) or []
+            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     def yield_database_tag_details(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
@@ -351,6 +397,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
+            yield from (Either(left=None, right=record) for record in self.tags_registry.drain())
 
     @staticmethod
     def normalize_table_constraints(
@@ -413,29 +460,11 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         yield from self.get_database_schema_names()
 
     def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
-        """
-        Pick up the tags registered in the context
-        searching by entity FQN
-        """
-
-        tag_labels = []
-        for tag_and_category in self.context.get().tags or []:
-            if tag_and_category.fqn and tag_and_category.fqn.root == entity_fqn:
-                tag_label = get_tag_label(
-                    metadata=self.metadata,
-                    tag_name=tag_and_category.tag_request.name.root,
-                    classification_name=tag_and_category.classification_request.name.root,
-                )
-                if tag_label:
-                    tag_labels.append(tag_label)
-        return tag_labels or None
+        """Return registered labels for an entity FQN."""
+        return self.tags_registry.labels_for(entity_fqn) or None
 
     def get_database_tag_labels(self, database_name: str) -> list[TagLabel] | None:
-        """
-        Method to get schema tags
-        This will only get executed if the tags context
-        is properly informed
-        """
+        """Return registered database labels."""
         database_fqn = fqn.build(
             self.metadata,
             entity_type=Database,
@@ -445,11 +474,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         return self.get_tag_by_fqn(entity_fqn=database_fqn)
 
     def get_schema_tag_labels(self, schema_name: str) -> list[TagLabel] | None:
-        """
-        Method to get schema tags
-        This will only get executed if the tags context
-        is properly informed
-        """
+        """Return registered schema labels."""
         schema_fqn = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
@@ -460,10 +485,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         return self.get_tag_by_fqn(entity_fqn=schema_fqn)
 
     def get_tag_labels(self, table_name: str) -> list[TagLabel] | None:
-        """
-        This will only get executed if the tags context
-        is properly informed
-        """
+        """Return registered table labels."""
         table_fqn = fqn.build(
             self.metadata,
             entity_type=Table,
@@ -476,10 +498,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         return self.get_tag_by_fqn(entity_fqn=table_fqn)
 
     def get_column_tag_labels(self, table_name: str, column: dict) -> list[TagLabel] | None:
-        """
-        This will only get executed if the tags context
-        is properly informed
-        """
+        """Return registered column labels."""
         col_fqn = fqn.build(
             self.metadata,
             entity_type=Column,
@@ -877,39 +896,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         semantic layer. No-op by default -- the stage is in the shared topology, so a
         source that does not override this must still resolve the processor.
         """
-        yield from ()
-
-    def clear_schema_tag_scope(self):
-        """Drop tag-registry state for the current schema scope."""
-        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
-        if schema_name:
-            schema_fqn = cast(
-                "str",
-                fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
-                    schema_name=schema_name,
-                ),
-            )
-            self.tags_registry.clear_scope(schema_fqn)
-        yield from ()
-
-    def clear_database_tag_scope(self):
-        """Drop tag-registry state for the current database scope."""
-        database_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
-        if database_name:
-            database_fqn = cast(
-                "str",
-                fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                    database_name=database_name,
-                ),
-            )
-            self.tags_registry.clear_scope(database_fqn)
         yield from ()
 
     def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:

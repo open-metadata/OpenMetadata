@@ -595,7 +595,7 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                         schema_name=schema_name,
                     )
                 ),
-                tags=self.get_tag_labels(table_name=table_name),  # Pick tags from context info, if any
+                tags=self.get_tag_labels(table_name=table_name),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
                     schema_name=schema_name,

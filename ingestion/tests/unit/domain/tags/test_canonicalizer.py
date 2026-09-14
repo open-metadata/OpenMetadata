@@ -159,3 +159,73 @@ class TestRetryAndFailure:
         mock_metadata.es_search_from_fqn.return_value = [_system_classification("MyClass", "Canonical desc")]
         result = canonicalizer.classification("MyClass", "Source desc")
         assert result == Canonical(name="MyClass", description="Canonical desc")
+
+
+@pytest.mark.parametrize("cache_size", [1, 2])
+def test_classification_miss_preserves_each_call_across_eviction(mock_metadata, cache_size):
+    mock_metadata.es_search_from_fqn.return_value = []
+    canonicalizer = TagCanonicalizer(mock_metadata, cache_size=cache_size)
+    for name, description in (("Custom", "first"), ("CUSTOM", "second"), ("Other", "other"), ("custom", "third")):
+        assert canonicalizer.classification(name, description) == Canonical(name, description)
+
+
+@pytest.mark.parametrize("cache_size", [1, 2])
+def test_tag_miss_preserves_each_call_across_eviction(mock_metadata, cache_size):
+    mock_metadata.es_search_from_fqn.return_value = []
+    canonicalizer = TagCanonicalizer(mock_metadata, cache_size=cache_size)
+    for name, description in (("Mixed", "first"), ("MIXED", "second"), ("Other", "other"), ("mixed", "third")):
+        assert canonicalizer.tag("Custom", name, description) == Canonical(name, description)
+
+
+def test_cached_system_match_uses_current_description_fallback(mock_metadata):
+    canonicalizer = TagCanonicalizer(mock_metadata, cache_size=1)
+    mock_metadata.es_search_from_fqn.return_value = [_system_classification("PII")]
+    assert canonicalizer.classification("pii", "first") == Canonical("PII", "first")
+    assert canonicalizer.classification("Pii", "second") == Canonical("PII", "second")
+    mock_metadata.es_search_from_fqn.return_value = [_system_tag("PII", "Sensitive")]
+    assert canonicalizer.tag("PII", "sensitive", "first") == Canonical("Sensitive", "first")
+    assert canonicalizer.tag("PII", "SENSITIVE", "second") == Canonical("Sensitive", "second")
+
+
+def test_tag_cache_preserves_classification_identity(mock_metadata):
+    canonicalizer = TagCanonicalizer(mock_metadata)
+    mock_metadata.es_search_from_fqn.return_value = [_system_tag("PII", "Sensitive")]
+    assert canonicalizer.tag("PII", "sensitive", "desc").name == "Sensitive"
+    assert canonicalizer.tag("pii", "sensitive", "desc").name == "sensitive"
+
+
+def test_resolution_caches_bound_matches_and_misses(mock_metadata):
+    canonicalizer = TagCanonicalizer(mock_metadata, cache_size=2)
+    mock_metadata.es_search_from_fqn.return_value = []
+    for number in range(20):
+        assert canonicalizer.classification(f"Class{number}", "desc").name == f"Class{number}"
+        assert canonicalizer.tag("Class", f"Tag{number}", "desc").name == f"Tag{number}"
+    assert len(canonicalizer._classification_cache) == 2
+    assert len(canonicalizer._tag_cache) == 2
+    mock_metadata.es_search_from_fqn.return_value = [_system_classification("CLASS0", "server")]
+    assert canonicalizer.classification("Class0", "desc") == Canonical("CLASS0", "server")
+    mock_metadata.es_search_from_fqn.return_value = [_system_tag("Class", "TAG0", "server")]
+    assert canonicalizer.tag("Class", "Tag0", "desc") == Canonical("TAG0", "server")
+
+
+@pytest.mark.parametrize("cache_size", [0, -1])
+def test_canonicalizer_rejects_invalid_capacity(mock_metadata, cache_size):
+    with pytest.raises(ValueError, match="positive"):
+        TagCanonicalizer(mock_metadata, cache_size=cache_size)
+
+
+def test_resolve_combines_system_names_and_descriptions(canonicalizer, mock_metadata):
+    mock_metadata.es_search_from_fqn.side_effect = [
+        [_system_classification("PII", "System classification")],
+        [_system_tag("PII", "Sensitive", "System tag")],
+    ]
+    result = canonicalizer.resolve(
+        classification_name="pii",
+        tag_name="sensitive",
+        classification_description="Source classification",
+        tag_description="Source tag",
+    )
+    assert result.classification_name == "PII"
+    assert result.tag_name == "Sensitive"
+    assert result.classification_description == "System classification"
+    assert result.tag_description == "System tag"
