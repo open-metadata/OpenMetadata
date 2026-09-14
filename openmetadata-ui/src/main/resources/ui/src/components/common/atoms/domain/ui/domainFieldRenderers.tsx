@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
+import type { OwnerRef } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
@@ -28,7 +34,6 @@ import {
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 
 interface TaggedEntity {
   tags?: TagLabel[];
@@ -105,6 +110,14 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
     <Typography size="text-sm">{NO_DATA}</Typography>
   );
 
+type OwnerRenderers = {
+  toOwnersWithHref: (refs: EntityReference[] | undefined) => OwnerRef[];
+  renderOwnerContent: (
+    owner: { name?: string; type?: string },
+    chip: ReactNode
+  ) => ReactNode;
+};
+
 // Owner links and tag chips navigate to their own entity, while the row or card underneath
 // navigates to the domain. The guard withholds only what an inner control will handle - a blanket
 // stopPropagation would also swallow clicks on the cell's padding and its "--" placeholder.
@@ -116,23 +129,33 @@ const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
 
 export const renderDomainOwnersCell = (
   entity: OwnedEntity,
-  showDashPlaceholder?: boolean
+  toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
+  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
+  options?: { showDashPlaceholder?: boolean }
 ): ReactNode =>
   withNestedLinkGuard(
-    <OwnerLabel
+    <Owner
       isCompactView={false}
       maxVisibleOwners={4}
-      owners={entity.owners}
-      showDashPlaceholder={showDashPlaceholder}
+      owners={toOwnersWithHref(entity.owners)}
+      renderOwnerContent={renderOwnerContent}
+      showDashPlaceholder={options?.showDashPlaceholder}
       showLabel={false}
     />
   );
 
 export const renderDomainExpertsCell = (
   entity: { experts?: EntityReference[] },
-  showDashPlaceholder?: boolean
+  toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
+  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
+  options?: { showDashPlaceholder?: boolean }
 ): ReactNode =>
-  renderDomainOwnersCell({ owners: entity.experts }, showDashPlaceholder);
+  renderDomainOwnersCell(
+    { owners: entity.experts },
+    toOwnersWithHref,
+    renderOwnerContent,
+    options
+  );
 
 export const renderDomainGlossaryTagsCell = (entity: TaggedEntity): ReactNode =>
   withNestedLinkGuard(

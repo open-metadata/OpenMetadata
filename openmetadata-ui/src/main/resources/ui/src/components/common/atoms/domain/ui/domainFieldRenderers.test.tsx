@@ -27,6 +27,23 @@ import { useDomainCardTemplates } from './useDomainCardTemplates';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: () => <span data-testid="avatar" />,
+  Owner: ({
+    showDashPlaceholder,
+    owners,
+  }: {
+    showDashPlaceholder?: boolean;
+    owners?: { name?: string }[];
+  }) => (
+    <div data-show-dash={String(showDashPlaceholder)} data-testid="owner-label">
+      {owners?.map((owner) => (
+        <a data-testid="owner-link" href="/users/x" key={owner.name}>
+          {owner.name}
+        </a>
+      ))}
+    </div>
+  ),
+  toOwnerRef: (ref: unknown) => ref,
+  toOwnerRefs: (refs: unknown[] = []) => refs,
   Box: ({
     children,
     onClick,
@@ -64,24 +81,6 @@ jest.mock('../../../../../utils/IconUtils', () => ({
   getEntityAvatarProps: () => ({}),
 }));
 
-jest.mock('../../../OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: ({
-    showDashPlaceholder,
-    owners,
-  }: {
-    showDashPlaceholder?: boolean;
-    owners?: { name?: string }[];
-  }) => (
-    <div data-show-dash={String(showDashPlaceholder)} data-testid="owner-label">
-      {owners?.map((owner) => (
-        <a data-testid="owner-link" href="/users/x" key={owner.name}>
-          {owner.name}
-        </a>
-      ))}
-    </div>
-  ),
-}));
-
 jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
   __esModule: true,
   default: ({ sizeCap, tags }: { sizeCap?: number; tags?: unknown[] }) => (
@@ -89,7 +88,11 @@ jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
       data-size-cap={sizeCap}
       data-tags-length={tags?.length}
       data-testid="tags-viewer">
-      {tags?.length ? <a data-testid="tag-link" href="/tags/x" /> : null}
+      {tags?.length ? (
+        <a data-testid="tag-link" href="/tags/x">
+          tag
+        </a>
+      ) : null}
     </div>
   ),
 }));
@@ -150,8 +153,17 @@ describe('renderDomainNameCell', () => {
 });
 
 describe('renderDomainOwnersCell', () => {
-  it('forwards showDashPlaceholder to OwnerLabel', () => {
-    render(<>{renderDomainOwnersCell({ owners: [] }, true)}</>);
+  it('forwards showDashPlaceholder to Owner', () => {
+    render(
+      <>
+        {renderDomainOwnersCell(
+          { owners: [] },
+          () => [],
+          (_owner, chip) => chip,
+          { showDashPlaceholder: true }
+        )}
+      </>
+    );
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -159,8 +171,16 @@ describe('renderDomainOwnersCell', () => {
     );
   });
 
-  it('defaults showDashPlaceholder to undefined when the argument is omitted', () => {
-    render(<>{renderDomainOwnersCell({ owners: [] })}</>);
+  it('defaults showDashPlaceholder to undefined when no options are passed', () => {
+    render(
+      <>
+        {renderDomainOwnersCell(
+          { owners: [] },
+          () => [],
+          (_owner, chip) => chip
+        )}
+      </>
+    );
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -184,7 +204,11 @@ describe('nested control clicks inside a clickable row', () => {
 
   it('keeps an owner link click with the owner', () => {
     const rowClick = renderInRow(
-      renderDomainOwnersCell({ owners: [{ name: 'alice' } as EntityReference] })
+      renderDomainOwnersCell(
+        { owners: [{ name: 'alice' } as EntityReference] },
+        (refs) => (refs ?? []) as never,
+        (_owner, chip) => chip
+      )
     );
     fireEvent.click(screen.getByTestId('owner-link'));
 
@@ -203,7 +227,16 @@ describe('nested control clicks inside a clickable row', () => {
   });
 
   it('lets a click on the cell itself reach the row', () => {
-    const rowClick = renderInRow(renderDomainOwnersCell({ owners: [] }, true));
+    const rowClick = renderInRow(
+      renderDomainOwnersCell(
+        { owners: [] },
+        () => [],
+        (_owner, chip) => chip,
+        {
+          showDashPlaceholder: true,
+        }
+      )
+    );
     fireEvent.click(screen.getByTestId('owner-label'));
 
     expect(rowClick).toHaveBeenCalledTimes(1);
@@ -216,7 +249,9 @@ describe('renderDomainExpertsCell', () => {
       <>
         {renderDomainExpertsCell(
           { experts: [{ name: 'bob' } as EntityReference] },
-          true
+          (refs) => (refs ?? []) as never,
+          (_owner, chip) => chip,
+          { showDashPlaceholder: true }
         )}
       </>
     );

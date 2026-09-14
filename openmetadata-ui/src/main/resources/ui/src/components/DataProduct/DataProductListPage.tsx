@@ -39,6 +39,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
@@ -142,6 +143,7 @@ const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -241,7 +243,12 @@ const DataProductListPage = ({
             dataProductListing.actionHandlers.onEntityClick
           );
         case 'owners':
-          return renderDomainOwnersCell(entity, true);
+          return renderDomainOwnersCell(
+            entity,
+            toOwnersWithHref,
+            renderOwnerContent,
+            { showDashPlaceholder: true }
+          );
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'domains':
@@ -249,7 +256,12 @@ const DataProductListPage = ({
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         case 'experts':
-          return renderDomainExpertsCell(entity, true);
+          return renderDomainExpertsCell(
+            entity,
+            toOwnersWithHref,
+            renderOwnerContent,
+            { showDashPlaceholder: true }
+          );
         default:
           return null;
       }
