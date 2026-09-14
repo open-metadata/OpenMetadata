@@ -49,7 +49,7 @@ jest.mock('../ChartUtils', () => ({
 }));
 
 describe('prepareChartData', () => {
-  it('should resolve task-first incident metadata before legacy threads', () => {
+  it('should resolve incident metadata from tasks', () => {
     const incidentId = '3093dbee-196b-4284-9f97-7103063d0dd7';
     const task = {
       id: incidentId,
@@ -57,7 +57,6 @@ describe('prepareChartData', () => {
     } as Task;
 
     const result = prepareChartData({
-      entityThread: [],
       tasks: [task],
       testCaseParameterValue: [],
       testCaseResults: [
@@ -74,12 +73,6 @@ describe('prepareChartData', () => {
 
   it('should not attach an incident to results that have no incidentId', () => {
     const result = prepareChartData({
-      entityThread: [
-        {
-          id: '1e3b0b1e-0f5a-4c2a-8a6d-2f6a6f7f0a11',
-          task: { id: 244 },
-        },
-      ] as PrepareChartDataType['entityThread'],
       tasks: [{ id: 'd0a1c3e2-6b64-4f2e-9a1a-3d0a5f8b7c22' } as Task],
       testCaseParameterValue: [],
       testCaseResults: [
@@ -137,7 +130,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -219,7 +212,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -281,7 +274,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -320,7 +313,7 @@ describe('prepareChartData', () => {
         },
       ],
       testCaseResults: [],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -359,7 +352,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -412,7 +405,7 @@ describe('prepareChartData', () => {
           minBound: 1720165283528,
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);
@@ -466,7 +459,7 @@ describe('prepareChartData', () => {
           incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
         },
       ],
-      entityThread: [],
+      tasks: [],
     } as PrepareChartDataType;
 
     const result = prepareChartData(testObj);

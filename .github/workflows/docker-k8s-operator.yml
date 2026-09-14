@@ -24,6 +24,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   maven-build:
     runs-on: ubuntu-latest
@@ -50,7 +53,7 @@ jobs:
           mvn test -pl openmetadata-k8s-operator
 
       - name: Upload K8s Operator JAR to Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: k8s-operator-binary
           path: openmetadata-k8s-operator/target/*.jar
@@ -59,6 +62,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     name: Release k8s operator with workflow_dispatch event
     runs-on: ubuntu-latest
+    # `gh release upload` needs write, overriding the workflow-level read.
+    permissions:
+      contents: write
     needs: maven-build
     steps:
       - name: Download application from Artifact

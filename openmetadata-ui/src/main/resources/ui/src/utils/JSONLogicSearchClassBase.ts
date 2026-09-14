@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  AntdConfig,
   AsyncFetchListValuesResult,
   Config,
   FieldOrGroup,
@@ -19,18 +18,20 @@ import {
   ListItem,
   Operators,
   SelectFieldSettings,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { get, sortBy, toLower } from 'lodash';
 import {
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
   RANGE_FIELD_OPERATORS,
+  SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TEXT_FIELD_DESCRIPTION_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
+  DATA_PRODUCT_ENTITY_FIELDS_KEYS,
   GLOSSARY_ENTITY_FIELDS_KEYS,
   KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
   TABLE_ENTITY_FIELDS_KEYS,
@@ -45,11 +46,17 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
+import type { QueryBuilderConfigModes } from './queryBuilder/types';
+import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
+import { toTagSelectOptions } from './SearchPureUtils';
+
+// The value format RAQB's `date` widget stores and the native `<input type="date">` renders.
+const DATE_WIDGET_VALUE_FORMAT = 'YYYY-MM-DD';
 
 class JSONLogicSearchClassBase {
-  baseConfig = AntdConfig as Config;
+  baseConfig = OMConfig as Config;
   configTypes: Config['types'] = {
     ...this.baseConfig.types,
     multiselect: {
@@ -130,8 +137,8 @@ class JSONLogicSearchClassBase {
         return this.utils.moment.utc(val).valueOf();
       },
       jsonLogicImport: function (val) {
-        // Check if valueFormat indicates timestamp
-        return this.utils.moment.utc(val).toISOString();
+        // Return the widget's own `valueFormat`, not an ISO string.
+        return this.utils.moment.utc(val).format(DATE_WIDGET_VALUE_FORMAT);
       },
     },
   };
@@ -576,6 +583,32 @@ class JSONLogicSearchClassBase {
           'greater_or_equal',
         ],
       },
+      [EntityReferenceFields.ASSETS_COUNT]: {
+        label: t('label.asset-count'),
+        type: 'number',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'equal',
+          'not_equal',
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
+      [EntityReferenceFields.OUTPUT_PORTS_COUNT]: {
+        label: t('label.output-port-count'),
+        type: 'number',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'equal',
+          'not_equal',
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
       [EntityReferenceFields.VERSION]: {
         label: t('label.version'),
         type: 'number',
@@ -632,7 +665,7 @@ class JSONLogicSearchClassBase {
 
   mainWidgetProps = {
     fullWidth: true,
-    valueLabel: t('label.criteria') + ':',
+    valueLabel: t('label.value'),
   };
 
   public autoCompleteTier: SelectFieldSettings['asyncFetch'] = async (
@@ -646,12 +679,7 @@ class JSONLogicSearchClassBase {
         limit: 50,
       });
 
-      const tierFields = tiers.map((tier) => ({
-        title: tier.fullyQualifiedName, // tier.name,
-        value: tier.fullyQualifiedName,
-      }));
-
-      resolvedTierOptions = tierFields as ListItem[];
+      resolvedTierOptions = toTagSelectOptions(tiers) as ListItem[];
     } catch (error) {
       resolvedTierOptions = [];
     }
@@ -693,17 +721,29 @@ class JSONLogicSearchClassBase {
         GLOSSARY_ENTITY_FIELDS_KEYS,
         this.mapFields
       ),
+      [SearchIndex.DATA_PRODUCT]: getFieldsByKeys(
+        DATA_PRODUCT_ENTITY_FIELDS_KEYS,
+        this.mapFields
+      ),
     };
 
     for (const index of entitySearchIndex) {
       configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
     }
 
+    const shouldAddColumnTag = entitySearchIndex.every((index) =>
+      SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
+    );
+    if (shouldAddColumnTag) {
+      configs = {
+        ...configs,
+        ...getFieldsByKeys([EntityReferenceFields.COLUMN_TAG], this.mapFields),
+      };
+    }
+
     return configs;
   }
-  /**
-   * Common fields that exit for all searchable entities
-   */
+  // Common fields that exit for all searchable entities
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
   }: {
@@ -720,11 +760,15 @@ class JSONLogicSearchClassBase {
     return Object.fromEntries(sortedFieldsConfig);
   };
 
-  /**
-   * Overriding default configurations.
-   * Basic attributes that fields inherit from.
-   */
-  public getInitialConfigWithoutFields = (isExplorePage = true) => {
+  // Overriding default configurations.
+  public getInitialConfigWithoutFields = (
+    modes: QueryBuilderConfigModes = {}
+  ) => {
+    const {
+      showLabels = true,
+      renderButton = renderJSONLogicQueryBuilderButtons,
+    } = modes;
+
     const initialConfigWithoutFields: Config = {
       ...this.baseConfig,
       types: this.configTypes,
@@ -732,14 +776,14 @@ class JSONLogicSearchClassBase {
       operators: this.configOperators as Operators,
       settings: {
         ...this.baseConfig.settings,
-        showLabels: isExplorePage,
+        showLabels,
         canReorder: false,
         renderSize: 'medium',
-        fieldLabel: t('label.field-plural') + ':',
-        operatorLabel: t('label.condition') + ':',
+        fieldLabel: t('label.field'),
+        operatorLabel: t('label.operator'),
         showNot: false,
-        valueLabel: t('label.criteria') + ':',
-        renderButton: renderJSONLogicQueryBuilderButtons,
+        valueLabel: t('label.value'),
+        renderButton,
         customFieldSelectProps: {
           ...this.baseConfig.settings.customFieldSelectProps,
           popupClassName: 'json-logic-field-select',
@@ -752,10 +796,10 @@ class JSONLogicSearchClassBase {
 
   public getQbConfigs: (
     entitySearchIndex?: Array<SearchIndex>,
-    isExplorePage?: boolean
-  ) => Config = (entitySearchIndex, isExplorePage) => {
+    modes?: QueryBuilderConfigModes
+  ) => Config = (entitySearchIndex, modes) => {
     return {
-      ...this.getInitialConfigWithoutFields(isExplorePage),
+      ...this.getInitialConfigWithoutFields(modes),
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,
@@ -764,21 +808,66 @@ class JSONLogicSearchClassBase {
     };
   };
 
-  // Custom handling for array_not_contains and is_null (Is Not Set) operators
-  // on group/some fields (e.g. Owners, Domain, Data Product).
-  // react-awesome-query-builder emits `{"some": [var, condition]}` for these
-  // fields, and JsonLogic's `some` is vacuously false on an empty array. That
-  // is correct for `array_not_contains`/`select_not_any_in` once negation is
-  // lifted outside `some`, but for `is_null` it means "Is Not Set" always
-  // evaluates false — even when the array is genuinely empty — because there
-  // is no element for `some` to satisfy. We rewrite that shape to
-  // `{"!": {"some": [var, {"!=": [field, null]}]}}`, which is the negation of
-  // the (already-correct) "Is Set" check and is true exactly when the array
-  // is empty.
-  // Return the rule with negation applied at group level.
+  // RAQB emits `{some: [var, cond]}` for group/some fields (Owners, Domain, Data Product), and JsonLogic's `some` is
+  // vacuously false on an empty array — so "Is Not Set" would never match. Rewrite it as `!some(field != null)`.
   getNegativeQueryForNotContainsReverserOperation = (
     logic: Record<string, unknown>
   ) => {
+    const buildNegatedSome = (
+      variable: unknown,
+      negated: Record<string, unknown>
+    ): Record<string, unknown> | undefined => {
+      if (negated.contains) {
+        return { '!': { some: [variable, { contains: negated.contains }] } };
+      }
+
+      if (negated.in) {
+        return { '!': { some: [variable, { in: negated.in }] } };
+      }
+
+      return undefined;
+    };
+
+    // Check if this is a "some" operation with nested "!" and "contains".
+    const handleSomeOperation = (
+      logic: Record<string, unknown>
+    ): Record<string, unknown> | undefined => {
+      if (!logic.some || !Array.isArray(logic.some)) {
+        return undefined;
+      }
+
+      const [variable, condition] = logic.some as [
+        unknown,
+        Record<string, unknown>
+      ];
+
+      const negation = condition?.['!'];
+      if (negation && typeof negation === 'object') {
+        const result = buildNegatedSome(
+          variable,
+          negation as Record<string, unknown>
+        );
+
+        if (result) {
+          return result;
+        }
+      }
+
+      // Pattern generated by the "Is Not Set" (is_null) operator: {"some": [var, {"==": [field, null]}]}
+      const equalsNullArgs = condition?.['=='];
+      if (
+        Array.isArray(equalsNullArgs) &&
+        equalsNullArgs.length === 2 &&
+        equalsNullArgs[1] === null
+      ) {
+        const [field] = equalsNullArgs;
+
+        return { '!': { some: [variable, { '!=': [field, null] }] } };
+      }
+
+      return undefined;
+    };
+
     const processNotContains = (
       logic: Record<string, unknown>
     ): Record<string, unknown> | unknown => {
@@ -786,50 +875,9 @@ class JSONLogicSearchClassBase {
         return logic;
       }
 
-      // Check if this is a "some" operation with nested "!" and "contains"
-      // This pattern is generated when array_not_contains is used with reversedOp
-      if (logic.some && Array.isArray(logic.some)) {
-        const [variable, condition] = logic.some as [
-          unknown,
-          Record<string, unknown>
-        ];
-
-        if (condition && condition['!'] && typeof condition['!'] === 'object') {
-          const negated = condition['!'] as Record<string, unknown>;
-
-          if (negated.contains) {
-            return {
-              '!': {
-                some: [variable, { contains: negated.contains }],
-              },
-            };
-          }
-
-          if (negated.in) {
-            return {
-              '!': {
-                some: [variable, { in: negated.in }],
-              },
-            };
-          }
-        }
-
-        // Pattern generated by the "Is Not Set" (is_null) operator:
-        // {"some": [var, {"==": [field, null]}]}
-        const equalsNullArgs = condition?.['=='];
-        if (
-          Array.isArray(equalsNullArgs) &&
-          equalsNullArgs.length === 2 &&
-          equalsNullArgs[1] === null
-        ) {
-          const [field] = equalsNullArgs;
-
-          return {
-            '!': {
-              some: [variable, { '!=': [field, null] }],
-            },
-          };
-        }
+      const someResult = handleSomeOperation(logic);
+      if (someResult !== undefined) {
+        return someResult;
       }
 
       // Recursively process nested logic

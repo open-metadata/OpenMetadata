@@ -18,8 +18,9 @@ import {
   Card,
   EmptyPlaceholder,
   SlideoutMenu,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { AlignLeft } from '@untitledui/icons';
+import { AlignLeft, LinkExternal02 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -151,6 +152,126 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   );
 };
 
+// ---- selected run detail ----
+interface SelectedRunPanelProps {
+  run?: AgentRun;
+  isLoading: boolean;
+}
+
+const SelectedRunPanel: FC<SelectedRunPanelProps> = ({ run, isLoading }) => {
+  const { t } = useTranslation();
+  const meta = run ? RUN_META[run.status] : undefined;
+  const tot = run?.totals;
+
+  if (!run || !meta || !tot) {
+    return (
+      <div className="tw:px-1 tw:py-10 tw:text-center tw:text-sm tw:text-quaternary">
+        {isLoading ? `${t('label.loading')}...` : t('message.no-recent-runs')}
+      </div>
+    );
+  }
+
+  const runLabel = t(meta.labelKey);
+
+  return (
+    <>
+      {/* selected run header */}
+      <Box align="center" className="tw:mb-3.5 tw:mt-5.5 tw:gap-2.5">
+        <RunGlyph size={20} status={run.status} />
+        <div className="tw:flex-1">
+          <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
+            {runLabel}
+          </div>
+          <div className="tw:text-xs tw:text-tertiary">
+            {/* eslint-disable-next-line i18next/no-literal-string -- decorative middot separator */}
+            {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
+            {t('message.ran-for-duration', { duration: run.duration })}
+          </div>
+        </div>
+        <Badge
+          className="tw:font-semibold"
+          color={meta.color}
+          data-testid="selected-run-status"
+          size="sm"
+          type="pill-color">
+          {runLabel}
+        </Badge>
+      </Box>
+
+      {/* stat strip */}
+      <Box className="tw:mb-5.5 tw:gap-2.5">
+        <StatTile
+          label={t('label.processed')}
+          testId="run-stat-processed"
+          value={fmtNum(tot.records)}
+        />
+        <StatTile
+          label={t('label.filtered-lowercase')}
+          testId="run-stat-filtered"
+          value={fmtNum(tot.filtered)}
+        />
+        <StatTile
+          label={t('label.updated-lowercase')}
+          testId="run-stat-updated"
+          value={fmtNum(tot.updated)}
+        />
+        <StatTile
+          label={t('label.warning-plural-lowercase')}
+          testId="run-stat-warnings"
+          tone={tot.warnings ? 'warn' : undefined}
+          value={fmtNum(tot.warnings)}
+        />
+        <StatTile
+          label={t('label.error-plural-lowercase')}
+          testId="run-stat-errors"
+          tone={tot.errors ? 'error' : undefined}
+          value={fmtNum(tot.errors)}
+        />
+      </Box>
+
+      {/* steps card */}
+      <Card
+        className="tw:shrink-0 tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
+        data-testid="run-steps-card"
+        variant="ghost">
+        <Box
+          align="center"
+          className={`tw:pb-2.5 tw:pt-3.5 ${
+            isEmpty(run.steps) ? '' : 'tw:border-b tw:border-secondary'
+          }`}
+          justify="between">
+          <span className="tw:text-sm tw:font-semibold tw:text-secondary">
+            {t('label.steps')}
+          </span>
+          <span className="tw:text-xs tw:text-quaternary">
+            {run.steps.length} {t('label.steps-lowercase')}
+          </span>
+        </Box>
+        {isEmpty(run.steps) ? (
+          // EmptyPlaceholder's shell is absolutely positioned and fills its nearest
+          // positioned ancestor, so the host has to be relative and carry its own height.
+          <div
+            className="tw:relative tw:min-h-[120px]"
+            data-testid="run-steps-empty">
+            <EmptyPlaceholder
+              title={t('message.no-steps-available')}
+              variant="blank"
+            />
+          </div>
+        ) : (
+          run.steps.map((s, idx) => (
+            <RunStepRow
+              isLast={idx === run.steps.length - 1}
+              key={s.name}
+              step={s}
+            />
+          ))
+        )}
+      </Card>
+    </>
+  );
+};
+
 // ---- drawer ----
 interface RunHistoryDrawerProps {
   agent: Agent;
@@ -163,6 +284,10 @@ interface RunHistoryDrawerProps {
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
+  agentLinkProps?: {
+    href: string;
+    label: string;
+  };
 }
 
 const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
@@ -174,6 +299,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   onClose,
   onOpenLogs,
   onRun,
+  agentLinkProps,
 }) => {
   const { t } = useTranslation();
   const { isPending, isUnavailable } = useAgentActionAvailability();
@@ -194,9 +320,6 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   }, [runs, latestRun, initialRunId, selId]);
 
   const run = runs.find((r) => r.id === selId) ?? latestRun;
-  const m = run ? RUN_META[run.status] : undefined;
-  const runLabel = m ? t(m.labelKey) : '';
-  const tot = run?.totals;
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
@@ -223,19 +346,37 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           <span className="tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:bg-tertiary tw:text-fg-secondary">
             <Icon height={18} width={18} />
           </span>
-          <div className="tw:flex-1">
-            <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
+          <div className="tw:flex-1 tw:min-w-0">
+            {/* The ellipsis tooltip already surfaces the full name on hover, so a
+                native `title` here would only stack an OS-styled duplicate that
+                ignores the theme and fires even when the name is not clipped. */}
+            <Typography
+              ellipsis={{ rows: 1, tooltip: true }}
+              size="text-md"
+              weight="bold">
               {agent.name}
-            </div>
+            </Typography>
             <div className="tw:text-xs tw:text-quaternary">
               {t('label.run-history-and-details')}
             </div>
           </div>
+          {agentLinkProps && (
+            <Button
+              color="link-color"
+              data-testid="agent-link-button"
+              href={agentLinkProps.href}
+              iconTrailing={<LinkExternal02 size={12} />}
+              target="_blank">
+              {agentLinkProps.label}
+            </Button>
+          )}
           {/* Raw logs and Run now both go through the pipeline service; the run history below
               does not, so the drawer stays useful when those two are closed down. */}
           <Button
-            className="tw:font-semibold tw:after:outline-secondary"
-            color="secondary"
+            className="tw:font-semibold"
+            color={
+              agent.status === 'failed' ? 'secondary-destructive' : 'secondary'
+            }
             data-testid="raw-logs-button"
             iconLeading={<AlignLeft size={15} />}
             isDisabled={isPending || isUnavailable}
@@ -245,8 +386,8 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           </Button>
           {canRunAgent(agent, permissions) && (
             <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
-              color="secondary"
+              className="tw:font-semibold"
+              color="primary"
               data-testid="drawer-run-now-button"
               iconLeading={<PlayIcon height={14} width={14} />}
               isDisabled={isPending || isUnavailable}
@@ -265,108 +406,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
         </div>
         <RunHistory runs={runs} selectedId={selId} onSelect={setSelId} />
 
-        {run && m && tot ? (
-          <>
-            {/* selected run header */}
-            <Box align="center" className="tw:mb-3.5 tw:mt-5.5 tw:gap-2.5">
-              <RunGlyph size={20} status={run.status} />
-              <div className="tw:flex-1">
-                <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
-                  {runLabel}
-                </div>
-                <div className="tw:text-xs tw:text-tertiary">
-                  {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
-                  {t('message.ran-for-duration', { duration: run.duration })}
-                </div>
-              </div>
-              <Badge
-                className="tw:font-semibold"
-                color={m.color}
-                data-testid="selected-run-status"
-                size="sm"
-                type="pill-color">
-                {runLabel}
-              </Badge>
-            </Box>
-
-            {/* stat strip */}
-            <Box className="tw:mb-5.5 tw:gap-2.5">
-              <StatTile
-                label={t('label.processed')}
-                testId="run-stat-processed"
-                value={fmtNum(tot.records)}
-              />
-              <StatTile
-                label={t('label.filtered-lowercase')}
-                testId="run-stat-filtered"
-                value={fmtNum(tot.filtered)}
-              />
-              <StatTile
-                label={t('label.updated-lowercase')}
-                testId="run-stat-updated"
-                value={fmtNum(tot.updated)}
-              />
-              <StatTile
-                label={t('label.warning-plural-lowercase')}
-                testId="run-stat-warnings"
-                tone={tot.warnings ? 'warn' : undefined}
-                value={fmtNum(tot.warnings)}
-              />
-              <StatTile
-                label={t('label.error-plural-lowercase')}
-                testId="run-stat-errors"
-                tone={tot.errors ? 'error' : undefined}
-                value={fmtNum(tot.errors)}
-              />
-            </Box>
-
-            {/* steps card */}
-            <Card
-              className="tw:shrink-0 tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
-              data-testid="run-steps-card"
-              variant="ghost">
-              <Box
-                align="center"
-                className={`tw:pb-2.5 tw:pt-3.5 ${
-                  isEmpty(run.steps) ? '' : 'tw:border-b tw:border-secondary'
-                }`}
-                justify="between">
-                <span className="tw:text-sm tw:font-semibold tw:text-secondary">
-                  {t('label.steps')}
-                </span>
-                <span className="tw:text-xs tw:text-quaternary">
-                  {run.steps.length} {t('label.steps-lowercase')}
-                </span>
-              </Box>
-              {isEmpty(run.steps) ? (
-                // EmptyPlaceholder's shell is absolutely positioned and fills its nearest
-                // positioned ancestor, so the host has to be relative and carry its own height.
-                <div
-                  className="tw:relative tw:min-h-[120px]"
-                  data-testid="run-steps-empty">
-                  <EmptyPlaceholder
-                    title={t('message.no-steps-available')}
-                    variant="blank"
-                  />
-                </div>
-              ) : (
-                run.steps.map((s, idx) => (
-                  <RunStepRow
-                    isLast={idx === run.steps.length - 1}
-                    key={idx}
-                    step={s}
-                  />
-                ))
-              )}
-            </Card>
-          </>
-        ) : (
-          <div className="tw:px-1 tw:py-10 tw:text-center tw:text-sm tw:text-quaternary">
-            {isLoading
-              ? `${t('label.loading')}...`
-              : t('message.no-recent-runs')}
-          </div>
-        )}
+        <SelectedRunPanel isLoading={isLoading} run={run} />
       </SlideoutMenu.Content>
     </SlideoutMenu>
   );

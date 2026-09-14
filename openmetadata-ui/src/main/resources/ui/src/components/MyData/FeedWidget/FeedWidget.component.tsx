@@ -53,6 +53,7 @@ const MyFeedWidgetInternal = ({
     fetchActivityEvents,
     fetchMyActivityFeed,
     fetchFollowingActivity,
+    showActivityDrawer,
   } = useActivityFeedProvider();
   const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
     FeedFilter.ALL
@@ -148,6 +149,7 @@ const MyFeedWidgetInternal = ({
                 hidePopover={false}
                 isFullSizeWidget={isFullSizeWidget}
                 isLoading={isActivityLoading ?? false}
+                onActivityClick={showActivityDrawer}
                 onAfterClose={handleCloseClick}
                 onUpdateEntityDetails={handleUpdateEntityDetails}
               />
@@ -162,6 +164,7 @@ const MyFeedWidgetInternal = ({
     isActivityLoading,
     handleCloseClick,
     handleUpdateEntityDetails,
+    showActivityDrawer,
     currentUser,
     isFullSizeWidget,
   ]);

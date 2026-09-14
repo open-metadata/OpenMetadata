@@ -27,8 +27,9 @@ const LoginCarousel = () => {
       loop
       muted
       playsInline
-      className="tw:absolute tw:inset-0 tw:h-full tw:w-full"
+      className="tw:absolute tw:inset-0 tw:h-full tw:w-full tw:object-cover"
       data-testid="login-video"
+      preload="auto"
       src={loginVideo}
     />
   );

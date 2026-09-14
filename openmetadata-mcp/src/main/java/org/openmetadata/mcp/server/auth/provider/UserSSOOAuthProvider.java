@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.mcp.auth.AccessToken;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.AuthorizationParams;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
@@ -808,16 +807,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   }
 
   @Override
-  public CompletableFuture<RefreshToken> loadRefreshToken(
-      OAuthClientInformation client, String refreshToken) {
-    // Refresh token validation happens in exchangeRefreshToken which verifies JWT directly
-    // This method is not used in the current implementation
-    return CompletableFuture.failedFuture(
-        new UnsupportedOperationException(
-            "loadRefreshToken not implemented - use exchangeRefreshToken instead"));
-  }
-
-  @Override
   public CompletableFuture<OAuthToken> exchangeRefreshToken(
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException {
@@ -938,15 +927,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       LOG.error("Refresh token exchange failed unexpectedly", e);
       throw new TokenException("server_error", "Token refresh failed");
     }
-  }
-
-  @Override
-  public CompletableFuture<AccessToken> loadAccessToken(String token) {
-    // Access token validation happens through JwtFilter which verifies JWT directly
-    // This method is not used in the current implementation
-    return CompletableFuture.failedFuture(
-        new UnsupportedOperationException(
-            "loadAccessToken not implemented - tokens are validated via JwtFilter"));
   }
 
   @Override

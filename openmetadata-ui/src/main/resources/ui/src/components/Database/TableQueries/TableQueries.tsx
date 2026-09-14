@@ -609,7 +609,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                           setIsClickedCalendar(true);
                         }}>
                         <span>
-                          <label>{t('label.created-date')}</label>
+                          <span>{t('label.created-date')}</span>
                           <DatePicker.RangePicker
                             allowClear
                             showNow

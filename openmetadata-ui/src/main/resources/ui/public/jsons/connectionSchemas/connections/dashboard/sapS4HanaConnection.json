@@ -1,0 +1,351 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapS4HanaConnection",
+  "description": "SAP S/4HANA Connection Config for Embedded Analytics",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection",
+  "definitions": {
+    "sapS4HanaType": {
+      "description": "SAP S/4HANA service type",
+      "type": "string",
+      "enum": [
+        "SapS4Hana"
+      ],
+      "default": "SapS4Hana"
+    },
+    "sapS4HanaBasicAuthType": {
+      "title": "Basic Auth",
+      "description": "Username and password credentials for SAP S/4HANA.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
+      "properties": {
+        "authType": {
+          "title": "Auth Type",
+          "description": "Authentication type identifier.",
+          "type": "string",
+          "enum": [
+            "basic"
+          ],
+          "default": "basic"
+        },
+        "username": {
+          "title": "Username",
+          "description": "Username to authenticate with SAP S/4HANA.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Password to authenticate with SAP S/4HANA.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": [
+        "username",
+        "password"
+      ],
+      "additionalProperties": false
+    },
+    "sapS4HanaOAuthType": {
+      "title": "OAuth 2.0 Client Credentials",
+      "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
+      "properties": {
+        "authType": {
+          "title": "Auth Type",
+          "description": "Authentication type identifier.",
+          "type": "string",
+          "enum": [
+            "oauth2"
+          ],
+          "default": "oauth2"
+        },
+        "clientId": {
+          "title": "Client ID",
+          "description": "OAuth 2.0 client ID registered in SAP.",
+          "type": "string"
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "OAuth 2.0 client secret.",
+          "type": "string",
+          "format": "password"
+        },
+        "tokenEndpoint": {
+          "title": "Token Endpoint",
+          "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "clientId",
+        "clientSecret",
+        "tokenEndpoint"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "SapS4Hana",
+      "type": "string",
+      "enum": [
+        "SapS4Hana"
+      ]
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
+      "oneOf": [
+        {
+          "title": "Basic Auth",
+          "description": "Username and password credentials for SAP S/4HANA.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
+          "properties": {
+            "authType": {
+              "title": "Auth Type",
+              "description": "Authentication type identifier.",
+              "type": "string",
+              "enum": [
+                "basic"
+              ],
+              "default": "basic"
+            },
+            "username": {
+              "title": "Username",
+              "description": "Username to authenticate with SAP S/4HANA.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Password to authenticate with SAP S/4HANA.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "OAuth 2.0 Client Credentials",
+          "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
+          "properties": {
+            "authType": {
+              "title": "Auth Type",
+              "description": "Authentication type identifier.",
+              "type": "string",
+              "enum": [
+                "oauth2"
+              ],
+              "default": "oauth2"
+            },
+            "clientId": {
+              "title": "Client ID",
+              "description": "OAuth 2.0 client ID registered in SAP.",
+              "type": "string"
+            },
+            "clientSecret": {
+              "title": "Client Secret",
+              "description": "OAuth 2.0 client secret.",
+              "type": "string",
+              "format": "password"
+            },
+            "tokenEndpoint": {
+              "title": "Token Endpoint",
+              "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": [
+            "clientId",
+            "clientSecret",
+            "tokenEndpoint"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "clientNumber": {
+      "title": "Client Number",
+      "description": "SAP client number (Mandant), typically a 3-digit string (e.g. '100').",
+      "type": "string",
+      "default": "100"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate validation, 'validate' to verify against a CA certificate.",
+      "default": "no-ssl",
+      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+      "type": "string",
+      "enum": [
+        "no-ssl",
+        "ignore",
+        "validate"
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "description": "CA certificate, client certificate, and private key for SSL validation. Required when verifySSL is 'validate'.",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "dashboardFilterPattern": {
+      "description": "Regex to exclude or include dashboards that matches the pattern.",
+      "title": "Default Dashboard Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chartFilterPattern": {
+      "description": "Regex exclude or include charts that matches the pattern.",
+      "title": "Default Chart Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "dataModelFilterPattern": {
+      "description": "Regex exclude or include data models that matches the pattern.",
+      "title": "Default Data Model Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsLineageExtraction": {
+      "title": "Supports Lineage Extraction",
+      "description": "Supports Lineage Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "authType"
+  ]
+}

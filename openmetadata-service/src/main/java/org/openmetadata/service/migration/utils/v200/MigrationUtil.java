@@ -364,7 +364,7 @@ public class MigrationUtil {
    * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
    * policies are create-if-not-exists, so without this migration upgraded deployments would lose
    * the ability for non-admin users to file or patch task threads (the new authorization wired into
-   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   * legacy task endpoints would reject them with 403).
    */
   public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);

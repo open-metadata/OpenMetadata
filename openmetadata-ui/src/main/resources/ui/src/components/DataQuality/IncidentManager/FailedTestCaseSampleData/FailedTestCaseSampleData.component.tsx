@@ -189,8 +189,6 @@ const FailedTestCaseSampleData = ({
         setIsLoading(false);
       }
     }
-
-    return;
   };
 
   const handleDeleteSampleData = async () => {
@@ -211,8 +209,6 @@ const FailedTestCaseSampleData = ({
         setIsDeleting(false);
       }
     }
-
-    return;
   };
 
   // Failed-rows samples are only ever stored for a failing test case, so the

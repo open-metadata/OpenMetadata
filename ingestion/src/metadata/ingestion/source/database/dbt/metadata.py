@@ -17,9 +17,10 @@ DBT source methods.
 import contextlib
 import re
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -174,7 +175,7 @@ class DbtSource(DbtServiceSource):
         self._load_omd_custom_properties()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
@@ -205,7 +206,7 @@ class DbtSource(DbtServiceSource):
         except Exception as exc:
             logger.warning(f"Error loading custom properties: {exc}")
 
-    def get_dbt_domain(self, manifest_node: Any) -> Optional[EntityReference]:  # noqa: UP045
+    def get_dbt_domain(self, manifest_node: Any) -> EntityReference | None:
         """
         Extracts domain from meta.openmetadata.domain and returns EntityReference
         """
@@ -232,7 +233,7 @@ class DbtSource(DbtServiceSource):
 
         return None
 
-    def get_dbt_owner(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[EntityReferenceList]:  # noqa: C901, UP045
+    def get_dbt_owner(self, manifest_node: Any, catalog_node: Any | None) -> EntityReferenceList | None:  # noqa: C901
         """
         Returns dbt owner with priority:
         1. manifest_node.meta.openmetadata.owner (OpenMetadata docs format - HIGHEST PRIORITY)
@@ -354,7 +355,7 @@ class DbtSource(DbtServiceSource):
                     else:
                         logger.warning(f"Unable to find the node or columns in the catalog file for dbt node: {key}")
 
-    def filter_tags(self, tags: List[str]) -> List[str]:  # noqa: UP006
+    def filter_tags(self, tags: list[str]) -> list[str]:
         """
         Filter tags based on tag filter pattern if configured
         """
@@ -457,8 +458,8 @@ class DbtSource(DbtServiceSource):
     def _validate_custom_properties(
         self,
         table_entity: Table,
-        custom_properties: Dict[str, Any],  # noqa: UP006
-    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+        custom_properties: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """
         Validates and converts custom properties with comprehensive type checking.
 
@@ -743,8 +744,8 @@ class DbtSource(DbtServiceSource):
         # instead of sniffing the parsed object downstream
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
-    def _get_table_entity(self, table_fqn) -> Optional[Table]:  # noqa: UP045
-        def search_table(fqn_search_string: str) -> Optional[Table]:  # noqa: UP045
+    def _get_table_entity(self, table_fqn) -> Table | None:
+        def search_table(fqn_search_string: str) -> Table | None:
             table_entities = get_entity_from_es_result(
                 entity_list=self.metadata.es_search_from_fqn(
                     entity_type=Table,
@@ -1054,7 +1055,7 @@ class DbtSource(DbtServiceSource):
 
         return upstream_nodes
 
-    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> List[Column]:  # noqa: UP006
+    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> list[Column]:
         """
         Method to parse the DBT columns
         """
@@ -1146,7 +1147,7 @@ class DbtSource(DbtServiceSource):
 
         return columns
 
-    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:  # noqa: UP045
+    def parse_exposure_node(self, exposure_spec) -> Any | None:
         """
         Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
         Open Metadata entity. Returns entity object if both conditions are met.
@@ -1202,7 +1203,7 @@ class DbtSource(DbtServiceSource):
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
-                from_entity: Optional[Table] = self._get_table_entity(table_fqn=upstream_node)  # noqa: UP045
+                from_entity: Table | None = self._get_table_entity(table_fqn=upstream_node)
                 if from_entity and to_entity:
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
@@ -1308,7 +1309,7 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
+                from_entity: Table | list[Table] | None = get_entity_from_es_result(
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
@@ -1981,7 +1982,7 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: str | None) -> None:
         """
         Keep the description of an already ingested test case in sync with dbt.
 
@@ -2012,7 +2013,7 @@ class DbtSource(DbtServiceSource):
             return TestCaseStatus.Failed, 0
         return TestCaseStatus.Aborted, 0
 
-    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> Optional[datetime]:  # noqa: UP045
+    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> datetime | None:
         """
         Resolve when a dbt result was produced.
 
@@ -2045,7 +2046,7 @@ class DbtSource(DbtServiceSource):
         return dbt_timestamp if isinstance(dbt_timestamp, datetime) else None
 
     @staticmethod
-    def _get_freshness_result_details(dbt_test_result) -> Optional[str]:  # noqa: UP045
+    def _get_freshness_result_details(dbt_test_result) -> str | None:
         """
         Build the result detail of a source freshness check.
 
@@ -2072,7 +2073,7 @@ class DbtSource(DbtServiceSource):
 
         return "; ".join(details) or None
 
-    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
         """
         Build the test case result of a `dbt source freshness` run.
 
@@ -2106,7 +2107,7 @@ class DbtSource(DbtServiceSource):
             ),
         )
 
-    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
+    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
         """
         Build the test case result of a dbt test recorded in run_results.json
         """

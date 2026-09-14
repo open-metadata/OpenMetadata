@@ -88,6 +88,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       placeholder?: string;
     }) => (
       <input
+        aria-label="Folder name"
         data-testid={testId}
         placeholder={placeholder}
         value={value}

@@ -1,0 +1,29 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/custom/dataAssetType.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Data Asset Type",
+  "description": "Entity type reachable under the `di-data-assets-*` wildcard. Asset types are ingested by DataInsightsApp and configured in `dataInsights/config.json`. Test results and resolution statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the app must never create or delete data streams for those live-index aliases.",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.dataInsight.custom.DataAssetType",
+  "enum": [
+    "table",
+    "storedProcedure",
+    "databaseSchema",
+    "database",
+    "chart",
+    "dashboard",
+    "dashboardDataModel",
+    "pipeline",
+    "topic",
+    "container",
+    "searchIndex",
+    "mlmodel",
+    "dataProduct",
+    "glossaryTerm",
+    "tag",
+    "metric",
+    "apiEndpoint",
+    "testCaseResult",
+    "testCaseResolutionStatus"
+  ]
+}

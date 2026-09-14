@@ -64,6 +64,7 @@ jest.mock('react-codemirror2', () => ({
         return (
           <div className={className} data-testid="code-mirror-editor">
             <span data-testid="editor-value">{value}</span>
+            {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
             <input
               data-testid="code-mirror-input"
               type="text"

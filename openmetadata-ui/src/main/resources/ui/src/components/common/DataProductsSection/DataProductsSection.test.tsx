@@ -244,6 +244,7 @@ describe('DataProductsSection', () => {
         requireDomainForDataProduct: false,
       },
       rules: [],
+      isRulesLoaded: true,
       isLoading: false,
     });
   });
@@ -532,7 +533,17 @@ describe('DataProductsSection', () => {
   });
 
   describe('Fetch Options', () => {
-    it('calls fetch API with search and active domains', async () => {
+    it('scopes fetch to active domains when domain validation rule is enabled', async () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: true,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
       const { fetchDataProductsElasticSearch } = jest.requireMock(
         '../../../rest/dataProductAPI'
       );
@@ -552,6 +563,207 @@ describe('DataProductsSection', () => {
           2
         );
       });
+    });
+
+    it('fetches across all domains when domain validation rule is disabled', async () => {
+      const { fetchDataProductsElasticSearch } = jest.requireMock(
+        '../../../rest/dataProductAPI'
+      );
+
+      render(<DataProductsSection {...defaultProps} />);
+
+      const editIcon = screen.getByTestId('edit-data-products');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
+      fireEvent.click(screen.getByTestId('dps-fetch'));
+
+      await waitFor(() => {
+        expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
+          'term',
+          [],
+          2
+        );
+      });
+    });
+
+    it('stays domain-scoped while entity rules are still loading', async () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+      const { fetchDataProductsElasticSearch } = jest.requireMock(
+        '../../../rest/dataProductAPI'
+      );
+
+      render(<DataProductsSection {...defaultProps} />);
+
+      const editIcon = screen.getByTestId('edit-data-products');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
+      fireEvent.click(screen.getByTestId('dps-fetch'));
+
+      await waitFor(() => {
+        expect(fetchDataProductsElasticSearch).toHaveBeenCalledWith(
+          'term',
+          ['domain'],
+          2
+        );
+      });
+    });
+  });
+
+  describe('Domain Requirement Gating', () => {
+    it('prompts to select a domain when no domains and rule is enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: true,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      render(
+        <DataProductsSection
+          {...defaultProps}
+          activeDomains={[]}
+          dataProducts={[]}
+        />
+      );
+
+      expect(
+        screen.getByText('message.select-domain-to-add-data-product')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('edit-data-products')
+      ).not.toBeInTheDocument();
+    });
+
+    it('allows editing with no domains when rule is disabled', () => {
+      render(
+        <DataProductsSection
+          {...defaultProps}
+          activeDomains={[]}
+          dataProducts={[]}
+        />
+      );
+
+      expect(
+        screen.queryByText('message.select-domain-to-add-data-product')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('edit-data-products')).toBeInTheDocument();
+    });
+  });
+
+  describe('Multi-Select Rule Gating', () => {
+    const getLastMultiSelect = () => {
+      const { DataProductsSelectListV1 } = jest.requireMock(
+        '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1'
+      );
+
+      return (DataProductsSelectListV1 as jest.Mock).mock.calls.at(-1)?.[0]
+        ?.multiSelect;
+    };
+
+    const enterEditMode = () => {
+      fireEvent.click(screen.getByTestId('edit-data-products'));
+    };
+
+    it('holds the single-select default while entity rules are still loading', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+
+      render(<DataProductsSection {...defaultProps} />);
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(false);
+    });
+
+    it('re-enables multi-select once rules load and the multi-product rule is not enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      render(<DataProductsSection {...defaultProps} />);
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(true);
+    });
+
+    it('keeps single-select once rules load and the multi-product rule is enabled', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: false,
+          maxDataProducts: 1,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      render(<DataProductsSection {...defaultProps} />);
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(false);
+    });
+
+    it('updates multiSelect from strict to permissive once rules finish loading', () => {
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: false,
+        isLoading: true,
+      });
+
+      const { rerender } = render(<DataProductsSection {...defaultProps} />);
+      enterEditMode();
+
+      expect(getLastMultiSelect()).toBe(false);
+
+      (useEntityRules as jest.Mock).mockReturnValue({
+        entityRules: {
+          canAddMultipleDataProducts: true,
+          maxDataProducts: Infinity,
+          requireDomainForDataProduct: false,
+        },
+        rules: [],
+        isRulesLoaded: true,
+        isLoading: false,
+      });
+
+      rerender(<DataProductsSection {...defaultProps} />);
+
+      expect(getLastMultiSelect()).toBe(true);
     });
   });
 });

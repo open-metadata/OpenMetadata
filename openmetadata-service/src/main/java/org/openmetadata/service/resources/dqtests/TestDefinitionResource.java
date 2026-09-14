@@ -50,6 +50,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/dataQuality/testDefinitions")
@@ -73,6 +74,9 @@ public class TestDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find tag definitions and load classification from the json file, if necessary
     List<TestDefinition> testDefinitions =
         repository.getEntitiesFromSeedData(".*json/data/tests/.*\\.json$");

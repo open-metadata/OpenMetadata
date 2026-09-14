@@ -16,7 +16,6 @@ Lineage utility for the metadata CLI
 import sys
 import traceback
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -38,13 +37,13 @@ logger = cli_logger()
 
 
 class LineageWorkflow(BaseModel):
-    filePath: Optional[str] = None  # noqa: N815, UP045
-    query: Optional[str] = None  # noqa: UP045
-    checkPatch: Optional[bool] = True  # noqa: N815, UP045
+    filePath: str | None = None  # noqa: N815
+    query: str | None = None
+    checkPatch: bool | None = True  # noqa: N815
     serviceName: str  # noqa: N815
     workflowConfig: WorkflowConfig  # noqa: N815
-    parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins  # noqa: N815, UP045
-    parserType: Optional[QueryParserType] = QueryParserType.Auto  # noqa: N815, UP045
+    parseTimeout: int | None = 5 * 60  # default parsing timeout to be 5 mins  # noqa: N815
+    parserType: QueryParserType | None = QueryParserType.Auto  # noqa: N815
 
 
 def run_lineage(config_path: Path) -> None:

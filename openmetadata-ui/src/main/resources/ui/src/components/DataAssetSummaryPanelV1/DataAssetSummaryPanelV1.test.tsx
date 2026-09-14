@@ -431,7 +431,11 @@ describe('DataAssetSummaryPanelV1', () => {
     );
     (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
     (getEntityOverview as jest.Mock).mockImplementation(
-      (_entityType: any, _dataAsset: any, additionalInfo: any) => [
+      (
+        _entityType: unknown,
+        _dataAsset: unknown,
+        additionalInfo: { incidentCount?: number }
+      ) => [
         { name: 'Type', value: 'Table', visible: ['explore'] },
         { name: 'Rows', value: 1000, visible: ['explore'] },
         { name: 'Columns', value: 15, visible: ['explore'] },
@@ -907,6 +911,49 @@ describe('DataAssetSummaryPanelV1', () => {
 
       await waitFor(() => {
         expect(getListTestCaseIncidentStatus).not.toHaveBeenCalled();
+      });
+    });
+
+    it('denies description edit when EditDescription is explicitly false, even with EditAll true', async () => {
+      // Explicit-deny-wins: an explicit `false` on the field-level permission must win over
+      // a `true` EditAll, not be overridden by it.
+      const explicitDenyPermissions = {
+        ViewAll: true,
+        EditAll: true,
+        EditDescription: false,
+      };
+
+      mockGetEntityPermission.mockResolvedValue(explicitDenyPermissions);
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('description-section')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('update-description-btn')
+      ).not.toBeInTheDocument();
+    });
+
+    it('grants description edit via EditAll when EditDescription is absent', async () => {
+      const editAllOnlyPermissions = {
+        ViewAll: true,
+        EditAll: true,
+      };
+
+      mockGetEntityPermission.mockResolvedValue(editAllOnlyPermissions);
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('update-description-btn')
+        ).toBeInTheDocument();
       });
     });
   });

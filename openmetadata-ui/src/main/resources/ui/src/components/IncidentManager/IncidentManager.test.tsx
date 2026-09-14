@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { act } from 'react';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Table } from '../../generated/entity/data/table';
 import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
@@ -94,7 +95,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         data-testid="date-field-dropdown-trigger"
         role="button"
         tabIndex={0}
-        onClick={() => onOpenChange(!isOpen)}>
+        onClick={() => onOpenChange(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onOpenChange(!isOpen);
+          }
+        }}>
         {children[0]}
       </div>
       {isOpen && children[1]}
@@ -239,6 +245,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )
       ),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
   };
 });
 
@@ -611,12 +627,14 @@ describe('IncidentManagerPage', () => {
     });
 
     const select = await screen.findByTestId('status-select');
-    const selectBox = select.querySelector('.ant-select-selector');
+    const selectBox = select.querySelector(
+      '.ant-select-selector'
+    ) as HTMLElement;
 
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.mouseDown(selectBox);
     });
 
     const resolvedOption = await screen.findByText('label.resolved');
@@ -1214,6 +1232,51 @@ describe('IncidentManagerPage', () => {
           },
         ],
       });
+    });
+  });
+
+  describe('permission gating (useIncidentManagerListPage.commonTestCasePermission)', () => {
+    // usePermissionProvider is called more than once per render (this component plus
+    // useIncidentManagerListPage internally), so `mockReturnValueOnce` only overrides the
+    // FIRST call and silently falls back to the granted default for the rest — use a
+    // persistent override for the duration of this test, restored afterward so later tests
+    // (and other describe blocks, if this file's order ever changes) keep the granted default.
+    const grantedReturnValue = (
+      usePermissionProvider as jest.Mock
+    ).getMockImplementation?.();
+
+    afterEach(() => {
+      if (grantedReturnValue) {
+        (usePermissionProvider as jest.Mock).mockImplementation(
+          grantedReturnValue
+        );
+      }
+    });
+
+    it('shows the permission placeholder instead of the table when neither ViewAll nor ViewBasic is granted', async () => {
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        permissions: {
+          testCase: {
+            ViewAll: false,
+            ViewBasic: false,
+          },
+        },
+        getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-case-incident-manager-table')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('incident-filter-bar')
+      ).not.toBeInTheDocument();
     });
   });
 });

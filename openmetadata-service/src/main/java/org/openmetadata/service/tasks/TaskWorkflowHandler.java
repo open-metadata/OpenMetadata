@@ -67,7 +67,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 /**
  * Handles workflow integration for Task entities.
  *
- * <p>This is a clean replacement for FeedRepository.TaskWorkflow that works directly with the new
+ * <p>This handler works directly with Task V2 entities and their workflow lifecycle.
  * Task entity. It integrates with the Flowable-based Governance Workflow system while keeping all
  * task logic in the new system.
  *

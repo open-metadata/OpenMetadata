@@ -13,7 +13,8 @@ Integration tests for TagProcessor with multi-classification support.
 Tests scenarios from AUTO_CLASSIFICATION_REFACTOR_SOLUTION.md
 """
 
-from typing import Any, List, Sequence  # noqa: UP035
+from collections.abc import Sequence
+from typing import Any
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -59,10 +60,10 @@ from metadata.pii.tag_processor import TagProcessor
 
 
 class FakeScoreTagsForColumn:
-    def __init__(self, scored_tags: List[ScoredTag]) -> None:  # noqa: UP006
+    def __init__(self, scored_tags: list[ScoredTag]) -> None:
         self.scored_tags = scored_tags
 
-    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]) -> List[ScoredTag]:  # noqa: UP006
+    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: list[Tag]) -> list[ScoredTag]:
         return self.scored_tags
 
 

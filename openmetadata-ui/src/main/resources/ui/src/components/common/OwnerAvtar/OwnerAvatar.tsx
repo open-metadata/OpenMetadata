@@ -29,6 +29,45 @@ interface OwnerAvatarProps {
   isAssignee?: boolean;
 }
 
+const getOwnerTestId = (
+  isCompactView: boolean | undefined,
+  owner: EntityReference
+) => !isCompactView && getEntityName(owner);
+
+interface OwnerProfileAvatarProps {
+  owner: EntityReference;
+  displayName: string;
+  avatarSize: number;
+  isCompactView?: boolean;
+  inheritedIcon?: React.ReactNode;
+}
+
+const OwnerProfileAvatar: React.FC<OwnerProfileAvatarProps> = ({
+  owner,
+  displayName,
+  avatarSize,
+  isCompactView,
+  inheritedIcon,
+}) => (
+  <div
+    className="owner-avatar-icon"
+    data-testid={getOwnerTestId(isCompactView, owner)}
+    key={owner.id}
+    style={{ flexBasis: `${avatarSize}px` }}>
+    <ProfilePicture
+      displayName={displayName}
+      key="profile-picture"
+      name={owner.name ?? ''}
+      type="circle"
+      width={isCompactView && !avatarSize ? '24' : `${avatarSize}`}
+    />
+
+    {inheritedIcon && (
+      <div className="inherited-icon-styling flex-center">{inheritedIcon}</div>
+    )}
+  </div>
+);
+
 export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   owner,
   isCompactView,
@@ -37,52 +76,41 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   isAssignee,
 }) => {
   const displayName = getEntityName(owner);
+  const isTeam = owner.type === OwnerType.TEAM;
 
   if (isAssignee) {
     return (
       <div className="flex w-max-full items-center gap-2">
-        {owner.type === OwnerType.TEAM ? (
+        {isTeam ? (
           <div className="d-flex gap-2 multi-team-container w-max-full items-center">
             <Icon
               className="owner-team-icon"
               component={AssigneesIcon}
-              data-testid={!isCompactView && getEntityName(owner)}
+              data-testid={getOwnerTestId(isCompactView, owner)}
             />
             <Typography.Text className="text-sm" ellipsis={{ tooltip: true }}>
               {displayName}
             </Typography.Text>
           </div>
         ) : (
-          <div
-            className="owner-avatar-icon"
-            data-testid={!isCompactView && getEntityName(owner)}
-            key={owner.id}
-            style={{ flexBasis: `${avatarSize}px` }}>
-            <ProfilePicture
-              displayName={displayName}
-              key="profile-picture"
-              name={owner.name ?? ''}
-              type="circle"
-              width={isCompactView && !avatarSize ? '24' : `${avatarSize}`}
-            />
-
-            {inheritedIcon && (
-              <div className="inherited-icon-styling flex-center">
-                {inheritedIcon}
-              </div>
-            )}
-          </div>
+          <OwnerProfileAvatar
+            avatarSize={avatarSize}
+            displayName={displayName}
+            inheritedIcon={inheritedIcon}
+            isCompactView={isCompactView}
+            owner={owner}
+          />
         )}
       </div>
     );
   }
 
-  return owner.type === OwnerType.TEAM ? (
+  return isTeam ? (
     <div className="d-flex gap-2 w-max-full items-center">
       <Icon
         className="owner-team-icon"
         component={IconTeamsGrey}
-        data-testid={!isCompactView && getEntityName(owner)}
+        data-testid={getOwnerTestId(isCompactView, owner)}
         style={{ fontSize: isCompactView ? '16px' : `${avatarSize}px` }}
       />
       {!isCompactView && (
@@ -92,24 +120,12 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
       )}
     </div>
   ) : (
-    <div
-      className="owner-avatar-icon"
-      data-testid={!isCompactView && getEntityName(owner)}
-      key={owner.id}
-      style={{ flexBasis: `${avatarSize}px` }}>
-      <ProfilePicture
-        displayName={displayName}
-        key="profile-picture"
-        name={owner.name ?? ''}
-        type="circle"
-        width={isCompactView && !avatarSize ? '24' : `${avatarSize}`}
-      />
-
-      {inheritedIcon && (
-        <div className="inherited-icon-styling flex-center">
-          {inheritedIcon}
-        </div>
-      )}
-    </div>
+    <OwnerProfileAvatar
+      avatarSize={avatarSize}
+      displayName={displayName}
+      inheritedIcon={inheritedIcon}
+      isCompactView={isCompactView}
+      owner={owner}
+    />
   );
 };

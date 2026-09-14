@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prefect Server Authentication",
+  "description": "Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String empty if the server has no auth enabled.",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.ServerAuth",
+  "type": "object",
+  "properties": {
+    "authString": {
+      "title": "Basic Auth String",
+      "description": "Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format 'user:password'. Leave empty if the server has no auth enabled.",
+      "type": "string",
+      "format": "password",
+      "default": ""
+    }
+  },
+  "additionalProperties": false,
+  "required": []
+}

@@ -15,7 +15,6 @@ Redshift models
 import re
 from datetime import datetime
 from enum import Enum
-from typing import Dict, FrozenSet, List, Optional, Tuple  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -40,14 +39,14 @@ class RedshiftIamCredential(BaseModel):
 
     user: str
     password: str
-    expiration: Optional[datetime] = None  # noqa: UP045
+    expiration: datetime | None = None
 
 
 class RedshiftStoredProcedure(BaseModel):
     """Redshift stored procedure list query results"""
 
     name: str
-    owner: Optional[str] = None  # noqa: UP045
+    owner: str | None = None
     definition: str
 
 
@@ -68,7 +67,7 @@ class RedshiftTable(BaseModel):
 class RedshiftTableMap(BaseModel):
     """Redshift TableMap Model. Used for Incremental Extraction"""
 
-    table_map: Dict[SchemaName, Dict[TableName, RedshiftTable]]  # noqa: UP006
+    table_map: dict[SchemaName, dict[TableName, RedshiftTable]]
 
     @classmethod
     def default(cls) -> "RedshiftTableMap":
@@ -87,7 +86,7 @@ class RedshiftTableMap(BaseModel):
             if table.name not in self.table_map[schema]:
                 self.table_map[schema][table.name] = table
 
-    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName, TableName]]:  # noqa: UP006, UP045
+    def get_deleted(self, schema_name: SchemaName | None = None) -> list[tuple[SchemaName, TableName]]:
         """Returns all deleted table names for a given schema."""
         if schema_name:
             return [
@@ -102,7 +101,7 @@ class RedshiftTableMap(BaseModel):
             if table.deleted
         ]
 
-    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:  # noqa: UP006
+    def get_not_deleted(self, schema_name: SchemaName) -> frozenset[TableName]:
         """Returns all not-deleted table names for a given schema as a frozenset.
 
         Returns a frozenset so callers can use `name in result` with O(1) average

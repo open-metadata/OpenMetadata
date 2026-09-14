@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -110,7 +111,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
   }>) => {
-    const value = { sortDescriptor, onSortChange };
+    const value = React.useMemo(
+      () => ({ sortDescriptor, onSortChange }),
+      [sortDescriptor, onSortChange]
+    );
 
     return (
       <SortContext.Provider value={value}>
@@ -229,6 +233,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onChange?: (value: string) => void;
   }) => (
     <input
+      aria-label={placeholder}
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
@@ -421,7 +426,7 @@ jest.mock(
 describe('TestSuites component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    testSuitePermission.ViewAll = true;
+    testSuitePermission[Operation.ViewAll] = true;
     mockLocation.search = '';
     mockDataQualityContext.createActions = undefined;
     (useParams as jest.Mock).mockReturnValue({
@@ -488,7 +493,7 @@ describe('TestSuites component', () => {
       limit: 15,
       offset: 0,
       owner: 'admin',
-      q: '*sales*',
+      q: 'sales',
       sortField: 'lastResultTimestamp',
       sortType: 'desc',
       testSuiteType: 'basic',
@@ -571,7 +576,7 @@ describe('TestSuites component', () => {
   });
 
   it('should render no data placeholder, if there is no permission', async () => {
-    testSuitePermission.ViewAll = false;
+    testSuitePermission[Operation.ViewAll] = false;
 
     render(<TestSuites />, { wrapper: MemoryRouter });
 
@@ -665,7 +670,7 @@ describe('TestSuites component', () => {
   describe('observabilityRouterClassBase migration', () => {
     it('logical test suite name link should use observabilityRouterClassBase.getTestSuitePath', async () => {
       // Restore permission for this test
-      testSuitePermission.ViewAll = true;
+      testSuitePermission[Operation.ViewAll] = true;
       mockLocation.search = '';
 
       const logicalSuiteName = 'svc.suite';

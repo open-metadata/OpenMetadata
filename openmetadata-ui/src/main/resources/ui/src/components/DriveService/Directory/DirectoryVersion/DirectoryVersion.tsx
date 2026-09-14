@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Space, Tabs, TabsProps, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { toString } from 'lodash';
@@ -46,7 +45,8 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import Description from '../../../common/EntityDescription/Description';
 import Loader from '../../../common/Loader/Loader';
-import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';

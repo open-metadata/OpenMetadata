@@ -151,12 +151,17 @@ class TestAirflowOps(TestCase):
                 session.merge(dag_model)
                 session.commit()
 
-        cls.dagbag = DagBag(include_examples=False)
+        import inspect
+
+        # Airflow 3.3 dropped `include_examples` from DagBag.__init__: DAG discovery
+        # is bundle based there, so example DAGs are no longer a constructor flag.
+        dagbag_kwargs = {}
+        if "include_examples" in inspect.signature(DagBag.__init__).parameters:
+            dagbag_kwargs["include_examples"] = False
+        cls.dagbag = DagBag(**dagbag_kwargs)
 
         # In Airflow 2.x, bag_dag() requires root_dag parameter
         # In Airflow 3.x, it doesn't accept root_dag parameter
-        import inspect
-
         bag_dag_sig = inspect.signature(cls.dagbag.bag_dag)
         if "root_dag" in bag_dag_sig.parameters:
             # Airflow 2.x

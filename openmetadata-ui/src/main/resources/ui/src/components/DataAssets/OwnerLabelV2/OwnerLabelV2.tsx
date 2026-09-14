@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
   WidgetEditButton,
@@ -64,11 +65,19 @@ export const OwnerLabelV2 = <
     await onUpdate(updatedEntity);
   };
 
+  // Named-flag derivation (Task 8 sweep): moves off the old raw OR
+  // (`permissions?.EditOwners || permissions?.EditAll`) onto the prioritized `canEditOwners`
+  // flag — the same explicit-deny-wins fix as the sanctioned canViewBasic precedent (Task 6
+  // Finding 1) and the same target flag DomainExpertWidget.tsx already converged on (Task 8
+  // Batch 1). No `deleted` argument: the generic `T` constraint here has no `deleted` field,
+  // and the old expression never referenced one either.
+  const { canEditOwners } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const hasPermission = useMemo(() => {
-    return (
-      props?.hasPermission ?? (permissions?.EditOwners || permissions?.EditAll)
-    );
-  }, [permissions?.EditOwners, permissions?.EditAll, props?.hasPermission]);
+    return props?.hasPermission ?? canEditOwners;
+  }, [canEditOwners, props?.hasPermission]);
   const headerExtra = useMemo(
     () =>
       !isVersionView && hasPermission ? (

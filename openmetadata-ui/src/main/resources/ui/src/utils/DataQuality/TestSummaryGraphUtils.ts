@@ -17,7 +17,6 @@ import { CartesianViewBox } from 'recharts/types/util/types';
 import { TestCaseChartDataType } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { GREEN_3, RED_3, YELLOW_2 } from '../../constants/Color.constants';
 import { COLORS } from '../../constants/profiler.constant';
-import { Thread } from '../../generated/entity/feed/thread';
 import { Task } from '../../generated/entity/tasks/task';
 import {
   TestCaseParameterValue,
@@ -28,7 +27,6 @@ import { axisTickFormatter } from '../ChartUtils';
 import { getRandomHexColor } from '../DataInsightPureUtils';
 import { convertSecondsToHumanReadableFormat } from '../date-time/DateTimeUtils';
 import {
-  getTaskDetailPath,
   getTaskDetailPathFromTask,
   getTaskDisplayId,
 } from '../TaskNavigationUtils';
@@ -38,29 +36,16 @@ const EXCLUDED_CHART_FIELDS = new Set(['schemaTable1', 'schemaTable2']);
 export type PrepareChartDataType = {
   testCaseParameterValue: TestCaseParameterValue[];
   testCaseResults: TestCaseResult[];
-  entityThread: Thread[];
   tasks?: Task[];
 };
 
-function isThread(value: unknown): value is Thread {
-  return typeof value === 'object' && value !== null && 'task' in value;
-}
-
 /**
- * Converts current tasks and legacy threads into the fields used by the
- * tooltip, keeping the display component independent of the incident API.
+ * Converts an incident task into the fields used by the tooltip, keeping the
+ * display component independent of the incident API.
  */
-export const getIncidentDetails = (task?: Task | Thread) => {
+export const getIncidentDetails = (task?: Task) => {
   if (!task) {
     return {};
-  }
-
-  if (isThread(task)) {
-    return {
-      incidentDisplayId: task.task?.id,
-      incidentPath: getTaskDetailPath(task),
-      incidentAssignees: task.task?.assignees,
-    };
   }
 
   return {
@@ -70,32 +55,9 @@ export const getIncidentDetails = (task?: Task | Thread) => {
   };
 };
 
-/**
- * Results without an incident must not match a task or thread that is also
- * missing the identifier, otherwise every dimensional point — none of which
- * carry an incidentId — adopts the first unrelated thread as its incident.
- */
-const findIncidentTask = (
-  incidentId: string | undefined,
-  tasks: Task[],
-  entityThread: Thread[]
-): Task | Thread | undefined => {
-  if (!incidentId) {
-    return undefined;
-  }
-
-  return (
-    tasks.find((task) => task.id === incidentId) ??
-    entityThread.find(
-      (thread) => thread.task?.testCaseResolutionStatusId === incidentId
-    )
-  );
-};
-
 export const prepareChartData = ({
   testCaseParameterValue,
   testCaseResults,
-  entityThread,
   tasks = [],
 }: PrepareChartDataType) => {
   // Bond will only be shown if params length is 2 and both values are present
@@ -148,7 +110,7 @@ export const prepareChartData = ({
       ...omitBy(metric, isUndefined),
       boundArea,
       incidentId: result.incidentId,
-      task: findIncidentTask(result.incidentId, tasks, entityThread),
+      task: tasks.find((task) => task.id === result.incidentId),
     });
   });
 

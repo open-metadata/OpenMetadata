@@ -205,7 +205,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
 
   if (!displayOwners.length) {
     return (
-      <div className="owners-section">
+      <div className="owners-section" data-testid="owners-section">
         <div className="owners-header">
           <Typography.Text className="owners-title">
             {t('label.owner-plural')}
@@ -230,7 +230,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   }
 
   return (
-    <div className="owners-section">
+    <div className="owners-section" data-testid="owners-section">
       <div className="owners-header">
         <Typography.Text className="owners-title">
           {t('label.owner-plural')}

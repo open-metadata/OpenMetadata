@@ -10,16 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  redirectToHomePage,
-  removeLandingBanner,
-  toastNotification,
-} from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   checkAllDefaultWidgets,
   navigateToCustomizeLandingPage,
@@ -339,7 +336,6 @@ test.describe(
 
           await saveCustomizeLayoutPage(adminPage);
           await redirectToHomePage(adminPage, false);
-          await removeLandingBanner(adminPage);
           await waitForAllLoadersToDisappear(adminPage).catch(() => undefined);
 
           await waitForLandingPageWidget(adminPage, 'KnowledgePanel.MyData');

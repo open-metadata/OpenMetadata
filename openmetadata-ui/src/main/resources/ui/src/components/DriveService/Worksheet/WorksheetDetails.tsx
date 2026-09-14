@@ -163,6 +163,8 @@ function WorksheetDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -170,6 +172,8 @@ function WorksheetDetails({
           entity: t('label.worksheet'),
         })
       );
+
+      return false;
     }
   };
 
@@ -273,14 +277,16 @@ function WorksheetDetails({
     []
   );
 
+  // editAllPermission/viewAllPermission (raw worksheetPermissions.EditAll/.ViewAll reads)
+  // dropped here: computed but never consumed anywhere in this component (only ever
+  // listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -304,13 +310,11 @@ function WorksheetDetails({
           worksheetPermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: worksheetPermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(
           worksheetPermissions,
           Operation.EditLineage
         ) && !deleted,
-      viewAllPermission: worksheetPermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         worksheetPermissions,
         Operation.ViewCustomFields
@@ -387,8 +391,6 @@ function WorksheetDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(

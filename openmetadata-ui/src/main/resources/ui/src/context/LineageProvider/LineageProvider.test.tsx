@@ -589,6 +589,7 @@ describe('LineageProvider', () => {
       upstreamEdges: {},
     });
 
+    // eslint-disable-next-line sonarjs/no-identical-functions -- test harness component
     const EntityDataComponent = () => {
       const { updateEntityData } = useLineageProvider();
 

@@ -26,7 +26,6 @@ import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComp
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
-import type { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
 import type { PersonaPreferences } from '../../generated/type/personaPreferences';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -46,6 +45,7 @@ import {
 import { updateUserDetail } from '../../rest/userAPI';
 import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
 import customizeMyDataPageClassBase from '../../utils/CustomizeMyDataPageClassBase';
+import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import type { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
@@ -103,7 +103,21 @@ const MyDataPage = () => {
   useEffect(() => {
     setHasMounted(true);
   }, []);
-  const isLoading = !hasMounted || (!!personaFqn && isDocPending);
+  const isDataLoading = !hasMounted || (!!personaFqn && isDocPending);
+
+  // Latch the first content paint. `selectedPersona` rehydrates *after* the first
+  // render, so `personaFqn` flips null->value and its query re-enters isDocPending
+  // once content is already on screen — bouncing the whole page back into
+  // MyDataPageSkeleton (a visible skeleton flash after the grid appeared). Once
+  // content has painted, keep the current layout mounted and let the persona doc
+  // swap widgets in place instead of blanking to the page skeleton again.
+  const [hasShownContent, setHasShownContent] = useState(false);
+  useEffect(() => {
+    if (!isDataLoading) {
+      setHasShownContent(true);
+    }
+  }, [isDataLoading]);
+  const isLoading = isDataLoading && !hasShownContent;
 
   const personaPreferences = useMemo<PersonaPreferences[]>(
     () => docData?.data?.personPreferences ?? [],
@@ -114,10 +128,11 @@ const MyDataPage = () => {
     if (!docData || !selectedPersona) {
       return getDefaultLandingPageLayout();
     }
-    const pageData = docData.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.LandingPage
-    ) ?? { layout: [], pageType: PageType.LandingPage };
-    const filteredLayout = (pageData.layout as WidgetConfig[])
+    const pageData = getPersonaPage(docData, PageType.LandingPage);
+    const customizedLayout = Array.isArray(pageData?.layout)
+      ? (pageData.layout as WidgetConfig[])
+      : [];
+    const filteredLayout = customizedLayout
       .filter(
         (widget: WidgetConfig) =>
           !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||

@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { clickOutside, redirectToExplorePage } from '../../utils/common';
+import {
+  clickOutside,
+  getApiContext,
+  redirectToExplorePage,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUpdateButtonIfVisible,
@@ -22,7 +28,11 @@ import {
   getExportModalContent,
   openExportScopeModal,
 } from '../../utils/explore';
-import { test } from '../fixtures/pages';
+
+// Dedicated admin user so that completed search-export background jobs
+// accumulate in this user's tray instead of the shared admin session,
+// preventing the tray from blocking other admin tests in the same worker.
+let searchExportUser: UserClass;
 
 const startAsyncExport = async (page: Page) => {
   const exportAsyncPromise = page.waitForResponse(
@@ -111,12 +121,24 @@ test.describe(
             headers: { 'Content-Type': 'application/json-patch+json' },
           }
         );
+      }
 
+      searchExportUser = new UserClass(undefined, true);
+      await searchExportUser.create(apiContext);
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      if (searchExportUser) {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await searchExportUser.delete(apiContext);
         await afterAction();
       }
     });
 
     test.beforeEach(async ({ page }) => {
+      await searchExportUser.login(page);
       await redirectToExplorePage(page);
     });
 
@@ -182,7 +204,6 @@ test.describe(
 
     test('Search mode visible export downloads CSV with tab-specific row count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -209,7 +230,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the displayed tab count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(expectedCount);
@@ -261,7 +282,6 @@ test.describe(
 
     test('Filtered search visible export downloads CSV with the filtered record count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -330,7 +350,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the filtered record count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(filteredCount);
@@ -341,7 +361,6 @@ test.describe(
 
     test('Browse mode visible export downloads CSV with current page row count', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -379,7 +398,7 @@ test.describe(
       const jobId = await startAsyncExport(page);
 
       await test.step('CSV row count matches the displayed page count', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        const { apiContext, afterAction } = await getApiContext(page);
         const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
         expect(countCsvResponseRows(csvText)).toBe(expectedCount);
@@ -429,7 +448,6 @@ test.describe(
 
     test('Export queues a background job and downloads from the jobs tray', async ({
       page,
-      browser,
     }) => {
       test.slow();
 
@@ -439,7 +457,7 @@ test.describe(
           response.status() === 200
       );
 
-      await page.goto('/explore/tables?search=sample_data');
+      await page.goto('/explore/tables?search=stored_procedures');
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await countApiPromise;
 
@@ -489,10 +507,11 @@ test.describe(
         // API first (the same way fetchCompletedExportCsv does), so a stalled job is
         // named as such and the UI waits that follow are short.
         //
-        // performAdminLogin, not page.request: the latter carries the page's cookies
-        // but not the bearer token these endpoints need, so it returns an error object
-        // rather than the job array.
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+        // getApiContext(page), not page.request: page.request carries cookies but
+        // not the bearer token the csvAsyncJobs endpoint requires. getApiContext
+        // extracts the token from the page's storage so the request is authenticated
+        // as searchExportUser — the same user who created the job.
+        const { apiContext, afterAction } = await getApiContext(page);
         await waitForExportJobCompleted(apiContext, jobId);
         await afterAction();
 

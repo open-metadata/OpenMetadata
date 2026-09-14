@@ -228,6 +228,14 @@ MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
 """
 )
 
+MSSQL_TEST_GET_TABLES = """
+SELECT TOP 1 name FROM sys.tables WHERE is_ms_shipped = 0
+"""
+
+MSSQL_TEST_GET_VIEWS = """
+SELECT TOP 1 name FROM sys.views WHERE is_ms_shipped = 0
+"""
+
 MSSQL_GET_FOREIGN_KEY = """\
 WITH fk_info AS (
     SELECT
@@ -340,7 +348,7 @@ SELECT
   l.definition AS definition
 FROM INFORMATION_SCHEMA.ROUTINES r
 JOIN sys.objects o ON o.name = r.ROUTINE_NAME
-                   AND SCHEMA_NAME(o.schema_id) = r.ROUTINE_SCHEMA
+JOIN sys.schemas sch ON o.schema_id = sch.schema_id AND sch.name = r.ROUTINE_SCHEMA
 JOIN sys.sql_modules l on l.object_id = o.object_id
  WHERE ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
    AND ROUTINE_CATALOG = '{database_name}'
@@ -423,7 +431,7 @@ order by PROCEDURE_START_TIME desc
     """  # noqa: W291
 )
 
-MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
+MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state, readonly_reason FROM sys.database_query_store_options"
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
     """
@@ -493,5 +501,17 @@ JOIN sys.index_columns ic     ON ic.object_id = i.object_id
                               AND ic.partition_ordinal = 1
 JOIN sys.columns c            ON c.object_id = ic.object_id AND c.column_id = ic.column_id
 JOIN sys.types ty             ON ty.user_type_id = c.user_type_id
+"""
+)
+
+MSSQL_GET_SYNONYMS = textwrap.dedent(
+    """
+SELECT
+    sch.name AS synonym_schema,
+    syn.name AS synonym_name,
+    syn.base_object_name AS base_object_name
+FROM [{database_name}].sys.synonyms syn
+JOIN [{database_name}].sys.schemas sch
+    ON syn.schema_id = sch.schema_id
 """
 )

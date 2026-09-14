@@ -168,31 +168,27 @@ export const useTestCaseFilterOptions = () => {
       search === WILD_CARD_CHAR ? search : `*${search}*`
     );
 
+  const initialOptionsConfig: Record<
+    string,
+    { options: FetchedOption[]; fetch: () => void }
+  > = {
+    [TEST_CASE_FILTERS.tier]: { options: tierOptions, fetch: fetchTierOptions },
+    [TEST_CASE_FILTERS.table]: { options: tableOptions, fetch: fetchTableData },
+    [TEST_CASE_FILTERS.tags]: { options: tagOptions, fetch: fetchTagOptions },
+    [TEST_CASE_FILTERS.service]: {
+      options: serviceOptions,
+      fetch: fetchServiceOptions,
+    },
+    [TEST_CASE_FILTERS.dataProduct]: {
+      options: dataProductOptions,
+      fetch: fetchDataProductOptions,
+    },
+  };
+
   const getInitialOptions = (key: string, isLengthCheck = false) => {
-    switch (key) {
-      case TEST_CASE_FILTERS.tier:
-        (isEmpty(tierOptions) || !isLengthCheck) && fetchTierOptions();
-
-        break;
-      case TEST_CASE_FILTERS.table:
-        (isEmpty(tableOptions) || !isLengthCheck) && fetchTableData();
-
-        break;
-      case TEST_CASE_FILTERS.tags:
-        (isEmpty(tagOptions) || !isLengthCheck) && fetchTagOptions();
-
-        break;
-      case TEST_CASE_FILTERS.service:
-        (isEmpty(serviceOptions) || !isLengthCheck) && fetchServiceOptions();
-
-        break;
-      case TEST_CASE_FILTERS.dataProduct:
-        (isEmpty(dataProductOptions) || !isLengthCheck) &&
-          fetchDataProductOptions();
-
-        break;
-      default:
-        break;
+    const entry = initialOptionsConfig[key];
+    if (entry && (isEmpty(entry.options) || !isLengthCheck)) {
+      entry.fetch();
     }
   };
 

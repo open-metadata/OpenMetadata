@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import type { PageHeaderVariant } from '@openmetadata/ui-core-components';
 import type { FC, ReactNode } from 'react';
-import type { HeaderShellVariant } from '../HeaderShell/HeaderShell.interface';
 
 export interface EntityDetailTab {
   /** Stable key used for selection and URL/routing. */
@@ -69,7 +69,7 @@ export interface EntityDetailHeaderProps {
   /** When false, the header renders only the tab strip (page renders panels). */
   renderPanels?: boolean;
 
-  variant?: HeaderShellVariant;
+  variant?: PageHeaderVariant;
   className?: string;
   'data-testid'?: string;
 }

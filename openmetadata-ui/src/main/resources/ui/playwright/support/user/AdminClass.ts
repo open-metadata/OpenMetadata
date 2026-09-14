@@ -22,8 +22,9 @@ export class AdminClass extends UserClass {
   async login(
     page: Page,
     userName = DEFAULT_ADMIN_USER.userName,
-    password = DEFAULT_ADMIN_USER.password
+    password = DEFAULT_ADMIN_USER.password,
+    options: { suppressWelcomeScreen?: boolean } = {}
   ) {
-    await super.login(page, userName, password);
+    await super.login(page, userName, password, options);
   }
 }

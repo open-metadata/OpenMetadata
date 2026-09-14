@@ -13,6 +13,7 @@
 Check the JSONPatch operations work as expected
 """
 
+import uuid
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -234,3 +235,140 @@ class BuildPatchTest(TestCase):
 
             self.assertIn("JsonPatchUpdater exception", str(context.exception))
             self.assertIn("Failed to build patch", str(context.exception))
+
+
+class BuildPatchEntityReferenceListTest(TestCase):
+    def setUp(self):
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.type.entityReference import EntityReference
+        from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+
+        self.Table = Table
+        self.EntityReference = EntityReference
+        self.EntityReferenceList = EntityReferenceList
+
+    def _mk_table(self, name):
+        return self.Table(
+            id=str(uuid.uuid4()),
+            name=name,
+            columns=[],
+            fullyQualifiedName=f"svc.db.schema.{name}",
+        )
+
+    def test_empty_to_populated_data_products(self):
+        source = self._mk_table("t1")
+        source.dataProducts = self.EntityReferenceList(root=[])
+
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["dataProducts"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.patch[0]["path"], "/dataProducts")
+        self.assertEqual(len(result.patch[0]["value"]), 1)
+        self.assertEqual(result.patch[0]["value"][0]["name"], "dp1")
+
+    def test_replace_data_products(self):
+        source = self._mk_table("t2")
+        dp_id1, dp_id2 = str(uuid.uuid4()), str(uuid.uuid4())
+        source.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id1, type="dataProduct", name="dp1")]
+        )
+
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id2, type="dataProduct", name="dp2")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["dataProducts"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.patch[0]["value"][0]["name"], "dp2")
+
+    def test_same_data_products_no_patch(self):
+        source = self._mk_table("t3")
+        dp_id = str(uuid.uuid4())
+        source.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id, type="dataProduct", name="dp1")]
+        )
+
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=dp_id, type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["dataProducts"],
+            skip_on_failure=False,
+        )
+        self.assertIsNone(result)
+
+    def test_empty_to_populated_domains(self):
+        source = self._mk_table("t4")
+        source.domains = self.EntityReferenceList(root=[])
+
+        dest = source.model_copy(deep=True)
+        dest.domains = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="domain", name="Analysis")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["domains"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.patch[0]["path"], "/domains")
+        self.assertEqual(result.patch[0]["value"][0]["name"], "Analysis")
+
+    def test_both_domains_and_data_products(self):
+        source = self._mk_table("t5")
+        source.domains = self.EntityReferenceList(root=[])
+        source.dataProducts = self.EntityReferenceList(root=[])
+
+        dest = source.model_copy(deep=True)
+        dest.domains = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="domain", name="Analysis")]
+        )
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(
+            source=source,
+            destination=dest,
+            array_entity_fields=["domains", "dataProducts"],
+            skip_on_failure=False,
+        )
+
+        self.assertIsNotNone(result)
+        paths = {op["path"] for op in result.patch}
+        self.assertIn("/domains", paths)
+        self.assertIn("/dataProducts", paths)
+
+    def test_no_array_entity_fields_still_works(self):
+        source = self._mk_table("t6")
+        dest = source.model_copy(deep=True)
+        dest.dataProducts = self.EntityReferenceList(
+            root=[self.EntityReference(id=str(uuid.uuid4()), type="dataProduct", name="dp1")]
+        )
+
+        result = build_patch(source=source, destination=dest, skip_on_failure=False)
+        self.assertIsNotNone(result)

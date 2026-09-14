@@ -13,7 +13,12 @@
 
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import ContextCenterHeader from './ContextCenterHeader.component';
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
+}));
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(() => jest.fn()),
@@ -49,6 +54,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       'data-testid'?: string;
     }) => (
       <input
+        aria-label={testId}
         data-testid={testId}
         placeholder={placeholder}
         value={value}
@@ -56,6 +62,30 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       />
     )
   ),
+  PageLayout: {
+    PageHeader: jest.fn(
+      ({
+        actions,
+        breadcrumb,
+        subtitle,
+        title,
+        variant,
+      }: {
+        actions?: React.ReactNode;
+        breadcrumb?: React.ReactNode;
+        subtitle?: React.ReactNode;
+        title: React.ReactNode;
+        variant?: string;
+      }) => (
+        <div data-testid="page-header" data-variant={variant}>
+          {breadcrumb}
+          <span>{title}</span>
+          <span>{subtitle}</span>
+          {actions}
+        </div>
+      )
+    ),
+  },
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
@@ -67,6 +97,10 @@ const mockBreadcrumbs: BreadcrumbItemType[] = [
 ];
 
 describe('ContextCenterHeader', () => {
+  beforeEach(() => {
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
   it('renders the header with title', () => {
     render(
       <ContextCenterHeader
@@ -88,6 +122,25 @@ describe('ContextCenterHeader', () => {
     );
 
     expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
+  });
+
+  it('uses the embedded header presentation in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(
+      <ContextCenterHeader
+        breadcrumbs={mockBreadcrumbs}
+        title="Knowledge Center"
+      />
+    );
+
+    expect(screen.getByTestId('page-header')).toHaveAttribute(
+      'data-variant',
+      'gradient'
+    );
+    expect(screen.getByTestId('page-header')).toContainElement(
+      screen.getByTestId('title-breadcrumb')
+    );
   });
 
   it('renders subtitle when provided', () => {

@@ -12,48 +12,48 @@
 Models required for dbt
 """
 
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 from pydantic import BaseModel
 
 
 class DbtFiles(BaseModel):
-    dbt_catalog: Optional[dict] = None  # noqa: UP045
+    dbt_catalog: dict | None = None
     dbt_manifest: dict
-    dbt_sources: Optional[dict] = None  # noqa: UP045
-    dbt_run_results: Optional[List[dict]] = None  # noqa: UP006, UP045
+    dbt_sources: dict | None = None
+    dbt_run_results: list[dict] | None = None
 
 
 class DbtObjects(BaseModel):
-    dbt_catalog: Optional[Any] = None  # noqa: UP045
+    dbt_catalog: Any | None = None
     dbt_manifest: Any
-    dbt_sources: Optional[Any] = None  # noqa: UP045
-    dbt_run_results: Optional[List[Any]] = None  # noqa: UP006, UP045
+    dbt_sources: Any | None = None
+    dbt_run_results: list[Any] | None = None
 
 
 class DbtFilteredModel(BaseModel):
-    is_filtered: Optional[bool] = False  # noqa: UP045
-    message: Optional[str] = None  # noqa: UP045
-    model_fqn: Optional[str] = None  # noqa: UP045
+    is_filtered: bool | None = False
+    message: str | None = None
+    model_fqn: str | None = None
 
 
 class DbtMetaOpenmetadata(BaseModel):
-    tier: Optional[str] = None  # noqa: UP045
-    domain: Optional[str] = None  # noqa: UP045
-    glossary: Optional[List[str]] = None  # noqa: UP006, UP045
-    customProperties: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
-    tags: Optional[List[str]] = None  # noqa: UP006, UP045
+    tier: str | None = None
+    domain: str | None = None
+    glossary: list[str] | None = None
+    customProperties: dict[str, Any] | None = None  # noqa: N815
+    tags: list[str] | None = None
 
 
 class DbtMeta(BaseModel):
-    openmetadata: Optional[DbtMetaOpenmetadata] = None  # noqa: UP045
+    openmetadata: DbtMetaOpenmetadata | None = None
 
 
 class SnapshotNodeLocation(BaseModel):
     """Resolved schema and database for a dbt snapshot node after applying config overrides."""
 
     schema_: str
-    database: Optional[str] = None  # noqa: UP045
+    database: str | None = None
 
 
 class UpstreamNode(BaseModel):
@@ -64,5 +64,5 @@ class UpstreamNode(BaseModel):
     """
 
     name: str
-    qualified_name: Optional[str] = None  # noqa: UP045
+    qualified_name: str | None = None
     fqn: str

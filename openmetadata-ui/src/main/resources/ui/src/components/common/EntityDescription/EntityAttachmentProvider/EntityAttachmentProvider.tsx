@@ -53,6 +53,17 @@ interface EntityAttachmentProps {
   allowFileUpload?: boolean;
 }
 
+const findTempNodePosition = (view: EditorView, file: File): number => {
+  let tempNodePos = -1;
+  view.state.doc.descendants((node, pos) => {
+    if (node.attrs.isUploading && node.attrs.tempFile === file) {
+      tempNodePos = pos;
+    }
+  });
+
+  return tempNodePos;
+};
+
 const EntityAttachmentContext = createContext<EntityAttachmentType>(
   {} as EntityAttachmentType
 );
@@ -85,6 +96,41 @@ export const EntityAttachmentProvider = ({
   const setPopoverOpen = useCallback((open: boolean) => {
     isPopoverOpenRef.current = open;
   }, []);
+
+  const handleUploadError = useCallback(
+    (
+      view: EditorView,
+      file: File,
+      error: unknown,
+      showInlineAlert?: boolean
+    ) => {
+      const errorMessage = (error as AxiosError<{ message: string }>).response
+        ?.data?.message;
+
+      // Get the current state for error handling
+      const currentState = view.state;
+      const currentTr = currentState.tr;
+
+      const tempNodePos = findTempNodePosition(view, file);
+
+      if (tempNodePos !== -1) {
+        // Remove the temporary node on error
+        currentTr.delete(tempNodePos, tempNodePos + 1);
+        view.dispatch(currentTr);
+      }
+
+      const hasErrorMessage =
+        !isUndefined(errorMessage) && isString(errorMessage);
+      const inlineErrorMessage = hasErrorMessage
+        ? errorMessage
+        : t('label.failed-to-upload-file');
+
+      showInlineAlert
+        ? setErrorMessage(inlineErrorMessage)
+        : showErrorToast(error as AxiosError, t('label.failed-to-upload-file'));
+    },
+    [t]
+  );
 
   // Handle file upload logic
   const handleFileUpload = useCallback(
@@ -143,12 +189,7 @@ export const EntityAttachmentProvider = ({
         const currentTr = currentState.tr;
 
         // Find the position of the temporary node
-        let tempNodePos = -1;
-        currentState.doc.descendants((node, pos) => {
-          if (node.attrs.isUploading && node.attrs.tempFile === file) {
-            tempNodePos = pos;
-          }
-        });
+        const tempNodePos = findTempNodePosition(view, file);
 
         // If we can't find the temporary node, it might have been removed
         // In this case, we'll insert the final node at the original position
@@ -186,40 +227,18 @@ export const EntityAttachmentProvider = ({
         currentTr.replaceWith(tempNodePos, tempNodePos + 1, finalNode);
         view.dispatch(currentTr);
       } catch (error) {
-        const errorMessage = (error as AxiosError<{ message: string }>).response
-          ?.data?.message;
-
-        // Get the current state for error handling
-        const currentState = view.state;
-        const currentTr = currentState.tr;
-
-        // Find the position of the temporary node
-        let tempNodePos = -1;
-        currentState.doc.descendants((node, pos) => {
-          if (node.attrs.isUploading && node.attrs.tempFile === file) {
-            tempNodePos = pos;
-          }
-        });
-
-        if (tempNodePos !== -1) {
-          // Remove the temporary node on error
-          currentTr.delete(tempNodePos, tempNodePos + 1);
-          view.dispatch(currentTr);
-        }
-
-        showInlineAlert
-          ? setErrorMessage(
-              !isUndefined(errorMessage) && isString(errorMessage)
-                ? errorMessage
-                : t('label.failed-to-upload-file')
-            )
-          : showErrorToast(
-              error as AxiosError,
-              t('label.failed-to-upload-file')
-            );
+        handleUploadError(view, file, error, showInlineAlert);
       }
     },
-    [onImageUpload, allowImageUpload, allowFileUpload, entityType, entityFqn, t]
+    [
+      onImageUpload,
+      allowImageUpload,
+      allowFileUpload,
+      entityType,
+      entityFqn,
+      t,
+      handleUploadError,
+    ]
   );
 
   const value: EntityAttachmentType = useMemo(

@@ -13,7 +13,6 @@ Client to interact with the Airflow REST API
 """
 
 import traceback
-from typing import List, Optional  # noqa: UP035
 from urllib.parse import quote
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
@@ -64,7 +63,7 @@ class AirflowApiClient:
 
     def __init__(self, config: AirflowConnection):
         self.config = config
-        self._detected_version: Optional[str] = None  # noqa: UP045
+        self._detected_version: str | None = None
 
         rest_config = config.connection
         auth_config = rest_config.authConfig
@@ -212,7 +211,7 @@ class AirflowApiClient:
         response = self.client.get(f"{self._prefix}/dags?limit={limit}&offset={offset}")
         return self._parse_response(response)
 
-    def get_dags_count(self) -> Optional[int]:  # noqa: UP045
+    def get_dags_count(self) -> int | None:
         try:
             response = self.list_dags(limit=1)
             total_entries = response.get("total_entries")
@@ -247,8 +246,8 @@ class AirflowApiClient:
         )
         return self._parse_response(response)
 
-    def _paginate(self, path: str, key: str, limit: int = 100) -> List[dict]:  # noqa: UP006
-        result: List[dict] = []  # noqa: UP006
+    def _paginate(self, path: str, key: str, limit: int = 100) -> list[dict]:
+        result: list[dict] = []
         offset = 0
         while True:
             separator = "&" if "?" in path else "?"
@@ -273,7 +272,7 @@ class AirflowApiClient:
                 break
         return result
 
-    def get_all_dags(self) -> List[dict]:  # noqa: UP006
+    def get_all_dags(self) -> list[dict]:
         if self.mwaa_client:
             return self.mwaa_client.get_all_dags()
 
@@ -337,7 +336,7 @@ class AirflowApiClient:
             tasks=tasks,
         )
 
-    def get_dag_runs(self, dag_id: str, limit: int = 10) -> List[AirflowApiDagRun]:  # noqa: UP006
+    def get_dag_runs(self, dag_id: str, limit: int = 10) -> list[AirflowApiDagRun]:
         if self.mwaa_client:
             return self.mwaa_client.get_dag_runs(dag_id, limit=limit)
 
@@ -362,7 +361,7 @@ class AirflowApiClient:
             )
         return result
 
-    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> List[AirflowApiTaskInstance]:  # noqa: UP006
+    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> list[AirflowApiTaskInstance]:
         if self.mwaa_client:
             return self.mwaa_client.get_task_instances_for_run(dag_id, dag_run_id)
 

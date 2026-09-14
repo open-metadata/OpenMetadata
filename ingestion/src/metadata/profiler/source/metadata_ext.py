@@ -21,8 +21,9 @@ and sample data for that identified entity.
 """
 
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Iterable, Type, cast  # noqa: UP035
+from typing import cast
 
 from sqlalchemy.inspection import inspect
 
@@ -164,13 +165,13 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 continue
             yield table_name
 
-    def import_profiler_interface(self) -> Type[ProfilerInterface]:  # noqa: UP006
+    def import_profiler_interface(self) -> type[ProfilerInterface]:
         class_path = BaseSpec.get_for_source(
             ServiceType.Database,
             source_type=self.config.source.type.lower(),
         ).profiler_class
         profiler_source_class = import_from_module(class_path)
-        return cast(Type[ProfilerInterface], profiler_source_class)  # noqa: TC006, UP006
+        return cast(type[ProfilerInterface], profiler_source_class)  # noqa: TC006
 
     def get_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):

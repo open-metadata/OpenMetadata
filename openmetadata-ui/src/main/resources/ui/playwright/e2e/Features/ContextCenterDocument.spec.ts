@@ -69,7 +69,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Context Center - Documents Page', () => {
-  test.slow(true);
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ browser }) => {
@@ -573,16 +572,6 @@ test.describe('Context Center - Documents Page', () => {
     await waitForAllLoadersToDisappear(page);
     await selectFolderInSidebar(page, folderName);
 
-    const folderSearchResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/search/query') &&
-        res.url().includes('index=contextFile')
-    );
-
-    await searchInput.fill(sharedToken);
-    await folderSearchResPromise;
-    await waitForAllLoadersToDisappear(page);
-
     await expect(
       view.locator(`[data-testid="document-row-${inFolderDoc.id}"]`)
     ).toBeVisible();
@@ -971,6 +960,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(page).toHaveURL(new RegExp(`document=${doc.id}`));
     await expect(row.getByTestId('document-name')).toHaveText(fileName);
 
+    await expect(panel.getByText('Status')).toBeVisible();
     await expect(panel.getByText('Size')).toBeVisible();
     await expect(panel.getByText('Folder', { exact: true })).toBeVisible();
     await expect(panel.getByText(folderName)).toBeVisible();
@@ -984,6 +974,7 @@ test.describe('Context Center - Documents Page', () => {
     expect(panelClipboardText).toContain(`document=${doc.id}`);
 
     await panel.getByTestId('close-preview-btn').click();
+    await panel.waitFor({ state: 'hidden' });
     await expect(panel).not.toBeVisible();
   });
 

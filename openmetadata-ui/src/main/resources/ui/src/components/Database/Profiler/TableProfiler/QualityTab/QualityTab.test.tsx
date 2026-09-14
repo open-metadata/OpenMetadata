@@ -150,7 +150,11 @@ jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
     .fn()
     .mockImplementation(() => (
-      <input data-testid="mock-searchbar" type="text" />
+      <input
+        aria-label="mock-searchbar"
+        data-testid="mock-searchbar"
+        type="text"
+      />
     ));
 });
 jest.mock('../../DataQualityTab/DataQualityTab', () => {

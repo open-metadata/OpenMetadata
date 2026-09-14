@@ -52,6 +52,15 @@ import { getPartialNameFromFQN } from './FqnUtils';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
 
+/**
+ * The landing page is reachable at two paths: `/` (rendered in place, where
+ * post-login lands) and the explicit `/my-data` link. Anything that keys off
+ * "am I on the landing page" must accept both, or it silently changes behavior
+ * depending on how the user got there.
+ */
+export const isLandingPagePath = (pathname: string): boolean =>
+  pathname === ROUTES.HOME || pathname === ROUTES.MY_DATA;
+
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
     Object.keys(IN_PAGE_SEARCH_ROUTES).find((route) => pathname.includes(route))
@@ -725,16 +734,19 @@ export const getServiceDetailsPath = (
   return path;
 };
 
+// Built from the ROUTES constant rather than the router's current location —
+// callers merging this into a `search`-only update need a pathname that
+// can't be affected by the router's location-context resolution.
+export const getExploreTabPath = (tab?: string): string =>
+  ROUTES.EXPLORE_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab ?? '');
+
 export const getExplorePath: (args: {
   tab?: string;
   search?: string;
   extraParameters?: Record<string, unknown>;
   isPersistFilters?: boolean;
 }) => string = ({ tab, search, extraParameters, isPersistFilters = true }) => {
-  const pathname = ROUTES.EXPLORE_WITH_TAB.replace(
-    PLACEHOLDER_ROUTE_TAB,
-    tab ?? ''
-  );
+  const pathname = getExploreTabPath(tab);
   let paramsObject: Record<string, unknown> = QueryString.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)

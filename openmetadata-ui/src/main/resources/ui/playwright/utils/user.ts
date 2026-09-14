@@ -23,11 +23,12 @@ import {
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
+import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
-  descriptionBox,
   descriptionBoxReadOnly,
+  fillDescriptionBox,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -37,6 +38,7 @@ import {
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
+import { getCellByName } from './scopedLocators';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -69,6 +71,7 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
       origins: [],
     },
   });
+  await installServerLoadReducers(context);
   const page = await context.newPage();
   await user.login(page);
   const token = await getToken(page);
@@ -269,7 +272,7 @@ export const editDescription = async (
   await page.click('[data-testid="edit-description"]');
 
   // Clear and type the new description
-  await page.locator(descriptionBox).fill(updatedDescription);
+  await fillDescriptionBox(page, updatedDescription);
 
   const updateDescription = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save"]');
@@ -289,9 +292,7 @@ export const handleAdminUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -301,11 +302,7 @@ export const handleUserUpdateDetails = async (
   page: Page,
   editedUserName: string
 ) => {
-  const feedResponse = page.waitForResponse(
-    '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
-  );
   await visitOwnProfilePage(page);
-  await feedResponse;
 
   // edit displayName
   await editDisplayName(page, editedUserName);
@@ -645,8 +642,7 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check Add domain permission
   await expect(page.locator('[data-testid="add-domain"]')).not.toBeVisible();
 
-  await page
-    .getByRole('cell', { name: /user_id/i })
+  await getCellByName(page, /user_id/i)
     .getByTestId('edit-displayName-button')
     .waitFor({ state: 'attached' });
 
@@ -701,14 +697,17 @@ export const addUser = async (
   }
 ) => {
   await waitForAllLoadersToDisappear(page);
+  const initialRolesSearchResponse = page.waitForResponse(
+    '/api/v1/roles/search?*'
+  );
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles/search?*');
+  await initialRolesSearchResponse;
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
   await page.fill('#password', password);
@@ -776,7 +775,7 @@ export const checkForUserExistError = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.locator(descriptionBox).fill('Adding new user');
+  await fillDescriptionBox(page, 'Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
   await page.fill('#password', password);

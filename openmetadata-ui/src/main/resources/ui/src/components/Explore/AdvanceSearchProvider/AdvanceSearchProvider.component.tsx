@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,8 +17,8 @@ import {
   ImmutableTree,
   OldJsonTree,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
-import '@react-awesome-query-builder/antd/css/styles.css';
+} from '@react-awesome-query-builder/ui';
+import '@react-awesome-query-builder/ui/css/styles.css';
 import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
@@ -36,7 +36,6 @@ import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
-import { getEmptyJsonTree } from '../../../utils/AdvancedSearchPureUtils';
 import {
   getTreeConfig,
   processEntityTypeFields,
@@ -45,6 +44,7 @@ import {
   getExploreClearQueryFilterSearchParams,
   getExploreResetFiltersSearchParams,
 } from '../../../utils/ExplorePureUtils';
+import { getEmptyJsonTree } from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -106,10 +106,15 @@ export const AdvanceSearchProvider = ({
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
+      // Re-selecting the index the provider is already on must not enter the updating state.
+      if (isEqual(searchIndex, index)) {
+        return;
+      }
+
       setIsUpdating(true);
       setSearchIndex(index);
     },
-    []
+    [searchIndex]
   );
 
   const [config, setConfig] = useState<Config>(
@@ -271,8 +276,8 @@ export const AdvanceSearchProvider = ({
       actualConfig.fields.extension.subfields = extensionSubField;
     }
 
-    // Update field type if field override is provided
-    // For example type of extension is group but it is required as struct in some cases
+    // Update field type if field override is provided For example type of extension is group but it is required as
+    // struct in some cases
     fieldOverrides.forEach((fieldOverride: { field: string; type: string }) => {
       if (actualConfig.fields[fieldOverride.field]) {
         actualConfig.fields[fieldOverride.field].type = fieldOverride.type;

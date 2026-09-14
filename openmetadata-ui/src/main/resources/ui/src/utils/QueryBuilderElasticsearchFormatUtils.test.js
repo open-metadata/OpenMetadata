@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  AntdConfig,
-  Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
+import { BasicConfig, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import {
   elasticSearchFormat,
   hasUnfinishedRule,
@@ -52,12 +49,12 @@ const makeTree = (operator, value, field = 'extension.table.myNumber') => ({
   },
 });
 
-// Extend AntdConfig with extension field metadata so lookupOmPropertyType
+// Extend BasicConfig with extension field metadata so lookupOmPropertyType
 // resolves the OM type, which is required for the scoped between/not_between fix.
 const configWithNumberType = {
-  ...AntdConfig,
+  ...BasicConfig,
   fields: {
-    ...AntdConfig.fields,
+    ...BasicConfig.fields,
     extension: {
       subfields: {
         table: {
@@ -299,7 +296,7 @@ const SELECT_FIELD = 'service.displayName.keyword';
 const SELECT_VALUE = 'banking-bigquery';
 
 const selectFieldConfig = {
-  ...AntdConfig,
+  ...BasicConfig,
   fields: {
     [SELECT_FIELD]: {
       label: 'Service',
@@ -371,5 +368,125 @@ describe('hasUnfinishedRule – entered rules on plain fields (Issue #31564)', (
     const tree = loadSelectTree('select_equals', [undefined], 'select');
 
     expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(true);
+  });
+});
+
+// A builder pinned to one entity type (persona AI context, workflow Check
+// Condition, Data Asset filters) keys custom properties without the entity-type
+// segment: `extension.testCp`, not `extension.table.testCp`. Splitting
+// positionally read `testCp` as the entity type and `keyword` as the property,
+// so those builders produced a query that could never match.
+describe('elasticSearchFormat – custom properties without an entity-type segment', () => {
+  const PINNED_FIELD = 'extension.testCp.keyword';
+  const DATE_VALUE = '2026-09-03';
+  const NAMED_TEST_CP = '"customPropertiesTyped.name":"testCp"';
+  const SCOPED_TO_TABLE = '"entityType":"table"';
+
+  const pinnedConfig = {
+    ...BasicConfig,
+    fields: {
+      ...BasicConfig.fields,
+      extension: {
+        subfields: {
+          // pinned builders expose the property directly, as a leaf
+          testCp: { __omPropertyType: 'date-cp' },
+        },
+      },
+    },
+  };
+
+  const nestedQueryOf = (result) =>
+    JSON.stringify(result).match(/customPropertiesTyped/g) ?? [];
+
+  it('should build the nested customPropertiesTyped query for a pinned field', () => {
+    const result = elasticSearchFormat(
+      makeTree('equal', [DATE_VALUE], PINNED_FIELD),
+      pinnedConfig
+    );
+    const json = JSON.stringify(result);
+
+    expect(nestedQueryOf(result).length).toBeGreaterThan(0);
+    expect(json).toContain(NAMED_TEST_CP);
+    expect(json).toContain(DATE_VALUE);
+    // `keyword` is a suffix on the field key, never the property name
+    expect(json).not.toContain('"customPropertiesTyped.name":"keyword"');
+  });
+
+  // The pinned builder knows its entity type even though the field key does
+  // not carry it, so the nested query must still be scoped to that type —
+  // reading it off the key produced `entityType: "MigrationAccessPattern"`,
+  // the property name mistaken for a type.
+  it('should scope to the entity type the builder was configured with', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(makeTree('equal', [DATE_VALUE], PINNED_FIELD), {
+        ...pinnedConfig,
+        settings: { ...pinnedConfig.settings, omEntityType: 'table' },
+      })
+    );
+
+    expect(json).toContain(SCOPED_TO_TABLE);
+    expect(json).toContain(NAMED_TEST_CP);
+  });
+
+  it('should omit the entityType clause when no type is configured', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', [DATE_VALUE], PINNED_FIELD),
+        pinnedConfig
+      )
+    );
+
+    expect(json).not.toContain('"entityType"');
+  });
+
+  // A table-type property is itself a struct (`testCpTable.rows.name`), so it
+  // looks exactly like an entity-type segment. Deciding from the key's shape
+  // read `testCpTable` as the entity and `rows` as the property, and the query
+  // matched nothing — a workflow filter reported 0 assets while the same
+  // filter found 1 on Explore.
+  it('should keep the whole path of a pinned table-type property', () => {
+    const tableConfig = {
+      ...BasicConfig,
+      fields: {
+        ...BasicConfig.fields,
+        extension: {
+          subfields: {
+            // a pinned builder stores each column flat, dots and all
+            'testCpTable.rows.name': { __omPropertyType: 'table-cp' },
+          },
+        },
+      },
+      settings: { ...BasicConfig.settings, omEntityType: 'table' },
+    };
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['anuj'], 'extension.testCpTable.rows.name'),
+        tableConfig
+      )
+    );
+
+    expect(json).toContain(
+      '"customPropertiesTyped.name":"testCpTable.rows.name"'
+    );
+    expect(json).toContain(SCOPED_TO_TABLE);
+    expect(json).not.toContain('"customPropertiesTyped.name":"rows"');
+    expect(json).not.toContain('"entityType":"testCpTable"');
+    // A table column holds a string. A column named `name` ends with `.name`,
+    // so it was classified as an entity reference and the query asked for
+    // `refName`, which matched nothing.
+    expect(json).toContain('"customPropertiesTyped.stringValue":"anuj"');
+    expect(json).not.toContain('refName');
+  });
+
+  it('should still read the entity-type segment when the config nests one', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['2026-09-03'], 'extension.table.myDate.keyword'),
+        configWithNumberType
+      )
+    );
+
+    expect(json).toContain('"customPropertiesTyped.name":"myDate"');
+    expect(json).toContain(SCOPED_TO_TABLE);
   });
 });

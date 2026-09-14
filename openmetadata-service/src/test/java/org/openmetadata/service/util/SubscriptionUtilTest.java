@@ -41,17 +41,12 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Paging;
-import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskDetails;
-import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.ResultList;
@@ -62,7 +57,6 @@ import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.SecurityUtil;
 
 class SubscriptionUtilTest {
@@ -559,145 +553,6 @@ class SubscriptionUtilTest {
   }
 
   @Test
-  void getTaskAssigneesCollectsAssigneesMentionsAndPostAuthors() throws Exception {
-    ChangeEvent event = new ChangeEvent().withEntityType(Entity.THREAD);
-    UUID assigneeId = UUID.randomUUID();
-    UUID teamId = UUID.randomUUID();
-    EntityReference assigneeRef = new EntityReference().withId(assigneeId).withType(USER);
-    EntityReference teamRef = new EntityReference().withId(teamId).withType(TEAM);
-    Thread thread =
-        new Thread()
-            .withType(ThreadType.Task)
-            .withMessage("thread-message")
-            .withTask(new TaskDetails().withAssignees(List.of(assigneeRef, teamRef)))
-            .withPosts(List.of(new Post().withFrom("bob").withMessage("post-message")));
-
-    MessageParser.EntityLink threadMention = new MessageParser.EntityLink(USER, "charlie");
-    MessageParser.EntityLink postMention = new MessageParser.EntityLink(TEAM, "platform");
-
-    try (MockedStatic<AlertsRuleEvaluator> mockedAlerts = mockStatic(AlertsRuleEvaluator.class);
-        MockedStatic<MessageParser> mockedParser = mockStatic(MessageParser.class);
-        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedAlerts.when(() -> AlertsRuleEvaluator.getThread(event)).thenReturn(thread);
-      mockedParser
-          .when(() -> MessageParser.getEntityLinks("thread-message"))
-          .thenReturn(List.of(threadMention));
-      mockedParser
-          .when(() -> MessageParser.getEntityLinks("post-message"))
-          .thenReturn(List.of(postMention));
-
-      mockedEntity
-          .when(() -> Entity.getEntity(USER, assigneeId, "profile", NON_DELETED))
-          .thenReturn(user("alice", "alice@example.com"));
-      mockedEntity
-          .when(() -> Entity.getEntity(TEAM, teamId, "profile", NON_DELETED))
-          .thenReturn(team("analytics", "analytics@example.com"));
-      mockedEntity
-          .when(() -> Entity.getEntity(threadMention, "profile", NON_DELETED))
-          .thenReturn(user("charlie", "charlie@example.com"));
-      mockedEntity
-          .when(() -> Entity.getEntity(postMention, "profile", NON_DELETED))
-          .thenReturn(team("platform", "platform@example.com"));
-      mockedEntity
-          .when(() -> Entity.getEntityByName(USER, "bob", "profile", NON_DELETED))
-          .thenReturn(user("bob", "bob@example.com"));
-
-      Set<String> receivers =
-          invokePrivateStatic(
-              "getTaskAssignees",
-              new Class[] {
-                SubscriptionAction.class,
-                SubscriptionDestination.SubscriptionCategory.class,
-                SubscriptionDestination.SubscriptionType.class,
-                org.openmetadata.schema.type.ChangeEvent.class
-              },
-              new Webhook(),
-              SubscriptionDestination.SubscriptionCategory.ASSIGNEES,
-              SubscriptionDestination.SubscriptionType.EMAIL,
-              event);
-
-      assertEquals(
-          Set.of(
-              "alice@example.com",
-              "analytics@example.com",
-              "charlie@example.com",
-              "platform@example.com",
-              "bob@example.com"),
-          receivers);
-    }
-  }
-
-  @Test
-  void handleConversationNotificationIncludesMentionsAndOwners() throws Exception {
-    ChangeEvent event = new ChangeEvent().withEntityType(Entity.THREAD);
-    Thread thread =
-        new Thread()
-            .withType(ThreadType.Conversation)
-            .withCreatedBy("owner")
-            .withMessage("thread-message")
-            .withPosts(List.of(new Post().withFrom("bob").withMessage("post-message")));
-    MessageParser.EntityLink threadMention = new MessageParser.EntityLink(USER, "charlie");
-    MessageParser.EntityLink postMention = new MessageParser.EntityLink(TEAM, "platform");
-
-    try (MockedStatic<AlertsRuleEvaluator> mockedAlerts = mockStatic(AlertsRuleEvaluator.class);
-        MockedStatic<MessageParser> mockedParser = mockStatic(MessageParser.class);
-        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedAlerts.when(() -> AlertsRuleEvaluator.getThread(event)).thenReturn(thread);
-      mockedParser
-          .when(() -> MessageParser.getEntityLinks("thread-message"))
-          .thenReturn(List.of(threadMention));
-      mockedParser
-          .when(() -> MessageParser.getEntityLinks("post-message"))
-          .thenReturn(List.of(postMention));
-      mockedEntity
-          .when(() -> Entity.getEntity(threadMention, "profile", NON_DELETED))
-          .thenReturn(user("charlie", "charlie@example.com"));
-      mockedEntity
-          .when(() -> Entity.getEntity(postMention, "profile", NON_DELETED))
-          .thenReturn(team("platform", "platform@example.com"));
-      mockedEntity
-          .when(() -> Entity.getEntityByName(USER, "bob", "profile", NON_DELETED))
-          .thenReturn(user("bob", "bob@example.com"));
-      mockedEntity
-          .when(() -> Entity.getEntityByName(USER, "owner", "profile", NON_DELETED))
-          .thenReturn(user("owner", "owner@example.com"));
-
-      Set<String> mentionedReceivers =
-          invokePrivateStatic(
-              "handleConversationNotification",
-              new Class[] {
-                SubscriptionAction.class,
-                SubscriptionDestination.SubscriptionCategory.class,
-                SubscriptionDestination.SubscriptionType.class,
-                org.openmetadata.schema.type.ChangeEvent.class
-              },
-              new Webhook(),
-              SubscriptionDestination.SubscriptionCategory.MENTIONS,
-              SubscriptionDestination.SubscriptionType.EMAIL,
-              event);
-
-      Set<String> ownerReceivers =
-          invokePrivateStatic(
-              "handleConversationNotification",
-              new Class[] {
-                SubscriptionAction.class,
-                SubscriptionDestination.SubscriptionCategory.class,
-                SubscriptionDestination.SubscriptionType.class,
-                org.openmetadata.schema.type.ChangeEvent.class
-              },
-              new Webhook(),
-              SubscriptionDestination.SubscriptionCategory.OWNERS,
-              SubscriptionDestination.SubscriptionType.EMAIL,
-              event);
-
-      assertEquals(
-          Set.of("charlie@example.com", "platform@example.com", "bob@example.com"),
-          mentionedReceivers);
-      assertEquals(Set.of("owner@example.com"), ownerReceivers);
-    }
-  }
-
-  @Test
   void getTargetsForAlertHandlesConversationAnnouncementAndEntityEvents() {
     SubscriptionDestination destination =
         new SubscriptionDestination()
@@ -705,41 +560,19 @@ class SubscriptionUtilTest {
             .withType(SubscriptionDestination.SubscriptionType.EMAIL)
             .withNotifyDownstream(false);
     Webhook webhook = new Webhook().withReceivers(Set.of("external@example.com"));
-    CollectionDAO dao = mock(CollectionDAO.class);
-    UUID announcementEntityId = UUID.randomUUID();
-    ChangeEvent conversationEvent = new ChangeEvent().withEntityType(Entity.THREAD);
-    ChangeEvent announcementEvent = new ChangeEvent().withEntityType(Entity.THREAD);
+    ChangeEvent conversationEvent = new ChangeEvent().withEntityType(Entity.CONVERSATION);
+    ChangeEvent announcementEvent = new ChangeEvent().withEntityType(Entity.ANNOUNCEMENT);
     ChangeEvent entityEvent = new ChangeEvent().withEntityType("table");
-    Thread conversationThread = new Thread().withType(ThreadType.Conversation);
-    Thread announcementThread =
-        new Thread()
-            .withType(ThreadType.Announcement)
-            .withEntityRef(new EntityReference().withId(announcementEntityId).withType("table"));
-    EntityInterface entity = mock(EntityInterface.class);
-    UUID entityId = UUID.randomUUID();
-    when(entity.getId()).thenReturn(entityId);
 
-    try (MockedStatic<AlertsRuleEvaluator> mockedAlerts = mockStatic(AlertsRuleEvaluator.class);
-        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedAlerts
-          .when(() -> AlertsRuleEvaluator.getThread(conversationEvent))
-          .thenReturn(conversationThread);
-      mockedAlerts
-          .when(() -> AlertsRuleEvaluator.getThread(announcementEvent))
-          .thenReturn(announcementThread);
-      mockedAlerts.when(() -> AlertsRuleEvaluator.getEntity(entityEvent)).thenReturn(entity);
-      mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
-
-      assertEquals(
-          Set.of("external@example.com"),
-          SubscriptionUtil.getTargetsForAlert(webhook, destination, conversationEvent));
-      assertEquals(
-          Set.of("external@example.com"),
-          SubscriptionUtil.getTargetsForAlert(webhook, destination, announcementEvent));
-      assertEquals(
-          Set.of("external@example.com"),
-          SubscriptionUtil.getTargetsForAlert(webhook, destination, entityEvent));
-    }
+    assertEquals(
+        Set.of("external@example.com"),
+        SubscriptionUtil.getTargetsForAlert(webhook, destination, conversationEvent));
+    assertEquals(
+        Set.of("external@example.com"),
+        SubscriptionUtil.getTargetsForAlert(webhook, destination, announcementEvent));
+    assertEquals(
+        Set.of("external@example.com"),
+        SubscriptionUtil.getTargetsForAlert(webhook, destination, entityEvent));
   }
 
   @Test

@@ -1,0 +1,274 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NatsConnection",
+  "description": "NATS Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.NatsConnection",
+  "definitions": {
+    "natsType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Nats"
+      ],
+      "default": "Nats"
+    },
+    "basicAuth": {
+      "title": "Username and Password",
+      "description": "Username and password authentication for NATS.",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "Username for NATS authentication.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Password for NATS authentication.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": [
+        "username",
+        "password"
+      ],
+      "additionalProperties": false
+    },
+    "tokenAuth": {
+      "title": "Token",
+      "description": "Token-based authentication for NATS.",
+      "type": "object",
+      "properties": {
+        "token": {
+          "title": "Token",
+          "description": "Token for NATS authentication.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": [
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "nkeyAuth": {
+      "title": "NKey Seed",
+      "description": "NKey seed authentication for NATS.",
+      "type": "object",
+      "properties": {
+        "nkeySeed": {
+          "title": "NKey Seed",
+          "description": "NKey seed for NATS authentication.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": [
+        "nkeySeed"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Nats",
+      "type": "string",
+      "enum": [
+        "Nats"
+      ]
+    },
+    "natsServers": {
+      "title": "NATS Servers",
+      "description": "NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222",
+      "type": "string"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "NATS authentication method. Leave empty for anonymous authentication.",
+      "oneOf": [
+        {
+          "title": "Username and Password",
+          "description": "Username and password authentication for NATS.",
+          "type": "object",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "Username for NATS authentication.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Password for NATS authentication.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "Token",
+          "description": "Token-based authentication for NATS.",
+          "type": "object",
+          "properties": {
+            "token": {
+              "title": "Token",
+              "description": "Token for NATS authentication.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "token"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "NKey Seed",
+          "description": "NKey seed authentication for NATS.",
+          "type": "object",
+          "properties": {
+            "nkeySeed": {
+              "title": "NKey Seed",
+              "description": "NKey seed for NATS authentication.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "nkeySeed"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "tlsConfig": {
+      "title": "TLS Configuration",
+      "description": "TLS/SSL configuration for secure NATS connections.",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Validate SSL Client Config",
+          "description": "OpenMetadata Client configured to validate SSL certificates.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+          "additionalProperties": false,
+          "properties": {
+            "caCertificate": {
+              "title": "CA Certificate",
+              "description": "The CA certificate used for SSL validation.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslCertificate": {
+              "title": "SSL Certificate",
+              "description": "The SSL certificate used for client authentication.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            },
+            "sslKey": {
+              "title": "SSL Key",
+              "description": "The private key associated with the SSL certificate.",
+              "type": "string",
+              "format": "password",
+              "accept": [
+                ".pem",
+                ".crt",
+                ".cer",
+                ".der",
+                ".p12"
+              ],
+              "uiFieldType": "fileOrInput"
+            }
+          }
+        }
+      ]
+    },
+    "additionalConfig": {
+      "title": "Additional NATS Config",
+      "description": "Additional NATS client configuration options. See https://nats-io.github.io/nats.py/",
+      "type": "object",
+      "default": {},
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "servers",
+            "user",
+            "password",
+            "token",
+            "nkeys_seed",
+            "nkeys_seed_str",
+            "tls",
+            "user_credentials",
+            "signature_cb",
+            "user_jwt_cb"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "schemaKvBucket": {
+      "title": "Schema KV Bucket",
+      "description": "Name of the JetStream KV bucket where schemas are stored. Keys must match stream names. Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.",
+      "type": "string"
+    },
+    "topicFilterPattern": {
+      "title": "Default Topic Filter Pattern",
+      "description": "Regex to only fetch subjects/streams that match the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "natsServers"
+  ]
+}

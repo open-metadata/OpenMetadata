@@ -14,6 +14,7 @@ import '@testing-library/jest-dom/extend-expect';
 import { act, render, screen } from '@testing-library/react';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
+import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import TestCaseStatusPieChartWidget from './TestCaseStatusPieChartWidget.component';
 
@@ -66,18 +67,21 @@ jest.mock('../../../Visualisations/Chart/CustomPieChart.component', () =>
         <div>
           CustomPieChart.component
           <button
+            aria-label="segment-0"
             data-testid="segment-0"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Success', value: 4 }, 0)
             }
           />
           <button
+            aria-label="segment-1"
             data-testid="segment-1"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Failed', value: 3 }, 1)
             }
           />
           <button
+            aria-label="segment-2"
             data-testid="segment-2"
             onClick={() =>
               props.onSegmentClick?.({ name: 'Aborted', value: 1 }, 2)
@@ -233,6 +237,10 @@ describe('TestCaseStatusPieChartWidget', () => {
       failedSegment.click();
     });
 
+    const expectedTitle = encodeURIComponent(
+      `${formatDate(100, true)} -> ${formatDate(200, true)}`
+    );
+
     expect(navigate).toHaveBeenCalledWith({
       pathname: '/observability/data-quality/test-cases',
       search:
@@ -240,7 +248,7 @@ describe('TestCaseStatusPieChartWidget', () => {
         '&lastRunRange%5BstartTs%5D=100' +
         '&lastRunRange%5BendTs%5D=200' +
         '&lastRunRange%5Bkey%5D=customRange' +
-        '&lastRunRange%5Btitle%5D=Jan%201%2C%201970%20-%3E%20Jan%201%2C%201970',
+        `&lastRunRange%5Btitle%5D=${expectedTitle}`,
     });
 
     const { getTestCaseTabPath } = jest.requireMock(

@@ -316,6 +316,7 @@ export const SelectableList = ({
                     active: checkActiveSelectedItem(item),
                   }
                 )}
+                data-testid="owner-option"
                 extra={
                   multiSelect ? (
                     <CheckOutlined

@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
-import { ReactNode } from 'react';
+import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../../generated/entity/domains/domain';
@@ -26,10 +26,8 @@ import {
 } from '../../../../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
+import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
-
-type TagSize = 'sm' | 'lg';
 
 interface TaggedEntity {
   tags?: TagLabel[];
@@ -69,16 +67,24 @@ export const LIST_EMPTY_STATE_CLASS =
   'tw:flex tw:flex-1 tw:min-h-60 tw:items-center tw:justify-center';
 
 export const renderDomainNameCell = (
-  entity: Domain | DataProduct
+  entity: Domain | DataProduct,
+  onClick?: () => void
 ): ReactNode => {
   const entityName = getEntityName(entity);
+
+  const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    onClick?.();
+  };
 
   return (
     <Box
       align="center"
       className={NAME_CELL_CLIP_CLASS}
+      data-testid="entity-name"
       direction="row"
-      gap={3}>
+      gap={3}
+      onClick={onClick ? handleNameClick : undefined}>
       <Avatar size="md" {...getEntityAvatarProps(entity)} />
       <Typography
         className={CLIPPED_NAME_CLASS}
@@ -98,28 +104,25 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
     <Typography size="text-sm">{NO_DATA}</Typography>
   );
 
-export const renderDomainOwnersCell = (entity: OwnedEntity): ReactNode => (
+export const renderDomainOwnersCell = (
+  entity: OwnedEntity,
+  showDashPlaceholder?: boolean
+): ReactNode => (
   <OwnerLabel
     isCompactView={false}
     maxVisibleOwners={4}
     owners={entity.owners}
+    showDashPlaceholder={showDashPlaceholder}
     showLabel={false}
   />
 );
 
 export const renderDomainGlossaryTagsCell = (
-  entity: TaggedEntity,
-  options?: { size?: TagSize }
-): ReactNode => (
-  <TagBadgeList size={options?.size} tags={getGlossaryTags(entity.tags)} />
-);
+  entity: TaggedEntity
+): ReactNode => <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
 
 export const renderDomainClassificationTagsCell = (
-  entity: TaggedEntity,
-  options?: { size?: TagSize }
+  entity: TaggedEntity
 ): ReactNode => (
-  <TagBadgeList
-    size={options?.size}
-    tags={getClassificationTags(entity.tags)}
-  />
+  <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
 );

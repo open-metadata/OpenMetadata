@@ -409,6 +409,46 @@ test.describe(
           page.getByTestId('profile-sample').locator('div')
         ).toBeVisible();
       });
+
+      await test.step('Preserve partitioning when saving without any edit', async () => {
+        // Close the drawer the previous step left open, then reopen it clean.
+        await page.getByRole('button', { name: 'Cancel' }).click();
+        await page
+          .getByTestId('profiler-settings-modal')
+          .waitFor({ state: 'detached' });
+
+        await page.click('[data-testid="profiler-setting-btn"]');
+        await page.getByTestId('profiler-settings-modal').waitFor();
+        await expect(page.getByTestId('interval-type')).toBeVisible();
+
+        const updateTableProfilerConfigResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/tables/') &&
+            response.url().includes('/tableProfilerConfig') &&
+            response.request().method() === 'PUT'
+        );
+        await page.getByRole('button', { name: 'Save' }).click();
+        const updateResponse = await updateTableProfilerConfigResponse;
+        const requestBody = await updateResponse.request().postData();
+
+        // Saving without touching anything must round-trip the stored
+        // partitioning block. The backend replaces this extension wholesale,
+        // so any field missing from the payload is erased on the server.
+        expect(requestBody).toEqual(
+          JSON.stringify({
+            excludeColumns: [table.entity?.columns[0].name],
+            profileQuery: 'select * from table',
+            includeColumns: [{ columnName: table.entity?.columns[1].name }],
+            partitioning: {
+              partitionColumnName: table.entity?.columns[2].name,
+              partitionIntervalType: 'COLUMN-VALUE',
+              partitionValues: ['test'],
+              enablePartitioning: true,
+            },
+            sampleDataCount: 100,
+          })
+        );
+      });
     });
   }
 );

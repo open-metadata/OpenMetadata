@@ -24,11 +24,15 @@ import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 @Execution(ExecutionMode.CONCURRENT)
 public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDriveService> {
+  private static final String DRIVE_SERVICES_ENDPOINT = "/v1/services/driveServices";
 
   {
     supportsListHistoryByTimestamp = true;
@@ -236,6 +240,38 @@ public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDr
     service.setDescription("Updated description");
     DriveService updated = patchEntity(service.getId().toString(), service);
     assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void put_driveService_preservesMaskedPrivateKey(TestNamespace ns) {
+    CreateDriveService request = createMinimalRequest(ns);
+    request.setName(ns.prefix("put_preserves_private_key"));
+    DriveService service = createEntity(request);
+    GoogleDriveConnection maskedConnection =
+        JsonUtils.convertValue(service.getConnection().getConfig(), GoogleDriveConnection.class);
+    GCPValues maskedCredentials =
+        JsonUtils.convertValue(maskedConnection.getCredentials().getGcpConfig(), GCPValues.class);
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, maskedCredentials.getPrivateKey());
+    maskedConnection.setDriveId("updated-drive-id");
+    CreateDriveService update =
+        new CreateDriveService()
+            .withName(service.getName())
+            .withServiceType(DriveServiceType.GoogleDrive)
+            .withConnection(new DriveConnection().withConfig(maskedConnection));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, DRIVE_SERVICES_ENDPOINT, update, DriveService.class);
+
+    DriveService persisted =
+        SdkClients.ingestionBotClient().driveServices().get(service.getId().toString());
+    GoogleDriveConnection persistedConnection =
+        JsonUtils.convertValue(persisted.getConnection().getConfig(), GoogleDriveConnection.class);
+    GCPValues persistedCredentials =
+        JsonUtils.convertValue(
+            persistedConnection.getCredentials().getGcpConfig(), GCPValues.class);
+    assertEquals("updated-drive-id", persistedConnection.getDriveId());
+    assertEquals("test-private-key", persistedCredentials.getPrivateKey());
   }
 
   @Test

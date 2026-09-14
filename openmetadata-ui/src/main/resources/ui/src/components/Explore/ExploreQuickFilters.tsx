@@ -15,13 +15,19 @@ import { Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchPureUtils';
+import type { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import {
+  getOptionsFromAggregationBucket,
+  getQuickFilterLabelFormatter,
+  getQuickFilterSourceFields,
+} from '../../utils/AdvancedSearchPureUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { EntityIconSize } from '../../utils/EntityIconUtils';
 import { getEntityNameLabel } from '../../utils/EntityNameUtils';
 import {
@@ -57,27 +63,48 @@ const formatEntityTypeLabel = (value: string): string =>
 const getOptionLabelFormatter = (
   key: string,
   skipEntityTypeLabel = false
-): ((value: string) => string) | undefined =>
-  ENTITY_TYPE_FILTER_KEYS.has(key) && !skipEntityTypeLabel
-    ? formatEntityTypeLabel
-    : undefined;
+): ((value: string) => string) | undefined => {
+  if (ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return skipEntityTypeLabel ? undefined : formatEntityTypeLabel;
+  }
 
-const addEntityTypeIcons = (
+  return getQuickFilterLabelFormatter(key);
+};
+
+const addOptionIcons = (
   key: string,
   opts: SearchDropdownOption[]
 ): SearchDropdownOption[] => {
-  if (!ENTITY_TYPE_FILTER_KEYS.has(key)) {
-    return opts;
+  if (ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return opts.map((opt) => ({
+      ...opt,
+      icon:
+        searchClassBase.getEntityIconWithBg(
+          getCanonicalEntityType(opt.key),
+          EntityIconSize.Size14
+        ) ?? undefined,
+    }));
   }
 
-  return opts.map((opt) => ({
-    ...opt,
-    icon:
+  if (key === EntityFields.SERVICE_TYPE) {
+    return opts.map((opt) => ({
+      ...opt,
+      icon:
+        getServiceLogo(opt.key, 'tw:size-3.5 tw:object-contain') ?? undefined,
+    }));
+  }
+
+  if (key === EntityFields.DOMAINS) {
+    const domainIcon =
       searchClassBase.getEntityIconWithBg(
-        getCanonicalEntityType(opt.key),
+        EntityType.DOMAIN,
         EntityIconSize.Size14
-      ) ?? undefined,
-  }));
+      ) ?? undefined;
+
+    return opts.map((opt) => ({ ...opt, icon: domainIcon }));
+  }
+
+  return opts;
 };
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -98,6 +125,14 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
+
+  // Every dropdown writes into this one `options` state, so only the newest
+  // fetch may write — otherwise a late response repaints the dropdown that
+  // opened after it with the previous field's values.
+  const optionsRequestIdRef = useRef(0);
+  const startOptionsRequest = () => ++optionsRequestIdRef.current;
+  const isLatestOptionsRequest = (requestId: number) =>
+    requestId === optionsRequestIdRef.current;
   const { queryFilter } = useAdvanceSearch();
   const { isNLPActive } = useSearchStore();
   const getStaticOptions = useCallback(
@@ -169,13 +204,14 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const fetchDefaultOptions = async (
     index: SearchIndex | SearchIndex[],
     key: string,
+    requestId: number,
     fieldSearchIndex?: SearchIndex,
     fieldSearchKey?: string,
     sourceFields?: string
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addEntityTypeIcons(key, staticOptions));
+      setOptions(addOptionIcons(key, staticOptions));
 
       return;
     }
@@ -213,8 +249,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
     }
 
+    if (!isLatestOptionsRequest(requestId)) {
+      return;
+    }
+
     setOptions(
-      addEntityTypeIcons(
+      addOptionIcons(
         key,
         uniqWith(
           getOptionsFromAggregationBucket(
@@ -234,9 +274,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     fieldSearchKey?: string,
     sourceFields?: string
   ) => {
+    const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addEntityTypeIcons(key, staticOptions));
+      setOptions(addOptionIcons(key, staticOptions));
+      // Owns the newest request, so no in-flight fetch will clear the loader.
+      setIsOptionsLoading(false);
 
       return;
     }
@@ -247,14 +290,19 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       await fetchDefaultOptions(
         index,
         key,
+        requestId,
         fieldSearchIndex,
         fieldSearchKey,
         sourceFields
       );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatestOptionsRequest(requestId)) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsOptionsLoading(false);
+      if (isLatestOptionsRequest(requestId)) {
+        setIsOptionsLoading(false);
+      }
     }
   };
 
@@ -265,6 +313,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     fieldSearchKey?: string,
     sourceFields?: string
   ) => {
+    const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
       const filteredOptions = value
@@ -272,7 +321,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             option.label.toLowerCase().includes(value.toLowerCase())
           )
         : staticOptions;
-      setOptions(addEntityTypeIcons(key, filteredOptions));
+      setOptions(addOptionIcons(key, filteredOptions));
+      // Owns the newest request, so no in-flight fetch will clear the loader.
+      setIsOptionsLoading(false);
 
       return;
     }
@@ -304,8 +355,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
       const buckets =
         res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
+
+      if (!isLatestOptionsRequest(requestId)) {
+        return;
+      }
+
       setOptions(
-        addEntityTypeIcons(
+        addOptionIcons(
           key,
           uniqWith(
             getOptionsFromAggregationBucket(
@@ -318,9 +374,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         )
       );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatestOptionsRequest(requestId)) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsOptionsLoading(false);
+      if (isLatestOptionsRequest(requestId)) {
+        setIsOptionsLoading(false);
+      }
     }
   };
 
@@ -354,7 +414,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
             onSearch={(value, key) =>
@@ -363,7 +423,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
           />
@@ -395,7 +455,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
             onSearch={(value, key) =>
@@ -404,7 +464,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 key,
                 field.searchIndex,
                 field.searchKey,
-                field.sourceFields
+                getQuickFilterSourceFields(field)
               )
             }
           />

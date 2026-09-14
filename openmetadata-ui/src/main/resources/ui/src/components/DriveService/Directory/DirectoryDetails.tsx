@@ -185,6 +185,8 @@ function DirectoryDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -192,6 +194,8 @@ function DirectoryDetails({
           entity: t('label.directory'),
         })
       );
+
+      return false;
     }
   };
 
@@ -293,14 +297,16 @@ function DirectoryDetails({
     []
   );
 
+  // editAllPermission/viewAllPermission (raw directoryPermissions.EditAll/.ViewAll
+  // reads) dropped here: computed but never consumed anywhere in this component (only
+  // ever listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -324,13 +330,11 @@ function DirectoryDetails({
           directoryPermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: directoryPermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(
           directoryPermissions,
           Operation.EditLineage
         ) && !deleted,
-      viewAllPermission: directoryPermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         directoryPermissions,
         Operation.ViewCustomFields
@@ -408,8 +412,6 @@ function DirectoryDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
