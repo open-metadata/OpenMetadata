@@ -32,6 +32,8 @@ interface DropdownItemProps extends AriaMenuItemProps {
   icon?: FC<{ className?: string }>;
   /** If true, shows a checkbox on the left to indicate selection state. */
   showCheckbox?: boolean;
+  /** Size of that checkbox. */
+  checkboxSize?: 'xs' | 'sm';
 }
 
 const DropdownItem = ({
@@ -41,6 +43,7 @@ const DropdownItem = ({
   icon: Icon,
   unstyled,
   showCheckbox,
+  checkboxSize = 'sm',
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
@@ -73,7 +76,7 @@ const DropdownItem = ({
               isDisabled={state.isDisabled}
               isFocusVisible={state.isFocusVisible}
               isSelected={state.isSelected}
-              size="sm"
+              size={checkboxSize}
             />
           )}
 

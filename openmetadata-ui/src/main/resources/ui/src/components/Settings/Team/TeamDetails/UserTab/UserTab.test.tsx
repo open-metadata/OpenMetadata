@@ -30,7 +30,11 @@ const props: UserTabProps = {
   onRemoveUser: mockOnRemoveUser,
 };
 jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ permission }: { permission?: boolean }) => (
+      <div data-permission={String(permission)}>ErrorPlaceHolder</div>
+    ));
 });
 jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
@@ -252,6 +256,103 @@ describe('UserTab', () => {
       // The team itself and its descendant team are both in the teams.id filter.
       expect(queryFilter).toContain(nonGroupTeam.id);
       expect(queryFilter).toContain('sub-group-1');
+    });
+  });
+
+  // Task 8 Batch 3: editUserPermission's raw `permission.EditAll || permission.EditUsers` ->
+  // can(Operation.EditUsers) (getDerivedPermissionFlags). Documented explicit-deny-wins
+  // behavior change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit
+  // `EditUsers: false` now wins over a bare `EditAll: true` grant, where the old raw OR
+  // granted regardless. The 'Component should render' test above already covers the
+  // EditAll-fallback grant case (permission: { EditAll: true }, no EditUsers key) via the
+  // remove-user-btn's enabled state.
+  describe('editUserPermission (explicit-deny-wins)', () => {
+    it('disables the remove-user button when EditUsers is explicitly false, even with EditAll true', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={
+              { EditAll: true, EditUsers: false } as OperationPermission
+            }
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('remove-user-btn')).toBeDisabled();
+    });
+
+    it('enables the remove-user button via EditAll when EditUsers is not present', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('remove-user-btn')).toBeEnabled();
+    });
+  });
+
+  // Task 8 Batch 3 review round, Finding 3 (Important): the ASSIGN ErrorPlaceHolder's
+  // `permission` prop hard-branches (`if (!permission) return <PermissionErrorPlaceholder />`),
+  // replacing the whole assign-users UI (including the Add button, which is separately
+  // disabled via its own `disabled={!editUserPermission || isTeamDeleted}`) with a misleading
+  // "no access" message. Old code passed raw, ungated `permission.EditAll ||
+  // permission.EditUsers` here. Fixed via `ungatedFlags.can(Operation.EditUsers)` instead of
+  // the deleted-gated `editUserPermission`.
+  describe('ErrorPlaceHolder permission prop (ungated for deleted teams)', () => {
+    const GROUP_TEAM = {
+      ...MOCK_MARKETING_TEAM,
+      teamType: TeamType.Group,
+    } as Team;
+
+    it('keeps the assign-users UI reachable for a deleted team when EditAll is true', async () => {
+      (getUsers as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={{ ...GROUP_TEAM, deleted: true }}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByText('ErrorPlaceHolder')).toHaveAttribute(
+        'data-permission',
+        'true'
+      );
+    });
+
+    it('still denies via explicit deny when EditUsers is explicitly false, even with EditAll true', async () => {
+      (getUsers as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={{ ...GROUP_TEAM, deleted: true }}
+            permission={
+              { EditAll: true, EditUsers: false } as OperationPermission
+            }
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByText('ErrorPlaceHolder')).toHaveAttribute(
+        'data-permission',
+        'false'
+      );
     });
   });
 });

@@ -39,6 +39,7 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -142,6 +143,8 @@ interface InputPortsAccordionSectionProps {
   onExpandedChange: (expanded: boolean) => void;
   inputPortsCount: number;
   permissions: OperationPermission;
+  /** Derived EditAll flag replacing the raw reads in this section. */
+  canEditAll: boolean;
   dataProductFqn: string;
   inputPortsListRef: React.RefObject<PortsListViewRef>;
   onAddInputPort: () => void;
@@ -153,6 +156,7 @@ const InputPortsAccordionSection = ({
   onExpandedChange,
   inputPortsCount,
   permissions,
+  canEditAll,
   dataProductFqn,
   inputPortsListRef,
   onAddInputPort,
@@ -160,7 +164,7 @@ const InputPortsAccordionSection = ({
 }: InputPortsAccordionSectionProps) => {
   const { t } = useTranslation();
   const showHeaderAddButton =
-    permissions.EditAll && isInputPortsExpanded && inputPortsCount > 0;
+    canEditAll && isInputPortsExpanded && inputPortsCount > 0;
 
   return (
     <Grid.Item span={12}>
@@ -219,7 +223,7 @@ const InputPortsAccordionSection = ({
                   <Typography as="p" className="tw:text-center">
                     {t('message.no-input-ports-added')}
                   </Typography>
-                  {permissions.EditAll && (
+                  {canEditAll && (
                     <Button
                       className="tw:mt-2"
                       color="primary"
@@ -257,6 +261,8 @@ interface OutputPortsAccordionSectionProps {
   outputPortsCount: number;
   assetCount: number;
   permissions: OperationPermission;
+  /** Derived EditAll flag replacing the raw reads in this section. */
+  canEditAll: boolean;
   dataProductFqn: string;
   outputPortsListRef: React.RefObject<PortsListViewRef>;
   onAddOutputPort: () => void;
@@ -269,6 +275,7 @@ const OutputPortsAccordionSection = ({
   outputPortsCount,
   assetCount,
   permissions,
+  canEditAll,
   dataProductFqn,
   outputPortsListRef,
   onAddOutputPort,
@@ -276,12 +283,12 @@ const OutputPortsAccordionSection = ({
 }: OutputPortsAccordionSectionProps) => {
   const { t } = useTranslation();
   const showHeaderAddButton =
-    permissions.EditAll && isOutputPortsExpanded && outputPortsCount > 0;
+    canEditAll && isOutputPortsExpanded && outputPortsCount > 0;
   const emptyStateMessage =
     assetCount === 0
       ? t('message.no-assets-for-output-ports')
       : t('message.no-output-ports-added');
-  const showEmptyStateAddButton = permissions.EditAll && assetCount > 0;
+  const showEmptyStateAddButton = canEditAll && assetCount > 0;
 
   return (
     <Grid.Item span={12}>
@@ -416,6 +423,16 @@ export const InputOutputPortsTab = forwardRef<
     const portQueryFilter = useMemo(() => {
       return getQueryFilterForDataProductPorts(dataProductFqn);
     }, [dataProductFqn]);
+
+    // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
+    // fed straight through from DataProductUtils.tsx's `dataProductPermission`
+    // (DataProductsDetailsPage's useEntityPermissions owner, Batch 1) — contract kept
+    // raw. No `deleted` argument: old code's 4 `permissions.EditAll` reads were never
+    // gated on `deleted` (DataProduct has no `deleted` field to gate on anyway).
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     // Fetch lineage data and counts (only when lineage section is expanded, or on initial load for counts)
     const fetchLineageData = useCallback(async () => {
@@ -570,6 +587,7 @@ export const InputOutputPortsTab = forwardRef<
 
         <Grid className="tw:w-full tw:flex-1 tw:min-h-0 tw:p-1" gap="4">
           <InputPortsAccordionSection
+            canEditAll={canEditAll}
             dataProductFqn={dataProductFqn}
             inputPortsCount={inputPortsCount}
             inputPortsListRef={inputPortsListRef}
@@ -582,6 +600,7 @@ export const InputOutputPortsTab = forwardRef<
 
           <OutputPortsAccordionSection
             assetCount={assetCount}
+            canEditAll={canEditAll}
             dataProductFqn={dataProductFqn}
             isOutputPortsExpanded={isOutputPortsExpanded}
             outputPortsCount={outputPortsCount}

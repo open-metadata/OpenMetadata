@@ -95,6 +95,7 @@ jest.mock(
   })
 );
 const mockBannerComponent = () => <div>BannerComponent</div>;
+const mockAdditionalComponent = () => <div>DataDiffResults</div>;
 const mockShouldRenderDefaultGraph = jest.fn().mockReturnValue(true);
 jest.mock('./TestCaseResultTabClassBase', () => ({
   __esModule: true,
@@ -192,10 +193,15 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
+    mockUseTestCaseStore.isTabExpanded = false;
     mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
 
   it('Should render component', async () => {
+    // The description now lives in the rail, so it has to be visible for this
+    // whole-page assertion to see it.
+    mockUseTestCaseStore.isTabExpanded = true;
+
     render(<TestCaseResultTab />);
 
     expect(
@@ -688,6 +694,75 @@ describe('TestCaseResultTab', () => {
       // Should only have the non-tier tag
       expect(selectedTags).toHaveLength(1);
       expect(selectedTags[0].tagFQN).toBe('PII.Sensitive');
+    });
+  });
+
+  // TCD-0 — the page shell. The result history region leads the main column,
+  // and the description moves to the rail alongside the other metadata cards.
+  describe('main column order', () => {
+    it('renders the result history chart above the parameters', async () => {
+      render(<TestCaseResultTab />);
+
+      const chart = await screen.findByText('TestSummary');
+      const parameters = await screen.findByTestId('parameter-container');
+
+      expect(
+        chart.compareDocumentPosition(parameters) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+
+    it('renders the description in the rail, not the main column', async () => {
+      mockUseTestCaseStore.isTabExpanded = true;
+
+      render(<TestCaseResultTab />);
+
+      const rail = await screen.findByTestId('test-case-rail');
+      const description = await screen.findByText('Description');
+
+      expect(rail).toContainElement(description);
+    });
+  });
+
+  // Collate mounts extra components into the main column through
+  // `getAdditionalComponents`. The reflow must not drop that seam.
+  describe('class base extension components', () => {
+    // main #32982 moved the class base behind a `default` export, so the mock
+    // is nested one level deeper than it used to be.
+    const classBase = (
+      jest.requireMock('./TestCaseResultTabClassBase') as {
+        default: { getAdditionalComponents: jest.Mock };
+      }
+    ).default;
+
+    afterEach(() => {
+      classBase.getAdditionalComponents.mockReturnValue([]);
+    });
+
+    it('mounts components supplied by getAdditionalComponents', async () => {
+      classBase.getAdditionalComponents.mockReturnValue([
+        { id: 'collate-data-diff', Component: mockAdditionalComponent },
+      ]);
+
+      render(<TestCaseResultTab />);
+
+      expect(await screen.findByText('DataDiffResults')).toBeInTheDocument();
+    });
+
+    it('keeps extension components below the result history', async () => {
+      classBase.getAdditionalComponents.mockReturnValue([
+        { id: 'collate-data-diff', Component: mockAdditionalComponent },
+      ]);
+
+      render(<TestCaseResultTab />);
+
+      const chart = await screen.findByText('TestSummary');
+      const extension = await screen.findByText('DataDiffResults');
+
+      expect(
+        chart.compareDocumentPosition(extension) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
     });
   });
 });
