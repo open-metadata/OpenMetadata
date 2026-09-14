@@ -9,6 +9,7 @@ import type {
 import { forwardRef, isValidElement } from 'react';
 import {
   Button as AriaButton,
+  Focusable as AriaFocusable,
   OverlayArrow as AriaOverlayArrow,
   Tooltip as AriaTooltip,
   TooltipTrigger as AriaTooltipTrigger,
@@ -121,12 +122,23 @@ export const Tooltip = ({
 }: TooltipProps) => {
   const resolvedDelay = delay ?? 300;
 
+  // A disabled control fires no pointer or focus events, so react-aria never
+  // opens the tooltip on it - precisely backwards for the common case, where
+  // the tooltip exists to explain *why* the control is disabled. antd wrapped
+  // disabled children in its own listener element for this reason.
+  const isDisabledChild =
+    isValidElement<{ isDisabled?: boolean; disabled?: boolean }>(children) &&
+    Boolean(children.props.isDisabled ?? children.props.disabled);
+
   // Determine whether the child needs to be wrapped in a focusable AriaButton.
   // Non-focusable HTML string elements (span, div, svg, …) can't serve as
   // react-aria tooltip anchors on their own; wrap them automatically.
   // Providing triggerClassName or onTriggerPress is an explicit signal to wrap
   // even React component children (e.g. icon components).
   const shouldWrap = (() => {
+    if (isDisabledChild) {
+      return true;
+    }
     if (triggerClassName !== undefined || onTriggerPress !== undefined) {
       return true;
     }
@@ -139,7 +151,22 @@ export const Tooltip = ({
   })();
 
   const trigger_ = shouldWrap ? (
-    excludeTriggerFromTabOrder ? (
+    isDisabledChild ? (
+      // Focusable + span rather than AriaButton: the child is already a
+      // button, and nesting one inside another is invalid HTML. The child
+      // also has to stop swallowing pointer events, or the wrapper never
+      // sees the hover.
+      <AriaFocusable>
+        <span
+          className={cx(
+            'tw:inline-flex tw:w-max tw:cursor-not-allowed tw:*:pointer-events-none',
+            triggerClassName
+          )}
+          tabIndex={0}>
+          {children}
+        </span>
+      </AriaFocusable>
+    ) : excludeTriggerFromTabOrder ? (
       // Use a plain span instead of AriaButton when the trigger is explicitly
       // excluded from the tab order. AriaButton with tabindex="-1" is still
       // programmatically focusable, so Ant Design FocusTrap.restoreFocus() can

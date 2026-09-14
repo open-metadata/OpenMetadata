@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { Button } from '../buttons/button';
 import { Tooltip } from './tooltip';
 
 // Establish pointer modality so react-aria treats hover as a valid trigger.
@@ -208,5 +209,63 @@ describe('Tooltip — show/hide behaviour', () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
     expect(screen.queryByText('Hidden')).not.toBeInTheDocument();
+  });
+});
+
+// A disabled control fires no pointer or focus events, so react-aria never
+// opened the tooltip on it — exactly backwards for the usual case, where the
+// tooltip is what explains why the control is disabled.
+describe('Tooltip — disabled trigger', () => {
+  it('opens on hover over a disabled button', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <Tooltip title="Needs a data asset first">
+        <Button isDisabled data-testid="disabled-btn">
+          Add
+        </Button>
+      </Tooltip>
+    );
+
+    fireEvent.mouseMove(document);
+
+    // The disabled child is made inert, so the hover lands on the wrapper —
+    // which is what happens in a browser too.
+    const wrapper = screen.getByTestId('disabled-btn')
+      .parentElement as HTMLElement;
+    await user.hover(wrapper);
+
+    await waitFor(() =>
+      expect(screen.getByText('Needs a data asset first')).toBeInTheDocument()
+    );
+  });
+
+  it('wraps a disabled child in a focusable span, not a nested button', () => {
+    render(
+      <Tooltip title="t">
+        <Button isDisabled data-testid="d">
+          Add
+        </Button>
+      </Tooltip>
+    );
+
+    const wrapper = screen.getByTestId('d').parentElement as HTMLElement;
+
+    // Nesting a button inside a button is invalid HTML and breaks clicks.
+    expect(wrapper.tagName).toBe('SPAN');
+    expect(wrapper).toHaveAttribute('tabindex', '0');
+    expect(screen.getByTestId('d').closest('button')).toBe(
+      screen.getByTestId('d')
+    );
+  });
+
+  it('leaves an enabled button unwrapped by a span', () => {
+    render(
+      <Tooltip title="t">
+        <Button data-testid="e">Add</Button>
+      </Tooltip>
+    );
+
+    expect(screen.getByTestId('e').parentElement?.tagName).not.toBe('SPAN');
   });
 });
