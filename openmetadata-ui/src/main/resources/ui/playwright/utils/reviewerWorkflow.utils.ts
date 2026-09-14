@@ -329,6 +329,24 @@ export const checkNotificationAndApproveTask = async (
   await taskCard.waitFor({ state: 'visible', timeout: 15_000 });
   await taskCard.click();
 
+  // Start watching before approving rather than asserting afterwards. The
+  // toast auto-dismisses, and `approveTaskFromDetails` awaits the task-action
+  // response and a possible confirmation modal first -- long enough for the
+  // toast to have come and gone before an assertion placed after it begins
+  // looking. The failure screenshot for this one shows the article already
+  // "Approved", so the approval had worked and only the notification was
+  // missed. Reusing `toastNotification` keeps its stacking-queue locator
+  // rather than introducing a second one.
+  const toastSeen = toastNotification(
+    dataConsumerPage,
+    /Task resolved successfully/,
+    30_000
+  ).catch((error: unknown) => error as Error);
+
   await approveTaskFromDetails(dataConsumerPage);
-  await toastNotification(dataConsumerPage, /Task resolved successfully/);
+
+  const toastFailure = await toastSeen;
+  if (toastFailure) {
+    throw toastFailure;
+  }
 };
