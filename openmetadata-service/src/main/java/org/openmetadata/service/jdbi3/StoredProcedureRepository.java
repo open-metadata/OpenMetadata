@@ -52,7 +52,7 @@ public class StoredProcedureRepository implements EntityPolicy<StoredProcedure> 
                 Entity.getCollectionDAO().storedProcedureDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // Covered by the database service / database / schema delete cascade (search by service.id,
     // field_relationship / tag_usage by the root cleanup() FQN prefix) — see

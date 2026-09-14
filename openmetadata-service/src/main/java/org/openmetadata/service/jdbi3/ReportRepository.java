@@ -40,7 +40,7 @@ public class ReportRepository implements EntityPolicy<Report> {
                 Entity.getCollectionDAO().reportDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

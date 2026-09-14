@@ -51,7 +51,7 @@ public class IntakeFormRepository implements EntityPolicy<IntakeForm> {
                 Entity.getCollectionDAO().intakeFormDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
   }
 

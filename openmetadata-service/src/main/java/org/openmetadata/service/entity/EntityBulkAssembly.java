@@ -102,19 +102,9 @@ final class EntityBulkAssembly {
         context.dependencies().clock());
   }
 
-  static <T extends EntityInterface> EntityCsvChangeLog<T> assembleCsvChangeLog(
-      EntityPolicyContext<T> context) {
-    return EntityBulkAssembly.createCsvChangeLog(context);
-  }
-
   static <T extends EntityInterface> EntityBulkMetrics assembleBulkMetrics(
       EntityPolicyContext<T> context) {
     return new EntityBulkMetrics(context.schema().entityType(), Metrics.globalRegistry);
-  }
-
-  static <T extends EntityInterface> EntityBulkUpdateService<T> assembleBulkUpdateService(
-      EntityPolicyContext<T> context) {
-    return EntityBulkAssembly.createBulkUpdateService(context);
   }
 
   static <T extends EntityInterface> EntityEventService<T> assembleEventService(
@@ -160,9 +150,9 @@ final class EntityBulkAssembly {
   }
 
   static <T extends EntityInterface> void initialize(EntityPolicyContext<T> context) {
-    context.services().csvChangeLog = EntityBulkAssembly.assembleCsvChangeLog(context);
+    context.services().csvChangeLog = EntityBulkAssembly.createCsvChangeLog(context);
     context.services().bulkMetrics = EntityBulkAssembly.assembleBulkMetrics(context);
-    context.services().bulkUpdateService = EntityBulkAssembly.assembleBulkUpdateService(context);
+    context.services().bulkUpdateService = EntityBulkAssembly.createBulkUpdateService(context);
     context.services().eventService = EntityBulkAssembly.assembleEventService(context);
     context.services().bulk = EntityBulkAssembly.assembleBulk(context);
   }

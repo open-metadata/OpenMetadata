@@ -189,7 +189,7 @@ class EntityServiceMutationTest {
               new EntityPolicyContext.WriteFields(
                   "connection,ingestionRunner", "connection,ingestionRunner", Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, false);
+      EntityModuleFactory.initialize(this);
       final EntityRelationshipDAO dao =
           mock(
               EntityRelationshipDAO.class,

@@ -11,10 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates.Direction;
 import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates.References;
 import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates.Target;
 import org.openmetadata.service.entity.metadata.EntityRelationshipWriter.Edge;
@@ -28,6 +31,42 @@ class EntityRelationshipUpdatesTest {
   private static final Relationship RELATION = Relationship.RELATED_TO;
   private static final Target TARGET =
       new Target("related", ID, Entity.USER, Entity.USER, RELATION);
+
+  @ParameterizedTest
+  @EnumSource(Direction.class)
+  void replacingUnchangedReferencesKeepsRowsAndAvoidsWrites(Direction direction) {
+    final Fixture fixture = new Fixture();
+    final var original = List.of(ref(3, Entity.USER), ref(1, Entity.USER));
+    fixture.updates.replace(
+        fixture,
+        TARGET,
+        new References(original, List.of(original.getLast(), original.getFirst())),
+        direction);
+    assertEquals(0, fixture.store.writes);
+    assertTrue(fixture.store.rdf.isEmpty());
+    assertTrue(fixture.store.invalidated.isEmpty());
+    assertFalse(EntityChangeRecorder.hasChanges(fixture.changes));
+  }
+
+  @ParameterizedTest
+  @EnumSource(Direction.class)
+  void replacementReassertsRetainedReferencesAndPreservesRequestedOrder(Direction direction) {
+    final Fixture fixture = new Fixture();
+    final var original = List.of(ref(1, Entity.USER), ref(3, Entity.USER));
+    final var updated = List.of(ref(4, Entity.USER), ref(3, Entity.USER));
+    fixture.updates.replace(fixture, TARGET, new References(original, updated), direction);
+    assertEquals(2, fixture.store.rows.size());
+    assertEquals(
+        List.of(new UUID(0, 4).toString(), new UUID(0, 3).toString()),
+        fixture.store.rows.stream()
+            .map(row -> direction == Direction.INCOMING ? row.getFromId() : row.getToId())
+            .toList());
+    assertEquals(3, fixture.store.writes);
+    assertEquals(2, fixture.store.rdf.size());
+    assertEquals(4, fixture.store.invalidated.size());
+    assertEquals(1, fixture.changes.getFieldsAdded().size());
+    assertEquals(1, fixture.changes.getFieldsDeleted().size());
+  }
 
   @Test
   void unchangedAndUnselectedListsAvoidSqlAndPreserveInputOrder() {

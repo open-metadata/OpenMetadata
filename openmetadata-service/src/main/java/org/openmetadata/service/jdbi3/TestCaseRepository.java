@@ -182,7 +182,7 @@ public class TestCaseRepository implements EntityPolicy<TestCase> {
                 Entity.getCollectionDAO().testCaseDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     TestCaseBodyTextContributor.INSTANCE.register();
     // Add the canonical name for test case results
@@ -2244,11 +2244,9 @@ public class TestCaseRepository implements EntityPolicy<TestCase> {
                     .reads()
                     .byId(
                         affectedTestSuiteId,
-                        new EntityReadService.Query(
-                            null,
-                            new Fields(versioningRepo.getAllowedFields(), ""),
-                            RelationIncludes.fromInclude(NON_DELETED),
-                            false)),
+                        new Fields(versioningRepo.getAllowedFields(), ""),
+                        NON_DELETED,
+                        false),
                 importResult,
                 importedBy);
           } catch (Exception e) {

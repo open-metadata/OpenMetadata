@@ -302,7 +302,7 @@ class EntityBulkUpdateAtomicityIT {
     private final List<UUID> published = new ArrayList<>();
 
     private FailingChartRepository() {
-      super(false);
+      super();
     }
 
     @Override

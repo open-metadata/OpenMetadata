@@ -116,7 +116,7 @@ public class KnowledgePageRepository implements EntityPolicy<Page> {
             new EntityPolicyContext.WriteFields(
                 KNOWLEDGE_PATCH_FIELDS, KNOWLEDGE_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     this.daoExtension = jdbi.onDemand(CollectionDAO.class).knowledgePageDAO();

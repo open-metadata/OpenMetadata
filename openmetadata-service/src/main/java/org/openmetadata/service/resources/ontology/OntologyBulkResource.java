@@ -40,7 +40,6 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.ontology.OntologyBulkExecutionService;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
@@ -53,7 +52,6 @@ import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/ontology/bulk")
 @Tag(name = "Ontology Bulk", description = "Typed QTT-style Ontology bulk authoring.")
@@ -153,11 +151,9 @@ public final class OntologyBulkResource {
         .reads()
         .byId(
             request.getGlossaryId(),
-            new EntityReadService.Query(
-                null,
-                glossaryRepository.fieldPolicy().parse(""),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+            glossaryRepository.fieldPolicy().parse(""),
+            Include.NON_DELETED,
+            false);
   }
 
   private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {

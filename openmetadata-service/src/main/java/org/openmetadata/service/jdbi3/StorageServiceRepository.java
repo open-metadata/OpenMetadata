@@ -27,7 +27,7 @@ public class StorageServiceRepository
                 Entity.getCollectionDAO().storageServiceDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, StorageConnection.class, ServiceType.STORAGE);
     context().options().setQuoteFqn(true);

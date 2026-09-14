@@ -43,7 +43,7 @@ public class MlModelServiceRepository
                 Entity.getCollectionDAO().mlModelServiceDAO()),
             new EntityPolicyContext.WriteFields("", UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, MlModelConnection.class, ServiceType.ML_MODEL);
     context().options().setQuoteFqn(true);

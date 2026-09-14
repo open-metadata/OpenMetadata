@@ -68,7 +68,7 @@ public class RoleRepository implements EntityPolicy<Role> {
                 Entity.getCollectionDAO().roleDAO()),
             new EntityPolicyContext.WriteFields(POLICIES, POLICIES, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

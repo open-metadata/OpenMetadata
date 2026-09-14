@@ -18,15 +18,12 @@ import org.openmetadata.service.entity.delete.EntityDependentCleanup;
 import org.openmetadata.service.entity.delete.EntityHardDeletion;
 import org.openmetadata.service.entity.delete.EntityHierarchy;
 import org.openmetadata.service.entity.delete.EntityRestoreService;
-import org.openmetadata.service.entity.delete.EntityRestores;
 import org.openmetadata.service.entity.delete.EntitySubtreeLifecycle;
 import org.openmetadata.service.entity.delete.EntitySubtreeUpdates;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.policy.EntityPolicySupport;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 final class EntityDeletionAssembly {
@@ -40,17 +37,7 @@ final class EntityDeletionAssembly {
             context.schema().entityType(),
             entity -> context.policy().setFieldsInternal(entity, context.putFields()),
             new EntityDeletionReader.Queries<>(
-                id ->
-                    context
-                        .policy()
-                        .reads()
-                        .byId(
-                            id,
-                            new EntityReadService.Query(
-                                null,
-                                context.putFields(),
-                                RelationIncludes.fromInclude(ALL),
-                                false)),
+                id -> context.policy().reads().byId(id, context.putFields(), ALL, false),
                 id -> context.policy().lookup().byId(id, ALL)));
     final var preparation =
         new EntityDeletionService.Preparation<T>(
@@ -228,7 +215,7 @@ final class EntityDeletionAssembly {
         context.schema().entityType(),
         () -> context.dependencies().daos().relationshipDAO(),
         new EntityHierarchy.Registry(
-            type -> Entity.getEntityModule(type).subtrees(), Entity::isTimeSeriesEntity),
+            type -> Entity.getEntityRepository(type).subtrees(), Entity::isTimeSeriesEntity),
         context.policy()::prepareChildrenForHardDeleteCascade);
   }
 
@@ -240,26 +227,6 @@ final class EntityDeletionAssembly {
         new EntityChildDeletion.Hooks(
             context.policy()::prepareChildrenForHardDeleteCascade,
             context.policy()::deleteChildren));
-  }
-
-  static <T extends EntityInterface> EntityHardDeletion<T> assembleHardDeletion(
-      EntityPolicyContext<T> context) {
-    return EntityDeletionAssembly.createHardDeletion(context);
-  }
-
-  static <T extends EntityInterface> EntitySubtreeUpdates<T> assembleSubtreeUpdates(
-      EntityPolicyContext<T> context) {
-    return EntityDeletionAssembly.createSubtreeUpdates(context);
-  }
-
-  static <T extends EntityInterface> EntitySubtreeLifecycle<T> assembleSubtreeLifecycle(
-      EntityPolicyContext<T> context) {
-    return EntityDeletionAssembly.createSubtreeLifecycle(context);
-  }
-
-  static <T extends EntityInterface> EntityRestores<T> assembleRestoreService(
-      EntityPolicyContext<T> context) {
-    return EntityDeletionAssembly.createRestoreService(context);
   }
 
   static <T extends EntityInterface> EntityDeletes<T> assembleDeletes(
@@ -275,20 +242,15 @@ final class EntityDeletionAssembly {
             context.policy()::postDelete, context.policy()::deleteFromSearch));
   }
 
-  static <T extends EntityInterface> EntityDeletionPersistence<T> assembleDeletionPersistence(
-      EntityPolicyContext<T> context) {
-    return EntityDeletionAssembly.createDeletionPersistence(context);
-  }
-
   static <T extends EntityInterface> void initialize(EntityPolicyContext<T> context) {
     context.services().hierarchy = EntityDeletionAssembly.assembleHierarchy(context);
     context.services().childDeletion = EntityDeletionAssembly.assembleChildDeletion(context);
-    context.services().hardDeletion = EntityDeletionAssembly.assembleHardDeletion(context);
-    context.services().subtreeUpdates = EntityDeletionAssembly.assembleSubtreeUpdates(context);
-    context.services().subtreeLifecycle = EntityDeletionAssembly.assembleSubtreeLifecycle(context);
-    context.services().restoreService = EntityDeletionAssembly.assembleRestoreService(context);
+    context.services().hardDeletion = EntityDeletionAssembly.createHardDeletion(context);
+    context.services().subtreeUpdates = EntityDeletionAssembly.createSubtreeUpdates(context);
+    context.services().subtreeLifecycle = EntityDeletionAssembly.createSubtreeLifecycle(context);
+    context.services().restoreService = EntityDeletionAssembly.createRestoreService(context);
     context.services().deletes = EntityDeletionAssembly.assembleDeletes(context);
     context.services().deletionPersistence =
-        EntityDeletionAssembly.assembleDeletionPersistence(context);
+        EntityDeletionAssembly.createDeletionPersistence(context);
   }
 }

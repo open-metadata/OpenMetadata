@@ -71,7 +71,6 @@ import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.policy.EntityPolicySupport;
 import org.openmetadata.service.entity.read.EntityBatchFields;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
 import org.openmetadata.service.entity.write.EntityUpdateRequest;
@@ -109,10 +108,6 @@ public class DataProductRepository implements EntityPolicy<DataProduct> {
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public DataProductRepository() {
-    this(true);
-  }
-
-  protected DataProductRepository(boolean registerEntity) {
     this.entityContext =
         new EntityPolicyContext<>(
             new EntityPolicyContext.Schema<>(
@@ -122,7 +117,7 @@ public class DataProductRepository implements EntityPolicy<DataProduct> {
                 Entity.getCollectionDAO().dataProductDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, registerEntity);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     context().options().setRenameAllowed(true);
     // Initialize inherited field search
@@ -445,14 +440,7 @@ public class DataProductRepository implements EntityPolicy<DataProduct> {
   private DataProduct resolveDataProduct(String nameOrId) {
     try {
       UUID id = UUID.fromString(nameOrId);
-      return reads()
-          .byId(
-              id,
-              new EntityReadService.Query(
-                  null,
-                  fieldPolicy().parse("id"),
-                  RelationIncludes.fromInclude(Include.NON_DELETED),
-                  false));
+      return reads().byId(id, fieldPolicy().parse("id"), Include.NON_DELETED, false);
     } catch (IllegalArgumentException e) {
       return getByName(null, nameOrId, fieldPolicy().parse("id"));
     }
@@ -571,14 +559,7 @@ public class DataProductRepository implements EntityPolicy<DataProduct> {
           getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
       DataProduct entityToUpdate =
-          reads()
-              .byId(
-                  dataProduct.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      fieldPolicy().parse("*"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+          reads().byId(dataProduct.getId(), fieldPolicy().parse("*"), Include.NON_DELETED, false);
       entityToUpdate.setChangeDescription(change);
       entityToUpdate.setUpdatedBy(updatedBy);
       storeEntity(entityToUpdate, true);
@@ -593,11 +574,9 @@ public class DataProductRepository implements EntityPolicy<DataProduct> {
         reads()
             .byId(
                 dataProductId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,fullyQualifiedName"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                fieldPolicy().parse("id,fullyQualifiedName"),
+                Include.NON_DELETED,
+                false);
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for data product assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);
@@ -741,11 +720,9 @@ public class DataProductRepository implements EntityPolicy<DataProduct> {
         reads()
             .byId(
                 dataProductId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,fullyQualifiedName"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                fieldPolicy().parse("id,fullyQualifiedName"),
+                Include.NON_DELETED,
+                false);
     return buildPortsView(dataProduct, fields, inputLimit, inputOffset, outputLimit, outputOffset);
   }
 

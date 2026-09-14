@@ -58,7 +58,7 @@ public class APICollectionRepository implements EntityPolicy<APICollection> {
                 Entity.getCollectionDAO().apiCollectionDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // Covered by the parent API service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by the root

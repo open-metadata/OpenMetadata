@@ -90,7 +90,7 @@ public class TypeRepository implements EntityPolicy<Type> {
                 Entity.getCollectionDAO().typeEntityDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     Entity.setTypeRepository(this);
     fieldLoading().register("customProperties", this::fetchAndSetCustomProperties);
   }

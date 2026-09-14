@@ -11,14 +11,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public class BotMapper implements EntityMapper<Bot, CreateBot> {
 
@@ -40,11 +38,9 @@ public class BotMapper implements EntityMapper<Bot, CreateBot> {
               .reads()
               .byId(
                   userBotRelationship.stream().findFirst().orElseThrow().getId(),
-                  new EntityReadService.Query(
-                      null,
-                      EntityUtil.Fields.EMPTY_FIELDS,
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  EntityUtil.Fields.EMPTY_FIELDS,
+                  Include.NON_DELETED,
+                  false);
       throw new IllegalArgumentException(
           CatalogExceptionMessage.userAlreadyBot(botUser.getName(), bot.getName()));
     }

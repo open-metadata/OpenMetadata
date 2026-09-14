@@ -41,7 +41,7 @@ public class TestConnectionDefinitionRepository implements EntityPolicy<TestConn
                 Entity.getCollectionDAO().testConnectionDefinitionDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   /**

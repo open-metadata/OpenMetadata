@@ -26,7 +26,7 @@ public class AppMarketPlaceRepository implements EntityPolicy<AppMarketPlaceDefi
                 Entity.getCollectionDAO().applicationMarketPlaceDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
     context().options().setQuoteFqn(true);
   }

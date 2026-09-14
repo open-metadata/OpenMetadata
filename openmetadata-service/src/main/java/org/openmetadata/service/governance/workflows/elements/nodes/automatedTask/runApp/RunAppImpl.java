@@ -31,7 +31,6 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -39,7 +38,6 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
@@ -221,12 +219,7 @@ public class RunAppImpl {
     OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
 
     IngestionPipeline ingestionPipeline =
-        repository
-            .reads()
-            .byId(
-                pipelineRef.getId(),
-                new EntityReadService.Query(
-                    null, EMPTY_FIELDS, RelationIncludes.fromInclude(Include.NON_DELETED), false));
+        repository.reads().byId(pipelineRef.getId(), EMPTY_FIELDS, Include.NON_DELETED, false);
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config).build());
 
@@ -244,15 +237,7 @@ public class RunAppImpl {
       // Persist only the runner-derived flag; the deploy-time appConfig injected above
       // must not leak into the stored pipeline, so re-read the clean entity first.
       IngestionPipeline stored =
-          repository
-              .reads()
-              .byId(
-                  pipelineRef.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      EMPTY_FIELDS,
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+          repository.reads().byId(pipelineRef.getId(), EMPTY_FIELDS, Include.NON_DELETED, false);
       stored.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
       repository
           .creates()

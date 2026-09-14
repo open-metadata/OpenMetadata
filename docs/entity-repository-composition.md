@@ -4,7 +4,7 @@ The shared repository and updater inheritance have been replaced by composed
 application services and entity policies. `EntityRepository`,
 `ServiceEntityRepository` and `ColumnEntityUpdater` are removed. The common
 repository originally contained 13,569 lines; the extracted package contains
-209 components totaling 23,230 lines, with the largest at 487 lines.
+209 components totaling 23,248 lines, with the largest at 487 lines.
 
 The extraction is implemented. Architectural decoupling, coverage and latency
 acceptance remain open; see [current verification status](entity-repository-status.md).
@@ -22,9 +22,11 @@ repository subclasses implement this interface.
 
 `EntityModuleFactory.initialize` binds and assembles a policy once. Seven startup
 assemblies construct storage, metadata, queries, commands, deletion, bulk and
-mutation services in dependency order. Registration retains the existing named
-priority rules. Requests reuse those components rather than constructing another
-graph. Independent module tests can provide their own retained DAO graph.
+mutation services in dependency order. Startup registers the returned repository
+after its constructor finishes, retaining the existing named priority rules.
+Requests reuse those components rather than constructing another graph. Table,
+Chart and Document constructors accept injected dependencies without publishing a
+global repository. Document template validation uses its injected template loader.
 
 | Boundary | Responsibility |
 | --- | --- |
@@ -37,10 +39,12 @@ graph. Independent module tests can provide their own retained DAO graph.
 | Deletion, bulk and CSV | Traversal, dependent cleanup, restore, imports, reconciliation and jobs |
 
 The native `EntityModule<T>` interface exposes common operation ports such as
-`reads()`, `pages()`, `creates()`, `puts()`, `patches()`, `persistence()` and
+`reads()`, `pages()`, `creates()`, `puts()`, `patches()` and
 `bulk()`. Generic consumers use `Entity.getEntityModule(type)`; entity-specific
 consumers can obtain a typed policy. Domain operations such as table profiling
-remain in the corresponding entity implementation.
+remain in the corresponding entity implementation. Preparation, raw persistence,
+DAO and subtree access are absent from the application interface; the policy SPI
+still exposes internal operations.
 
 REST endpoints, authorization, stored JSON, history and observable completion
 behavior are compatibility requirements. Java extensions must recompile against

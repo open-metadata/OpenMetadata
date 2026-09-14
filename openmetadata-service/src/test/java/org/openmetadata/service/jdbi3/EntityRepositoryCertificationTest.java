@@ -77,7 +77,7 @@ class EntityRepositoryCertificationTest {
               new EntityPolicyContext.WriteFields(
                   "certification,tags,owners", "certification,tags,owners", Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, true);
+      EntityModuleFactory.initialize(this);
     }
 
     @Override

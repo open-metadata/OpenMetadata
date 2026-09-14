@@ -58,13 +58,11 @@ import org.openmetadata.schema.type.SemanticReference;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.OntologyAnnexRow;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class GlossaryOntologyExporter {
 
@@ -136,11 +134,9 @@ public final class GlossaryOntologyExporter {
         .reads()
         .byId(
             glossaryId,
-            new EntityReadService.Query(
-                null,
-                repository.fieldPolicy().parse("namespaces,ontologyConfiguration"),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+            repository.fieldPolicy().parse("namespaces,ontologyConfiguration"),
+            Include.NON_DELETED,
+            false);
   }
 
   @SuppressWarnings("unchecked")

@@ -62,7 +62,7 @@ public class AIGovernanceFrameworkRepository implements EntityPolicy<AIGovernanc
                 Entity.getCollectionDAO().aiGovernanceFrameworkDAO()),
             new EntityPolicyContext.WriteFields(FIELDS, FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 

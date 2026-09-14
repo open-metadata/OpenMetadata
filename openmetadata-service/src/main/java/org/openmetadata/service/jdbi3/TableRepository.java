@@ -128,7 +128,6 @@ import org.openmetadata.service.entity.metadata.InheritedReferences;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityBatchFields;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.read.ReadBundle;
 import org.openmetadata.service.entity.read.ReadPlan;
@@ -210,16 +209,17 @@ public class TableRepository implements EntityPolicy<Table> {
   private final TableMetadataLoader metadataLoader;
 
   public TableRepository() {
+    this(EntityModuleDependencies.standard());
+  }
+
+  public TableRepository(EntityModuleDependencies dependencies) {
     this.entityContext =
         new EntityPolicyContext<>(
             new EntityPolicyContext.Schema<>(
-                TableResource.COLLECTION_PATH,
-                TABLE,
-                Table.class,
-                Entity.getCollectionDAO().tableDAO()),
+                TableResource.COLLECTION_PATH, TABLE, Table.class, dependencies.daos().tableDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, CHANGE_SUMMARY_FIELDS),
-            EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+            dependencies);
+    EntityModuleFactory.initialize(this);
     metadataLoader =
         new TableMetadataLoader(() -> context().dependencies().daos().entityExtensionDAO());
     context().options().setSupportsSearch(true);
@@ -1417,14 +1417,10 @@ public class TableRepository implements EntityPolicy<Table> {
         reads()
             .byId(
                 tableId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy()
-                        .parse(
-                            Set.of(
-                                FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
-                    RelationIncludes.fromInclude(NON_DELETED),
-                    false));
+                fieldPolicy()
+                    .parse(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
+                NON_DELETED,
+                false);
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
       if (table.getDataModel() != null
@@ -3216,15 +3212,7 @@ public class TableRepository implements EntityPolicy<Table> {
       ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    Table table =
-        reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse(fieldsParam),
-                    RelationIncludes.fromInclude(include),
-                    false));
+    Table table = reads().byId(id, fieldPolicy().parse(fieldsParam), include, false);
     return searchTableColumnsInternal(
         table,
         query,
@@ -3273,15 +3261,7 @@ public class TableRepository implements EntityPolicy<Table> {
       ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    Table table =
-        reads()
-            .byName(
-                fqn,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse(fieldsParam),
-                    RelationIncludes.fromInclude(include),
-                    false));
+    Table table = reads().byName(fqn, fieldPolicy().parse(fieldsParam), include, false);
     return searchTableColumnsInternal(
         table,
         query,

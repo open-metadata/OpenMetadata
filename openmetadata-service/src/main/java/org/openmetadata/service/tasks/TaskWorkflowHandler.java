@@ -51,7 +51,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.history.EntitySummaryWriter;
 import org.openmetadata.service.entity.metadata.EntityTagWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.entity.write.EntityPutService;
@@ -65,7 +64,6 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAct
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
 import org.openmetadata.service.util.EntityFieldUtils;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FieldPathUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -279,11 +277,9 @@ public class TaskWorkflowHandler {
               .reads()
               .byId(
                   task.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      taskRepository.fieldPolicy().parse("*"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  taskRepository.fieldPolicy().parse("*"),
+                  Include.NON_DELETED,
+                  false);
       Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
       updatedTask.setAssignees(assignees);
       updatedTask.setUpdatedBy(user);
@@ -1268,14 +1264,12 @@ public class TaskWorkflowHandler {
           .reads()
           .byId(
               taskId,
-              new EntityReadService.Query(
-                  null,
-                  taskRepository
-                      .fieldPolicy()
-                      .parse(
-                          "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution"),
-                  RelationIncludes.fromInclude(Include.NON_DELETED),
-                  false));
+              taskRepository
+                  .fieldPolicy()
+                  .parse(
+                      "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution"),
+              Include.NON_DELETED,
+              false);
     } catch (Exception e) {
       LOG.warn(
           "[TaskWorkflowHandler] Failed to refresh task '{}' after workflow update: {}",

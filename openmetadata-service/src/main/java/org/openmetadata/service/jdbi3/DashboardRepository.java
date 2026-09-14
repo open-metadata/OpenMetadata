@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.EntityModuleDependencies;
 import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates;
 import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
@@ -74,7 +75,7 @@ public class DashboardRepository implements EntityPolicy<Dashboard> {
             new EntityPolicyContext.WriteFields(
                 DASHBOARD_PATCH_FIELDS, DASHBOARD_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
@@ -720,31 +721,19 @@ public class DashboardRepository implements EntityPolicy<Dashboard> {
         String field,
         List<EntityReference> updEntities,
         List<EntityReference> oriEntities) {
-      // Remove all entity type associated with this dashboard
-      relationshipWrites()
-          .deleteOutgoing(
-              new EntityRelationshipWriter.Selection(
+      context()
+          .services()
+          .getRelationshipUpdates()
+          .replace(
+              entityUpdate,
+              new EntityRelationshipUpdates.Target(
+                  field,
                   entityUpdate.getUpdated().getId(),
                   Entity.DASHBOARD,
-                  Relationship.HAS,
-                  entityType));
-      // Add relationship from dashboard to entity type
-      for (EntityReference entity : updEntities) {
-        relationshipWrites()
-            .add(
-                new EntityRelationshipWriter.Edge(
-                    entityUpdate.getUpdated().getId(),
-                    entity.getId(),
-                    Entity.DASHBOARD,
-                    entityType,
-                    Relationship.HAS),
-                EntityRelationshipWriter.Value.EMPTY,
-                false);
-      }
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
-      entityUpdate.recordListChange(
-          field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
+                  entityType,
+                  Relationship.HAS),
+              new EntityRelationshipUpdates.References(oriEntities, updEntities),
+              EntityRelationshipUpdates.Direction.OUTGOING);
     }
 
     public void updateDashboardUrl(Dashboard original, Dashboard updated) {

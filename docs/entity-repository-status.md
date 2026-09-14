@@ -1,10 +1,10 @@
 # Entity module implementation status
 
-Checkpoint: ownership decision slice and acceptance follow-up, 2026-09-14.
+Checkpoint: construction, read API and relationship-write cleanup, 2026-09-14.
 **Verification is in progress.**
 
 The worktree no longer contains `EntityRepository.java`, originally 13,569 lines.
-Its responsibilities now live in 209 components (23,230 lines), including seven startup
+Its responsibilities now live in 209 components (23,248 lines), including seven startup
 assemblies and entity policy interfaces. All 74 direct production subclasses use
 `EntityPolicy`. All 69 updater subclasses use composed mutation policies;
 13 service repositories implement `EntityServicePolicy` and share service components.
@@ -15,7 +15,7 @@ Architectural decoupling also remains incomplete: the policy inherits 207 defaul
 methods, raw persistence is public, and complete change calculation still invokes
 writes. The [accepted unified design](entity-repository-unified-design.md) compares
 the corrective options and defines a pilot with a production-code deletion budget;
-its first ownership decision slice is implemented below.
+its ownership and construction/read slices are implemented below.
 
 | Deliverable | Status |
 | --- | --- |
@@ -29,9 +29,65 @@ its first ownership decision slice is implemented below.
 | Main merge validation | Metrics-stage local service suite: 10,365 passes and one skip; MCP: 630 passes; all three integration CI profiles pass at native `49d9290397` |
 | CI follow-up validation | Column/transaction/cache selection: 79 passes per database with Redis and 29 without Redis; pagination passes three local browser runs; RDF readiness recovery passes all 14 graph browser cases |
 | Downstream Collate compilation | Implemented in companion PR #6639; paired backend and governance/data-access-request CI pass at native `49d9290397` / Collate `4def2335b1`; refreshed full service unit suite passes 4,193 cases with six skips |
-| Small extension API, pure complete diff, unified single/bulk/import semantics and independently constructed repositories | Open; ownership decisions are separated, the full corrective pilot remains incomplete |
+| Small extension API, pure complete diff, unified single/bulk/import semantics and independently constructed repositories | Open; startup registration and common read calls are simplified, Table/Chart/Document accept dependencies, and Chart shares its single/batch relationship definition |
 | 90% changed-class coverage | Open |
 | Final API latency, SQL, commit and allocation comparisons | Open |
+
+## Construction, read API and unchanged relationships
+
+Repository constructors build their components without registering globally.
+Startup registers completed instances using the existing priority selection, and
+constructor exceptions propagate without silently trying another constructor.
+Table, Chart and Document accept injected module dependencies. Document template
+validation receives a template function; email URL helpers can initialize before
+document repositories are available. Collate no longer replaces its search-index
+factory during six individual repository constructions.
+
+`EntityModule` no longer exposes preparation, bulk preparation, persistence,
+subtrees or the DAO contract. The broader policy SPI remains public and inherited;
+this is not completion of its replacement. Common detail-read overloads replace
+154 native and 99 Collate/plugin query constructions while preserving each
+caller's fields, inclusion and cache choice.
+
+Chart single and bulk relationship storage share one definition. Chart and
+Dashboard share a comparison before replacing relationships: unchanged sets issue
+no relationship writes; changed sets still reassert the entire requested set.
+The real API regression previously observed one unnecessary relationship DELETE
+for a description-only consolidated Chart PATCH and now requires zero deletes
+and zero inserts. Complete consolidation still uses the existing four mutation
+passes when a previous snapshot exists. This change does not remove those passes.
+
+The formatted change across both repositories removes 1,209 production lines,
+1,204 nonblank lines and 6,417 Java tokens, relative to native `a8c11eca25` and
+Collate `8c0096662a`. The inventory includes caller changes and new/deleted files;
+tests and documentation are separate. Removed implementation includes ten assembly
+forwarders, duplicate Chart relationship definitions, an unused Chart column
+updater and repeated query setup. The executable size gate passes and rejects
+comment-only cuts, compressed formatting, hidden new files and duplicate scopes.
+
+Frozen native package:
+`c17b5c204fbf2394a3485741c36dff9e97a87f3bdc6e6775435abc7254862c97`.
+Frozen companion service package:
+`613d773a6b229078a501e671d2ffdb26e0f9d4f7fea66b64b9cc7dab4eee92de`.
+
+| Check on these packages | Result |
+| --- | --- |
+| Native service unit suite | 10,406 passed, one configured skip |
+| Collate service unit suite | 4,193 passed, six configured skips |
+| Support, reverse-metadata and query-runner plugin tests | 40 passed |
+| PostgreSQL/OpenSearch/Redis transaction, ownership, bulk, Chart, Dashboard and history selection | 506 passed, 33 capability/cache assumptions aborted |
+| MySQL/OpenSearch/Redis matching selection | 506 passed, 33 capability/cache assumptions aborted |
+| Collate PostgreSQL/OpenSearch/Redis canonical API suite | 611 passed, four skips across sequential/parallel executions |
+| Size, latency/load protocol and coverage-gate tests | 38 passed |
+
+The current native slice's whole-class report has 366 executable classes in 163
+modified production sources; 280 remain below 90%. It has no missing sources,
+failed executions or class-identity warnings. This gate fails and does not replace
+the broader full-PR gate below. Final latency/load acceptance also remains open:
+the retained baseline calibration failed, and no dedicated runner has been
+provided. Raw manifests, source hashes, failed diagnostic runs and successful
+executions are retained under `.context/entity-acceptance/construction-api-v6/`
+and the `construction-v6-*` outputs.
 
 ## Ownership decision slice
 

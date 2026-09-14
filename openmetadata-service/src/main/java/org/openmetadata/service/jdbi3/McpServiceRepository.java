@@ -40,7 +40,7 @@ public class McpServiceRepository implements EntityServicePolicy<McpService, Mcp
                 Entity.getCollectionDAO().mcpServiceDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, McpConnection.class, ServiceType.MCP);
     context().options().setQuoteFqn(true);

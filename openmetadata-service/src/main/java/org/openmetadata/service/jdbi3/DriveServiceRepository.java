@@ -73,7 +73,7 @@ public class DriveServiceRepository implements EntityServicePolicy<DriveService,
                 Entity.getCollectionDAO().driveServiceDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, DriveConnection.class, ServiceType.DRIVE);
     context().options().setQuoteFqn(true);

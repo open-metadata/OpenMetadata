@@ -1,5 +1,6 @@
 package org.openmetadata.service.entity.metadata;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
@@ -21,6 +22,11 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 
 /** Applies recorded reference differences without changing the owning mutation's transaction. */
 public final class EntityRelationshipUpdates {
+  public enum Direction {
+    INCOMING,
+    OUTGOING
+  }
+
   public interface Session {
     boolean recordReferenceChanges(String field, ListChange<EntityReference> values);
 
@@ -121,6 +127,30 @@ public final class EntityRelationshipUpdates {
       addIncoming(target, changes.added());
       sortReferences(references.updated());
       sortReferences(references.original());
+    }
+  }
+
+  public void replace(
+      final Session session,
+      final Target target,
+      final References references,
+      final Direction direction) {
+    if (session.recordReferenceChanges(target.field(), references.changes())) {
+      switch (direction) {
+        case INCOMING -> writer.deleteIncoming(target.selection());
+        case OUTGOING -> writer.deleteOutgoing(target.selection());
+      }
+      // Reassert the requested set so a changed replacement retains its concurrent-write semantics.
+      for (final EntityReference reference : listOrEmpty(references.updated())) {
+        final Edge edge =
+            new Edge(
+                target.id(),
+                reference.getId(),
+                target.type(),
+                target.relatedType(),
+                target.relation());
+        writer.add(direction == Direction.INCOMING ? edge.reverse() : edge, Value.EMPTY, false);
+      }
     }
   }
 

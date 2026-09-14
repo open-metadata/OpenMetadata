@@ -49,14 +49,12 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.DIContainer;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.Job;
 import org.quartz.JobBuilder;
@@ -315,11 +313,9 @@ public class EventSubscriptionScheduler {
                     .reads()
                     .byId(
                         subscriptionId,
-                        new EntityReadService.Query(
-                            null,
-                            subscriptionRepository.fieldPolicy().parse("id"),
-                            RelationIncludes.fromInclude(Include.NON_DELETED),
-                            false)));
+                        subscriptionRepository.fieldPolicy().parse("id"),
+                        Include.NON_DELETED,
+                        false));
     return subscriptionOpt
         .filter(subscription -> Boolean.FALSE.equals(subscription.getEnabled()))
         .map(
@@ -340,11 +336,9 @@ public class EventSubscriptionScheduler {
                       .reads()
                       .byId(
                           subscriptionId,
-                          new EntityReadService.Query(
-                              null,
-                              subscriptionRepository.fieldPolicy().parse("id,destinations,enabled"),
-                              RelationIncludes.fromInclude(Include.NON_DELETED),
-                              false));
+                          subscriptionRepository.fieldPolicy().parse("id,destinations,enabled"),
+                          Include.NON_DELETED,
+                          false);
             });
     if (eventSubscription != null && Boolean.FALSE.equals(eventSubscription.getEnabled())) {
       return Collections.emptyList();
@@ -536,13 +530,7 @@ public class EventSubscriptionScheduler {
         (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
     return repository
         .reads()
-        .byId(
-            eventSubscriptionId,
-            new EntityReadService.Query(
-                null,
-                repository.fieldPolicy().parse("*"),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+        .byId(eventSubscriptionId, repository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
   }
 
   public List<FailedEventResponse> getFailedEventsById(UUID subscriptionId, int limit, int offset) {

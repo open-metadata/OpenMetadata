@@ -45,7 +45,7 @@ public class AuditReportRepository implements EntityPolicy<AuditReport> {
                 Entity.getCollectionDAO().auditReportDAO()),
             new EntityPolicyContext.WriteFields(FIELDS, FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 

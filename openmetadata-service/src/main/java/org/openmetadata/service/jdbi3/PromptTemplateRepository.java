@@ -50,7 +50,7 @@ public class PromptTemplateRepository implements EntityPolicy<PromptTemplate> {
             new EntityPolicyContext.WriteFields(
                 TEMPLATE_PATCH_FIELDS, TEMPLATE_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 

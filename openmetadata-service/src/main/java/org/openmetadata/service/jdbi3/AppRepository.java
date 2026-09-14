@@ -72,7 +72,7 @@ public class AppRepository implements EntityPolicy<App> {
                 Entity.getCollectionDAO().applicationDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
     context().options().setQuoteFqn(true);
     fieldLoading().register("bot", this::fetchAndSetBotUser);

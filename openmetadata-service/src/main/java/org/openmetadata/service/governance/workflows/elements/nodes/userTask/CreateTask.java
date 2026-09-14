@@ -66,7 +66,6 @@ import org.openmetadata.schema.type.TaskExternalReference;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -85,7 +84,6 @@ import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStar
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DurationUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -505,11 +503,9 @@ public class CreateTask implements TaskListener {
               .reads()
               .byId(
                   existingTask.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      taskRepository.fieldPolicy().parse("*"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  taskRepository.fieldPolicy().parse("*"),
+                  Include.NON_DELETED,
+                  false);
       Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
       UUID effectiveWorkflowDefinitionId =
           resolvedWorkflowDefinitionId != null
@@ -611,11 +607,9 @@ public class CreateTask implements TaskListener {
                     .reads()
                     .byId(
                         persistTaskId,
-                        new EntityReadService.Query(
-                            null,
-                            taskRepository.fieldPolicy().parse("*"),
-                            RelationIncludes.fromInclude(Include.NON_DELETED),
-                            false));
+                        taskRepository.fieldPolicy().parse("*"),
+                        Include.NON_DELETED,
+                        false);
             taskRepository
                 .puts()
                 .update(

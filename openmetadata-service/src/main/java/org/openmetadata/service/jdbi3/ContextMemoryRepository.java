@@ -100,7 +100,7 @@ public class ContextMemoryRepository implements EntityPolicy<ContextMemory> {
                 Entity.getCollectionDAO().contextMemoryDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 

@@ -131,7 +131,7 @@ public class PersonaRepository implements EntityPolicy<Persona> {
             new EntityPolicyContext.WriteFields(
                 PERSONA_PATCH_FIELDS, PERSONA_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setQuoteFqn(true);
     context().options().setSupportsSearch(false);
   }

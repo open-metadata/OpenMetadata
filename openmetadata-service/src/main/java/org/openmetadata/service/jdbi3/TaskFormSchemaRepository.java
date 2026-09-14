@@ -61,7 +61,7 @@ public class TaskFormSchemaRepository implements EntityPolicy<TaskFormSchema> {
                 Entity.getCollectionDAO().taskFormSchemaDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
     context().options().setQuoteFqn(false);
   }
@@ -76,7 +76,7 @@ public class TaskFormSchemaRepository implements EntityPolicy<TaskFormSchema> {
                 initializeTaskFormSchemaDao(jdbi)),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
     context().options().setQuoteFqn(false);
   }

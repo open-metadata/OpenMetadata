@@ -54,7 +54,7 @@ public class AIApplicationRepository implements EntityPolicy<AIApplication> {
             new EntityPolicyContext.WriteFields(
                 APPLICATION_PATCH_FIELDS, APPLICATION_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 

@@ -160,7 +160,7 @@ public class IngestionPipelineRepository implements EntityPolicy<IngestionPipeli
                 Entity.getCollectionDAO().ingestionPipelineDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     this.openMetadataApplicationConfig = config;
   }

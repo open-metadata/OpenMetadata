@@ -66,7 +66,6 @@ import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityBatchFields;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
@@ -132,7 +131,7 @@ public class DomainRepository implements EntityPolicy<Domain> {
                 Entity.getCollectionDAO().domainDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     context().options().setRenameAllowed(true);
     // Initialize inherited field search
@@ -343,12 +342,7 @@ public class DomainRepository implements EntityPolicy<Domain> {
     Domain domain =
         reads()
             .byId(
-                domainId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,fullyQualifiedName"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                domainId, fieldPolicy().parse("id,fullyQualifiedName"), Include.NON_DELETED, false);
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for domain assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);
@@ -1020,11 +1014,9 @@ public class DomainRepository implements EntityPolicy<Domain> {
           reads()
               .byId(
                   updated.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      fieldPolicy().parse("parent,owners,experts"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  fieldPolicy().parse("parent,owners,experts"),
+                  Include.NON_DELETED,
+                  false);
       parentWithFields.setFullyQualifiedName(newFqn);
       parentWithFields.setName(updated.getName());
       context().dependencies().search().updateEntityIndex(parentWithFields);

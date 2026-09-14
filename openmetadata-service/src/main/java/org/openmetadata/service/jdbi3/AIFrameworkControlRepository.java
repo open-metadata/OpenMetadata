@@ -48,7 +48,7 @@ public class AIFrameworkControlRepository implements EntityPolicy<AIFrameworkCon
                 Entity.getCollectionDAO().aiFrameworkControlDAO()),
             new EntityPolicyContext.WriteFields(FIELDS, FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 

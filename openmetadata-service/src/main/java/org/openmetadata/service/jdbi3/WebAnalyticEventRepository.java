@@ -43,7 +43,7 @@ public class WebAnalyticEventRepository implements EntityPolicy<WebAnalyticEvent
                 Entity.getCollectionDAO().webAnalyticEventDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

@@ -36,7 +36,6 @@ import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
@@ -64,7 +63,7 @@ public class OntologyChangeSetRepository implements EntityPolicy<OntologyChangeS
                 Entity.getCollectionDAO().ontologyChangeSetDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override
@@ -206,14 +205,7 @@ public class OntologyChangeSetRepository implements EntityPolicy<OntologyChangeS
 
   private OntologyChangeSet copy(final UUID id) {
     final OntologyChangeSet current =
-        reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse(UPDATE_FIELDS),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+        reads().byId(id, fieldPolicy().parse(UPDATE_FIELDS), Include.NON_DELETED, false);
     return JsonUtils.deepCopy(current, OntologyChangeSet.class);
   }
 

@@ -27,7 +27,7 @@ public class SearchServiceRepository
                 Entity.getCollectionDAO().searchServiceDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, SearchConnection.class, ServiceType.SEARCH);
     context().options().setQuoteFqn(true);

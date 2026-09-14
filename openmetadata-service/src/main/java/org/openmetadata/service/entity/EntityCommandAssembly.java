@@ -147,16 +147,6 @@ final class EntityCommandAssembly {
         context.policy()::restorePatchSecrets, rules, references, context.dependencies().clock());
   }
 
-  static <T extends EntityInterface> EntityCommands<T> assembleCommands(
-      EntityPolicyContext<T> context) {
-    return EntityCommandAssembly.createCommands(context);
-  }
-
-  static <T extends EntityInterface> EntityCreateWorkflow<T> assembleCreateWorkflow(
-      EntityPolicyContext<T> context) {
-    return EntityCommandAssembly.createCreationWorkflow(context);
-  }
-
   static <T extends EntityInterface> EntityImports<T> assembleImports(
       EntityPolicyContext<T> context) {
     final EntityImportService<T> importService = EntityCommandAssembly.createImportService(context);
@@ -176,8 +166,8 @@ final class EntityCommandAssembly {
 
   static <T extends EntityInterface> void initialize(EntityPolicyContext<T> context) {
     context.services().bulkPreparation = createBulkPreparation(context);
-    context.services().commands = EntityCommandAssembly.assembleCommands(context);
-    context.services().createWorkflow = EntityCommandAssembly.assembleCreateWorkflow(context);
+    context.services().commands = EntityCommandAssembly.createCommands(context);
+    context.services().createWorkflow = EntityCommandAssembly.createCreationWorkflow(context);
     context.services().imports = EntityCommandAssembly.assembleImports(context);
   }
 

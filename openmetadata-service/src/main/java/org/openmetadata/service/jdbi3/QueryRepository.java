@@ -87,7 +87,7 @@ public class QueryRepository implements EntityPolicy<Query> {
                 Entity.getCollectionDAO().queryDAO()),
             new EntityPolicyContext.WriteFields(QUERY_PATCH_FIELDS, QUERY_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     QueryBodyTextContributor.INSTANCE.register();
   }

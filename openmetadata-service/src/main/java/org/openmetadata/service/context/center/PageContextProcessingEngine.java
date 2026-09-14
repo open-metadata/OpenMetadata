@@ -17,12 +17,10 @@ import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * {@link ContextProcessingEngine} for Page (Knowledge Center article) sources. A page's markdown
@@ -254,13 +252,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       result =
           pageRepository
               .reads()
-              .byId(
-                  pageId,
-                  new EntityReadService.Query(
-                      null,
-                      pageRepository.getPutFields(),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+              .byId(pageId, pageRepository.getPutFields(), Include.NON_DELETED, false);
     } catch (EntityNotFoundException e) {
       result = null;
     }

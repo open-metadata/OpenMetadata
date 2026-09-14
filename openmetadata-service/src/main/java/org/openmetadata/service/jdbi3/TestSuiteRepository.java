@@ -169,7 +169,7 @@ public class TestSuiteRepository implements EntityPolicy<TestSuite> {
                 Entity.getCollectionDAO().testSuiteDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setQuoteFqn(false);
     context().options().setSupportsSearch(true);
     TestSuiteBodyTextContributor.INSTANCE.register();

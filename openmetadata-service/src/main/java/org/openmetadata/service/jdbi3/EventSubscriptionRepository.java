@@ -78,7 +78,7 @@ public class EventSubscriptionRepository implements EntityPolicy<EventSubscripti
                 Entity.getCollectionDAO().eventSubscriptionDAO()),
             new EntityPolicyContext.WriteFields(ALERT_PATCH_FIELDS, ALERT_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

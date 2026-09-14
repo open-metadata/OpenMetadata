@@ -46,7 +46,7 @@ public class FolderRepository implements EntityPolicy<Folder> {
                 jdbi.onDemand(CollectionDAO.class).folderDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
   }

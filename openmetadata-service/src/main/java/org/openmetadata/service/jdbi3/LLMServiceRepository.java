@@ -40,7 +40,7 @@ public class LLMServiceRepository implements EntityServicePolicy<LLMService, LLM
                 Entity.getCollectionDAO().llmServiceDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, LLMConnection.class, ServiceType.LLM);
     context().options().setQuoteFqn(true);

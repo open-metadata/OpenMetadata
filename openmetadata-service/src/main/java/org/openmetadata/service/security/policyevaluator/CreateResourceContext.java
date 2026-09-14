@@ -21,10 +21,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * ResourceContext used for CREATE operations where ownership, tags are inherited from the parent term.
@@ -149,12 +147,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
         }
         EntityPolicy<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
         parentEntities.add(
-            rootRepository
-                .reads()
-                .byId(
-                    rootReference.getId(),
-                    new EntityReadService.Query(
-                        null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false)));
+            rootRepository.reads().byId(rootReference.getId(), fields, Include.NON_DELETED, false));
       }
       return parentEntities;
     } catch (Exception e) {

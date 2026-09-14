@@ -80,7 +80,6 @@ import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
@@ -145,7 +144,7 @@ public class DataContractRepository implements EntityPolicy<DataContract> {
             new EntityPolicyContext.WriteFields(
                 DATA_CONTRACT_PATCH_FIELDS, DATA_CONTRACT_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.ingestionPipelineMapper = new IngestionPipelineMapper(config);
     this.openMetadataApplicationConfig = config;
   }
@@ -898,11 +897,9 @@ public class DataContractRepository implements EntityPolicy<DataContract> {
         reads()
             .optionalByName(
                 dataContract.getFullyQualifiedName(),
-                new EntityReadService.Query(
-                    null,
-                    Fields.EMPTY_FIELDS,
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                Fields.EMPTY_FIELDS,
+                Include.NON_DELETED,
+                false);
     dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
     dataContract.setLatestResult(existing.map(DataContract::getLatestResult).orElse(null));
     dataContract.setId(existing.map(DataContract::getId).orElse(dataContract.getId()));

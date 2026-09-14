@@ -152,7 +152,7 @@ class EntityBulkCreateIT {
     private UUID rejectCreate;
 
     private FailingChartRepository() {
-      super(false);
+      super();
     }
 
     @Override

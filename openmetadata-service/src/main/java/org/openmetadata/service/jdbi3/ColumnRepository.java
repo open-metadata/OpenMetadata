@@ -63,7 +63,6 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.metadata.CustomPropertyValidator;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -77,7 +76,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -135,13 +133,7 @@ public class ColumnRepository {
     Table table =
         tableRepo
             .reads()
-            .byName(
-                parentFQN,
-                new EntityReadService.Query(
-                    null,
-                    tableRepo.fieldPolicy().parse("owners"),
-                    RelationIncludes.fromInclude(include),
-                    false));
+            .byName(parentFQN, tableRepo.fieldPolicy().parse("owners"), include, false);
     ResourceContext<Table> resourceContext = new ResourceContext<>(TABLE, table, tableRepo);
     authorizer.authorize(
         securityContext,
@@ -168,13 +160,7 @@ public class ColumnRepository {
     DashboardDataModel dataModel =
         dataModelRepo
             .reads()
-            .byName(
-                parentFQN,
-                new EntityReadService.Query(
-                    null,
-                    dataModelRepo.fieldPolicy().parse("owners"),
-                    RelationIncludes.fromInclude(include),
-                    false));
+            .byName(parentFQN, dataModelRepo.fieldPolicy().parse("owners"), include, false);
     ResourceContext<DashboardDataModel> resourceContext =
         new ResourceContext<>(DASHBOARD_DATA_MODEL, dataModel, dataModelRepo);
     authorizer.authorize(
@@ -253,11 +239,9 @@ public class ColumnRepository {
             .reads()
             .byId(
                 parentEntityRef.getId(),
-                new EntityReadService.Query(
-                    null,
-                    tableRepository.fieldPolicy().parse("columns,tags,tableConstraints"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                tableRepository.fieldPolicy().parse("columns,tags,tableConstraints"),
+                Include.NON_DELETED,
+                false);
 
     Table updatedTable = JsonUtils.deepCopy(originalTable, Table.class);
     ColumnUtil.setColumnFQN(updatedTable.getFullyQualifiedName(), updatedTable.getColumns());
@@ -316,11 +300,9 @@ public class ColumnRepository {
             .reads()
             .byId(
                 parentEntityRef.getId(),
-                new EntityReadService.Query(
-                    null,
-                    dataModelRepository.fieldPolicy().parse("columns,tags"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                dataModelRepository.fieldPolicy().parse("columns,tags"),
+                Include.NON_DELETED,
+                false);
 
     DashboardDataModel updatedDataModel =
         JsonUtils.deepCopy(originalDataModel, DashboardDataModel.class);
@@ -723,11 +705,9 @@ public class ColumnRepository {
                 .reads()
                 .byId(
                     parentEntityRef.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        tableRepository.fieldPolicy().parse("columns,tags"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    tableRepository.fieldPolicy().parse("columns,tags"),
+                    Include.NON_DELETED,
+                    false);
         ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
         return findColumnInHierarchy(table.getColumns(), columnFQN).orElse(null);
 
@@ -739,11 +719,9 @@ public class ColumnRepository {
                 .reads()
                 .byId(
                     parentEntityRef.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        dataModelRepository.fieldPolicy().parse("columns,tags"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    dataModelRepository.fieldPolicy().parse("columns,tags"),
+                    Include.NON_DELETED,
+                    false);
         ColumnUtil.setColumnFQN(dataModel.getFullyQualifiedName(), dataModel.getColumns());
         return findColumnInHierarchy(dataModel.getColumns(), columnFQN).orElse(null);
       }

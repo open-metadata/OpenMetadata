@@ -90,7 +90,7 @@ class EntityRepositoryStorageJsonReuseTest {
               new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
               new EntityPolicyContext.WriteFields("", "", Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, false);
+      EntityModuleFactory.initialize(this);
     }
 
     private void storeForCacheForTest(Pipeline pipeline) {

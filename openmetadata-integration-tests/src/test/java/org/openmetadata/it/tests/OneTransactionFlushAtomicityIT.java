@@ -594,7 +594,7 @@ public class OneTransactionFlushAtomicityIT {
     private int updateStoreAttempts;
 
     private FaultyChartRepository() {
-      super(false);
+      super();
     }
 
     @Override
@@ -637,7 +637,7 @@ public class OneTransactionFlushAtomicityIT {
     private int updateStoreAttempts;
 
     private FaultyGlossaryTermRepository() {
-      super(false);
+      super();
     }
 
     @Override
@@ -664,7 +664,7 @@ public class OneTransactionFlushAtomicityIT {
     private int updateStoreAttempts;
 
     private FaultyDataProductRepository() {
-      super(false);
+      super();
     }
 
     @Override

@@ -100,7 +100,7 @@ public class DatabaseRepository implements EntityPolicy<Database> {
                 Entity.getCollectionDAO().databaseDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // A recursive hard-delete of the parent database service removes database/schema/table docs
     // from search (deleteOrUpdateChildren by service.id) and field_relationship / tag_usage via the

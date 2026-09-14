@@ -86,7 +86,6 @@ import org.openmetadata.service.entity.cache.EntityCaches;
 import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityOperation;
@@ -182,7 +181,7 @@ public class UserRepository implements EntityPolicy<User> {
                 Entity.getCollectionDAO().userDAO()),
             new EntityPolicyContext.WriteFields(USER_PATCH_FIELDS, USER_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setQuoteFqn(true);
     context().options().setSupportsSearch(true);
     // Register bulk field fetchers for User-specific fields
@@ -903,15 +902,7 @@ public class UserRepository implements EntityPolicy<User> {
   }
 
   public ResultList<EntityReference> getUserAssets(UUID userId, int limit, int offset) {
-    User user =
-        reads()
-            .byId(
-                userId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,teams"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+    User user = reads().byId(userId, fieldPolicy().parse("id,teams"), Include.NON_DELETED, false);
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for user assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);

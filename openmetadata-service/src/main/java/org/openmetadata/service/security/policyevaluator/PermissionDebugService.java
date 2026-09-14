@@ -19,7 +19,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -34,7 +33,6 @@ import org.openmetadata.service.security.policyevaluator.PermissionDebugInfo.Tea
 import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo.ConditionEvaluation;
 import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo.EvaluationSummary;
 import org.openmetadata.service.security.policyevaluator.PermissionEvaluationDebugInfo.PolicyEvaluationStep;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
 
@@ -89,11 +87,9 @@ public class PermissionDebugService {
               .reads()
               .byId(
                   roleRef.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      roleRepository.fieldPolicy().parse("*"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  roleRepository.fieldPolicy().parse("*"),
+                  Include.NON_DELETED,
+                  false);
       DirectRolePermission directRole = new DirectRolePermission();
       directRole.setRole(role.getEntityReference());
       // Get policies for this role
@@ -104,11 +100,9 @@ public class PermissionDebugService {
                   .reads()
                   .byId(
                       policyRef.getId(),
-                      new EntityReadService.Query(
-                          null,
-                          policyRepository.fieldPolicy().parse("*"),
-                          RelationIncludes.fromInclude(Include.NON_DELETED),
-                          false));
+                      policyRepository.fieldPolicy().parse("*"),
+                      Include.NON_DELETED,
+                      false);
           PolicyInfo policyInfo = convertPolicyToInfo(policy);
           directRole.getPolicies().add(policyInfo);
         }
@@ -127,11 +121,9 @@ public class PermissionDebugService {
               .reads()
               .byId(
                   teamRef.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      teamRepository.fieldPolicy().parse("*"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  teamRepository.fieldPolicy().parse("*"),
+                  Include.NON_DELETED,
+                  false);
       processTeamHierarchy(team, debugInfo, 0);
     }
   }
@@ -154,11 +146,9 @@ public class PermissionDebugService {
                 .reads()
                 .byId(
                     parentRef.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        teamRepository.fieldPolicy().parse("*"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    teamRepository.fieldPolicy().parse("*"),
+                    Include.NON_DELETED,
+                    false);
       } else {
         currentTeam = null;
       }
@@ -172,11 +162,9 @@ public class PermissionDebugService {
                 .reads()
                 .byId(
                     roleRef.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        roleRepository.fieldPolicy().parse("*"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    roleRepository.fieldPolicy().parse("*"),
+                    Include.NON_DELETED,
+                    false);
         RolePermission rolePermission = new RolePermission();
         rolePermission.setRole(role.getEntityReference());
         rolePermission.setInheritedFrom(team.getName());
@@ -189,11 +177,9 @@ public class PermissionDebugService {
                     .reads()
                     .byId(
                         policyRef.getId(),
-                        new EntityReadService.Query(
-                            null,
-                            policyRepository.fieldPolicy().parse("*"),
-                            RelationIncludes.fromInclude(Include.NON_DELETED),
-                            false));
+                        policyRepository.fieldPolicy().parse("*"),
+                        Include.NON_DELETED,
+                        false);
             PolicyInfo policyInfo = convertPolicyToInfo(policy);
             rolePermission.getPolicies().add(policyInfo);
           }
@@ -209,11 +195,9 @@ public class PermissionDebugService {
                 .reads()
                 .byId(
                     policyRef.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        policyRepository.fieldPolicy().parse("*"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    policyRepository.fieldPolicy().parse("*"),
+                    Include.NON_DELETED,
+                    false);
         PolicyInfo policyInfo = convertPolicyToInfo(policy);
         teamPermission.getDirectPolicies().add(policyInfo);
       }
@@ -227,11 +211,9 @@ public class PermissionDebugService {
                 .reads()
                 .byId(
                     parentRef.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        teamRepository.fieldPolicy().parse("*"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    teamRepository.fieldPolicy().parse("*"),
+                    Include.NON_DELETED,
+                    false);
         processTeamHierarchy(parentTeam, debugInfo, level + 1);
       }
     }
@@ -378,12 +360,7 @@ public class PermissionDebugService {
               repository
                   .reads()
                   .byId(
-                      resourceId,
-                      new EntityReadService.Query(
-                          null,
-                          repository.fieldPolicy().parse("*"),
-                          RelationIncludes.fromInclude(Include.NON_DELETED),
-                          false));
+                      resourceId, repository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
         } catch (IllegalArgumentException e) {
           // Not a UUID, try as FQN
           resource =

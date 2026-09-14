@@ -101,7 +101,7 @@ class EntityFieldTagProjectionTest {
                   "tables", Entity.TABLE, Table.class, mock(CollectionDAO.TableDAO.class)),
               new EntityPolicyContext.WriteFields(Entity.FIELD_TAGS, Entity.FIELD_TAGS, Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, false);
+      EntityModuleFactory.initialize(this);
     }
 
     private void load(final List<Table> tables) {

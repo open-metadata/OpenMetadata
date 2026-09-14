@@ -37,12 +37,10 @@ import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.cache.EntityCaches;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 public final class OntologyChangeApplicationService {
@@ -236,11 +234,9 @@ public final class OntologyChangeApplicationService {
             .reads()
             .byId(
                 changeSetId,
-                new EntityReadService.Query(
-                    null,
-                    changeSetRepository.fieldPolicy().parse(APPLICATION_FIELDS),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                changeSetRepository.fieldPolicy().parse(APPLICATION_FIELDS),
+                Include.NON_DELETED,
+                false);
     if (!APPLICABLE_STATES.contains(changeSet.getState())) {
       throw new BadRequestException(
           "Ontology change set '"

@@ -75,7 +75,7 @@ public class ContextFileRepository implements EntityPolicy<ContextFile> {
                 jdbi.onDemand(CollectionDAO.class).contextFileDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);

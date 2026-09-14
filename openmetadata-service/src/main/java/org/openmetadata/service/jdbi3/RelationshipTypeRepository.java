@@ -61,7 +61,7 @@ public class RelationshipTypeRepository implements EntityPolicy<RelationshipType
                 Entity.getCollectionDAO().relationshipTypeDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     resolver = new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     graphValidator =
         new RelationshipTypeGraphValidator(

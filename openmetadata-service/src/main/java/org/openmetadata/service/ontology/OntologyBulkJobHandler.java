@@ -20,12 +20,10 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.ontology.OntologyBulkServiceFactory.Components;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class OntologyBulkJobHandler implements JobHandler {
   private final OntologyBulkExecutionService service;
@@ -84,15 +82,7 @@ public final class OntologyBulkJobHandler implements JobHandler {
     final GlossaryRepository repository =
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
     return id ->
-        repository
-            .reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse(""),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+        repository.reads().byId(id, repository.fieldPolicy().parse(""), Include.NON_DELETED, false);
   }
 
   @FunctionalInterface

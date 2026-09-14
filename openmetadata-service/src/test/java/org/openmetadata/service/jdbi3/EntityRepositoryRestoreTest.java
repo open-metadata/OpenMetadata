@@ -123,7 +123,7 @@ class EntityRepositoryRestoreTest {
               new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
               new EntityPolicyContext.WriteFields("", "", Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, true);
+      EntityModuleFactory.initialize(this);
     }
 
     @Override
@@ -221,8 +221,12 @@ class EntityRepositoryRestoreTest {
     EntityPolicy<?> procRepo = mock(EntityPolicy.class);
     final var procSubtree = EntitySubtreeFixture.attach(procRepo);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.getEntityModule(Entity.DATABASE_SCHEMA)).thenReturn(schemaRepo);
-      entityMock.when(() -> Entity.getEntityModule(Entity.STORED_PROCEDURE)).thenReturn(procRepo);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SCHEMA))
+          .thenReturn(schemaRepo);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.STORED_PROCEDURE))
+          .thenReturn(procRepo);
       repo.restoreChildren(parentId, "user");
     }
     assertEquals(
@@ -348,8 +352,12 @@ class EntityRepositoryRestoreTest {
     EntityPolicy<?> procRepo = mock(EntityPolicy.class);
     final var procSubtree = EntitySubtreeFixture.attach(procRepo);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.getEntityModule(Entity.DATABASE_SCHEMA)).thenReturn(schemaRepo);
-      entityMock.when(() -> Entity.getEntityModule(Entity.STORED_PROCEDURE)).thenReturn(procRepo);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SCHEMA))
+          .thenReturn(schemaRepo);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.STORED_PROCEDURE))
+          .thenReturn(procRepo);
       repo.deleteChildren(children, false, "user");
     }
     assertEquals(
@@ -407,8 +415,12 @@ class EntityRepositoryRestoreTest {
     EntityPolicy<?> procRepo = mock(EntityPolicy.class);
     final var procSubtree = EntitySubtreeFixture.attach(procRepo);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      entityMock.when(() -> Entity.getEntityModule(Entity.DATABASE_SCHEMA)).thenReturn(schemaRepo);
-      entityMock.when(() -> Entity.getEntityModule(Entity.STORED_PROCEDURE)).thenReturn(procRepo);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SCHEMA))
+          .thenReturn(schemaRepo);
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.STORED_PROCEDURE))
+          .thenReturn(procRepo);
       repo.deleteChildren(children, true, "user");
     }
     assertEquals(

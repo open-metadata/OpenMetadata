@@ -41,7 +41,7 @@ public class DashboardServiceRepository
                 Entity.getCollectionDAO().dashboardServiceDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, DashboardConnection.class, ServiceType.DASHBOARD);
     context().options().setQuoteFqn(true);

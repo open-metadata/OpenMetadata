@@ -12,6 +12,7 @@ import org.openmetadata.service.entity.EntityFieldPolicy;
 import org.openmetadata.service.entity.EntityModule;
 import org.openmetadata.service.entity.bulk.EntityBulkOperations;
 import org.openmetadata.service.entity.bulk.EntityBulkPreparation;
+import org.openmetadata.service.entity.cache.EntityCacheSource;
 import org.openmetadata.service.entity.delete.EntityDeletes;
 import org.openmetadata.service.entity.delete.EntityRestores;
 import org.openmetadata.service.entity.delete.EntitySubtree;
@@ -47,7 +48,7 @@ import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 public interface EntityModuleAccess<T extends EntityInterface>
-    extends EntityModule<T>, EntityPolicyAccess<T> {
+    extends EntityModule<T>, EntityPolicyAccess<T>, EntityCacheSource {
 
   public default boolean isSupportsOwners() {
     return context().supports(FIELD_OWNERS);

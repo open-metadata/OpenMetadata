@@ -48,7 +48,7 @@ public class AIGovernancePolicyRepository implements EntityPolicy<AIGovernancePo
             new EntityPolicyContext.WriteFields(
                 POLICY_PATCH_FIELDS, POLICY_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 

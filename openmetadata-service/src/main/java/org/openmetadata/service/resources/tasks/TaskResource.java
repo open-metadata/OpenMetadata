@@ -1032,11 +1032,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           repo.reads()
               .byId(
                   entityRef.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      repo.fieldPolicy().parse("domains"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  repo.fieldPolicy().parse("domains"),
+                  Include.NON_DELETED,
+                  false);
       java.lang.reflect.Method getDomainsMethod = entity.getClass().getMethod("getDomains");
       Object domains = getDomainsMethod.invoke(entity);
       if (domains instanceof List<?> domainList && !domainList.isEmpty()) {

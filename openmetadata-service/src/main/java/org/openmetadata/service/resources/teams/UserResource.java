@@ -1238,10 +1238,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     List<EntityReference> currentRoles =
         repository
             .reads()
-            .byId(
-                existingUser.getId(),
-                new EntityReadService.Query(
-                    null, getFields(ROLES_FIELD), RelationIncludes.fromInclude(ALL), false))
+            .byId(existingUser.getId(), getFields(ROLES_FIELD), ALL, false)
             .getRoles();
     return !roleIds(currentRoles).containsAll(updatedRoleIds);
   }
@@ -1876,16 +1873,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user =
-        repository
-            .reads()
-            .byName(
-                userName,
-                new EntityReadService.Query(
-                    null,
-                    getFields("id"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    true));
+    User user = repository.reads().byName(userName, getFields("id"), Include.NON_DELETED, true);
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1923,16 +1911,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } else {
       userName = securityContext.getUserPrincipal().getName();
     }
-    User user =
-        repository
-            .reads()
-            .byName(
-                userName,
-                new EntityReadService.Query(
-                    null,
-                    getFields("id"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+    User user = repository.reads().byName(userName, getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
       tokenRepository.deleteTokenByUserAndType(
           user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
@@ -1975,13 +1954,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User user =
         repository
             .reads()
-            .byName(
-                userName,
-                new EntityReadService.Query(
-                    null,
-                    getFields("roles,email,isBot"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byName(userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
     if (user.getIsBot() == null || Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
@@ -2171,11 +2144,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
               .reads()
               .byId(
                   userBotRelationship.stream().findFirst().orElseThrow().getId(),
-                  new EntityReadService.Query(
-                      null,
-                      Fields.EMPTY_FIELDS,
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  Fields.EMPTY_FIELDS,
+                  Include.NON_DELETED,
+                  false);
       throw new IllegalArgumentException(
           CatalogExceptionMessage.userAlreadyBot(user.getName(), bot.getName()));
     }

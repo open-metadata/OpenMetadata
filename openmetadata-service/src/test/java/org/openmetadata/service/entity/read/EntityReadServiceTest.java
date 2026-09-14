@@ -154,6 +154,45 @@ class EntityReadServiceTest {
     assertNull(ReadBundleContext.getCurrent());
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void conciseReadsRetainCacheChoiceIncludesAndAliasReuse(boolean fromCache) {
+    final Fixture fixture = new Fixture();
+    final Table byId = fixture.service.byId(fixture.id, fixture.fields, ALL, fromCache);
+    final Table byName = fixture.service.byName(fixture.name, fixture.fields, ALL, fromCache);
+    assertEquals("stored:fields:inherited", byId.getDescription());
+    assertEquals(byId, byName);
+    assertNotSame(byId, byName);
+    assertNull(byId.getHref());
+    assertEquals(List.of(new Read(fixture.id, ALL, fromCache)), fixture.reads);
+    assertEquals(fromCache ? List.of() : List.of("id:" + fixture.id), fixture.invalidations);
+    RequestEntityCache.clear();
+    fixture.service.byName(fixture.name, fixture.fields, NON_DELETED, fromCache);
+    assertEquals(new Read(fixture.name, NON_DELETED, fromCache), fixture.reads.getLast());
+  }
+
+  @Test
+  void conciseOptionalReadsOnlyConvertMissingEntitiesToEmpty() {
+    final Fixture fixture = new Fixture();
+    assertEquals(
+        fixture.id,
+        fixture
+            .service
+            .optionalByName(fixture.name, fixture.fields, ALL, true)
+            .orElseThrow()
+            .getId());
+    RequestEntityCache.clear();
+    fixture.missing = true;
+    assertTrue(fixture.service.optionalByName(fixture.name, fixture.fields, ALL, false).isEmpty());
+    fixture.missing = false;
+    fixture.failure = "bundle";
+    assertSame(
+        fixture.exception,
+        assertThrows(
+            IllegalStateException.class,
+            () -> fixture.service.optionalByName(fixture.name, fixture.fields, ALL, false)));
+  }
+
   private static UriInfo uri(final String value) {
     final UriInfo uri = mock(UriInfo.class);
     when(uri.getBaseUri()).thenReturn(URI.create(value));

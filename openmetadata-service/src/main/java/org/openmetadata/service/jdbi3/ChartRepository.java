@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -35,14 +35,14 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.EntityModuleDependencies;
 import org.openmetadata.service.entity.EntityModuleFactory;
+import org.openmetadata.service.entity.metadata.EntityRelationshipUpdates;
 import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityBatchFields;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
-import org.openmetadata.service.entity.write.EntityColumnMutation;
-import org.openmetadata.service.entity.write.EntityColumnUpdater;
 import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntitySpecificMutation;
 import org.openmetadata.service.entity.write.EntityUpdateRequest;
 import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.resources.charts.ChartResource;
@@ -60,20 +60,20 @@ public class ChartRepository implements EntityPolicy<Chart> {
   private static final String CHART_PATCH_FIELDS = "dashboards";
 
   public ChartRepository() {
-    this(true);
+    this(EntityModuleDependencies.standard());
   }
 
-  protected ChartRepository(boolean registerEntity) {
+  public ChartRepository(EntityModuleDependencies dependencies) {
     this.entityContext =
         new EntityPolicyContext<>(
             new EntityPolicyContext.Schema<>(
                 ChartResource.COLLECTION_PATH,
                 Entity.CHART,
                 Chart.class,
-                Entity.getCollectionDAO().chartDAO()),
+                dependencies.daos().chartDAO()),
             new EntityPolicyContext.WriteFields(CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS, Set.of()),
-            EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, registerEntity);
+            dependencies);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
@@ -125,52 +125,32 @@ public class ChartRepository implements EntityPolicy<Chart> {
   }
 
   @Override
-  @SneakyThrows
   public void storeRelationships(Chart chart) {
-    addServiceRelationship(chart, chart.getService());
-    // Add relationship from dashboard to chart
-    for (EntityReference dashboard : listOrEmpty(chart.getDashboards())) {
-      relationshipWrites()
-          .add(
-              new EntityRelationshipWriter.Edge(
-                  dashboard.getId(),
-                  chart.getId(),
-                  Entity.DASHBOARD,
-                  Entity.CHART,
-                  Relationship.HAS),
-              EntityRelationshipWriter.Value.EMPTY,
-              false);
-    }
+    defineRelationships(
+        chart, edge -> relationshipWrites().add(edge, EntityRelationshipWriter.Value.EMPTY, false));
   }
 
   @Override
   public void storeEntitySpecificRelationshipsForMany(List<Chart> entities) {
-    List<CollectionDAO.EntityRelationshipObject> relationships = new ArrayList<>();
-    for (Chart chart : entities) {
-      EntityReference service = chart.getService();
-      if (service != null && service.getId() != null) {
-        relationships.add(
-            newRelationship(
-                service.getId(),
-                chart.getId(),
-                service.getType(),
-                context().schema().entityType(),
-                Relationship.CONTAINS));
-      }
-      for (EntityReference dashboard : listOrEmpty(chart.getDashboards())) {
-        if (dashboard.getId() == null) {
-          continue;
-        }
-        relationships.add(
-            newRelationship(
-                dashboard.getId(),
-                chart.getId(),
-                Entity.DASHBOARD,
-                Entity.CHART,
-                Relationship.HAS));
-      }
+    relationshipWrites().insertMany(entities, this::defineRelationships);
+  }
+
+  private void defineRelationships(Chart chart, Consumer<EntityRelationshipWriter.Edge> edge) {
+    final EntityReference service = chart.getService();
+    if (service != null) {
+      edge.accept(
+          new EntityRelationshipWriter.Edge(
+              service.getId(),
+              chart.getId(),
+              service.getType(),
+              getEntityType(),
+              Relationship.CONTAINS));
     }
-    bulkInsertRelationships(relationships);
+    for (final EntityReference dashboard : listOrEmpty(chart.getDashboards())) {
+      edge.accept(
+          new EntityRelationshipWriter.Edge(
+              dashboard.getId(), chart.getId(), Entity.DASHBOARD, Entity.CHART, Relationship.HAS));
+    }
   }
 
   @Override
@@ -245,7 +225,7 @@ public class ChartRepository implements EntityPolicy<Chart> {
                 include);
   }
 
-  public class ChartUpdater implements EntityColumnMutation<Chart> {
+  public class ChartUpdater implements EntitySpecificMutation<Chart> {
 
     public ChartUpdater(Chart chart, Chart updated, EntityOperation operation) {
       this.entityUpdate =
@@ -253,7 +233,6 @@ public class ChartRepository implements EntityPolicy<Chart> {
               context().services().getUpdaterServices(),
               new EntityUpdateRequest<>(chart, updated, operation, null, false),
               this);
-      this.columnUpdate = new EntityColumnUpdater<>(entityUpdate, this);
     }
 
     @Transaction
@@ -298,28 +277,19 @@ public class ChartRepository implements EntityPolicy<Chart> {
         String field,
         List<EntityReference> updEntities,
         List<EntityReference> oriEntities) {
-      // Remove all entity type associated with this dashboard
-      relationshipWrites()
-          .deleteIncoming(
-              new EntityRelationshipWriter.Selection(
-                  entityUpdate.getUpdated().getId(), Entity.CHART, Relationship.HAS, entityType));
-      // Add relationship from dashboard to chart type
-      for (EntityReference entity : updEntities) {
-        relationshipWrites()
-            .add(
-                new EntityRelationshipWriter.Edge(
-                    entity.getId(),
-                    entityUpdate.getUpdated().getId(),
-                    entityType,
-                    Entity.CHART,
-                    Relationship.HAS),
-                EntityRelationshipWriter.Value.EMPTY,
-                false);
-      }
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
-      entityUpdate.recordListChange(
-          field, oriEntities, updEntities, added, deleted, EntityUtil.entityReferenceMatch);
+      context()
+          .services()
+          .getRelationshipUpdates()
+          .replace(
+              entityUpdate,
+              new EntityRelationshipUpdates.Target(
+                  field,
+                  entityUpdate.getUpdated().getId(),
+                  Entity.CHART,
+                  entityType,
+                  Relationship.HAS),
+              new EntityRelationshipUpdates.References(oriEntities, updEntities),
+              EntityRelationshipUpdates.Direction.INCOMING);
     }
 
     private final EntityUpdater<Chart> entityUpdate;
@@ -327,8 +297,6 @@ public class ChartRepository implements EntityPolicy<Chart> {
     public EntityUpdater<Chart> mutation() {
       return entityUpdate;
     }
-
-    private final EntityColumnUpdater<Chart> columnUpdate;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDashboards(List<Chart> charts) {

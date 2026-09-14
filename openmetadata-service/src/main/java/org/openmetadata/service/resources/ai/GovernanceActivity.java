@@ -35,10 +35,8 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Curated AI governance activity feed. Synthesizes timeline events from the
@@ -91,11 +89,9 @@ final class GovernanceActivity {
             repo.reads()
                 .byId(
                     UUID.fromString(entityId),
-                    new EntityReadService.Query(
-                        null,
-                        repo.fieldPolicy().parse(fieldList(entityType)),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    repo.fieldPolicy().parse(fieldList(entityType)),
+                    Include.NON_DELETED,
+                    false);
       } catch (Exception error) {
         LOG.warn("Activity feed: failed to load {}:{}", entityType, entityId, error);
       }

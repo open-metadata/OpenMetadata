@@ -298,11 +298,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               .reads()
               .byId(
                   parentTermParam,
-                  new EntityReadService.Query(
-                      null,
-                      repository.fieldPolicy().parse("parent"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  repository.fieldPolicy().parse("parent"),
+                  Include.NON_DELETED,
+                  false);
       fqn = parentTerm.getFullyQualifiedName();
       // Ensure parent glossary term belongs to the glossary
       if ((glossary != null) && (!parentTerm.getGlossary().getId().equals(glossary.getId()))) {

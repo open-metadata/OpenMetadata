@@ -49,7 +49,6 @@ import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
@@ -63,7 +62,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Path("/v1/ontologyChangeSets")
@@ -269,13 +267,7 @@ public class OntologyChangeSetResource
   private OntologyChangeSet scopedChangeSet(final UUID id) {
     return repository
         .reads()
-        .byId(
-            id,
-            new EntityReadService.Query(
-                null,
-                repository.fieldPolicy().parse(FIELDS),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+        .byId(id, repository.fieldPolicy().parse(FIELDS), Include.NON_DELETED, false);
   }
 
   private void authorizeChangeSet(final SecurityContext securityContext, final UUID changeSetId) {

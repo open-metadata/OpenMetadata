@@ -48,7 +48,7 @@ public class TestDefinitionRepository implements EntityPolicy<TestDefinition> {
                 Entity.getCollectionDAO().testDefinitionDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

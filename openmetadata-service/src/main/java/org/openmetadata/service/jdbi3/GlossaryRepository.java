@@ -120,7 +120,7 @@ public class GlossaryRepository implements EntityPolicy<Glossary> {
                 Entity.getCollectionDAO().glossaryDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setQuoteFqn(true);
     context().options().setSupportsSearch(true);
     context().options().setRenameAllowed(true);

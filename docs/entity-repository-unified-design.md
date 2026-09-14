@@ -1,6 +1,7 @@
 # Unified entity behavior: design options and recommendation
 
-Status: accepted direction, first ownership slice implemented, 2026-09-14. The full
+Status: accepted direction, ownership and construction/read cleanup implemented,
+2026-09-14. The full
 pilot remains open. The [composition document](entity-repository-composition.md)
 describes the current code; [verification status](entity-repository-status.md) and
 the [acceptance guide](entity-repository-acceptance.md) retain the existing release gates.
@@ -231,7 +232,19 @@ Each accepted refactoring slice must have a net reduction in handwritten product
 lines across that scope. Count physical and nonblank formatted lines; renames,
 new folders, comments-only cuts, code generation or compressed formatting cannot
 substitute for removing implementation. Tests and documentation have separate counts.
-The ratchet is proposed here; no executable size gate has been added yet.
+The executable ratchet is `scripts/entity_repository_size.py`. It counts both
+repositories, including additions and deletions, and also requires a reduction in
+Java tokens so formatting or comment removal alone cannot satisfy the gate.
+
+```bash
+python scripts/entity_repository_size.py \
+  --scope . a8c11eca25 \
+  --scope /path/to/openmetadata-collate 8c0096662a \
+  --output /new/output/size.json
+```
+
+Use the revisions preceding the slice being assessed. The output must be a new
+file; it records resolved revisions, source hashes and each file's contribution.
 
 Require an accompanying deletion inventory: inherited defaults, forwarding
 interfaces, component accessors, duplicate single/bulk/import algorithms and caller

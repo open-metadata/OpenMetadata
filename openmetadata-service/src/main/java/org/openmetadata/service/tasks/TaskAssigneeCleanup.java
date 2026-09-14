@@ -20,13 +20,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class TaskAssigneeCleanup {
   private TaskAssigneeCleanup() {}
@@ -44,12 +42,7 @@ public final class TaskAssigneeCleanup {
     for (EntityReference taskReference : taskReferences) {
       removeAssignee(
           repository,
-          repository
-              .reads()
-              .byId(
-                  taskReference.getId(),
-                  new EntityReadService.Query(
-                      null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false)),
+          repository.reads().byId(taskReference.getId(), fields, Include.NON_DELETED, false),
           entityId,
           entityType);
     }

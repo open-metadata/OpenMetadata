@@ -22,12 +22,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Builds ResourceContext lazily. ResourceContext includes all the attributes of a resource a user is trying to access
@@ -100,14 +98,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
 
   private static EntityInterface resolveTestSuiteById(UUID id) {
     TestSuiteRepository dao = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    return dao.reads()
-        .byId(
-            id,
-            new EntityReadService.Query(
-                null,
-                dao.fieldPolicy().parse("owners,tags,domains"),
-                RelationIncludes.fromInclude(Include.ALL),
-                true));
+    return dao.reads().byId(id, dao.fieldPolicy().parse("owners,tags,domains"), Include.ALL, true);
   }
 
   private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) {
@@ -130,14 +121,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   private static EntityInterface resolveEntityById(UUID id) {
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCase =
-        dao.reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    dao.fieldPolicy().parse("entityLink"),
-                    RelationIncludes.fromInclude(Include.ALL),
-                    true));
+        dao.reads().byId(id, dao.fieldPolicy().parse("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 
@@ -145,14 +129,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     if (fqn == null) return null;
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCase =
-        dao.reads()
-            .byName(
-                fqn,
-                new EntityReadService.Query(
-                    null,
-                    dao.fieldPolicy().parse("entityLink"),
-                    RelationIncludes.fromInclude(Include.ALL),
-                    true));
+        dao.reads().byName(fqn, dao.fieldPolicy().parse("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
   }
 

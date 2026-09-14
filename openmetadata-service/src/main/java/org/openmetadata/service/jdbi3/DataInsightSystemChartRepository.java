@@ -44,7 +44,6 @@ import org.openmetadata.service.entity.EntityModuleDependencies;
 import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
@@ -155,7 +154,7 @@ public class DataInsightSystemChartRepository implements EntityPolicy<DataInsigh
                 Entity.getCollectionDAO().dataInsightCustomChartDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     // Lazy initialization: do not create scheduler here
     this.activeSessions = new ConcurrentHashMap<>();
   }
@@ -280,11 +279,9 @@ public class DataInsightSystemChartRepository implements EntityPolicy<DataInsigh
               .reads()
               .byId(
                   pipelines.get(0).getId(),
-                  new EntityReadService.Query(
-                      null,
-                      pipelineRepository.fieldPolicy().parse("id,fullyQualifiedName"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  pipelineRepository.fieldPolicy().parse("id,fullyQualifiedName"),
+                  Include.NON_DELETED,
+                  false);
       Map<String, Object> status = new HashMap<>();
       status.put("appId", automation.getId().toString());
       status.put("appName", automation.getName());

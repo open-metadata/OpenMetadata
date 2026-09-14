@@ -13,7 +13,6 @@ import org.openmetadata.service.entity.EntityModuleDependencies;
 import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
 import org.openmetadata.service.entity.write.EntityUpdateRequest;
@@ -37,7 +36,7 @@ public class ContextFileContentRepository implements EntityPolicy<ContextFileCon
                 jdbi.onDemand(CollectionDAO.class).contextFileContentDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override
@@ -96,14 +95,7 @@ public class ContextFileContentRepository implements EntityPolicy<ContextFileCon
   }
 
   public ContextFileContent getById(UUID id) {
-    return reads()
-        .byId(
-            id,
-            new EntityReadService.Query(
-                null,
-                fieldPolicy().parse(""),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+    return reads().byId(id, fieldPolicy().parse(""), Include.NON_DELETED, false);
   }
 
   public java.util.List<ContextFileContent> listByContextFileId(UUID contextFileId) {

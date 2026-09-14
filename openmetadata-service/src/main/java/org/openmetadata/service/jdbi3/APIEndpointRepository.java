@@ -90,7 +90,7 @@ public class APIEndpointRepository implements EntityPolicy<APIEndpoint> {
                 Entity.getCollectionDAO().apiEndpointDAO()),
             new EntityPolicyContext.WriteFields("", "", CHANGE_SUMMARY_FIELDS),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // Covered by the API service / API collection delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by the root

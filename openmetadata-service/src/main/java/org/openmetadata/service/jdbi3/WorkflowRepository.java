@@ -38,7 +38,7 @@ public class WorkflowRepository implements EntityPolicy<Workflow> {
                 Entity.getCollectionDAO().workflowDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setQuoteFqn(true);
   }
 

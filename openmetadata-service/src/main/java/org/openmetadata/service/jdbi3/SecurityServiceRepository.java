@@ -75,7 +75,7 @@ public class SecurityServiceRepository
                 Entity.getCollectionDAO().securityServiceDAO()),
             new EntityPolicyContext.WriteFields("", UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, SecurityConnection.class, ServiceType.SECURITY);
     context().options().setQuoteFqn(true);

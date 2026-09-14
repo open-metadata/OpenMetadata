@@ -28,7 +28,6 @@ import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.EntityModuleDependencies;
 import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.policy.EntityPolicy;
@@ -60,20 +59,21 @@ public class DocumentRepository implements EntityPolicy<Document> {
   private final String COLLATE = "collate";
 
   public DocumentRepository() {
+    this(EntityModuleDependencies.standard());
+  }
+
+  public DocumentRepository(EntityModuleDependencies dependencies) {
+    this.dao = dependencies.daos().docStoreDAO();
     this.entityContext =
         new EntityPolicyContext<>(
             new EntityPolicyContext.Schema<>(
-                DocStoreResource.COLLECTION_PATH,
-                DOCUMENT,
-                Document.class,
-                Entity.getCollectionDAO().docStoreDAO()),
+                DocStoreResource.COLLECTION_PATH, DOCUMENT, Document.class, dao),
             new EntityPolicyContext.WriteFields(
                 DOCUMENT_UPDATE_FIELDS, DOCUMENT_PATCH_FIELDS, Set.of()),
-            EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+            dependencies);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
-    this.dao = Entity.getCollectionDAO().docStoreDAO();
-    this.templateProvider = new DefaultTemplateProvider();
+    this.templateProvider = new DefaultTemplateProvider(this::fetchEmailTemplateByName);
   }
 
   @Override

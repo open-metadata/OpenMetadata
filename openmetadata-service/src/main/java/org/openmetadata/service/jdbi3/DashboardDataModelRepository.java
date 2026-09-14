@@ -39,7 +39,6 @@ import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.metadata.DerivedTagLoader;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityColumnMutation;
 import org.openmetadata.service.entity.write.EntityColumnUpdater;
 import org.openmetadata.service.entity.write.EntityOperation;
@@ -68,7 +67,7 @@ public class DashboardDataModelRepository implements EntityPolicy<DashboardDataM
                 Entity.getCollectionDAO().dashboardDataModelDAO()),
             new EntityPolicyContext.WriteFields("", "", CHANGE_SUMMARY_FIELDS),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
@@ -342,14 +341,7 @@ public class DashboardDataModelRepository implements EntityPolicy<DashboardDataM
     // For paginated column access, we need to load the data model with columns
     // but we'll optimize the field loading to only process what we need
     DashboardDataModel fullDataModel =
-        reads()
-            .byId(
-                dataModel.getId(),
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse(Set.of("columns")),
-                    RelationIncludes.fromInclude(include),
-                    false));
+        reads().byId(dataModel.getId(), fieldPolicy().parse(Set.of("columns")), include, false);
     List<Column> allColumns = fullDataModel.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
@@ -397,28 +389,14 @@ public class DashboardDataModelRepository implements EntityPolicy<DashboardDataM
   public ResultList<Column> searchDataModelColumnsById(
       UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
     DashboardDataModel dataModel =
-        reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse(fieldsParam),
-                    RelationIncludes.fromInclude(include),
-                    false));
+        reads().byId(id, fieldPolicy().parse(fieldsParam), include, false);
     return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
   }
 
   public ResultList<Column> searchDataModelColumnsByFQN(
       String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
     DashboardDataModel dataModel =
-        reads()
-            .byName(
-                fqn,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse(fieldsParam),
-                    RelationIncludes.fromInclude(include),
-                    false));
+        reads().byName(fqn, fieldPolicy().parse(fieldsParam), include, false);
     return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
   }
 

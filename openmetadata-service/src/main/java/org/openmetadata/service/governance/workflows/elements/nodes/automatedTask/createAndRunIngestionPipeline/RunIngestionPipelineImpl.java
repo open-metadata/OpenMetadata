@@ -17,10 +17,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
@@ -52,12 +50,7 @@ public class RunIngestionPipelineImpl {
     OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
 
     IngestionPipeline ingestionPipeline =
-        repository
-            .reads()
-            .byId(
-                ingestionPipelineId,
-                new EntityReadService.Query(
-                    null, EMPTY_FIELDS, RelationIncludes.fromInclude(Include.NON_DELETED), false));
+        repository.reads().byId(ingestionPipelineId, EMPTY_FIELDS, Include.NON_DELETED, false);
     // Build the connection from the pipeline so the run authenticates as the bot that owns it,
     // which is the identity the metadata it writes is attributed to.
     ingestionPipeline.setOpenMetadataServerConnection(

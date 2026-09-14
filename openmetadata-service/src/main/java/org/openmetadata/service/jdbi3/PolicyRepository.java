@@ -75,7 +75,7 @@ public class PolicyRepository implements EntityPolicy<Policy> {
                 Entity.getCollectionDAO().policyDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

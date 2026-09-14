@@ -117,7 +117,7 @@ class EntityBulkPreparationIT {
     private int namePreparations;
 
     private CountingChartRepository() {
-      super(false);
+      super();
     }
 
     @Override

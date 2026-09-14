@@ -238,7 +238,7 @@ class BulkStorageJsonIT {
     private boolean failRelationships;
 
     private CountingChartRepository() {
-      super(false);
+      super();
     }
 
     @Override

@@ -70,7 +70,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
@@ -86,7 +85,6 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 
 @Slf4j
@@ -1084,14 +1082,12 @@ public class WorkflowHandler {
               .reads()
               .byId(
                   customTaskId,
-                  new EntityReadService.Query(
-                      null,
-                      taskRepository
-                          .fieldPolicy()
-                          .parse(
-                              "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  taskRepository
+                      .fieldPolicy()
+                      .parse(
+                          "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution"),
+                  Include.NON_DELETED,
+                  false);
 
       if (taskEntity != null && taskEntity.getAssignees() != null) {
         List<EntityReference> currentAssignees = new ArrayList<>(taskEntity.getAssignees());
@@ -1785,11 +1781,9 @@ public class WorkflowHandler {
               .reads()
               .byName(
                   workflowName,
-                  new EntityReadService.Query(
-                      null,
-                      repository.fieldPolicy().parse("trigger"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      true));
+                  repository.fieldPolicy().parse("trigger"),
+                  Include.NON_DELETED,
+                  true);
       WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
       if (trigger == null || !"periodicBatchEntity".equals(trigger.getType())) {
         return List.of();

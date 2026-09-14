@@ -18,12 +18,10 @@ import java.util.UUID;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.ontology.OntologySubsetTermSelector.TermLookup;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 final class RepositoryOntologySubsetTermLookup implements TermLookup {
   private static final String SUBSET_FIELDS = "parent,relatedTerms,attributes,conceptMappings";
@@ -37,12 +35,7 @@ final class RepositoryOntologySubsetTermLookup implements TermLookup {
 
   @Override
   public GlossaryTerm read(final UUID termId) {
-    return repository
-        .reads()
-        .byId(
-            termId,
-            new EntityReadService.Query(
-                null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
+    return repository.reads().byId(termId, fields, Include.NON_DELETED, false);
   }
 
   @Override

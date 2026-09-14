@@ -105,7 +105,7 @@ public class DatabaseSchemaRepository implements EntityPolicy<DatabaseSchema> {
                 Entity.getCollectionDAO().databaseSchemaDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // A recursive hard-delete of an ancestor (database service / database) removes schema/table
     // docs from search (deleteOrUpdateChildren by service.id / database.id) and field_relationship

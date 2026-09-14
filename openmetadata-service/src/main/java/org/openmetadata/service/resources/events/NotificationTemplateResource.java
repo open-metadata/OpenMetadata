@@ -61,7 +61,6 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
@@ -74,7 +73,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -420,13 +418,7 @@ public class NotificationTemplateResource
     NotificationTemplate existing =
         repository
             .reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(id, repository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
 
     if (!isTemplateFieldPatch(patch)) {
       return patchInternal(uriInfo, securityContext, id, patch, ChangeSource.MANUAL);
@@ -761,13 +753,7 @@ public class NotificationTemplateResource
     NotificationTemplate template =
         repository
             .reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(id, repository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
     if (!ProviderType.SYSTEM.equals(template.getProvider())) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity("Cannot reset template: only SYSTEM templates can be reset to default")

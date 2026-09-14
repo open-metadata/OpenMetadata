@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -20,6 +22,40 @@ class EntityRelationshipWriterTest {
   private static final UUID FIRST = new UUID(0, 1);
   private static final UUID SECOND = new UUID(0, 2);
   private static final Relationship RELATION = Relationship.CONTAINS;
+
+  @Test
+  void oneRelationshipDefinitionPreservesSingleAndBatchRowsAndEffectBoundaries() {
+    final RelationshipStoreFixture single = new RelationshipStoreFixture();
+    final RelationshipStoreFixture batch = new RelationshipStoreFixture();
+    final BiConsumer<UUID, Consumer<Edge>> definition = (id, edge) -> edge.accept(edge(FIRST, id));
+    final List<UUID> entities = List.of(SECOND, new UUID(0, 3));
+    entities.forEach(
+        id -> definition.accept(id, edge -> single.writer().add(edge, Value.EMPTY, false)));
+    batch.writer().insertMany(entities, definition);
+    assertEquals(single.rows.size(), batch.rows.size());
+    for (int index = 0; index < single.rows.size(); index++) {
+      final var expected = single.rows.get(index);
+      final var actual = batch.rows.get(index);
+      assertEquals(expected.getFromId(), actual.getFromId());
+      assertEquals(expected.getToId(), actual.getToId());
+      assertEquals(expected.getFromEntity(), actual.getFromEntity());
+      assertEquals(expected.getToEntity(), actual.getToEntity());
+      assertEquals(expected.getRelation(), actual.getRelation());
+    }
+    assertEquals(2, single.rdf.size());
+    assertEquals(4, single.invalidated.size());
+    assertTrue(batch.rdf.isEmpty());
+    assertTrue(batch.invalidated.isEmpty());
+    assertEquals(1, batch.writes);
+  }
+
+  @Test
+  void batchRelationshipDefinitionsSkipUnresolvedParents() {
+    final RelationshipStoreFixture store = new RelationshipStoreFixture();
+    store.writer().insertMany(List.of(SECOND), (id, edge) -> edge.accept(edge(null, id)));
+    assertTrue(store.rows.isEmpty());
+    assertEquals(0, store.writes);
+  }
 
   @Test
   void insertionKeepsJsonRelationTypeAndBothCacheTargets() {

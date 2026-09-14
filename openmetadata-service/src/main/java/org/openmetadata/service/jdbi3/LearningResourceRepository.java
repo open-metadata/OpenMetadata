@@ -66,7 +66,7 @@ public class LearningResourceRepository implements EntityPolicy<LearningResource
                 Entity.getCollectionDAO().learningResourceDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, PATCH_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
   }
 

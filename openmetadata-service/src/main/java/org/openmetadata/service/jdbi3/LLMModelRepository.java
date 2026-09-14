@@ -31,7 +31,6 @@ import org.openmetadata.service.entity.EntityModuleDependencies;
 import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
 import org.openmetadata.service.entity.write.EntityUpdateRequest;
@@ -75,7 +74,7 @@ public class LLMModelRepository implements EntityPolicy<LLMModel> {
                 Entity.getCollectionDAO().llmModelDAO()),
             new EntityPolicyContext.WriteFields(MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
   }
 
@@ -199,18 +198,10 @@ public class LLMModelRepository implements EntityPolicy<LLMModel> {
     EntityPolicy<?> serviceRepository = Entity.getEntityRepository(service.getType());
     Fields parentFields = serviceRepository.fieldPolicy().supported(fields);
     return service.getId() != null
-        ? serviceRepository
-            .reads()
-            .byId(
-                service.getId(),
-                new EntityReadService.Query(
-                    null, parentFields, RelationIncludes.fromInclude(Include.ALL), true))
+        ? serviceRepository.reads().byId(service.getId(), parentFields, Include.ALL, true)
         : serviceRepository
             .reads()
-            .byName(
-                service.getFullyQualifiedName(),
-                new EntityReadService.Query(
-                    null, parentFields, RelationIncludes.fromInclude(Include.ALL), true));
+            .byName(service.getFullyQualifiedName(), parentFields, Include.ALL, true);
   }
 
   private void populateService(LLMModel llmModel) {

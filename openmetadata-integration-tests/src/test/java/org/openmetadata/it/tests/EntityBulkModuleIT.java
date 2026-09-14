@@ -83,7 +83,7 @@ class EntityBulkModuleIT {
 
   private Fixture fixture(final TestNamespace ns) {
     final var service = DashboardServiceTestFactory.createMetabase(ns);
-    final EntityModule<Chart> module = new UnregisteredChartRepository();
+    final var module = new UnregisteredChartRepository();
     final List<Chart> charts = List.of(chart(ns, "first"), chart(ns, "second"));
     charts.forEach(
         chart -> {
@@ -134,7 +134,7 @@ class EntityBulkModuleIT {
 
   private static final class UnregisteredChartRepository extends ChartRepository {
     private UnregisteredChartRepository() {
-      super(false);
+      super();
     }
   }
 }

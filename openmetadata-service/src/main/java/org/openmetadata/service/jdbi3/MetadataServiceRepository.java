@@ -29,7 +29,7 @@ public class MetadataServiceRepository
                 Entity.getCollectionDAO().metadataServiceDAO()),
             new EntityPolicyContext.WriteFields("", UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, MetadataConnection.class, ServiceType.METADATA);
     context().options().setQuoteFqn(true);

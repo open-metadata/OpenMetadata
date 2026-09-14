@@ -74,7 +74,7 @@ class EntityRepositoryInheritanceParentTest {
               new EntityPolicyContext.Schema<>("pipelines", Entity.PIPELINE, Pipeline.class, dao),
               new EntityPolicyContext.WriteFields("domains", "domains", Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, true);
+      EntityModuleFactory.initialize(this);
       this.parent = parent;
     }
 

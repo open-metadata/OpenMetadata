@@ -85,7 +85,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -101,7 +100,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.URLValidator;
 import org.openmetadata.service.util.email.EmailUtil;
 import org.quartz.SchedulerException;
@@ -536,13 +534,7 @@ public class EventSubscriptionResource
     EventSubscription eventSubscription =
         repository
             .reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse("id"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(id, repository.fieldPolicy().parse("id"), Include.NON_DELETED, false);
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
     EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return delete(uriInfo, securityContext, id, true, true);
@@ -577,13 +569,7 @@ public class EventSubscriptionResource
     EventSubscription eventSubscription =
         repository
             .reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse("id"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(id, repository.fieldPolicy().parse("id"), Include.NON_DELETED, false);
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
     EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return deleteByIdAsync(uriInfo, securityContext, id, true, true);

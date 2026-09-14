@@ -38,13 +38,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.AuditReportRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Async audit-pack generator. The Resource hands a freshly-created AuditReport to
@@ -133,11 +131,9 @@ public final class AuditPackGenerator {
               .reads()
               .byId(
                   reportId,
-                  new EntityReadService.Query(
-                      null,
-                      repository.fieldPolicy().parse("id,name,scope,format"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  repository.fieldPolicy().parse("id,name,scope,format"),
+                  Include.NON_DELETED,
+                  false);
     } catch (Exception e) {
       LOG.warn(
           "Audit pack generator could not fetch claimed report {}: {}", reportId, e.getMessage());

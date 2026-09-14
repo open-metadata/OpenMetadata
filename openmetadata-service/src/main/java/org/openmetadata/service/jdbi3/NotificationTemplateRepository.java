@@ -95,7 +95,7 @@ public class NotificationTemplateRepository implements EntityPolicy<Notification
                 Entity.getCollectionDAO().notificationTemplateDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     // Initialize template processor
     this.templateProcessor = new HandlebarsNotificationTemplateProcessor();
     // Initialize mock factory for template testing

@@ -26,11 +26,9 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Finds and hard-deletes test cases whose entityLink targets a non-existent entity. This is the
@@ -173,12 +171,7 @@ public class OrphanTestCaseCleanup {
       return false;
     }
     try {
-      targetRepo
-          .reads()
-          .byName(
-              link.getEntityFQN(),
-              new EntityReadService.Query(
-                  null, EntityUtil.Fields.EMPTY_FIELDS, RelationIncludes.fromInclude(ALL), false));
+      targetRepo.reads().byName(link.getEntityFQN(), EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
       return false;
     } catch (EntityNotFoundException ex) {
       return true;

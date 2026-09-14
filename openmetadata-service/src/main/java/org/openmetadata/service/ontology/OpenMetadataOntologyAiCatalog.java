@@ -18,11 +18,9 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
   private final GlossaryRepository glossaryRepository;
@@ -48,13 +46,7 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
   public GlossaryTerm term(final UUID id) {
     return termRepository
         .reads()
-        .byId(
-            id,
-            new EntityReadService.Query(
-                null,
-                termRepository.fieldPolicy().parse("glossary"),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+        .byId(id, termRepository.fieldPolicy().parse("glossary"), Include.NON_DELETED, false);
   }
 
   @Override
@@ -63,10 +55,8 @@ public final class OpenMetadataOntologyAiCatalog implements OntologyAiCatalog {
         .reads()
         .byId(
             id,
-            new EntityReadService.Query(
-                null,
-                relationshipTypeRepository.fieldPolicy().parse("domain,range"),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+            relationshipTypeRepository.fieldPolicy().parse("domain,range"),
+            Include.NON_DELETED,
+            false);
   }
 }

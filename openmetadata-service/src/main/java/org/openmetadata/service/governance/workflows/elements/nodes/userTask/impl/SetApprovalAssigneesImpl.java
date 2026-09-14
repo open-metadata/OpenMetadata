@@ -33,7 +33,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -42,7 +41,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -384,11 +382,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               .reads()
               .byId(
                   java.util.UUID.fromString(taskEntityId.toString()),
-                  new EntityReadService.Query(
-                      null,
-                      taskRepository.fieldPolicy().parse(TaskRepository.FIELD_ASSIGNEES),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  taskRepository.fieldPolicy().parse(TaskRepository.FIELD_ASSIGNEES),
+                  Include.NON_DELETED,
+                  false);
       if (task.getAssignees() == null || task.getAssignees().isEmpty()) {
         return List.of();
       }

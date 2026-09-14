@@ -73,7 +73,6 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.Workflow;
@@ -93,7 +92,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -953,14 +951,7 @@ public class MigrationUtil {
     try {
       EntityPolicy<?> repo = Entity.getEntityRepository(entityType);
       Object entity =
-          repo.reads()
-              .byName(
-                  entityFQN,
-                  new EntityReadService.Query(
-                      null,
-                      repo.fieldPolicy().parse(""),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      true));
+          repo.reads().byName(entityFQN, repo.fieldPolicy().parse(""), Include.NON_DELETED, true);
       if (entity instanceof EntityInterface ei && ei.getId() != null) {
         resolvedId = ei.getId().toString();
       }
@@ -1678,11 +1669,9 @@ public class MigrationUtil {
           repo.reads()
               .byId(
                   UUID.fromString(entityId),
-                  new EntityReadService.Query(
-                      null,
-                      repo.fieldPolicy().parse(Entity.FIELD_DOMAINS),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  repo.fieldPolicy().parse(Entity.FIELD_DOMAINS),
+                  Include.NON_DELETED,
+                  false);
       if (!(entity instanceof EntityInterface ei)) {
         DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
         return Collections.emptyList();

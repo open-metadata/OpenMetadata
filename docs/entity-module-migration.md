@@ -18,9 +18,11 @@ repository-specific ownership code.
 
 An entity family implements `EntityPolicy<T>`. Its `EntityPolicyContext<T>` holds
 the schema, write-field selections, infrastructure dependencies and native service
-graph. `EntityModuleFactory.initialize(policy, registerEntity)` binds the policy
-once, constructs the components in dependency order, and registers the completed
-graph when requested. Calling it again fails before replacing any components.
+graph. `EntityModuleFactory.initialize(policy)` binds the policy once and constructs
+the components in dependency order. Startup uses `EntityModuleFactory.create` to
+register the repository after its constructor and option configuration finish.
+Constructor failures propagate without trying another constructor. Calling
+`initialize` again fails before replacing any components.
 
 The factory groups are deliberately small:
 
@@ -58,7 +60,8 @@ as a complete example.
    `EntityModuleDependencies`. Production can use `EntityModuleDependencies.standard()`;
    independent module tests can inject their retained DAO graph directly.
 4. Implement `context()` and initialize the module once in the constructor.
-   Keep registration disabled for a deliberately unregistered test policy.
+   Construction does not register the repository. A test requiring registry dispatch
+   registers its fixture explicitly; independent tests supply dependencies directly.
 5. Make policy implementations public. Implement the entity's preparation,
    storage, relationship, read and clear operations. Preserve overrides for
    inheritance, import matching, paging and ordered update behavior.
@@ -94,7 +97,19 @@ Java extensions need recompilation against the new policy types. HTTP endpoints,
 stored JSON, field/include semantics and response contracts remain compatibility
 requirements.
 
+Common detail reads use `reads().byId(id, fields, include, fromCache)` or
+`reads().byName(name, fields, include, fromCache)`. `optionalByName` accepts the same
+options and converts only missing entities to an empty result. Keep the caller's
+existing cache choice. Use `EntityReadService.Query` for a transport URI or distinct
+relationship inclusion rules. These entry points share the same hydration and
+Redis/L1/request-cache implementation.
+
 ## Native operation ports
+
+The application `EntityModule` exposes reads and complete commands. Preparation,
+raw persistence, DAO access and subtree internals belong to the policy SPI and are
+absent from that application contract. The SPI still needs further narrowing; the
+following inventory includes its internal operations.
 
 | Work | Port |
 | --- | --- |

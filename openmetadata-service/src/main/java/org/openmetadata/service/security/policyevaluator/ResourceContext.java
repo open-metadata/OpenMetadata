@@ -188,10 +188,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         parentEntities.add(
             rootRepository
                 .reads()
-                .byId(
-                    parentReference.getId(),
-                    new EntityReadService.Query(
-                        null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false)));
+                .byId(parentReference.getId(), fields, Include.NON_DELETED, false));
       }
       return parentEntities;
     } catch (Exception e) {

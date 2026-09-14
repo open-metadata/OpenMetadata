@@ -133,7 +133,6 @@ import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityCollectionReader;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityImportCommands;
@@ -228,10 +227,6 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public GlossaryTermRepository() {
-    this(true);
-  }
-
-  protected GlossaryTermRepository(boolean registerEntity) {
     this.entityContext =
         new EntityPolicyContext<>(
             new EntityPolicyContext.Schema<>(
@@ -241,7 +236,7 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
                 Entity.getCollectionDAO().glossaryTermDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, registerEntity);
+    EntityModuleFactory.initialize(this);
     relationshipTypeResolver =
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     context().options().setSupportsSearch(true);
@@ -263,11 +258,9 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
         reads()
             .byId(
                 glossaryTermId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,fullyQualifiedName"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                fieldPolicy().parse("id,fullyQualifiedName"),
+                Include.NON_DELETED,
+                false);
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for glossary term assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);
@@ -1491,14 +1484,7 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
 
   private GlossaryTerm relationUpdateOriginal(UUID id) {
     GlossaryTerm original =
-        reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("relatedTerms"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+        reads().byId(id, fieldPolicy().parse("relatedTerms"), Include.NON_DELETED, false);
     setFieldsInternal(original, getPutFields());
     return original;
   }
@@ -1676,14 +1662,7 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
   public GlossaryTermRelationGraph getTermRelationGraph(
       UUID id, int depth, List<String> relationTypes, GraphLimits limits) {
     GlossaryTerm rootTerm =
-        reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("relatedTerms"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+        reads().byId(id, fieldPolicy().parse("relatedTerms"), Include.NON_DELETED, false);
     Map<UUID, GlossaryTerm> prefetchedTerms = new HashMap<>();
     prefetchedTerms.put(rootTerm.getId(), rootTerm);
     if (depth > 1) {
@@ -1916,13 +1895,7 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
     boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     GlossaryTerm term =
         this.reads()
-            .byId(
-                glossaryTermId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,tags"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(glossaryTermId, fieldPolicy().parse("id,tags"), Include.NON_DELETED, false);
     EntityPolicy<?> glossaryRepository = Entity.getEntityRepository(Entity.GLOSSARY);
     EntityInterface glossary =
         glossaryRepository.getByName(
@@ -1967,11 +1940,9 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
               .reads()
               .byId(
                   ref.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      entityRepository.fieldPolicy().parse("tags"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  entityRepository.fieldPolicy().parse("tags"),
+                  Include.NON_DELETED,
+                  false);
       try {
         Map<String, List<TagLabel>> allAssetTags =
             context()
@@ -2100,13 +2071,7 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
       UUID glossaryTermId, ValidateGlossaryTagsRequest request) {
     GlossaryTerm term =
         this.reads()
-            .byId(
-                glossaryTermId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,tags"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(glossaryTermId, fieldPolicy().parse("id,tags"), Include.NON_DELETED, false);
     List<TagLabel> glossaryTagsToValidate = request.getGlossaryTags();
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(request.getGlossaryTags());
@@ -2231,13 +2196,7 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
     boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
     GlossaryTerm term =
         this.reads()
-            .byId(
-                glossaryTermId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,tags"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(glossaryTermId, fieldPolicy().parse("id,tags"), Include.NON_DELETED, false);
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
@@ -2267,11 +2226,9 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
               .reads()
               .byId(
                   ref.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      entityRepository.fieldPolicy().parse("id"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  entityRepository.fieldPolicy().parse("id"),
+                  Include.NON_DELETED,
+                  false);
       tagAssetRemoval.remove(
           term.getFullyQualifiedName(),
           asset.getFullyQualifiedName(),
@@ -3659,11 +3616,9 @@ public class GlossaryTermRepository implements EntityPolicy<GlossaryTerm> {
             .reads()
             .byId(
                 glossaryTerm.getGlossary().getId(),
-                new EntityReadService.Query(
-                    null,
-                    Fields.EMPTY_FIELDS,
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                Fields.EMPTY_FIELDS,
+                Include.NON_DELETED,
+                false);
     List<GlossaryTerm> terms = collections().forCsv(fields, glossaryTerm.getFullyQualifiedName());
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms, callback);

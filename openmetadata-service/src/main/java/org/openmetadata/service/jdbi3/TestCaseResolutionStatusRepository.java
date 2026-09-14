@@ -50,7 +50,6 @@ import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
@@ -60,7 +59,6 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
@@ -425,14 +423,12 @@ public class TestCaseResolutionStatusRepository
             .reads()
             .byId(
                 incidentTask.getId(),
-                new EntityReadService.Query(
-                    null,
-                    taskRepository
-                        .fieldPolicy()
-                        .parse(
-                            "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                taskRepository
+                    .fieldPolicy()
+                    .parse(
+                        "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"),
+                Include.NON_DELETED,
+                false);
 
     if (TaskRepository.isTerminalStatus(task.getStatus())
         && recordEntity.getTestCaseResolutionStatusType()
@@ -497,13 +493,7 @@ public class TestCaseResolutionStatusRepository
         Task task =
             taskRepository
                 .reads()
-                .byId(
-                    stateId,
-                    new EntityReadService.Query(
-                        null,
-                        taskRepository.fieldPolicy().parse("about"),
-                        RelationIncludes.fromInclude(Include.ALL),
-                        false));
+                .byId(stateId, taskRepository.fieldPolicy().parse("about"), Include.ALL, false);
         if (task != null
             && !Boolean.TRUE.equals(task.getDeleted())
             && task.getType() == TaskEntityType.TestCaseResolution
@@ -671,13 +661,7 @@ public class TestCaseResolutionStatusRepository
         Task current =
             taskRepository
                 .reads()
-                .byId(
-                    taskId,
-                    new EntityReadService.Query(
-                        null,
-                        taskRepository.fieldPolicy().parse("*"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                .byId(taskId, taskRepository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
         if (canAdvanceToAssignedStage(current)) {
           taskRepository.resolveTaskWithWorkflow(
               current,

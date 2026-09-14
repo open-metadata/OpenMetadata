@@ -104,7 +104,7 @@ public class ContainerRepository implements EntityPolicy<Container> {
             new EntityPolicyContext.WriteFields(
                 CONTAINER_PATCH_FIELDS, CONTAINER_UPDATE_FIELDS, CHANGE_SUMMARY_FIELDS),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     // Covered by the parent service delete cascade: search docs by service.id
     // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by

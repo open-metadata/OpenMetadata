@@ -35,10 +35,8 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPatchService;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Generic handler for applying suggestions to entities.
@@ -80,13 +78,7 @@ public class SuggestionHandler {
     EntityInterface entity =
         repository
             .reads()
-            .byId(
-                about.getId(),
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(about.getId(), repository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
     String origJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = generatePatch(entity, suggestionPayload);
     if (patch == null || patch.toJsonArray().isEmpty()) {

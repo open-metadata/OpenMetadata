@@ -166,7 +166,7 @@ class EntitySubtreeAtomicityIT {
   private static final class UnregisteredChartRepository extends ChartRepository {
 
     private UnregisteredChartRepository() {
-      super(false);
+      super();
     }
   }
 }

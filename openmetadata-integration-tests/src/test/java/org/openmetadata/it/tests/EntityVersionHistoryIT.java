@@ -33,6 +33,36 @@ import org.openmetadata.service.util.RequestEntityCache;
 @ExtendWith(TestNamespaceExtension.class)
 class EntityVersionHistoryIT {
   @Test
+  void consolidatedDescriptionChangesDoNotRewriteUnchangedRelationships(TestNamespace ns) {
+    final var service = DashboardServiceTestFactory.createMetabase(ns);
+    final Chart chart =
+        Charts.create()
+            .name(ns.prefix("no_relationship_rewrite"))
+            .in(service.getFullyQualifiedName())
+            .withDescription("Original")
+            .execute();
+    final var client = SdkClients.adminClient().charts();
+    final Chart first =
+        client.patch(
+            chart.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"First\"}]"));
+    try (var deletes =
+            SqlQueryCounter.forRequests(Entity.getJdbi(), "delete from entity_relationship");
+        var inserts = SqlQueryCounter.forRequests(Entity.getJdbi(), "into entity_relationship")) {
+      final Chart second =
+          client.patch(
+              chart.getId(),
+              JsonUtils.readTree(
+                  "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Second\"}]"));
+      assertEquals(first.getVersion(), second.getVersion());
+      assertEquals("Second", second.getDescription());
+      assertEquals(0, deletes.count());
+      assertEquals(0, inserts.count());
+    }
+  }
+
+  @Test
   void deletedRemainingRowsProduceAnEmptyTailWithoutInvalidatingThePriorCursor(TestNamespace ns) {
     final List<Chart> charts = createHistoryCharts(ns);
     final Chart oldest = charts.getFirst();

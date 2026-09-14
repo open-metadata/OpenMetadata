@@ -174,7 +174,7 @@ class EntityChangeRecordingTest {
                   "pipelines", PIPELINE, Pipeline.class, mock(CollectionDAO.PipelineDAO.class)),
               new EntityPolicyContext.WriteFields(FIELD_DESCRIPTION, FIELD_DESCRIPTION, Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, false);
+      EntityModuleFactory.initialize(this);
     }
 
     private EntityUpdater<Pipeline> updater() {

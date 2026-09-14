@@ -77,7 +77,7 @@ class DataContractFieldSupportTest {
               new EntityPolicyContext.Schema<>("/tables", "table", Table.class, entityDAO),
               new EntityPolicyContext.WriteFields("", "", Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, true);
+      EntityModuleFactory.initialize(this);
     }
 
     @Override
@@ -120,7 +120,7 @@ class DataContractFieldSupportTest {
               new EntityPolicyContext.Schema<>("/bots", "bot", Bot.class, entityDAO),
               new EntityPolicyContext.WriteFields("", "", Set.of()),
               EntityModuleDependencies.standard());
-      EntityModuleFactory.initialize(this, true);
+      EntityModuleFactory.initialize(this);
     }
 
     @Override

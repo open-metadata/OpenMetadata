@@ -35,7 +35,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -45,7 +44,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
@@ -330,13 +328,7 @@ public class AbstractNativeApplication implements NativeApplication {
     App jobApp =
         appRepository
             .reads()
-            .byName(
-                appName,
-                new EntityReadService.Query(
-                    null,
-                    appRepository.fieldPolicy().parse("bot"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    true));
+            .byName(appName, appRepository.fieldPolicy().parse("bot"), Include.NON_DELETED, true);
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     jobApp.setAppConfiguration(
         JsonUtils.getMapFromJson(

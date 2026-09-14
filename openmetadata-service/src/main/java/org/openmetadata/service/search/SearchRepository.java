@@ -151,7 +151,6 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.read.EntityCollectionReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.QueryRepository;
@@ -183,7 +182,6 @@ import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -2027,11 +2025,9 @@ public class SearchRepository {
             .reads()
             .byId(
                 entityReference.getId(),
-                new EntityReadService.Query(
-                    null,
-                    entityRepository.fieldPolicy().supported(fields),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                entityRepository.fieldPolicy().supported(fields),
+                Include.NON_DELETED,
+                false);
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
   }
@@ -2064,11 +2060,9 @@ public class SearchRepository {
             .reads()
             .byId(
                 entityReference.getId(),
-                new EntityReadService.Query(
-                    null,
-                    entityRepository.fieldPolicy().supported(fields),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                entityRepository.fieldPolicy().supported(fields),
+                Include.NON_DELETED,
+                false);
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
     propagateInheritedDomainsForType(

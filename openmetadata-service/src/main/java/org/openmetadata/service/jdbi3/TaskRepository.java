@@ -63,7 +63,6 @@ import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityPagePolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
@@ -171,7 +170,7 @@ public class TaskRepository implements EntityPolicy<Task> {
                 "assignees,reviewers,watchers,about,createdBy,comments",
                 Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     context().options().setQuoteFqn(false);
     context().allowedFields().add(FIELD_ASSIGNEES);
@@ -195,7 +194,7 @@ public class TaskRepository implements EntityPolicy<Task> {
                 "assignees,reviewers,watchers,about,createdBy,comments",
                 Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     context().options().setQuoteFqn(false);
     context().allowedFields().add(FIELD_ASSIGNEES);
@@ -532,11 +531,9 @@ public class TaskRepository implements EntityPolicy<Task> {
               .reads()
               .byId(
                   about.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      targetRepo.fieldPolicy().parse(FIELD_DOMAINS),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  targetRepo.fieldPolicy().parse(FIELD_DOMAINS),
+                  Include.NON_DELETED,
+                  false);
       // Extract domains from target entity using reflection
       List<EntityReference> targetDomains = extractDomainsFromEntity(targetEntity);
       task.setDomains(targetDomains);
@@ -945,13 +942,11 @@ public class TaskRepository implements EntityPolicy<Task> {
         reads()
             .byId(
                 reopened.getId(),
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy()
-                        .parse(
-                            "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution,availableTransitions"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                fieldPolicy()
+                    .parse(
+                        "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution,availableTransitions"),
+                Include.NON_DELETED,
+                false);
     // Use the trigger's own success signal: a null workflowInstanceId would also appear if the
     // workflow started then immediately completed, and the failure-marker stage is brittle to
     // match.
@@ -1232,15 +1227,7 @@ public class TaskRepository implements EntityPolicy<Task> {
    * Called by TaskWorkflowHandler after workflow processing.
    */
   public Task persistApprover(UUID taskId, EntityReference approver, String updatedBy) {
-    Task original =
-        reads()
-            .byId(
-                taskId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+    Task original = reads().byId(taskId, fieldPolicy().parse("*"), Include.NON_DELETED, false);
     Task updated = JsonUtils.deepCopy(original, Task.class);
     updated.setApprovedBy(approver);
     updated.setApprovedById(approver.getId() != null ? approver.getId().toString() : null);
@@ -1261,14 +1248,7 @@ public class TaskRepository implements EntityPolicy<Task> {
     // in-memory copy which may already have staged fields (e.g., workflowStageId)
     // set by applyTaskResolution, so we can't use it as the pre-image.
     Task original =
-        reads()
-            .byId(
-                task.getId(),
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+        reads().byId(task.getId(), fieldPolicy().parse("*"), Include.NON_DELETED, false);
     TaskEntityStatus newStatus = mapResolutionToStatus(resolution.getType());
     task.setStatus(newStatus);
     task.setResolution(resolution);
@@ -1409,13 +1389,10 @@ public class TaskRepository implements EntityPolicy<Task> {
     return reads()
         .byId(
             task.getId(),
-            new EntityReadService.Query(
-                null,
-                fieldPolicy()
-                    .parse(
-                        "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution"),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+            fieldPolicy()
+                .parse("assignees,reviewers,watchers,about,domains,createdBy,payload,resolution"),
+            Include.NON_DELETED,
+            false);
   }
 
   /**
@@ -1600,14 +1577,7 @@ public class TaskRepository implements EntityPolicy<Task> {
     for (CollectionDAO.EntityRelationshipRecord record : taskRecords) {
       try {
         Task task =
-            reads()
-                .byId(
-                    record.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        fieldPolicy().parse("status"),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+            reads().byId(record.getId(), fieldPolicy().parse("status"), Include.NON_DELETED, false);
         if (task.getStatus() == TaskEntityStatus.Open
             || task.getStatus() == TaskEntityStatus.InProgress
             || task.getStatus() == TaskEntityStatus.Pending) {

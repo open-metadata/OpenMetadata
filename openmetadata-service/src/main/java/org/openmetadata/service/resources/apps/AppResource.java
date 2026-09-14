@@ -204,13 +204,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     try {
       return repository
           .reads()
-          .byName(
-              appName,
-              new EntityReadService.Query(
-                  null,
-                  repository.fieldPolicy().parse("bot,pipelines"),
-                  RelationIncludes.fromInclude(ALL),
-                  false));
+          .byName(appName, repository.fieldPolicy().parse("bot,pipelines"), ALL, false);
     } catch (EntityNotFoundException ex) {
       return null;
     }
@@ -1016,13 +1010,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app =
         repository
             .reads()
-            .byId(
-                id,
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse("bot,pipelines"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(id, repository.fieldPolicy().parse("bot,pipelines"), Include.NON_DELETED, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));

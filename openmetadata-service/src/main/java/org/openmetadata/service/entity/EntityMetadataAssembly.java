@@ -232,11 +232,6 @@ final class EntityMetadataAssembly {
         TagLabelUtil::applyTagCommonFieldsGracefully);
   }
 
-  static <T extends EntityInterface> EntityTagReader<T> assembleTagReader(
-      EntityPolicyContext<T> context) {
-    return EntityMetadataAssembly.createTagReader(context);
-  }
-
   static <T extends EntityInterface> EntityMetadataReads<T> assembleMetadataReads(
       EntityPolicyContext<T> context) {
     return new EntityMetadataReads<>(
@@ -270,7 +265,7 @@ final class EntityMetadataAssembly {
     context.services().tagWriter = EntityMetadataAssembly.assembleTagWriter(context);
     context.services().certificationService =
         EntityMetadataAssembly.assembleCertificationService(context);
-    context.services().tagReader = EntityMetadataAssembly.assembleTagReader(context);
+    context.services().tagReader = EntityMetadataAssembly.createTagReader(context);
     context.services().metadataReads = EntityMetadataAssembly.assembleMetadataReads(context);
   }
 }

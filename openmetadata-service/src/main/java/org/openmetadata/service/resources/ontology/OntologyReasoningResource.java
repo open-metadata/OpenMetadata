@@ -32,7 +32,6 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.inference.InferenceExplanationService;
@@ -41,7 +40,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/ontology/reasoning")
 @Tag(name = "Ontology Reasoning", description = "Scoped materialized-inference explanations.")
@@ -91,11 +89,9 @@ public final class OntologyReasoningResource {
         .reads()
         .byId(
             request.getGlossaryId(),
-            new EntityReadService.Query(
-                null,
-                glossaryRepository.fieldPolicy().parse("owners"),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+            glossaryRepository.fieldPolicy().parse("owners"),
+            Include.NON_DELETED,
+            false);
   }
 
   private void authorizeView(final SecurityContext securityContext, final Glossary glossary) {

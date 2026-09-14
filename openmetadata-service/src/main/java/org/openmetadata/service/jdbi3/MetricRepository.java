@@ -104,7 +104,7 @@ public class MetricRepository implements EntityPolicy<Metric> {
                 Entity.getCollectionDAO().metricDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     context().options().setRenameAllowed(true);
     // Register bulk field fetchers for efficient database operations

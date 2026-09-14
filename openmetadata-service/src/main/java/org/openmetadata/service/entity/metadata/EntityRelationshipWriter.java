@@ -18,7 +18,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 public final class EntityRelationshipWriter {
   public record Edge(
       UUID fromId, UUID toId, String fromType, String toType, Relationship relation) {
-    private Edge reverse() {
+    Edge reverse() {
       return new Edge(toId, fromId, toType, fromType, relation);
     }
 
@@ -211,6 +211,20 @@ public final class EntityRelationshipWriter {
       ordered.sort(INSERT_ORDER);
       relationships.get().bulkInsertTo(ordered);
     }
+  }
+
+  public <T> void insertMany(
+      final List<T> entities, final BiConsumer<T, Consumer<Edge>> definition) {
+    final List<EntityRelationshipObject> rows = new ArrayList<>();
+    final Consumer<Edge> collect =
+        edge -> {
+          if (edge.fromId() != null) {
+            rows.add(
+                row(edge.fromId(), edge.toId(), edge.fromType(), edge.toType(), edge.relation()));
+          }
+        };
+    entities.forEach(entity -> definition.accept(entity, collect));
+    insertMany(rows);
   }
 
   public static EntityRelationshipObject row(

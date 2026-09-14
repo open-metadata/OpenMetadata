@@ -26,7 +26,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -34,7 +33,6 @@ import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /**
@@ -488,13 +486,7 @@ public class ContextFileProcessingService {
     try {
       return repository
           .reads()
-          .byId(
-              fileId,
-              new EntityReadService.Query(
-                  null,
-                  repository.fieldPolicy().parse(""),
-                  RelationIncludes.fromInclude(Include.NON_DELETED),
-                  false));
+          .byId(fileId, repository.fieldPolicy().parse(""), Include.NON_DELETED, false);
     } catch (Exception e) {
       return null;
     }

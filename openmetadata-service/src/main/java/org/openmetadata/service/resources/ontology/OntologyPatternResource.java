@@ -36,7 +36,6 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyPatternCatalog;
@@ -46,7 +45,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/ontology/patterns")
 @Tag(name = "Ontology Patterns", description = "Governed Ontology modeling patterns.")
@@ -95,11 +93,9 @@ public final class OntologyPatternResource {
             .reads()
             .byId(
                 request.getGlossaryId(),
-                new EntityReadService.Query(
-                    null,
-                    glossaryRepository.fieldPolicy().parse(""),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                glossaryRepository.fieldPolicy().parse(""),
+                Include.NON_DELETED,
+                false);
     authorizeEdit(securityContext, glossary);
     return service.instantiate(uriInfo, glossary, request, requireUser(securityContext));
   }

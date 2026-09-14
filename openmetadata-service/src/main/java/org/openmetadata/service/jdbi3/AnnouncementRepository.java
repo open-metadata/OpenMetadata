@@ -37,7 +37,6 @@ import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
@@ -65,7 +64,7 @@ public class AnnouncementRepository implements EntityPolicy<Announcement> {
                 Entity.getCollectionDAO().announcementDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
     context().options().setQuoteFqn(false);
   }
@@ -77,7 +76,7 @@ public class AnnouncementRepository implements EntityPolicy<Announcement> {
                 COLLECTION_PATH, ANNOUNCEMENT, Announcement.class, initializeAnnouncementDao(jdbi)),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(false);
     context().options().setQuoteFqn(false);
   }
@@ -280,11 +279,9 @@ public class AnnouncementRepository implements EntityPolicy<Announcement> {
                 .reads()
                 .byId(
                     about.getId(),
-                    new EntityReadService.Query(
-                        null,
-                        targetRepo.fieldPolicy().parse(FIELD_DOMAINS),
-                        RelationIncludes.fromInclude(Include.NON_DELETED),
-                        false));
+                    targetRepo.fieldPolicy().parse(FIELD_DOMAINS),
+                    Include.NON_DELETED,
+                    false);
         announcement.setDomains(extractDomainsFromEntity(targetEntity));
       } catch (Exception e) {
         LOG.debug(

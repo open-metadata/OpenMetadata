@@ -74,7 +74,6 @@ import org.openmetadata.service.entity.metadata.InheritedReferences;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityCursor;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityOperation;
 import org.openmetadata.service.entity.write.EntitySpecificMutation;
@@ -130,7 +129,7 @@ public class TagRepository implements EntityPolicy<Tag> {
                 Entity.getCollectionDAO().tagDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setSupportsSearch(true);
     context().options().setRenameAllowed(true);
     // Initialize inherited field search
@@ -156,13 +155,7 @@ public class TagRepository implements EntityPolicy<Tag> {
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
     Tag tag =
         reads()
-            .byId(
-                tagId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,fullyQualifiedName"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(tagId, fieldPolicy().parse("id,fullyQualifiedName"), Include.NON_DELETED, false);
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for tag assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);
@@ -520,13 +513,7 @@ public class TagRepository implements EntityPolicy<Tag> {
     boolean dryRun = Boolean.TRUE.equals(addTagToAssetsRequest.getDryRun());
     Tag tag =
         this.reads()
-            .byId(
-                classificationTagId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(classificationTagId, fieldPolicy().parse("id"), Include.NON_DELETED, false);
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
@@ -563,11 +550,9 @@ public class TagRepository implements EntityPolicy<Tag> {
               .reads()
               .byId(
                   ref.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      entityRepository.fieldPolicy().parse("tags"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  entityRepository.fieldPolicy().parse("tags"),
+                  Include.NON_DELETED,
+                  false);
       try {
         Map<String, List<TagLabel>> allAssetTags =
             context()
@@ -686,13 +671,7 @@ public class TagRepository implements EntityPolicy<Tag> {
     boolean dryRun = Boolean.TRUE.equals(assetsRequest.getDryRun());
     Tag tag =
         this.reads()
-            .byId(
-                classificationTagId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(classificationTagId, fieldPolicy().parse("id"), Include.NON_DELETED, false);
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
@@ -722,11 +701,9 @@ public class TagRepository implements EntityPolicy<Tag> {
               .reads()
               .byId(
                   ref.getId(),
-                  new EntityReadService.Query(
-                      null,
-                      entityRepository.fieldPolicy().parse("id"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+                  entityRepository.fieldPolicy().parse("id"),
+                  Include.NON_DELETED,
+                  false);
       tagAssetRemoval.remove(
           tag.getFullyQualifiedName(),
           asset.getFullyQualifiedName(),
@@ -1323,15 +1300,7 @@ public class TagRepository implements EntityPolicy<Tag> {
 
   public ResultList<Recognizer> getRecognizersOfTagById(
       UUID tagId, String before, String after, int limit) {
-    Tag tag =
-        reads()
-            .byId(
-                tagId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("recognizers"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+    Tag tag = reads().byId(tagId, fieldPolicy().parse("recognizers"), Include.NON_DELETED, false);
     return getRecognizersOfTag(tag, before, after, limit);
   }
 

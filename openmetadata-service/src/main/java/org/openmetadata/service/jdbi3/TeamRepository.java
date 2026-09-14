@@ -101,7 +101,6 @@ import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.policy.EntityPolicyContext;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityOperation;
@@ -159,7 +158,7 @@ public class TeamRepository implements EntityPolicy<Team> {
                 Entity.getCollectionDAO().teamDAO()),
             new EntityPolicyContext.WriteFields(TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setQuoteFqn(true);
     context().options().setSupportsSearch(true);
     this.fieldLoading().register("users", this::fetchAndSetUsers);
@@ -676,13 +675,7 @@ public class TeamRepository implements EntityPolicy<Team> {
   public ResultList<EntityReference> getTeamAssets(UUID teamId, int limit, int offset) {
     Team team =
         reads()
-            .byId(
-                teamId,
-                new EntityReadService.Query(
-                    null,
-                    fieldPolicy().parse("id,fullyQualifiedName"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(teamId, fieldPolicy().parse("id,fullyQualifiedName"), Include.NON_DELETED, false);
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search is unavailable for team assets. Returning empty list.");
       return new ResultList<>(new ArrayList<>(), null, null, 0);

@@ -86,7 +86,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
@@ -95,7 +94,6 @@ import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.TokenUtil;
@@ -156,11 +154,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             .reads()
             .byId(
                 emailVerificationToken.getUserId(),
-                new EntityReadService.Query(
-                    null,
-                    userRepository.getFieldsWithUserAuth("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                userRepository.getFieldsWithUserAuth("*"),
+                Include.NON_DELETED,
+                false);
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
@@ -401,11 +397,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             .reads()
             .byId(
                 tokenInterface.getUserId(),
-                new EntityReadService.Query(
-                    null,
-                    userRepository.getFieldsWithUserAuth("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                userRepository.getFieldsWithUserAuth("*"),
+                Include.NON_DELETED,
+                false);
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
       throw new IllegalArgumentException("User are only allowed to login");
     }

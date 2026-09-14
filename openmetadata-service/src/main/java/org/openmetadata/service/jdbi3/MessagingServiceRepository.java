@@ -43,7 +43,7 @@ public class MessagingServiceRepository
                 Entity.getCollectionDAO().messagingServiceDAO()),
             new EntityPolicyContext.WriteFields("", UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     this.serviceOperations =
         EntityServiceAssembly.create(this, MessagingConnection.class, ServiceType.MESSAGING);
     context().options().setQuoteFqn(true);

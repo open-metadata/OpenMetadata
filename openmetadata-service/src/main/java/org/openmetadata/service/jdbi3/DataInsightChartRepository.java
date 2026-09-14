@@ -120,7 +120,7 @@ public class DataInsightChartRepository implements EntityPolicy<DataInsightChart
                 Entity.getCollectionDAO().dataInsightChartDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

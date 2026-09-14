@@ -16,11 +16,9 @@ package org.openmetadata.service.ontology;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.ontology.OntologyStructuralDiffService.TermReader;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 final class RepositoryOntologyStructuralTermReader implements TermReader {
   private static final String STRUCTURAL_FIELDS =
@@ -35,11 +33,6 @@ final class RepositoryOntologyStructuralTermReader implements TermReader {
 
   @Override
   public GlossaryTerm read(final UUID termId) {
-    return repository
-        .reads()
-        .byId(
-            termId,
-            new EntityReadService.Query(
-                null, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
+    return repository.reads().byId(termId, fields, Include.NON_DELETED, false);
   }
 }

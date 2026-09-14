@@ -61,7 +61,7 @@ public class KpiRepository implements EntityPolicy<Kpi> {
                 KpiResource.COLLECTION_PATH, KPI, Kpi.class, Entity.getCollectionDAO().kpiDAO()),
             new EntityPolicyContext.WriteFields(PATCH_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

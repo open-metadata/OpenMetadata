@@ -94,6 +94,7 @@ class ContextMemoryRepositoryTest {
 
   @Test
   void entityFacade_isSearchIndexable_trueForRestrictedMemories() {
+    Entity.registerEntity(ContextMemory.class, Entity.CONTEXT_MEMORY, repository);
     assertTrue(Entity.isSearchIndexable(memory(MemoryVisibility.ENTITY)));
     assertTrue(Entity.isSearchIndexable(memory(MemoryVisibility.PRIVATE)));
     assertTrue(Entity.isSearchIndexable(memory(MemoryVisibility.SHARED)));

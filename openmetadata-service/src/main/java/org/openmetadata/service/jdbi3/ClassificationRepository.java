@@ -99,7 +99,7 @@ public class ClassificationRepository implements EntityPolicy<Classification> {
                 Entity.getCollectionDAO().classificationDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     context().options().setQuoteFqn(true);
     context().options().setSupportsSearch(true);
     context().options().setRenameAllowed(true);

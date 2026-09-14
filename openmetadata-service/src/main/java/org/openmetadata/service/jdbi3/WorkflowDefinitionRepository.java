@@ -52,7 +52,7 @@ public class WorkflowDefinitionRepository implements EntityPolicy<WorkflowDefini
                 Entity.getCollectionDAO().workflowDefinitionDAO()),
             new EntityPolicyContext.WriteFields("", "", Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
   }
 
   @Override

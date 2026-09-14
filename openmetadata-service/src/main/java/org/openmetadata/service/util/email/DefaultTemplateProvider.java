@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -17,21 +18,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.EmailTemplatePlaceholder;
 import org.openmetadata.schema.email.TemplateValidationResponse;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.DocumentRepository;
 
 @Slf4j
 public class DefaultTemplateProvider implements TemplateProvider {
-  private final DocumentRepository documentRepository;
+  private final Function<String, EmailTemplate> templates;
   public static final String ENTITY_TYPE_EMAIL_TEMPLATE = "EmailTemplate";
 
-  public DefaultTemplateProvider() {
-    this.documentRepository = (DocumentRepository) Entity.getEntityRepository(Entity.DOCUMENT);
+  public DefaultTemplateProvider(Function<String, EmailTemplate> templates) {
+    this.templates = templates;
   }
 
   @Override
   public Template getTemplate(String templateName) throws IOException {
-    EmailTemplate emailTemplate = documentRepository.fetchEmailTemplateByName(templateName);
+    EmailTemplate emailTemplate = templates.apply(templateName);
     String template = emailTemplate.getTemplate();
     if (nullOrEmpty(template)) {
       throw new IOException("Template content not found for template: " + templateName);
@@ -55,7 +54,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
   @Override
   public TemplateValidationResponse validateEmailTemplate(String docName, String actualContent) {
     Set<String> expectedPlaceholders =
-        documentRepository.fetchEmailTemplateByName(docName).getPlaceHolders().stream()
+        templates.apply(docName).getPlaceHolders().stream()
             .map(EmailTemplatePlaceholder::getName)
             .collect(Collectors.toSet());
     Set<String> actualPlaceholders = extractPlaceholders(actualContent);

@@ -65,7 +65,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -75,7 +74,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -590,11 +588,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             .reads()
             .byId(
                 tokenInterface.getUserId(),
-                new EntityReadService.Query(
-                    null,
-                    userRepository.getFieldsWithUserAuth("*"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                userRepository.getFieldsWithUserAuth("*"),
+                Include.NON_DELETED,
+                false);
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
       throw new IllegalArgumentException("User are only allowed to login");
     }

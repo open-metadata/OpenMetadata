@@ -35,11 +35,9 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Evaluates a small set of always-on AI governance policies against an entity.
@@ -389,13 +387,7 @@ final class PolicyEvaluator {
           (AIGovernancePolicyRepository) Entity.getEntityRepository(Entity.AI_GOVERNANCE_POLICY);
       AIGovernancePolicy policy =
           repo.reads()
-              .byId(
-                  policyId,
-                  new EntityReadService.Query(
-                      null,
-                      repo.fieldPolicy().parse("id,name"),
-                      RelationIncludes.fromInclude(Include.NON_DELETED),
-                      false));
+              .byId(policyId, repo.fieldPolicy().parse("id,name"), Include.NON_DELETED, false);
       String name =
           policy == null || policy.getName() == null
               ? ""

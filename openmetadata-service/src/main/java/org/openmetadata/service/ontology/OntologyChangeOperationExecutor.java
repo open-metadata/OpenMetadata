@@ -33,11 +33,9 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 public final class OntologyChangeOperationExecutor {
   private static final String TERM_EDIT_FIELDS = "attributes,conceptMappings";
@@ -200,24 +198,16 @@ public final class OntologyChangeOperationExecutor {
             .reads()
             .byId(
                 termId,
-                new EntityReadService.Query(
-                    null,
-                    termRepository.fieldPolicy().parse(TERM_EDIT_FIELDS),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                termRepository.fieldPolicy().parse(TERM_EDIT_FIELDS),
+                Include.NON_DELETED,
+                false);
     return JsonUtils.deepCopy(term, GlossaryTerm.class);
   }
 
   private GlossaryTerm term(final UUID termId, final Include include) {
     return termRepository
         .reads()
-        .byId(
-            termId,
-            new EntityReadService.Query(
-                null,
-                termRepository.fieldPolicy().parse(""),
-                RelationIncludes.fromInclude(include),
-                false));
+        .byId(termId, termRepository.fieldPolicy().parse(""), include, false);
   }
 
   private OperationOutcome persistTerm(
@@ -255,11 +245,9 @@ public final class OntologyChangeOperationExecutor {
             .reads()
             .byId(
                 operation.getTargetId(),
-                new EntityReadService.Query(
-                    null,
-                    axiomRepository.fieldPolicy().parse(""),
-                    RelationIncludes.fromInclude(Include.ALL),
-                    false));
+                axiomRepository.fieldPolicy().parse(""),
+                Include.ALL,
+                false);
     final OntologyAxiom deleted =
         Boolean.TRUE.equals(axiom.getDeleted())
             ? axiom

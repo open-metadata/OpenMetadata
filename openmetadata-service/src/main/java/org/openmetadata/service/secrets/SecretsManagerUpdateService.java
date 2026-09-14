@@ -33,7 +33,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.read.EntityPageReader;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.service.EntityServicePolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SecretsManagerUpdateException;
@@ -44,7 +43,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Update service using the configured secret manager.
@@ -316,11 +314,9 @@ public class SecretsManagerUpdateService {
                   .reads()
                   .byId(
                       pipeline.getId(),
-                      new EntityReadService.Query(
-                          null,
-                          ingestionPipelineRepository.fieldPolicy().parse("service"),
-                          RelationIncludes.fromInclude(Include.NON_DELETED),
-                          false));
+                      ingestionPipelineRepository.fieldPolicy().parse("service"),
+                      Include.NON_DELETED,
+                      false);
           if (fullPipeline != null && fullPipeline.getService() != null) {
             validPipelines.add(fullPipeline);
           }

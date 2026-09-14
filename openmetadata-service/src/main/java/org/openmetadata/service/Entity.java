@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.entity.EntityModule;
+import org.openmetadata.service.entity.EntityModuleFactory;
 import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.entity.read.EntityCollectionReader;
 import org.openmetadata.service.entity.read.EntityReadService;
@@ -548,25 +549,15 @@ public final class Entity {
       tokenRepository = new TokenRepository();
       policyRepository = new PolicyRepository();
       roleRepository = new RoleRepository();
+      registerEntity(policyRepository.getEntityClass(), POLICY, policyRepository);
+      registerEntity(roleRepository.getEntityClass(), ROLE, roleRepository);
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           // Don't instantiate abstract classes
           continue;
         }
-        try {
-          clz.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-          try {
-            clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class).newInstance(config);
-          } catch (Exception ex) {
-            try {
-              clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
-            } catch (Exception exception) {
-              LOG.warn("Exception encountered", exception);
-            }
-          }
-        }
+        EntityModuleFactory.create(clz, config, jdbi);
       }
       registerDomainSyncHandler();
       validateIndexMappingsAgainstCapabilities();
@@ -853,13 +844,7 @@ public final class Entity {
         (T)
             entityRepository
                 .reads()
-                .byId(
-                    id,
-                    new EntityReadService.Query(
-                        null,
-                        entityRepository.fieldPolicy().parse(fields),
-                        RelationIncludes.fromInclude(include),
-                        fromCache));
+                .byId(id, entityRepository.fieldPolicy().parse(fields), include, fromCache);
     return entity;
   }
 
@@ -878,13 +863,7 @@ public final class Entity {
         (T)
             entityRepository
                 .reads()
-                .byName(
-                    fqn,
-                    new EntityReadService.Query(
-                        null,
-                        entityRepository.fieldPolicy().parse(fields),
-                        RelationIncludes.fromInclude(include),
-                        fromCache));
+                .byName(fqn, entityRepository.fieldPolicy().parse(fields), include, fromCache);
     return entity;
   }
 
@@ -924,11 +903,9 @@ public final class Entity {
                 .reads()
                 .byName(
                     fqn,
-                    new EntityReadService.Query(
-                        null,
-                        entityRepository.fieldPolicy().excluding(excludeFields),
-                        RelationIncludes.fromInclude(include),
-                        fromCache));
+                    entityRepository.fieldPolicy().excluding(excludeFields),
+                    include,
+                    fromCache);
     return entity;
   }
 

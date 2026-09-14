@@ -41,14 +41,12 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.entity.policy.EntityPolicy;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 final class AIGovernanceWorkflowService {
@@ -173,11 +171,9 @@ final class AIGovernanceWorkflowService {
         .reads()
         .byId(
             UUID.fromString(id),
-            new EntityReadService.Query(
-                null,
-                repository.fieldPolicy().parse("owners,tags,domains,extension"),
-                RelationIncludes.fromInclude(Include.NON_DELETED),
-                false));
+            repository.fieldPolicy().parse("owners,tags,domains,extension"),
+            Include.NON_DELETED,
+            false);
   }
 
   private void assertSupported(String entityType) {

@@ -60,7 +60,7 @@ public class OntologyAxiomRepository implements EntityPolicy<OntologyAxiom> {
                 Entity.getCollectionDAO().ontologyAxiomDAO()),
             new EntityPolicyContext.WriteFields(UPDATE_FIELDS, UPDATE_FIELDS, Set.of()),
             EntityModuleDependencies.standard());
-    EntityModuleFactory.initialize(this, true);
+    EntityModuleFactory.initialize(this);
     final RelationshipTypeResolver relationshipTypes =
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
     profileGuard =

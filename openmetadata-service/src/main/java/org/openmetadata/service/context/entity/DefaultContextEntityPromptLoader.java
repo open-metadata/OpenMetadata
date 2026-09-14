@@ -18,7 +18,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
@@ -26,7 +25,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 class DefaultContextEntityPromptLoader implements ContextEntityPromptLoader {
@@ -100,11 +98,9 @@ class DefaultContextEntityPromptLoader implements ContextEntityPromptLoader {
             .reads()
             .byId(
                 reference.getId(),
-                new EntityReadService.Query(
-                    null,
-                    contextFileRepository.fieldPolicy().parse("folder"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                contextFileRepository.fieldPolicy().parse("folder"),
+                Include.NON_DELETED,
+                false);
 
     String extractedText = resolveExtractedText(file);
     String summary = normalize(file.getDescription());
@@ -129,13 +125,7 @@ class DefaultContextEntityPromptLoader implements ContextEntityPromptLoader {
     Page page =
         knowledgeCenterRepository
             .reads()
-            .byId(
-                reference.getId(),
-                new EntityReadService.Query(
-                    null,
-                    EntityUtil.Fields.EMPTY_FIELDS,
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+            .byId(reference.getId(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED, false);
 
     StringBuilder body = new StringBuilder();
     String description = normalize(page.getDescription());

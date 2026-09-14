@@ -41,12 +41,10 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner.Claims;
-import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 /** Computes version-bound ontology impacts and enforces their confirmation at deletion time. */
@@ -105,11 +103,9 @@ public final class OntologyImpactService {
             .reads()
             .byId(
                 termId,
-                new EntityReadService.Query(
-                    null,
-                    repository.fieldPolicy().parse("relatedTerms,conceptMappings"),
-                    RelationIncludes.fromInclude(Include.NON_DELETED),
-                    false));
+                repository.fieldPolicy().parse("relatedTerms,conceptMappings"),
+                Include.NON_DELETED,
+                false);
     return new ImpactSnapshot(term, dependencies(term));
   }
 
