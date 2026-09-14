@@ -85,6 +85,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 @Repository
@@ -1284,10 +1285,39 @@ public class TaskRepository extends EntityRepository<Task> {
 
   /**
    * Persist a status or resolution change through the {@link EntityUpdater}, so it gets its own
-   * version and a changeDescription that describes exactly this change.
+   * version and a changeDescription that describes exactly this change, and record its change
+   * event.
    */
   private Task persistLifecycleChange(Task original, Task updated, String user) {
-    return update(null, original, updated, user).getEntity();
+    PutResponse<Task> response = update(null, original, updated, user);
+    recordTaskChangeEvent(response, user);
+    return response.getEntity();
+  }
+
+  /**
+   * Persist a stage change made by the task's governance workflow. It records a change event like
+   * any other lifecycle change, except when it binds a just-created task to its workflow: that
+   * write completes the creation and is not a change a subscriber should hear about.
+   */
+  public Task updateWorkflowStage(Task current, Task desired, String user) {
+    PutResponse<Task> response = update(null, current, desired, user);
+    if (!PENDING_WORKFLOW_START_STAGE_ID.equals(current.getWorkflowStageId())) {
+      recordTaskChangeEvent(response, user);
+    }
+    return response.getEntity();
+  }
+
+  /**
+   * Task lifecycle changes come from internal callers (workflows, incidents, bulk operations,
+   * timers) as well as REST calls, so the event is recorded here rather than by the REST response
+   * filter. Migrations replay historical task state and record nothing, like every other
+   * migration write.
+   */
+  private void recordTaskChangeEvent(PutResponse<Task> response, String user) {
+    if (!WorkflowHandler.isMigrationContext()) {
+      storeChangeEventForAsyncOperation(
+          response.getEntity(), response.getChangeType(), false, user);
+    }
   }
 
   private TaskEntityStatus mapResolutionToStatus(TaskResolutionType resolutionType) {
