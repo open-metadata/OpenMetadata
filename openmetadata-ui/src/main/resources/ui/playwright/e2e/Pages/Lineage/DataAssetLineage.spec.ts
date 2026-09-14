@@ -47,6 +47,7 @@ import {
   deleteNode,
   editLineage,
   editLineageClick,
+  expectLineageNodeVisible,
   fitToScreen,
   getEntityColumns,
   rearrangeNodes,
@@ -215,6 +216,11 @@ test.describe('Data asset lineage', () => {
         for (const entity of entities) {
           const { fullyQualifiedName, displayName, name } =
             entity.entityResponseData;
+          // Opening the drawer narrows the canvas and closing it widens it
+          // again, so each iteration moves every node. Put the camera back on
+          // this one before clicking: React Flow pans rather than scrolls, so
+          // Playwright cannot bring an off-camera node into reach by itself.
+          await expectLineageNodeVisible(page, fullyQualifiedName);
           await page
             .getByTestId(`lineage-node-${fullyQualifiedName}`)
             .getByTestId('entity-header-display-name')
