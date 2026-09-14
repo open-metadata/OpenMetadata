@@ -266,7 +266,11 @@ const DataProductListPage = ({
           return null;
       }
     },
-    [dataProductListing.actionHandlers.onEntityClick]
+    [
+      dataProductListing.actionHandlers.onEntityClick,
+      toOwnersWithHref,
+      renderOwnerContent,
+    ]
   );
 
   const selectedDataProductEntities = useMemo(
