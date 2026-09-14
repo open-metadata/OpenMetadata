@@ -246,7 +246,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                     onPress={() => onEditProperty(property)}
                   />
                 )}
-                {(canDelete || canEditAll) && (
+                {canEditAll && (
                   <Button
                     aria-label={t('label.delete')}
                     color="tertiary-destructive"
@@ -261,11 +261,11 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
         </Table.Row>
       );
     },
-    [canDelete, canEditAll, onEditProperty, t]
+    [canEditAll, onEditProperty, t]
   );
 
   const addButton =
-    canCreate || canEditAll ? (
+    canCreate ? (
       <Button
         color="primary"
         data-testid="add-custom-property-btn"
@@ -316,7 +316,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                   <div className="tw:min-h-[250px] tw:relative">
                     <EmptyPlaceholder
                       actions={
-                        canCreate || canEditAll
+                        canCreate
                           ? [
                               {
                                 key: 'add',
