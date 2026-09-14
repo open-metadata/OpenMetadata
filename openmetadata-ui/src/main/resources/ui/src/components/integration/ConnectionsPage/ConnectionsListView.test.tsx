@@ -150,6 +150,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    // Mirrors the real shape: an avatar that is a link, plus inert placeholder text. With an
+    // all-inert mock a blanket stopPropagation and a targeted one look identical, which is how the
+    // row shipped with a dead owners column.
+    Owner: () => (
+      <span data-testid="owner-label">
+        <a data-testid="owner-link" href="/users/alice">
+          alice
+        </a>
+        <span data-testid="owner-placeholder">No Owners</span>
+      </span>
+    ),
+    // The component maps API refs through the real conversion helper (re-exported from
+    // core-components) before handing them to the mocked Owner, so keep the real functions.
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
     // `onPress` is react-aria's activation handler; jsdom only fires DOM events, so it is mapped
     // onto onClick here. Without that, a button wired with onPress looks present but inert.
     Button: ({
@@ -319,20 +336,6 @@ jest.mock('./ConnectionsFilterButton', () => ({
       </div>
     );
   },
-}));
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  // Mirrors the real shape: an avatar that is a link, plus inert placeholder text. With an
-  // all-inert mock a blanket stopPropagation and a targeted one look identical, which is how the
-  // row shipped with a dead owners column.
-  OwnerLabel: () => (
-    <span data-testid="owner-label">
-      <a data-testid="owner-link" href="/users/alice">
-        alice
-      </a>
-      <span data-testid="owner-placeholder">No Owners</span>
-    </span>
-  ),
 }));
 
 jest.mock('./ConnectionsPageSkeleton', () => ({

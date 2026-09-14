@@ -77,10 +77,12 @@ test.describe('Domain Owner Management', () => {
       // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
-      const ownerItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      // main's #32252 made this option a `<button data-testid=
+      // "owner-option">`, so the listitem role is gone. Its locator, but
+      // not its retry loop -- the deterministic wait below replaced that.
+      const ownerItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
       await waitForSearchIndexed(
         apiContext,
@@ -228,10 +230,12 @@ test.describe('Domain Expert Management', () => {
       // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      // main's #32252 made this option a `<button data-testid=
+      // "owner-option">`, so the listitem role is gone. Its locator, but
+      // not its retry loop -- the deterministic wait below replaced that.
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
       await waitForSearchIndexed(
         apiContext,
@@ -414,10 +418,12 @@ test.describe('Data Product UI Operations', () => {
       // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
-      const ownerItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      // main's #32252 made this option a `<button data-testid=
+      // "owner-option">`, so the listitem role is gone. Its locator, but
+      // not its retry loop -- the deterministic wait below replaced that.
+      const ownerItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
       await waitForSearchIndexed(
         apiContext,

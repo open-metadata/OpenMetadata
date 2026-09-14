@@ -134,7 +134,7 @@ export class OverviewPageObject extends RightPanelBase {
     this.glossaryTermListContainer =
       this.page.getByTestId('glossary-container');
     this.userSearchBar = this.page.getByTestId('owner-select-users-search-bar');
-    this.userListItem = this.page.locator('.ant-list-item-main');
+    this.userListItem = this.page.locator('.selectable-list-item');
     this.userListContainer = this.page.getByTestId('user-tag');
     this.editOwnersIcon = this.getSummaryPanel().getByTestId('edit-owners');
     this.updateOwnersButton = this.page.getByTestId(
@@ -148,7 +148,7 @@ export class OverviewPageObject extends RightPanelBase {
       .locator('[data-testid="select-owner-tabs"] [role="tab"]')
       .first();
     this.selectOwnerTabsLoader = this.page.locator(
-      '[data-testid="select-owner-tabs"] .ant-spin-dot'
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]'
     );
     this.selectOwnerUsersTab = this.selectOwnerTabs.getByRole('tab', {
       name: 'Users',
@@ -156,7 +156,7 @@ export class OverviewPageObject extends RightPanelBase {
     this.teamsSearchBar = this.page.getByTestId(
       'owner-select-teams-search-bar'
     );
-    this.listItem = this.page.locator('.ant-list-item');
+    this.listItem = this.page.locator('.selectable-list-item');
     this.domainTreeNode = this.domainTree.locator('.ant-tree-treenode');
     this.clearTierButton = this.tierListContainer.getByTestId('clear-tier');
     this.tagsSection = this.container.locator('.tags-section, [class*="tags"]');
@@ -232,10 +232,6 @@ export class OverviewPageObject extends RightPanelBase {
     // Wait for the tag selection modal to be visible
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which
-    // carries the 'active' CSS class when the tag is already selected.
-    const tagItem = this.selectableList.getByTitle(tagName);
-
     // Wait for the ES search response as a deterministic signal that the
     // list has settled with its final options.
     const tagSearchResponse = this.page.waitForResponse(
@@ -255,6 +251,15 @@ export class OverviewPageObject extends RightPanelBase {
     await this.selectableList
       .getByTestId('loader')
       .waitFor({ state: 'hidden' });
+
+    // main's #32252 moved the 'active' class onto the .selectable-list-item
+    // button and dropped the title attribute this used to match, so the
+    // locator has to come from that side. Declared here rather than before
+    // the search because the list is only final once the response above has
+    // landed and the loader has gone.
+    const tagItem = this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: tagName });
     await expect(tagItem).toBeVisible({ timeout: 15_000 });
 
     // Only click if not already active — in parallel test runs another test may have added
@@ -290,10 +295,6 @@ export class OverviewPageObject extends RightPanelBase {
 
     await this.selectableList.waitFor({ state: 'visible' });
 
-    // Use getByTitle to target the outer .selectable-list-item wrapper, which
-    // carries the 'active' CSS class when the term is already selected.
-    const termItem = this.selectableList.getByTitle(termName);
-
     // Wait for the ES search response as a deterministic signal that the
     // list has settled with its final options.
     const termSearchResponse = this.page.waitForResponse(
@@ -315,6 +316,15 @@ export class OverviewPageObject extends RightPanelBase {
     await this.selectableList
       .getByTestId('loader')
       .waitFor({ state: 'hidden' });
+
+    // main's #32252 moved the 'active' class onto the .selectable-list-item
+    // button and dropped the title attribute this used to match, so the
+    // locator has to come from that side. Declared here rather than before
+    // the search because the list is only final once the response above has
+    // landed and the loader has gone.
+    const termItem = this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: termName });
     await expect(termItem).toBeVisible({ timeout: 15_000 });
     await termItem.scrollIntoViewIfNeeded();
 
@@ -436,11 +446,16 @@ export class OverviewPageObject extends RightPanelBase {
 
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
 
+    const ownerOption = this.page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner });
+    await ownerOption.waitFor({ state: 'visible' });
+
     const ownerPatchPromise = this.waitForPatchResponse();
     if (type === 'Teams') {
-      await this.page.getByRole('listitem', { name: owner }).click();
+      await ownerOption.click();
     } else {
-      await this.page.getByRole('listitem', { name: owner }).click();
+      await ownerOption.click();
       await this.updateOwnersButton.click();
     }
     await ownerPatchPromise;
@@ -550,7 +565,9 @@ export class OverviewPageObject extends RightPanelBase {
       .waitFor({ state: 'detached' });
 
     for (const tagName of tagDisplayNames) {
-      const tagOption = this.page.getByTitle(tagName);
+      const tagOption = this.selectableList
+        .locator('.selectable-list-item')
+        .filter({ hasText: tagName });
       await tagOption.waitFor({ state: 'visible' });
       // Only click if it's currently active (selected)
       const isActive = await tagOption.evaluate((el) =>
@@ -705,10 +722,12 @@ export class OverviewPageObject extends RightPanelBase {
     await expect(this.selectOwnerTabsLoader).toHaveCount(0);
 
     // Scope to the owner selection dropdown, not the whole page: a page-wide
-    // getByTitle also matches the entity's still-assigned owner chip in the
-    // panel, whose removal after the user hard-delete is eventually consistent
-    // and independent of this search-backed dropdown — the deleted-entity flake.
-    return this.selectOwnerTabs.getByTitle(ownerName);
+    // match also hits the entity's still-assigned owner chip in the panel, whose
+    // removal after the user hard-delete is eventually consistent and independent
+    // of this search-backed dropdown — the deleted-entity flake.
+    return this.selectOwnerTabs
+      .locator('.selectable-list-item')
+      .filter({ hasText: ownerName });
   }
 
   /**
@@ -737,11 +756,13 @@ export class OverviewPageObject extends RightPanelBase {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
-    // Scope to the tag selection dropdown, not the whole page: a page-wide
-    // getByTitle also matches the entity's still-assigned tag chip in the panel,
-    // whose removal after the tag hard-delete is eventually consistent and
-    // independent of this search-backed dropdown — the deleted-entity flake.
-    return this.selectableList.getByTitle(tagName);
+    // Scope to the tag selection dropdown, not the whole page: a page-wide match
+    // also hits the entity's still-assigned tag chip in the panel, whose removal
+    // after the tag hard-delete is eventually consistent and independent of this
+    // search-backed dropdown — the deleted-entity flake.
+    return this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: tagName });
   }
 
   /**
@@ -773,10 +794,12 @@ export class OverviewPageObject extends RightPanelBase {
       .waitFor({ state: 'detached' });
 
     // Scope to the glossary-term selection dropdown, not the whole page: a
-    // page-wide getByTitle also matches the entity's still-assigned term chip in
-    // the panel, whose removal after the term hard-delete is eventually
-    // consistent and independent of this search-backed dropdown — the flake.
-    return this.selectableList.getByTitle(termName);
+    // page-wide match also hits the entity's still-assigned term chip in the
+    // panel, whose removal after the term hard-delete is eventually consistent
+    // and independent of this search-backed dropdown — the deleted-entity flake.
+    return this.selectableList
+      .locator('.selectable-list-item')
+      .filter({ hasText: termName });
   }
 
   // ============ HELPER METHODS ============

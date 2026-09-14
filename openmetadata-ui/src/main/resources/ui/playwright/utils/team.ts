@@ -653,13 +653,13 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
 
   await page
     .locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
   ).toHaveClass(/active/);
 
@@ -741,13 +741,13 @@ export const addUserTeam = async (
 
   await page
     .locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+      `[data-testid="selectable-list"] .selectable-list-item:has-text("${user.getUserDisplayName()}")`
     )
   ).toHaveClass(/active/);
 

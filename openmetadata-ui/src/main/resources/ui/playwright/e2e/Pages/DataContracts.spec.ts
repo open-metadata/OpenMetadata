@@ -2485,9 +2485,8 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               await searchUser;
 
               await page
-                .getByRole('listitem', {
-                  name: adminUser.getUserDisplayName(),
-                })
+                .locator('[data-testid="owner-option"]')
+                .filter({ hasText: adminUser.getUserDisplayName() })
                 .click();
 
               const personaResponse =

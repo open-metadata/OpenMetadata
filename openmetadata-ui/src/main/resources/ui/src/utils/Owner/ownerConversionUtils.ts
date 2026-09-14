@@ -10,20 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../generated/tests/testCase';
 
-export interface NoOwnerFoundProps {
-  showDashPlaceholder?: boolean;
-  isCompactView: boolean;
-  placeHolder?: string;
-  showLabel?: boolean;
-  owners: EntityReference[];
-  hasPermission?: boolean;
-  onUpdate?: (owners?: EntityReference[]) => void;
-  multiple: {
-    user: boolean;
-    team: boolean;
-  };
-  tooltipText?: string;
-  className?: string;
-}
+// Re-exported from core-components so both OpenMetadata and Collate import
+// from the same canonical location: @openmetadata/ui-core-components.
+export { toOwnerRef, toOwnerRefs } from '@openmetadata/ui-core-components';
+export type { OwnerLike } from '@openmetadata/ui-core-components';

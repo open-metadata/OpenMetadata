@@ -250,10 +250,13 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
+      // main's #32252 turned this option into a `<button data-testid=
+      // "owner-option">`, so the listitem role this used to match is gone.
+      // Its locator, but not its five-attempt retry loop: the deterministic
+      // waitForSearchIndexed + exact response matcher below replaced that.
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
       await waitForSearchIndexed(
         apiContext,
