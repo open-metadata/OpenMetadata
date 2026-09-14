@@ -138,6 +138,19 @@ export const suppressCsvJobsTray = async (page: Page) => {
     .catch(() => undefined);
 };
 
+// A single click on the already-selected cell: picker columns open their editor
+// on click, so this is the only affordance that opens them without a second
+// press landing outside the popover and closing it again. #32252 removed this
+// helper but left the call in openOwnerPickerEditor, where the resulting
+// ReferenceError was swallowed by that loop's catch.
+const clickActiveGridCell = async (page: Page) => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+  await expect(activeCell).toHaveCount(1);
+  await scrollIntoViewCenter(activeCell);
+  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+  await activeCell.click({ force: true });
+};
+
 const doubleClickActiveGridCell = async (page: Page) => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
   await scrollIntoViewCenter(activeCell);
