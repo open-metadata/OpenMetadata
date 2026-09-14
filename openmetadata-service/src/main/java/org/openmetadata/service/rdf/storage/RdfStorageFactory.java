@@ -22,6 +22,16 @@ public class RdfStorageFactory {
    * - QLEVER: QLever server (not yet implemented)
    */
   public static RdfStorageInterface createStorage(RdfConfiguration config) {
+    return createStorage(config, null);
+  }
+
+  /**
+   * Create a storage instance bound to a specific dataset on the configured server, rather than
+   * the dataset named in the endpoint. Used by blue/green rebuilds, which write into an idle
+   * dataset while the configured one keeps serving. A null or blank name means "use the endpoint's
+   * dataset".
+   */
+  public static RdfStorageInterface createStorage(RdfConfiguration config, String datasetName) {
     RdfConfiguration.StorageType storageType = config.getStorageType();
 
     if (storageType == null) {
@@ -33,7 +43,7 @@ public class RdfStorageFactory {
 
     switch (storageType) {
       case FUSEKI:
-        return new JenaFusekiStorage(config);
+        return new JenaFusekiStorage(config, datasetName);
 
       case QLEVER:
         throw new UnsupportedOperationException(

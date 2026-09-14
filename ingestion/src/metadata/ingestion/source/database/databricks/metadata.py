@@ -116,6 +116,22 @@ _DESCRIBE_JSON_SUPPORTED_KEY = "databricks_describe_json_supported"
 _TABLE_TYPES_CACHE_KEY = "databricks_table_types"
 
 
+def _quote_identifier(identifier: str) -> str:
+    """Quote one Databricks identifier without interpreting dots as separators."""
+    escaped_identifier = identifier.replace("`", "``")
+    return f"`{escaped_identifier}`"
+
+
+def _qualified_identifier(*identifiers: str | None) -> str:
+    """Build a safely quoted Databricks identifier from individual name parts."""
+    return ".".join(_quote_identifier(identifier) for identifier in identifiers if identifier is not None)
+
+
+def _format_identifier_query(query: str, **identifiers: str) -> str:
+    """Format a query using only dialect-quoted identifier substitutions."""
+    return query.format(**{name: _quote_identifier(value) for name, value in identifiers.items()})
+
+
 class STRUCT(String):
     #  This class is added to support STRUCT datatype
     """The SQL STRUCT type."""
@@ -181,7 +197,12 @@ def _fetch_nested_descriptions_via_describe_json(
     """
     if not db_name or not schema:
         return {}
-    query = DATABRICKS_GET_TABLE_DESCRIBE_JSON.format(database_name=db_name, schema_name=schema, table_name=table_name)
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_DESCRIBE_JSON,
+        database_name=db_name,
+        schema_name=schema,
+        table_name=table_name,
+    )
     try:
         result = connection.execute(text(query)).fetchone()
         if not result or not result[0]:
@@ -343,7 +364,12 @@ def _fetch_table_describe_json(
     cached = info.get(_DESCRIBE_JSON_CACHE_KEY)
     if isinstance(cached, dict) and cache_key in cached:
         return cached[cache_key]
-    query = DATABRICKS_GET_TABLE_DESCRIBE_JSON.format(database_name=db_name, schema_name=schema, table_name=table_name)
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_DESCRIBE_JSON,
+        database_name=db_name,
+        schema_name=schema,
+        table_name=table_name,
+    )
     try:
         result = connection.execute(text(query)).fetchone()
     except Exception as err:  # pylint: disable=broad-except
@@ -375,7 +401,12 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
     # Using DESCRIBE works but is uglier.
     try:
         # This needs the table name to be unescaped (no backticks).
-        query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=db_name, schema_name=schema, table_name=table_name)
+        query = _format_identifier_query(
+            DATABRICKS_GET_TABLE_COMMENTS,
+            database_name=db_name,
+            schema_name=schema,
+            table_name=table_name,
+        )
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -621,7 +652,8 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     Returns comment of table
     """
-    query = DATABRICKS_GET_TABLE_COMMENTS.format(
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_COMMENTS,
         database_name=self.context.get().database,
         schema_name=schema_name,
         table_name=table_name,
@@ -719,7 +751,7 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f"{schema}.{table_name}" if schema else table_name
+    table_name = _qualified_identifier(schema, table_name)
     cursor = connection.execute(text(DATABRICKS_DDL.format(table_name=table_name)))
     try:
         result = cursor.fetchone()
@@ -784,7 +816,12 @@ def _get_schema_table_types(
     if database:
         try:
             rows = connection.execute(
-                text(DATABRICKS_GET_TABLE_TYPES.format(database_name=database)).bindparams(schema_name=schema)
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_TABLE_TYPES,
+                        database_name=database,
+                    )
+                ).bindparams(schema_name=schema)
             )
             table_types = {row[0]: row[1] for row in rows}
         except Exception as err:  # pylint: disable=broad-except
@@ -803,9 +840,14 @@ def get_table_type(self, connection, database, schema, table):
         if table in table_types:
             return table_types[table]
         if database:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=database, schema_name=schema, table_name=table)
+            query = _format_identifier_query(
+                DATABRICKS_GET_TABLE_COMMENTS,
+                database_name=database,
+                schema_name=schema,
+                table_name=table,
+            )
         else:
-            query = f"DESCRIBE TABLE EXTENDED `{schema}`.`{table}`"
+            query = f"DESCRIBE TABLE EXTENDED {_qualified_identifier(schema, table)}"
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -993,7 +1035,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
         if self.source_config.includeTags is False:
             return
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_CATALOGS_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
 
             for tag in tags:
                 self._add_to_tag_cache(
@@ -1005,7 +1054,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
             logger.debug(f"Failed to fetch catalog tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_SCHEMA_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 self._add_to_tag_cache(
                     self.schema_tags,
@@ -1016,7 +1072,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
             logger.debug(f"Failed to fetch schema tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_TABLE_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 self._add_to_tag_cache(
                     self.table_tags,
@@ -1027,7 +1090,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
             logger.debug(f"Failed to fetch table tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_COLUMN_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 tag_table_id = (tag.catalog_name, tag.schema_name, tag.table_name)
                 if self.column_tags.get(tag_table_id):
@@ -1221,7 +1291,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
     def get_schema_description(self, schema_name: str) -> str:
         description = None
         try:
-            query = DATABRICKS_GET_SCHEMA_COMMENTS.format(
+            query = _format_identifier_query(
+                DATABRICKS_GET_SCHEMA_COMMENTS,
                 database_name=self.context.get().database,
                 schema_name=schema_name,
             )
@@ -1256,7 +1327,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
         # Legacy path (Databricks Runtime < 16.2): parse the text DESCRIBE output.
         description = None
         try:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            query = _format_identifier_query(
+                DATABRICKS_GET_TABLE_COMMENTS,
                 database_name=database,
                 schema_name=schema_name,
                 table_name=table_name,
@@ -1309,7 +1381,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
                 owner = payload.owner
             else:
                 # Legacy path (Databricks Runtime < 16.2).
-                query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                query = _format_identifier_query(
+                    DATABRICKS_GET_TABLE_COMMENTS,
                     database_name=database,
                     schema_name=schema_name,
                     table_name=table_name,

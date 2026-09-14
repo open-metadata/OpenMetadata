@@ -27,16 +27,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  CHART_BLUE_1,
-  COLOR_GREY_300,
-  COLOR_GREY_400,
-  GRAY_600,
-  GREY_100,
-  GREY_200,
-} from '../../../constants/Color.constants';
-import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { ColumnProfile } from '../../../generated/entity/data/table';
+import { useChartColors } from '../../../hooks/useChartColors';
 import {
   axisTickFormatter,
   createHorizontalGridLineRenderer,
@@ -65,6 +57,9 @@ interface CustomYAxisTickProps {
   payload?: { value: string };
   selectedCategory: string | null;
   onCategoryClick: (categoryName: string) => void;
+  axisColor: string;
+  highlightedColor: string;
+  selectedColor: string;
 }
 
 const CustomYAxisTick = ({
@@ -73,6 +68,9 @@ const CustomYAxisTick = ({
   payload,
   selectedCategory,
   onCategoryClick,
+  axisColor,
+  highlightedColor,
+  selectedColor,
 }: CustomYAxisTickProps) => {
   if (!payload) {
     return null;
@@ -81,12 +79,12 @@ const CustomYAxisTick = ({
   const categoryName = payload.value;
   const isSelected = selectedCategory === categoryName;
   const isHighlighted = selectedCategory && selectedCategory !== categoryName;
+  let textColor = axisColor;
 
-  let tickFill = GRAY_600;
   if (isSelected) {
-    tickFill = CHART_BLUE_1;
+    textColor = selectedColor;
   } else if (isHighlighted) {
-    tickFill = COLOR_GREY_400;
+    textColor = highlightedColor;
   }
 
   return (
@@ -94,7 +92,7 @@ const CustomYAxisTick = ({
       <text
         cursor="pointer"
         dy={4}
-        fill={tickFill}
+        fill={textColor}
         fontSize={12}
         fontWeight={isSelected ? 600 : 400}
         opacity={isHighlighted ? 0.5 : 1}
@@ -114,6 +112,8 @@ const CardinalityDistributionChart = ({
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
   const { t } = useTranslation();
+  const { axis, cursorFill, emptyFill, grid, inactive, primary } =
+    useChartColors();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const firstDayAllUnique =
@@ -266,7 +266,7 @@ const CardinalityDistributionChart = ({
                           layout="vertical">
                           <CartesianGrid
                             horizontal={renderHorizontalGridLine}
-                            stroke={GRAPH_BACKGROUND_COLOR}
+                            stroke={grid}
                             strokeDasharray="3 3"
                             vertical={false}
                           />
@@ -287,7 +287,10 @@ const CardinalityDistributionChart = ({
                             padding={{ top: 16, bottom: 16 }}
                             tick={
                               <CustomYAxisTick
+                                axisColor={axis}
+                                highlightedColor={inactive}
                                 selectedCategory={selectedCategory}
+                                selectedColor={primary}
                                 onCategoryClick={handleCategoryClick}
                               />
                             }
@@ -298,8 +301,8 @@ const CardinalityDistributionChart = ({
                           <Tooltip
                             content={renderTooltip}
                             cursor={{
-                              fill: GREY_100,
-                              stroke: GREY_200,
+                              fill: cursorFill,
+                              stroke: grid,
                               strokeDasharray: '3 3',
                             }}
                           />
@@ -308,21 +311,14 @@ const CardinalityDistributionChart = ({
                             dataKey="percentage"
                             radius={[0, 8, 8, 0]}>
                             {graphData.map((entry) => {
-                              const isSelected =
-                                selectedCategory === entry.name;
                               const isHighlighted =
                                 selectedCategory &&
                                 selectedCategory !== entry.name;
 
-                              let cellFill = CHART_BLUE_1;
-                              if (!isSelected && isHighlighted) {
-                                cellFill = COLOR_GREY_300;
-                              }
-
                               return (
                                 <Cell
                                   cursor="pointer"
-                                  fill={cellFill}
+                                  fill={isHighlighted ? emptyFill : primary}
                                   key={`cell-${entry.name}`}
                                   opacity={isHighlighted ? 0.3 : 1}
                                   onClick={() =>

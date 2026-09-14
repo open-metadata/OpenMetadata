@@ -53,7 +53,7 @@ const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#F14C75',
+  color: '#C11574',
   icon: 'Cube01',
 };
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
@@ -131,9 +131,13 @@ test('Classification Page', async ({ page }) => {
     ).toBeVisible();
     await expect(page.locator('[data-testid="table"]')).toBeVisible();
 
-    await expect(
-      page.locator('.ant-table-thead > tr > .ant-table-cell')
-    ).toHaveText(['Enabled', 'Tag', 'Display Name', 'Description', 'Actions']);
+    await expect(page.locator('thead > tr > th')).toHaveText([
+      'Enabled',
+      'Tag',
+      'Display Name',
+      'Description',
+      'Actions',
+    ]);
   });
 
   await test.step('Disabled system tags should not render', async () => {

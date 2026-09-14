@@ -69,32 +69,13 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
+jest.mock('../atoms/Tag/ClassificationTag', () =>
+  jest
     .fn()
-    .mockImplementation(
-      ({ children, onClick, className, size, type, ...props }) => (
-        <button
-          className={className}
-          data-size={size}
-          data-testid="button"
-          data-type={type}
-          onClick={onClick}
-          {...props}>
-          {children}
-        </button>
-      )
-    ),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
-    )),
-  },
-}));
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    ))
+);
 
 // Mock SVG components
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
@@ -371,7 +352,6 @@ describe('TagsSection', () => {
     it('should render without crashing', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
 
@@ -443,9 +423,14 @@ describe('TagsSection', () => {
     it('should render tag items with correct structure', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('tag-tag1')).toBeInTheDocument();
-      expect(screen.getByTestId('tag-tag2')).toBeInTheDocument();
-      expect(screen.getByTestId('tag-tag3')).toBeInTheDocument();
+      const visibleTags = mockTags.slice(0, defaultProps.maxDisplayCount);
+
+      visibleTags.forEach((tag) => {
+        const tagItem = screen.getByTestId(`tag-${tag.tagFQN}`);
+
+        expect(tagItem).toBeInTheDocument();
+        expect(tagItem).toHaveTextContent(tag.displayName ?? '');
+      });
     });
   });
 

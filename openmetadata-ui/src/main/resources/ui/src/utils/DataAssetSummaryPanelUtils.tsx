@@ -11,18 +11,16 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
-import { lazy } from 'react';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import ClassificationTag from '../components/common/atoms/Tag/ClassificationTag';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ProfilerTabPath } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { EntityServiceUnion } from '../components/Explore/ExplorePage.interface';
-import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { NO_DATA } from '../constants/constants';
-import { TAG_START_WITH } from '../constants/Tag.constants';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -47,6 +45,7 @@ import {
 import { Table, TableType, TagLabel } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
+import { getTagName, getTagRedirectLink } from './TagsPureUtils';
 
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
@@ -61,21 +60,20 @@ import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
+import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
 
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
-  )
-);
-
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (
-    <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={tier} />
+    <ClassificationTag
+      color={tier.style?.color}
+      href={getTagRedirectLink(tier)}
+      icon={tier.style?.iconURL}
+      label={getTagName(tier)}
+      size="sm"
+    />
   ) : (
     NO_DATA
   );
@@ -102,10 +100,10 @@ const getCommonOverview = (
           {
             name: i18n.t('label.owner-plural'),
             value: (
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={owners}
+                owners={toOwnerRefs(owners ?? [])}
                 showLabel={false}
               />
             ),
@@ -763,7 +761,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -804,7 +802,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
@@ -853,7 +851,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18n.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
+      value: <Owner hasPermission={false} owners={toOwnerRefs(owners ?? [])} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     ...getCommonOverview({ domains }, false),
