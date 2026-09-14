@@ -32,7 +32,6 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import {
@@ -40,6 +39,7 @@ import {
   updateType,
 } from '../../../../../../rest/metadataTypeAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,
@@ -109,7 +109,8 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   const tableColumns = useMemo(() => getTableColumns(t), [t]);
 
-  const { canCreate, canDelete, canEditAll } = getDerivedPermissionFlags(permission);
+  const { canCreate, canDelete, canEditAll } =
+    getDerivedPermissionFlags(permission);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!propertyToDelete || !typeDetail) {
@@ -264,18 +265,17 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
     [canEditAll, onEditProperty, t]
   );
 
-  const addButton =
-    canCreate ? (
-      <Button
-        color="primary"
-        data-testid="add-custom-property-btn"
-        iconLeading={Expand}
-        isDisabled={isLoading}
-        size="sm"
-        onPress={onAddProperty}>
-        {t('label.add-entity', { entity: t('label.custom-property') })}
-      </Button>
-    ) : undefined;
+  const addButton = canCreate ? (
+    <Button
+      color="primary"
+      data-testid="add-custom-property-btn"
+      iconLeading={Expand}
+      isDisabled={isLoading}
+      size="sm"
+      onPress={onAddProperty}>
+      {t('label.add-entity', { entity: t('label.custom-property') })}
+    </Button>
+  ) : undefined;
 
   return (
     <>

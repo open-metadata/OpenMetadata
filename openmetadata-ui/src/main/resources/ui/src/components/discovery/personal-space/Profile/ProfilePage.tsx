@@ -19,19 +19,19 @@ import { isUndefined, omitBy } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
-import { userPermissions } from '../../../../utils/PermissionsUtils';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
+import { userPermissions } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';

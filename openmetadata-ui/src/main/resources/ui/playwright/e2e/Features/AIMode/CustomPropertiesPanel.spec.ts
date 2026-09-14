@@ -457,8 +457,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
  * start already authenticated without re-logging-in.
  */
 
-const TYPE_USER_AUTH_FILE =
-  'playwright/.auth/temp-type-permissions-user.json';
+const TYPE_USER_AUTH_FILE = 'playwright/.auth/temp-type-permissions-user.json';
 
 test.describe('Custom Properties Panel — non-admin user with type permissions', () => {
   test.use({ storageState: TYPE_USER_AUTH_FILE });
@@ -575,9 +574,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
         (p: { name: string }) => p.name !== typePropertyName
       );
       await apiContext.patch(`/api/v1/metadata/types/${typeData.id}`, {
-        data: [
-          { op: 'replace', path: '/customProperties', value: remaining },
-        ],
+        data: [{ op: 'replace', path: '/customProperties', value: remaining }],
         headers: { 'Content-Type': 'application/json-patch+json' },
       });
 
