@@ -74,17 +74,15 @@ TARGET_MS = 20 * 60 * 1000
 #   19 min × 1.23 = 1402 s  → 98 s of margin
 #   19 min × 1.32 = 1500 s  → break-even; tolerated tail is 1.32
 # 21 min was a stop-gap (#30784) to fit the lane under the old 24-shard
-# ceiling; the ceiling is now 28 (below), which is what actually makes a
+# ceiling; increasing that ceiling is what keeps a
 # 19-minute budget feasible again.
 COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
 EFFICIENCY = 0.85
-# Raised 24 → 28 together with the budget revert above. Current chromium
-# content (~71,700 predicted worker-seconds) needs 25 shards at a
-# 19-minute budget — over the old cap, which is exactly why #30784 had to
-# raise the budget instead. 28 leaves ~12% content-growth headroom before
-# planning aborts; if the lane grows past that, split heavy suites (see
-# AUDITED_PARALLEL_SUITES) before considering another cap raise.
-COMMON_MAX_SHARDS = 28
+# Full-run history now predicts ~84,600 worker-seconds, requiring at least
+# 30 shards at three workers and 85% efficiency within the 19-minute budget.
+# Splitting atomic suites cannot reduce that aggregate lower bound. Allow
+# 32 shards to retain the execution margin and modest content-growth headroom.
+COMMON_MAX_SHARDS = 32
 # Weight assigned to a test that has no timing evidence in `timing-baseline.json`
 # (or in any additional history payloads). Bumped from 20 s → 30 s alongside the
 # all-zero-history fix in `load_history`: a suite re-enabled after being

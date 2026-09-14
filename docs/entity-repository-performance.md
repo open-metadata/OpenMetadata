@@ -35,8 +35,8 @@ database. All 54 synchronous SQL totals fall, and single create, PUT, PATCH,
 delete and restore retain one owning commit per request. Existing bulk/import
 flush and feed boundaries remain distinct; asynchronous counters exclude worker SQL.
 
-These results cover the configured-Redis workload matrix; Redis-disabled measurements
-and background-worker SQL remain outside that matrix. Earlier comparisons used a
+These results cover the configured-Redis workload matrix; background-worker SQL
+remains outside that matrix. Earlier comparisons used a
 different workload order and recorded cache-coverage/recovery discrepancies. The matching
 control runs resolve those discrepancies without changing production cache behavior.
 One warm PostgreSQL run recorded a single extra settings lookup; two complete paired
@@ -58,7 +58,7 @@ The frozen v6 control manifest is
 `8ecaa4c68647a6edda4750423ff260ebc09233a700deaabf749e297279a2369b`;
 the shared v10 client manifest is
 `d7be9d1e33cff6bde65b00749d1260d73e14a94bb5a24556a9259dbacbdf52f5`.
-All twelve matching SQL comparisons now pass. Raw counts, DAO-method attribution,
+All twelve configured-Redis SQL comparisons pass. Raw counts, DAO-method attribution,
 state transitions and input hashes remain under `.context/entity-acceptance/` in
 `final-sql-comparison.json`, `final-*-comparison.csv` and `awake-*`.
 The [SQL comparison summary](assets/entity-repository-sql-comparisons.csv) records
@@ -67,6 +67,49 @@ each configuration and the SHA-256 of its complete workload-count comparison.
 All measurements above are instrumented SQL diagnostics and do not measure accepted
 latency. The preceding `.context/entity-acceptance/metrics-*` evidence retains its
 original configuration and does not replace these matching runs.
+
+### Redis-disabled SQL follow-up (2026-09-14)
+
+Four additional comparisons use the same frozen service artifacts, v6 controls and
+v10 client with Redis disabled on both databases. Each read comparison covers all
+78 workloads at widths 3/100/1,000, with five measured requests per revision; each
+write comparison covers 60 workloads with two measured requests per revision.
+Cache-state observations confirm that Redis is neither configured nor available.
+
+| Database | Lower/equal/higher read SQL totals | Lower/equal/higher synchronous write totals |
+| --- | ---: | ---: |
+| PostgreSQL | 69 / 9 / 0 | 53 / 1 / 0 |
+| MySQL | 69 / 9 / 0 | 54 / 0 / 0 |
+
+All 2,040 additional measured responses succeed, reads record no commits or
+rollbacks, and single-entity mutations retain one owning commit. Wall and monotonic
+clocks remain consistent under a scoped idle-sleep assertion. An initial read
+comparison correctly rejects unequal workload manifests; the retained original
+manifest is extended with the existing frozen column-page workload generator before
+the complete comparison passes.
+
+The sixteen configured-Redis and Redis-disabled comparisons contain 10,320 successful
+measured responses. Their [SQL summaries](assets/entity-repository-sql-comparisons.csv)
+include comparison hashes. Raw disabled-cache results and provenance remain in
+`.context/entity-acceptance/final-no-redis-sql-comparison.json` and `final-none-*`.
+These are SQL/commit diagnostics; disabled-cache latency and background mutation
+SQL remain unmeasured.
+
+### Companion Slack query scope
+
+Collate's Test Details modal scanned every test case with all fields before showing
+ten entries. The companion now reads the requested table's suite and one page of ten
+matching cases with only the latest result field, retaining the exact total count.
+This also prevents unrelated table tests from appearing in the modal.
+
+Real database tests reproduce 57 statements for a 12-test fixture and the incorrect
+scope before the fix. The same fixture passes a budget of at most six statements on
+MySQL and PostgreSQL with Redis. Fifteen modal cases cover scope, page limits, total
+count, results, soft deletion, missing entities and incident rendering; they and five
+transaction/cache compatibility cases pass on each database. All 628 existing Slack
+unit tests pass. These SQL counts concern modal construction, not HTTP latency.
+Companion artifact `1ac10d52…` differs from `9b48a927…` only in `SlackComponents.class`;
+the native artifact remains `854c3d28…`.
 
 ### Warm single-client latency
 

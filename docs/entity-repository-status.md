@@ -1,6 +1,6 @@
 # Entity module implementation status
 
-Checkpoint: integration with `main` at `68606d705a` and acceptance follow-up, 2026-09-13 UTC.
+Checkpoint: integration with `main` at `68606d705a` and acceptance follow-up, 2026-09-14 UTC.
 **Verification is in progress.**
 
 The worktree no longer contains `EntityRepository.java`, originally 13,569 lines.
@@ -49,6 +49,14 @@ for actionability. Its unbounded click prevented the outer retry from reopening 
 The click now has a bounded timeout, and retries preserve an already open menu. All three
 local browser runs verify table page size 25, Explore page size 50, and persistence on the
 Users page. Full Playwright lint passes with no errors.
+
+At checkpoint `bdfba3c88e`, all three native integration profiles pass, but Chromium
+planning fails before browser execution: current timing history requires at least
+30 shards under the existing 19-minute budget, exceeding the previous cap of 28.
+The planner cap is now 32, retaining three workers, the time budget and every test.
+All 114 planner regressions pass. Local discovery with the same timing artifacts
+plans all 3,947 Chromium tests in 30 shards, with a maximum prediction of 18.45 minutes.
+The new cap still requires CI validation. No workflow definition changes were made.
 
 Collate's hybrid-runner failure occurs before its browser tests: MinIO cannot pull the
 configured Docker Hub image. An isolated ARM64 Kind cluster reproduces `ImagePullBackOff`.
@@ -107,18 +115,20 @@ The [current SQL comparison](entity-repository-performance.md#metrics-and-rdf-fo
 retains the original artifact and separately records the preceding stage. Both
 databases have no higher SQL totals against the original in warm, cold, L1-cold,
 unavailable and recovered Redis read comparisons; all 54 synchronous mutation/CSV
-totals fall. The twelve comparisons contain 8,280 successful measured responses.
-Single-entity mutations retain one owning commit. Redis-disabled measurements and
-background-worker SQL remain outside this matrix. Instrumented SQL runs do not
-establish latency acceptance.
+totals fall. Four additional Redis-disabled comparisons pass on the same artifacts:
+each database has 69 lower and nine equal read totals, while synchronous writes have
+53 lower and one equal total on PostgreSQL and 54 lower totals on MySQL. The sixteen
+comparisons contain 10,320 successful measured responses. Single-entity mutations
+retain one owning commit. Background-worker SQL remains outside this matrix.
+Instrumented SQL runs do not establish latency acceptance.
 
 The latest native coverage report matches all 506 changed service sources and 1,109
 executable classes without class-file warnings. All 455 executable classes belonging
-to the 209 extracted component source files reach 90%, but 377 other changed executable
+to the 209 extracted component source files reach 90%, but 364 other changed executable
 classes remain below the whole-class
 threshold. The diagnostic report includes completed failing broad suites and is not
 regression acceptance. Collate's refreshed unit data plus matching historical API
-executions cover 50.14% of changed-source lines; 114 of 168 executable classes remain
+executions cover 51.82% of changed-source lines; 113 of 168 executable classes remain
 below 90%. Neither coverage gate is complete.
 
 Ten lineage API classes pass 184 cases on each database with Redis, with three skips
@@ -127,6 +137,23 @@ requests, malformed graph identities, dangling edges and synthetic counts restri
 to authorized aggregations. `LineageHydrator` reaches 97.16% line coverage, up from
 4.26%; these executions move five more classes above the threshold. Production class
 bytes remain identical to the frozen `854c3d28…` package.
+
+A further 48-class consumer selection passes 1,837 cases on each database, with
+23 skips, 132 configuration assumption aborts and no failures. It covers service
+overview, entity policies, bulk metadata, optimistic locking, orphan references and
+cache invalidation. Together with matching native executions from the Collate modal
+checks, this moves 13 more native classes above the coverage threshold.
+
+Collate's Slack Test Details modal previously loaded every test case and all fields,
+then displayed ten, including tests belonging to other tables. It now requests only
+the table's suite and one page of ten suite-filtered results, preserving the full
+count and latest result status. Real API regressions reproduce the scope error and
+57 SQL statements for a 12-test fixture; the fix uses at most six statements on
+both databases. All 15 modal cases and five owning-transaction/cache compatibility
+cases pass on each database, and all 628 existing Slack unit cases pass.
+`SlackComponents` reaches 97.04% coverage. Only its production class bytes change
+between companion service packages `9b48a927…` and `1ac10d52…`; native service bytes
+remain unchanged.
 
 The Collate refresh also aligns its JUnit modules through one BOM, rebuilds the local
 spec dependency and corrects stale default-value/date expectations. All 4,193 service
