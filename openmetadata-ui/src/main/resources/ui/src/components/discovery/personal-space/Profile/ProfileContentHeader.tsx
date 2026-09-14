@@ -27,6 +27,7 @@ export interface ProfileContentHeaderProps {
   description: string;
   /** Breadcrumb root crumb — the current item's group label (Account / Credentials). */
   breadcrumbRoot: string;
+  /**
    * When provided, replaces the auto-computed two-level breadcrumb.
    * Use for panels with deeper internal navigation (e.g. Access Control).
    */
