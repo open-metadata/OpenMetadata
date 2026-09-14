@@ -111,9 +111,31 @@ export const AvatarGroup = ({
     // No `title`: a title matching the display name collides with
     // `getByTitle()` owner-filter selectors (see owner-chip.tsx). Identity is
     // carried by `data-testid` and the avatar's `alt`.
-    const chip = (
-      <span className="tw:block" data-testid={nameStr} key={owner.id}>
+    //
+    // The `owner-link` wrapper with the name test id nested inside is the same
+    // shape OwnerChip documents for its non-compact branch, so `owner-link` ->
+    // name chains resolve for a stacked group exactly as they do for a lone
+    // owner. It is also the only way to reach an owner's page from the stack:
+    // without the anchor, an entity with two or more owners renders avatars
+    // that cannot be clicked at all.
+    const nameNode = (
+      <span className="tw:block" data-testid={nameStr}>
         {avatar}
+      </span>
+    );
+
+    const chip = owner.href ? (
+      <a
+        aria-label={nameStr}
+        className="tw:block"
+        data-testid="owner-link"
+        href={owner.href}
+        key={owner.id}>
+        {nameNode}
+      </a>
+    ) : (
+      <span className="tw:block" data-testid="owner-link" key={owner.id}>
+        {nameNode}
       </span>
     );
 
