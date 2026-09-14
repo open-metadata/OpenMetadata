@@ -82,6 +82,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   //   Mcp-Method, Mcp-Name - required since protocol 2026-07-28, so gateways can route and meter
   //                          requests without reading the JSON body
   //   Mcp-Client-Name      - our own header, read by AuthEnrichedMcpContextExtractor
+  //   X-OpenMetadata-Persona - selects an assigned persona for scoped searches
   static final String CORS_ALLOWED_HEADERS =
       String.join(
           ", ",
@@ -92,7 +93,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               "MCP-Protocol-Version",
               "Mcp-Method",
               "Mcp-Name",
-              AuthEnrichedMcpContextExtractor.CLIENT_NAME));
+              AuthEnrichedMcpContextExtractor.CLIENT_NAME,
+              AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER));
 
   // After a 401 the client reads WWW-Authenticate to find this authorization server. Browsers hide
   // response headers unless we expose them, so without this the client cannot start the OAuth flow.

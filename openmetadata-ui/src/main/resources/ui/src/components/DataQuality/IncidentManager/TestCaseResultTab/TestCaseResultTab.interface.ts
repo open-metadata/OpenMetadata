@@ -18,6 +18,7 @@ import {
   TestCase,
   TestCaseParameterValue,
 } from '../../../../generated/tests/testCase';
+import { ChangeSummaryEntry } from '../../../../rest/changeSummaryAPI';
 
 export interface SqlParamsSectionProps {
   withSqlParams: TestCaseParameterValue[];
@@ -27,6 +28,10 @@ export interface SqlParamsSectionProps {
 
 export interface TestCaseSidePanelProps {
   testCaseData: TestCase | undefined;
+  description: string | undefined;
+  descriptionChangeSummaryEntry: ChangeSummaryEntry | undefined;
+  hasEditDescriptionPermission: boolean | undefined;
+  handleDescriptionChange: (updatedDescription: string) => Promise<void>;
   hasEditTagsPermission: boolean | undefined;
   hasEditGlossaryTermsPermission: boolean | undefined;
   updatedTags: TagLabel[];

@@ -17,7 +17,10 @@ import { MemoryRouter, useNavigate } from 'react-router-dom';
 
 import { act } from 'react';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Worksheet } from '../../generated/entity/data/worksheet';
@@ -32,10 +35,39 @@ import {
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import WorksheetDetailsPage from './WorksheetDetailsPage';
+
+// The page now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for
+// the full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce,
+// the `deleted`-gating blind spot), mirrored here without repeating it.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 // Mock data
 const mockWorksheetDetails: Worksheet = {
@@ -117,14 +149,6 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({
     fqn: 'test-service.test-worksheet',
-  })),
-}));
-
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
   })),
 }));
 
@@ -242,11 +266,6 @@ jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Worksheet'),
 }));
 
-jest.mock('../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: { ViewAll: false, ViewBasic: false },
-  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
-}));
-
 jest.mock('../../utils/RouterUtils', () => ({
   getVersionPath: jest.fn().mockReturnValue('/worksheet/version/1'),
 }));
@@ -266,6 +285,21 @@ describe('WorksheetDetailsPage', () => {
     );
   });
 
+  // Guardrail: this page owns the single (per-render) useEntityPermissions call whose raw
+  // `worksheetPermissions` prop WorksheetDetails.tsx consumes downstream — see the
+  // "page-owner converts, child stays raw" precedent recorded in the Task 7A report (Topic)
+  // and mirrored here for the DriveService family. Unlike Spreadsheet/FileDetailsPage's
+  // stable fqn (available synchronously from useFqn), this page's identifier
+  // (resolvedEntityFqn) legitimately changes across renders — starting `''` before the
+  // seeding effect commits the URL fqn, and again on a column-deep-link fallback's walk-up
+  // to a parent fqn — so unlike the same-args afterEach used elsewhere, this only guards the
+  // one thing that must never vary across those renders: the resource.
+  afterEach(() => {
+    mockUseEntityPermissions.mock.calls.forEach(([resource]) => {
+      expect(resource).toBe(ResourceEntity.WORKSHEET);
+    });
+  });
+
   const renderComponent = async (props = {}) => {
     return await act(async () => {
       render(
@@ -278,11 +312,7 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Component Rendering', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should render loading state initially', async () => {
@@ -347,13 +377,7 @@ describe('WorksheetDetailsPage', () => {
     });
 
     it('should render permission error when user lacks view permissions', async () => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() =>
-            Promise.resolve({ ViewAll: false, ViewBasic: false })
-          ),
-      }));
+      setMockPermissions({ ViewAll: false, ViewBasic: false });
 
       await renderComponent();
 
@@ -367,11 +391,7 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Worksheet Details Management', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should fetch worksheet details on mount', async () => {
@@ -442,11 +462,7 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Follow/Unfollow Functionality', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should follow worksheet successfully', async () => {
@@ -528,11 +544,7 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Vote Management', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should update vote successfully', async () => {
@@ -589,11 +601,7 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Delete/Restore Functionality', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should toggle delete status', async () => {
@@ -614,11 +622,7 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Version Management', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should navigate to version page', async () => {
@@ -644,58 +648,40 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Permission Management', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should fetch resource permissions on mount', async () => {
-      const mockGetEntityPermissionByFqn = jest
-        .fn()
-        .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS));
-
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-      }));
-
       await renderComponent();
 
       await waitFor(() => {
-        expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
-          'worksheet',
+        expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+          ResourceEntity.WORKSHEET,
           'test-service.test-worksheet'
         );
       });
     });
 
     it('should handle permission fetch error', async () => {
-      const mockGetEntityPermissionByFqn = jest
-        .fn()
-        .mockImplementation(() =>
-          Promise.reject(new Error('Permission fetch failed'))
-        );
-
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS, {
+        error: new Error('Permission fetch failed'),
+      });
 
       await renderComponent();
 
+      // t() is globally mocked to the identity function (see src/setupTests.js), so the
+      // interpolated `entity` option collapses out and only the outer key survives.
       await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalled();
+        expect(showErrorToast).toHaveBeenCalledWith(
+          'server.fetch-entity-permissions-error'
+        );
       });
     });
   });
 
   describe('Error Handling', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should handle generic fetch error', async () => {
@@ -713,11 +699,7 @@ describe('WorksheetDetailsPage', () => {
 
   describe('Edge Cases', () => {
     beforeEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS)),
-      }));
+      setMockPermissions(ENTITY_PERMISSIONS);
     });
 
     it('should handle missing current user', async () => {

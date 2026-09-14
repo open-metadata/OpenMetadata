@@ -18,21 +18,26 @@ import {
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import type { Key } from 'react';
 import React, { FC, useMemo } from 'react';
 
-interface ProfileContentHeaderProps {
+export interface ProfileContentHeaderProps {
   icon: FC<{ className?: string }>;
   title: string;
   description: string;
   /** Breadcrumb root crumb — the current item's group label (Account / Credentials). */
   breadcrumbRoot: string;
-  /**
    * When provided, replaces the auto-computed two-level breadcrumb.
    * Use for panels with deeper internal navigation (e.g. Access Control).
    */
   breadcrumbs?: BreadcrumbItemType[];
   /** Called when the user clicks an interactive breadcrumb item. */
-  onBreadcrumbAction?: (id: string | number) => void;
+  onBreadcrumbAction?: (id: Key) => void;
+  /**
+   * When provided, renders this node instead of the default `<FeaturedIcon>`.
+   * Use when the icon is dynamic (e.g. an entity-specific icon).
+   */
+  iconNode?: React.ReactNode;
   /** Action buttons rendered on the right of the title row. */
   actions?: React.ReactNode;
   /** When set, renders in place of the title text (e.g. an inline rename input). */
@@ -52,6 +57,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   breadcrumbRoot,
   breadcrumbs,
   onBreadcrumbAction,
+  iconNode,
   actions,
   titleInput,
   titleSuffix,
@@ -77,21 +83,19 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
         items={resolvedBreadcrumbs}
         size="xs"
         type="text"
-        onAction={
-          onBreadcrumbAction
-            ? (id) => onBreadcrumbAction(id as string | number)
-            : undefined
-        }
+        onAction={onBreadcrumbAction}
       />
       <Box align="center" direction="row" gap={3}>
-        <FeaturedIcon
-          className="tw:rounded-xl"
-          color="brand"
-          icon={icon}
-          shape="square"
-          size="md"
-          theme="dark"
-        />
+        {iconNode ?? (
+          <FeaturedIcon
+            className="tw:rounded-xl"
+            color="brand"
+            icon={icon}
+            shape="square"
+            size="md"
+            theme="dark"
+          />
+        )}
         <Box className="tw:flex-1" direction="col">
           <Box align="center" direction="row" gap={1}>
             {titleInput ?? (

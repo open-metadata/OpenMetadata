@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -41,6 +41,7 @@ import {
   ProfileNavItem,
   PROFILE_NAV_GROUP_LABEL,
   PROFILE_NAV_ITEMS,
+  WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
 
@@ -97,6 +98,11 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
+  // Reset dynamic header overrides whenever the user switches to a different tab.
+  useEffect(() => {
+    setHeaderOverride({});
+  }, [selectedId]);
 
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
@@ -164,7 +170,7 @@ const ProfilePage: React.FC = () => {
         };
       });
 
-    return [...PROFILE_NAV_ITEMS, ...contributed];
+    return [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...contributed];
   }, [extensionRegistry, userData]);
 
   // Clear header override whenever the user switches nav items.
@@ -214,21 +220,26 @@ const ProfilePage: React.FC = () => {
               titleSuffix={headerOverride?.titleSuffix}
               onBreadcrumbAction={headerBreadcrumbAction}
             />
-            <div
-              className={
-                selectedId === 'access-control'
-                  ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden tw:flex tw:flex-col'
-                  : 'tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0'
-              }
-              data-testid="profile-content-body"
-              key={`${selectedId}-${contentKey}`}>
-              {activeItem.render({
+            {activeItem.selfContainedLayout ? (
+              activeItem.render({
                 userData,
                 isProfileLoading,
                 updateUserDetails,
                 onHeaderChange: setHeaderOverride,
-              })}
-            </div>
+              })
+            ) : (
+              <div
+                className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
+                data-testid="profile-content-body"
+                key={`${selectedId}-${contentKey}`}>
+                {activeItem.render({
+                  userData,
+                  isProfileLoading,
+                  updateUserDetails,
+                  onHeaderChange: setHeaderOverride,
+                })}
+              </div>
+            )}
           </Box>
         </>
       )}

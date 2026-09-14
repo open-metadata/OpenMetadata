@@ -13,7 +13,13 @@
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { TeamClass } from '../../support/team/TeamClass';
+import {
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+  visitOwnProfilePage,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import {
   addTeamHierarchy,
@@ -95,6 +101,170 @@ test.describe(
         await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
           teamName
         );
+      }
+    });
+
+    test('Only Group teams are selectable in Add User team dropdown', async ({
+      page,
+    }) => {
+      const childlessDepartmentName = `pw-childless-department-${uuid()}`;
+      const childlessDepartment = new TeamClass({
+        name: childlessDepartmentName,
+        displayName: childlessDepartmentName,
+        description: 'playwright childless department team',
+        teamType: 'Department',
+      });
+      const { apiContext, afterAction } = await getApiContext(page);
+      await childlessDepartment.create(apiContext);
+
+      try {
+        await settingClick(page, GlobalSettingOptions.USERS);
+
+        const teamHierarchyResponse = page.waitForResponse(
+          '/api/v1/teams/hierarchy?isJoinable=false'
+        );
+        await page.locator('[data-testid="add-user"]').click();
+        await teamHierarchyResponse;
+
+        const teamSelect = page.getByTestId('team-select');
+        const teamSelectInput = teamSelect.getByRole('combobox');
+        const dropdown = page.getByRole('tree');
+        // Selection chips only — the select also mirrors the typed search
+        // text as a text node (ant-select-selection-search-mirror), so a
+        // bare getByText inside the control matches even with no selection.
+        const selectedTeamChips = teamSelect.locator(
+          '.ant-select-selection-item'
+        );
+
+        await test.step('Non-Group team with children is visible but not selectable', async () => {
+          await teamSelect.click();
+          await teamSelectInput.fill(departmentTeamName);
+
+          const departmentOption = dropdown.getByText(departmentTeamName);
+
+          await expect(departmentOption).toBeVisible();
+
+          await departmentOption.click();
+
+          await expect(
+            selectedTeamChips.filter({ hasText: departmentTeamName })
+          ).toHaveCount(0);
+        });
+
+        await test.step('Non-Group team without children is hidden', async () => {
+          await teamSelectInput.fill(childlessDepartmentName);
+
+          // With every option pruned antd unmounts the tree ("No data"), so a
+          // count assertion is used — not.toContainText fails on a missing
+          // element instead of passing.
+          await expect(dropdown.getByText(childlessDepartmentName)).toHaveCount(
+            0
+          );
+        });
+
+        await test.step('Group team is selectable', async () => {
+          await teamSelectInput.fill(groupTeamName);
+
+          const groupOption = dropdown.getByText(groupTeamName);
+
+          await expect(groupOption).toBeVisible();
+
+          await groupOption.click();
+
+          await expect(
+            selectedTeamChips.filter({ hasText: groupTeamName })
+          ).toHaveCount(1);
+        });
+      } finally {
+        await childlessDepartment.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Only Group teams are selectable in user profile teams edit', async ({
+      page,
+    }) => {
+      const childlessDivisionName = `pw-childless-division-${uuid()}`;
+      const childlessDivision = new TeamClass({
+        name: childlessDivisionName,
+        displayName: childlessDivisionName,
+        description: 'playwright childless division team',
+        teamType: 'Division',
+      });
+      const { apiContext, afterAction } = await getApiContext(page);
+      await childlessDivision.create(apiContext);
+
+      try {
+        await visitOwnProfilePage(page);
+
+        const teamHierarchyResponse = page.waitForResponse(
+          '/api/v1/teams/hierarchy?isJoinable=false'
+        );
+        await page.getByTestId('edit-teams-button').click();
+        await teamHierarchyResponse;
+
+        const popover = page.getByTestId('profile-teams-edit-popover');
+
+        await expect(popover).toBeVisible();
+
+        const teamSelect = popover.getByTestId('team-select');
+        const teamSelectInput = teamSelect.getByRole('combobox');
+        // `teams-custom-dropdown-class` is set by TeamsSelectableNew via
+        // popupClassName (component-owned, not an antd internal).
+        const dropdown = page.locator('.teams-custom-dropdown-class');
+        // Chips truncate long labels, so selection is asserted on the tree
+        // node's selected state where the full team name is rendered. The antd
+        // class is the only selected-state signal: rc-tree renders no treeitem
+        // role and (mis)maps aria-selected to `selectable`, not `selected`.
+        const selectedTreeNodes = dropdown.locator(
+          '.ant-select-tree-treenode-selected'
+        );
+
+        await test.step('Non-Group team with children is visible but not selectable', async () => {
+          await teamSelectInput.fill(departmentTeamName);
+
+          const departmentOption = dropdown.getByText(departmentTeamName);
+
+          await expect(departmentOption).toBeVisible();
+
+          await departmentOption.click();
+
+          await expect(
+            selectedTreeNodes.filter({ hasText: departmentTeamName })
+          ).toHaveCount(0);
+        });
+
+        await test.step('Non-Group team without children is hidden', async () => {
+          await teamSelectInput.fill(childlessDivisionName);
+
+          // Count assertion: not.toContainText fails when antd unmounts the
+          // emptied dropdown content instead of passing.
+          await expect(dropdown.getByText(childlessDivisionName)).toHaveCount(
+            0
+          );
+        });
+
+        await test.step('Group team is selectable', async () => {
+          await teamSelectInput.fill(groupTeamName);
+
+          const groupOption = dropdown.getByText(groupTeamName);
+
+          await expect(groupOption).toBeVisible();
+
+          await groupOption.click();
+
+          await expect(
+            selectedTreeNodes.filter({ hasText: groupTeamName })
+          ).toHaveCount(1);
+        });
+
+        // Close without saving so the admin's team memberships stay untouched
+        await page.getByTestId('teams-edit-close-btn').click();
+
+        await expect(popover).not.toBeVisible();
+      } finally {
+        await childlessDivision.delete(apiContext);
+        await afterAction();
       }
     });
 

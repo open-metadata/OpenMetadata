@@ -92,6 +92,7 @@ export { Glossary } from './Glossary';
 export { GridView } from './GridView';
 export { HealthyDataAssets } from './HealthyDataAssets';
 export { Help } from './Help';
+export { Hint } from './Hint';
 export { Home } from './Home';
 export { InactivePipeline } from './InactivePipeline';
 export { Integrity } from './Integrity';

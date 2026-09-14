@@ -36,9 +36,8 @@ public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result
   }
 
   /**
-   * {@code truncated} / {@code byteCount} mirror {@code SparqlQueryTool.Result}. The full ontology
-   * serializes to roughly 65 KB of Turtle, which cleared the dispatch cap only by luck; an ontology
-   * that grows past it would have had the entire response replaced by a data-less stub. Prefer
+   * {@code truncated} / {@code byteCount} mirror {@code SparqlQueryTool.Result}. Truncating the body
+   * here preserves result metadata when the full ontology exceeds the dispatch cap. Prefer
    * {@code resource} for a focused DESCRIBE over pulling the whole document.
    */
   @JsonInclude(JsonInclude.Include.NON_NULL)

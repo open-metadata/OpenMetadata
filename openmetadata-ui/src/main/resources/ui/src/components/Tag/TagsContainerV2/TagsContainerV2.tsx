@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isEmpty, isEqual } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -24,20 +24,12 @@ import {
   WidgetRequestButton,
 } from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
-import {
-  GLOSSARY_CONSTANT,
-  TAG_CONSTANT,
-  TAG_START_WITH,
-} from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import {
-  activateOnEnterOrSpace,
-  stopPropagationIfInteractive,
-} from '../../../utils/InteractiveTargetUtils';
+import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -54,7 +46,6 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import './tags-container.style.less';
@@ -82,11 +73,9 @@ const TagsContainerV2 = ({
   newLook = false,
   sizeCap = LIST_SIZE,
   useGenericControls,
-  tagNewLook = false,
   multiSelect,
 }: TagsContainerV2Props) => {
   const navigate = useNavigate();
-  const [form] = Form.useForm();
   const { t } = useTranslation();
   const {
     onThreadLinkSelect,
@@ -204,14 +193,12 @@ const TagsContainerV2 = ({
       ]);
     }
 
-    form.resetFields();
     handleExternalControl(false);
   };
 
   const handleCancel = useCallback(() => {
     handleExternalControl(false);
-    form.resetFields();
-  }, [form, handleExternalControl]);
+  }, [handleExternalControl]);
 
   const handleAddClick = useCallback(() => {
     handleExternalControl(true);
@@ -236,17 +223,14 @@ const TagsContainerV2 = ({
   const renderTags = useMemo(
     () =>
       isEmpty(tags?.[tagType]) && !showNoDataPlaceholder ? null : (
-        <Col span={24}>
-          <TagsViewer
-            displayType={displayType}
-            entityFqn={columnData?.fqn ?? ''}
-            newLook={tagNewLook}
-            showNoDataPlaceholder={showNoDataPlaceholder}
-            sizeCap={sizeCap}
-            tagType={tagType}
-            tags={tags?.[tagType] ?? []}
-          />
-        </Col>
+        <TagsViewer
+          displayType={displayType}
+          entityFqn={columnData?.fqn ?? ''}
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          sizeCap={sizeCap}
+          tagType={tagType}
+          tags={tags?.[tagType] ?? []}
+        />
       ),
     [
       displayType,
@@ -327,7 +311,7 @@ const TagsContainerV2 = ({
     }
 
     return (
-      <Space>
+      <Box align="center" gap={2}>
         {addTagButton ?? (
           <WidgetEditButton
             data-testid="edit-button"
@@ -346,7 +330,7 @@ const TagsContainerV2 = ({
             {conversationThreadElement}
           </>
         )}
-      </Space>
+      </Box>
     );
   }, [
     tags,
@@ -380,30 +364,27 @@ const TagsContainerV2 = ({
 
   const horizontalLayout = useMemo(() => {
     return (
-      <Space>
+      <Box align="center" gap={2}>
         {showAddTagButton ? (
-          <div
-            role="button"
-            tabIndex={0}
+          <WidgetPlusButton
+            data-testid="add-tag"
+            title={t('label.add-entity', {
+              entity: isGlossaryType
+                ? t('label.glossary-term')
+                : t('label.tag-plural'),
+            })}
             onClick={handleAddClick}
-            onKeyDown={activateOnEnterOrSpace}>
-            <TagsV1
-              startWith={TAG_START_WITH.PLUS}
-              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-              tagType={tagType}
-            />
-          </div>
+          />
         ) : null}
         <TagsViewer
           displayType={displayType}
           entityFqn={columnData?.fqn ?? ''}
-          newLook={newLook}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}
           tags={tags?.[tagType] ?? []}
         />
         {showInlineEditButton ? editTagButton : null}
-      </Space>
+      </Box>
     );
   }, [
     showAddTagButton,
@@ -433,24 +414,23 @@ const TagsContainerV2 = ({
     }
 
     return (
-      <Row data-testid="entity-tags">
+      <Box align="center" data-testid="entity-tags" gap={2} wrap="wrap">
         {showAddTagButton && (
-          <Col
-            className="m-t-xss"
-            role="button"
-            tabIndex={0}
-            onClick={handleAddClick}
-            onKeyDown={activateOnEnterOrSpace}>
-            <TagsV1
-              startWith={TAG_START_WITH.PLUS}
-              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-              tagType={tagType}
+          <div className="m-t-xss">
+            <WidgetPlusButton
+              data-testid="add-tag"
+              title={t('label.add-entity', {
+                entity: isGlossaryType
+                  ? t('label.glossary-term')
+                  : t('label.tag-plural'),
+              })}
+              onClick={handleAddClick}
             />
-          </Col>
+          </div>
         )}
         {renderTags}
-        {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
-      </Row>
+        {showInlineEditButton ? <div>{editTagButton}</div> : null}
+      </Box>
     );
   }, [
     isEditTags,

@@ -17,8 +17,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
-import Table from '../../../components/common/Table/Table';
 import { ColumnsType } from '../../../components/common/Table/Table.interface';
+import Table from '../../../components/common/Table/TableV2';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {

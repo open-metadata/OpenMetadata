@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Popover, Space, Tabs, Typography } from 'antd';
+import { Popover, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -31,24 +36,21 @@ import {
   formatTeamsResponse,
   formatUsersResponse,
 } from '../../../utils/APIUtils';
-import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
-import './user-team-selectable-list.less';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
-    <Space>
-      <Icon component={IconTeamsGrey} style={{ fontSize: '16px' }} />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
-    </Space>
+    <span className="tw:flex tw:items-center tw:gap-2">
+      <IconTeamsGrey aria-hidden className="tw:size-4" />
+      <span className="tw:text-sm">{getEntityName(props)}</span>
+    </span>
   );
 };
 
@@ -65,11 +67,36 @@ export const UserTeamSelectableList = ({
   listHeight = ADD_USER_CONTAINER_HEIGHT,
   tooltipText,
   overlayClassName,
+  triggerDataTestId = 'edit-owner',
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  // react-aria's Popover cannot position (and therefore keeps hidden) an
+  // overlay whose isOpen is already true on the very first render, because
+  // triggerRef is not attached yet and there is no later state change to
+  // re-run positioning. Consumers that force the popover open on mount (the
+  // bulk-edit grid cell editor passes popoverProps={{ open: true }}) hit this.
+  // Gate isOpen behind a mounted flag so it is always a false -> true
+  // transition after the trigger ref is attached. Click-to-open consumers are
+  // unaffected (they start closed anyway).
+  const [isMounted, setIsMounted] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'teams' | 'users'>('teams');
   const [count, setCount] = useState({ team: 0, user: 0 });
+  // react-aria Tabs unmount the inactive panel, so each SelectableList
+  // re-mounts (and would re-fetch) every time its tab is re-activated. Cache
+  // the initial (empty-query) page per tab for the current open session so
+  // switching tabs does not re-hit the search API, matching the legacy antd
+  // Tabs. The caches are cleared when the popover closes so a re-open fetches
+  // fresh data.
+  const initialUserOptionsRef = useRef<{
+    data: EntityReference[];
+    paging: { total: number; after?: string };
+  } | null>(null);
+  const initialTeamOptionsRef = useRef<{
+    data: EntityReference[];
+    paging: { total: number; after?: string };
+  } | null>(null);
 
   const [selectedUsers, setSelectedUsers] = useState<EntityReference[]>([]);
 
@@ -95,6 +122,12 @@ export const UserTeamSelectableList = ({
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+    const isInitialPage = !searchText && afterPage <= 1;
+
+    if (isInitialPage && initialUserOptionsRef.current) {
+      return initialUserOptionsRef.current;
+    }
+
     try {
       const res = await searchQuery({
         query: searchText,
@@ -112,13 +145,19 @@ export const UserTeamSelectableList = ({
       );
       setCount((pre) => ({ ...pre, user: res.hits.total.value }));
 
-      return {
+      const result = {
         data,
         paging: {
           total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
+
+      if (isInitialPage) {
+        initialUserOptionsRef.current = result;
+      }
+
+      return result;
     } catch (error) {
       return { data: [], paging: { total: 0 } };
     }
@@ -126,6 +165,11 @@ export const UserTeamSelectableList = ({
 
   const fetchTeamOptions = async (searchText: string, after?: string) => {
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
+    const isInitialPage = !searchText && afterPage <= 1;
+
+    if (isInitialPage && initialTeamOptionsRef.current) {
+      return initialTeamOptionsRef.current;
+    }
 
     try {
       const res = await searchQuery({
@@ -147,13 +191,19 @@ export const UserTeamSelectableList = ({
 
       setCount((pre) => ({ ...pre, team: res.hits.total.value }));
 
-      return {
+      const result = {
         data,
         paging: {
           total: res.hits.total.value,
           after: toString(afterPage + 1),
         },
       };
+
+      if (isInitialPage) {
+        initialTeamOptionsRef.current = result;
+      }
+
+      return result;
     } catch (error) {
       return { data: [], paging: { total: 0 } };
     }
@@ -194,7 +244,6 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  // Fetch and store count for Users tab
   const getUserCount = async () => {
     const res = await searchQuery({
       query: '',
@@ -206,6 +255,7 @@ export const UserTeamSelectableList = ({
 
     setCount((pre) => ({ ...pre, user: res.hits.total.value }));
   };
+
   const getTeamCount = async () => {
     const res = await searchQuery({
       query: '',
@@ -232,14 +282,6 @@ export const UserTeamSelectableList = ({
     }
   };
 
-  const openPopover = useCallback(
-    (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-      e.stopPropagation();
-      setPopupVisible(true);
-    },
-    []
-  );
-
   const handleCancelSelectableList = () => {
     setPopupVisible(false);
     onClose?.();
@@ -253,7 +295,6 @@ export const UserTeamSelectableList = ({
 
       const updatedUsers = prevUsers.filter((user) => user.id !== id);
 
-      // Check if multi flag is false, then we should call the update function
       if ((isTeamId && !isMultiTeam) || (isUserId && !isMultiUser)) {
         handleUpdate(updatedUsers);
       }
@@ -287,135 +328,184 @@ export const UserTeamSelectableList = ({
     init();
   }, [popupVisible]);
 
-  return (
-    <Popover
-      destroyTooltipOnHide
-      content={
-        <div data-react-aria-top-layer>
-          <FocusTrapWithContainer active={popoverProps?.open || false}>
-            {previewSelected && (
-              <Space
-                className="user-team-popover-header w-full p-x-sm p-y-md"
-                direction="vertical"
-                size={8}>
-                <Typography.Text className="text-grey-muted">
-                  {t('label.selected-entity', {
-                    entity: label ?? t('label.owner-plural'),
-                  })}
-                </Typography.Text>
-                <div className="user-team-popover-header-content">
-                  {selectedUsers.map((user) => {
-                    return (
-                      <UserTag
-                        closable
-                        avatarType="outlined"
-                        className="user-team-pills"
-                        id={user.name ?? ''}
-                        isTeam={user.type === EntityType.TEAM}
-                        key={user.id}
-                        name={getEntityName(user)}
-                        size={UserTagSize.small}
-                        onRemove={() => onRemove(user.id)}
-                      />
-                    );
-                  })}
-                </div>
-              </Space>
-            )}
-            <Tabs
-              centered
-              activeKey={activeTab}
-              className="select-owner-tabs"
-              data-testid="select-owner-tabs"
-              destroyInactiveTabPane={false}
-              items={[
-                {
-                  label: (
-                    <>
-                      {t('label.team-plural')}{' '}
-                      {getCountBadge(count.team, '', activeTab === 'teams')}
-                    </>
-                  ),
-                  key: 'teams',
-                  children: (
-                    <SelectableList
-                      customTagRenderer={TeamListItemRenderer}
-                      fetchOptions={fetchTeamOptions}
-                      height={listHeight}
-                      multiSelect={isMultiTeam}
-                      searchBarDataTestId="owner-select-teams-search-bar"
-                      searchPlaceholder={t('label.search-for-type', {
-                        type: t('label.team'),
-                      })}
-                      selectedItems={defaultTeams}
-                      onCancel={handleCancelSelectableList}
-                      onChange={isMultiTeam ? handleChange : noop}
-                      onUpdate={handleUpdate}
-                    />
-                  ),
-                },
-                {
-                  label: (
-                    <>
-                      {t('label.user-plural')}
-                      {getCountBadge(count.user, '', activeTab === 'users')}
-                    </>
-                  ),
-                  key: 'users',
-                  children: (
-                    <SelectableList
-                      fetchOptions={fetchUserOptions}
-                      height={listHeight}
-                      multiSelect={isMultiUser}
-                      searchBarDataTestId="owner-select-users-search-bar"
-                      searchPlaceholder={t('label.search-for-type', {
-                        type: t('label.user'),
-                      })}
-                      selectedItems={defaultUsers}
-                      onCancel={handleCancelSelectableList}
-                      onChange={isMultiUser ? handleChange : noop}
-                      onUpdate={handleUpdate}
-                    />
-                  ),
-                },
-              ]}
-              size="small"
-              onChange={(key: string) => setActiveTab(key as 'teams' | 'users')}
-              // Used div to stop click propagation event anywhere in the component to parent
-              // Users.component collapsible panel
-              onClick={(e) => e.stopPropagation()}
-            />
-          </FocusTrapWithContainer>
+  // Flip the mounted flag in a layout effect (not a passive effect) so the
+  // false -> true transition — and therefore the forced-open popover — happens
+  // synchronously in the mount commit, before the browser paints. A passive
+  // useEffect flips it only after paint, which races the react-data-grid cell
+  // editor lifecycle in the bulk-edit grid: the editor could be re-rendered or
+  // torn down in that gap, so the picker (select-owner-tabs) intermittently
+  // never opened when a cell entered edit mode.
+  useLayoutEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isOpen = isMounted && (popoverProps?.open ?? popupVisible);
+
+  useEffect(() => {
+    // Drop the per-session list caches when the popover closes so a re-open
+    // always fetches fresh options.
+    if (!isOpen) {
+      initialUserOptionsRef.current = null;
+      initialTeamOptionsRef.current = null;
+    }
+  }, [isOpen]);
+
+  const handleOpenChange = (open: boolean) => {
+    setPopupVisible(open);
+    popoverProps?.onOpenChange?.(open);
+    if (!open) {
+      onClose?.();
+    }
+  };
+
+  const getEditTriggerTitle = () =>
+    !isOpen
+      ? tooltipText ??
+        t('label.edit-entity', { entity: t('label.owner-plural') })
+      : undefined;
+
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPopupVisible(true);
+  };
+
+  const defaultTrigger = hasPermission ? (
+    <span ref={triggerRef}>
+      <EditIconButton
+        newLook
+        data-testid={triggerDataTestId}
+        icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+        size="small"
+        title={getEditTriggerTitle()}
+        onClick={handleTriggerClick}
+      />
+    </span>
+  ) : null;
+
+  const handleTriggerKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setPopupVisible(true);
+    }
+  };
+
+  // When children are provided as trigger, wrap them so any click opens the popover.
+  // The children are react-aria buttons (ButtonUtility) whose press handling stops
+  // the click in the bubble phase, so a bubble-phase onClick on the wrapper never
+  // fires. Listen in the capture phase instead — it runs before the button can
+  // swallow the event, so the popover reliably opens for add-owner/edit-owner.
+  const triggerElement = children ? (
+    <span
+      ref={triggerRef}
+      onClickCapture={handleTriggerClick}
+      onKeyDownCapture={handleTriggerKeyDown}>
+      {children}
+    </span>
+  ) : (
+    defaultTrigger
+  );
+
+  if (!triggerElement) {
+    return null;
+  }
+
+  const renderPreviewSection = () =>
+    previewSelected ? (
+      <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:py-3 tw:bg-secondary tw:border-b tw:border-primary">
+        <span className="tw:text-sm tw:text-tertiary">
+          {t('label.selected-entity', {
+            entity: label ?? t('label.owner-plural'),
+          })}
+        </span>
+        <div className="tw:flex tw:flex-wrap tw:gap-1 tw:max-h-24 tw:overflow-y-auto">
+          {selectedUsers.map((user) => {
+            return (
+              <UserTag
+                closable
+                avatarType="outlined"
+                className="user-team-pills"
+                id={user.name ?? ''}
+                isTeam={user.type === EntityType.TEAM}
+                key={user.id}
+                name={getEntityName(user)}
+                size={UserTagSize.small}
+                onRemove={() => onRemove(user.id)}
+              />
+            );
+          })}
         </div>
-      }
-      open={popupVisible}
-      overlayClassName={classNames(
-        'user-team-select-popover card-shadow',
-        overlayClassName
-      )}
-      placement="bottomRight"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ??
-        (hasPermission && (
-          <EditIconButton
-            newLook
-            data-testid="edit-owner"
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={
-              !popupVisible
-                ? tooltipText ??
-                  t('label.edit-entity', {
-                    entity: t('label.owner-plural'),
-                  })
-                : undefined
-            }
-            onClick={openPopover}
+      </div>
+    ) : null;
+
+  const popoverContent = (
+    // Stop click/enter from bubbling to parent collapsible panels
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className="tw:w-80"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}>
+      {renderPreviewSection()}
+      <Tabs
+        data-testid="select-owner-tabs"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
+        <Tabs.List className="tw:px-2 tw:pt-2" size="sm" type="underline">
+          <Tabs.Item badge={count.team} id="teams">
+            {t('label.team-plural')}
+          </Tabs.Item>
+          <Tabs.Item badge={count.user} id="users">
+            {t('label.user-plural')}
+          </Tabs.Item>
+        </Tabs.List>
+        <Tabs.Panel data-testid="owner-select-teams-panel" id="teams">
+          <SelectableList
+            customTagRenderer={TeamListItemRenderer}
+            fetchOptions={fetchTeamOptions}
+            height={listHeight}
+            multiSelect={isMultiTeam}
+            searchBarDataTestId="owner-select-teams-search-bar"
+            searchPlaceholder={t('label.search-for-type', {
+              type: t('label.team'),
+            })}
+            selectedItems={defaultTeams}
+            onCancel={handleCancelSelectableList}
+            onChange={isMultiTeam ? handleChange : noop}
+            onUpdate={handleUpdate}
           />
-        ))}
-    </Popover>
+        </Tabs.Panel>
+        <Tabs.Panel data-testid="owner-select-users-panel" id="users">
+          <SelectableList
+            fetchOptions={fetchUserOptions}
+            height={listHeight}
+            multiSelect={isMultiUser}
+            searchBarDataTestId="owner-select-users-search-bar"
+            searchPlaceholder={t('label.search-for-type', {
+              type: t('label.user'),
+            })}
+            selectedItems={defaultUsers}
+            onCancel={handleCancelSelectableList}
+            onChange={isMultiUser ? handleChange : noop}
+            onUpdate={handleUpdate}
+          />
+        </Tabs.Panel>
+      </Tabs>
+    </div>
+  );
+
+  return (
+    <>
+      {triggerElement}
+      <Popover
+        containerClassName={classNames(
+          'tw:overflow-hidden tw:p-0',
+          overlayClassName
+        )}
+        isOpen={isOpen}
+        placement="bottom end"
+        triggerRef={triggerRef}
+        onOpenChange={handleOpenChange}>
+        {popoverContent}
+      </Popover>
+    </>
   );
 };

@@ -150,7 +150,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           !isVersionPage &&
           !dimensionKey && (
             <div
-              className="tw:px-4 tw:pt-4"
+              className="tw:pt-4 tw:pb-2.5"
               data-testid="test-case-last-run-banner-tab-container">
               <TestCaseLastRunBanner
                 incidentTask={incidentHeaderData.incidentTask}
@@ -364,7 +364,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         data-testid="test-case-detail-page"
         header={
           <Box
-            className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
+            className="tw:relative tw:mx-4 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
             data-testid="test-case-header-container"
             direction="col"
             gap={4}>

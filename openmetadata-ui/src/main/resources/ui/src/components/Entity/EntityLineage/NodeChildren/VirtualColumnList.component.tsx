@@ -25,6 +25,8 @@ export interface VirtualColumnListProps {
   isConnectable: boolean;
   isLoading: boolean;
   nodeId?: string;
+  onColumnHover?: (columnFqn?: string) => void;
+  onColumnSelect?: (columnFqn?: string) => void;
   showDataObservabilitySummary: boolean;
   summary?: TestSummary;
   pageSize?: number;
@@ -35,6 +37,8 @@ const VirtualColumnList = ({
   isConnectable,
   isLoading,
   nodeId,
+  onColumnHover,
+  onColumnSelect,
   showDataObservabilitySummary,
   summary,
   pageSize = LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -136,6 +140,8 @@ const VirtualColumnList = ({
           key={column.fullyQualifiedName}
           showDataObservabilitySummary={showDataObservabilitySummary}
           summary={columnSummary}
+          onColumnHover={onColumnHover}
+          onColumnSelect={onColumnSelect}
         />
       );
     },
@@ -144,6 +150,8 @@ const VirtualColumnList = ({
       getColumnSummary,
       isConnectable,
       isLoading,
+      onColumnHover,
+      onColumnSelect,
       showDataObservabilitySummary,
       selectedColumn,
     ]

@@ -252,6 +252,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: 'rejected',
+            comment: 'Rejecting via automated test',
           },
         }
       );
@@ -593,6 +594,7 @@ test.describe('Task Resolution - Close by Creator', () => {
           data: {
             resolutionType: 'Rejected',
             newValue: '',
+            comment: 'Rejecting via automated test',
           },
         }
       );
