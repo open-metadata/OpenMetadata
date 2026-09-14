@@ -149,22 +149,20 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(text(MSSQL_GET_SCHEMA_COMMENTS)).all()
-        self.schema_desc_map = {(row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results}
+            for row in conn.execute(text(MSSQL_GET_SCHEMA_COMMENTS)):
+                self.schema_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME)] = row.COMMENT
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(text(MSSQL_GET_DATABASE_COMMENTS)).all()
-        self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
+            for row in conn.execute(text(MSSQL_GET_DATABASE_COMMENTS)):
+                self.database_desc_map[row.DATABASE_NAME] = row.COMMENT
 
     def set_stored_procedure_description_map(self) -> None:
         self.stored_procedure_desc_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(text(MSSQL_GET_STORED_PROCEDURE_COMMENTS)).all()
-        self.stored_procedure_desc_map = {
-            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
-        }
+            for row in conn.execute(text(MSSQL_GET_STORED_PROCEDURE_COMMENTS)):
+                self.stored_procedure_desc_map[(row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE)] = row.COMMENT
 
     def set_partition_details_map(self) -> None:
         """
@@ -172,17 +170,16 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """
         self.partition_details_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(text(MSSQL_GET_TABLE_PARTITION_DETAILS)).all()
-        for row in results:
-            self.partition_details_map[(row.schema_name, row.table_name)] = TablePartition(
-                columns=[
-                    PartitionColumnDetails(
-                        columnName=row.partition_column_name,
-                        intervalType=_classify_partition_interval_type(row.partition_column_type),
-                        interval=None,
-                    )
-                ]
-            )
+            for row in conn.execute(text(MSSQL_GET_TABLE_PARTITION_DETAILS)):
+                self.partition_details_map[(row.schema_name, row.table_name)] = TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=row.partition_column_name,
+                            intervalType=_classify_partition_interval_type(row.partition_column_type),
+                            interval=None,
+                        )
+                    ]
+                )
 
     def get_schema_description(self, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
@@ -272,12 +269,24 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             logger.debug(traceback.format_exc())
             logger.warning("Could not load MSSQL partition details, continuing without them: %s", exc)
 
+    def _reset_database_scoped_state(self) -> None:
+        """Rebuild every per-database lookup map for the database `set_inspector` just pointed at.
+
+        Must run after `set_inspector(database_name)` and before that database's schemas/tables are
+        processed. Safe without locking only because the topology runner drains one database's whole
+        schema/table tree -- including joining all of its worker threads -- before advancing
+        `get_database_names` to the next database (see `TopologyRunnerMixin._process_node`), so no
+        reader ever observes a map that has been `.clear()`-ed for a different database than the one
+        it was populated for.
+        """
+        self._load_description_maps()
+        self._load_partition_details_map()
+
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
             configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
-            self._load_description_maps()
-            self._load_partition_details_map()
             self.set_inspector(database_name=configured_db)
+            self._reset_database_scoped_state()
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
@@ -297,8 +306,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
 
                 try:
                     self.set_inspector(database_name=new_database)
-                    self._load_description_maps()
-                    self._load_partition_details_map()
+                    self._reset_database_scoped_state()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

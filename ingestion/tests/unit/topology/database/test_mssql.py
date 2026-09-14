@@ -584,6 +584,31 @@ class TestUpdateMssqlIschemaNames:
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
 
+    def test_single_database_mode_sets_inspector_before_loading_state(self):
+        """Non-ingestAllDatabases branch must switch the engine to `configured_db`
+        before loading description/partition maps, same order as the
+        ingestAllDatabases branch and as postgres/cockroach's equivalent branch --
+        otherwise a future change to `service_connection.database` at __init__ time
+        could make the maps load against the wrong database."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        self.mssql.config.serviceConnection.root.config.database = MOCK_DATABASE.name.root
+
+        call_order = []
+        with (
+            patch.object(
+                MssqlSource, "set_inspector", side_effect=lambda database_name: call_order.append("set_inspector")
+            ),
+            patch.object(
+                MssqlSource,
+                "_reset_database_scoped_state",
+                side_effect=lambda: call_order.append("_reset_database_scoped_state"),
+            ),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == [MOCK_DATABASE.name.root]
+        assert call_order == ["set_inspector", "_reset_database_scoped_state"]
+
 
 class TestMssqlGetStoredProceduresQuery:
     """MSSQL_GET_STORED_PROCEDURES must include functions, not just procedures, and must
@@ -1034,7 +1059,7 @@ class TestMssqlPartitionDetails:
         source.partition_details_map = {}
         source.engine = MagicMock()
         conn = source.engine.connect.return_value.__enter__.return_value
-        conn.execute.return_value.all.return_value = rows
+        conn.execute.return_value = rows
         return source
 
     @staticmethod
