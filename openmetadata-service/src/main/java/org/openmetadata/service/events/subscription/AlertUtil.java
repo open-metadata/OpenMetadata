@@ -26,7 +26,6 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -274,13 +273,11 @@ public final class AlertUtil {
       BiConsumer<ChangeEvent, Exception> onEvaluationError) {
     Long watermark = alertingWatermark(eventSubscription, startingTimestamp);
     FilteringRules filteringRules = eventSubscription.getFilteringRules();
-    Map<ChangeEvent, Set<UUID>> filteredEvents = new HashMap<>();
-    for (Map.Entry<ChangeEvent, Set<UUID>> entry : events.entrySet()) {
-      if (isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError)) {
-        filteredEvents.put(entry.getKey(), entry.getValue());
-      }
-    }
-    return filteredEvents;
+    return events.entrySet().stream()
+        .filter(
+            entry ->
+                isChangeEventAllowed(entry.getKey(), filteringRules, watermark, onEvaluationError))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   /**
