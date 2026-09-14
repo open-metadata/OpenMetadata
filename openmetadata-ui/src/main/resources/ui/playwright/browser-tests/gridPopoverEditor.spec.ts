@@ -31,11 +31,16 @@ import { dirname } from 'path';
  * react-aria's geometry-dependent positioning never runs. This exercises the
  * same shape in a real browser with no backend.
  *
- * It passes, which is itself the finding: forcing a core-components Popover
- * open on mount inside a grid cell editor — mounted-flag gate, triggerRef and
- * an onOpenChange that closes the editor — is NOT by itself what breaks the
- * bulk-edit owner picker. Keep it as the guard the jsdom test cannot be: if
- * this ever goes red, the regression really is in the Popover.
+ * It passes, and that turned out to be the correct reading: the Popover was
+ * never the fault. #32252 also deleted the Playwright helper
+ * `clickActiveGridCell` while leaving its call in `openOwnerPickerEditor`, so
+ * every retry threw a ReferenceError into that loop's empty catch and the cell
+ * was never clicked at all. A DOM observer over the failing run showed the
+ * picker opening the instant the cell is genuinely clicked.
+ *
+ * Keep this as the guard the jsdom test cannot be — the sibling suite stubs
+ * Popover out, so nothing else would notice a real regression here. If it goes
+ * red, the fault really is in the Popover.
  */
 const bundle = buildSync({
   stdin: {
