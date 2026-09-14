@@ -45,7 +45,7 @@ class OMetaQueryMixin:
     client: REST
 
     def _get_query_hash(self, query: str) -> str:
-        result = hashlib.md5(query.encode())
+        result = hashlib.md5(query.encode(), usedforsecurity=False)
         return str(result.hexdigest())
 
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:  # noqa: UP045
