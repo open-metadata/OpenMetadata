@@ -11,13 +11,15 @@
 """Unit tests for Doris connection handling."""
 
 import pytest
-from sqlalchemy import Column, Integer, MetaData, Table, select
+from pydoris.sqlalchemy.dialect import DorisDialect
+from sqlalchemy import DATETIME, TIMESTAMP, Column, Integer, MetaData, Table, select, text
 
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
     DorisScheme,
 )
 from metadata.ingestion.source.database.doris.connection import get_connection
+from metadata.utils.sqa_utils import dispatch_to_date_or_datetime
 
 
 @pytest.fixture
@@ -56,3 +58,16 @@ def test_doris_identifiers_are_always_quoted(
     assert "`events`.`id`" in query
     assert f"`events`.`{column_name}`" in query
     assert "FROM `events`" in query
+
+
+@pytest.mark.parametrize(
+    "column_type",
+    [DATETIME(), TIMESTAMP()],
+    ids=["datetime", "timestamp"],
+)
+def test_doris_time_partition_filter_uses_datetime_cast(column_type):
+    partition_boundary = dispatch_to_date_or_datetime(1, text("DAY"), column_type)
+
+    query = str(partition_boundary.compile(dialect=DorisDialect()))
+
+    assert query == "CAST(CURRENT_TIMESTAMP - interval '1' DAY AS DATETIME)"
