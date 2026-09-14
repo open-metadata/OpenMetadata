@@ -99,12 +99,16 @@ public final class EntityApiBenchmark {
   private Measurement measure(final Workload workload, final Options options) throws Exception {
     final Sampling sampling = options.sampling();
     final List<Context> prepared = prepare(workload, sampling.warmup() + sampling.samples());
-    final Measurement warmup = run(workload, sampling.warmup(), sampling.rate(), 0, prepared);
+    final Measurement warmup = run(workload, sampling.warmup(), sampling.warmupRate(), 0, prepared);
     requireSuccessfulWarmup(workload, options, warmup);
+    EntityBenchmarkColdStart.beforeMeasurement(
+        Path.of(options.output() + "." + workload.name() + ".cache.json"));
     try (var observation =
         EntityBenchmarkObservation.open(
             Path.of(options.output() + "." + workload.name() + ".sql.json"))) {
-      return run(workload, sampling.samples(), sampling.rate(), sampling.warmup(), prepared);
+      return EntityBenchmarkAllocation.measure(
+          Path.of(options.output() + "." + workload.name() + ".allocation.json"),
+          () -> run(workload, sampling.samples(), sampling.rate(), sampling.warmup(), prepared));
     }
   }
 
@@ -125,6 +129,16 @@ public final class EntityApiBenchmark {
   }
 
   record Sampling(int samples, int warmup, double rate) {
+    double warmupRate() {
+      final double value =
+          Double.parseDouble(
+              System.getProperty("entityBenchmark.warmupRate", Double.toString(rate)));
+      if (!Double.isFinite(value) || value <= 0) {
+        throw new IllegalArgumentException("Invalid warmup arrival rate");
+      }
+      return value;
+    }
+
     Sampling {
       if (samples < 1
           || samples > 100_000

@@ -122,14 +122,33 @@ comparisons contain 10,320 successful measured responses. Single-entity mutation
 retain one owning commit. Background-worker SQL remains outside this matrix.
 Instrumented SQL runs do not establish latency acceptance.
 
-The latest native coverage report matches all 506 changed service sources and 1,109
-executable classes without class-file warnings. All 455 executable classes belonging
-to the 209 extracted component source files reach 90%, but 364 other changed executable
-classes remain below the whole-class
-threshold. The diagnostic report includes completed failing broad suites and is not
-regression acceptance. Collate's refreshed unit data plus matching historical API
-executions cover 51.82% of changed-source lines; 113 of 168 executable classes remain
-below 90%. Neither coverage gate is complete.
+The full coverage checker now includes every changed production module. The native
+scope has 512 service/MCP sources and 1,115 executable classes; 349 remain below 90%.
+All 455 executable classes belonging to the extracted core components meet the
+threshold. Collate's scope includes its service and three changed plugins: 105
+sources, 177 executable classes, and 118 below 90%. Both reports use only completed
+passing executions, with no missing sources or class-identity warnings. Both gates
+return failure. The [native class inventory](assets/entity-repository-full-class-coverage.csv)
+and [acceptance summary](assets/entity-repository-acceptance-summary.json) retain the
+results and input/report hashes. Neither gate is complete.
+
+The complete native MySQL/Elasticsearch/Redis API run passes 14,731 tests with zero
+failures (16,129 discovered; configured skips and assumption aborts are retained).
+A timestamp-history helper now retains the last populated page's backward cursor
+when concurrent cleanup leaves an empty terminal page. A deterministic real-API
+regression deletes the remaining rows and verifies the prior cursor on both databases;
+the existing completeness, ordering and backward-walk assertions remain.
+Collate's canonical PostgreSQL/OpenSearch/Redis suite passes 612 tests with three skips;
+its corrected isolated search fixtures pass all five cases, and the hybrid selection
+passes 12 with two optional external/multi-node cases skipped.
+
+Five Linux baseline-versus-baseline pairs fail their predeclared repeatability bounds:
+the same original artifact differs by about 5–9% at the median between processes,
+with percentile spreads up to 27%. No candidate latency acceptance follows from this
+calibration. The [repeatable commands](entity-repository-acceptance.md) now preserve
+ordered samples, artifact/source hashes, measured allocation windows, cache states,
+capacity probes and overload/recovery pairs. A stable runner, the remaining benchmark
+scenarios/matrix, background diagnostics and the under-covered classes are still open.
 
 Ten lineage API classes pass 184 cases on each database with Redis, with three skips
 and no failures or assumption aborts. Ten additional unit cases cover invalid hydration

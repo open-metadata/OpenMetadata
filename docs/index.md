@@ -32,6 +32,8 @@ The [entity module migration guide](entity-module-migration.md) documents policy
 native operation ports, registration and Java extension changes.
 The [performance report](entity-repository-performance.md) records partial paired measurements and
 their limits; the migration has not passed its latency gate.
+The [acceptance guide](entity-repository-acceptance.md) documents reproducible paired
+latency/load/allocation runs and the complete changed-class coverage checker.
 
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|

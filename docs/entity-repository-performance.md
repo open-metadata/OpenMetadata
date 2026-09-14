@@ -2,6 +2,36 @@
 
 Partial performance evidence for the completed composition implementation; its latency gate remains open.
 
+## Baseline repeatability and acceptance tooling (2026-09-14)
+
+Two Linux ARM processes running the identical original service artifact completed
+five alternating pairs for `get.columns.100` and `get.relationships.100`: 5,000
+measured requests and 1,000 warmups per workload/process/pair, after 20,000
+conditioning requests per workload/process. All 100,000 measured responses succeeded.
+The runtime was Temurin 21.0.12, a 1 GiB G1 heap, durable MySQL 8.3, OpenSearch 3.4,
+and warm Redis 7. The Java image and CPU assignments are retained in the
+[machine-readable summary](assets/entity-repository-acceptance-summary.json).
+No builds, tests, coverage agents or profiling ran during these measurements.
+
+| Workload | Median p50 process ratio | p50 spread | p95 spread | p99 spread |
+| --- | ---: | ---: | ---: | ---: |
+| Full-table columns, width 100 | 1.087 | 1.258 | 1.254 | 1.271 |
+| Relationships, width 100 | 1.051 | 1.122 | 1.132 | 1.213 |
+
+Spread is the largest divided by the smallest observed percentile across both
+processes and all five pairs. Both workloads fail the predeclared calibration
+bounds. These are identical-build comparisons, not measured candidate regressions;
+the runner does not establish repeatability. The legacy v11 traces also predate
+the new per-window cache-state records, so the stricter analyzer retains them as
+diagnostic evidence and cannot promote them to a passing calibration.
+
+The [acceptance guide](entity-repository-acceptance.md) now provides portable paired
+runs, full class coverage checks, bracketed baseline capacity, equal offered-load
+comparisons, overload/recovery windows, and allocation observations that exclude
+fixture preparation and warmup. Cold-start load resets once after warmup and keeps
+concurrent arrivals; per-request cold timing remains a separate measurement.
+The full matrix and coverage gate remain open.
+
 ## Metrics and RDF follow-up (2026-09-13)
 
 The current frozen service is

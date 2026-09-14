@@ -21,6 +21,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 
 /** Local benchmark controls run outside measured API requests and never enter the application. */
@@ -30,6 +31,15 @@ public final class EntityBenchmarkControl implements AutoCloseable {
   public record Endpoint(URI uri, String token) {}
 
   record CacheState(boolean configured, boolean available) {}
+
+  record Environment(
+      String javaRuntime,
+      String javaVendor,
+      String os,
+      String architecture,
+      int processors,
+      String containersSession,
+      boolean instrumented) {}
 
   record Heap(
       long used,
@@ -127,6 +137,7 @@ public final class EntityBenchmarkControl implements AutoCloseable {
           new CacheState(
               TestSuiteBootstrap.isRedisEnabled(), CacheBundle.getCacheProvider().available()));
       case "/heap" -> JsonUtils.pojoToJson(heap());
+      case "/environment" -> JsonUtils.pojoToJson(environment());
       case "/sql-start" -> startSqlProbe();
       case "/sql-stop" -> stopSqlProbe();
       default -> throw new IllegalArgumentException("Unknown benchmark command");
@@ -208,6 +219,23 @@ public final class EntityBenchmarkControl implements AutoCloseable {
             : -1;
     return new Heap(
         usage.getUsed(), usage.getCommitted(), usage.getMax(), collections, millis, allocated);
+  }
+
+  private static Environment environment() {
+    return new Environment(
+        System.getProperty("java.runtime.version"),
+        System.getProperty("java.vendor"),
+        System.getProperty("os.name"),
+        System.getProperty("os.arch"),
+        Runtime.getRuntime().availableProcessors(),
+        DockerClientFactory.SESSION_ID,
+        ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
+            .anyMatch(
+                argument ->
+                    argument.startsWith("-javaagent:")
+                        || argument.startsWith("-agentlib:")
+                        || argument.startsWith("-agentpath:")
+                        || argument.startsWith("-XX:StartFlightRecording")));
   }
 
   private static void reply(HttpExchange exchange, int status, String text) throws IOException {

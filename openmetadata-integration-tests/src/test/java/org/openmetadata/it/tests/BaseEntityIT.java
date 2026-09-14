@@ -6532,9 +6532,14 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       String after = null;
       do {
         JsonNode result = readHistoryPage(client, basePath, startTs, endTs, limit, "after", after);
-        pages.add(versionKeys(result));
-        lastPageBeforeCursor = cursor(result, "before");
+        List<String> versions = versionKeys(result);
         after = cursor(result, "after");
+        // Concurrent cleanup can remove the remaining foreign rows after a cursor was emitted.
+        if (versions.isEmpty() && after == null && !pages.isEmpty()) {
+          break;
+        }
+        pages.add(versions);
+        lastPageBeforeCursor = cursor(result, "before");
       } while (after != null);
       return new HistoryWalk(pages, lastPageBeforeCursor);
     }
