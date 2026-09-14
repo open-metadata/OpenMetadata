@@ -151,30 +151,34 @@ const checkElementVisibility = async (
       }
 
       case 'multiple-containers': {
-        // Handle elements that exist in multiple containers for deny case.
-        // Resolve each locator to its full list of matched buttons via
-        // `.all()` — see the allow-case comment above for why `.isVisible()`
-        // cannot be called directly on a locator that may match more than
-        // one element.
-        const containerLocators =
-          config.containers?.map((container) =>
-            testUserPage
-              .locator(`[data-testid="${container}"]`)
-              .locator(`button[data-testid="${testId}"]`)
-          ) || [];
+        const containers = config.containers ?? [];
+        const containerSelector = containers
+          .map((container) => `[data-testid="${container}"]`)
+          .join(', ');
+        const buttonSelector = containers
+          .map(
+            (container) =>
+              `[data-testid="${container}"] button[data-testid="${testId}"]`
+          )
+          .join(', ');
 
-        const containerButtons = await Promise.all(
-          containerLocators.map((locator) => locator.all())
+        // An empty list is not evidence of denial. The previous check read
+        // `.all()` and asserted `.every(v => !v)`, which is vacuously true when
+        // nothing has mounted -- and that is exactly what happened: measured
+        // across fourteen entity types, the button list resolved to zero
+        // elements every single time, so the assertion never once separated a
+        // denied page from an unrendered one.
+        //
+        // Anchor on the containers instead. They render regardless of
+        // permission (GlossaryTermsSection emits glossary-container in both its
+        // branches); only the button inside is gated, since TagsContainerV2
+        // renders add-tag behind `permission && isEmpty(tags)`. So the button is
+        // absent from the DOM rather than merely hidden, and asserting its
+        // absence only means something once its container is on the page.
+        await expect(testUserPage.locator(containerSelector)).not.toHaveCount(
+          0
         );
-
-        const containerVisibilityChecks = await Promise.all(
-          containerButtons.flat().map((button) => button.isVisible())
-        );
-
-        // In deny case: none of the matched buttons should be visible
-        expect(
-          containerVisibilityChecks.every((visible) => !visible)
-        ).toBeTruthy();
+        await expect(testUserPage.locator(buttonSelector)).toHaveCount(0);
 
         break;
       }
