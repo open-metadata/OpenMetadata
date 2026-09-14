@@ -19,6 +19,7 @@ import {
   Card,
   Dot,
   Dropdown,
+  Owner,
   PageLayout,
   Skeleton,
   Tabs,
@@ -63,6 +64,7 @@ import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import {
   ContentChangeState,
   RecentlyViewedQuickLinks,
@@ -79,7 +81,6 @@ import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
@@ -103,6 +104,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
@@ -398,11 +400,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
           {owners.length > 0 ? (
             <div className="article-detail-owner-label">
-              <OwnerLabel
+              <Owner
                 hasPermission={false}
                 isCompactView={false}
-                multiple={{ user: true, team: true }}
-                owners={owners}
+                owners={toOwnersWithHref(owners)}
+                renderOwnerContent={renderOwnerContent}
                 showLabel={false}
               />
             </div>
@@ -450,11 +452,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 </TooltipTrigger>
               </Tooltip>
               <div className="article-detail-owner-label tw:flex tw:items-center tw:gap-0.5">
-                <OwnerLabel
+                <Owner
                   hasPermission={false}
                   isCompactView={false}
-                  multiple={{ user: true, team: true }}
-                  owners={editors}
+                  owners={toOwnersWithHref(editors)}
+                  renderOwnerContent={renderOwnerContent}
                   showLabel={false}
                 />
               </div>

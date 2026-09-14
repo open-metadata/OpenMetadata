@@ -15,6 +15,7 @@ import {
   Badge,
   Card,
   FeaturedIcon,
+  Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -29,8 +30,8 @@ import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBas
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import {
   CATEGORY_CONFIGS,
@@ -134,12 +135,12 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
           made a large strip of the card look unclickable. `showLabel` is dropped because it only
           applies to the non-compact layout. */}
       <div role="presentation" onClick={stopPropagationIfInteractive}>
-        <OwnerLabel
+        <Owner
           isCompactView
           showDashPlaceholder
           avatarSize={20}
           maxVisibleOwners={1}
-          owners={service.owners}
+          owners={toOwnerRefs(service.owners ?? [])}
         />
       </div>
 
