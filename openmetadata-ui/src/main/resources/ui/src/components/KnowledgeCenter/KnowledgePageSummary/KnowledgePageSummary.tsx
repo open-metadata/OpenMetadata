@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { Col, Divider, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
@@ -22,15 +23,8 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../../../components/common/OwnerLabel/OwnerLabel.component').then(
-      (module) => ({ default: module.OwnerLabel })
-    )
-  )
-);
 
 const SummaryPanelSkeleton = withSuspenseFallback(
   lazy(
@@ -74,7 +68,7 @@ const KnowledgePageSummary = ({
     return [
       {
         name: i18n.t('label.owner-plural'),
-        value: <OwnerLabel hasPermission={false} owners={owners} />,
+        value: <Owner hasPermission={false} owners={toOwnerRefs(owners)} />,
       },
     ];
   }, [entityDetails]);

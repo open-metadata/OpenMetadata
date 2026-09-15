@@ -145,7 +145,6 @@ const FieldMetadataSection: React.FC<FieldMetadataSectionProps> = ({
                 icon={item?.style?.iconURL}
                 key={item.tagFQN}
                 label={getEntityName(item)}
-                maxWidth={120}
                 tooltip={getEntityName(item)}
               />
             );

@@ -16,7 +16,7 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isUndefined } from 'lodash';
+import { isBoolean, isObject, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import type {
@@ -451,7 +451,17 @@ const VALUE_CLAUSE_READERS: Array<
     (body: unknown) => Pick<CustomPropertyClause, 'value' | 'range'>
   ]
 > = [
-  ['term', (body) => ({ value: body })],
+  // A case-insensitive term states its value as `{ value, case_insensitive }`; a plain one is the
+  // bare value. Unwrap so the rule reloads with the value, not the clause body.
+  [
+    'term',
+    (body) => ({
+      value:
+        isObject(body) && 'value' in (body as UnknownRecord)
+          ? (body as UnknownRecord).value
+          : body,
+    }),
+  ],
   ['wildcard', (body) => ({ value: (body as { value?: unknown })?.value })],
   ['regexp', (body) => ({ value: (body as { value?: unknown })?.value })],
   ['match', (body) => ({ value: (body as { query?: unknown })?.query })],
