@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -938,21 +939,38 @@ public class TeamRepository extends EntityRepository<Team> {
    * scope its member search to a non-Group team's sub-groups.
    */
   private List<EntityReference> getDescendantTeams(Team team) {
-    List<EntityReference> descendants = new ArrayList<>();
-    collectDescendantTeams(team.getId(), descendants, new HashSet<>());
-    return descendants;
+    Map<UUID, List<UUID>> childrenMap = new HashMap<>();
+    Set<UUID> subtreeTeamIds = discoverSubtreeTeams(List.of(team.getId()), childrenMap);
+    subtreeTeamIds.remove(team.getId());
+    if (subtreeTeamIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityReferencesByIds(TEAM, new ArrayList<>(subtreeTeamIds), NON_DELETED);
   }
 
-  private void collectDescendantTeams(
-      UUID teamId, List<EntityReference> descendants, Set<UUID> visited) {
-    for (EntityReference child : getChildren(teamId)) {
-      // Teams form a DAG (a Division/Department may have multiple parents); dedupe by id so a team
-      // reachable through more than one path is listed once, not per path.
-      if (visited.add(child.getId())) {
-        descendants.add(child);
-        collectDescendantTeams(child.getId(), descendants, visited);
-      }
+  /**
+   * Batched, cycle-safe subtree walk: one {@link #fetchChildTeams} (a single findToBatch) per depth
+   * level rather than one query per node, so cost tracks tree depth, not subtree size. Teams form a
+   * DAG, so {@code visited} dedupes a team reachable through more than one parent path.
+   */
+  private Set<UUID> discoverSubtreeTeams(List<UUID> rootIds, Map<UUID, List<UUID>> childrenMap) {
+    Set<UUID> visited = new HashSet<>();
+    List<UUID> frontier = new ArrayList<>(rootIds);
+    while (!frontier.isEmpty()) {
+      visited.addAll(frontier);
+      Map<UUID, List<UUID>> levelChildren = fetchChildTeams(frontier);
+      childrenMap.putAll(levelChildren);
+      frontier = nextFrontier(levelChildren, visited);
     }
+    return visited;
+  }
+
+  private List<UUID> nextFrontier(Map<UUID, List<UUID>> levelChildren, Set<UUID> visited) {
+    return levelChildren.values().stream()
+        .flatMap(List::stream)
+        .distinct()
+        .filter(id -> !visited.contains(id))
+        .collect(Collectors.toList());
   }
 
   private List<EntityReference> getOwns(Team team) {
