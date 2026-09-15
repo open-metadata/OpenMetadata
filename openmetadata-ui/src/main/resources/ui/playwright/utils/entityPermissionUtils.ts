@@ -76,13 +76,28 @@ const openManageMenu = async (page: Page, manageButton: Locator) => {
   await manageButton.click();
 };
 
+/**
+ * The set of checks checkElementVisibility knows how to run.
+ *
+ * Declared as a union rather than `string` so a mistyped type is a compile
+ * error. It used to fall through to `default`, where the deny branch asserted
+ * `not.toBeVisible()` on a test id nothing renders -- a silent pass.
+ */
+type PermissionCheckType =
+  | 'direct'
+  | 'multiple-containers'
+  | 'with-manage-button'
+  | 'label';
+
+type PermissionCheckConfig = {
+  testId: string;
+  type: PermissionCheckType;
+  containers?: string[];
+};
+
 const checkElementVisibility = async (
   testUserPage: Page,
-  config: {
-    testId: string;
-    type: string;
-    containers?: string[];
-  },
+  config: PermissionCheckConfig,
   effect: 'allow' | 'deny'
 ) => {
   const { testId, type } = config;
@@ -161,9 +176,7 @@ const checkElementVisibility = async (
       }
 
       default: {
-        await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`)
-        ).toBeVisible();
+        throw new Error(`Unhandled permission check type: ${type}`);
       }
     }
   } else {
@@ -256,9 +269,7 @@ const checkElementVisibility = async (
       }
 
       default: {
-        await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`)
-        ).not.toBeVisible();
+        throw new Error(`Unhandled permission check type: ${type}`);
       }
     }
   }
@@ -275,7 +286,7 @@ export const testCommonOperations = async (
   await entity.visitEntityPage(testUserPage);
 
   // Define test configurations with special handling
-  const testIdsConfigs = [
+  const testIdsConfigs: PermissionCheckConfig[] = [
     { testId: 'edit-description', type: 'direct' },
     {
       testId: 'add-tag',
@@ -307,44 +318,50 @@ export const testCommonOperations = async (
   }
 
   if (effect === 'deny') {
+    // Both controls render on every entity measured, in both modes, so an
+    // `isVisible()` guard here could only ever skip the check on a page that had
+    // not finished rendering -- which is indistinguishable from passing. Require
+    // them, then assert the picker they open stays closed. Absence rather than
+    // invisibility: measured across all fourteen entities, clicking either
+    // control under deny leaves zero cards in the DOM.
     const tierLocator = testUserPage.getByTestId('Tier');
-    if (await tierLocator.isVisible()) {
-      await tierLocator.click();
-      await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
-    }
+    await expect(tierLocator).toBeVisible();
+    await tierLocator.click();
+    await expect(testUserPage.getByTestId('cards')).toHaveCount(0);
 
     const certLocator = testUserPage.getByTestId('certification-value');
-    if (await certLocator.isVisible()) {
-      await certLocator.click();
-      await expect(
-        testUserPage.getByTestId('certification-cards')
-      ).not.toBeVisible();
-    }
+    await expect(certLocator).toBeVisible();
+    await certLocator.click();
+    await expect(testUserPage.getByTestId('certification-cards')).toHaveCount(
+      0
+    );
   }
 
   // Check custom properties
   const customPropertiesLocator = testUserPage.locator(
     '[data-testid="custom_properties"]'
   );
-  if (await customPropertiesLocator.isVisible()) {
-    await customPropertiesLocator.click();
-    if (effect === 'allow') {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).toBeVisible();
-    } else {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).not.toBeVisible();
-    }
+
+  // The tab renders on every entity in both modes, so guarding this on
+  // `isVisible()` could only skip the check on an unrendered page. Require it.
+  await expect(customPropertiesLocator).toBeVisible();
+  await customPropertiesLocator.click();
+
+  const customPropertyCard = testUserPage.locator(
+    '[data-testid="custom-properties-card"]'
+  );
+  const customPropertyEditIcons = customPropertyCard.getByTestId('edit-icon');
+
+  // Anchor on the card, which renders either way, so the edit affordance being
+  // missing means denied rather than not yet drawn. Under deny the icons are
+  // absent from the DOM, not hidden -- measured zero on every entity, against
+  // hundreds under allow.
+  await expect(customPropertyCard).toBeVisible();
+
+  if (effect === 'allow') {
+    await expect(customPropertyEditIcons).not.toHaveCount(0);
+  } else {
+    await expect(customPropertyEditIcons).toHaveCount(0);
   }
 };
 
@@ -356,6 +373,11 @@ export const testPermissionErrorVisibility = async (
   expectedErrorMessage?: string
 ) => {
   await testUserPage.locator(`[data-testid="${testId}"]`).click();
+
+  // Let the panel finish loading first. The allow branch below asserts the
+  // permission error is *not* shown, which an unrendered panel satisfies just as
+  // well as a permitted one.
+  await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'deny') {
     await expect(
@@ -384,6 +406,10 @@ export const testProfilerTabPermission = async (
   expectedErrorMessage?: string
 ) => {
   await testUserPage.getByRole('tab', { name: tabName }).click();
+
+  // Same reason as testPermissionErrorVisibility: the allow branch asserts an
+  // absence, so the tab has to have rendered before it means anything.
+  await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'deny') {
     await expect(
@@ -491,10 +517,16 @@ export const testPipelineSpecificOperations = async (
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
   await waitForAllLoadersToDisappear(testUserPage);
 
+  // Anchor on the canvas, which renders in both modes -- measured one
+  // `.react-flow` under allow and one under deny. Without it `not.toBeVisible()`
+  // is equally satisfied by a Lineage tab that has not drawn yet. Under deny the
+  // control is absent from the DOM rather than hidden.
+  await expect(testUserPage.locator('.react-flow')).toBeVisible();
+
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.getByTestId('edit-lineage')).toHaveCount(0);
   }
 };
 
@@ -565,10 +597,16 @@ export const testDashboardDataModelSpecificOperations = async (
   await testUserPage.getByRole('tab', { name: 'Lineage' }).click();
   await waitForAllLoadersToDisappear(testUserPage);
 
+  // Anchor on the canvas, which renders in both modes -- measured one
+  // `.react-flow` under allow and one under deny. Without it `not.toBeVisible()`
+  // is equally satisfied by a Lineage tab that has not drawn yet. Under deny the
+  // control is absent from the DOM rather than hidden.
+  await expect(testUserPage.locator('.react-flow')).toBeVisible();
+
   if (effect === 'allow') {
     await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.getByTestId('edit-lineage')).toHaveCount(0);
   }
 };
 
