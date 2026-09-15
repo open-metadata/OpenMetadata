@@ -36,8 +36,9 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
-    VERTICA_GET_PRIMARY_KEYS,
+    VERTICA_GET_COLUMNS_WITH_COMMENTS,
     VERTICA_LIST_DATABASES,
+    VERTICA_SCHEMA_COLUMN_COMMENTS,
     VERTICA_SCHEMA_COMMENTS,
     VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
@@ -47,6 +48,7 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_schema_column_comments,
     get_schema_descriptions,
     get_table_comment_wrapper,
 )
@@ -74,30 +76,52 @@ ischema_names.update(
 
 
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=too-many-locals,unused-argument
+def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=too-many-locals
     """
-    Method to handle column details
+    Method to handle column details.
+
+    Column comments are resolved from a schema-scoped in-memory cache (see
+    `get_schema_column_comments`) instead of joining `v_catalog.comments` per
+    table, which is the dominant ingestion cost (issue #29429). When that cache is
+    unavailable -- no schema to scope to, no info_cache to hold it, or a schema
+    above `MAX_SCHEMA_COMMENTS` -- we fall back to the original per-table join, so
+    every comment is still resolved.
+
+    The internal primary-key lookup was removed: its result was never consumed
+    downstream (primary keys are read via `get_pk_constraint`), so it was a
+    redundant catalog query per table.
     """
     if schema is not None:
         schema_condition = f"lower(table_schema) = '{schema.lower()}'"
     else:
         schema_condition = "1"
 
-    sql_query = sql.text(
-        dedent(VERTICA_GET_COLUMNS.format(table=table_name.lower(), schema_condition=schema_condition))
-    )
+    info_cache = kw.get("info_cache")
+    comments = None
+    if schema is not None and info_cache is not None:
+        comments = get_schema_column_comments(
+            self,
+            connection,
+            query=VERTICA_SCHEMA_COLUMN_COMMENTS,
+            schema=schema,
+            info_cache=info_cache,
+        )
 
-    spk = sql.text(dedent(VERTICA_GET_PRIMARY_KEYS.format(table=table_name.lower(), schema_condition=schema_condition)))
+    use_join_fallback = comments is None
+    query = VERTICA_GET_COLUMNS_WITH_COMMENTS if use_join_fallback else VERTICA_GET_COLUMNS
+    sql_query = sql.text(dedent(query.format(table=table_name.lower(), schema_condition=schema_condition)))
 
-    pk_columns = [x[0] for x in connection.execute(spk)]
+    table_key = table_name.lower()
     columns = {}
     for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
-        primary_key = name in pk_columns
         default = row.column_default
         nullable = row.is_nullable
-        comment = row.comment
+        if use_join_fallback:
+            comment = row.comment
+        else:
+            comment = comments.get((table_key, (name or "").lower()))
 
         column_info = self._get_column_info(  # pylint: disable=protected-access
             name,
@@ -107,7 +131,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
             schema,
             comment,
         )
-        column_info.update({"primary_key": primary_key})
         if columns.get(name) is None or comment:
             columns[name] = column_info
     return columns.values()
@@ -254,6 +277,11 @@ VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-
 VerticaDialect.get_view_definition = get_view_definition  # pyright: ignore[reportAttributeAccessIssue]
 VerticaDialect.get_all_table_comments = get_all_table_comments
 VerticaDialect.get_table_comment = get_table_comment  # pyright: ignore[reportAttributeAccessIssue]
+
+# The reflection queries used during ingestion embed their literal values into the
+# statement text, so enabling SQLAlchemy's compiled-statement cache is safe and
+# avoids recompiling every statement (matching the MSSQL dialect behaviour).
+VerticaDialect.supports_statement_cache = True
 
 
 class VerticaSource(CommonDbSourceService, MultiDBSource):
