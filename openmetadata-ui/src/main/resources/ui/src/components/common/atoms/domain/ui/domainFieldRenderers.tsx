@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Avatar, Box, Typography } from '@openmetadata/ui-core-components';
+import type { OwnerRef } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { MouseEvent, ReactNode } from 'react';
 import { NO_DATA } from '../../../../../constants/constants';
 import { DataProduct } from '../../../../../generated/entity/domains/dataProduct';
@@ -26,10 +32,7 @@ import {
 } from '../../../../../utils/TagsPureUtils';
 import { renderBreakableTooltip } from '../../../../../utils/TooltipUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
-import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
-
-type TagSize = 'sm' | 'lg';
+import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 
 interface TaggedEntity {
   tags?: TagLabel[];
@@ -108,37 +111,29 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
 
 export const renderDomainOwnersCell = (
   entity: OwnedEntity,
-  showDashPlaceholder?: boolean
+  toOwnersWithHref: (refs: EntityReference[] | undefined) => OwnerRef[],
+  renderOwnerContent: (
+    owner: { name?: string; type?: string },
+    chip: ReactNode
+  ) => ReactNode,
+  options?: { showDashPlaceholder?: boolean }
 ): ReactNode => (
-  <OwnerLabel
+  <Owner
     isCompactView={false}
     maxVisibleOwners={4}
-    owners={entity.owners}
-    showDashPlaceholder={showDashPlaceholder}
+    owners={toOwnersWithHref(entity.owners)}
+    renderOwnerContent={renderOwnerContent}
+    showDashPlaceholder={options?.showDashPlaceholder}
     showLabel={false}
   />
 );
 
 export const renderDomainGlossaryTagsCell = (
-  entity: TaggedEntity,
-  emptyPlaceholder?: string,
-  size?: TagSize
-): ReactNode => (
-  <TagBadgeList
-    emptyPlaceholder={emptyPlaceholder}
-    size={size}
-    tags={getGlossaryTags(entity.tags)}
-  />
-);
+  entity: TaggedEntity
+): ReactNode => <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
 
 export const renderDomainClassificationTagsCell = (
-  entity: TaggedEntity,
-  emptyPlaceholder?: string,
-  size?: TagSize
+  entity: TaggedEntity
 ): ReactNode => (
-  <TagBadgeList
-    emptyPlaceholder={emptyPlaceholder}
-    size={size}
-    tags={getClassificationTags(entity.tags)}
-  />
+  <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
 );

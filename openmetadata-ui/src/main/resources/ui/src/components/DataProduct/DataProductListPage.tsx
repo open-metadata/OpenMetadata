@@ -17,6 +17,7 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
+  Owner,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -33,16 +34,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  NO_DATA,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
-} from '../../constants/constants';
+import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import {
@@ -67,10 +65,9 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -148,6 +145,7 @@ const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -248,39 +246,31 @@ const DataProductListPage = ({
           );
         case 'owners':
           return (
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.owners}
+              owners={toOwnersWithHref(entity.owners ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );
         case 'glossaryTerms':
-          return (
-            <TagBadgeList
-              emptyPlaceholder={NO_DATA_PLACEHOLDER}
-              size="lg"
-              tags={getGlossaryTags(entity.tags)}
-            />
-          );
+          return <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
         case 'domains':
           return renderDataProductDomainCell(entity);
         case 'tags':
           return (
-            <TagBadgeList
-              emptyPlaceholder={NO_DATA_PLACEHOLDER}
-              size="sm"
-              tags={getClassificationTags(entity.tags)}
-            />
+            <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
           );
         case 'experts':
           return (
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.experts}
+              owners={toOwnersWithHref(entity.experts ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );
