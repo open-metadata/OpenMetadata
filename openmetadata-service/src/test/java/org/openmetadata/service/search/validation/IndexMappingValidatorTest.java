@@ -73,6 +73,82 @@ class IndexMappingValidatorTest {
     assertEquals(0, IndexMappingValidator.validate(Map.of("table", tableMapping)).size());
   }
 
+  /**
+   * A grandparent that lists its child but not its grandchild, so a cascade resolved from the
+   * grandparent's {@code childAliases} never reaches the grandchild's documents.
+   *
+   * <p>Deliberately a synthetic hierarchy rather than a real pair from {@code indexMapping.json}:
+   * every real gap is a candidate for {@code ACKNOWLEDGED_TRANSITIVE_GAPS}, and a test keyed on one
+   * flips from testing the mechanism to testing the allowlist the moment that pair is acknowledged.
+   */
+  @Test
+  void flagsChildAliasesThatAreNotTransitivelyClosed() {
+    registerEntities("grandparentType", "childType", "grandchildType");
+
+    Map<String, IndexMapping> mappings =
+        Map.of(
+            "grandparentType", mappingWithChildren("grandparentType", List.of("childType")),
+            "childType", mappingWithChildren("childType", List.of("grandchildType")),
+            "grandchildType", mappingWithChildren("grandchildType", List.of()));
+
+    List<String> warnings = IndexMappingValidator.validate(mappings);
+
+    assertEquals(1, warnings.size());
+    assertTrue(
+        warnings.get(0).contains("grandparentType") && warnings.get(0).contains("grandchildType"),
+        () -> "warning should name the parent and the unreachable descendant; got: " + warnings);
+  }
+
+  /**
+   * {@code directory} → {@code worksheet} is a genuine gap in the generic cascade, but
+   * {@code deleteOrUpdateChildren} sweeps the drive subtree by FQN prefix instead, so warning about
+   * it is noise. Four of the five gaps in the real mapping are covered this way; suppressing them is
+   * what keeps the one actionable warning visible.
+   */
+  @Test
+  void silentWhenTheTransitiveGapIsCoveredByADedicatedCascade() {
+    registerEntities("directory", "spreadsheet", "worksheet");
+
+    Map<String, IndexMapping> mappings =
+        Map.of(
+            "directory", mappingWithChildren("directory", List.of("spreadsheet")),
+            "spreadsheet", mappingWithChildren("spreadsheet", List.of("worksheet")),
+            "worksheet", mappingWithChildren("worksheet", List.of()));
+
+    assertEquals(
+        List.of(),
+        IndexMappingValidator.validate(mappings),
+        "directory->worksheet is covered by the FQN-prefix drive sweep and must not warn");
+  }
+
+  @Test
+  void silentWhenChildAliasesAreTransitivelyClosed() {
+    registerEntities("directory", "spreadsheet", "worksheet");
+
+    Map<String, IndexMapping> mappings =
+        Map.of(
+            "directory", mappingWithChildren("directory", List.of("spreadsheet", "worksheet")),
+            "spreadsheet", mappingWithChildren("spreadsheet", List.of("worksheet")),
+            "worksheet", mappingWithChildren("worksheet", List.of()));
+
+    assertEquals(0, IndexMappingValidator.validate(mappings).size());
+  }
+
+  private static void registerEntities(String... entityTypes) {
+    for (String entityType : entityTypes) {
+      EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity(entityType));
+    }
+  }
+
+  private static IndexMapping mappingWithChildren(String alias, List<String> children) {
+    return IndexMapping.builder()
+        .indexName(alias + "_search_index")
+        .alias(alias)
+        .childAliases(children)
+        .indexMappingFile("/elasticsearch/%s/" + alias + "_index_mapping.json")
+        .build();
+  }
+
   @Test
   void flagsUnregisteredChildAlias() {
     EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity("table"));

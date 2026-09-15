@@ -426,8 +426,23 @@ public final class Entity {
     if (searchRepository == null || searchRepository.getEntityIndexMap() == null) {
       return;
     }
+    registerSyntheticIndexCapabilities();
     org.openmetadata.service.search.validation.IndexMappingValidator.validate(
         searchRepository.getEntityIndexMap());
+  }
+
+  /**
+   * Registers capabilities for search-only index types that have no {@link EntityRepository} and so
+   * never pass through {@code registerEntity}.
+   *
+   * <p>Without this the registry returns {@code null} for them, and callers disagree on what that
+   * means — {@code SoftDeleteScript.compatibleWith} treats an unknown type as incompatible while
+   * {@code propagateInheritedFieldsToChildren} treats it as eligible. Column documents do carry a
+   * {@code deleted} field, so the fail-closed reading is simply wrong; today it is masked only by
+   * explicit {@code Entity.TABLE} fallbacks that a refactor could remove.
+   */
+  private static void registerSyntheticIndexCapabilities() {
+    EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity(TABLE_COLUMN));
   }
 
   private static void registerDomainSyncHandler() {

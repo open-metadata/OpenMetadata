@@ -1049,6 +1049,29 @@ public interface SearchReindexDAOs {
       }
     }
 
+    /**
+     * Records a failure for an entity, inserting or merging onto the existing row.
+     *
+     * <p>A conflicting enqueue must not disturb a row a worker has already claimed. It used to set
+     * {@code status}, {@code retryCount = 0}, {@code claimedAt} and {@code claimToken}
+     * unconditionally, which un-claimed an in-flight row: the working worker's {@code deleteClaimed}
+     * / {@code updateFailureAndRetryCount} both require {@code status = 'IN_PROGRESS'} AND a
+     * matching {@code claimToken}, so after the reset they matched nothing and its outcome was
+     * discarded. Resetting {@code retryCount} was the sharper harm — an entity that keeps failing
+     * and keeps being re-enqueued never climbs the backoff ladder, so it retries forever instead of
+     * escalating.
+     *
+     * <p>The claim fields are therefore preserved while the row is {@code IN_PROGRESS}; the new
+     * {@code failureReason} is still recorded either way. <b>In MySQL the {@code status} assignment
+     * must stay last</b> — {@code ON DUPLICATE KEY UPDATE} evaluates assignments left to right, so
+     * an earlier {@code status} write would be what the other CASE guards then read.
+     *
+     * <p>ponytail: leaves one narrow window — if the worker's DB read happened strictly before the
+     * newly-enqueued failure's commit, its success deletes the row and that later failure is
+     * forgotten. Closing it needs a dirty/redo marker column (migration + dual-write); the stale
+     * guard on the write path means the surviving document is never *older*, only possibly missing
+     * the last change.
+     */
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
@@ -1067,8 +1090,11 @@ public interface SearchReindexDAOs {
                 + PROPAGATION_CONTEXT_TOKEN
                 + "', "
                 + "failureReason))) END, "
-                + "status = VALUES(status), entityType = VALUES(entityType), retryCount = 0, "
-                + "claimedAt = NULL, claimToken = NULL",
+                + "entityType = VALUES(entityType), "
+                + "retryCount = CASE WHEN status = 'IN_PROGRESS' THEN retryCount ELSE 0 END, "
+                + "claimedAt = CASE WHEN status = 'IN_PROGRESS' THEN claimedAt ELSE NULL END, "
+                + "claimToken = CASE WHEN status = 'IN_PROGRESS' THEN claimToken ELSE NULL END, "
+                + "status = CASE WHEN status = 'IN_PROGRESS' THEN status ELSE VALUES(status) END",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -1091,9 +1117,15 @@ public interface SearchReindexDAOs {
                 + PROPAGATION_CONTEXT_TOKEN
                 + "' IN "
                 + "search_index_retry_queue.failureReason)) END, "
-                + "status = EXCLUDED.status, "
-                + "entityType = EXCLUDED.entityType, retryCount = 0, claimedAt = NULL, "
-                + "claimToken = NULL",
+                + "entityType = EXCLUDED.entityType, "
+                + "retryCount = CASE WHEN search_index_retry_queue.status = 'IN_PROGRESS' "
+                + "THEN search_index_retry_queue.retryCount ELSE 0 END, "
+                + "claimedAt = CASE WHEN search_index_retry_queue.status = 'IN_PROGRESS' "
+                + "THEN search_index_retry_queue.claimedAt ELSE NULL END, "
+                + "claimToken = CASE WHEN search_index_retry_queue.status = 'IN_PROGRESS' "
+                + "THEN search_index_retry_queue.claimToken ELSE NULL END, "
+                + "status = CASE WHEN search_index_retry_queue.status = 'IN_PROGRESS' "
+                + "THEN search_index_retry_queue.status ELSE EXCLUDED.status END",
         connectionType = POSTGRES)
     void upsert(
         @Bind("entityId") String entityId,
