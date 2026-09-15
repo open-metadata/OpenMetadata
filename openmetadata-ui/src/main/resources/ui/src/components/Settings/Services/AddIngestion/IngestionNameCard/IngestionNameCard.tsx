@@ -11,21 +11,35 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
+import { HintText, Input, Owner } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../../enums/entity.enum';
+import { EntityReference } from '../../../../../generated/entity/type';
+import { useEntityRules } from '../../../../../hooks/useEntityRules';
+import { toOwnerRefs } from '../../../../../utils/Owner/ownerConversionUtils';
+import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 
 interface IngestionNameCardProps {
   displayName: string;
+  owners: EntityReference[];
+  isOwnersRequired?: boolean;
+  isOwnersInvalid?: boolean;
   onDisplayNameChange: (value: string) => void;
+  onOwnersChange: (owners?: EntityReference[]) => void;
   onFocus?: (fieldName: string) => void;
 }
 
 const IngestionNameCard = ({
   displayName,
+  owners,
+  isOwnersRequired = false,
+  isOwnersInvalid = false,
   onDisplayNameChange,
+  onOwnersChange,
   onFocus,
 }: IngestionNameCardProps) => {
   const { t } = useTranslation();
+  const { entityRules } = useEntityRules(EntityType.INGESTION_PIPELINE);
 
   return (
     <div
@@ -48,6 +62,35 @@ const IngestionNameCard = ({
         onChange={onDisplayNameChange}
         onFocus={() => onFocus?.('displayName')}
       />
+      <div className="tw:mt-4" data-testid="ingestion-owners-field">
+        <Owner
+          hasPermission
+          showLabel
+          data-testid="ingestion-owners"
+          isCompactView={false}
+          owners={toOwnerRefs(owners)}
+          selectorContent={
+            <UserTeamSelectableList
+              hasPermission
+              previewSelected
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
+              owner={owners}
+              triggerDataTestId="add-ingestion-owners"
+              onUpdate={onOwnersChange}
+            />
+          }
+        />
+        {isOwnersRequired && isOwnersInvalid && (
+          <HintText isInvalid className="tw:mt-1" data-testid="owners-error">
+            {t('label.field-required-plural', {
+              field: t('label.owner-plural'),
+            })}
+          </HintText>
+        )}
+      </div>
     </div>
   );
 };
