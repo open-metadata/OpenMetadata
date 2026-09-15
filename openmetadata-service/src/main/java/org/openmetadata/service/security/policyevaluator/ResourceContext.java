@@ -13,7 +13,6 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
@@ -261,15 +260,15 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return serviceTags;
   }
 
-  /** Read off the already-resolved service entity, so matching a type costs no extra read. */
+  /** Read off the already-resolved service entity, so matching costs no extra read. */
   @Override
   public String getServiceType() {
-    EntityInterface service = getServiceEntity();
-    if (service instanceof ServiceEntityInterface typedService
-        && typedService.getServiceType() != null) {
-      return typedService.getServiceType().value();
-    }
-    return null;
+    return ServiceAttributeUtil.serviceTypeOf(getServiceEntity());
+  }
+
+  @Override
+  public String getServiceEnvironment() {
+    return ServiceAttributeUtil.environmentOf(getServiceEntity());
   }
 
   /**

@@ -252,6 +252,10 @@ public class RBACConditionEvaluator {
           extractMethodArguments(methodRef),
           ServiceAttributeResolver::serviceIdsForNames,
           collector);
+      case "matchAnyServiceEnvironment" -> matchAnyServiceAttribute(
+          extractMethodArguments(methodRef),
+          ServiceAttributeResolver::serviceIdsForEnvironments,
+          collector);
       case "matchAnyServiceType" -> matchAnyServiceType(
           extractMethodArguments(methodRef), collector);
       default -> warnUntranslatedFunction(methodName);

@@ -727,6 +727,15 @@ public class ExpressionValidatorTest {
   }
 
   /** Arg-taking functions resolve to a getter when written bare, so they must not be usable so. */
+  /** The environment is a closed enum, so a typo is caught when the policy is written. */
+  @Test
+  void testServiceEnvironmentConditionValidatesItsArgument() {
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyServiceEnvironment('Development')"));
+  }
+
   @Test
   void testBareServiceConditionIsRejected() {
     assertThrows(

@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
@@ -76,6 +77,26 @@ class ServiceAttributeResolverTest {
   void resolvesNothingForNoArguments() {
     assertTrue(ServiceAttributeResolver.serviceIdsForTags(List.of()).isEmpty());
     assertTrue(ServiceAttributeResolver.serviceIdsForNames(List.of()).isEmpty());
+  }
+
+  /** serviceAttributes is stored inline, so it arrives with the listing without a field request. */
+  @Test
+  void resolvesEnvironmentsToServiceIds() {
+    warehouse.setServiceAttributes(
+        new ServiceAttributes().withEnvironment(ServiceAttributes.Environment.PRODUCTION));
+    registerDatabaseServices(sandbox, warehouse);
+    ServiceAttributeResolver.invalidate();
+
+    assertEquals(
+        Set.of(warehouse.getId().toString()),
+        ServiceAttributeResolver.serviceIdsForEnvironments(Set.of("Production")));
+    assertEquals(
+        Set.of(warehouse.getId().toString()),
+        ServiceAttributeResolver.serviceIdsForEnvironments(Set.of("production")),
+        "matching is case-insensitive, to agree with the REST evaluator");
+    assertTrue(
+        ServiceAttributeResolver.serviceIdsForEnvironments(Set.of("Development")).isEmpty(),
+        "a service with no environment set must not match any environment");
   }
 
   @Test

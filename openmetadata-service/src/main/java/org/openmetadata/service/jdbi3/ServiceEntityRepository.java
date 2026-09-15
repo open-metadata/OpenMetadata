@@ -294,6 +294,16 @@ public abstract class ServiceEntityRepository<
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("connection", this::updateConnection);
       compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
+      compareAndUpdate("serviceAttributes", this::updateServiceAttributes);
+    }
+
+    /**
+     * {@code serviceAttributes} is a plain inline object, so recording the change is all that is
+     * needed for it to persist and appear in the change description.
+     */
+    private void updateServiceAttributes() {
+      recordChange(
+          "serviceAttributes", original.getServiceAttributes(), updated.getServiceAttributes());
     }
 
     private void updateConnection() {

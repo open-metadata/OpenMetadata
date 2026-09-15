@@ -125,6 +125,25 @@ class ServiceConditionRuleEvaluatorTest {
   }
 
   @Test
+  void matchAnyServiceEnvironment_matchesTheDeclaredEnvironment() {
+    StandardEvaluationContext context = contextWithEnvironment("Development");
+
+    assertTrue(evaluate("matchAnyServiceEnvironment('Development')", context));
+    assertTrue(evaluate("matchAnyServiceEnvironment('development')", context), "case-insensitive");
+    assertTrue(evaluate("matchAnyServiceEnvironment('Sandbox', 'Development')", context));
+    assertFalse(evaluate("matchAnyServiceEnvironment('Production')", context));
+  }
+
+  /** The attributes block is optional, so an unset environment must not match anything. */
+  @Test
+  void matchAnyServiceEnvironment_false_whenEnvironmentIsUnset() {
+    StandardEvaluationContext context = contextWithEnvironment(null);
+
+    assertFalse(evaluate("matchAnyServiceEnvironment('Development')", context));
+    assertTrue(evaluate("!matchAnyServiceEnvironment('Development')", context));
+  }
+
+  @Test
   void serviceConditions_combineWithOtherConditions() {
     StandardEvaluationContext context = contextWithServiceTags(HIDDEN_TAG);
 
@@ -158,6 +177,13 @@ class ServiceConditionRuleEvaluatorTest {
     Mockito.when(resourceContext.getServiceTags())
         .thenReturn(
             java.util.Arrays.stream(tagFQNs).map(fqn -> new TagLabel().withTagFQN(fqn)).toList());
+    return evaluationContextFor(resourceContext);
+  }
+
+  /** A resource whose service declares {@code environment} (null meaning the admin never set it). */
+  private static StandardEvaluationContext contextWithEnvironment(String environment) {
+    ResourceContextInterface resourceContext = mock(ResourceContextInterface.class);
+    Mockito.when(resourceContext.getServiceEnvironment()).thenReturn(environment);
     return evaluationContextFor(resourceContext);
   }
 

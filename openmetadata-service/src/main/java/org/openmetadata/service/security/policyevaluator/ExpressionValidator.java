@@ -124,6 +124,7 @@ public final class ExpressionValidator {
           "matchAnyServiceTag",
           "matchAnyServiceType",
           "matchAnyServiceName",
+          "matchAnyServiceEnvironment",
           "matchAnyEventType",
           "matchAnyFieldChange",
           "matchAnySource",

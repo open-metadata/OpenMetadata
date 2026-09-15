@@ -179,6 +179,28 @@ abstract class AbstractServiceConditionRBACTest {
   }
 
   @Test
+  void serviceEnvironment_resolvesToServiceIds() {
+    resolveTo(serviceIdOne);
+    givenRule("matchAnyServiceEnvironment('Development')", Rule.Effect.DENY);
+
+    String query = serialize(evaluator.evaluateConditions(subjectContext));
+
+    assertTrue(query.contains("service.id"));
+    assertTrue(query.contains("id.keyword"), "the service's own document is covered too");
+    assertTrue(query.contains(serviceIdOne));
+  }
+
+  @Test
+  void unresolvedServiceEnvironment_deny_hidesNothing() {
+    givenRule("matchAnyServiceEnvironment('Production')", Rule.Effect.DENY);
+
+    String query = serialize(evaluator.evaluateConditions(subjectContext));
+
+    assertFalse(query.contains("terms"));
+    assertTrue(query.contains(MATCH_ALL));
+  }
+
+  @Test
   void serviceName_resolvesToServiceIds() {
     resolveTo(serviceIdOne);
     givenRule("matchAnyServiceName('snowflake-sandbox')", Rule.Effect.DENY);
@@ -238,6 +260,9 @@ abstract class AbstractServiceConditionRBACTest {
         };
     resolver.when(() -> ServiceAttributeResolver.serviceIdsForTags(any())).thenAnswer(byKeys);
     resolver.when(() -> ServiceAttributeResolver.serviceIdsForNames(any())).thenAnswer(byKeys);
+    resolver
+        .when(() -> ServiceAttributeResolver.serviceIdsForEnvironments(any()))
+        .thenAnswer(byKeys);
   }
 
   private void givenRule(String condition, Rule.Effect effect) {

@@ -13,7 +13,6 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.Team;
@@ -147,12 +146,12 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
 
   @Override
   public String getServiceType() {
-    EntityInterface service = getServiceEntity();
-    if (service instanceof ServiceEntityInterface typedService
-        && typedService.getServiceType() != null) {
-      return typedService.getServiceType().value();
-    }
-    return null;
+    return ServiceAttributeUtil.serviceTypeOf(getServiceEntity());
+  }
+
+  @Override
+  public String getServiceEnvironment() {
+    return ServiceAttributeUtil.environmentOf(getServiceEntity());
   }
 
   /**

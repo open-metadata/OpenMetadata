@@ -19,12 +19,15 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -82,19 +85,24 @@ public final class ServiceAttributeResolver {
    * @param serviceIdsByTagFqn tag FQN to the ids of services carrying it
    * @param serviceIdsByName service name to its id, as a single-element set so callers can union
    *     lookups uniformly
+   * @param serviceIdsByEnvironment environment value to the ids of services declaring it
    * @param signature content hash, used to key caches that embed resolved ids
    */
   record ServiceSnapshot(
       Map<String, Set<String>> serviceIdsByTagFqn,
       Map<String, Set<String>> serviceIdsByName,
+      Map<String, Set<String>> serviceIdsByEnvironment,
       long signature) {
 
     static ServiceSnapshot of(
-        Map<String, Set<String>> serviceIdsByTagFqn, Map<String, Set<String>> serviceIdsByName) {
+        Map<String, Set<String>> serviceIdsByTagFqn,
+        Map<String, Set<String>> serviceIdsByName,
+        Map<String, Set<String>> serviceIdsByEnvironment) {
       return new ServiceSnapshot(
           deepCopy(serviceIdsByTagFqn),
           deepCopy(serviceIdsByName),
-          Objects.hash(serviceIdsByTagFqn, serviceIdsByName));
+          deepCopy(serviceIdsByEnvironment),
+          Objects.hash(serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment));
     }
 
     /** The value sets are copied too, so the snapshot cannot be mutated through them. */
@@ -105,7 +113,7 @@ public final class ServiceAttributeResolver {
     }
 
     static ServiceSnapshot empty() {
-      return of(Map.of(), Map.of());
+      return of(Map.of(), Map.of(), Map.of());
     }
   }
 
@@ -117,6 +125,20 @@ public final class ServiceAttributeResolver {
   /** Ids of every service whose name is in {@code serviceNames}. */
   public static Set<String> serviceIdsForNames(Collection<String> serviceNames) {
     return lookup(snapshot().serviceIdsByName(), serviceNames);
+  }
+
+  /**
+   * Ids of every service whose declared environment is in {@code environments}. Matching is
+   * case-insensitive; the index is keyed on the lowercased value.
+   */
+  public static Set<String> serviceIdsForEnvironments(Collection<String> environments) {
+    return lookup(
+        snapshot().serviceIdsByEnvironment(),
+        environments.stream().map(ServiceAttributeResolver::normalize).toList());
+  }
+
+  private static String normalize(String value) {
+    return value == null ? null : value.toLowerCase(Locale.ROOT);
   }
 
   /**
@@ -180,12 +202,14 @@ public final class ServiceAttributeResolver {
   private static ServiceSnapshot loadSnapshot() {
     Map<String, Set<String>> serviceIdsByTagFqn = new HashMap<>();
     Map<String, Set<String>> serviceIdsByName = new HashMap<>();
+    Map<String, Set<String>> serviceIdsByEnvironment = new HashMap<>();
     try {
       for (String serviceEntityType : Entity.getServiceEntityTypes()) {
         // A service type with no repository registered yet is not a failure — it happens during
         // bootstrap and in unit tests that register only the entities they exercise.
         if (Entity.hasEntityRepository(serviceEntityType)) {
-          indexServices(serviceEntityType, serviceIdsByTagFqn, serviceIdsByName);
+          indexServices(
+              serviceEntityType, serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment);
         }
       }
     } catch (RuntimeException e) {
@@ -193,10 +217,11 @@ public final class ServiceAttributeResolver {
       return ServiceSnapshot.empty();
     }
     LOG.debug(
-        "Built service attribute snapshot: {} services, {} distinct tags",
+        "Built service attribute snapshot: {} services, {} distinct tags, {} environments",
         serviceIdsByName.size(),
-        serviceIdsByTagFqn.size());
-    return ServiceSnapshot.of(serviceIdsByTagFqn, serviceIdsByName);
+        serviceIdsByTagFqn.size(),
+        serviceIdsByEnvironment.size());
+    return ServiceSnapshot.of(serviceIdsByTagFqn, serviceIdsByName, serviceIdsByEnvironment);
   }
 
   /**
@@ -206,7 +231,8 @@ public final class ServiceAttributeResolver {
   private static void indexServices(
       String serviceEntityType,
       Map<String, Set<String>> serviceIdsByTagFqn,
-      Map<String, Set<String>> serviceIdsByName) {
+      Map<String, Set<String>> serviceIdsByName,
+      Map<String, Set<String>> serviceIdsByEnvironment) {
     EntityRepository<? extends EntityInterface> repository =
         Entity.getEntityRepository(serviceEntityType);
     List<? extends EntityInterface> services =
@@ -219,6 +245,25 @@ public final class ServiceAttributeResolver {
             .computeIfAbsent(tag.getTagFQN(), tagFqn -> new HashSet<>())
             .add(serviceId);
       }
+      indexEnvironment(service, serviceId, serviceIdsByEnvironment);
     }
+  }
+
+  /**
+   * {@code serviceAttributes} is stored inline in the service JSON rather than as a relationship,
+   * so it arrives with the listing and needs no extra field projection.
+   */
+  private static void indexEnvironment(
+      EntityInterface service, String serviceId, Map<String, Set<String>> serviceIdsByEnvironment) {
+    if (!(service instanceof ServiceEntityInterface typedService)) {
+      return;
+    }
+    ServiceAttributes attributes = typedService.getServiceAttributes();
+    if (attributes == null || attributes.getEnvironment() == null) {
+      return;
+    }
+    serviceIdsByEnvironment
+        .computeIfAbsent(normalize(attributes.getEnvironment().value()), key -> new HashSet<>())
+        .add(serviceId);
   }
 }

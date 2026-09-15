@@ -72,4 +72,12 @@ public interface ResourceContextInterface {
   default String getServiceType() {
     return null;
   }
+
+  /**
+   * Declared environment of {@link #getServiceReference()} — {@code Production}, {@code
+   * Development} — or null when the resource has no service or the admin has not set one.
+   */
+  default String getServiceEnvironment() {
+    return null;
+  }
 }

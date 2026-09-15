@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
@@ -384,6 +385,37 @@ public class RuleEvaluator {
   }
 
   @Function(
+      name = "matchAnyServiceEnvironment",
+      input = "List of comma separated service environments",
+      description =
+          "Returns true if the service that ingested the entity being accessed declares any of the "
+              + "given environments. The environment is set once on the service "
+              + "(Development, Staging, QA, UAT, Production, Sandbox, Other) rather than tagged "
+              + "onto each asset. Matching is case-insensitive. Returns false for entities that "
+              + "are not backed by a service, and for services whose environment is unset.",
+      examples = {
+        "matchAnyServiceEnvironment('Development')",
+        "matchAnyServiceEnvironment('Development', 'Sandbox')"
+      })
+  @SuppressWarnings("unused")
+  public boolean matchAnyServiceEnvironment(String... environments) {
+    if (expressionValidation) {
+      for (String environment : environments) {
+        validateServiceEnvironment(environment);
+      }
+      return false;
+    }
+    if (resourceContext == null || environments.length == 0) {
+      return false;
+    }
+    String environment = resourceContext.getServiceEnvironment();
+    if (nullOrEmpty(environment)) {
+      return false;
+    }
+    return Arrays.stream(environments).anyMatch(environment::equalsIgnoreCase);
+  }
+
+  @Function(
       name = "matchAnyServiceName",
       input = "List of comma separated service names",
       description =
@@ -590,6 +622,26 @@ public class RuleEvaluator {
           entityType,
           fqn);
     }
+  }
+
+  /**
+   * The environment is a closed enum, so a typo can be caught when the policy is written rather
+   * than silently never matching — which for a Deny rule means quietly granting access.
+   */
+  private void validateServiceEnvironment(String environment) {
+    boolean known =
+        Arrays.stream(ServiceAttributes.Environment.values())
+            .anyMatch(value -> value.value().equalsIgnoreCase(environment));
+    if (known) {
+      return;
+    }
+    String allowed =
+        Arrays.stream(ServiceAttributes.Environment.values())
+            .map(ServiceAttributes.Environment::value)
+            .collect(Collectors.joining(", "));
+    throw new IllegalArgumentException(
+        String.format(
+            "'%s' is not a valid service environment. Expected one of: %s", environment, allowed));
   }
 
   /**
