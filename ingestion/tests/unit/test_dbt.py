@@ -4648,3 +4648,162 @@ class TestAddDbtSourceFreshnessResults:
             source.metadata.add_test_case_results.call_args.kwargs["test_case_fqn"]
             == "actual_svc.RAW_DB.RAW.orders.orders_freshness"
         )
+
+
+class TestDbtV12MetricIngest(TestCase):
+    """Unit tests for dbt 1.12+ inline metric spec (measure-less semantic models)."""
+
+    def setUp(self):
+        from metadata.generated.schema.entity.data.metric import (
+            Language,
+            MetricExpression,
+            MetricMeasure,
+        )
+
+        self.Language = Language
+        self.MetricExpression = MetricExpression
+        self.MetricMeasure = MetricMeasure
+
+    # ------------------------------------------------------------------
+    # _simple_metric_expression
+    # ------------------------------------------------------------------
+
+    def test_simple_metric_expression_old_spec_returns_measure_name(self):
+        """Pre-1.12 path: type_params.measure.name is used as the expression."""
+        measure_ref = SimpleNamespace(name="revenue")
+        type_params = SimpleNamespace(measure=measure_ref, expr=None)
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert related is None
+        assert expr is not None
+        assert expr.code == "revenue"
+
+    def test_simple_metric_expression_dbt_v12_falls_back_to_expr(self):
+        """dbt 1.12+: type_params.measure is None; type_params.expr is the column expression."""
+        type_params = SimpleNamespace(measure=None, expr="user_id")
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert related is None
+        assert expr is not None
+        assert expr.code == "user_id"
+        assert expr.language == self.Language.SQL
+
+    def test_simple_metric_expression_dbt_v12_no_measure_no_expr_returns_none(self):
+        """Both measure and expr absent → no expression emitted (no crash)."""
+        type_params = SimpleNamespace(measure=None, expr=None)
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert expr is None
+        assert related is None
+
+    def test_simple_metric_expression_measure_without_name_falls_back_to_expr(self):
+        """measure present but .name is None → fall back to expr."""
+        type_params = SimpleNamespace(measure=SimpleNamespace(name=None), expr="amount")
+
+        expr, related = DbtSource._simple_metric_expression(type_params)
+
+        assert expr is not None
+        assert expr.code == "amount"
+
+    # ------------------------------------------------------------------
+    # _extract_measures
+    # ------------------------------------------------------------------
+
+    def _make_source(self):
+        """Return a minimally wired DbtSource with mocked metadata."""
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        metadata = MagicMock()
+        return DbtSource.__new__(DbtSource), metadata
+
+    def test_extract_measures_from_semantic_model(self):
+        """Pre-1.12: measures come from the semantic model."""
+        source, _ = self._make_source()
+
+        agg = SimpleNamespace(value="count_distinct")
+        sm_measure = SimpleNamespace(name="m_users", agg=agg, description="users", expr="user_id")
+        sm = SimpleNamespace(name="sm1", measures=[sm_measure])
+        metric_node = SimpleNamespace(
+            name="distinct_users",
+            type_params=SimpleNamespace(measure=SimpleNamespace(name="m_users"), expr=None),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "m_users"
+        assert result[0].aggregation == "count_distinct"
+        assert result[0].expression == "user_id"
+
+    def test_extract_measures_dbt_v12_empty_sm_measures_uses_type_params_expr(self):
+        """dbt 1.12+: semantic model has no measures → synthetic measure from type_params.expr."""
+        source, _ = self._make_source()
+
+        sm = SimpleNamespace(name="sm1", measures=[])
+        metric_node = SimpleNamespace(
+            name="distinct_users",
+            type_params=SimpleNamespace(measure=None, expr="user_id"),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "distinct_users"
+        assert result[0].expression == "user_id"
+        assert result[0].aggregation is None
+
+    def test_extract_measures_dbt_v12_no_sm_uses_type_params_expr(self):
+        """dbt 1.12+: no semantic models at all → synthetic measure from type_params.expr."""
+        source, _ = self._make_source()
+
+        metric_node = SimpleNamespace(
+            name="active_users",
+            type_params=SimpleNamespace(measure=None, expr="user_id"),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert len(result) == 1
+        assert result[0].name == "active_users"
+        assert result[0].expression == "user_id"
+
+    def test_extract_measures_dbt_v12_no_expr_returns_empty(self):
+        """dbt 1.12+: no semantic model measures and no expr → empty list (no crash)."""
+        source, _ = self._make_source()
+
+        sm = SimpleNamespace(name="sm1", measures=[])
+        metric_node = SimpleNamespace(
+            name="my_metric",
+            type_params=SimpleNamespace(measure=None, expr=None),
+            refs=None,
+            metrics=None,
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.metadata.find_semantic_models_for_metric",
+            return_value=[sm],
+        ):
+            result = source._extract_measures(metric_node, {})
+
+        assert result == []
