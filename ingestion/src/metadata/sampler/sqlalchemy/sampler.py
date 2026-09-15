@@ -203,7 +203,19 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             with self.session_factory() as client:
                 query = client.query(self.raw_dataset)
                 query = self.get_partitioned_query(query)
-                return query.count()
+                row_count = query.count()
+            if row_count == 0:
+                logger.warning(
+                    "Partition filter on table '%s' returned 0 rows. "
+                    "The partition window (interval=%s %s) may not cover the table's most-recent data. "
+                    "Override the profiler partition config for this table to widen the window. "
+                    "See https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/"
+                    "profiler/workflow#4.-updating-profiler-setting-at-the-table-level",
+                    getattr(self.raw_dataset, "__tablename__", "unknown"),
+                    getattr(self.partition_details, "partitionInterval", "?"),
+                    getattr(self.partition_details, "partitionIntervalUnit", "?"),
+                )
+            return row_count
 
         with self.session_factory() as session:
             runner = QueryRunner(
