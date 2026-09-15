@@ -20,6 +20,10 @@ import {
   FieldOptions,
   FIELD_OPTIONS_DROPDOWN,
 } from '../../../../constants/WorkflowBuilder.constants';
+import {
+  CERTIFICATION_CATEGORY,
+  TIER_CATEGORY,
+} from '../../../../constants/constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
@@ -134,7 +138,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       setIsLoadingOptions(true);
       const response = await getTags({
         limit: 1000,
-        parent: 'Certification',
+        parent: CERTIFICATION_CATEGORY,
       });
       const options = (response.data
         ?.map((tag) => tag.fullyQualifiedName)
@@ -152,7 +156,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       setIsLoadingOptions(true);
       const response = await getTags({
         limit: 1000,
-        parent: 'Tier',
+        parent: TIER_CATEGORY,
         disabled: false,
       });
       const options = (response.data

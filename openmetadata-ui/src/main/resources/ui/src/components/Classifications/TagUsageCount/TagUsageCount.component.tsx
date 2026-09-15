@@ -21,8 +21,7 @@ import { getClassificationTagPath } from '../../../utils/RouterUtils';
 
 export interface TagUsageCountProps {
   record: Tag;
-  // Undefined while unknown (aggregation failed or not run), so a missing
-  // bucket can still be reported as a real zero
+  // Undefined when unknown, so a missing bucket still reads as a real zero
   usageCounts?: Record<string, number>;
   isLoading?: boolean;
 }

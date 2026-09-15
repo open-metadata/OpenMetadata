@@ -14,6 +14,7 @@ import { isString, omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
   ResourceEntity,
   type UIPermission,
@@ -402,17 +403,19 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
 
 const ES_REGEXP_RESERVED_CHARACTERS = /[.?+*|{}[\]()"\\#@&<>~]/g;
 
-// Tier and Certification are pulled out of the `tags` array at index time
-export const getTagUsageAggregationField = (classificationName: string) => {
+// Tier and Certification are indexed outside the `tags` array
+export const getTagUsageAggregationField = (
+  classificationName: string
+): EntityFields => {
   if (classificationName === TIER_CATEGORY) {
-    return 'tier.tagFQN';
+    return EntityFields.TIER;
   }
 
   if (classificationName === CERTIFICATION_CATEGORY) {
-    return 'certification.tagLabel.tagFQN';
+    return EntityFields.CERTIFICATION;
   }
 
-  return 'tags.tagFQN';
+  return EntityFields.TAG;
 };
 
 // Terms `include` regex is fully anchored, and tagFQN is lowercase-normalized

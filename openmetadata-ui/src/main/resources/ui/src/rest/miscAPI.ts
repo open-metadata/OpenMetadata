@@ -245,27 +245,39 @@ export const getAggregateFieldOptions = (
 };
 
 /**
- * Aggregates with `fieldValue` used verbatim as the terms `include` regex,
- * which the search engine anchors to the whole term.
- */
-export const postExactAggregateFieldOptions = (body: AggregationRequest) =>
-  APIClient.post<SearchResponse<ExploreSearchIndex>>('/search/aggregate', body);
-
-/**
- * Aggregates on terms *containing* `fieldValue`. The `.*value.*` wrapping
- * breaks alternation — `.*a|b.*` parses as `(.*a)|(b.*)` — so an exact set of
- * terms belongs in postExactAggregateFieldOptions instead.
+ * Posts aggregate field options request with parameters in the body.
+ * @param {AggregationRequest} body - The aggregation request body containing the parameters.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
  */
 export const postAggregateFieldOptions = ({
   fieldValue,
   ...rest
-}: AggregationRequest) =>
-  postExactAggregateFieldOptions({
+}: AggregationRequest) => {
+  const withWildCardValue = fieldValue
+    ? `.*${escapeESReservedCharacters(fieldValue)}.*`
+    : '.*';
+  const body: AggregationRequest = {
+    fieldValue: withWildCardValue,
     ...rest,
-    fieldValue: fieldValue
-      ? `.*${escapeESReservedCharacters(fieldValue)}.*`
-      : '.*',
-  });
+  };
+
+  return APIClient.post<SearchResponse<ExploreSearchIndex>>(
+    `/search/aggregate`,
+    body
+  );
+};
+
+/** Posts the body as given — no `.*` wrapping, which would break an alternation of exact terms. */
+export const postExactAggregateFieldOptions = (
+  body: AggregationRequest,
+  signal?: AbortSignal
+) =>
+  APIClient.post<SearchResponse<ExploreSearchIndex>>(
+    '/search/aggregate',
+    body,
+    { signal }
+  );
 
 export const getEntityCount = async (
   path: string,

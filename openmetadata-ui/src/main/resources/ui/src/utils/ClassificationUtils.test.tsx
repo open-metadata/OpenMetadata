@@ -24,8 +24,7 @@ jest.mock('./EntityVersionUtilsPure', () => ({
   getEntityVersionByField: jest.fn(),
 }));
 
-// setupTests stubs descriptionTableObject to [], which would hide the column
-// this file asserts the usage column sits in front of
+// setupTests stubs descriptionTableObject to [], hiding the column we assert against
 jest.mock('./TableColumn.util', () => ({
   descriptionTableObject: () => [
     { key: 'description', dataIndex: 'description' },

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ProviderType } from '../../../generated/entity/bot';
@@ -20,6 +20,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import { getTags } from '../../../rest/tagAPI';
+import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import ClassificationDetails from './ClassificationDetails';
 
 const mockNavigate = jest.fn();
@@ -365,13 +366,16 @@ describe('ClassificationDetails', () => {
       expect(mockPostExactAggregateFieldOptions).toHaveBeenCalledTimes(1)
     );
 
-    expect(mockPostExactAggregateFieldOptions).toHaveBeenCalledWith({
-      index: 'all',
-      fieldName: 'tags.tagFQN',
-      fieldValue: '(testclassification\\.tag1|testclassification\\.tag2)',
-      size: 2,
-      deleted: false,
-    });
+    expect(mockPostExactAggregateFieldOptions).toHaveBeenCalledWith(
+      {
+        index: 'all',
+        fieldName: 'tags.tagFQN',
+        fieldValue: '(testclassification\\.tag1|testclassification\\.tag2)',
+        size: 2,
+        deleted: false,
+      },
+      expect.any(AbortSignal)
+    );
   });
 
   it('should not request usage counts for a classification with no tags', async () => {
@@ -386,6 +390,18 @@ describe('ClassificationDetails', () => {
     await waitFor(() =>
       expect(screen.getByTestId('empty-tags-placeholder')).toBeInTheDocument()
     );
+
+    expect(mockPostExactAggregateFieldOptions).not.toHaveBeenCalled();
+  });
+
+  it('should not request usage counts in version view', async () => {
+    render(
+      <MemoryRouter>
+        <ClassificationDetails {...defaultProps} isVersionView />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetTags).toHaveBeenCalled());
 
     expect(mockPostExactAggregateFieldOptions).not.toHaveBeenCalled();
   });
