@@ -170,8 +170,6 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();
   await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
 
-  // The dialog is a core-components Modal now, not an antd one — address it by
-  // its testid rather than any library-specific class.
   await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
 };
 
