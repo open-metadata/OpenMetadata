@@ -33,10 +33,11 @@
  */
 
 import { Page } from '@playwright/test';
-import { expect, test } from '../../../support/fixtures/base';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import {
   fillDescriptionBox,
   getApiContext,
@@ -44,7 +45,6 @@ import {
   uuid,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { performAdminLogin } from '../../../utils/admin';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -403,7 +403,6 @@ let viewOnlyPolicy: PolicyClass;
 let viewOnlyRole: RolesClass;
 
 test.describe('Custom Properties Panel — user without type permissions', () => {
-
   test.beforeAll(async ({ browser }) => {
     viewOnlyUser = new UserClass();
     viewOnlyPolicy = new PolicyClass();
@@ -421,7 +420,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
           operations: ['ViewAll'],
           effect: 'allow',
         },
-         {
+        {
           name: 'DenyTypeView',
           resources: ['type'],
           operations: ['ViewAll'],
@@ -444,7 +443,6 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
           },
         ],
       });
-      
     } finally {
       await afterAction();
     }
@@ -461,24 +459,26 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
     }
   });
 
-  test('Custom Properties nav item is not visible in sidebar', async ({ browser }) => {
-     const page = await browser.newPage();
+  test('Custom Properties nav item is not visible in sidebar', async ({
+    browser,
+  }) => {
+    const page = await browser.newPage();
     try {
       await viewOnlyUser.login(page);
-    await enableAiAppMode(page);
-    await redirectToHomePage(page);
-    await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+      await enableAiAppMode(page);
+      await redirectToHomePage(page);
+      await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
 
-    await page.getByTestId('ask-ai-user-menu-trigger').click();
-    await page.getByTestId('ai-user-menu-profile').click();
-    await page.getByTestId('ai-profile-page').waitFor();
+      await page.getByTestId('ask-ai-user-menu-trigger').click();
+      await page.getByTestId('ai-user-menu-profile').click();
+      await page.getByTestId('ai-profile-page').waitFor();
 
-    await expect(
-      page.getByTestId('profile-nav-custom-properties')
-    ).not.toBeVisible();
-      } finally {
-       await page.close();
-      }
+      await expect(
+        page.getByTestId('profile-nav-custom-properties')
+      ).not.toBeVisible();
+    } finally {
+      await page.close();
+    }
   });
 });
 
@@ -708,7 +708,7 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
         ],
       });
 
-       const typeDataRes = await apiContext.get(
+      const typeDataRes = await apiContext.get(
         `/api/v1/metadata/types/name/${TABLE_FQN}?fields=customProperties`
       );
       const typeData = await typeDataRes.json();
@@ -724,7 +724,6 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
         },
         headers: { 'Content-Type': 'application/json' },
       });
-      
     } finally {
       await afterAction();
     }
@@ -749,7 +748,7 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
       await viewAllUser.login(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
-     await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+      await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
 
       await page.getByTestId('ask-ai-user-menu-trigger').click();
       await page.getByTestId('ai-user-menu-profile').click();
@@ -768,13 +767,17 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
       await page.getByTestId('custom-property-table').waitFor();
 
       // User has Create → Add button visible.
-      await expect(page.getByTestId('add-custom-property-btn')).not.toBeVisible();
+      await expect(
+        page.getByTestId('add-custom-property-btn')
+      ).not.toBeVisible();
 
       // User has ViewAll policy only, buttons are not visible on the seeded row.
       const row = page.locator('tr').filter({ hasText: customPropertyName });
       await expect(row).toBeVisible();
       await expect(row.getByRole('button', { name: 'Edit' })).not.toBeVisible();
-      await expect(row.getByRole('button', { name: 'Delete' })).not.toBeVisible();
+      await expect(
+        row.getByRole('button', { name: 'Delete' })
+      ).not.toBeVisible();
     } finally {
       await page.close();
     }

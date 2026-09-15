@@ -320,7 +320,11 @@ describe('CustomPropertiesDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetTypeByFQN.mockResolvedValue(mockEntityType);
-    mockGetEntityPermission.mockResolvedValue({ Create: true, EditAll: true, Delete: true });
+    mockGetEntityPermission.mockResolvedValue({
+      Create: true,
+      EditAll: true,
+      Delete: true,
+    });
   });
 
   it('renders the component with table', async () => {

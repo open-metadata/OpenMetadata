@@ -53,7 +53,9 @@ jest.mock(
   () => ({
     usePermissionProvider: jest
       .fn()
-      .mockReturnValue({ permissions: { type: { Create: true, EditAll: true, Delete: true } } }),
+      .mockReturnValue({
+        permissions: { type: { Create: true, EditAll: true, Delete: true } },
+      }),
   })
 );
 
