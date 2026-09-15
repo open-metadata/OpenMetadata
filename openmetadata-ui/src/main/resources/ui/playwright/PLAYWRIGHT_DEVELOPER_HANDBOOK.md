@@ -819,6 +819,7 @@ not hand-edit it, run `yarn generate:playwright-rules` instead.
 | Rule | Severity | What it catches |
 |---|---|---|
 | `om-playwright/justified-rule-disable` | error | Require a justification comment when disabling a playwright lint rule |
+| `om-playwright/no-accumulating-before-all` | error | Disallow accumulating into outer-scope state from beforeAll — the hook runs once per test group, not once per worker |
 | `om-playwright/no-awaited-wait-for-response` | error | Disallow awaiting page.waitForResponse() directly — register the listener before the action instead |
 | `om-playwright/no-blanket-test-slow` | error | Disallow test.slow() at file or describe scope |
 | `om-playwright/no-positional-locator` | error | Disallow positional locators (.first(), .last(), .nth()) |
