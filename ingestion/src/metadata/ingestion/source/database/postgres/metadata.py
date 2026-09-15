@@ -43,7 +43,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import (
     EntityName,
-    FullyQualifiedEntityName,
     Markdown,
 )
 from metadata.ingestion.api.models import Either
@@ -94,7 +93,6 @@ from metadata.utils.sqlalchemy_utils import (
     get_schema_descriptions,
     get_table_ddl,
 )
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 import_side_effects(
     "metadata.ingestion.source.database.postgres.converter_orm",
@@ -242,17 +240,28 @@ class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=FullyQualifiedEntityName(
-                        fqn._build(  # pylint: disable=protected-access
-                            self.context.get().database_service, *fqn_elements
-                        )
-                    ),
-                    tags=[row[1]],
-                    classification_name=self.service_connection.classificationName,
-                    tag_description="Postgres Tag Value",
-                    classification_description="Postgres Tag Name",
+                entity_fqn = fqn._build(  # pylint: disable=protected-access
+                    self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    *fqn_elements,
                 )
+                try:
+                    tag = self.define_tag(
+                        classification_name=self.service_connection.classificationName,
+                        tag_name=row[1],
+                        tag_description="Postgres Tag Value",
+                        classification_description="Postgres Tag Name",
+                    )
+                    if tag:
+                        self.attach_tag(entity_fqn=entity_fqn, tag=tag)
+                except Exception as exc:
+                    yield Either(
+                        left=StackTraceError(
+                            name=row[1],
+                            error=f"Error yielding tag [{row[1]}]: [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        ),
+                        right=None,
+                    )
 
         except Exception as exc:
             yield Either(

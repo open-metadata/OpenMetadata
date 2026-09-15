@@ -8,15 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Tag and Classification domain utilities."""
+"""Tag definition values shared by resolution and registration."""
 
-from metadata.domain.tags.canonicalizer import Canonical, TagCanonicalizer
-from metadata.domain.tags.models import TagDefinition
-from metadata.domain.tags.registry import TagRegistry
+from dataclasses import dataclass
 
-__all__ = [
-    "Canonical",
-    "TagCanonicalizer",
-    "TagDefinition",
-    "TagRegistry",
-]
+
+@dataclass(frozen=True)
+class TagDefinition:
+    """Classification and tag names with their descriptions."""
+
+    classification_name: str
+    tag_name: str
+    classification_description: str
+    tag_description: str
