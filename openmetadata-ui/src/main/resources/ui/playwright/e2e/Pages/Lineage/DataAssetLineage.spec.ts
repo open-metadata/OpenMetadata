@@ -392,7 +392,8 @@ test.describe('Column Level Lineage', () => {
       });
 
       await test.step('Verify column lineage survives a reload', async () => {
-        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        // The graph fetches /lineage/scene now, not /lineage/getLineage.
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.reload();
         await lineageRes;
         await waitForAllLoadersToDisappear(page);
