@@ -466,10 +466,78 @@ async function init() {
     next();
   };
   app.all('/authorize', rewriteTo('/auth'));
-  app.all('/oauth/token', rewriteTo('/token'));
   app.all('/userinfo', rewriteTo('/me'));
   app.all('/v2/logout', rewriteTo('/session/end'));
   app.get('/.well-known/jwks.json', rewriteTo('/jwks'));
+
+  // Auth0 SPA SDK posts /oauth/token as `Content-Type: application/json`
+  // (Auth0-specific — the spec-standard body is
+  // `application/x-www-form-urlencoded`, which is what oidc-provider
+  // accepts and errors on anything else). A simple URL rewrite would fail:
+  //  1. oidc-provider looks at Content-Type before parsing and rejects
+  //     JSON outright with "only application/x-www-form-urlencoded
+  //     content-type bodies are supported".
+  //  2. `express.json()` mounted above has already consumed the request
+  //     stream, so oidc-provider's own raw-body reader gets nothing.
+  // Instead, re-issue the token request internally against our own
+  // /token endpoint with the correct headers and body, and stream the
+  // upstream response straight back to the SDK. Downstream cares only
+  // about the JSON body oidc-provider returns, which is identical.
+  app.post('/oauth/token', (req, res) => {
+    let form;
+    if (req.is('application/json') && req.body && typeof req.body === 'object') {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(req.body)) {
+        if (value !== undefined && value !== null) {
+          params.append(key, String(value));
+        }
+      }
+      form = params.toString();
+    } else if (typeof req.body === 'string') {
+      form = req.body;
+    } else if (
+      req.body &&
+      typeof req.body === 'object' &&
+      Object.keys(req.body).length > 0
+    ) {
+      form = new URLSearchParams(req.body).toString();
+    } else {
+      form = '';
+    }
+
+    const upstream = require('http').request(
+      {
+        hostname: '127.0.0.1',
+        port: PORT,
+        path: '/token',
+        method: 'POST',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'content-length': Buffer.byteLength(form),
+        },
+      },
+      (upRes) => {
+        res.status(upRes.statusCode);
+        for (const [name, value] of Object.entries(upRes.headers)) {
+          // Skip hop-by-hop headers Express will set itself.
+          if (
+            name === 'connection' ||
+            name === 'transfer-encoding' ||
+            name === 'content-length'
+          ) {
+            continue;
+          }
+          res.setHeader(name, value);
+        }
+        upRes.pipe(res);
+      }
+    );
+    upstream.on('error', (err) => {
+      res.status(502).json({ error: 'proxy_error', error_description: err.message });
+    });
+    upstream.write(form);
+    upstream.end();
+  });
 
   // Health check
   app.get('/health', (_req, res) => {

@@ -296,10 +296,13 @@ jobs:
           # Wait for the healthcheck to pass — LDIF seeding happens on first
           # boot and can take 10-20s on cold cache.
           timeout 120 bash -c 'until docker inspect --format="{{.State.Health.Status}}" openmetadata_openldap 2>/dev/null | grep -q healthy; do sleep 2; done'
-          # OM backend needs to reach OpenLDAP by service name inside the
-          # compose network; attach it to ometa_network so the LDAP bind
-          # from the app container resolves.
-          docker network connect ometa_network openmetadata_openldap || true
+          # OM backend needs to reach OpenLDAP by the short name `openldap`
+          # (see ldap.ts fixture — `ldapConfiguration.host = 'openldap'`).
+          # Attach to ometa_network with an explicit alias — the container
+          # lives in its own compose project (openmetadata-openldap) so
+          # its local service alias isn't advertised on the OM stack's
+          # network by default.
+          docker network connect --alias openldap ometa_network openmetadata_openldap || true
 
       - name: Start Mock OIDC provider
         if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'mock-oidc' }}
