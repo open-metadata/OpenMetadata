@@ -34,6 +34,7 @@ import {
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -145,6 +146,37 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       })
     );
 
+    // Owners is a pipeline-entity field, not a sourceConfig one, so it is held
+    // outside `workflowData` — everything left in there is funnelled into
+    // `sourceConfig.config` by `cleanWorkFlowData`.
+    // Safe to seed lazily: both pages gate rendering on their own `isLoading`,
+    // so this never mounts before `data`/`serviceData` have resolved.
+    const [owners, setOwners] = useState<EntityReference[]>(() => {
+      // Prefer what is saved, then the service's owners, then the current user.
+      // Edit has to fall back too, not just create: pipelines created through
+      // the API carry no owners, and a mandatory field starting empty would
+      // make those impossible to save at all.
+      const savedOwners = data?.owners ?? [];
+
+      if (!isEmpty(savedOwners)) {
+        return savedOwners;
+      }
+
+      const serviceOwners = serviceData?.owners ?? [];
+
+      if (!isEmpty(serviceOwners)) {
+        return serviceOwners;
+      }
+
+      return currentUser ? [{ id: currentUser.id, type: 'user' }] : [];
+    });
+    const [isOwnersInvalid, setIsOwnersInvalid] = useState(false);
+
+    const handleOwnersChange = useCallback((updated?: EntityReference[]) => {
+      setOwners(updated ?? []);
+      setIsOwnersInvalid(false);
+    }, []);
+
     const { ingestionName, retries } = useMemo(
       () => ({
         ingestionName:
@@ -161,6 +193,10 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
         pipelineType === PipelineType.ElasticSearchReindex,
       [pipelineType]
     );
+
+    // Settings pipelines (Data Insight / Search Index) have no parent service to
+    // inherit owners from, so requiring owners there would block those flows.
+    const isOwnersRequired = !isSettingsPipeline;
 
     const viewServiceText = useMemo(
       () =>
@@ -204,6 +240,14 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     };
 
     const handleSubmit = (data: IngestionWorkflowData) => {
+      // The RJSF form validates only its own schema, and the name card sits
+      // outside it, so the owners gate has to run here.
+      if (isOwnersRequired && isEmpty(owners)) {
+        setIsOwnersInvalid(true);
+
+        return;
+      }
+
       setWorkflowData((prev) => ({ ...data, displayName: prev?.displayName }));
       handleNext(2);
     };
@@ -237,12 +281,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         name: ingestionName,
         displayName: displayName,
-        owners: [
-          {
-            id: currentUser?.id ?? '',
-            type: 'user',
-          },
-        ],
+        owners: owners,
         pipelineType: pipelineType,
         service: {
           id: serviceData.id as string,
@@ -288,6 +327,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           },
           raiseOnError: extraData.raiseOnError ?? true,
           displayName: workflowData?.displayName,
+          owners: owners,
           loggerLevel: workflowData?.enableDebugLog
             ? LogLevels.Debug
             : LogLevels.Info,
@@ -377,10 +417,14 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
             <div className="tw:flex tw:flex-col tw:gap-4">
               <IngestionNameCard
                 displayName={workflowData?.displayName ?? ''}
+                isOwnersInvalid={isOwnersInvalid}
+                isOwnersRequired={isOwnersRequired}
+                owners={owners}
                 onDisplayNameChange={(value) =>
                   handleDataChange({ ...workflowData, displayName: value })
                 }
                 onFocus={onFocus}
+                onOwnersChange={handleOwnersChange}
               />
               <IngestionWorkflowForm
                 hideFooter={hideFooter}
