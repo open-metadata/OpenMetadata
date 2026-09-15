@@ -8363,9 +8363,24 @@ public interface CollectionDAO {
       return User.class;
     }
 
+    /**
+     * Optional subtree filter set by {@code UserResource.list}: when the requested team is a
+     * non-Group team, {@code teamIds} carries the ids of its whole subtree so its Users tab/export
+     * include the members inherited from its sub-group descendants. Bypasses the single-team
+     * {@code te.nameHash = :team} equality. The ids are server-computed UUIDs, safe to inline.
+     */
+    private static String subtreeTeamsCondition(String teamIdsCsv) {
+      String inList =
+          Arrays.stream(teamIdsCsv.split(","))
+              .map(id -> "'" + id + "'")
+              .collect(Collectors.joining(","));
+      return " AND te.id IN (" + inList + ") ";
+    }
+
     @Override
     default int listCount(ListFilter filter) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -8426,7 +8441,13 @@ public interface CollectionDAO {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -8434,13 +8455,18 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
-          getTableName(), mySqlCondition, postgresCondition, team, Relationship.HAS.ordinal());
+          getTableName(),
+          mySqlCondition,
+          postgresCondition,
+          teamIdsCsv != null ? null : team,
+          Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -8501,7 +8527,13 @@ public interface CollectionDAO {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -8512,7 +8544,7 @@ public interface CollectionDAO {
           getTableName(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamIdsCsv != null ? null : team,
           limit,
           beforeName,
           beforeId,
@@ -8522,6 +8554,7 @@ public interface CollectionDAO {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -8582,7 +8615,13 @@ public interface CollectionDAO {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -8593,7 +8632,7 @@ public interface CollectionDAO {
           getTableName(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamIdsCsv != null ? null : team,
           limit,
           afterName,
           afterId,

@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -163,6 +164,8 @@ public class TeamRepository extends EntityRepository<Team> {
         fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
     team.setUserCount(
         fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
+    team.setDescendantTeams(
+        fields.contains("descendantTeams") ? getDescendantTeams(team) : team.getDescendantTeams());
     team.setDomains(fields.contains(FIELD_DOMAINS) ? getDomains(team.getId()) : team.getDomains());
   }
 
@@ -176,6 +179,7 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setDefaultPersona(fields.contains(DEFAULT_PERSONA) ? team.getDefaultPersona() : null);
     team.setParents(fields.contains(PARENTS_FIELD) ? team.getParents() : null);
     team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
+    team.setDescendantTeams(fields.contains("descendantTeams") ? team.getDescendantTeams() : null);
     if (!fields.contains("childrenCount")) {
       team.setChildrenCount(0);
     }
@@ -899,6 +903,74 @@ public class TeamRepository extends EntityRepository<Team> {
             .distinct()
             .filter(activeUserIds::contains)
             .count();
+  }
+
+  /**
+   * Team ids to match when listing/exporting the users under {@code teamName}'s umbrella. Group and
+   * Organization teams keep direct membership (empty result &rarr; callers fall back to the plain
+   * {@code team} filter). Department/Division/BusinessUnit teams expand to the whole subtree (self +
+   * all descendants) so their Users tab and export include the members inherited from their
+   * sub-groups, matching what {@link #getUserCount} already counts.
+   */
+  public List<String> getSubtreeTeamIds(String teamName) {
+    Team team;
+    try {
+      team = getByName(null, teamName, Fields.EMPTY_FIELDS);
+    } catch (EntityNotFoundException e) {
+      // Unknown team name: leave the plain team filter to return an empty page (existing behavior).
+      return List.of();
+    }
+    TeamType teamType = team.getTeamType();
+    if (teamType != DEPARTMENT && teamType != DIVISION && teamType != BUSINESS_UNIT) {
+      return List.of();
+    }
+    List<String> ids = new ArrayList<>();
+    ids.add(team.getId().toString());
+    for (EntityReference descendant : getDescendantTeams(team)) {
+      ids.add(descendant.getId().toString());
+    }
+    return ids;
+  }
+
+  /**
+   * All teams nested under {@code team} (the subtree, excluding the team itself). Computed on read
+   * like {@code childrenCount}/{@code userCount} &mdash; nothing is stored, so it stays correct across
+   * reparents/renames with no reindex. Backs the {@code descendantTeams} field the Users tab uses to
+   * scope its member search to a non-Group team's sub-groups.
+   */
+  private List<EntityReference> getDescendantTeams(Team team) {
+    Map<UUID, List<UUID>> childrenMap = new HashMap<>();
+    Set<UUID> subtreeTeamIds = discoverSubtreeTeams(List.of(team.getId()), childrenMap);
+    subtreeTeamIds.remove(team.getId());
+    if (subtreeTeamIds.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityReferencesByIds(TEAM, new ArrayList<>(subtreeTeamIds), NON_DELETED);
+  }
+
+  /**
+   * Batched, cycle-safe subtree walk: one {@link #fetchChildTeams} (a single findToBatch) per depth
+   * level rather than one query per node, so cost tracks tree depth, not subtree size. Teams form a
+   * DAG, so {@code visited} dedupes a team reachable through more than one parent path.
+   */
+  private Set<UUID> discoverSubtreeTeams(List<UUID> rootIds, Map<UUID, List<UUID>> childrenMap) {
+    Set<UUID> visited = new HashSet<>();
+    List<UUID> frontier = new ArrayList<>(rootIds);
+    while (!frontier.isEmpty()) {
+      visited.addAll(frontier);
+      Map<UUID, List<UUID>> levelChildren = fetchChildTeams(frontier);
+      childrenMap.putAll(levelChildren);
+      frontier = nextFrontier(levelChildren, visited);
+    }
+    return visited;
+  }
+
+  private List<UUID> nextFrontier(Map<UUID, List<UUID>> levelChildren, Set<UUID> visited) {
+    return levelChildren.values().stream()
+        .flatMap(List::stream)
+        .distinct()
+        .filter(id -> !visited.contains(id))
+        .collect(Collectors.toList());
   }
 
   private List<EntityReference> getOwns(Team team) {
