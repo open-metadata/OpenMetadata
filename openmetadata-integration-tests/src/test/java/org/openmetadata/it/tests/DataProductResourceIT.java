@@ -652,6 +652,111 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_domainChangeDetachesConflictingDataProducts(TestNamespace ns) throws Exception {
+    Domain finance = createTestDomain(ns, "finance");
+    Domain hr = createTestDomain(ns, "hr");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving"))
+                .withDescription("Data product whose domain will move")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+    DataProduct stayingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_staying"))
+                .withDescription("Data product that stays in finance")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_conflict", finance);
+    EntityReference schemaRef = schema.getEntityReference();
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(), new BulkAssets().withAssets(List.of(schemaRef)));
+    bulkAddAssets(
+        stayingProduct.getFullyQualifiedName(), new BulkAssets().withAssets(List.of(schemaRef)));
+
+    moveDataProductDomain(movingProduct, hr);
+
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertTrue(
+        hasDataProduct(schemaDataProducts, movingProduct.getId()),
+        "The moved data product now shares the schema's new domain and must be kept");
+    assertFalse(
+        hasDataProduct(schemaDataProducts, stayingProduct.getId()),
+        "The data product left behind in finance must be detached from the moved schema");
+
+    // The schema must stay writable — before the fix this edit failed domain validation with 400.
+    var editableSchema =
+        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "dataProducts");
+    editableSchema.setDescription("edited after data product domain move");
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  @Test
+  void test_domainChangeDetachesConflictingDataProductsOnInheritedDescendants(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "finance_desc");
+    Domain hr = createTestDomain(ns, "hr_desc");
+
+    DataProduct movingProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_moving_desc"))
+                .withDescription("Data product on the parent schema")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+    DataProduct childProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_child"))
+                .withDescription("Data product on the inheriting child table")
+                .withDomains(List.of(finance.getFullyQualifiedName())));
+
+    var schema = createSchemaWithDomain(ns, "schema_parent", finance);
+    Table childTable = createChildTable(ns, "inheriting_child", schema, null);
+    bulkAddAssets(
+        movingProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        childProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(childTable.getEntityReference())));
+
+    moveDataProductDomain(movingProduct, hr);
+
+    List<EntityReference> childDataProducts =
+        SdkClients.adminClient()
+            .tables()
+            .get(childTable.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertFalse(
+        hasDataProduct(childDataProducts, childProduct.getId()),
+        "A data product on an inherited-domain descendant must be detached when its ancestor moves");
+
+    var editableChild =
+        SdkClients.adminClient().tables().get(childTable.getId().toString(), "dataProducts");
+    editableChild.setDescription("edited after ancestor domain move");
+    SdkClients.adminClient().tables().update(editableChild.getId().toString(), editableChild);
+  }
+
+  private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString(), "domains");
+    current.setDomains(List.of(targetDomain.getEntityReference()));
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+  }
+
+  private boolean hasDataProduct(List<EntityReference> dataProducts, UUID dataProductId) {
+    return dataProducts != null
+        && dataProducts.stream().anyMatch(dp -> dp.getId().equals(dataProductId));
+  }
+
+  @Test
   void test_entityStatusUpdateAndPatch(TestNamespace ns) throws Exception {
     Domain domain = getOrCreateDomain(ns);
     CreateDataProduct createDataProduct =
