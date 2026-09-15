@@ -224,10 +224,8 @@ test('should show correct count for tier filter options from aggregation', async
 
   for (const bucket of buckets) {
     await expect(
-      page
-        .locator(`[data-menu-id$="-${bucket.key}"]`)
-        .getByTestId('filter-count')
-    ).toHaveText(bucket.doc_count.toString());
+      page.getByTestId(bucket.key).getByTestId('filter-count')
+    ).toHaveText(bucket.doc_count.toLocaleString());
   }
 
   await clickOutside(page);
@@ -273,9 +271,8 @@ test('should filter assets by data product', async ({ page }) => {
   await clickUpdateButtonIfVisible(page);
   await waitForAllLoadersToDisappear(page);
 
-  await expect(
-    page.getByTestId(`search-dropdown-${filter.label}`)
-  ).toContainText('(1)');
+  // The selection count renders as a badge beside the label now.
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 
   await expect(
     page.getByTestId(
@@ -350,9 +347,7 @@ test('Filter by column entity type shows only column results', async ({
   }
   // Immediate-apply leaves the dropdown open with the box already checked.
   await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
-  await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
-    '(1)'
-  );
+  await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 });
 
 test.describe('Tier filter - aggregation-based options', () => {

@@ -103,7 +103,9 @@ const TriggerButton = ({
         iconLeading={icon}
         iconTrailing={ChevronDown}
         size={bordered ? 'md' : 'sm'}>
-        <span data-testid={`search-dropdown-${label}`}>{text}</span>
+        <span data-testid={`search-dropdown-${label}`}>
+          <span>{text}</span>
+        </span>
         {countBadge}
       </Button>
     );
@@ -123,7 +125,7 @@ const TriggerButton = ({
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}
           data-testid={`search-dropdown-${label}`}>
-          {hasSelection ? text : placeholder ?? text}
+          <span>{hasSelection ? text : placeholder ?? text}</span>
         </span>
         {countBadge}
         <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
@@ -140,7 +142,9 @@ const TriggerButton = ({
         className
       )}
       data-testid={testId}>
-      <span data-testid={`search-dropdown-${label}`}>{text}</span>
+      <span data-testid={`search-dropdown-${label}`}>
+        <span>{text}</span>
+      </span>
       {countBadge}
       <ChevronDown className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
     </AriaButton>
@@ -254,14 +258,16 @@ const OptionRow = ({
           )}>
           {/* The E2E suite reads each row's checked state off a real input
               (the visible checkbox is presentational) and also `.check()`s it,
-              which clicks the input's box. Stretch it invisibly across the row
-              so that click has an unobstructed target; it bubbles to the menu
-              item, so pointer behaviour is identical for real users. */}
+              which clicks the input's box — so the input sits above the row as
+              a small invisible patch at its right edge. Its own box takes the
+              check() click (which bubbles to the menu item), while the rest of
+              the row stays unobstructed for clicks on the title span or the
+              row itself. */}
           <input
             readOnly
             aria-hidden="true"
             checked={state.isSelected}
-            className="tw:absolute tw:inset-0 tw:m-0 tw:h-full tw:w-full tw:cursor-pointer tw:appearance-none tw:opacity-0"
+            className="tw:absolute tw:top-1/2 tw:right-0 tw:z-1 tw:m-0 tw:size-3.5 tw:-translate-y-1/2 tw:cursor-pointer tw:appearance-none tw:opacity-0"
             data-testid={
               inputTestId ??
               `${option.value}-${showCheckbox ? 'checkbox' : 'radio'}`
@@ -282,7 +288,8 @@ const OptionRow = ({
               className={cx(
                 'tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
                 state.isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
-              )}>
+              )}
+              data-testid="filter-count">
               {option.count.toLocaleString()}
             </span>
           )}

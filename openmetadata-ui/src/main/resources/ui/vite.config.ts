@@ -355,12 +355,10 @@ export default defineConfig(async ({ mode }) => {
         '@react-types/shared',
         'tailwind-merge',
         'react-hook-form',
-        // The linked component library registers no bundles of its own: the
-        // app calls `initCoreI18n(i18next)` on ITS instance, and the library's
-        // `useTranslation('core')` must read that same instance. Resolved from
-        // the library's own node_modules (which `preserveSymlinks` does),
-        // react-i18next backs a second default i18next with no `core` bundle,
-        // so every library string renders as its key.
+        // i18next must share a single instance so initCoreI18n (called from
+        // index.tsx on the app's i18next) registers the `core` namespace that
+        // useCoreTranslation (in @openmetadata/ui-core-components) can read.
+        // Without dedup, the linked package resolves its own node_modules copy.
         'i18next',
         'react-i18next',
       ],
