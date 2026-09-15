@@ -183,6 +183,9 @@ const TestCaseResultTab = ({
    * row is passed through here.
    */
   const parameterRows = useMemo<ConfigurationParameterRow[]>(() => {
+    const dataQualityDimension =
+      testCaseData?.dataQualityDimension?.displayName ??
+      testCaseData?.dataQualityDimension?.name;
     const rows: ConfigurationParameterRow[] =
       isVersionPage || testCaseData?.useDynamicAssertion
         ? []
@@ -198,6 +201,13 @@ const TestCaseResultTab = ({
       });
     }
 
+    if (!isVersionPage && dataQualityDimension) {
+      rows.push({
+        label: t('label.data-quality-dimension'),
+        value: dataQualityDimension,
+      });
+    }
+
     return rows;
   }, [
     withoutSqlParams,
@@ -205,6 +215,7 @@ const TestCaseResultTab = ({
     testCaseData?.useDynamicAssertion,
     showComputeRowCount,
     computeRowCountDisplay,
+    testCaseData?.dataQualityDimension,
     t,
   ]);
 
@@ -281,7 +292,8 @@ const TestCaseResultTab = ({
           showEditParameterButton={shouldShowEditParameterButton(
             hasEditPermission,
             testCaseData,
-            showComputeRowCount
+            showComputeRowCount,
+            Boolean(testCaseData?.dataQualityDimension)
           )}
           testCaseData={testCaseData}
           testDefinition={testDefinition}
