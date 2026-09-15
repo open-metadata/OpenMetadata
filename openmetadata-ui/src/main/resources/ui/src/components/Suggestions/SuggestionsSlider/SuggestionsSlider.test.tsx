@@ -12,6 +12,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SuggestionType } from '../../../types/taskSuggestion';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
 import SuggestionsSlider from './SuggestionsSlider';
@@ -23,6 +25,11 @@ jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
   useSuggestionsContext: jest.fn(),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+  useGenericContext: jest.fn(),
+}));
+
 jest.mock('../../common/AvatarCarousel/AvatarCarousel', () => {
   return jest.fn(() => <p>Avatar Carousel</p>);
 });
@@ -31,8 +38,8 @@ const mockContextValue = {
   suggestions: [{ id: '1' }, { id: '2' }],
   selectedUserSuggestions: {
     combinedData: [{ id: '1' }, { id: '2' }],
-    tags: [],
-    description: [],
+    tags: [{ id: '2' }],
+    description: [{ id: '1' }],
   },
   suggestionLimit: 2,
   suggestionPendingCount: 0,
@@ -53,10 +60,15 @@ const mockContextValue = {
   dataSuggestionType: undefined,
 };
 
+const mockGenericContextValue = {
+  permissions: { ...DEFAULT_ENTITY_PERMISSION, EditAll: true },
+};
+
 describe('SuggestionsSlider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useSuggestionsContext as jest.Mock).mockReturnValue(mockContextValue);
+    (useGenericContext as jest.Mock).mockReturnValue(mockGenericContextValue);
   });
 
   it('renders buttons when there are selected user suggestions', () => {
@@ -166,6 +178,57 @@ describe('SuggestionsSlider', () => {
     expect(
       screen.queryByTestId('reject-all-suggestions')
     ).not.toBeInTheDocument();
+  });
+
+  it('should hide action buttons but keep the suggestions visible without edit permission', () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      permissions: DEFAULT_ENTITY_PERMISSION,
+    });
+
+    render(<SuggestionsSlider />);
+
+    expect(
+      screen.queryByTestId('accept-all-suggestions')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('reject-all-suggestions')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('close-suggestion')).toBeInTheDocument();
+    expect(screen.getByText('Avatar Carousel')).toBeInTheDocument();
+  });
+
+  it('should hide action buttons when the user can edit only one of the suggested fields', () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      permissions: { ...DEFAULT_ENTITY_PERMISSION, EditDescription: true },
+    });
+
+    render(<SuggestionsSlider />);
+
+    expect(
+      screen.queryByTestId('accept-all-suggestions')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('reject-all-suggestions')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render action buttons when the user can edit every suggested field', () => {
+    (useSuggestionsContext as jest.Mock).mockReturnValue({
+      ...mockContextValue,
+      selectedUserSuggestions: {
+        combinedData: [{ id: '1' }],
+        tags: [],
+        description: [{ id: '1' }],
+      },
+    });
+    (useGenericContext as jest.Mock).mockReturnValue({
+      permissions: { ...DEFAULT_ENTITY_PERMISSION, EditDescription: true },
+    });
+
+    render(<SuggestionsSlider />);
+
+    expect(screen.getByTestId('accept-all-suggestions')).toBeInTheDocument();
+    expect(screen.getByTestId('reject-all-suggestions')).toBeInTheDocument();
   });
 
   it('should render avatar carousel component', () => {
