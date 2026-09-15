@@ -47,14 +47,15 @@ test.before(async () => {
 
 test('compiled dark utilities read a var that .dark-mode re-pins', () => {
   for (const { cls, varName, flips } of CASES) {
-    const escaped = cls.replace(/:/g, '\\\\:').replace(/[-/]/g, '\\$&');
-    const rule = new RegExp(`\\.${escaped}\\s*\\{[^}]*\\}`);
-    const match = css.match(rule);
+    // String scan rather than a regex built from input: `cls` is escaped into a
+    // CSS selector (`:` -> `\:`) and located literally, so no metacharacters
+    // from the case data ever reach a RegExp constructor.
+    const rule = extractRule(css, '.' + cls.replaceAll(':', '\\:'));
 
-    assert.ok(match, `utility ${cls} was not generated`);
+    assert.ok(rule, `utility ${cls} was not generated`);
     assert.ok(
-      match[0].includes(`var(${varName}`),
-      `${cls} should read var(${varName}); got ${match[0]}`
+      rule.includes(`var(${varName}`),
+      `${cls} should read var(${varName}); got ${rule}`
     );
 
     if (flips) {
@@ -70,7 +71,24 @@ test('compiled dark utilities read a var that .dark-mode re-pins', () => {
   }
 });
 
+// Locate the selector literally and return its `{ ... }` body (declarations
+// hold no nested braces), avoiding any dynamic RegExp over untrusted-shaped text.
+function extractRule(source, selector) {
+  const start = source.indexOf(selector + '{');
+  const braced = start === -1 ? source.indexOf(selector + ' {') : start;
+
+  if (braced === -1) {
+    return null;
+  }
+
+  const open = source.indexOf('{', braced);
+  const close = source.indexOf('}', open);
+
+  return source.slice(braced, close + 1);
+}
+
+// Count `varName:` occurrences with a plain string scan (the trailing colon
+// disambiguates `-50` from `-500`), so no case data is interpolated into RegExp.
 function countDefs(source, varName) {
-  const re = new RegExp(`${varName.replace(/[-]/g, '\\$&')}\\s*:`, 'g');
-  return (source.match(re) || []).length;
+  return source.split(varName + ':').length - 1;
 }
