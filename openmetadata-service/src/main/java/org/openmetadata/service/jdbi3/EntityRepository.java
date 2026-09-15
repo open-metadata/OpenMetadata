@@ -655,119 +655,86 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String putFields,
       Set<String> changeSummaryFields,
       boolean registerEntity) {
+    this(
+        collectionPath,
+        entityType,
+        entityClass,
+        entityDAO,
+        patchFields,
+        putFields,
+        changeSummaryFields,
+        RepositoryDependencies.legacy());
+    if (registerEntity) {
+      Entity.registerEntity(entityClass, entityType, this);
+    }
+  }
+
+  protected EntityRepository(
+      String collectionPath,
+      String entityType,
+      Class<T> entityClass,
+      EntityDAO<T> entityDAO,
+      String patchFields,
+      String putFields,
+      Set<String> changeSummaryFields,
+      RepositoryDependencies dependencies) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
-    this.daoCollection = Entity.getCollectionDAO();
-    this.jobDao = Entity.getJobDAO();
-    this.searchRepository = Entity.getSearchRepository();
-    this.relationshipRepository = new EntityRelationshipRepository(this.daoCollection);
+    this.daoCollection = dependencies.daoCollection();
+    this.jobDao = dependencies.jobDao();
+    this.searchRepository = dependencies.searchRepository();
+    this.relationshipRepository = dependencies.relationshipRepository();
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);
 
-    this.supportsTags = allowedFields.contains(FIELD_TAGS);
-    if (supportsTags) {
-      this.patchFields.addField(allowedFields, FIELD_TAGS);
-      this.putFields.addField(allowedFields, FIELD_TAGS);
-    }
-    this.supportsOwners = allowedFields.contains(FIELD_OWNERS);
-    if (supportsOwners) {
-      this.patchFields.addField(allowedFields, FIELD_OWNERS);
-      this.putFields.addField(allowedFields, FIELD_OWNERS);
-    }
+    this.supportsTags = supportsWritableField(FIELD_TAGS);
+    this.supportsOwners = supportsWritableField(FIELD_OWNERS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
-    this.supportsFollower = allowedFields.contains(FIELD_FOLLOWERS);
-    if (supportsFollower) {
-      this.patchFields.addField(allowedFields, FIELD_FOLLOWERS);
-      this.putFields.addField(allowedFields, FIELD_FOLLOWERS);
-    }
-    this.supportsExtension = allowedFields.contains(FIELD_EXTENSION);
-    if (supportsExtension) {
-      this.patchFields.addField(allowedFields, FIELD_EXTENSION);
-      this.putFields.addField(allowedFields, FIELD_EXTENSION);
-    }
-    this.supportsVotes = allowedFields.contains(FIELD_VOTES);
-    if (supportsVotes) {
-      this.patchFields.addField(allowedFields, FIELD_VOTES);
-      this.putFields.addField(allowedFields, FIELD_VOTES);
-    }
-    this.supportsDomains = allowedFields.contains(FIELD_DOMAINS);
-    if (supportsDomains) {
-      this.patchFields.addField(allowedFields, FIELD_DOMAINS);
-      this.putFields.addField(allowedFields, FIELD_DOMAINS);
-    }
-    this.supportsReviewers = allowedFields.contains(FIELD_REVIEWERS);
-    if (supportsReviewers) {
-      this.patchFields.addField(allowedFields, FIELD_REVIEWERS);
-      this.putFields.addField(allowedFields, FIELD_REVIEWERS);
-    }
-    this.supportsExperts = allowedFields.contains(FIELD_EXPERTS);
-    if (supportsExperts) {
-      this.patchFields.addField(allowedFields, FIELD_EXPERTS);
-      this.putFields.addField(allowedFields, FIELD_EXPERTS);
-    }
-    this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
-    if (supportsDataProducts) {
-      this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
-      this.putFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
-    }
+    this.supportsFollower = supportsWritableField(FIELD_FOLLOWERS);
+    this.supportsExtension = supportsWritableField(FIELD_EXTENSION);
+    this.supportsVotes = supportsWritableField(FIELD_VOTES);
+    this.supportsDomains = supportsWritableField(FIELD_DOMAINS);
+    this.supportsReviewers = supportsWritableField(FIELD_REVIEWERS);
+    this.supportsExperts = supportsWritableField(FIELD_EXPERTS);
+    this.supportsDataProducts = supportsWritableField(FIELD_DATA_PRODUCTS);
     this.supportsDataContract = allowedFields.contains(FIELD_DATA_CONTRACT);
-    this.supportsStyle = allowedFields.contains(FIELD_STYLE);
-    if (supportsStyle) {
-      this.patchFields.addField(allowedFields, FIELD_STYLE);
-      this.putFields.addField(allowedFields, FIELD_STYLE);
-    }
-    this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
-    if (supportsLifeCycle) {
-      this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
-      this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
-    }
-    this.supportsCertification = allowedFields.contains(FIELD_CERTIFICATION);
-    if (supportsCertification) {
-      this.patchFields.addField(allowedFields, FIELD_CERTIFICATION);
-      this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
-    }
+    this.supportsStyle = supportsWritableField(FIELD_STYLE);
+    this.supportsLifeCycle = supportsWritableField(FIELD_LIFE_CYCLE);
+    this.supportsCertification = supportsWritableField(FIELD_CERTIFICATION);
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
-    this.supportsEntityStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
-    if (supportsEntityStatus) {
-      this.patchFields.addField(allowedFields, FIELD_ENTITY_STATUS);
-      this.putFields.addField(allowedFields, FIELD_ENTITY_STATUS);
-    }
+    this.supportsEntityStatus = supportsWritableField(FIELD_ENTITY_STATUS);
 
-    Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
-
-    fieldSupportMap.put(FIELD_TAGS, Pair.of(supportsTags, this::fetchAndSetTags));
-    fieldSupportMap.put(FIELD_OWNERS, Pair.of(supportsOwners, this::fetchAndSetOwners));
-    fieldSupportMap.put(FIELD_FOLLOWERS, Pair.of(supportsFollower, this::fetchAndSetFollowers));
-    fieldSupportMap.put(FIELD_DOMAINS, Pair.of(supportsDomains, this::fetchAndSetDomains));
-    fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
-    fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
-    fieldSupportMap.put(FIELD_CHILDREN, Pair.of(supportsChildren, this::fetchAndSetChildren));
-    fieldSupportMap.put(FIELD_VOTES, Pair.of(supportsVotes, this::fetchAndSetVotes));
-    fieldSupportMap.put(FIELD_EXPERTS, Pair.of(supportsExperts, this::fetchAndSetExperts));
-    fieldSupportMap.put(
-        FIELD_DATA_PRODUCTS, Pair.of(supportsDataProducts, this::fetchAndSetDataProducts));
-    fieldSupportMap.put(
-        FIELD_CERTIFICATION, Pair.of(supportsCertification, this::fetchAndSetCertification));
-
-    for (Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
-        fieldSupportMap.entrySet()) {
-      String fieldName = entry.getKey();
-      boolean supportsField = entry.getValue().getLeft();
-      BiConsumer<List<T>, Fields> fetcher = entry.getValue().getRight();
-
-      if (supportsField) {
-        this.fieldFetchers.put(fieldName, fetcher);
-      }
-    }
+    registerFieldFetcher(FIELD_TAGS, this::fetchAndSetTags);
+    registerFieldFetcher(FIELD_OWNERS, this::fetchAndSetOwners);
+    registerFieldFetcher(FIELD_FOLLOWERS, this::fetchAndSetFollowers);
+    registerFieldFetcher(FIELD_DOMAINS, this::fetchAndSetDomains);
+    registerFieldFetcher(FIELD_REVIEWERS, this::fetchAndSetReviewers);
+    registerFieldFetcher(FIELD_EXTENSION, this::fetchAndSetExtension);
+    registerFieldFetcher(FIELD_CHILDREN, this::fetchAndSetChildren);
+    registerFieldFetcher(FIELD_VOTES, this::fetchAndSetVotes);
+    registerFieldFetcher(FIELD_EXPERTS, this::fetchAndSetExperts);
+    registerFieldFetcher(FIELD_DATA_PRODUCTS, this::fetchAndSetDataProducts);
+    registerFieldFetcher(FIELD_CERTIFICATION, this::fetchAndSetCertification);
 
     changeSummarizer =
         new ChangeSummarizer<>(entityClass, getEffectiveChangeSummaryFields(changeSummaryFields));
+  }
 
-    if (registerEntity) {
-      Entity.registerEntity(entityClass, entityType, this);
+  private boolean supportsWritableField(String field) {
+    final boolean supported = allowedFields.contains(field);
+    if (supported) {
+      patchFields.addField(allowedFields, field);
+      putFields.addField(allowedFields, field);
+    }
+    return supported;
+  }
+
+  private void registerFieldFetcher(String field, BiConsumer<List<T>, Fields> fetcher) {
+    if (allowedFields.contains(field)) {
+      fieldFetchers.put(field, fetcher);
     }
   }
 

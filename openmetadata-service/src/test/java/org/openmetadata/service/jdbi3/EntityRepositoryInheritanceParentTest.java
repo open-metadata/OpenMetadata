@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
@@ -49,7 +48,6 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
  */
 class EntityRepositoryInheritanceParentTest {
 
-  private CollectionDAO daoCollection;
   private ParentTrackingPipelineRepo repository;
   private Pipeline parent;
 
@@ -58,8 +56,16 @@ class EntityRepositoryInheritanceParentTest {
     private final Pipeline parent;
     private int parentLoads;
 
-    ParentTrackingPipelineRepo(CollectionDAO.PipelineDAO dao, Pipeline parent) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "domains", "domains");
+    ParentTrackingPipelineRepo(RepositoryDependencies dependencies, Pipeline parent) {
+      super(
+          "pipelines",
+          Entity.PIPELINE,
+          Pipeline.class,
+          dependencies.daoCollection().pipelineDAO(),
+          "domains",
+          "domains",
+          Set.of(),
+          dependencies);
       this.parent = parent;
     }
 
@@ -100,10 +106,9 @@ class EntityRepositoryInheritanceParentTest {
 
   @BeforeEach
   void setUp() {
-    daoCollection = mock(CollectionDAO.class);
+    final var daoCollection = mock(CollectionDAO.class);
     when(daoCollection.relationshipDAO())
         .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
-    Entity.setCollectionDAO(daoCollection);
 
     parent =
         new Pipeline()
@@ -111,12 +116,11 @@ class EntityRepositoryInheritanceParentTest {
             .withName("parent")
             .withFullyQualifiedName("parent")
             .withDomains(new ArrayList<>());
-    repository = new ParentTrackingPipelineRepo(mock(CollectionDAO.PipelineDAO.class), parent);
-  }
-
-  @AfterEach
-  void tearDown() {
-    Entity.cleanup();
+    repository =
+        new ParentTrackingPipelineRepo(
+            new RepositoryDependencies(
+                daoCollection, null, null, new EntityRelationshipRepository(daoCollection)),
+            parent);
   }
 
   @Test
