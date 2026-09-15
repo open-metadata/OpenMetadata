@@ -37,7 +37,7 @@ read with it instead of merely losing the comments.
 from unittest.mock import Mock, patch
 
 import pytest
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine.reflection import ObjectKind, ObjectScope
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.pool import StaticPool
@@ -45,6 +45,8 @@ from sqlalchemy_vertica.dialect_vertica_python import VerticaDialect
 
 # Importing the connector applies the dialect corrections under test, and this
 # is the dialect the vertica_python scheme actually builds.
+from metadata.generated.schema.entity.data.table import TableType
+from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.vertica.metadata import (
     get_columns,
     supports_column_comments,
@@ -278,3 +280,55 @@ class TestVerticaBatchedReflectionDelegates:
 
         assert singular.called
         assert list(result.values()) == [reflected]
+
+
+class TestVerticaSchemaDefinitionPath:
+    """#23533 is only fixed if the source actually reaches table DDL.
+
+    get_schema_definition takes the table branch on two conditions: the
+    inspector carries get_table_ddl, and includeDDL is on. Those helpers are
+    registered on Inspector globally, so this drives the real path end to end
+    rather than trusting the registration alone.
+    """
+
+    @staticmethod
+    def _source(include_ddl: bool):
+        source = Mock()
+        source.source_config.includeDDL = include_ddl
+        source.connection = Mock()
+        return source
+
+    def test_a_vertica_inspector_carries_the_ddl_helpers(self):
+        inspector = inspect(create_engine("sqlite://"))
+
+        assert hasattr(inspector, "get_table_ddl")
+        assert hasattr(inspector, "get_all_table_ddls")
+
+    def test_table_schema_definition_comes_back_when_include_ddl_is_on(self):
+        inspector = inspect(create_engine("sqlite://"))
+        ddl = "CREATE TABLE omd_test.customers (customer_id INTEGER)"
+
+        # Seed the reflection cache the wrapper reads, so the real
+        # get_table_ddl chain runs without needing a live server.
+        inspector.all_table_ddls = {("omd_test", "customers"): ddl}
+        inspector.current_db = "omd_test"
+
+        definition = CommonDbSourceService.get_schema_definition(
+            self._source(include_ddl=True), TableType.Regular, "customers", "omd_test", inspector
+        )
+
+        assert definition == ddl
+
+    def test_no_table_schema_definition_when_include_ddl_is_off(self):
+        """The flag still governs the table branch, so a service that did not
+        ask for DDL does not silently get it.
+        """
+        inspector = inspect(create_engine("sqlite://"))
+        inspector.all_table_ddls = {("omd_test", "customers"): "CREATE TABLE ..."}
+        inspector.current_db = "omd_test"
+
+        definition = CommonDbSourceService.get_schema_definition(
+            self._source(include_ddl=False), TableType.Regular, "customers", "omd_test", inspector
+        )
+
+        assert definition is None
