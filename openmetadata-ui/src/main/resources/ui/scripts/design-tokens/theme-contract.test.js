@@ -76,17 +76,17 @@ test('keeps the light neutral scale stable and applies the approved dark scale',
   };
   const expectedDark = {
     25: 'rgb(250 250 250)',
-    50: 'rgb(240 240 240)',
-    100: 'rgb(224 224 224)',
-    200: 'rgb(217 217 217)',
-    300: 'rgb(191 191 191)',
-    400: 'rgb(160 160 160)',
-    500: 'rgb(128 128 128)',
-    600: 'rgb(102 102 102)',
-    700: 'rgb(46 46 46)',
-    800: 'rgb(34 34 34)',
-    900: 'rgb(25 25 25)',
-    950: 'rgb(20 20 20)',
+    50: 'rgb(247 247 247)',
+    100: 'rgb(228 229 231)',
+    200: 'rgb(217 218 221)',
+    300: 'rgb(206 207 210)',
+    400: 'rgb(148 151 156)',
+    500: 'rgb(123 127 134)',
+    600: 'rgb(97 101 108)',
+    700: 'rgb(55 58 65)',
+    800: 'rgb(34 38 47)',
+    900: 'rgb(19 22 27)',
+    950: 'rgb(12 14 18)',
   };
 
   for (const [step, value] of Object.entries(expectedLight)) {
@@ -154,8 +154,8 @@ test('separates subtle and interactive border roles in both themes', () => {
     dark.get('--color-border-secondary_alt'),
     '--alpha(var(--color-white) / 8%)'
   );
-  assert.equal(dark.get('--color-border-primary'), 'theme(--color-gray-500)');
-  assert.equal(dark.get('--color-border-hover'), 'theme(--color-gray-400)');
+  assert.equal(dark.get('--color-border-primary'), 'theme(--color-gray-700)');
+  assert.equal(dark.get('--color-border-hover'), 'theme(--color-gray-600)');
 
   for (const role of ['subtle', 'hover']) {
     assert.equal(

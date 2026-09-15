@@ -977,19 +977,22 @@
 
     /* UTILITY COLORS */
 
-    /* Keep the approved neutral palette dark-scoped so light and static canvas fallbacks do not change. */
+    /* Approved AI dark palette: the blue-tinted neutral ramp from the design source of truth
+       (Collate dark-mode prototype / palette guideline). Dark-scoped so light-mode and static
+       canvas fallbacks keep their :root values. Surface, text, and border roles below alias
+       these steps, so re-tinting here re-tints every dark surface consistently. */
     --color-gray-25: rgb(250 250 250);
-    --color-gray-50: rgb(240 240 240);
-    --color-gray-100: rgb(224 224 224);
-    --color-gray-200: rgb(217 217 217);
-    --color-gray-300: rgb(191 191 191);
-    --color-gray-400: rgb(160 160 160);
-    --color-gray-500: rgb(128 128 128);
-    --color-gray-600: rgb(102 102 102);
-    --color-gray-700: rgb(46 46 46);
-    --color-gray-800: rgb(34 34 34);
-    --color-gray-900: rgb(25 25 25);
-    --color-gray-950: rgb(20 20 20);
+    --color-gray-50: rgb(247 247 247);
+    --color-gray-100: rgb(228 229 231);
+    --color-gray-200: rgb(217 218 221);
+    --color-gray-300: rgb(206 207 210);
+    --color-gray-400: rgb(148 151 156);
+    --color-gray-500: rgb(123 127 134);
+    --color-gray-600: rgb(97 101 108);
+    --color-gray-700: rgb(55 58 65);
+    --color-gray-800: rgb(34 38 47);
+    --color-gray-900: rgb(19 22 27);
+    --color-gray-950: rgb(12 14 18);
 
     --color-utility-blue-50: theme(--color-blue-950);
     --color-utility-blue-100: theme(--color-blue-900);
@@ -1186,11 +1189,11 @@
     --color-text-error-primary_hover: theme(--color-error-300);
 
     /* BORDER COLORS */
-    --color-border-primary: theme(--color-gray-500);
+    --color-border-primary: theme(--color-gray-700);
     --color-border-secondary: theme(--color-gray-800);
     --color-border-secondary_alt: --alpha(var(--color-white) / 8%);
     --color-border-subtle: --alpha(var(--color-white) / 8%);
-    --color-border-hover: theme(--color-gray-400);
+    --color-border-hover: theme(--color-gray-600);
     --color-border-tertiary: theme(--color-gray-800);
     --color-border-brand: theme(--color-brand-400);
     --color-border-brand-subtle: --alpha(var(--color-brand-400) / 35%);

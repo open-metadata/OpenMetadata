@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **804**.
+Total project tokens: **806**.
 
 ## Spacing (62)
 
@@ -197,7 +197,7 @@ box-shadow. See foundations/elevation.md.
     0px 8px 8px -4px rgba(10, 13, 18, 0.03)` |
 | `--om-shadow-xs` | `0px 1px 2px rgba(10, 13, 18, 0.05)` |
 
-## z-index (31)
+## z-index (32)
 
 stacking. Prefer the semantic ladder for new work.
 
@@ -229,6 +229,7 @@ stacking. Prefer the semantic ladder for new work.
 | `--om-z-dropdown` | `1000` |
 | `--om-z-max` | `9999` |
 | `--om-z-modal` | `1500` |
+| `--om-z-n1` | `-1` |
 | `--om-z-overlay` | `1050` |
 | `--om-z-popover` | `2000` |
 | `--om-z-raised` | `1` |

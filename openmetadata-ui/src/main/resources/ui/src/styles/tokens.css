@@ -876,6 +876,7 @@
 
   /* z-index — exact values preserved to keep stacking order identical.
      For new work prefer the semantic ladder documented in specs. */
+  --om-z-n1: -1;
   --om-z-0: 0;
   --om-z-1: 1;
   --om-z-2: 2;
