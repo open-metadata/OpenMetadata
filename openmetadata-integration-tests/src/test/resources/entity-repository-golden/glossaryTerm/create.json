@@ -1,0 +1,35 @@
+{
+  "events" : [ {
+    "currentVersion" : 0.1,
+    "entity" : "{\"attributes\":[],\"conceptMappings\":[],\"conceptType\":\"BOTH\",\"deleted\":false,\"description\":\"created\",\"domains\":[],\"effectiveAttributes\":[],\"entityStatus\":\"Approved\",\"fullyQualifiedName\":\"glossary.golden_entity\",\"glossary\":{\"deleted\":false,\"description\":\"Test glossary\",\"displayName\":\"glossary\",\"fullyQualifiedName\":\"glossary\",\"href\":\"http://localhost:8585/api/v1/glossaries/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"glossary\",\"type\":\"glossary\"},\"href\":\"http://localhost:8585/api/v1/glossaryTerms/entity-id\",\"id\":\"entity-id\",\"mutuallyExclusive\":false,\"name\":\"golden_entity\",\"owners\":[],\"provider\":\"user\",\"realizedIn\":[],\"references\":[],\"reviewers\":[],\"synonyms\":[],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.1}",
+    "entityFullyQualifiedName" : "glossary.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "glossaryTerm",
+    "eventType" : "entityCreated",
+    "id" : "generated-id-2",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  } ],
+  "history" : [ ],
+  "stored" : [ {
+    "attributes" : [ ],
+    "conceptMappings" : [ ],
+    "conceptType" : "BOTH",
+    "deleted" : false,
+    "description" : "created",
+    "effectiveAttributes" : [ ],
+    "entityStatus" : "Approved",
+    "fullyQualifiedName" : "glossary.golden_entity",
+    "id" : "entity-id",
+    "mutuallyExclusive" : false,
+    "name" : "golden_entity",
+    "provider" : "user",
+    "realizedIn" : [ ],
+    "references" : [ ],
+    "synonyms" : [ ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.1
+  } ]
+}

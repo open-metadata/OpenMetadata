@@ -1,0 +1,27 @@
+{
+  "events" : [ ],
+  "history" : [ ],
+  "stored" : [ {
+    "autoCloseIncident" : false,
+    "computePassedFailedRowCount" : false,
+    "createdBy" : "admin",
+    "deleted" : false,
+    "description" : "bulk",
+    "dimensionColumns" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "fullyQualifiedName" : "service.database.schema.table.golden_bulk0",
+    "id" : "entity-id",
+    "name" : "golden_bulk0",
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.1
+  } ]
+}

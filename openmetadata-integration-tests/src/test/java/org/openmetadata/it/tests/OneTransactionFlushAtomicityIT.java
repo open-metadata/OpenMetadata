@@ -303,21 +303,31 @@ public class OneTransactionFlushAtomicityIT {
   @Test
   void consolidatingPatchDeadlockReplayProducesCorrectVersion(TestNamespace ns) {
     Chart chart = buildChart(ns, "consolidatePatch", false);
+    User firstOwner = UserTestFactory.createUser(ns, "consolidateFirstOwner");
+    User secondOwner = UserTestFactory.createUser(ns, "consolidateSecondOwner");
+    Domain firstDomain = createDomain(ns, "consolidateFirstDomain");
+    Domain secondDomain = createDomain(ns, "consolidateSecondDomain");
     ChartRepository setupRepo = new ChartRepository();
     Chart v01 = setupRepo.createInternal(chart);
 
     Chart v02Source = JsonUtils.deepCopy(v01, Chart.class);
     v02Source.setDescription("first-patch");
+    v02Source.setOwners(List.of(firstOwner.getEntityReference()));
+    v02Source.setDomains(List.of(firstDomain.getEntityReference()));
     setupRepo.patch(
         null, v01.getId(), "admin", JsonUtils.getJsonPatch(v01, v02Source), null, null, null);
 
     Chart current =
-        SdkClients.adminClient().charts().get(v01.getId().toString(), "owners,tags,description");
+        SdkClients.adminClient()
+            .charts()
+            .get(v01.getId().toString(), "owners,domains,tags,description");
     assertEquals(
         0.2, current.getVersion(), "first patch bumps to v0.2 so the next patch can consolidate");
 
     Chart consolidated = JsonUtils.deepCopy(current, Chart.class);
     consolidated.setDescription("consolidated-patch");
+    consolidated.setOwners(List.of(secondOwner.getEntityReference()));
+    consolidated.setDomains(List.of(secondDomain.getEntityReference()));
     JsonPatch consolidatingPatch = JsonUtils.getJsonPatch(current, consolidated);
 
     FaultyChartRepository repo = new FaultyChartRepository();
@@ -327,7 +337,15 @@ public class OneTransactionFlushAtomicityIT {
     assertEquals(2, repo.updateStoreAttempts, "consolidating patch deadlocks once then replays");
 
     Chart afterReplay =
-        SdkClients.adminClient().charts().get(v01.getId().toString(), "owners,tags,description");
+        SdkClients.adminClient()
+            .charts()
+            .get(v01.getId().toString(), "owners,domains,tags,description");
+    assertEquals(
+        List.of(secondOwner.getId()),
+        afterReplay.getOwners().stream().map(EntityReference::getId).toList());
+    assertEquals(
+        List.of(secondDomain.getId()),
+        afterReplay.getDomains().stream().map(EntityReference::getId).toList());
     assertEquals(
         "consolidated-patch",
         afterReplay.getDescription(),
