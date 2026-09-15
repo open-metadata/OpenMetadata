@@ -28,7 +28,7 @@ import {
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   removeSingleSelectDomain,
   toastNotification,
@@ -158,7 +158,7 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
         '/api/v1/dataQuality/testSuites/search/list'
       ) &&
       responseUrl.searchParams.get('testSuiteType') === 'logical' &&
-      responseUrl.searchParams.get('q') === `*${bundleSuiteName}*`
+      responseUrl.searchParams.get('q') === bundleSuiteName
     );
   });
 
@@ -205,7 +205,7 @@ test(
       await page
         .locator('[data-testid="test-suite-name"] input')
         .fill(NEW_TEST_SUITE.name);
-      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await fillDescriptionBox(page, NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }
@@ -333,7 +333,10 @@ test(
       const getOwnerList = page.waitForResponse(
         '/api/v1/search/query?q=&index=user&*'
       );
-      await page.click('.ant-tabs [id*=tab-users]');
+      await page
+        .getByTestId('select-owner-tabs')
+        .getByRole('tab', { name: 'Users' })
+        .click();
       await getOwnerList;
       await waitForAllLoadersToDisappear(page);
 
@@ -346,7 +349,10 @@ test(
       const testSuiteByOwner = page.waitForResponse(
         '/api/v1/dataQuality/testSuites/search/list?*owner=*'
       );
-      await page.click(`.ant-popover [title="${owner}"]`);
+      await page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: owner })
+        .click();
       await testSuiteByOwner;
       await page.getByTestId(NEW_TEST_SUITE.name).waitFor({
         state: 'visible',

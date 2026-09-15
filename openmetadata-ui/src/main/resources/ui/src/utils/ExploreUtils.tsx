@@ -74,7 +74,8 @@ export const getAggregationOptions = async (
   deleted = false,
   size = 10,
   isNLPEnabled = false,
-  queryText?: string
+  queryText?: string,
+  sourceFields?: string
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
@@ -84,13 +85,14 @@ export const getAggregationOptions = async (
         query: filter,
         ...(queryText ? { queryText } : {}),
         size,
+        ...(sourceFields ? { topHits: { size: 1 } } : {}),
       })
     : getAggregateFieldOptions(
         index,
         key,
         value,
         filter,
-        undefined,
+        sourceFields,
         deleted,
         isNLPEnabled,
         queryText
@@ -169,6 +171,7 @@ export const fetchEntityData = async ({
   TABS_SEARCH_INDEXES,
   EntityTypeSearchIndexMapping,
   setSearchHitCounts,
+  setAutoSelectedSearchIndex,
   setSearchResults,
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
@@ -190,6 +193,9 @@ export const fetchEntityData = async ({
   TABS_SEARCH_INDEXES: ExploreSearchIndex[];
   EntityTypeSearchIndexMapping: Record<EntityType, ExploreSearchIndex>;
   setSearchHitCounts: (counts: SearchHitCounts) => void;
+  setAutoSelectedSearchIndex: (
+    searchIndex: ExploreSearchIndex | undefined
+  ) => void;
   setSearchResults: (results: SearchResponse<ExploreSearchIndex>) => void;
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
@@ -201,21 +207,57 @@ export const fetchEntityData = async ({
     queryFilter as QueryFilterInterface
   );
 
-  const searchRequest =
-    isNLPRequestEnabled && !isEmpty(searchQueryParam) ? nlqSearch : searchQuery;
+  const isNlqSearch = isNLPRequestEnabled && !isEmpty(searchQueryParam);
+  const searchRequest = isNlqSearch ? nlqSearch : searchQuery;
+
+  const runSearchWithoutQueryParam = async () => {
+    // If no searchQueryParam, make searchAPICall with current searchIndex
+    const searchPayload = {
+      query: '',
+      searchIndex,
+      queryFilter: combinedQueryFilter,
+      sortField: sortValue,
+      sortOrder: sortOrder,
+      pageNumber: page,
+      pageSize: size,
+      includeDeleted: showDeleted,
+      trackTotalHits: true,
+      explain: showRankingDetails,
+      excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
+    };
+
+    try {
+      const res = await searchRequest(searchPayload);
+      setSearchResults(res as SearchResponse<ExploreSearchIndex>);
+      setUpdatedAggregations(res.aggregations);
+    } catch (error) {
+      if (isElasticsearchError(error)) {
+        setShowIndexNotFoundAlert(true);
+      } else {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
 
   try {
     if (searchQueryParam) {
       const countPayload = {
         query: escapeESReservedCharacters(searchQueryParam),
-        pageNumber: 0,
-        pageSize: 0,
+        pageNumber: 1,
+        pageSize: 1,
         queryFilter: combinedQueryFilter,
-        searchIndex: SearchIndex.DATA_ASSET,
+        searchIndex: SearchIndex.DATA_ASSET as const,
         includeDeleted: showDeleted,
-        fetchSource: false,
         filters: '',
       };
+      const runCountSearch = () =>
+        isNlqSearch
+          ? nlqSearch({ ...countPayload, fetchSource: false })
+          : searchQuery({
+              ...countPayload,
+              fetchSource: true,
+              includeFields: ['entityType'],
+            });
 
       const handleSearchError = (error: unknown) => {
         if (isElasticsearchError(error)) {
@@ -238,7 +280,26 @@ export const fetchEntityData = async ({
         });
         setSearchHitCounts(counts as SearchHitCounts);
 
-        return counts as SearchHitCounts;
+        // The hybrid (NLQ) count query spans the whole dataAsset alias, and OpenSearch's
+        // RRF score-ranker-processor is a phase_results_processors entry: it ranks per
+        // shard, so every single-shard member contributes its own rank-1 document and two
+        // dozen of them tie on an identical fused score. hits[0] is then arbitrary and
+        // carries no relevance signal, so only the aggregation counts below are usable.
+        // Plain BM25 ranks globally, so its top hit remains a valid tie-breaker.
+        const topHitEntityType = isNlqSearch
+          ? undefined
+          : res.hits.hits[0]?._source?.entityType;
+        const topHitSearchIndex = topHitEntityType
+          ? EntityTypeSearchIndexMapping[topHitEntityType as EntityType]
+          : undefined;
+
+        return {
+          counts: counts as SearchHitCounts,
+          topHitSearchIndex:
+            topHitSearchIndex && TABS_SEARCH_INDEXES.includes(topHitSearchIndex)
+              ? topHitSearchIndex
+              : undefined,
+        };
       };
 
       const runResultsSearch = async (
@@ -293,7 +354,7 @@ export const fetchEntityData = async ({
         // round-trips. Each leg handles its own error (a failed count still
         // lets results render, and vice-versa).
         await Promise.all([
-          searchRequest(countPayload)
+          runCountSearch()
             .then((res) =>
               applyHitCounts(res as SearchResponse<ExploreSearchIndex>)
             )
@@ -304,45 +365,20 @@ export const fetchEntityData = async ({
         // No tab: the count decides which index actually has results, so the
         // count must complete before the results query can be issued.
         try {
-          const counts = applyHitCounts(
-            (await searchRequest(
-              countPayload
-            )) as SearchResponse<ExploreSearchIndex>
+          const { counts, topHitSearchIndex } = applyHitCounts(
+            (await runCountSearch()) as SearchResponse<ExploreSearchIndex>
           );
           const effectiveSearchIndex =
-            findActiveSearchIndex(counts, tabsInfo) || searchIndex;
+            findActiveSearchIndex(counts, tabsInfo, topHitSearchIndex) ||
+            searchIndex;
+          setAutoSelectedSearchIndex(effectiveSearchIndex);
           await runResultsSearch(effectiveSearchIndex);
         } catch (error) {
           handleSearchError(error);
         }
       }
     } else {
-      // If no searchQueryParam, make searchAPICall with current searchIndex
-      const searchPayload = {
-        query: '',
-        searchIndex,
-        queryFilter: combinedQueryFilter,
-        sortField: sortValue,
-        sortOrder: sortOrder,
-        pageNumber: page,
-        pageSize: size,
-        includeDeleted: showDeleted,
-        trackTotalHits: true,
-        explain: showRankingDetails,
-        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
-      };
-
-      try {
-        const res = await searchRequest(searchPayload);
-        setSearchResults(res as SearchResponse<ExploreSearchIndex>);
-        setUpdatedAggregations(res.aggregations);
-      } catch (error) {
-        if (isElasticsearchError(error)) {
-          setShowIndexNotFoundAlert(true);
-        } else {
-          showErrorToast(error as AxiosError);
-        }
-      }
+      await runSearchWithoutQueryParam();
     }
 
     return true;

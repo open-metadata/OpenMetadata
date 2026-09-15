@@ -13,13 +13,13 @@
 @import (reference) '../../styles/variables.less';
 
 .service-insights-tab {
-  padding-bottom: 16px;
+  padding-bottom: var(--om-space-16);
   .service-insights-widget {
     height: 100%;
     background-color: var(--tw-color-bg-primary);
     border-radius: @border-rad-sm;
     border: 1px solid @grey-15;
-    padding: 20px;
+    padding: var(--om-space-20);
   }
 
   .service-insights-collapse-widget.ant-collapse-icon-position-end {
@@ -36,7 +36,7 @@
       }
       .ant-collapse-content {
         .ant-collapse-content-box {
-          padding-top: 0px;
+          padding-top: 0;
         }
         border-radius: @border-rad-sm;
         border-top: none;
@@ -49,7 +49,7 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: var(--om-space-8);
         }
       }
     }
@@ -69,7 +69,7 @@
   }
   .distribution-widget.ant-card {
     height: 350px;
-    gap: 16px;
+    gap: var(--om-space-16);
     .ant-card-body {
       height: 100%;
       display: flex;

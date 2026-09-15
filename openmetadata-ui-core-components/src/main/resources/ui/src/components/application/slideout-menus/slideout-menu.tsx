@@ -70,7 +70,9 @@ export const Dialog = (props: DialogProps) => (
     role="dialog"
     {...props}
     className={cx(
-      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:ring-1 tw:ring-secondary_alt tw:outline-hidden',
+      // `outline-hidden` removed: the outline now draws this panel's border (it replaced a
+      // ring, which WebKit does not pixel-snap), so suppressing it would erase the border.
+      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:outline-1 tw:outline-secondary_alt',
       props.className
     )}
   />
@@ -80,6 +82,7 @@ Dialog.displayName = 'Dialog';
 interface SlideoutMenuProps
   extends Omit<AriaModalOverlayProps, 'children'>,
     RefAttributes<HTMLDivElement> {
+  'aria-label'?: string;
   children:
     | ReactNode
     | ((children: AriaModalRenderProps & { close: () => void }) => ReactNode);
@@ -88,13 +91,14 @@ interface SlideoutMenuProps
 }
 
 const Menu = ({
+  'aria-label': ariaLabel,
   children,
   dialogClassName,
   width,
   ...props
 }: SlideoutMenuProps) => {
   return (
-    <ModalOverlay {...props}>
+    <ModalOverlay aria-label={ariaLabel} {...props}>
       <Modal
         className={(state) =>
           cx(
@@ -105,7 +109,7 @@ const Menu = ({
         }
         style={width !== undefined ? { maxWidth: width } : undefined}>
         {(state) => (
-          <Dialog className={dialogClassName}>
+          <Dialog aria-label={ariaLabel} className={dialogClassName}>
             {({ close }) => {
               return typeof children === 'function'
                 ? children({ ...state, close })

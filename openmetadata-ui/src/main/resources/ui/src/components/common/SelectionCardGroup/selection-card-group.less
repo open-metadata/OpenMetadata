@@ -16,13 +16,35 @@
   display: flex;
   gap: @size-mlg;
   width: 100%;
+  // Without this the cards sit flush against their label. 6px matches every
+  // other field on the form, which gets it from the shared field wrapper's
+  // `tw:gap-[6px]` (core-components form-field.tsx). There is no 6px LESS
+  // variable — @size-xxs is 4px and @size-xs is 8px — so it is spelled out
+  // rather than rounded to a variable that would not line up.
+  margin-top: 6px;
+
+  // Icon above the text instead of beside it, so the label gets the card's full
+  // width. Opt-in via `layout="vertical"` — in a narrow column the horizontal
+  // default leaves the label ~60px and wraps it mid-phrase ("Table / Level").
+  .selection-card-vertical {
+    .selection-body {
+      flex-direction: column;
+      gap: @size-sm;
+    }
+
+    // The checkmark sits top-right against the icon rather than centred on a
+    // now-taller card.
+    .selection-content {
+      align-items: flex-start;
+    }
+  }
 
   .selection-card {
     flex: 1;
     border: 1px solid @grey-300;
     border-radius: @border-rad-xs;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--om-duration-300) ease;
     background: var(--tw-color-bg-primary);
     position: relative;
 
@@ -30,7 +52,7 @@
       position: absolute;
       top: -8px;
       left: 10%;
-      z-index: 1;
+      z-index: var(--om-z-1);
     }
 
     .ant-card-body {
@@ -41,6 +63,15 @@
         justify-content: space-between;
         width: 100%;
 
+        // Replaces the previous `d-flex gap-3` utilities on this element so the
+        // icon/text arrangement can vary by layout. The horizontal default is
+        // byte-for-byte what those utilities produced.
+        .selection-body {
+          display: flex;
+          gap: var(--om-space-12);
+          min-width: 0;
+        }
+
         .selection-icon {
           display: flex;
           align-items: center;
@@ -50,7 +81,7 @@
           border-radius: 50%;
           background-color: @grey-100;
           border: 6px solid @grey-50;
-          transition: all 0.3s ease;
+          transition: all var(--om-duration-300) ease;
           flex-shrink: 0;
 
           svg {
@@ -85,7 +116,7 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.3s ease;
+          transition: all var(--om-duration-300) ease;
 
           &.unchecked {
             border: 1px solid @grey-300;

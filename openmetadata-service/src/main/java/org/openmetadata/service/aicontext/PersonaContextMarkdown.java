@@ -38,6 +38,8 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.schema.type.personaContext.ManifestEntry;
 import org.openmetadata.schema.type.personaContext.RuleResult;
+import org.openmetadata.schema.type.personaContext.SearchScope;
+import org.openmetadata.schema.type.personaContext.SearchScopeRule;
 import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 
 /** Renders a materialized persona context with monotonic full/compact/manifest degradation. */
@@ -74,6 +76,7 @@ final class PersonaContextMarkdown {
     List<ManifestEntry> manifest = new ArrayList<>();
     StringBuilder body = new StringBuilder();
     RenderTier tier = RenderTier.FULL;
+    body.append(renderSearchScope(context.getSearchScope()));
 
     for (PersonaContextBuilder.RuleMaterialization rule : rules) {
       RuleRenderResult rendered =
@@ -103,6 +106,33 @@ final class PersonaContextMarkdown {
         (frontmatter(context, maxChars, tokensEstimate) + renderTitle(persona) + body).strip()
             + "\n";
     return new PersonaContextBuilder.MaterializedPersonaContext(context, markdown);
+  }
+
+  /**
+   * Search-scoped rules preload nothing, so without this note the document would give no hint that
+   * searches are being narrowed and the model could not explain a thin result set.
+   */
+  private static String renderSearchScope(SearchScope scope) {
+    if (scope == null || nullOrEmpty(scope.getEntityTypes())) {
+      return "";
+    }
+    StringBuilder markdown = new StringBuilder("\n## Search scope\n\n");
+    markdown
+        .append("Your administrator configured default search rules for this persona. ")
+        .append(
+            "Search tools are asked to apply this scope by default, so results may be narrowed to"
+                + " these assets. This is a relevance default, not a permission boundary, and a"
+                + " tool may search outside it.\n\n");
+    for (SearchScopeRule rule : listOrEmpty(scope.getRules())) {
+      markdown
+          .append("- ")
+          .append(rule.getRuleName())
+          .append(" — ")
+          .append(rule.getEntityType())
+          .append(nullOrEmpty(rule.getQueryFilter()) ? " (every entity of this type)" : "")
+          .append('\n');
+    }
+    return markdown.append('\n').toString();
   }
 
   private static RuleRenderResult renderKnowledgeRule(
@@ -145,8 +175,9 @@ final class PersonaContextMarkdown {
     }
     EntityInterface entity = selected.knowledgeEntity();
     if (entity == null) {
-      if (!nullOrEmpty(item.getContent())) {
-        markdown.append('\n').append(item.getContent().strip()).append('\n');
+      String content = PromptText.forPrompt(item.getContent());
+      if (!nullOrEmpty(content)) {
+        markdown.append('\n').append(content.strip()).append('\n');
       }
       return markdown.toString();
     }
@@ -170,7 +201,7 @@ final class PersonaContextMarkdown {
 
   private static void appendArticleSections(
       StringBuilder markdown, Page page, Set<ContextSection> sections, boolean all) {
-    String content = page.getDescription();
+    String content = PromptText.forPrompt(page.getDescription());
     if ((all || sections.contains(ContextSection.TITLE_SUMMARY)) && !nullOrEmpty(content)) {
       appendSection(markdown, "Summary", firstLine(content));
     }
@@ -192,7 +223,7 @@ final class PersonaContextMarkdown {
       StringBuilder markdown, Metric metric, Set<ContextSection> sections, boolean all) {
     if ((all || sections.contains(ContextSection.DEFINITION))
         && !nullOrEmpty(metric.getDescription())) {
-      appendSection(markdown, "Definition", metric.getDescription());
+      appendSection(markdown, "Definition", PromptText.forPrompt(metric.getDescription()));
     }
     if ((all || sections.contains(ContextSection.FORMULA_EXPRESSION))
         && metric.getMetricExpression() != null
@@ -235,7 +266,7 @@ final class PersonaContextMarkdown {
       StringBuilder markdown, GlossaryTerm term, Set<ContextSection> sections, boolean all) {
     if ((all || sections.contains(ContextSection.DEFINITION))
         && !nullOrEmpty(term.getDescription())) {
-      appendSection(markdown, "Definition", term.getDescription());
+      appendSection(markdown, "Definition", PromptText.forPrompt(term.getDescription()));
     }
     if ((all || sections.contains(ContextSection.SYNONYMS))
         && !listOrEmpty(term.getSynonyms()).isEmpty()) {
@@ -504,8 +535,9 @@ final class PersonaContextMarkdown {
     } else if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
-    if (!nullOrEmpty(item.getContent())) {
-      markdown.append('\n').append(item.getContent().strip()).append('\n');
+    String content = PromptText.forPrompt(item.getContent());
+    if (!nullOrEmpty(content)) {
+      markdown.append('\n').append(content.strip()).append('\n');
     }
     return markdown.toString();
   }

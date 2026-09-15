@@ -23,7 +23,19 @@ $$
 $$section
 ### SQL Query $(id="sqlExpression")
 
-Define the SQL expression used to evaluate the rule for OpenMetadata-native tests. The expression should match the selected entity type and use the placeholders expected by the validator.
+Define the SQL expression used to evaluate the rule for OpenMetadata-native tests. The expression should match the selected entity type.
+
+The expression is a Jinja2 template, so every substitution variable must use **double curly braces**:
+
+- `{{ table_name }}` — the fully qualified table, resolved at runtime.
+- `{{ column_name }}` — the column, resolved at runtime (column-level definitions only).
+- `{{ paramName }}` — any parameter you declare in the Parameters section below.
+
+```sql
+SELECT COUNT(*) FROM {{ table_name }} WHERE {{ column_name }} < {{ minValue }}
+```
+
+Single-brace forms such as `{table}` or `{column}` are **not** substituted. They are passed through to the engine verbatim and fail at query time with a syntax error from your database.
 $$
 
 $$section

@@ -13,7 +13,8 @@
 Table Count Metric definition
 """
 
-from typing import TYPE_CHECKING, Callable, Optional  # noqa: UP035
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import func
 

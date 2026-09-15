@@ -345,6 +345,14 @@
       },
       "default": null
     },
+    "odcsElementExtensions": {
+      "description": "ODCS schema element attributes with no OpenMetadata equivalent, stored during import for round-trip compatibility with ODCS export.",
+      "type": "array",
+      "items": {
+        "$ref": "../datacontract/odcs/odcsDataContract.json#/definitions/odcsElementExtension"
+      },
+      "default": null
+    },
     "contractUpdates": {
       "description": "History of updates to the data contract.",
       "type": "array",

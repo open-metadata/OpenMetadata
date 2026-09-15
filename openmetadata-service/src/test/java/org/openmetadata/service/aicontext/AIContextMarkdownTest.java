@@ -23,16 +23,19 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 
 /**
@@ -95,6 +98,41 @@ class AIContextMarkdownTest {
         "missing one-line description summary");
     assertTrue(markdown.contains("tags: [\"Tier.Tier1\", \"PII.None\"]"), "missing tags");
     assertTrue(markdown.contains("timestamp: \"2026-07-01T"), "missing ISO timestamp");
+  }
+
+  @Test
+  void textMarkdownMediaType_declaresUtf8Charset() {
+    assertTrue(
+        AIContextMarkdown.TEXT_MARKDOWN.contains("charset=UTF-8"),
+        "markdown media type must declare UTF-8 or clients default text/* to ISO-8859-1 and "
+            + "mojibake the em dashes, arrows and section signs the document embeds");
+  }
+
+  @Test
+  void render_emitsDataModelSectionWithFencedSql() {
+    TableContext table =
+        new TableContext()
+            .withColumns(List.of(new FieldContext().withName("id").withDataType("BIGINT")))
+            .withDataModel(
+                new TableDataModel()
+                    .withModelType("DBT")
+                    .withPath("models/marts/core/dim_customers.sql")
+                    .withSourceProject("banking_redshift")
+                    .withSql("SELECT * FROM staging.customers"));
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withAssetContext(new AssetContext().withTable(table));
+    String markdown = AIContextMarkdown.render(context);
+    assertTrue(markdown.contains("# Data Model"), "missing Data Model heading");
+    assertTrue(markdown.contains("**Type:** `DBT`"), "missing model type");
+    assertTrue(
+        markdown.contains("**Path:** `models/marts/core/dim_customers.sql`"), "missing model path");
+    assertTrue(markdown.contains("**Project:** `banking_redshift`"), "missing source project");
+    assertTrue(
+        markdown.contains("```sql\nSELECT * FROM staging.customers\n```"),
+        "missing fenced SQL block");
   }
 
   @Test
@@ -449,6 +487,46 @@ class AIContextMarkdownTest {
     assertTrue(markdown.contains("currently failing"), "missing failing-test warning");
   }
 
+  private static String qualityMarkdown(DataQuality dataQuality) {
+    return AIContextMarkdown.render(
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withObservability(new Observability().withDataQuality(dataQuality)));
+  }
+
+  @Test
+  void render_saysQualityIsUnmeasuredWhenNoTestIsDefined() {
+    // An attached suite with no test cases in it is a normal state - the suite is created before
+    // its tests - and gating only on passed+failed+aborted told the reader every one of those
+    // assets had tests that never ran, which is a state that does not exist.
+    String markdown =
+        qualityMarkdown(new DataQuality().withTotal(0).withPassed(0).withFailed(0).withAborted(0));
+
+    assertTrue(markdown.contains("No data-quality test is defined"), "missing unmeasured verdict");
+    assertFalse(
+        markdown.contains("has ever executed"),
+        "an asset with no tests must not be described as having tests that never ran");
+  }
+
+  @Test
+  void render_saysTestsAreUnverifiedWhenDefinedButNeverRun() {
+    String markdown =
+        qualityMarkdown(new DataQuality().withTotal(13).withPassed(0).withFailed(0).withAborted(0));
+
+    assertTrue(markdown.contains("None of the 13"), "the count of defined tests is load-bearing");
+    assertTrue(markdown.contains("NOT the same as"), "zero failures must not read as healthy");
+  }
+
+  @Test
+  void render_addsNoCoverageVerdictWhenTestsHaveRun() {
+    String markdown =
+        qualityMarkdown(new DataQuality().withTotal(4).withPassed(4).withFailed(0).withAborted(0));
+
+    assertFalse(markdown.contains("No data-quality test is defined"), "tests exist");
+    assertFalse(markdown.contains("None of the"), "and they ran");
+  }
+
   @Test
   void appendEntitySections_honorsSelectionAndHeadingDepth() {
     StringBuilder markdown = new StringBuilder();
@@ -461,6 +539,119 @@ class AIContextMarkdownTest {
     assertTrue(markdown.toString().contains("### Schema"));
     assertTrue(markdown.toString().contains("Orders placed by customers."));
     assertFalse(markdown.toString().contains("Foreign Keys"));
+  }
+
+  @Test
+  void render_emitsMetricDefinitionFromGenericAssetContext() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("metric")
+            .withFullyQualifiedName("MonthlyActiveUsers")
+            .withAssetContext(
+                new AssetContext()
+                    .withGeneric(
+                        new GenericAssetContext()
+                            .withDefinition("SELECT COUNT(DISTINCT user_id) FROM events")));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(markdown.contains("# Definition"), "missing Definition heading");
+    assertTrue(
+        markdown.contains("```sql\nSELECT COUNT(DISTINCT user_id) FROM events\n```"),
+        "missing metric expression block");
+  }
+
+  @Test
+  void render_emitsSampleDataRowsUnderSchema() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("id", "customer_id"))
+                .withRows(List.of(List.of(1, 42), List.of(2, 43))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(markdown.contains("# Sample Data"), "missing sample-data heading");
+    assertTrue(
+        markdown.contains("not the full table"),
+        "sample rows must be captioned as a sample so the agent does not read them as the table");
+    assertTrue(markdown.contains("| id | customer_id |"), "missing sample-data header row");
+    assertTrue(markdown.contains("| 1 | 42 |"), "missing first sample row");
+    assertTrue(markdown.contains("| 2 | 43 |"), "missing second sample row");
+  }
+
+  @Test
+  void render_omitsSampleDataWhenAbsentOrEmpty() {
+    assertFalse(render().contains("Sample Data"), "no sample data attached");
+
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(new TableData().withColumns(List.of("id")).withRows(List.of()));
+
+    assertFalse(
+        AIContextMarkdown.render(context).contains("Sample Data"),
+        "a column-only payload carries no values to show");
+  }
+
+  @Test
+  void render_sanitizesAndPadsDelimiterSensitiveSampleValues() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("a", "b", "c"))
+                .withRows(List.of(Arrays.asList("x|y", "line1\nline2", null))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains("| x\\|y | line1 line2 |  |"),
+        "pipes must be escaped, newlines flattened, and a null value rendered as an empty cell");
+  }
+
+  @Test
+  void render_padsRaggedSampleRowsToTheColumnWidth() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("a", "b", "c"))
+                .withRows(List.of(List.of("only"), List.of("x", "y", "z", "overflow"))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains("| only |  |  |"), "a short row must be padded, not left misaligned");
+    assertTrue(
+        markdown.contains("| x | y | z |"),
+        "values beyond the declared columns must be dropped, not appended as phantom cells");
+    assertFalse(markdown.contains("overflow"), "overflowing cell must not widen the table");
+  }
+
+  @Test
+  void render_capsLongSampleValues() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("blob"))
+                .withRows(List.of(List.of("z".repeat(500)))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertFalse(markdown.contains("z".repeat(200)), "a blob column must not crowd out the context");
+    assertTrue(markdown.contains("\u2026 |"), "a capped value must be marked as elided");
   }
 
   private String render() {

@@ -14,7 +14,7 @@ Source connection handler
 """
 
 from functools import partial
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -36,9 +36,9 @@ from metadata.utils.constants import THREE_MIN
 class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
     def _get_client(self) -> Any:
         # pylint: disable=import-outside-toplevel
-        from couchbase.auth import PasswordAuthenticator  # noqa: PLC0415
-        from couchbase.cluster import Cluster  # noqa: PLC0415
-        from couchbase.options import ClusterOptions  # noqa: PLC0415
+        from couchbase.auth import PasswordAuthenticator
+        from couchbase.cluster import Cluster
+        from couchbase.options import ClusterOptions
 
         connection = self.service_connection
         auth = PasswordAuthenticator(connection.username, connection.password.get_secret_value())
@@ -50,20 +50,20 @@ class CouchbaseConnection(BaseConnection[CouchbaseConnectionConfig, Any]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
         # pylint: disable=import-outside-toplevel
-        from couchbase.cluster import Cluster  # noqa: PLC0415
+        from couchbase.cluster import Cluster
 
         client = self.client
 
         class SchemaHolder(BaseModel):
-            database: Optional[str] = None  # noqa: UP045
+            database: str | None = None
 
         holder = SchemaHolder()
 

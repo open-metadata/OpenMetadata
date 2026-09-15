@@ -15,7 +15,9 @@ for any source.
 """
 
 import traceback
-from typing import Any, Callable, Optional, Type  # noqa: UP035
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -38,12 +40,12 @@ TEST_CONNECTION_FN_NAME = "test_connection"
 # Once we migrate all connectors we shouldn't need this.
 def _get_connection_class_from_spec(
     connection: BaseModel,
-) -> Optional[Type[BaseConnection]]:  # noqa: UP006, UP045
+) -> type[BaseConnection] | None:
     """
     Helper method to get the connection class from the connection spec.
     Returns the connection class if successful, None otherwise.
     """
-    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    from metadata.utils.service_spec.service_spec import (  # pylint: disable=import-outside-toplevel
         BaseSpec,
         import_connection_class,
     )
@@ -62,7 +64,7 @@ def _get_connection_class_from_spec(
     return None
 
 
-def create_connection(connection: BaseModel) -> Optional[BaseConnection]:  # noqa: UP045
+def create_connection(connection: BaseModel) -> BaseConnection | None:
     """Return the ServiceSpec ``BaseConnection`` owner, or ``None`` if the
     connection has no ``connection_class``."""
     connection_class = _get_connection_class_from_spec(connection)
@@ -73,6 +75,22 @@ def run_test_connection(metadata: OpenMetadata, connection: BaseConnection) -> N
     """Test an already-built connection owner, reusing its live client, and raise
     on failure. Does not close it; the source owns and closes the connection."""
     raise_test_connection_exception(connection.test_connection(metadata))
+
+
+@contextmanager
+def close_on_failure(connection: BaseConnection | None) -> Iterator[None]:
+    """Release the owned connection if the wrapped verification fails. A teardown
+    that fails is logged, never raised: the verification error is the one the
+    caller needs."""
+    try:
+        yield
+    except Exception:
+        if connection is not None:
+            try:
+                connection.close()
+            except Exception:
+                logger.warning("Failed to release the connection after a failed verification", exc_info=True)
+        raise
 
 
 def get_test_connection_fn(connection: BaseModel) -> Callable:

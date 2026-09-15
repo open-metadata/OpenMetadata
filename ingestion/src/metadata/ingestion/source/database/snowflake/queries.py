@@ -25,7 +25,7 @@ SNOWFLAKE_GET_TABLE_NAMES = """
             ELSE TABLE_TYPE
         END as TABLE_TYPE
     from information_schema.tables
-    where TABLE_SCHEMA = '{schema}'
+    where TABLE_SCHEMA = :schema
     AND {include_transient_tables}
     AND {include_views}
 """
@@ -46,10 +46,10 @@ from (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
-    where TABLE_CATALOG = '{database}'
-    and TABLE_SCHEMA = '{schema}'
+    where TABLE_CATALOG = :database
+    and TABLE_SCHEMA = :schema
     and {include_transient_tables}
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
     and {include_views}
 )
 where ROW_NUMBER = 1
@@ -78,14 +78,19 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
 )
 
-SNOWFLAKE_SESSION_TAG_QUERY = 'ALTER SESSION SET QUERY_TAG="{query_tag}"'
+
+def _snowflake_string_literal(value: str) -> str:
+    """Escape quotes and backslashes that Snowflake interprets inside string literals."""
+    escaped = value.replace("\\", "\\\\").replace("'", "''")
+    return f"'{escaped}'"
+
 
 SNOWFLAKE_FETCH_TABLE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME
     from {account_usage}.tag_references
-    where OBJECT_DATABASE = '{database_name}'
-      and OBJECT_SCHEMA = '{schema_name}'
+    where OBJECT_DATABASE = :database_name
+      and OBJECT_SCHEMA = :schema_name
       and OBJECT_DELETED IS NULL
 """
 )
@@ -94,7 +99,7 @@ SNOWFLAKE_FETCH_SCHEMA_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_NAME as SCHEMA_NAME
     from {account_usage}.tag_references
-    where OBJECT_DATABASE = '{database_name}'
+    where OBJECT_DATABASE = :database_name
       and OBJECT_SCHEMA IS NULL
       and OBJECT_NAME IS NOT NULL
       and COLUMN_NAME IS NULL
@@ -107,7 +112,7 @@ SNOWFLAKE_FETCH_DATABASE_TAGS = textwrap.dedent(
     """
     select TAG_NAME, TAG_VALUE, OBJECT_DATABASE as DATABASE_NAME
     from {account_usage}.tag_references
-    where OBJECT_DATABASE = '{database_name}'
+    where OBJECT_DATABASE = :database_name
       and OBJECT_SCHEMA IS NULL
       and OBJECT_NAME IS NULL
       and COLUMN_NAME IS NULL
@@ -169,7 +174,7 @@ where ROW_NUMBER = 1
 
 SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
-where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'VIEW'
+where TABLE_SCHEMA = :schema and TABLE_TYPE = 'VIEW'
 """
 
 SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES = """
@@ -182,17 +187,17 @@ from (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
-    where  TABLE_CATALOG = '{database}'
-    and TABLE_SCHEMA = '{schema}'
+    where  TABLE_CATALOG = :database
+    and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
 )
 where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_MVIEW_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
-where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'MATERIALIZED VIEW'
+where TABLE_SCHEMA = :schema and TABLE_TYPE = 'MATERIALIZED VIEW'
 """
 
 SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES = """
@@ -205,28 +210,74 @@ from (
             partition by TABLE_NAME order by LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
-    where  TABLE_CATALOG = '{database}'
-    and TABLE_SCHEMA = '{schema}'
+    where  TABLE_CATALOG = :database
+    and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'MATERIALIZED VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
 )
 where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_STREAM_NAMES = """
-SHOW STREAMS IN SCHEMA "{schema}"
+SHOW STREAMS IN SCHEMA {schema}
 """
 
 SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES = """
-SHOW STREAMS IN SCHEMA "{schema}"
+SHOW STREAMS IN SCHEMA {schema}
 """
 
 SNOWFLAKE_GET_STREAM = """
-SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
+SHOW STREAMS LIKE :stream_name IN SCHEMA {schema}
 """
 
 SNOWFLAKE_GET_STAGES = """
-SHOW STAGES IN SCHEMA "{schema}"
+SHOW STAGES IN SCHEMA {schema}
+"""
+
+# NOTE: the column names differ (intentionally) between the semantic catalog
+# views. INFORMATION_SCHEMA.SEMANTIC_VIEWS exposes CATALOG / SCHEMA / NAME,
+# whereas the child views (SEMANTIC_TABLES / SEMANTIC_DIMENSIONS / _FACTS /
+# _METRICS) expose SEMANTIC_VIEW_CATALOG / SEMANTIC_VIEW_SCHEMA /
+# SEMANTIC_VIEW_NAME. So `WHERE SCHEMA` here vs `WHERE SEMANTIC_VIEW_SCHEMA`
+# below is correct, not a mismatch.
+SNOWFLAKE_GET_SEMANTIC_VIEWS = """
+SELECT NAME FROM information_schema.semantic_views WHERE SCHEMA = :schema
+"""
+
+# Semantic view objects (dimensions/facts/metrics), read from the matching
+# INFORMATION_SCHEMA.SEMANTIC_* catalog view via `{catalog_view}`.
+#
+# PRIMARY PATH. One round-trip per schema covers every semantic view in it, so the
+# query count scales with schemas rather than views. SEMANTIC_VIEW_NAME leads the
+# projection so rows can be grouped by view; the remaining columns match
+# ..._FOR_VIEW below so downstream row parsing is identical either way.
+SNOWFLAKE_GET_SEMANTIC_OBJECTS_IN_SCHEMA = """
+SELECT SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.{catalog_view}
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}'
+"""
+
+# FALLBACK ONLY. Used when the schema-wide query above fails with errno 90030
+# ("information schema query returned too much data"), which is the case a
+# schema-wide fetch cannot serve. One round-trip per view per catalog view.
+SNOWFLAKE_GET_SEMANTIC_OBJECTS_FOR_VIEW = """
+SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.{catalog_view}
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
+"""
+
+# Database-qualified batch queries used by the lineage workflow to resolve
+# semantic view -> base table (and column) lineage across every schema/view in
+# a database in a single round-trip.
+SNOWFLAKE_GET_SEMANTIC_TABLES_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, NAME,
+       BASE_TABLE_CATALOG, BASE_TABLE_SCHEMA, BASE_TABLE_NAME
+FROM "{database}".information_schema.semantic_tables
+"""
+
+SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, EXPRESSION
+FROM "{database}".information_schema.{catalog_view}
 """
 
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
@@ -317,7 +368,7 @@ select DATABASE_NAME,COMMENT from information_schema.databases
 """
 
 SNOWFLAKE_GET_EXTERNAL_LOCATIONS = """
-SHOW EXTERNAL TABLES IN DATABASE "{database_name}"
+SHOW EXTERNAL TABLES IN DATABASE {database_name}
 """
 
 SNOWFLAKE_TEST_FETCH_TAG = """
@@ -484,9 +535,18 @@ ORDER BY PROCEDURE_START_TIME DESC
     """
 )
 
-SNOWFLAKE_GET_TABLE_DDL = """
-SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
+SNOWFLAKE_GET_DDL = """
+SELECT GET_DDL({object_type}, {object_name}) AS \"text\"
 """
+
+
+def build_get_ddl_query(object_type: str, object_name: str) -> str:
+    """Render GET_DDL arguments as escaped literals because Snowflake rejects binds here."""
+    return SNOWFLAKE_GET_DDL.format(
+        object_type=_snowflake_string_literal(object_type),
+        object_name=_snowflake_string_literal(object_name),
+    )
+
 
 SNOWFLAKE_GET_VIEW_DEFINITION = """
 SELECT table_name "view_name",
@@ -494,14 +554,6 @@ SELECT table_name "view_name",
     view_definition "view_def"
 FROM information_schema.views
 WHERE view_definition is not null
-"""
-
-SNOWFLAKE_GET_VIEW_DDL = """
-SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
-"""
-
-SNOWFLAKE_GET_STREAM_DEFINITION = """
-SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
 """
 
 SNOWFLAKE_QUERY_LOG_QUERY = """

@@ -12,8 +12,6 @@
 Client to interact with SAS Viya apis
 """
 
-import os
-
 import requests
 
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
@@ -21,16 +19,13 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import APIError, ClientConfig
+from metadata.ingestion.source.database.sas.settings import sas_settings
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-# Default-secure: verify TLS unless the operator explicitly opts out via
-# OM_SAS_VERIFY_SSL=false (e.g. dev deployments with self-signed certs).
-# Replaces the previous hard-coded verify=False, which Snyk Code flags as
-# python/SSLVerificationBypass.
-_VERIFY_SSL = os.environ.get("OM_SAS_VERIFY_SSL", "true").lower() not in ("false", "0", "no")
+_VERIFY_SSL = sas_settings.verify_ssl
 
 
 class SASClient:

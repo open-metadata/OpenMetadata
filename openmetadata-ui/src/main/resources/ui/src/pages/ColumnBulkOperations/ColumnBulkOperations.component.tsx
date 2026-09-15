@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PageLayout } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
   getGlossaryHomeCrumb,
   getHomeCrumb,
 } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
@@ -31,10 +32,15 @@ const ColumnBulkOperations = () => {
   ];
 
   return (
-    <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
-      <div>
+    <PageLayoutV1
+      pageTitle={t('label.column-bulk-operations')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div
+        className={classNames('tw:flex tw:flex-col', {
+          'tw:gap-4': isAiMode,
+        })}>
         {isAiMode ? (
-          <HeaderShell
+          <PageLayout.PageHeader
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin
@@ -42,7 +48,7 @@ const ColumnBulkOperations = () => {
                 showHome={false}
               />
             }
-            className="tw:mb-5"
+            className="tw:mb-0!"
             subtitle={t('message.column-bulk-operations-subtitle')}
             title={t('label.column-bulk-operations')}
             variant="gradient"

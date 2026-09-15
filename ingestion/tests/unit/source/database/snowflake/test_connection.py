@@ -18,6 +18,11 @@ the intended diagnosis).
 from unittest.mock import MagicMock, patch
 
 import pytest
+from snowflake.connector.errorcode import (
+    ER_FAILED_TO_CONNECT_TO_DB,
+    ER_HTTP_GENERAL_ERROR,
+)
+from snowflake.connector.errors import ForbiddenError
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
@@ -29,10 +34,12 @@ from metadata.core.connections.test_connection.network import NetworkUnreachable
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection as SnowflakeConnectionConfig,
 )
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.connection import (
     SNOWFLAKE_ERRORS,
     SNOWFLAKE_PORT,
     SnowflakeChecks,
+    SnowflakeConnection,
 )
 
 
@@ -40,6 +47,68 @@ def _config(**overrides) -> SnowflakeConnectionConfig:
     base = {"username": "user", "account": "ue18849.us-east-2.aws", "warehouse": "wh"}
     base.update(overrides)
     return SnowflakeConnectionConfig(**base)
+
+
+def _owned_client(config: SnowflakeConnectionConfig):
+    return SnowflakeConnection(config).client
+
+
+@pytest.mark.parametrize(
+    "query_tag,connection_arguments,expected_tag",
+    [
+        (
+            "dedicated",
+            {
+                "session_parameters": {
+                    "QUERY_TAG": "low-level",
+                    "STATEMENT_TIMEOUT_IN_SECONDS": 60,
+                }
+            },
+            "dedicated",
+        ),
+        (None, {"session_parameters": {"QUERY_TAG": "low-level"}}, "low-level"),
+    ],
+)
+@pytest.mark.parametrize("build_client", [_owned_client, get_connection], ids=["owner", "generic-entrypoint"])
+def test_query_tag_is_passed_to_every_driver_connection_without_mutating_config(
+    query_tag,
+    connection_arguments,
+    expected_tag,
+    build_client,
+):
+    config = _config(queryTag=query_tag, connectionArguments=connection_arguments)
+    configured_arguments = config.connectionArguments.model_copy(deep=True)
+    engine = MagicMock()
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.create_generic_db_connection",
+        return_value=engine,
+    ) as build_engine:
+        assert build_client(config) is engine
+
+    connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](config)
+    assert connect_args["session_parameters"]["QUERY_TAG"] == expected_tag
+    if query_tag:
+        assert connect_args["session_parameters"]["STATEMENT_TIMEOUT_IN_SECONDS"] == 60
+    assert connect_args["network_timeout"] == 600
+    assert config.connectionArguments == configured_arguments
+
+
+def test_absent_query_tag_does_not_create_session_parameters():
+    config = _config()
+    engine = MagicMock()
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.create_generic_db_connection",
+        return_value=engine,
+    ) as build_engine:
+        owner = SnowflakeConnection(config)
+        assert owner.client is engine
+
+    connect_args = build_engine.call_args.kwargs["get_connection_args_fn"](config)
+    assert "session_parameters" not in connect_args
+    assert connect_args["network_timeout"] == 600
+    assert config.connectionArguments is None
 
 
 class _SnowflakeError(Exception):
@@ -69,14 +138,40 @@ def test_auth_failure_message_is_classified():
     assert SNOWFLAKE_ERRORS.classify(error).title == "Authentication failed"
 
 
-def test_bad_account_login_404_is_classified():
-    error = _SqlAlchemyError(
-        _SnowflakeError(
-            "None: 404 Not Found: post nope99999.us-east-1.snowflakecomputing.com:443/session/v1/login-request",
-            errno=290404,
-        )
+def _bad_account_error() -> ForbiddenError:
+    """A login-endpoint 403, reproducing snowflake/connector/auth/_auth.py's
+    `except ForbiddenError` re-raise verbatim (message + errno)."""
+    return ForbiddenError(
+        msg=(
+            "Failed to connect to DB. Verify the account name is correct: "
+            "nope99999.us-east-1.snowflakecomputing.com:443. 403 Forbidden: "
+            "post nope99999.us-east-1.snowflakecomputing.com:443/session/v1/login-request"
+        ),
+        errno=ER_FAILED_TO_CONNECT_TO_DB,
+        sqlstate="08001",
     )
-    assert SNOWFLAKE_ERRORS.classify(error).title == "Snowflake account not found"
+
+
+def test_a_login_endpoint_403_is_classified():
+    assert (
+        SNOWFLAKE_ERRORS.classify(_SqlAlchemyError(_bad_account_error())).title
+        == "Snowflake rejected the login endpoint request"
+    )
+
+
+def test_the_bad_account_errno_is_not_290404():
+    """Pins why the rule is keyed on the message: 290404 appears nowhere in the
+    connector, and this path's errno is 540001 only because ForbiddenError.__init__
+    adds ER_HTTP_GENERAL_ERROR to the errno it is passed."""
+    error = _bad_account_error()
+    assert error.errno != 290404
+    assert error.errno == ER_HTTP_GENERAL_ERROR + ER_FAILED_TO_CONNECT_TO_DB == 540001
+
+
+def test_a_login_endpoint_403_is_not_read_as_a_generic_auth_failure():
+    """The 403 path carries errno 540001, not the overloaded 250001, but the
+    message rule must still win regardless of ordering."""
+    assert SNOWFLAKE_ERRORS.classify(_SqlAlchemyError(_bad_account_error())).title != "Authentication failed"
 
 
 def test_mfa_required_beats_generic_auth():
@@ -353,3 +448,29 @@ def test_account_usage_queries_built_lazily_not_at_construction():
     checks = SnowflakeChecks(db=Borrowed.of(client), service_connection=_config(account="acc"))
     assert checks._engine_wrapper.database_name is None
     client.connect.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("check_name", "view_name"),
+    [
+        ("get_tags", "tag_references"),
+        ("get_queries", "query_history"),
+        ("get_access_history", "ACCESS_HISTORY"),
+    ],
+)
+def test_account_usage_checks_quote_configured_identifier(check_name, view_name):
+    account_usage = 'GOVERNANCE."ACCOUNT_USAGE""; DROP TABLE secret; --"'
+    checks = SnowflakeChecks(
+        db=Borrowed.of(MagicMock()),
+        service_connection=_config(accountUsageSchema=account_usage),
+    )
+
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.run_sql",
+        return_value=Evidence(summary="ok", command="query"),
+    ) as mock_run_sql:
+        getattr(checks, check_name)()
+
+    statement = mock_run_sql.call_args.args[1]
+    assert f'"GOVERNANCE"."ACCOUNT_USAGE""; DROP TABLE secret; --".{view_name}' in statement
+    assert account_usage not in statement

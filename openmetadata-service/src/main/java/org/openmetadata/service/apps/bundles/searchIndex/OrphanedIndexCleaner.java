@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.search.IndexManagementClient.IndexStats;
 import org.openmetadata.service.search.SearchClient;
 
 /**
@@ -124,6 +125,21 @@ public class OrphanedIndexCleaner {
 
   public int countRebuildIndices(SearchClient client) {
     return findAllRebuildIndices(client).size();
+  }
+
+  int countRebuildIndices(List<IndexStats> indexStats) {
+    return (int)
+        indexStats.stream().filter(stats -> stats.name().contains(REBUILD_PATTERN)).count();
+  }
+
+  int countOrphanedIndices(List<IndexStats> indexStats) {
+    long now = System.currentTimeMillis();
+    return (int)
+        indexStats.stream()
+            .filter(stats -> stats.name().contains(REBUILD_PATTERN))
+            .filter(stats -> isOldEnough(stats.name(), now))
+            .filter(stats -> stats.aliases() == null || stats.aliases().isEmpty())
+            .count();
   }
 
   private Set<String> findAllRebuildIndices(SearchClient client) {

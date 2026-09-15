@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -42,9 +43,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -58,16 +61,20 @@ public abstract class AbstractEventConsumer
     implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
   public static final String DESTINATION_MAP_KEY = "SubscriptionMapKey";
   public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
+  public static final String ALERT_PENDING_GAP_SINCE_KEY = "alertPendingGapSinceKey";
   public static final String ALERT_INFO_KEY = "alertInfoKey";
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
+  static final long GAP_RESOLVE_TIMEOUT_MS = 30_000;
   protected final DIContainer dependencies;
   private long offset = -1;
-  // Highest change_event.offset actually read in the last poll. Used to advance the cursor by true
-  // offset instead of row count, since change_event.offset is a non-contiguous AUTO_INCREMENT.
+  // Highest change_event.offset that is safe to commit after the last poll.
   private long lastReadOffset = -1;
+  private long pendingGapSince;
+  private boolean gapStateChanged;
   private long startingOffset = -1;
+  private Long startingTimestamp;
 
   private AlertMetrics alertMetrics;
 
@@ -113,6 +120,10 @@ public abstract class AbstractEventConsumer
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.startingTimestamp = eventSubscriptionOffset.getStartingTimestamp();
+      this.lastReadOffset = this.offset;
+      this.pendingGapSince = loadPendingGapSince();
+      this.gapStateChanged = false;
       this.alertMetrics = loadInitialMetrics();
       this.destinationMap = loadDestinationsMap(context);
 
@@ -197,6 +208,24 @@ public abstract class AbstractEventConsumer
     return getStartingOffset(eventSubscription.getId());
   }
 
+  private long loadPendingGapSince() {
+    Object value = jobDetail.getJobDataMap().get(ALERT_PENDING_GAP_SINCE_KEY);
+    if (value instanceof Number number) {
+      return number.longValue();
+    }
+    if (value instanceof String stringValue && !stringValue.isBlank()) {
+      try {
+        return Long.parseLong(stringValue);
+      } catch (NumberFormatException e) {
+        LOG.warn(
+            "Invalid pending gap timestamp '{}' for event subscription {}",
+            stringValue,
+            eventSubscription.getId());
+      }
+    }
+    return 0L;
+  }
+
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
     Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
     if (eventSubscription.getDestinations() == null) {
@@ -225,7 +254,8 @@ public abstract class AbstractEventConsumer
     if (events.isEmpty()) {
       return;
     }
-    Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    Map<ChangeEvent, Set<UUID>> filteredEvents =
+        getFilteredEvents(eventSubscription, events, startingTimestamp, this::deadLetterEvent);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -242,6 +272,20 @@ public abstract class AbstractEventConsumer
     }
     alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successDeliveries);
     alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedDeliveries);
+  }
+
+  /** An event we could not even filter is a publisher-side failure, so record it as one. */
+  private void deadLetterEvent(ChangeEvent event, Exception error) {
+    LOG.error(
+        "Event Subscription: {} could not evaluate filters for change event {}",
+        eventSubscription.getName(),
+        event.getId(),
+        error);
+    handleFailedEvent(
+        new EventPublisherException(
+            String.format("Failed to evaluate alert filters: %s", error.getMessage()),
+            Pair.of(eventSubscription.getId(), event)),
+        false);
   }
 
   private EventDeliveryResult publishEvent(
@@ -326,6 +370,7 @@ public abstract class AbstractEventConsumer
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
             .withStartingOffset(startingOffset)
+            .withStartingTimestamp(startingTimestamp)
             .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()
@@ -340,6 +385,8 @@ public abstract class AbstractEventConsumer
         .getJobDetail()
         .getJobDataMap()
         .put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(eventSubscriptionOffset));
+
+    persistPendingGapState(jobExecutionContext);
 
     jobExecutionContext
         .getJobDetail()
@@ -384,11 +431,25 @@ public abstract class AbstractEventConsumer
   public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
     var records =
         Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
+    CursorPlan cursorPlan =
+        planCursor(offset, pendingGapSince, records, System.currentTimeMillis());
+    gapStateChanged = cursorPlan.pendingGapSince() != pendingGapSince;
+    pendingGapSince = cursorPlan.pendingGapSince();
+    lastReadOffset = cursorPlan.offset();
+
+    if (cursorPlan.skippedGap()) {
+      LOG.warn(
+          "Event subscription {} skipping unfilled change_event gap [{} .. {}] after {}ms",
+          eventSubscription.getId(),
+          offset + 1,
+          cursorPlan.offset(),
+          GAP_RESOLVE_TIMEOUT_MS);
+    }
+
     List<ChangeEvent> changeEvents = new ArrayList<>();
     List<EntityError> errorEvents = new ArrayList<>();
-    long maxOffset = offset;
-    for (var eventRecord : records) {
-      maxOffset = Math.max(maxOffset, eventRecord.offset());
+    for (int index = 0; index < cursorPlan.recordCount(); index++) {
+      var eventRecord = records.get(index);
       try {
         ChangeEvent event = JsonUtils.readValue(eventRecord.json(), ChangeEvent.class);
         if (event == null) {
@@ -409,15 +470,60 @@ public abstract class AbstractEventConsumer
             ex);
       }
     }
-    // Track the true maximum offset read so the cursor advances past exactly these rows. Advancing
-    // by row count re-read the tail whenever the AUTO_INCREMENT offset column had gaps (rolled-back
-    // txns / retention deletes), redelivering those change events.
-    this.lastReadOffset = maxOffset;
-    return new ResultList<>(changeEvents, errorEvents, null, null, records.size());
+    return new ResultList<>(changeEvents, errorEvents, null, null, cursorPlan.recordCount());
   }
+
+  /**
+   * Advances only across a contiguous prefix of committed offsets. AUTO_INCREMENT values become
+   * visible at commit, so a concurrent transaction can temporarily hide a lower offset while a
+   * higher offset is already readable. Waiting at that gap prevents permanent event loss. A gap
+   * that remains unfilled is eventually treated as a rolled-back insert so consumers cannot stall
+   * forever.
+   */
+  static CursorPlan planCursor(
+      long currentOffset, long pendingGapSince, List<ChangeEventRecord> records, long now) {
+    if (records.isEmpty()) {
+      return new CursorPlan(currentOffset, 0L, 0, false);
+    }
+
+    int contiguousCount = 0;
+    long expectedOffset = currentOffset + 1;
+    while (contiguousCount < records.size()
+        && records.get(contiguousCount).offset() == expectedOffset) {
+      contiguousCount++;
+      expectedOffset++;
+    }
+
+    if (contiguousCount > 0) {
+      return new CursorPlan(currentOffset + contiguousCount, 0L, contiguousCount, false);
+    }
+    if (pendingGapSince == 0L) {
+      return new CursorPlan(currentOffset, now, 0, false);
+    }
+    if (now - pendingGapSince >= GAP_RESOLVE_TIMEOUT_MS) {
+      return new CursorPlan(records.getFirst().offset() - 1, 0L, 0, true);
+    }
+    return new CursorPlan(currentOffset, pendingGapSince, 0, false);
+  }
+
+  record CursorPlan(long offset, long pendingGapSince, int recordCount, boolean skippedGap) {}
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
+    // Quartz worker threads are long lived, shared with every other scheduled job, and never pass
+    // through the JAX-RS response filter. Per-request ThreadLocal caches left behind here would be
+    // served to whatever runs next on this thread — indefinitely stale. Destinations on this thread
+    // read entities (governance workflows resolve inherited reviewers here), so bracket the whole
+    // tick: start clean, and leave clean however this exits.
+    PerRequestContextCleaner.clear();
+    try {
+      executeTick(jobExecutionContext);
+    } finally {
+      PerRequestContextCleaner.clear();
+    }
+  }
+
+  private void executeTick(JobExecutionContext jobExecutionContext) {
     this.init(jobExecutionContext);
     if (this.eventSubscription == null) {
       LOG.error("Skipping job execution - EventSubscription could not be loaded");
@@ -442,12 +548,20 @@ public abstract class AbstractEventConsumer
           e);
 
     } finally {
-      if (!eventsWithReceivers.isEmpty()) {
-        // Advance to the true max offset read (set by pollEvents), not by row count.
+      if (lastReadOffset > offset) {
         offset = lastReadOffset;
         commit(jobExecutionContext);
+      } else if (gapStateChanged) {
+        persistPendingGapState(jobExecutionContext);
       }
     }
+  }
+
+  private void persistPendingGapState(JobExecutionContext jobExecutionContext) {
+    jobExecutionContext
+        .getJobDetail()
+        .getJobDataMap()
+        .put(ALERT_PENDING_GAP_SINCE_KEY, Long.toString(pendingGapSince));
   }
 
   public EventSubscription getEventSubscription() {

@@ -27,7 +27,8 @@
  *     and AUTHENTICATION_ENABLE_SELF_SIGNUP=true
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 import { getApiContext } from '../../utils/common';
 import {
   MOCK_OIDC_MAPPED_CLAIM_ACCOUNT,
@@ -45,7 +46,9 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
 
   await page.waitForURL(
     (url) =>
-      url.pathname.endsWith('/signup') || url.pathname.endsWith('/my-data'),
+      url.pathname.endsWith('/signup') ||
+      url.pathname.endsWith('/my-data') ||
+      url.pathname === '/',
     { timeout: 60000 }
   );
 
@@ -53,13 +56,14 @@ const completeOidcSelfSignup = async (page: Page): Promise<void> => {
     const createButton = page.getByRole('button', { name: /create/i });
     await expect(createButton).toBeEnabled();
     await createButton.click();
-    await page.waitForURL('**/my-data', { timeout: 60000 });
+    await page.waitForURL(
+      (url) => url.pathname === '/' || url.pathname === '/my-data',
+      { timeout: 60000 }
+    );
   }
 };
 
 test.describe('OIDC self-signup with mapped principal claims', () => {
-  test.slow();
-
   test.beforeAll(async ({ request }) => {
     await waitForMockOidcReady(request);
     await resetMockOidc(request);
@@ -73,6 +77,7 @@ test.describe('OIDC self-signup with mapped principal claims', () => {
     browser,
     request,
   }) => {
+    test.slow();
     await setDefaultLoginAccount(request, MOCK_OIDC_MAPPED_CLAIM_ACCOUNT.sub);
 
     // Fresh context so the mock IdP performs a clean login as the steered

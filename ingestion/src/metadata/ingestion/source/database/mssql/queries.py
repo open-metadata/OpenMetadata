@@ -227,6 +227,14 @@ MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
 """
 )
 
+MSSQL_TEST_GET_TABLES = """
+SELECT TOP 1 name FROM sys.tables WHERE is_ms_shipped = 0
+"""
+
+MSSQL_TEST_GET_VIEWS = """
+SELECT TOP 1 name FROM sys.views WHERE is_ms_shipped = 0
+"""
+
 MSSQL_GET_FOREIGN_KEY = """\
 WITH fk_info AS (
     SELECT
@@ -297,7 +305,8 @@ index_info AS (
         constraint_info.column_name AS referred_column,
         fk_info.match_option,
         fk_info.update_rule,
-        fk_info.delete_rule
+        fk_info.delete_rule,
+        DB_NAME() AS referred_database
     FROM
         fk_info INNER JOIN constraint_info ON
             constraint_info.constraint_schema =
@@ -316,7 +325,8 @@ index_info AS (
         index_info.column_name AS referred_column,
         fk_info.match_option,
         fk_info.update_rule,
-        fk_info.delete_rule
+        fk_info.delete_rule,
+        DB_NAME() AS referred_database
     FROM
         fk_info INNER JOIN index_info ON
             index_info.index_schema = fk_info.unique_constraint_schema
@@ -335,7 +345,8 @@ SELECT
   ROUTINE_BODY AS language,
   l.definition AS definition
 FROM INFORMATION_SCHEMA.ROUTINES r
-JOIN sys.procedures p ON p.name = r.ROUTINE_NAME 
+JOIN sys.procedures p ON p.name = r.ROUTINE_NAME
+JOIN sys.schemas sch ON p.schema_id = sch.schema_id AND sch.name = r.ROUTINE_SCHEMA
 JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
@@ -417,7 +428,7 @@ order by PROCEDURE_START_TIME desc
     """  # noqa: W291
 )
 
-MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
+MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state, readonly_reason FROM sys.database_query_store_options"
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
     """
@@ -464,3 +475,15 @@ ORDER BY PROCEDURE_START_TIME DESC
 )
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")
+
+MSSQL_GET_SYNONYMS = textwrap.dedent(
+    """
+SELECT
+    sch.name AS synonym_schema,
+    syn.name AS synonym_name,
+    syn.base_object_name AS base_object_name
+FROM [{database_name}].sys.synonyms syn
+JOIN [{database_name}].sys.schemas sch
+    ON syn.schema_id = sch.schema_id
+"""
+)

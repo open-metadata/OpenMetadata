@@ -23,7 +23,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import { fillDescriptionBox, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
@@ -55,9 +55,11 @@ const test = base.extend<{
   userPage: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
@@ -69,7 +71,6 @@ const test = base.extend<{
 
 test.describe('Data Products', () => {
   test.describe.configure({ mode: 'serial' });
-  test.slow();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -138,11 +139,13 @@ test.describe('Data Products', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -401,11 +404,18 @@ test.describe('Data Products', () => {
 
     await test.step('Verify empty state is shown', async () => {
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-      await expect(page.getByTestId('data-product-add-button')).toBeVisible();
+      await expect(
+        page
+          .getByTestId('no-data-placeholder')
+          .getByRole('button', { name: 'Add Data Product' })
+      ).toBeVisible();
     });
 
     await test.step('Click add button from empty state', async () => {
-      await page.getByTestId('data-product-add-button').click();
+      await page
+        .getByTestId('no-data-placeholder')
+        .getByRole('button', { name: 'Add Data Product' })
+        .click();
 
       await expect(
         page.getByRole('heading', { name: /add data product/i })
@@ -468,7 +478,7 @@ test.describe('Data Products', () => {
       await page
         .locator('#root\\/displayName')
         .fill(dataProduct.data.displayName);
-      await page.locator(descriptionBox).fill(dataProduct.data.description);
+      await fillDescriptionBox(page, dataProduct.data.description);
 
       const domainContainer = page.getByTestId('domain-select');
       await domainContainer.scrollIntoViewIfNeeded();

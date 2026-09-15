@@ -13,10 +13,10 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated, Any, cast
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -48,6 +48,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
+    close_on_failure,
     create_connection,
     get_connection,
     run_test_connection,
@@ -131,7 +132,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = MessagingServiceTopology()
     context = TopologyContextManager(topology)
-    topic_source_state: Set = set()  # noqa: RUF012, UP006
+    topic_source_state: set = set()  # noqa: RUF012
 
     @retry_with_docker_host()
     def __init__(
@@ -149,11 +150,8 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @property
     def name(self) -> str:
@@ -202,7 +200,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_topic_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_topic_list(self) -> list[Any] | None:
         """
         Get List of all topics
         """

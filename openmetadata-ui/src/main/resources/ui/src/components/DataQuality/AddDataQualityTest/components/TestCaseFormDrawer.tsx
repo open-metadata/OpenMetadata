@@ -12,12 +12,13 @@
  */
 import {
   Box,
+  EmptyPlaceholder,
   HookForm,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import { TFunction } from 'i18next';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -47,10 +48,12 @@ import {
   updateTestCaseById,
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
@@ -72,6 +75,40 @@ import {
   normalizeFormValuesForPayload,
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
+
+const getResolvedDrawerWidth = (
+  width: number | string | undefined,
+  showDocPanel: boolean
+): number | string => width ?? (showDocPanel ? '80vw' : '52vw');
+
+const getDrawerContentWrapperClassName = (showDocPanel: boolean): string =>
+  `drawer-content-wrapper${showDocPanel ? '' : ' no-doc-panel'}`;
+
+const getDefaultDrawerTitle = (
+  isEditMode: boolean,
+  testCase: TestCase | undefined,
+  t: TFunction
+): string =>
+  isEditMode
+    ? t('label.edit-entity', { entity: getEntityName(testCase) })
+    : t('label.add-entity', { entity: t('label.test-case') });
+
+const getIsEditPrefilling = (
+  isEditMode: boolean,
+  open: boolean,
+  editPrefilledId: string | undefined,
+  testCaseId: string | undefined
+): boolean => isEditMode && open && editPrefilledId !== testCaseId;
+
+const getSelectedTableSearchSource = (
+  selectedTableData: TestCaseFormContext['selectedTableData']
+): TableSearchSource | undefined =>
+  isUndefined(selectedTableData)
+    ? undefined
+    : ({
+        ...selectedTableData,
+        entityType: EntityTypeEnum.TABLE,
+      } as TableSearchSource);
 
 const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   open,
@@ -95,6 +132,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const { isAirflowAvailable } = useAirflowStatus();
   const { permissions } = usePermissionProvider();
   const { ingestionPipeline } = permissions;
+  // Resource-level permission (usePermissionProvider().permissions.ingestionPipeline) —
+  // itself OperationPermission-shaped, so it runs through getDerivedPermissionFlags exactly
+  // like an entity-level fetch (Task 8 Batch 3 DatabaseSchemaTable.tsx precedent).
+  const ingestionPipelineFlags = useMemo(
+    () => getDerivedPermissionFlags(ingestionPipeline),
+    [ingestionPipeline]
+  );
 
   const isEditMode = !!testCase;
 
@@ -185,11 +229,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       });
 
       const ingestion = await addIngestionPipeline(pipeline);
-      if (isAirflowAvailable && ingestionPipeline.EditAll) {
+      if (isAirflowAvailable && ingestionPipelineFlags.canEditAll) {
         await deployIngestionPipelineById(ingestion.id ?? '');
       }
     },
-    [formContext, testSuite, table, isAirflowAvailable, ingestionPipeline]
+    [formContext, testSuite, table, isAirflowAvailable, ingestionPipelineFlags]
   );
 
   const handleEditSubmit = useCallback(
@@ -305,14 +349,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const serviceDocPanel = (
     <ServiceDocPanel
       activeField={activeField}
-      selectedEntity={
-        isUndefined(formContext?.selectedTableData)
-          ? undefined
-          : ({
-              ...formContext?.selectedTableData,
-              entityType: EntityTypeEnum.TABLE,
-            } as TableSearchSource)
-      }
+      selectedEntity={getSelectedTableSearchSource(
+        formContext?.selectedTableData
+      )}
       serviceName={TEST_CASE_FORM}
       serviceType={OPEN_METADATA as ServiceCategory}
     />
@@ -344,7 +383,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   // Without the doc panel the form spans the full drawer, so drop the drawer
   // width to roughly the form's original 65% column and let it fill (see the
   // .no-doc-panel grid override in TestCaseFormV1.less).
-  const resolvedWidth = width ?? (showDocPanel ? '80vw' : '52vw');
+  const resolvedWidth = getResolvedDrawerWidth(width, showDocPanel);
 
   const scrollToError = useMemo(
     () =>
@@ -357,8 +396,12 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   // In edit mode hold the form behind a loader until the prefill (definition
   // fetch + form.reset) is done for the open test case, so it renders fully
   // populated in one paint rather than flickering values in as calls resolve.
-  const isEditPrefilling =
-    isEditMode && open && editPrefilledId !== testCase?.id;
+  const isEditPrefilling = getIsEditPrefilling(
+    isEditMode,
+    open,
+    editPrefilledId,
+    testCase?.id
+  );
 
   const gatedFormBody = isEditPrefilling ? (
     <div className="tw:flex tw:items-center tw:justify-center tw:py-16">
@@ -368,6 +411,8 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     testCaseFormBody
   );
 
+  const closeDrawerRef = useRef<() => void>(() => undefined);
+
   const formBody = (
     <HookForm
       form={form}
@@ -376,17 +421,12 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
         () => scrollToError()
       )}>
-      <div
-        className={`drawer-content-wrapper${
-          showDocPanel ? '' : ' no-doc-panel'
-        }`}>
+      <div className={getDrawerContentWrapperClassName(showDocPanel)}>
         <div className="drawer-form-content">{gatedFormBody}</div>
         {docPanel}
       </div>
     </HookForm>
   );
-
-  const closeDrawerRef = useRef<() => void>(() => undefined);
 
   // Every dismissal path (cancel, X, Escape, backdrop, programmatic close)
   // funnels through the base drawer's onClose, so the parent is notified
@@ -400,14 +440,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     onClose();
   }, [form, onClose]);
 
-  const defaultTitle = isEditMode
-    ? t('label.edit-entity', { entity: getEntityName(testCase) })
-    : t('label.add-entity', { entity: t('label.test-case') });
+  const defaultTitle = getDefaultDrawerTitle(isEditMode, testCase, t);
+  const resolvedTitle = title ?? defaultTitle;
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<FormValues>({
       className: 'test-case-form-drawer',
-      title: title ?? defaultTitle,
+      title: resolvedTitle,
       hookForm: form,
       form: formBody,
       headerActions,
@@ -436,37 +475,34 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   if (isModalVariant) {
     return (
       <AiFormModal
-        headerActions={
-          headerActions ?? (
-            <Box align="center" className="tw:gap-2" direction="row">
-              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-              <Typography
-                className="tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.show-hint')}
-              </Typography>
-              <Toggle
-                aria-label={t('label.show-hint')}
-                isSelected={showHint}
-                size="sm"
-                onChange={setShowHint}
-              />
-            </Box>
-          )
-        }
+        headerActions={headerActions}
+        hintOpen={showHint}
         isSubmitting={form.formState.isSubmitting}
         open={open}
-        reserveHintSpace={showHint}
         submitLabel={isEditMode ? t('label.update') : undefined}
         subtitle={t('message.page-sub-header-for-data-quality')}
-        title={title ?? defaultTitle}
+        title={resolvedTitle}
         onClose={handleDrawerDismiss}
+        onHintToggle={setShowHint}
         onSubmit={form.handleSubmit(
           (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
           () => scrollToError()
         )}>
         <HookForm
+          emptyFieldDoc={
+            // width="100%" is required: EmptyPlaceholder's 300px default is
+            // wider than the hint column's 260px minimum and would overflow
+            // once the column shrinks on a narrow viewport.
+            <EmptyPlaceholder
+              description={t('message.form-hint-empty-state')}
+              icon={Lightbulb05}
+              title={t('label.no-entity-selected', {
+                entity: t('label.field'),
+              })}
+              width="100%"
+            />
+          }
+          fieldDocDisplay="panel"
           fieldDocHeader={
             <Box align="center" className="tw:gap-2" direction="row">
               <Lightbulb05 className="tw:size-4 tw:text-secondary" />
@@ -478,16 +514,20 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
               </Typography>
             </Box>
           }
-          fieldDocOffset={56}
           form={form}
+          // min-w-193 (772px) overrides HookForm's 380px default: this form's
+          // test-level cards need ~574px before they clip, so a lower floor
+          // lets the hint steal room the form cannot spare.
+          formClassName="tw:min-w-193 tw:px-7 tw:pt-6 tw:pb-7"
           renderFieldDoc={(markdown) => (
             // Render the full field doc without the "see more" toggle — the
-            // popover shows the whole hint, and toggling it would resize the
-            // popover and make react-aria re-anchor it (flicker).
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant={false}
-              markdown={markdown}
-            />
+            // column scrolls, so the whole hint is reachable without it.
+            <div className="form-hint-doc">
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant={false}
+                markdown={monospaceParameterNames(markdown)}
+              />
+            </div>
           )}
           showFieldDocs={showHint}
           onSubmit={form.handleSubmit(

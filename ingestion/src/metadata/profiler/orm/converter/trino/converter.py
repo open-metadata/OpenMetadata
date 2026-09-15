@@ -8,7 +8,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Dict, Set  # noqa: UP035
 
 from sqlalchemy.sql.type_api import TypeEngine
 
@@ -29,7 +28,7 @@ class TrinoMapTypes(CommonMapTypes):
     }
 
     @classmethod
-    def map_sqa_to_om_types(cls) -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
+    def map_sqa_to_om_types(cls) -> dict[TypeEngine, set[DataType]]:
         """returns an ORM type"""
         # pylint: disable=import-outside-toplevel
 

@@ -22,7 +22,7 @@ import { DatabaseServiceType } from '../generated/entity/data/database';
 import { ConfigType } from '../generated/entity/services/databaseService';
 import {
   AuthProvider,
-  FluffyType as AirflowConfigType,
+  ConfigType as AirflowConfigType,
   IngestionPipeline,
   LogLevels,
   OpenmetadataType,

@@ -19,6 +19,10 @@ export interface CreateLLMModel {
      */
     baseModel: string;
     /**
+     * Capabilities of this model
+     */
+    capabilities?: ModelCapability[];
+    /**
      * Certifications this model has received
      */
     certifications?: string[];
@@ -76,6 +80,10 @@ export interface CreateLLMModel {
      */
     modelSpecifications?: ModelSpecifications;
     /**
+     * Type of LLM model
+     */
+    modelType?: ModelType;
+    /**
      * Version of the model
      */
     modelVersion?: string;
@@ -87,6 +95,10 @@ export interface CreateLLMModel {
      * Owners of this LLM Model
      */
     owners?: EntityReference[];
+    /**
+     * Provider's internal model ID
+     */
+    providerModelId?: string;
     /**
      * Regulatory compliance standards met
      */
@@ -107,6 +119,17 @@ export interface CreateLLMModel {
      * Training data and methodology information
      */
     trainingMetadata?: TrainingMetadata;
+}
+
+export enum ModelCapability {
+    Audio = "Audio",
+    Chat = "Chat",
+    CodeGeneration = "CodeGeneration",
+    Embeddings = "Embeddings",
+    FunctionCalling = "FunctionCalling",
+    TextGeneration = "TextGeneration",
+    ToolUse = "ToolUse",
+    Vision = "Vision",
 }
 
 /**
@@ -455,6 +478,18 @@ export interface ModelSpecifications {
      * Quantization method if applicable
      */
     quantization?: string;
+}
+
+/**
+ * Type of LLM model
+ */
+export enum ModelType {
+    Adapter = "Adapter",
+    BaseModel = "BaseModel",
+    Custom = "Custom",
+    Distilled = "Distilled",
+    FineTuned = "FineTuned",
+    Quantized = "Quantized",
 }
 
 /**

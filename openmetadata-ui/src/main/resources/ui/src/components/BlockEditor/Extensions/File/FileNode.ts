@@ -45,6 +45,13 @@ const FileNode = Node.create<FileNodeOptions>({
       tempFile: { default: null },
       isImage: { default: false },
       alt: { default: null },
+      diffState: {
+        default: null,
+        parseHTML: (el) =>
+          el instanceof HTMLElement ? el.getAttribute('data-diff-state') : null,
+        renderHTML: (attrs) =>
+          attrs.diffState ? { 'data-diff-state': attrs.diffState } : {},
+      },
     };
   },
 

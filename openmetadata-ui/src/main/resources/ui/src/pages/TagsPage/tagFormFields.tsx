@@ -17,7 +17,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { ReactNode } from 'react';
-import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
 import {
   NAME_LENGTH_REGEX,
   TAG_NAME_REGEX,
@@ -39,11 +38,12 @@ export const getIconField = (
     'data-testid': 'icon-picker-btn',
     allowUrl: true,
     backgroundColor: selectedColor,
-    defaultIcon: DEFAULT_TAG_ICON,
     options: iconOptions ?? [],
     labels: {
       customIconUrl: t('label.icon-url'),
-      emptyState: t('message.no-entity-available'),
+      emptyState: t('label.no-entity-available', {
+        entity: t('label.icon-plural'),
+      }),
       enterIconUrl: t('label.enter-entity'),
       iconsTab: t('label.icon-plural'),
       urlTab: t('label.url'),
@@ -85,7 +85,7 @@ export const getNameField = (disabled: boolean, t: TFunction): FieldProp => ({
   },
   props: {
     'data-testid': 'name',
-    disabled,
+    isDisabled: disabled,
   },
 });
 

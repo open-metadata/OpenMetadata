@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MulesoftConnection",
+  "description": "MuleSoft Anypoint Platform Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.MulesoftConnection",
+  "definitions": {
+    "MulesoftType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Mulesoft"
+      ],
+      "default": "Mulesoft"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Mulesoft",
+      "type": "string",
+      "enum": [
+        "Mulesoft"
+      ]
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host And Port",
+      "description": "MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud, https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://anypoint.mulesoft.com"
+    },
+    "authentication": {
+      "title": "Authentication",
+      "description": "Choose between Connected App (OAuth 2.0) or Basic Authentication.",
+      "oneOf": [
+        {
+          "title": "Basic Authentication",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "Basic Auth Credentials",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.security.credentials.BasicAuth",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "Username to access the service.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Password to access the service.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "OAuth 2.0 Client Credentials (Connected App)",
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "description": "OAuth 2.0 client credentials authentication for Airbyte Cloud",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.airbyte.OAuthClientAuth",
+          "properties": {
+            "clientId": {
+              "title": "Client ID",
+              "description": "Client ID for the application registered in Airbyte.",
+              "type": "string"
+            },
+            "clientSecret": {
+              "title": "Client Secret",
+              "description": "Client Secret for the application registered in Airbyte.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "clientId",
+            "clientSecret"
+          ]
+        }
+      ]
+    },
+    "organizationId": {
+      "title": "Organization ID",
+      "description": "Anypoint Platform Organization ID. If not provided, the connector will use the user's default organization.",
+      "type": "string"
+    },
+    "environmentId": {
+      "title": "Environment ID",
+      "description": "Anypoint Platform Environment ID. If not provided, the connector will discover all accessible environments.",
+      "type": "string"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex to filter MuleSoft applications by name.",
+      "title": "Application Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "authentication"
+  ]
+}

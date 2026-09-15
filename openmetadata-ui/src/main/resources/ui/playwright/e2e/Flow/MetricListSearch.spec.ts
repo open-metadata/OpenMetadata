@@ -100,6 +100,8 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     const searchInput = page.getByTestId('metric-search').getByRole('textbox');
     await expect(searchInput).toBeVisible();
 
+    await expect(page.getByTestId('metric-name').first()).toBeVisible();
+
     await test.step('search fires a scoped metric query and narrows the results', async () => {
       // The debounced search must actually reach the API. Regression #29538
       // cancelled this request on the re-render that typing triggered, so the
@@ -122,6 +124,12 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await waitForAllLoadersToDisappear(page);
 
+      // matchName is globally unique, so the server-side search settles to
+      // exactly one row. Asserting the settled count first avoids racing React
+      // Query's keepPreviousData, which briefly keeps the full (pre-search) list
+      // rendered during the refetch — the source of the flake on the negative
+      // otherName assertion below.
+      await expect(page.getByTestId('metric-name')).toHaveCount(1);
       await expect(
         page.getByTestId('metric-name').filter({ hasText: matchName })
       ).toBeVisible();
@@ -133,15 +141,20 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
 
       await searchInput.fill('');
 
-      await clearResponse;
+      const clearHttpResponse = await clearResponse;
+      const clearData: { hits?: { hits?: unknown[] } } =
+        await clearHttpResponse.json();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByTestId('metric-name').filter({ hasText: matchName })
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('metric-name').filter({ hasText: otherName })
-      ).toBeVisible();
+      // Derive the restored row count from the clear response that repopulates
+      // the table, never from a snapshot taken before the search. Parallel
+      // specs mutate the shared metric index, so a pre-search count drifts by
+      // the time the full list is restored — the source of this step's flake.
+      // The table renders exactly the hits this response returns for the
+      // current (first) page.
+      await expect(page.getByTestId('metric-name')).toHaveCount(
+        clearData.hits?.hits?.length ?? 0
+      );
     });
   });
 });

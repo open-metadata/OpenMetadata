@@ -7,6 +7,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,8 +40,20 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 @Slf4j
 public class SchemaFieldExtractor {
 
+  private static final String ENTITY_SCHEMA_DIRECTORY = "json/schema/entity/";
+  private static final String DEFAULT_SCHEMA_SUBDIRECTORY = "data";
+  private static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
+  private static final String JSON_FILE_EXTENSION = "json";
+  private static final String JSON_FILE_SUFFIX = "." + JSON_FILE_EXTENSION;
+
   private static final Map<String, Map<String, FieldDefinition>> entityFieldsCache =
       new ConcurrentHashMap<>();
+
+  /**
+   * Entity type to the classpath location of its schema, populated by {@link #getAllEntityTypes()}.
+   * Discovery and loading therefore read the same directory layout and cannot drift apart.
+   */
+  private static final Map<String, String> entityTypeToSchemaPath = new ConcurrentHashMap<>();
 
   /**
    * Entity types intentionally excluded from schema field extraction cache initialization. These
@@ -91,35 +104,27 @@ public class SchemaFieldExtractor {
   }
 
   public List<FieldDefinition> extractFields(Type typeEntity, String entityType) {
-    String schemaPath = determineSchemaPath(entityType);
-    String schemaUri = "classpath:///" + schemaPath;
-    SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
-    Deque<Schema> processingStack = new ArrayDeque<>();
-    Set<String> processedFields = new HashSet<>();
     Map<String, FieldDefinition> fieldTypesMap =
         new LinkedHashMap<>(
             entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
-    addCustomProperties(
-        typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
+    addCustomProperties(typeEntity, fieldTypesMap);
     return convertMapToFieldList(fieldTypesMap);
   }
 
+  /**
+   * Returns the custom properties of every entity type, and nothing else. Unlike {@link
+   * #extractFields} this is not an "every field of the entity" view, so {@link #entityFieldsCache}
+   * must not seed the result — seeding it made the endpoint return the whole JSON schema of every
+   * entity type even when no custom property was defined.
+   */
   public Map<String, List<FieldDefinition>> extractAllCustomProperties(
       UriInfo uriInfo, TypeRepository repository) {
     Map<String, List<FieldDefinition>> entityTypeToFields = new HashMap<>();
+    EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
     for (String entityType : entityFieldsCache.keySet()) {
-      String schemaPath = determineSchemaPath(entityType);
-      String schemaUri = "classpath:///" + schemaPath;
-      SchemaClient schemaClient = new CustomSchemaClient(schemaUri);
-      EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, Include.ALL, false);
-      Map<String, FieldDefinition> fieldTypesMap =
-          new LinkedHashMap<>(
-              entityFieldsCache.computeIfAbsent(entityType, ignored -> new LinkedHashMap<>()));
-      Set<String> processedFields = new HashSet<>();
-      Deque<Schema> processingStack = new ArrayDeque<>();
-      addCustomProperties(
-          typeEntity, schemaUri, schemaClient, fieldTypesMap, processingStack, processedFields);
+      Map<String, FieldDefinition> fieldTypesMap = new LinkedHashMap<>();
+      addCustomProperties(typeEntity, fieldTypesMap);
       entityTypeToFields.put(entityType, convertMapToFieldList(fieldTypesMap));
     }
 
@@ -128,25 +133,15 @@ public class SchemaFieldExtractor {
 
   public static List<String> getAllEntityTypes() {
     List<String> entityTypes = new ArrayList<>();
-    String schemaDirectory = "json/schema/entity/";
 
     try (ScanResult scanResult =
-        new ClassGraph().acceptPaths(schemaDirectory).enableMemoryMapping().scan()) {
+        new ClassGraph().acceptPaths(ENTITY_SCHEMA_DIRECTORY).enableMemoryMapping().scan()) {
 
-      List<Resource> resources = scanResult.getResourcesWithExtension("json");
-
-      for (Resource resource : resources) {
-        try (InputStream is = resource.open()) {
-          JSONObject jsonSchema = new JSONObject(new JSONTokener(is));
-          if (isEntityType(jsonSchema)) {
-            String path = resource.getPath();
-            String fileName = path.substring(path.lastIndexOf('/') + 1);
-            String entityType = fileName.substring(0, fileName.length() - 5); // Remove ".json"
-            entityTypes.add(entityType);
-            LOG.debug("Found entity type: {}", entityType);
-          }
-        } catch (Exception e) {
-          LOG.error("Error reading schema file {}: {}", resource.getPath(), e.getMessage());
+      for (Resource resource :
+          schemasInStableOrder(scanResult.getResourcesWithExtension(JSON_FILE_EXTENSION))) {
+        String entityType = registerEntitySchema(resource);
+        if (entityType != null) {
+          entityTypes.add(entityType);
         }
       }
     } catch (Exception e) {
@@ -156,8 +151,53 @@ public class SchemaFieldExtractor {
     return entityTypes;
   }
 
+  /**
+   * Records where an entity schema actually lives so that the loader never has to guess its
+   * subdirectory. Returns the entity type, or null when the resource is not an entity schema.
+   */
+  private static String registerEntitySchema(Resource resource) {
+    String entityType = null;
+    try (InputStream is = resource.open()) {
+      JSONObject jsonSchema = new JSONObject(new JSONTokener(is));
+      if (isEntityType(jsonSchema)) {
+        entityType = schemaNameOf(resource.getPath());
+        recordSchemaPath(entityType, resource.getPath());
+        LOG.debug("Found entity type: {} at {}", entityType, resource.getPath());
+      }
+    } catch (Exception e) {
+      LOG.error("Error reading schema file {}: {}", resource.getPath(), e.getMessage());
+    }
+    return entityType;
+  }
+
+  /**
+   * ClassGraph does not guarantee a stable order across scans, so schemas are visited by path and
+   * the first one to claim an entity type keeps it. Two modules declaring the same entity type then
+   * resolve to the same schema on every run rather than to whichever jar was scanned last.
+   */
+  private static List<Resource> schemasInStableOrder(List<Resource> resources) {
+    return resources.stream().sorted(Comparator.comparing(Resource::getPath)).toList();
+  }
+
+  private static void recordSchemaPath(String entityType, String schemaPath) {
+    String claimedPath = entityTypeToSchemaPath.putIfAbsent(entityType, schemaPath);
+    if (claimedPath != null && !claimedPath.equals(schemaPath)) {
+      LOG.warn(
+          "Entity type '{}' is declared by both '{}' and '{}'. Using '{}'.",
+          entityType,
+          claimedPath,
+          schemaPath,
+          claimedPath);
+    }
+  }
+
+  private static String schemaNameOf(String schemaPath) {
+    String fileName = schemaPath.substring(schemaPath.lastIndexOf('/') + 1);
+    return fileName.substring(0, fileName.length() - JSON_FILE_SUFFIX.length());
+  }
+
   private static boolean isEntityType(JSONObject jsonSchema) {
-    return "@om-entity-type".equals(jsonSchema.optString("$comment"));
+    return ENTITY_TYPE_ANNOTATION.equals(jsonSchema.optString("$comment"));
   }
 
   private static Schema loadMainSchema(
@@ -334,50 +374,33 @@ public class SchemaFieldExtractor {
     }
   }
 
-  private void addCustomProperties(
-      Type typeEntity,
-      String schemaUri,
-      SchemaClient schemaClient,
-      Map<String, FieldDefinition> fieldTypesMap,
-      Deque<Schema> processingStack,
-      Set<String> processedFields) {
+  private void addCustomProperties(Type typeEntity, Map<String, FieldDefinition> fieldTypesMap) {
     if (typeEntity == null || typeEntity.getCustomProperties() == null) {
       return;
     }
 
     for (CustomProperty customProperty : typeEntity.getCustomProperties()) {
       String propertyName = customProperty.getName();
-      String propertyType = customProperty.getPropertyType().getName();
-      // No parent path for custom properties
-      String displayName = customProperty.getDisplayName();
-      LOG.debug("Processing custom property '{}'", propertyName);
-
-      Object customPropertyConfigObj = customProperty.getCustomPropertyConfig();
-
-      if (isEntityReferenceList(propertyType)) {
-        String referenceType = "array<entityReference>";
-        FieldDefinition fieldDef =
-            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
-        processedFields.add(propertyName);
-        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
-
-      } else if (isEntityReference(propertyType)) {
-        String referenceType = "entityReference";
-        FieldDefinition fieldDef =
-            FieldDefinition.of(propertyName, displayName, referenceType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
-        processedFields.add(propertyName);
-        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, referenceType);
-
-      } else {
-        FieldDefinition fieldDef =
-            FieldDefinition.of(propertyName, displayName, propertyType, customPropertyConfigObj);
-        fieldTypesMap.putIfAbsent(propertyName, fieldDef);
-        processedFields.add(propertyName);
-        LOG.debug("Added custom property '{}', Type: '{}'", propertyName, propertyType);
-      }
+      String propertyType = resolveCustomPropertyType(customProperty.getPropertyType().getName());
+      FieldDefinition fieldDef =
+          FieldDefinition.of(
+              propertyName,
+              customProperty.getDisplayName(),
+              propertyType,
+              customProperty.getCustomPropertyConfig());
+      fieldTypesMap.putIfAbsent(propertyName, fieldDef);
+      LOG.debug("Added custom property '{}', Type: '{}'", propertyName, propertyType);
     }
+  }
+
+  private String resolveCustomPropertyType(String propertyType) {
+    String resolvedType = propertyType;
+    if (isEntityReferenceList(propertyType)) {
+      resolvedType = "array<entityReference>";
+    } else if (isEntityReference(propertyType)) {
+      resolvedType = "entityReference";
+    }
+    return resolvedType;
   }
 
   private List<FieldDefinition> convertMapToFieldList(Map<String, FieldDefinition> fieldTypesMap) {
@@ -610,33 +633,28 @@ public class SchemaFieldExtractor {
     return baseSchemaDirectory + schemaFileName;
   }
 
+  /**
+   * Resolves the schema path recorded while scanning {@value #ENTITY_SCHEMA_DIRECTORY}. Entity types
+   * the scan never discovered (schemas without the {@value #ENTITY_TYPE_ANNOTATION} annotation, still
+   * reachable through the {@code /fields/{entityType}} endpoint) keep the historical
+   * {@value #DEFAULT_SCHEMA_SUBDIRECTORY} subdirectory assumption.
+   */
   private static String determineSchemaPath(String entityType) {
-    String subdirectory = getEntitySubdirectory(entityType);
-    return "json/schema/entity/" + subdirectory + "/" + entityType + ".json";
+    String discoveredPath = discoveredSchemaPaths().get(entityType);
+    return discoveredPath != null
+        ? discoveredPath
+        : ENTITY_SCHEMA_DIRECTORY
+            + DEFAULT_SCHEMA_SUBDIRECTORY
+            + "/"
+            + entityType
+            + JSON_FILE_SUFFIX;
   }
 
-  private static String getEntitySubdirectory(String entityType) {
-    Map<String, String> entityTypeToSubdirectory =
-        Map.ofEntries(
-            Map.entry("dashboard", "data"),
-            Map.entry("table", "data"),
-            Map.entry("pipeline", "data"),
-            Map.entry("votes", "data"),
-            Map.entry("learningResource", "learning"),
-            Map.entry("dataProduct", "domains"),
-            Map.entry("domain", "domains"),
-            Map.entry("notificationTemplate", "events"),
-            Map.entry("tag", "classification"),
-            Map.entry("classification", "classification"),
-            Map.entry("agentExecution", "ai"),
-            Map.entry("aiApplication", "ai"),
-            Map.entry("aiGovernancePolicy", "ai"),
-            Map.entry("llmModel", "ai"),
-            Map.entry("page", "data"),
-            Map.entry("promptTemplate", "ai"),
-            Map.entry("tableColumn", "column"),
-            Map.entry("dashboardDataModelColumn", "column"));
-    return entityTypeToSubdirectory.getOrDefault(entityType, "data");
+  private static Map<String, String> discoveredSchemaPaths() {
+    if (entityTypeToSchemaPath.isEmpty()) {
+      getAllEntityTypes();
+    }
+    return entityTypeToSchemaPath;
   }
 
   @Slf4j

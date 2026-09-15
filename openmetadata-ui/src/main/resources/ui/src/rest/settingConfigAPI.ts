@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { AppConfiguration } from '../generated/api/configuration/appConfiguration';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
@@ -77,6 +78,36 @@ export const getLoginConfig = async () => {
   return response.data;
 };
 
+/**
+ * Tenant-wide "first impression" app-mode default. DB-backed via the
+ * generic settings store (yaml-seeded on first boot only); readable by any
+ * authenticated user since the boot-time app-mode fallback chain needs it,
+ * not just admins.
+ */
+export const getAppConfiguration = async (): Promise<AppConfiguration> => {
+  const response = await axiosClient.get<Settings>(
+    `/system/settings/${SettingType.AppConfiguration}`
+  );
+
+  return (response.data.config_value as AppConfiguration) ?? {};
+};
+
+/**
+ * Admin-only. Writes through the generic `/system/settings` PUT, matching
+ * the `config_type`/`config_value` shape the backend's `createOrUpdateSetting`
+ * expects (see how `updateGlossaryTermRelationSettings` above writes).
+ */
+export const patchAppConfiguration = async (
+  patch: Partial<AppConfiguration>
+): Promise<AppConfiguration> => {
+  const response = await axiosClient.put<Settings>(`/system/settings`, {
+    config_type: SettingType.AppConfiguration,
+    config_value: patch,
+  });
+
+  return (response.data.config_value as AppConfiguration) ?? {};
+};
+
 export const testEmailConnection = async (data: { email: string }) => {
   const response = await axiosClient.put<string>(
     '/system/email/test',
@@ -110,57 +141,6 @@ export const getSystemConfig = async () => {
     basePath: string;
     rdfEnabled: boolean;
   }>(`system/config/rdf`);
-
-  return response.data;
-};
-
-export type SearchIndexMappingsList = Record<string, string[]>;
-
-export type SearchIndexMapping = Record<string, unknown>;
-
-export const getSearchIndexMappingsList =
-  async (): Promise<SearchIndexMappingsList> => {
-    const response = await axiosClient.get<SearchIndexMappingsList>(
-      '/system/settings/searchIndexMappings'
-    );
-
-    return response.data;
-  };
-
-export const getSearchIndexMapping = async (
-  language: string,
-  entityType: string,
-  fallback = true
-): Promise<SearchIndexMapping> => {
-  const response = await axiosClient.get<SearchIndexMapping>(
-    `/system/settings/searchIndexMappings/${language}/${entityType}`,
-    { params: { fallback } }
-  );
-
-  return response.data;
-};
-
-export const updateSearchIndexMapping = async (
-  language: string,
-  entityType: string,
-  mapping: SearchIndexMapping
-): Promise<Settings> => {
-  const response = await axiosClient.put<Settings>(
-    `/system/settings/searchIndexMappings/${language}/${entityType}`,
-    mapping,
-    APPLICATION_JSON_CONTENT_TYPE_HEADER
-  );
-
-  return response.data;
-};
-
-export const resetSearchIndexMapping = async (
-  language: string,
-  entityType: string
-): Promise<Settings> => {
-  const response = await axiosClient.put<Settings>(
-    `/system/settings/searchIndexMappings/reset/${language}/${entityType}`
-  );
 
   return response.data;
 };

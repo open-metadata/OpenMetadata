@@ -71,6 +71,7 @@ const CreateErrorPlaceHolder = ({
                 i18nKey="message.refer-to-our-doc"
                 renderElement={
                   <a
+                    aria-label={t('label.documentation')}
                     href={doc}
                     rel="noreferrer"
                     style={{ color: theme.primaryColor }}

@@ -163,6 +163,8 @@ function FileDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -170,6 +172,8 @@ function FileDetails({
           entity: t('label.file'),
         })
       );
+
+      return false;
     }
   };
 
@@ -267,14 +271,16 @@ function FileDetails({
     []
   );
 
+  // editAllPermission/viewAllPermission (raw filePermissions.EditAll/.ViewAll reads)
+  // dropped here: computed but never consumed anywhere in this component (only ever
+  // listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    editAllPermission,
     editLineagePermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
@@ -296,11 +302,9 @@ function FileDetails({
           filePermissions,
           Operation.EditCustomFields
         ) && !deleted,
-      editAllPermission: filePermissions.EditAll && !deleted,
       editLineagePermission:
         getPrioritizedEditPermission(filePermissions, Operation.EditLineage) &&
         !deleted,
-      viewAllPermission: filePermissions.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         filePermissions,
         Operation.ViewCustomFields
@@ -377,8 +381,6 @@ function FileDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(

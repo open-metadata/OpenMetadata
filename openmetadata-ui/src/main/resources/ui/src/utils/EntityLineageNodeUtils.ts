@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SearchOutlined } from '@ant-design/icons';
 import { isEqual, isUndefined, omit, pick, uniqWith } from 'lodash';
 import type { Edge, Node } from 'reactflow';
 import {
@@ -21,11 +20,6 @@ import {
   isNode,
   Position,
 } from 'reactflow';
-import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import type {
   EntityChildren,
   Flatten,
@@ -54,6 +48,88 @@ import { getEntityName } from './EntityNameUtils';
 import { isDeleted } from './EntityStatusUtils';
 import { t } from './i18next/LocalUtil';
 
+type EntityChildrenMapping = {
+  data: EntityChildren;
+  label: string;
+  childrenCount: number;
+};
+
+const getTableEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.columns ?? [],
+  label: t('label.column-plural'),
+  childrenCount: node.columns?.length ?? 0,
+});
+
+const getDashboardEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.charts ?? [],
+  label: t('label.chart-plural'),
+  childrenCount: node.charts?.length ?? 0,
+});
+
+const getMlModelEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.mlFeatures ?? [],
+  label: t('label.feature-plural'),
+  childrenCount: node.mlFeatures?.length ?? 0,
+});
+
+const getContainerEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.dataModel?.columns ?? [],
+  label: t('label.column-plural'),
+  childrenCount: node.dataModel?.columns?.length ?? 0,
+});
+
+const getTopicEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
+  label: t('label.field-plural'),
+  childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
+});
+
+const getApiEndpointEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data:
+    node.flattenChildren ??
+    node?.responseSchema?.schemaFields ??
+    node?.requestSchema?.schemaFields ??
+    [],
+  label: t('label.field-plural'),
+  childrenCount:
+    node?.responseSchema?.schemaFields?.length ??
+    node?.requestSchema?.schemaFields?.length ??
+    0,
+});
+
+const getSearchIndexEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.fields ?? [],
+  label: t('label.field-plural'),
+  childrenCount: node.fields?.length ?? 0,
+});
+
+const ENTITY_CHILDREN_RESOLVERS: Partial<
+  Record<EntityType, (node: LineageNodeType) => EntityChildrenMapping>
+> = {
+  [EntityType.TABLE]: getTableEntityChildren,
+  [EntityType.DASHBOARD]: getDashboardEntityChildren,
+  [EntityType.MLMODEL]: getMlModelEntityChildren,
+  [EntityType.DASHBOARD_DATA_MODEL]: getTableEntityChildren,
+  [EntityType.CONTAINER]: getContainerEntityChildren,
+  [EntityType.TOPIC]: getTopicEntityChildren,
+  [EntityType.API_ENDPOINT]: getApiEndpointEntityChildren,
+  [EntityType.SEARCH_INDEX]: getSearchIndexEntityChildren,
+};
+
 export function getEntityChildrenAndLabel(node: LineageNodeType) {
   if (!node) {
     return {
@@ -62,66 +138,11 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
       childrenCount: 0,
     };
   }
-  const entityMappings: Record<
-    string,
-    { data: EntityChildren; label: string; childrenCount: number }
-  > = {
-    [EntityType.TABLE]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.DASHBOARD]: {
-      data: node.charts ?? [],
-      label: t('label.chart-plural'),
-      childrenCount: node.charts?.length ?? 0,
-    },
-    [EntityType.MLMODEL]: {
-      data: node.mlFeatures ?? [],
-      label: t('label.feature-plural'),
-      childrenCount: node.mlFeatures?.length ?? 0,
-    },
-    [EntityType.DASHBOARD_DATA_MODEL]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.CONTAINER]: {
-      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.dataModel?.columns?.length ?? 0,
-    },
-    [EntityType.TOPIC]: {
-      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
-    },
-    [EntityType.API_ENDPOINT]: {
-      data:
-        node.flattenChildren ??
-        node?.responseSchema?.schemaFields ??
-        node?.requestSchema?.schemaFields ??
-        [],
-      label: t('label.field-plural'),
-      childrenCount:
-        node?.responseSchema?.schemaFields?.length ??
-        node?.requestSchema?.schemaFields?.length ??
-        0,
-    },
-    [EntityType.SEARCH_INDEX]: {
-      data: node.flattenChildren ?? node.fields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.fields?.length ?? 0,
-    },
-  };
 
-  const { data, label, childrenCount } = entityMappings[
-    node.entityType as EntityType
-  ] || {
-    data: [],
-    label: '',
-    childrenCount: 0,
-  };
+  const resolver = ENTITY_CHILDREN_RESOLVERS[node.entityType as EntityType];
+  const { data, label, childrenCount } = resolver
+    ? resolver(node)
+    : { data: [], label: '', childrenCount: 0 };
 
   return {
     children: data,
@@ -129,25 +150,6 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
     childrenCount,
   };
 }
-
-export const getEntityNodeIcon = (label: string) => {
-  switch (label) {
-    case EntityType.TABLE:
-      return TableIcon;
-    case EntityType.DASHBOARD:
-      return DashboardIcon;
-    case EntityType.TOPIC:
-      return TopicIcon;
-    case EntityType.PIPELINE:
-      return PipelineIcon;
-    case EntityType.MLMODEL:
-      return MlModelIcon;
-    case EntityType.SEARCH_INDEX:
-      return SearchOutlined;
-    default:
-      return TableIcon;
-  }
-};
 
 export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   const hasUpstream = data.some((edge: EdgeDetails) => edge.toEntity.id === id);
@@ -185,11 +187,9 @@ export function getUpstreamDownstreamNodesEdges(
       const toNode = nodes.find(
         (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
       );
-      if (!isUndefined(toNode)) {
-        if (!downstreamNodes.includes(toNode)) {
-          downstreamNodes.push(toNode);
-          findDownstream(toNode);
-        }
+      if (!isUndefined(toNode) && !downstreamNodes.includes(toNode)) {
+        downstreamNodes.push(toNode);
+        findDownstream(toNode);
       }
     });
   }
@@ -203,11 +203,9 @@ export function getUpstreamDownstreamNodesEdges(
       const fromNode = nodes.find(
         (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
       );
-      if (!isUndefined(fromNode)) {
-        if (!upstreamNodes.includes(fromNode)) {
-          upstreamNodes.push(fromNode);
-          findUpstream(fromNode);
-        }
+      if (!isUndefined(fromNode) && !upstreamNodes.includes(fromNode)) {
+        upstreamNodes.push(fromNode);
+        findUpstream(fromNode);
       }
     });
   }
@@ -256,7 +254,10 @@ export const getAllTracedNodes = (
   const queue: Node[] = [node];
 
   while (queue.length > 0) {
-    const currentNode = queue.shift()!;
+    const currentNode = queue.shift();
+    if (!currentNode) {
+      break;
+    }
 
     if (currentNode !== node) {
       result.push(currentNode);
@@ -402,53 +403,46 @@ const flatItems = <T extends { children?: T[]; dataType: string }>(
   columns: T[]
 ) => columns.flatMap((column) => flattenColumn(column as T, 0));
 
+const getTableFlattenChildren = (entity: EntityReference): EntityChildren =>
+  flatItems((entity as unknown as Table).columns);
+
+const getContainerFlattenChildren = (entity: EntityReference): EntityChildren =>
+  flatItems((entity as unknown as Container).dataModel?.columns ?? []);
+
+const getTopicFlattenChildren = (entity: EntityReference): EntityChildren =>
+  flatItems((entity as unknown as Topic).messageSchema?.schemaFields ?? []);
+
+const getApiEndpointFlattenChildren = (
+  entity: EntityReference
+): EntityChildren =>
+  flatItems(
+    (entity as unknown as APIEndpoint).responseSchema?.schemaFields ??
+      (entity as unknown as APIEndpoint).requestSchema?.schemaFields ??
+      []
+  );
+
+const getSearchIndexFlattenChildren = (
+  entity: EntityReference
+): EntityChildren => flatItems((entity as unknown as SearchIndex).fields ?? []);
+
+const FLATTEN_CHILDREN_RESOLVERS: Partial<
+  Record<EntityType, (entity: EntityReference) => EntityChildren>
+> = {
+  [EntityType.TABLE]: getTableFlattenChildren,
+  [EntityType.DASHBOARD_DATA_MODEL]: getTableFlattenChildren,
+  [EntityType.CONTAINER]: getContainerFlattenChildren,
+  [EntityType.TOPIC]: getTopicFlattenChildren,
+  [EntityType.API_ENDPOINT]: getApiEndpointFlattenChildren,
+  [EntityType.SEARCH_INDEX]: getSearchIndexFlattenChildren,
+};
+
 const getFlattenChildrenFromEntity = (
   entity: EntityReference
 ): EntityChildren => {
-  const children: EntityChildren = [];
-
   const entityType = 'entityType' in entity ? entity.entityType : '';
+  const resolver = FLATTEN_CHILDREN_RESOLVERS[entityType as EntityType];
 
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.DASHBOARD_DATA_MODEL: {
-      const tableData = entity as unknown as Table;
-      children.push(...flatItems(tableData.columns));
-
-      break;
-    }
-    case EntityType.CONTAINER: {
-      const dataModelColumns =
-        (entity as unknown as Container).dataModel?.columns ?? [];
-      children.push(...flatItems(dataModelColumns));
-
-      break;
-    }
-    case EntityType.TOPIC: {
-      const messageSchemaFields =
-        (entity as unknown as Topic).messageSchema?.schemaFields ?? [];
-      children.push(...flatItems(messageSchemaFields));
-
-      break;
-    }
-    case EntityType.API_ENDPOINT: {
-      const apiEndpointFields =
-        (entity as unknown as APIEndpoint).responseSchema?.schemaFields ??
-        (entity as unknown as APIEndpoint).requestSchema?.schemaFields ??
-        [];
-      children.push(...flatItems(apiEndpointFields));
-
-      break;
-    }
-    case EntityType.SEARCH_INDEX: {
-      const searchIndexFields = (entity as unknown as SearchIndex).fields ?? [];
-      children.push(...flatItems(searchIndexFields));
-
-      break;
-    }
-  }
-
-  return children;
+  return resolver ? resolver(entity) : [];
 };
 
 export const getNodeLineageData = (node: EntityReference) => {
@@ -513,14 +507,21 @@ export const createNodes = (
   return uniqueNodesData.map((node) => {
     node.deleted = isDeleted(node.deleted);
 
-    const type =
-      node.type === EntityLineageNodeType.LOAD_MORE
-        ? node.type
-        : incomingMap.has(node.id) && !outgoingMap.has(node.id)
-        ? EntityLineageNodeType.OUTPUT
-        : !incomingMap.has(node.id) && outgoingMap.has(node.id)
-        ? EntityLineageNodeType.INPUT
-        : EntityLineageNodeType.DEFAULT;
+    const hasIncoming = incomingMap.has(node.id);
+    const hasOutgoing = outgoingMap.has(node.id);
+    const isOutputNode = hasIncoming && !hasOutgoing;
+    const isInputNode = !hasIncoming && hasOutgoing;
+
+    let type: EntityLineageNodeType | string;
+    if (node.type === EntityLineageNodeType.LOAD_MORE) {
+      type = node.type;
+    } else if (isOutputNode) {
+      type = EntityLineageNodeType.OUTPUT;
+    } else if (isInputNode) {
+      type = EntityLineageNodeType.INPUT;
+    } else {
+      type = EntityLineageNodeType.DEFAULT;
+    }
 
     const nodeHeight = isExpanded ? 550 : NODE_HEIGHT;
 

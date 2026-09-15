@@ -44,7 +44,6 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
@@ -52,7 +51,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Scale regression for the bulk service-delete search cascade. Seeds a {@code databaseService} with
- * {@value #DEFAULT_TABLES} tables (override with {@code -Dscale.tables=N}), each carrying
+ * {@value #DEFAULT_TABLES} tables (override with {@code -Djpw.scale.tables=N}), each carrying
  * {@value #COLUMNS_PER_TABLE} columns, recursively hard-deletes the service, and asserts the search
  * index is fully clean — both the {@code table_search_index} docs AND the {@code column_search_index}
  * docs scoped to that service drop to zero.
@@ -67,7 +66,7 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>{@code
  * mvn test -pl openmetadata-integration-tests \
- *   -Dtest=ServiceDeleteSearchCleanupScaleIT -Dscale.tables=100000 -Dgroups=scale
+ *   -Dtest=ServiceDeleteSearchCleanupScaleIT -Djpw.scale.tables=100000 -Dgroups=scale
  * }</pre>
  */
 @Tag("scale")
@@ -81,9 +80,19 @@ class ServiceDeleteSearchCleanupScaleIT {
   private static final int COLUMNS_PER_TABLE = 5;
   // Concurrency is intentionally modest: each create blocks on a synchronous table-doc index, and
   // too many in flight saturates a single-node search engine's write queue. Tune with
-  // -Dscale.workers.
-  private static final int LOAD_WORKERS = Integer.getInteger("scale.workers", 8);
+  // -Djpw.scale.workers.
+  private static final int LOAD_WORKERS = Integer.getInteger("jpw.scale.workers", 8);
   private static final int CREATE_TIMEOUT_SECONDS = 300;
+  // How long the search cascade gets to drop this service's docs to zero after the async delete is
+  // accepted. On an unloaded cluster this ran in 116s, which is what the original 5 minutes was
+  // sized against. It no longer holds: POST /v1/tables now spends ~1.3s server-side per table
+  // (db 23ms, search 101ms — the rest is unaccounted resourceCreate time, with a governance
+  // workflow firing per table-entityCreated), so by the time this test runs last the cluster is
+  // slow enough that the same delete took between 5 and 14 minutes on run 31286594784. Sized to
+  // cover that with headroom rather than to hide it — the throughput regression is tracked
+  // separately. Override with -Djpw.scale.searchCleanupTimeoutMin.
+  private static final Duration SEARCH_CLEANUP_TIMEOUT =
+      Duration.ofMinutes(Integer.getInteger("jpw.scale.searchCleanupTimeoutMin", 20));
 
   private static ServerHandle server;
   private static SearchClient search;
@@ -99,8 +108,7 @@ class ServiceDeleteSearchCleanupScaleIT {
   @Test
   void recursiveServiceHardDelete_clearsTableAndColumnDocsAtScale(final TestNamespace ns)
       throws Exception {
-    final int tableCount = Integer.getInteger("scale.tables", DEFAULT_TABLES);
-    final OpenMetadataClient client = SdkClients.adminClient();
+    final int tableCount = Integer.getInteger("jpw.scale.tables", DEFAULT_TABLES);
 
     final DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -114,7 +122,7 @@ class ServiceDeleteSearchCleanupScaleIT {
     final String columnIndex = indexAliases.indexNameFor(Entity.TABLE_COLUMN);
 
     final long seedStart = System.currentTimeMillis();
-    seedTables(ns, client, schema.getFullyQualifiedName(), tableCount);
+    seedTables(ns, schema.getFullyQualifiedName(), tableCount);
     LOG.info(
         "Seeded {} tables ({} columns each) in {} ms",
         tableCount,
@@ -131,7 +139,7 @@ class ServiceDeleteSearchCleanupScaleIT {
         expectedColumns);
 
     final long deleteStart = System.currentTimeMillis();
-    recursiveHardDelete(client, serviceId);
+    recursiveHardDelete(serviceId);
     awaitCount(tableIndex, serviceId, 0);
     awaitCount(columnIndex, serviceId, 0);
     final long deleteMs = System.currentTimeMillis() - deleteStart;
@@ -142,11 +150,7 @@ class ServiceDeleteSearchCleanupScaleIT {
         deleteMs);
   }
 
-  private void seedTables(
-      final TestNamespace ns,
-      final OpenMetadataClient client,
-      final String schemaFqn,
-      final int count) {
+  private void seedTables(final TestNamespace ns, final String schemaFqn, final int count) {
     final String namePrefix = ns.prefix("scale_tbl") + "_";
     final ExecutorService executor = Executors.newFixedThreadPool(LOAD_WORKERS);
     try {
@@ -156,7 +160,11 @@ class ServiceDeleteSearchCleanupScaleIT {
         futures.add(
             executor.submit(
                 () -> {
-                  client
+                  // Fetch the admin client fresh per task: a 100k seed outlives the operator
+                  // token's ~1h TTL, and ExternalTokenRefresher rebuilds SdkClients' cached client
+                  // on re-login. A captured reference would pin the pre-refresh (expired) token and
+                  // fail mid-seed with "401 Expired token!".
+                  SdkClients.adminClient()
                       .tables()
                       .create(
                           new CreateTable()
@@ -184,13 +192,14 @@ class ServiceDeleteSearchCleanupScaleIT {
     return columns;
   }
 
-  private void recursiveHardDelete(final OpenMetadataClient client, final String serviceId) {
+  private void recursiveHardDelete(final String serviceId) {
     // Mirror the UI's service delete: hit the async endpoint (DELETE /databaseServices/async/{id})
     // so the recursive hard delete runs on the server's background executor instead of blocking the
     // request thread — a synchronous 100k-table delete can exceed a proxied cluster's gateway
     // timeout. The endpoint returns 202 immediately; the awaitCount(...) assertions confirm the
-    // delete's search cascade actually cleared both indexes.
-    client
+    // delete's search cascade actually cleared both indexes. Fetch the admin client fresh (not a
+    // captured reference) so the refreshed token is used after a long-running seed.
+    SdkClients.adminClient()
         .getHttpClient()
         .execute(
             HttpMethod.DELETE,
@@ -201,7 +210,7 @@ class ServiceDeleteSearchCleanupScaleIT {
 
   private void awaitCount(final String index, final String serviceId, final long expected) {
     Awaitility.await("count(" + index + ") for service " + serviceId + " == " + expected)
-        .atMost(Duration.ofSeconds(300))
+        .atMost(SEARCH_CLEANUP_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
         .untilAsserted(

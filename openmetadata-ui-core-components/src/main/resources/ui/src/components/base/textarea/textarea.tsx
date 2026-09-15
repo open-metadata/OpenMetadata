@@ -35,16 +35,23 @@ export const TextAreaBase = ({
       {...props}
       className={(state) =>
         cx(
-          'tw:w-full tw:scroll-py-3 tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-3 tw:text-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary tw:focus:outline-hidden',
+          // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+          // so a ring thins/vanishes in Safari when zoomed out. `focus:outline-hidden` is
+          // gone — the outline IS the focus indicator here, as in input.tsx.
+          'tw:w-full tw:scroll-py-3 tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-3 tw:text-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
 
           // Resize handle
           'tw:[&::-webkit-resizer]:bg-(image:--resize-handle-bg) tw:[&::-webkit-resizer]:bg-contain tw:dark:[&::-webkit-resizer]:bg-(image:--resize-handle-bg-dark)',
 
-          state.isFocused && !state.isDisabled && 'tw:ring-2 tw:ring-brand',
+          state.isFocused &&
+            !state.isDisabled &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           state.isDisabled &&
-            'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled tw:ring-disabled',
-          state.isInvalid && 'tw:ring-error_subtle',
-          state.isInvalid && state.isFocused && 'tw:ring-2 tw:ring-error',
+            'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled tw:outline-disabled',
+          state.isInvalid && 'tw:outline-error_subtle',
+          state.isInvalid &&
+            state.isFocused &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
 
           fontSizeClass[size || 'md'],
 

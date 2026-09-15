@@ -12,7 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
   DataContract,
@@ -37,7 +37,12 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
     editorClass,
     mode,
     value,
-  }: any) {
+  }: {
+    className?: string;
+    editorClass?: string;
+    mode?: { name?: string };
+    value?: string;
+  }) {
     return (
       <div className={className} data-testid="schema-editor">
         <div data-testid="editor-class">{editorClass}</div>

@@ -12,8 +12,6 @@
 Enhanced NER Scanner that uses custom recognizers from OpenMetadata classifications.
 """
 
-from typing import Dict, List, Optional, Set, Tuple  # noqa: UP035
-
 from presidio_analyzer import RecognizerResult
 
 from metadata.generated.schema.entity.classification.classification import (
@@ -35,9 +33,9 @@ class CustomNERScanner:
 
     def __init__(
         self,
-        classifications: List[Classification],  # noqa: UP006
-        tags: List[Tag],  # noqa: UP006
-        model_name: Optional[str] = None,  # noqa: UP045
+        classifications: list[Classification],
+        tags: list[Tag],
+        model_name: str | None = None,
     ):
         """
         Initialize the scanner with classifications and tags.
@@ -49,7 +47,7 @@ class CustomNERScanner:
         """
         self.classifications = {c.fullyQualifiedName: c for c in classifications}
         self.tags = {t.fullyQualifiedName: t for t in tags}
-        self.tag_by_classification: Dict[str, List[Tag]] = self._group_tags_by_classification()  # noqa: UP006
+        self.tag_by_classification: dict[str, list[Tag]] = self._group_tags_by_classification()
 
         # Build base analyzer engine
         self.analyzer_engine = build_analyzer_engine(model_name) if model_name else build_analyzer_engine()
@@ -58,7 +56,7 @@ class CustomNERScanner:
         self.recognizer_registry = RecognizerRegistry()
         self._register_custom_recognizers()
 
-    def _group_tags_by_classification(self) -> Dict[str, List[Tag]]:  # noqa: UP006
+    def _group_tags_by_classification(self) -> dict[str, list[Tag]]:
         """Group tags by their classification."""
         grouped = {}
         for tag in self.tags.values():
@@ -81,7 +79,7 @@ class CustomNERScanner:
                     self.analyzer_engine.registry.add_recognizer(recognizer)
                     logger.info(f"Registered recognizer {recognizer.name} for tag {tag.fullyQualifiedName}")
 
-    def scan_text(self, text: str, classification_fqn: Optional[str] = None) -> List[TagLabel]:  # noqa: UP006, UP045
+    def scan_text(self, text: str, classification_fqn: str | None = None) -> list[TagLabel]:
         """
         Scan text for PII using custom recognizers.
 
@@ -113,7 +111,7 @@ class CustomNERScanner:
 
         return tag_labels
 
-    def scan_column_name(self, column_name: str, classification_fqn: Optional[str] = None) -> List[TagLabel]:  # noqa: UP006, UP045
+    def scan_column_name(self, column_name: str, classification_fqn: str | None = None) -> list[TagLabel]:
         """
         Scan a column name for patterns indicating PII.
 
@@ -138,8 +136,8 @@ class CustomNERScanner:
     def _map_results_to_tags(
         self,
         results: list[RecognizerResult],
-        classification_fqn: Optional[str] = None,  # noqa: UP045
-    ) -> List[TagLabel]:  # noqa: UP006
+        classification_fqn: str | None = None,
+    ) -> list[TagLabel]:
         """
         Map Presidio recognizer results to OpenMetadata tag labels.
 
@@ -151,7 +149,7 @@ class CustomNERScanner:
             List of TagLabel objects
         """
         tag_labels = []
-        detected_entities: Set[Tuple[str, float]] = set()  # noqa: UP006
+        detected_entities: set[tuple[str, float]] = set()
 
         for result in results:
             # Find tags that have recognizers for this entity type
@@ -174,7 +172,7 @@ class CustomNERScanner:
 
         return tag_labels
 
-    def _find_matching_tags(self, entity_type: str, classification_fqn: Optional[str] = None) -> List[Tag]:  # noqa: UP006, UP045
+    def _find_matching_tags(self, entity_type: str, classification_fqn: str | None = None) -> list[Tag]:
         """
         Find tags that have recognizers for the given entity type.
 
@@ -204,9 +202,9 @@ class CustomNERScanner:
 
     def _resolve_conflicts(
         self,
-        tag_labels: List[TagLabel],  # noqa: UP006
-        config: Optional[AutoClassificationConfig],  # noqa: UP045
-    ) -> List[TagLabel]:  # noqa: UP006
+        tag_labels: list[TagLabel],
+        config: AutoClassificationConfig | None,
+    ) -> list[TagLabel]:
         """
         Resolve conflicts when multiple tags match for a mutually exclusive classification.
 
@@ -248,7 +246,7 @@ class CustomNERScanner:
         sorted_labels = sorted(tag_labels, key=lambda x: x.confidence or 0, reverse=True)
         return [sorted_labels[0]]
 
-    def get_supported_classifications(self) -> List[str]:  # noqa: UP006
+    def get_supported_classifications(self) -> list[str]:
         """Get list of classifications that have auto-classification enabled."""
         enabled_classifications = []
         for classification in self.classifications.values():

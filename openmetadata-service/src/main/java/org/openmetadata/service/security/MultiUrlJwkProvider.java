@@ -21,8 +21,10 @@ import com.auth0.jwk.UrlJwkProvider;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import java.net.URL;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -68,10 +70,33 @@ final class MultiUrlJwkProvider implements JwkProvider {
 
   @Override
   public Jwk get(String keyId) {
+    Jwk signingKey;
     try {
-      return CACHE.get(keyId);
-    } catch (Exception e) {
-      throw new UnhandledServerException(e.getMessage());
+      signingKey = CACHE.get(keyId);
+    } catch (ExecutionException | UncheckedExecutionException e) {
+      throw toAuthenticationOrServerException(e);
     }
+    return signingKey;
+  }
+
+  private RuntimeException toAuthenticationOrServerException(Exception cacheException) {
+    Throwable cause =
+        cacheException.getCause() != null ? cacheException.getCause() : cacheException;
+    RuntimeException result;
+    if (cause instanceof SigningKeyNotFoundException signingKeyNotFound) {
+      // Unknown key id means the token was signed by a key we do not trust (IdP
+      // key rotation, wrong issuer, a stale token). That is an authentication
+      // failure (401), not a server error (500) — returning 500 makes the client
+      // treat a re-authenticable session as a fatal error and hang instead of
+      // refreshing or redirecting to login.
+      result =
+          AuthenticationException.getInvalidTokenException(
+              "Token signing key not found in configured public keys", signingKeyNotFound);
+    } else {
+      // Genuine server-side failure (e.g. a JWKS endpoint fetch error); keep the
+      // cause chained so production logs show the real reason.
+      result = new UnhandledServerException("JWKS key resolution failed", cause);
+    }
+    return result;
   }
 }

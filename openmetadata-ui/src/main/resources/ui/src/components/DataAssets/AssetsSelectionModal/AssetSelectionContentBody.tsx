@@ -62,6 +62,220 @@ export interface AssetSelectionContentBodyProps
   infoBannerText?: string;
 }
 
+type AssetSelectionHeaderProps = Pick<
+  AssetSelectionContentBodyProps,
+  | 'infoBannerText'
+  | 'search'
+  | 'setSearch'
+  | 'failedStatus'
+  | 'exportJob'
+  | 'assetJobResponse'
+  | 'aggregations'
+  | 'quickFilterQuery'
+  | 'filters'
+  | 'handleQuickFiltersValueSelect'
+  | 'clearFilters'
+>;
+
+const AssetSelectionHeader = ({
+  infoBannerText,
+  search,
+  setSearch,
+  failedStatus,
+  exportJob,
+  assetJobResponse,
+  aggregations,
+  quickFilterQuery,
+  filters,
+  handleQuickFiltersValueSelect,
+  clearFilters,
+}: AssetSelectionHeaderProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box className="tw:shrink-0" direction="col" gap={4}>
+      {(assetJobResponse || exportJob?.error) && (
+        <Banner
+          className="border-radius"
+          isLoading={isUndefined(exportJob?.error)}
+          message={exportJob?.error ?? assetJobResponse?.message ?? ''}
+          type={exportJob?.error ? 'error' : 'success'}
+        />
+      )}
+
+      {infoBannerText && (
+        <Alert showIcon message={infoBannerText} type="info" />
+      )}
+
+      <div className="d-flex items-center gap-3">
+        <div className="flex-1">
+          <Searchbar
+            removeMargin
+            showClearSearch
+            placeholder={t('label.search-entity', {
+              entity: t('label.asset-plural'),
+            })}
+            searchValue={search}
+            onSearch={setSearch}
+          />
+        </div>
+      </div>
+
+      <div className="asset-filters-wrapper">
+        <ExploreQuickFilters
+          untitledDropdown
+          aggregations={aggregations}
+          fields={filters}
+          index={SearchIndex.ALL}
+          showDeleted={false}
+          onFieldValueSelect={handleQuickFiltersValueSelect}
+        />
+        {quickFilterQuery && (
+          <Typography
+            as="span"
+            className="tw:text-brand-secondary tw:cursor-pointer"
+            data-testid="clear-filters"
+            onClick={clearFilters}>
+            {t('label.clear-entity', {
+              entity: '',
+            })}
+          </Typography>
+        )}
+      </div>
+
+      {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
+        <Alert
+          closable
+          className="w-full"
+          description={
+            <Typography as="span" className="tw:text-tertiary">
+              {t('message.validation-error-assets')}
+            </Typography>
+          }
+          message={
+            <div className="d-flex items-center gap-3">
+              <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
+              <Typography as="span" size="text-sm" weight="semibold">
+                {t('label.validation-error-plural')}
+              </Typography>
+            </div>
+          }
+          type="error"
+        />
+      )}
+    </Box>
+  );
+};
+
+type AssetSelectionListProps = Pick<
+  AssetSelectionContentBodyProps,
+  | 'emptyPlaceHolderText'
+  | 'items'
+  | 'selectedItems'
+  | 'isLoading'
+  | 'totalCount'
+  | 'handleCardClick'
+  | 'onScroll'
+  | 'onSelectAll'
+  | 'getErrorStatusAndMessage'
+>;
+
+const AssetSelectionList = ({
+  emptyPlaceHolderText,
+  items,
+  selectedItems,
+  isLoading,
+  totalCount,
+  handleCardClick,
+  onScroll,
+  onSelectAll,
+  getErrorStatusAndMessage,
+}: AssetSelectionListProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
+      direction="col"
+      gap={4}
+      onScroll={onScroll}>
+      {items.length > 0 && (
+        <div className="border p-xs asset-list-wrapper">
+          <Checkbox
+            className="assets-checkbox p-x-sm"
+            onChange={(e) => onSelectAll(e.target.checked)}>
+            {t('label.select-field', {
+              field: t('label.all'),
+            })}
+          </Checkbox>
+          <List>
+            <VirtualList
+              data={items}
+              itemKey={(item) => item._source.id ?? item._id}>
+              {({ _source: item }) => {
+                const { isError, errorMessage } = getErrorStatusAndMessage(
+                  item.id ?? ''
+                );
+
+                return (
+                  <div
+                    className={classNames({
+                      'm-y-sm border-danger rounded-4': isError,
+                    })}
+                    key={item.id}>
+                    <TableDataCardV2
+                      openEntityInNewPage
+                      showCheckboxes
+                      checked={selectedItems?.has(item.id ?? '')}
+                      className="border-none asset-selection-model-card cursor-pointer"
+                      displayNameClassName="text-md"
+                      handleSummaryPanelDisplay={handleCardClick}
+                      id={`tabledatacard-${item.id}`}
+                      key={item.id}
+                      nameClassName="text-md"
+                      showBody={false}
+                      showName={false}
+                      source={{ ...item, tags: [] }}
+                    />
+                    {isError && (
+                      <>
+                        <div className="p-x-sm">
+                          <CoreDivider className="tw:mt-0 tw:my-2" />
+                        </div>
+                        <div className="d-flex gap-3 p-x-sm p-b-sm">
+                          <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
+                          <Typography as="span" className="tw:break-all">
+                            {errorMessage}
+                          </Typography>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              }}
+            </VirtualList>
+          </List>
+          {isLoading && items.length < totalCount && (
+            <div className="d-flex justify-center p-y-sm">
+              <Loader size="small" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isLoading && items.length === 0 && (
+        <ErrorPlaceHolder>
+          {emptyPlaceHolderText && (
+            <Typography as="p">{emptyPlaceHolderText}</Typography>
+          )}
+        </ErrorPlaceHolder>
+      )}
+
+      {isLoading && items.length === 0 && <Loader size="small" />}
+    </Box>
+  );
+};
+
 const AssetSelectionContentBody = ({
   emptyPlaceHolderText,
   infoBannerText,
@@ -95,158 +309,31 @@ const AssetSelectionContentBody = ({
       className="tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden"
       direction="col"
       gap={4}>
-      <Box className="tw:shrink-0" direction="col" gap={4}>
-        {(assetJobResponse || exportJob?.error) && (
-          <Banner
-            className="border-radius"
-            isLoading={isUndefined(exportJob?.error)}
-            message={exportJob?.error ?? assetJobResponse?.message ?? ''}
-            type={exportJob?.error ? 'error' : 'success'}
-          />
-        )}
+      <AssetSelectionHeader
+        aggregations={aggregations}
+        assetJobResponse={assetJobResponse}
+        clearFilters={clearFilters}
+        exportJob={exportJob}
+        failedStatus={failedStatus}
+        filters={filters}
+        handleQuickFiltersValueSelect={handleQuickFiltersValueSelect}
+        infoBannerText={infoBannerText}
+        quickFilterQuery={quickFilterQuery}
+        search={search}
+        setSearch={setSearch}
+      />
 
-        {infoBannerText && (
-          <Alert showIcon message={infoBannerText} type="info" />
-        )}
-
-        <div className="d-flex items-center gap-3">
-          <div className="flex-1">
-            <Searchbar
-              removeMargin
-              showClearSearch
-              placeholder={t('label.search-entity', {
-                entity: t('label.asset-plural'),
-              })}
-              searchValue={search}
-              onSearch={setSearch}
-            />
-          </div>
-        </div>
-
-        <div className="asset-filters-wrapper">
-          <ExploreQuickFilters
-            untitledDropdown
-            aggregations={aggregations}
-            fields={filters}
-            index={SearchIndex.ALL}
-            showDeleted={false}
-            onFieldValueSelect={handleQuickFiltersValueSelect}
-          />
-          {quickFilterQuery && (
-            <Typography
-              as="span"
-              className="tw:text-brand-secondary tw:cursor-pointer"
-              data-testid="clear-filters"
-              onClick={clearFilters}>
-              {t('label.clear-entity', {
-                entity: '',
-              })}
-            </Typography>
-          )}
-        </div>
-
-        {failedStatus?.failedRequest &&
-          failedStatus.failedRequest.length > 0 && (
-            <Alert
-              closable
-              className="w-full"
-              description={
-                <Typography as="span" className="tw:text-tertiary">
-                  {t('message.validation-error-assets')}
-                </Typography>
-              }
-              message={
-                <div className="d-flex items-center gap-3">
-                  <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
-                  <Typography as="span" size="text-sm" weight="semibold">
-                    {t('label.validation-error-plural')}
-                  </Typography>
-                </div>
-              }
-              type="error"
-            />
-          )}
-      </Box>
-
-      <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
-        direction="col"
-        gap={4}
-        onScroll={onScroll}>
-        {items.length > 0 && (
-          <div className="border p-xs asset-list-wrapper">
-            <Checkbox
-              className="assets-checkbox p-x-sm"
-              onChange={(e) => onSelectAll(e.target.checked)}>
-              {t('label.select-field', {
-                field: t('label.all'),
-              })}
-            </Checkbox>
-            <List>
-              <VirtualList
-                data={items}
-                itemKey={(item) => item._source.id ?? item._id}>
-                {({ _source: item }) => {
-                  const { isError, errorMessage } = getErrorStatusAndMessage(
-                    item.id ?? ''
-                  );
-
-                  return (
-                    <div
-                      className={classNames({
-                        'm-y-sm border-danger rounded-4': isError,
-                      })}
-                      key={item.id}>
-                      <TableDataCardV2
-                        openEntityInNewPage
-                        showCheckboxes
-                        checked={selectedItems?.has(item.id ?? '')}
-                        className="border-none asset-selection-model-card cursor-pointer"
-                        displayNameClassName="text-md"
-                        handleSummaryPanelDisplay={handleCardClick}
-                        id={`tabledatacard-${item.id}`}
-                        key={item.id}
-                        nameClassName="text-md"
-                        showBody={false}
-                        showName={false}
-                        source={{ ...item, tags: [] }}
-                      />
-                      {isError && (
-                        <>
-                          <div className="p-x-sm">
-                            <CoreDivider className="tw:mt-0 tw:my-2" />
-                          </div>
-                          <div className="d-flex gap-3 p-x-sm p-b-sm">
-                            <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
-                            <Typography as="span" className="tw:break-all">
-                              {errorMessage}
-                            </Typography>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                }}
-              </VirtualList>
-            </List>
-            {isLoading && items.length < totalCount && (
-              <div className="d-flex justify-center p-y-sm">
-                <Loader size="small" />
-              </div>
-            )}
-          </div>
-        )}
-
-        {!isLoading && items.length === 0 && (
-          <ErrorPlaceHolder>
-            {emptyPlaceHolderText && (
-              <Typography as="p">{emptyPlaceHolderText}</Typography>
-            )}
-          </ErrorPlaceHolder>
-        )}
-
-        {isLoading && items.length === 0 && <Loader size="small" />}
-      </Box>
+      <AssetSelectionList
+        emptyPlaceHolderText={emptyPlaceHolderText}
+        getErrorStatusAndMessage={getErrorStatusAndMessage}
+        handleCardClick={handleCardClick}
+        isLoading={isLoading}
+        items={items}
+        selectedItems={selectedItems}
+        totalCount={totalCount}
+        onScroll={onScroll}
+        onSelectAll={onSelectAll}
+      />
 
       <DomainAssetDryRunModal
         confirmText={t('label.move-anyway')}

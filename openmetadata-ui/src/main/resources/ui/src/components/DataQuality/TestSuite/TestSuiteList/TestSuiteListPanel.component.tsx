@@ -26,10 +26,17 @@ const SEARCH_DEBOUNCE_MS = 500;
 // `button-border` gives the segmented box container; we recolor the active
 // segment to brand (blue fill + blue text + brand ring), overriding its default
 // white, and keep the inactive segment gray at weight 500.
+// The brand edge is drawn on ::after because the Tab's own outline is reserved for its
+// focus ring. It replaced a ring (WebKit does not pixel-snap box-shadow); that ring had no
+// `ring-inset`, so it drew outward — hence outline-offset 0 rather than a negative offset.
+const SUB_TAB_SELECTED_CLASS = [
+  'tw:bg-brand-primary_alt tw:text-brand-secondary tw:font-semibold',
+  'tw:after:pointer-events-none tw:after:absolute tw:after:inset-0',
+  'tw:after:rounded-[inherit] tw:after:outline-1 tw:after:outline-brand',
+].join(' ');
+
 const subTabItemClassName = ({ isSelected }: { isSelected: boolean }) =>
-  isSelected
-    ? 'tw:bg-brand-primary_alt tw:text-brand-secondary tw:font-semibold tw:ring-1 tw:ring-brand'
-    : 'tw:font-medium';
+  isSelected ? SUB_TAB_SELECTED_CLASS : 'tw:font-medium';
 
 export interface TestSuiteListPanelProps extends TestSuitesTableProps {
   searchValue?: string;
@@ -76,7 +83,7 @@ export const TestSuiteListPanel = ({
 
   return (
     <Box
-      className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:ring-1 tw:ring-secondary"
+      className="tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary"
       data-testid="test-suite-list-panel"
       direction="col">
       <Box align="center" className="tw:p-4" gap={4} justify="between">

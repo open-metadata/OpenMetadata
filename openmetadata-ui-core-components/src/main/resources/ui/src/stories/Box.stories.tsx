@@ -295,7 +295,7 @@ export const Composition: StoryObj = {
   render: () => (
     <div style={{ width: 400 }}>
       <Box
-        className="tw:rounded-xl tw:ring-1 tw:ring-inset tw:ring-secondary tw:bg-primary tw:overflow-hidden"
+        className="tw:rounded-xl tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:bg-primary tw:overflow-hidden"
         direction="col"
         gap={4}>
         <Box

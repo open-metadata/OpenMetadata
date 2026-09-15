@@ -50,6 +50,7 @@ import org.openmetadata.schema.services.connections.database.UnityCatalogConnect
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
+import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirbyteConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -57,6 +58,8 @@ import org.openmetadata.schema.services.connections.pipeline.AirflowRestApiConne
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
 import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
+import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
+import org.openmetadata.schema.services.connections.pipeline.PrefectConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
@@ -89,6 +92,7 @@ public final class ClassConverterFactory {
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
             Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
             Map.entry(GoogleDriveConnection.class, new GoogleDriveConnectionClassConverter()),
+            Map.entry(PubSubConnection.class, new PubSubConnectionClassConverter()),
             Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
             Map.entry(
@@ -117,7 +121,9 @@ public final class ClassConverterFactory {
             Map.entry(Workflow.class, new WorkflowClassConverter()),
             Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()),
             Map.entry(NifiConnection.class, new NifiConnectionClassConverter()),
+            Map.entry(OpenLineageConnection.class, new OpenLineageConnectionClassConverter()),
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
+            Map.entry(PrefectConnection.class, new PrefectConnectionClassConverter()),
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
             Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
             Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),

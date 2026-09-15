@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
+import { Placement } from 'react-aria-components';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   DataAssetAsyncSelectListProps,
@@ -50,8 +51,7 @@ export interface DataAssetPickerShellProps {
   allOptionLabel?: string;
   onSelectAll?: () => void;
   popoverClassName?: string;
-  popoverAlign?: 'left' | 'right';
-  popoverPlacement?: 'top' | 'bottom';
+  popoverPlacement?: Placement;
   placeholder?: string;
 }
 
@@ -62,8 +62,7 @@ export interface DataAssetSelectListProps
   renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
   popoverClassName?: string;
   selectionMode?: 'single' | 'multiple';
-  popoverAlign?: 'left' | 'right';
-  popoverPlacement?: 'top' | 'bottom';
+  popoverPlacement?: Placement;
   onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
 }
 

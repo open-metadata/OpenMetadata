@@ -39,12 +39,12 @@ from metadata.core.connections.test_connection.checks.rest import (
     verify_access,
 )
 from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
-from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection as LookerConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.helpers import clean_uri
 
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
@@ -161,9 +161,8 @@ LOOKER_ERRORS = ErrorPack(
         fix=f"This connector uses API {SDK_API_VERSION}, which the instance does not list as supported.",
         doc=API_SDK_DOC,
     ),
-    # Matched on text: the transport flattens these into an SDKError message. Guarded
-    # so a structured Looker error is not read as a transport failure; the type-based
-    # NETWORK_ERRORS below only fires outside the transport.
+    # Matched on text, not type: the SDK transport flattens every IOError to a
+    # string (see NETWORK_ERRORS below), so type-based matching cannot work here.
     when(
         _transport_text("failed to resolve", "name or service not known", "nodename nor servname", "getaddrinfo failed")
     ).diagnose(
@@ -200,7 +199,10 @@ LOOKER_ERRORS = ErrorPack(
         "The host is not serving the Looker API",
         fix="A server answered but did not return a Looker error. Check that Host Port points at the Looker instance.",
     ),
-).including(NETWORK_ERRORS)
+)
+# NETWORK_ERRORS not folded in: it matches by type, but the SDK transport
+# (requests_transport.py) catches every IOError and returns its str() as a body,
+# so no exception type survives - _transport_text reads those strings instead.
 
 
 class LookerChecks:
@@ -277,7 +279,11 @@ class LookerSettings(ApiSettings):
 
     def __init__(self, connection: LookerConnectionConfig) -> None:
         self._config: SettingsConfig = {
-            "base_url": str(connection.hostPort),
+            # Stripped, not just stringified: pydantic renders a hostPort with no path
+            # as "https://host/", and the SDK builds the login URL by concatenation
+            # (f"{base_url}/api/{version}/login"), so the slash would reach Looker as
+            # //api/4.0/login - a 404 that reads as rejected credentials.
+            "base_url": clean_uri(str(connection.hostPort)),
             "client_id": connection.clientId,
             "client_secret": connection.clientSecret.get_secret_value(),
         }

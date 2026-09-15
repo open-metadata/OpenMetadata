@@ -6,6 +6,7 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import java.time.Duration;
+import java.util.regex.Pattern;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.playwright.ui.UiSession;
 
@@ -28,6 +29,12 @@ public final class SearchIndexAppPage extends PageObject {
   // An accepted trigger registers its run record within seconds; this only bounds the failure
   // (e.g. the trigger was rejected because another run still holds the app's execution lock).
   private static final Duration RUN_REGISTER_TIMEOUT = Duration.ofMinutes(2);
+  // Badge label is upperFirst(AppRunRecord.status); these are the statuses a run cannot leave.
+  // Mirrors ReindexHelpers' TERMINAL_STATUSES.
+  private static final Pattern TERMINAL_STATUS_TEXT =
+      Pattern.compile("Success|Completed|Failed|Stopped|ActiveError");
+  // The badge is already terminal when this is used — it only absorbs a re-render.
+  private static final Duration TERMINAL_ASSERT_TIMEOUT = Duration.ofSeconds(10);
 
   private SearchIndexAppPage(final Page page, final UiSession session) {
     super(page, session);
@@ -77,12 +84,26 @@ public final class SearchIndexAppPage extends PageObject {
     waitForLatestRunStatus(label, timeout);
   }
 
+  /**
+   * Waits for the latest run to reach a terminal status, then asserts it is {@code label}.
+   *
+   * <p>Two steps on purpose. Asserting {@code label} directly would keep re-polling a badge that
+   * already reads a terminal {@code Failed} for the whole timeout — one failed reindex then burns
+   * the full {@code reindexTimeoutMin} (60 min in external mode) before reporting, which is enough
+   * to blow the job's own timeout and take the suites queued behind it down with it. Waiting for
+   * <em>any</em> terminal status first reports the same assertion failure in seconds.
+   */
   public void waitForLatestRunStatus(final String label, final Duration timeout) {
+    PlaywrightAssertions.assertThat(latestRunStatus())
+        .containsText(
+            TERMINAL_STATUS_TEXT,
+            new com.microsoft.playwright.assertions.LocatorAssertions.ContainsTextOptions()
+                .setTimeout(timeout.toMillis()));
     PlaywrightAssertions.assertThat(latestRunStatus())
         .containsText(
             label,
             new com.microsoft.playwright.assertions.LocatorAssertions.ContainsTextOptions()
-                .setTimeout(timeout.toMillis()));
+                .setTimeout(TERMINAL_ASSERT_TIMEOUT.toMillis()));
   }
 
   @Override

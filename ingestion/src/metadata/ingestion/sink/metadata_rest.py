@@ -14,9 +14,10 @@ It picks up the generated Entities and send them
 to the OM API.
 """
 
+import json
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -24,6 +25,10 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.ai.createAIApplication import (
+    CreateAIApplicationRequest,
+)
+from metadata.generated.schema.api.ai.createLLMModel import CreateLLMModelRequest
 from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -62,8 +67,13 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
 )
-from metadata.generated.schema.entity.data.table import DataModel, Table, TableData
-from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataModel,
+    Table,
+    TableData,
+)
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
@@ -80,7 +90,6 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.barrier import Barrier
@@ -149,14 +158,14 @@ DUPLICATE_QUERY_CONSTRAINTS = (
 )
 
 
-def is_duplicate_query_conflict(message: Optional[str]) -> bool:  # noqa: UP045
+def is_duplicate_query_conflict(message: str | None) -> bool:
     """Whether a failed bulk-query response is an already-present (duplicate) query."""
     lowered = (message or "").lower()
     return any(constraint in lowered for constraint in DUPLICATE_QUERY_CONSTRAINTS)
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: Optional[str] = None  # noqa: UP045
+    api_endpoint: str | None = None
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
@@ -200,7 +209,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = MetadataRestSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -254,6 +263,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestCaseRequest,
                     CreateTestSuiteRequest,
                     CreateTestDefinitionRequest,
+                    CreateAIApplicationRequest,
+                    CreateLLMModelRequest,
                     CreateMcpServerRequest,
                     CreateGlossaryRequest,
                     CreateMetricRequest,
@@ -447,7 +458,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         return self._record_query_flush_result(result)
 
-    def _record_query_flush_result(self, result: Optional[BulkOperationResult]) -> Either[Entity]:  # noqa: UP045
+    def _record_query_flush_result(self, result: BulkOperationResult | None) -> Either[Entity]:
         """Record a query bulk response. Already-present queries are reported as warnings
         (not failures) so a lineage run is not marked failed over queries that lost no
         metadata. Any other failure is still recorded as a failure."""
@@ -677,7 +688,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 result = query_result
         return result  # pyright: ignore[reportCallIssue]
 
-    def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
+    def _create_role(self, create_role: CreateRoleRequest) -> Role | None:
         """
         Internal helper method for write_user
         """
@@ -691,7 +702,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         return None
 
-    def _create_team(self, create_team: CreateTeamRequest) -> Optional[Team]:  # noqa: UP045
+    def _create_team(self, create_team: CreateTeamRequest) -> Team | None:
         """
         Internal helper method for write_user
         """
@@ -939,7 +950,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(left=None, right=record)
 
     @_run_dispatch.register
-    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[Union[TopicSampleData, Topic]]:  # noqa: UP007
+    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[TopicSampleData | Topic]:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
@@ -956,7 +967,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     @_run_dispatch.register
     def write_search_index_sample_data(
         self, record: OMetaIndexSampleData
-    ) -> Either[Union[SearchIndexSampleData, SearchIndex]]:  # noqa: UP007
+    ) -> Either[SearchIndexSampleData | SearchIndex]:
         """
         Ingest Search Index Sample Data
         """
@@ -1011,6 +1022,37 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         container_data = self.metadata.ingest_container_sample_data(container=entity, sample_data=sample_data)
         if container_data:
             logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            return True
+        return False
+
+    @staticmethod
+    def _unflatten_dotted_row(columns: list[ColumnName], row: list) -> dict:
+        """
+        Rebuild the original (possibly nested) message structure from the sampler's
+        dotted-path column names so nested RECORD topics keep their real shape.
+        """
+        message = {}
+        for idx, col in enumerate(columns):
+            parts = col.root.split(".")
+            cursor = message
+            for part in parts[:-1]:
+                cursor = cursor.setdefault(part, {})
+            cursor[parts[-1]] = row[idx]
+        return message
+
+    @_ingest_entity_sample_data.register
+    def _(self, entity: Topic, sample_data: TableData) -> bool:
+        """Topic-specific sample data ingestion implementation"""
+        messages = []
+        if sample_data.rows and sample_data.columns:
+            for row in sample_data.rows:
+                row_dict = self._unflatten_dotted_row(sample_data.columns, row)
+                messages.append(json.dumps(row_dict))
+        topic_sample_data = TopicSampleData(messages=messages)
+        result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
+        if result:
+            fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else str(entity)
+            logger.debug(f"Successfully ingested sample data for {fqn}")
             return True
         return False
 

@@ -4,6 +4,12 @@ Complete AI development workflow for OpenMetadata. Provides structured planning,
 
 Inspired by [obra/superpowers](https://github.com/obra/superpowers) and [everything-claude-code](https://github.com/affaan-m/everything-claude-code), tailored for OpenMetadata's multi-language, schema-first architecture.
 
+### Vendored third-party skills
+
+`skills/vendor/` holds skills copied verbatim from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (MIT) — `react-best-practices`, `web-design-guidelines`, and `composition-patterns` — so every contributor has them with no install or network step. Each records its upstream commit in a `VENDORED.md`. **Do not edit them**: local changes are lost on the next refresh, and repo-specific guidance belongs in `.claude/rules/`, which auto-loads by path glob and takes precedence. See [`skills/vendor/README.md`](vendor/README.md).
+
+They are authoring-time aids, not gates — a skill only fires if an agent reads it. Enforcement is deterministic and lives in `ui-checkstyle`; see [`docs/ui-code-quality-gate.md`](../docs/ui-code-quality-gate.md).
+
 ## Installation
 
 ### Claude Code (Plugin)
@@ -57,6 +63,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 | [Code Review](code-review/SKILL.md) | `/code-review` | Two-stage review: spec compliance then code quality |
 | [Verification](verification/SKILL.md) | `/verification` | Evidence-based completion — show test output, not claims |
 | [PR Checklist](pr-checklist/SKILL.md) | `/pr-checklist` | Walk the PR template (issue link, design, tests + coverage, UI recording, manual tests) and draft the PR body |
+| [OpenMetadata PR Review](openmetadata-pr-review/SKILL.md) | `/openmetadata-pr-review` | Maintainer-grade review of a real GitHub PR — live diff, linked issue, CI, meaningful-test rubric, merge verdict |
 
 ### Connector Skills
 
@@ -174,6 +181,7 @@ Architecture guides and decision trees in [connector-building/references/](conne
 |--------|---------|
 | [gather-connector-context.sh](connector-review/scripts/gather-connector-context.sh) | Shell script to collect connector file inventory |
 | [analyze_connector.py](connector-review/scripts/analyze_connector.py) | Python script for structured connector analysis |
+| [pr_triage.py](openmetadata-pr-review/scripts/pr_triage.py) | Fetch PR metadata + current open/closed state for a batch, sorted by creation date |
 
 ## Architecture
 

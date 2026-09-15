@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -355,7 +356,14 @@ class SelectiveFieldReindexUIIT {
     final String shortId = ns.uniqueShortId();
     LOG.info("Seeding entities for selective-field reindex coverage (shortId={})", shortId);
 
-    final DatabaseService dbService = createShortPostgresService(shortId);
+    // Track the two service roots so TestNamespaceExtension.afterEach recursively hard-deletes the
+    // whole seeded subtree (db/schema/table/query/testCase/testSuite and
+    // drive/spreadsheet/worksheet).
+    // Without this the seed leaks a full "Selective-field reindex seed" cohort on the shared
+    // cluster
+    // every run — the children all cascade from these two roots.
+    final DatabaseService dbService =
+        ns.trackRoot(Entity.DATABASE_SERVICE, createShortPostgresService(shortId));
     final DatabaseSchema schema = createShortSchema(shortId, dbService);
 
     final String tableColumnMarker = "tcol" + shortId;
@@ -364,7 +372,8 @@ class SelectiveFieldReindexUIIT {
     createQueryLinkedTo(shortId, dbService.getFullyQualifiedName(), table);
     final TestCaseSeed testCaseSeed = createTestCaseWithResult(shortId, table);
 
-    final DriveService driveService = createShortDriveService(shortId);
+    final DriveService driveService =
+        ns.trackRoot(Entity.DRIVE_SERVICE, createShortDriveService(shortId));
     final String worksheetColumnMarker = "wcol" + shortId;
     final String worksheetName =
         createWorksheetWithColumnMarker(

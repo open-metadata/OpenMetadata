@@ -38,6 +38,8 @@
 *.webp
 *.ico
 *.ttf
+*.mp4
+*.webm
 
 # Ignore files
 ".dockerignore"
@@ -60,7 +62,6 @@
 /playwright/e2e/.cache/
 /playwright/.env
 /playwright/.auth
-/flakiness-report
 
 # webpack
 /webpack
@@ -89,6 +90,9 @@ Thumbs.db
 
 # ignore antlr generated source
 src/generated/antlr
+
+# ignore generated dereferenced JSON schemas
+src/jsons
 
 # Snapshots
 *.snap

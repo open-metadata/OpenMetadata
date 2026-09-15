@@ -15,10 +15,10 @@ DBT service Topology.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, List  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated
 
 from pydantic import Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -242,7 +242,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                         else:
                             value["constraints"] = None
 
-    def remove_run_result_non_required_keys(self, run_results: List[dict]):  # noqa: UP006
+    def remove_run_result_non_required_keys(self, run_results: list[dict]):
         """
         Method to remove the non required keys from run results file
         """
@@ -275,7 +275,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Prepare the DBT objects
         """
         # pylint: disable=import-outside-toplevel
-        from collate_dbt_artifacts_parser.parser import (  # noqa: PLC0415
+        from collate_dbt_artifacts_parser.parser import (
             parse_catalog,
             parse_manifest,
             parse_run_results,

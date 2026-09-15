@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { AntdConfig } from '@react-awesome-query-builder/antd';
-import { elasticSearchFormat } from './QueryBuilderElasticsearchFormatUtils';
+import { BasicConfig, Utils as QbUtils } from '@react-awesome-query-builder/ui';
+import {
+  elasticSearchFormat,
+  hasUnfinishedRule,
+} from './QueryBuilderElasticsearchFormatUtils';
 
 // Minimal Immutable-compatible tree stub.
 // elasticSearchFormat only calls .get() on the tree and its properties map.
@@ -46,12 +49,12 @@ const makeTree = (operator, value, field = 'extension.table.myNumber') => ({
   },
 });
 
-// Extend AntdConfig with extension field metadata so lookupOmPropertyType
+// Extend BasicConfig with extension field metadata so lookupOmPropertyType
 // resolves the OM type, which is required for the scoped between/not_between fix.
 const configWithNumberType = {
-  ...AntdConfig,
+  ...BasicConfig,
   fields: {
-    ...AntdConfig.fields,
+    ...BasicConfig.fields,
     extension: {
       subfields: {
         table: {
@@ -148,5 +151,342 @@ describe('elasticSearchFormat – extension dateTime field range operators (Issu
 
     expect(result).toContain('"gte":"2024-01-01"');
     expect(result).toContain('"lte":"2024-12-31"');
+  });
+});
+
+describe('elasticSearchFormat – rules that are not fully entered', () => {
+  // A row with a field and an operator but no value used to serialize to `{"term":{}}`, which
+  // both Elasticsearch and OpenSearch reject outright ("Unexpected JSON event 'END_OBJECT'
+  // instead of 'KEY_NAME'"), failing every search that carried the filter.
+  it('should drop a rule whose value has not been entered yet', () => {
+    const result = elasticSearchFormat(
+      makeTree('equal', [undefined]),
+      configWithNumberType
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should not emit a bodiless clause for a half-entered rule inside a group', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(makeTree('select_equals', [undefined]), {
+        ...configWithNumberType,
+      }) ?? null
+    );
+
+    expect(result).not.toMatch(/:\{\}/);
+  });
+
+  it('should drop unentered options from a multiselect rule instead of emitting nulls', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('multiselect_equals', [[undefined]]),
+        configWithNumberType
+      ) ?? null
+    );
+
+    expect(result).not.toContain('null');
+  });
+
+  it('should still build a rule once the value is entered', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(makeTree('equal', [7]), configWithNumberType)
+    );
+
+    expect(result).toContain('7');
+    expect(result).not.toMatch(/:\{\}/);
+  });
+});
+
+// Immutable-compatible group stub. hasUnfinishedRule reads .get('type') and .get('children1'),
+// and walks children with .valueSeq().toArray() the same way buildEsGroup does.
+const makeGroup = (rules) => ({
+  get(key) {
+    if (key === 'type') {
+      return 'group';
+    }
+    if (key === 'children1') {
+      return { valueSeq: () => ({ toArray: () => rules }) };
+    }
+
+    return undefined;
+  },
+});
+
+const makeBlankRule = () => ({
+  get(key) {
+    if (key === 'type') {
+      return 'rule';
+    }
+    if (key === 'properties') {
+      return { get: () => undefined };
+    }
+
+    return undefined;
+  },
+});
+
+describe('hasUnfinishedRule', () => {
+  it('should report a rule whose value has not been entered', () => {
+    expect(
+      hasUnfinishedRule(makeTree('equal', [undefined]), configWithNumberType)
+    ).toBe(true);
+  });
+
+  // The query builder creates and keeps blank rows on its own (shouldCreateEmptyGroup, and
+  // removeEmptyRulesOnLoad is off), and "Add condition" leaves one behind. They add no constraint
+  // and always have been dropped, so flagging them would block saves that have always worked.
+  it('should accept a row with no field picked at all', () => {
+    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(
+      false
+    );
+  });
+
+  it('should accept a group holding an entered rule beside a blank row', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeBlankRule()]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
+  });
+
+  it('should report a multiselect rule with no option picked', () => {
+    expect(
+      hasUnfinishedRule(
+        makeTree('multiselect_equals', [[undefined]]),
+        configWithNumberType
+      )
+    ).toBe(true);
+  });
+
+  it('should accept a fully entered rule', () => {
+    expect(
+      hasUnfinishedRule(makeTree('equal', [7]), configWithNumberType)
+    ).toBe(false);
+  });
+
+  // "Empty selects every entity of the configured type" is documented behaviour, so a filter with
+  // no conditions has to stay saveable.
+  it('should accept a group with no conditions at all', () => {
+    expect(hasUnfinishedRule(makeGroup([]), configWithNumberType)).toBe(false);
+  });
+
+  it('should accept an undefined tree', () => {
+    expect(hasUnfinishedRule(undefined, configWithNumberType)).toBe(false);
+  });
+
+  it('should find an unfinished rule nested inside a group', () => {
+    const group = makeGroup([
+      makeTree('equal', [7]),
+      makeTree('equal', [undefined]),
+    ]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(true);
+  });
+
+  it('should accept a group whose conditions are all entered', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeTree('equal', [9])]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
+  });
+});
+
+// The cases above all use `extension.*` fields, which return from buildEsRule through
+// buildExtensionQuery before the widget is ever resolved. A plain field goes the other way and
+// needs the config the widget lookup expects, so it is the one that exposes issue #31564.
+const SELECT_FIELD = 'service.displayName.keyword';
+const SELECT_VALUE = 'banking-bigquery';
+
+const selectFieldConfig = {
+  ...BasicConfig,
+  fields: {
+    [SELECT_FIELD]: {
+      label: 'Service',
+      type: 'select',
+      fieldSettings: {
+        listValues: { [SELECT_VALUE]: SELECT_VALUE },
+      },
+    },
+  },
+};
+
+const loadSelectTree = (operator, value, valueType) =>
+  QbUtils.checkTree(
+    QbUtils.loadTree({
+      id: 'aaaaaaaa-1111-4111-8111-111111111111',
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        'bbbbbbbb-2222-4222-8222-222222222222': {
+          type: 'rule',
+          id: 'bbbbbbbb-2222-4222-8222-222222222222',
+          properties: {
+            field: SELECT_FIELD,
+            operator,
+            value,
+            valueSrc: ['value'],
+            valueType: [valueType],
+          },
+        },
+      },
+    }),
+    selectFieldConfig
+  );
+
+const firstRuleOf = (tree) => tree.get('children1').valueSeq().toArray()[0];
+
+describe('elasticSearchFormat – rule node reached directly (Issue #31564)', () => {
+  it('should build the same clause for a rule whether it is reached through its group or on its own', () => {
+    const tree = loadSelectTree('select_equals', [SELECT_VALUE], 'select');
+    const clause = { term: { [SELECT_FIELD]: SELECT_VALUE } };
+
+    expect(
+      elasticSearchFormat(firstRuleOf(tree), selectFieldConfig)
+    ).toStrictEqual(clause);
+    expect(elasticSearchFormat(tree, selectFieldConfig)).toStrictEqual({
+      bool: { must: [clause] },
+    });
+  });
+});
+
+describe('hasUnfinishedRule – entered rules on plain fields (Issue #31564)', () => {
+  it('should accept an entered single-value select condition', () => {
+    const tree = loadSelectTree('select_equals', [SELECT_VALUE], 'select');
+
+    expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(false);
+  });
+
+  it('should accept an entered multiselect condition', () => {
+    const tree = loadSelectTree(
+      'select_any_in',
+      [[SELECT_VALUE]],
+      'multiselect'
+    );
+
+    expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(false);
+  });
+
+  it('should still report a single-value select condition with no value entered', () => {
+    const tree = loadSelectTree('select_equals', [undefined], 'select');
+
+    expect(hasUnfinishedRule(tree, selectFieldConfig)).toBe(true);
+  });
+});
+
+// A builder pinned to one entity type (persona AI context, workflow Check
+// Condition, Data Asset filters) keys custom properties without the entity-type
+// segment: `extension.testCp`, not `extension.table.testCp`. Splitting
+// positionally read `testCp` as the entity type and `keyword` as the property,
+// so those builders produced a query that could never match.
+describe('elasticSearchFormat – custom properties without an entity-type segment', () => {
+  const PINNED_FIELD = 'extension.testCp.keyword';
+  const DATE_VALUE = '2026-09-03';
+  const NAMED_TEST_CP = '"customPropertiesTyped.name":"testCp"';
+  const SCOPED_TO_TABLE = '"entityType":"table"';
+
+  const pinnedConfig = {
+    ...BasicConfig,
+    fields: {
+      ...BasicConfig.fields,
+      extension: {
+        subfields: {
+          // pinned builders expose the property directly, as a leaf
+          testCp: { __omPropertyType: 'date-cp' },
+        },
+      },
+    },
+  };
+
+  const nestedQueryOf = (result) =>
+    JSON.stringify(result).match(/customPropertiesTyped/g) ?? [];
+
+  it('should build the nested customPropertiesTyped query for a pinned field', () => {
+    const result = elasticSearchFormat(
+      makeTree('equal', [DATE_VALUE], PINNED_FIELD),
+      pinnedConfig
+    );
+    const json = JSON.stringify(result);
+
+    expect(nestedQueryOf(result).length).toBeGreaterThan(0);
+    expect(json).toContain(NAMED_TEST_CP);
+    expect(json).toContain(DATE_VALUE);
+    // `keyword` is a suffix on the field key, never the property name
+    expect(json).not.toContain('"customPropertiesTyped.name":"keyword"');
+  });
+
+  // The pinned builder knows its entity type even though the field key does
+  // not carry it, so the nested query must still be scoped to that type —
+  // reading it off the key produced `entityType: "MigrationAccessPattern"`,
+  // the property name mistaken for a type.
+  it('should scope to the entity type the builder was configured with', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(makeTree('equal', [DATE_VALUE], PINNED_FIELD), {
+        ...pinnedConfig,
+        settings: { ...pinnedConfig.settings, omEntityType: 'table' },
+      })
+    );
+
+    expect(json).toContain(SCOPED_TO_TABLE);
+    expect(json).toContain(NAMED_TEST_CP);
+  });
+
+  it('should omit the entityType clause when no type is configured', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', [DATE_VALUE], PINNED_FIELD),
+        pinnedConfig
+      )
+    );
+
+    expect(json).not.toContain('"entityType"');
+  });
+
+  // A table-type property is itself a struct (`testCpTable.rows.name`), so it
+  // looks exactly like an entity-type segment. Deciding from the key's shape
+  // read `testCpTable` as the entity and `rows` as the property, and the query
+  // matched nothing — a workflow filter reported 0 assets while the same
+  // filter found 1 on Explore.
+  it('should keep the whole path of a pinned table-type property', () => {
+    const tableConfig = {
+      ...BasicConfig,
+      fields: {
+        ...BasicConfig.fields,
+        extension: {
+          subfields: {
+            // a pinned builder stores each column flat, dots and all
+            'testCpTable.rows.name': { __omPropertyType: 'table-cp' },
+          },
+        },
+      },
+      settings: { ...BasicConfig.settings, omEntityType: 'table' },
+    };
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['anuj'], 'extension.testCpTable.rows.name'),
+        tableConfig
+      )
+    );
+
+    expect(json).toContain(
+      '"customPropertiesTyped.name":"testCpTable.rows.name"'
+    );
+    expect(json).toContain(SCOPED_TO_TABLE);
+    expect(json).not.toContain('"customPropertiesTyped.name":"rows"');
+    expect(json).not.toContain('"entityType":"testCpTable"');
+    // A table column holds a string. A column named `name` ends with `.name`,
+    // so it was classified as an entity reference and the query asked for
+    // `refName`, which matched nothing.
+    expect(json).toContain('"customPropertiesTyped.stringValue":"anuj"');
+    expect(json).not.toContain('refName');
+  });
+
+  it('should still read the entity-type segment when the config nests one', () => {
+    const json = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('equal', ['2026-09-03'], 'extension.table.myDate.keyword'),
+        configWithNumberType
+      )
+    );
+
+    expect(json).toContain('"customPropertiesTyped.name":"myDate"');
+    expect(json).toContain(SCOPED_TO_TABLE);
   });
 });

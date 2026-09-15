@@ -20,7 +20,7 @@
   padding: @size-xs;
   box-shadow: @button-box-shadow-default;
   border: 1px solid @grey-15;
-  transition: all 0.3s ease;
+  transition: all var(--om-duration-300) ease;
 
   &:hover {
     box-shadow: @button-box-shadow-hover;
@@ -29,7 +29,7 @@
   .nlp-search-button {
     border: 0.5px solid @nlp-border-color !important;
     border-radius: @border-rad-xs;
-    padding: 0 4px;
+    padding: 0 var(--om-space-4);
     transition: none;
     background-color: @primary-button-background !important;
 
@@ -78,7 +78,7 @@
       max-height: 400px;
       width: auto;
       overflow-y: auto;
-      padding: 16px 0px;
+      padding: var(--om-space-16) 0;
     }
 
     .ant-popover-arrow {

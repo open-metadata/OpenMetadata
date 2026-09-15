@@ -43,7 +43,7 @@
   gap: @size-sm;
   padding: @size-md;
   border-bottom: 1px solid @border-color-1;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--om-duration-150) ease;
 
   &:last-child {
     border-bottom: none;
@@ -112,13 +112,13 @@
     .item-description {
       .description-text {
         color: @text-color;
-        font-size: 13px;
+        font-size: var(--om-font-size-13);
         line-height: 1.4;
         max-width: 100%;
       }
 
       .description-content {
-        font-size: 13px;
+        font-size: var(--om-font-size-13);
         line-height: 1.5;
         color: @text-color;
 
@@ -145,7 +145,7 @@
         .change-value-item {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: var(--om-space-4);
 
           .profile-image-container,
           .ant-avatar {
@@ -156,7 +156,7 @@
 
       .change-entity-link {
         color: @primary-color;
-        font-size: 13px;
+        font-size: var(--om-font-size-13);
 
         &:hover {
           text-decoration: underline;
@@ -165,12 +165,12 @@
 
       .action-text {
         color: @grey-600;
-        font-size: 13px;
+        font-size: var(--om-font-size-13);
       }
 
       .entity-link {
         color: @primary-color;
-        font-size: 13px;
+        font-size: var(--om-font-size-13);
 
         &:hover {
           text-decoration: underline;
@@ -179,7 +179,7 @@
 
       .entity-name {
         color: @text-color;
-        font-size: 13px;
+        font-size: var(--om-font-size-13);
       }
     }
 
@@ -190,11 +190,11 @@
 
       .meta-separator {
         color: @grey-400;
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
       }
 
       .meta-item {
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
         color: @grey-500;
 
         &.entity-type-badge {
@@ -219,7 +219,7 @@
         .user-link,
         .user-name,
         .event-type {
-          font-size: 13px;
+          font-size: var(--om-font-size-13);
         }
       }
 
@@ -228,13 +228,13 @@
         .action-text,
         .entity-link,
         .entity-name {
-          font-size: 12px;
+          font-size: var(--om-font-size-xs);
         }
       }
 
       .item-meta {
         .meta-item {
-          font-size: 11px;
+          font-size: var(--om-font-size-11);
         }
       }
     }

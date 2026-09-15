@@ -23,16 +23,19 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
 
@@ -44,15 +47,24 @@ import org.openmetadata.service.Entity;
  * Structural markdown is preferred over prose because it aids both human reading and agent retrieval.
  */
 public final class AIContextMarkdown {
-  /** Media type of the OKF-style markdown document produced by {@link #render}. */
-  public static final String TEXT_MARKDOWN = "text/markdown";
+  /**
+   * Media type of the OKF-style markdown document produced by {@link #render}. The {@code
+   * charset=UTF-8} parameter is required: the document embeds non-ASCII glyphs (em dashes, arrows,
+   * the section sign) and, without an explicit charset, clients default {@code text/*} to
+   * ISO-8859-1 (RFC 2616) and mojibake the UTF-8 bytes.
+   */
+  public static final String TEXT_MARKDOWN = "text/markdown; charset=UTF-8";
 
   /** {@code ?format=} value that selects the structured AIContext JSON over markdown. */
   public static final String FORMAT_JSON = "json";
 
   private static final int MAX_CONTENT_CHARS = 2000;
   private static final int MAX_SUMMARY_CHARS = 150;
+  private static final int MAX_SAMPLE_CELL_CHARS = 120;
   private static final String ABSENT_CONSTRAINT_CELL = "--";
+  private static final String SAMPLE_DATA_CAVEAT =
+      "\n_Representative stored sample rows — not the full table; never count or aggregate over "
+          + "them._\n";
   private static final String COLUMN_MAPPING_CAP_NOTE =
       "\n_Column mappings are capped at %d per edge — fetch the full lineage graph with "
           + "get_entity_lineage(entityType=`%s`, fqn=`%s`)._\n";
@@ -152,11 +164,41 @@ public final class AIContextMarkdown {
     }
   }
 
+  /**
+   * Says which of three states an all-zero test line means. They are identical in the counts above
+   * and are opposite trust verdicts.
+   *
+   * <p>{@code total} is the discriminator and was ignored: gating only on passed+failed+aborted told
+   * an asset with a suite but no test cases - a normal state, since the suite is created first -
+   * that "no test has ever executed … treat quality here as unverified". This markdown is served
+   * over REST and read by an LLM, so a wrong verdict propagates into answers.
+   */
+  private static void appendCoverageVerdict(
+      StringBuilder markdown, DataQuality dataQuality, int executed) {
+    int total = orZero(dataQuality.getTotal());
+    if (total == 0) {
+      markdown.append(
+          "\n> No data-quality test is defined on this asset. Quality here is unmeasured - which is"
+              + " neither good nor bad, and is not the same as tests passing.\n");
+    } else if (executed == 0) {
+      markdown
+          .append("\n> None of the ")
+          .append(total)
+          .append(
+              " data-quality tests defined on this asset has ever executed. This is NOT the same as"
+                  + " passing: treat quality here as unverified.\n");
+    }
+  }
+
   private static void appendDataQuality(
       StringBuilder markdown, DataQuality dataQuality, String headingPrefix) {
     if (dataQuality != null) {
       appendHeading(markdown, headingPrefix, "Data Quality");
       markdown.append('\n');
+      int executed =
+          orZero(dataQuality.getPassed())
+              + orZero(dataQuality.getFailed())
+              + orZero(dataQuality.getAborted());
       markdown
           .append("Tests — passed: ")
           .append(orZero(dataQuality.getPassed()))
@@ -165,6 +207,7 @@ public final class AIContextMarkdown {
           .append(", aborted: ")
           .append(orZero(dataQuality.getAborted()))
           .append('\n');
+      appendCoverageVerdict(markdown, dataQuality, executed);
       if (dataQuality.getFailed() != null && dataQuality.getFailed() > 0) {
         markdown
             .append("\n> ")
@@ -258,7 +301,8 @@ public final class AIContextMarkdown {
    * The OKF {@code description} frontmatter key is a one-line summary; the full description stays
    * in the body. Takes the first line and bounds it so previews and index generators stay compact.
    */
-  private static String summaryOf(String description) {
+  private static String summaryOf(String rawDescription) {
+    String description = PromptText.forPrompt(rawDescription);
     String summary = null;
     if (!nullOrEmpty(description)) {
       String firstLine = description.strip().split("\n", 2)[0].strip();
@@ -293,8 +337,9 @@ public final class AIContextMarkdown {
   }
 
   private static void appendDescription(StringBuilder markdown, AIContext context) {
-    if (!nullOrEmpty(context.getDescription())) {
-      markdown.append('\n').append(context.getDescription().strip()).append('\n');
+    String description = PromptText.forPrompt(context.getDescription());
+    if (!nullOrEmpty(description)) {
+      markdown.append('\n').append(description.strip()).append('\n');
     }
   }
 
@@ -306,6 +351,32 @@ public final class AIContextMarkdown {
     if (assetContext != null && assetContext.getTable() != null) {
       appendTableContext(markdown, assetContext.getTable(), sections, headingPrefix);
     }
+    if (assetContext != null && assetContext.getGeneric() != null) {
+      appendGenericContext(markdown, assetContext.getGeneric(), sections, headingPrefix);
+    }
+  }
+
+  /**
+   * The fallback sub-context: an asset's fields plus the definition backing it (a metric's
+   * expression, a stored procedure's code, a query). Gated on SCHEMA like the table equivalent.
+   */
+  private static void appendGenericContext(
+      StringBuilder markdown,
+      GenericAssetContext generic,
+      Set<ContextSection> sections,
+      String headingPrefix) {
+    if (sections.contains(ContextSection.SCHEMA)) {
+      appendSchemaTable(markdown, generic.getFields(), headingPrefix);
+      appendDefinition(markdown, generic.getDefinition(), headingPrefix);
+    }
+  }
+
+  private static void appendDefinition(
+      StringBuilder markdown, String definition, String headingPrefix) {
+    if (!nullOrEmpty(definition)) {
+      appendHeading(markdown, headingPrefix, "Definition");
+      appendSqlBlock(markdown, definition);
+    }
   }
 
   private static void appendTableContext(
@@ -315,6 +386,8 @@ public final class AIContextMarkdown {
       String headingPrefix) {
     if (sections.contains(ContextSection.SCHEMA)) {
       appendSchemaTable(markdown, table.getColumns(), headingPrefix);
+      appendDataModel(markdown, table.getDataModel(), headingPrefix);
+      appendSampleData(markdown, table.getSampleData(), headingPrefix);
     }
     if (sections.contains(ContextSection.CONSTRAINTS)) {
       appendPrimaryKey(markdown, table);
@@ -364,8 +437,92 @@ public final class AIContextMarkdown {
           .append(" | ")
           .append(constraintCell(column.getConstraint()))
           .append(" | ")
-          .append(cell(column.getDescription()))
+          .append(cell(PromptText.forPrompt(column.getDescription())))
           .append(" |\n");
+    }
+  }
+
+  /**
+   * Renders the permission-filtered, PII-masked sample rows the builder attached. Markdown — not the
+   * structured JSON — is what the MCP {@code get_entity} tool and {@code /context} return by
+   * default, so without this section the stored samples were only reachable through
+   * {@code ?format=json}.
+   */
+  private static void appendSampleData(
+      StringBuilder markdown, TableData sampleData, String headingPrefix) {
+    List<String> columns = sampleData == null ? null : sampleData.getColumns();
+    List<List<Object>> rows = sampleData == null ? null : sampleData.getRows();
+    if (nullOrEmpty(columns) || nullOrEmpty(rows)) {
+      return;
+    }
+    appendHeading(markdown, headingPrefix, "Sample Data");
+    markdown.append(SAMPLE_DATA_CAVEAT).append('\n');
+    appendSampleRow(markdown, columns, columns.size());
+    markdown.append("|---".repeat(columns.size())).append("|\n");
+    for (List<Object> row : rows) {
+      appendSampleRow(markdown, row, columns.size());
+    }
+  }
+
+  /**
+   * Pads every row out to the declared column count and drops anything beyond it: a stored payload
+   * whose rows disagree with its header would otherwise render a misaligned table, and one ragged
+   * row silently shifts every value under the wrong column name.
+   */
+  private static void appendSampleRow(StringBuilder markdown, List<?> row, int width) {
+    List<?> values = listOrEmpty(row);
+    for (int i = 0; i < width; i++) {
+      markdown
+          .append("| ")
+          .append(sampleCell(i < values.size() ? values.get(i) : null))
+          .append(' ');
+    }
+    markdown.append("|\n");
+  }
+
+  /**
+   * A stored sample value can be a nested object, a long text blob, or carry the pipes and line
+   * breaks that delimit a markdown table. Values are flattened to one line and capped so a single
+   * blob column cannot crowd the rest of the context out of the model's window.
+   */
+  private static String sampleCell(Object value) {
+    String text = value == null ? "" : cell(Objects.toString(value).replaceAll("\\R+", " "));
+    return text.length() > MAX_SAMPLE_CELL_CHARS
+        ? text.substring(0, MAX_SAMPLE_CELL_CHARS) + "…"
+        : text;
+  }
+
+  private static void appendDataModel(
+      StringBuilder markdown, TableDataModel dataModel, String headingPrefix) {
+    if (dataModel != null) {
+      appendHeading(markdown, headingPrefix, "Data Model");
+      appendDataModelMeta(markdown, dataModel);
+      appendSqlBlock(markdown, dataModel.getSql());
+    }
+  }
+
+  private static void appendDataModelMeta(StringBuilder markdown, TableDataModel dataModel) {
+    StringBuilder meta = new StringBuilder();
+    appendMetaPart(meta, "Type", dataModel.getModelType());
+    appendMetaPart(meta, "Path", dataModel.getPath());
+    appendMetaPart(meta, "Project", dataModel.getSourceProject());
+    if (meta.length() > 0) {
+      markdown.append('\n').append(meta).append('\n');
+    }
+  }
+
+  private static void appendMetaPart(StringBuilder meta, String label, String value) {
+    if (!nullOrEmpty(value)) {
+      if (meta.length() > 0) {
+        meta.append(" · ");
+      }
+      meta.append("**").append(label).append(":** `").append(inlineCodeValue(value)).append('`');
+    }
+  }
+
+  private static void appendSqlBlock(StringBuilder markdown, String sql) {
+    if (!nullOrEmpty(sql)) {
+      markdown.append("\n```sql\n").append(sql.strip()).append("\n```\n");
     }
   }
 
@@ -449,9 +606,17 @@ public final class AIContextMarkdown {
    */
   private static void appendKnowledgeContent(
       StringBuilder markdown, KnowledgeItem item, boolean truncateContent) {
-    if (!nullOrEmpty(item.getContent())) {
-      String content = item.getContent().strip();
+    // Stripped before truncation: an excerpt cut out of an inline base64 image would be pure
+    // padding, and would spend the whole excerpt budget saying nothing.
+    String promptContent = PromptText.forPrompt(item.getContent());
+    if (!nullOrEmpty(promptContent)) {
+      String content = promptContent.strip();
       markdown.append('\n').append(truncateContent ? truncate(content) : content).append('\n');
+      // The cue only rides alongside visible content (it is charged to the item's budget share in
+      // fitItem); a reference-only item renders the fetch hint below instead.
+      if (Boolean.TRUE.equals(item.getStale())) {
+        markdown.append(staleCue(item));
+      }
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
@@ -467,6 +632,18 @@ public final class AIContextMarkdown {
     if (!nullOrEmpty(fqn)) {
       markdown.append('`').append(fqn).append("`\n");
     }
+  }
+
+  /**
+   * The stale trust cue rendered for a knowledge item in Compact Markdown. Its exact length is
+   * charged to the item's budget share in {@code AIContextBuilder.fitItem}, so cue + excerpt can
+   * never push a bundle past the caller's knowledge budget.
+   */
+  static String staleCue(KnowledgeItem item) {
+    List<String> reasons = listOrEmpty(item.getStaleReasons());
+    return "\n_⚠ Stale"
+        + (reasons.isEmpty() ? "" : " — " + String.join(", ", reasons))
+        + ". Weigh this against the asset's current state before relying on it for decisions._\n";
   }
 
   private static String labelOf(KnowledgeItem item) {

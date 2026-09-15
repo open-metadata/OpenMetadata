@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -167,13 +168,51 @@ public class GlossaryTermRelationSettingsIT {
     assertEquals(200, response.statusCode(), "Usage counts API should return 200");
     assertNotNull(response.body(), "Response body should not be null");
 
-    @SuppressWarnings("unchecked")
-    Map<String, Integer> usageCounts =
+    List<org.openmetadata.schema.type.RelationshipTypeUsage> usageCounts =
         MAPPER.readValue(
             response.body(),
-            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Integer>>() {});
+            new com.fasterxml.jackson.core.type.TypeReference<
+                List<org.openmetadata.schema.type.RelationshipTypeUsage>>() {});
     assertNotNull(usageCounts, "Usage counts should be parseable");
+    usageCounts.forEach(
+        usage -> assertNotNull(usage.getRelationshipType(), "Usage rows must name their type"));
     LOG.info("Usage counts: {}", usageCounts);
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_paginatedRelationTypeApiRejectsDuplicateNames() throws Exception {
+    String relationTypeName = "paginatedType" + System.currentTimeMillis();
+    try {
+      assertEquals(
+          201,
+          createRelationTypeAndGetStatus(relationTypeName),
+          "Creating a relation type should return 201");
+      assertEquals(
+          409,
+          createRelationTypeAndGetStatus(relationTypeName.toUpperCase()),
+          "Relation type names should be unique regardless of case");
+
+      HttpResponse<String> listResponse =
+          sendAdminRequest(
+              HttpRequest.newBuilder()
+                  .uri(
+                      URI.create(
+                          SdkClients.getServerUrl()
+                              + "/v1/system/settings/glossaryTermRelationSettings/relationTypes?limit=1&offset=0"))
+                  .GET());
+      assertEquals(200, listResponse.statusCode());
+      JsonNode result = MAPPER.readTree(listResponse.body());
+      assertEquals(1, result.get("data").size());
+      assertEquals(1, result.get("paging").get("limit").asInt());
+      assertEquals(0, result.get("paging").get("offset").asInt());
+      assertTrue(result.get("paging").get("total").asInt() > 1);
+    } finally {
+      deleteRelationTypeAndGetStatus(relationTypeName);
+      deleteRelationTypeAndGetStatus(relationTypeName.toUpperCase());
+    }
   }
 
   @Test
@@ -444,6 +483,12 @@ public class GlossaryTermRelationSettingsIT {
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
       mode = ResourceAccessMode.READ_WRITE)
   void test_systemDefinedRelationTypeCannotBeDeleted() throws Exception {
+    int deleteStatus = deleteRelationTypeAndGetStatus("relatedTo");
+    assertTrue(
+        deleteStatus >= 400,
+        "The relation-type DELETE endpoint must reject system-defined relation types. Got: "
+            + deleteStatus);
+
     JsonNode currentSettings = getSettings();
     ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
 
@@ -471,6 +516,88 @@ public class GlossaryTermRelationSettingsIT {
     assertTrue(
         status >= 400,
         "Should not be able to remove system-defined relation type 'relatedTo'. Got: " + status);
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_systemDefinedRelationTypeFieldCannotBeModified() throws Exception {
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    boolean toggled = false;
+    boolean originalIsTransitive = false;
+    for (JsonNode type : relationTypes) {
+      if ("partOf".equals(type.get("name").asText())) {
+        JsonNode sys = type.get("isSystemDefined");
+        assertTrue(sys != null && sys.asBoolean(), "'partOf' should be system-defined");
+        originalIsTransitive = type.get("isTransitive").asBoolean();
+        ((ObjectNode) type).put("isTransitive", !originalIsTransitive);
+        toggled = true;
+        break;
+      }
+    }
+    assertTrue(toggled, "'partOf' should exist in default settings");
+
+    ObjectNode modifiedSettings = MAPPER.createObjectNode();
+    modifiedSettings.set("relationTypes", relationTypes);
+    int status = updateSettingsAndGetStatus(modifiedSettings);
+    assertTrue(
+        status >= 400,
+        "Editing a field of system-defined 'partOf' via settings PUT must be rejected. Got: "
+            + status);
+
+    JsonNode after = getSettings();
+    for (JsonNode type : after.get("config_value").get("relationTypes")) {
+      if ("partOf".equals(type.get("name").asText())) {
+        assertEquals(
+            originalIsTransitive,
+            type.get("isTransitive").asBoolean(),
+            "'partOf' isTransitive must be unchanged after a rejected edit");
+      }
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_cannotCreateSystemDefinedRelationTypeViaSettingsPut() throws Exception {
+    String fakeName = "fakeSystem" + System.currentTimeMillis();
+
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    ObjectNode fakeType = MAPPER.createObjectNode();
+    fakeType.put("name", fakeName);
+    fakeType.put("displayName", "Fake System Type");
+    fakeType.put("isSymmetric", false);
+    fakeType.put("isTransitive", false);
+    fakeType.put("isCrossGlossaryAllowed", true);
+    fakeType.put("category", "associative");
+    fakeType.put("isSystemDefined", true);
+    fakeType.put("color", "#22c55e");
+    fakeType.put("cardinality", "MANY_TO_MANY");
+    relationTypes.add(fakeType);
+
+    ObjectNode newSettings = MAPPER.createObjectNode();
+    newSettings.set("relationTypes", relationTypes);
+    int status = updateSettingsAndGetStatus(newSettings);
+    assertTrue(
+        status >= 400,
+        "Creating a system-defined relation type via settings PUT must be rejected. Got: "
+            + status);
+
+    JsonNode after = getSettings();
+    boolean present = false;
+    for (JsonNode type : after.get("config_value").get("relationTypes")) {
+      if (fakeName.equals(type.get("name").asText())) {
+        present = true;
+        break;
+      }
+    }
+    assertFalse(present, "Fabricated system-defined type must not be persisted");
   }
 
   @Test
@@ -688,6 +815,49 @@ public class GlossaryTermRelationSettingsIT {
 
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
     return response.statusCode();
+  }
+
+  private int createRelationTypeAndGetStatus(String name) throws Exception {
+    ObjectNode relationType = MAPPER.createObjectNode();
+    relationType.put("name", name);
+    relationType.put("displayName", "Paginated Type");
+    relationType.put("category", "associative");
+
+    HttpResponse<String> response =
+        sendAdminRequest(
+            HttpRequest.newBuilder()
+                .uri(
+                    URI.create(
+                        SdkClients.getServerUrl()
+                            + "/v1/system/settings/glossaryTermRelationSettings/relationTypes"))
+                .POST(
+                    HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(relationType))));
+    return response.statusCode();
+  }
+
+  private int deleteRelationTypeAndGetStatus(String name) throws Exception {
+    HttpResponse<String> response =
+        sendAdminRequest(
+            HttpRequest.newBuilder()
+                .uri(
+                    URI.create(
+                        SdkClients.getServerUrl()
+                            + "/v1/system/settings/glossaryTermRelationSettings/relationTypes/"
+                            + name))
+                .DELETE());
+    return response.statusCode();
+  }
+
+  private HttpResponse<String> sendAdminRequest(HttpRequest.Builder requestBuilder)
+      throws Exception {
+    HttpRequest request =
+        requestBuilder
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private GlossaryTerm addTermRelation(String fromTermId, String toTermId, String relationType)

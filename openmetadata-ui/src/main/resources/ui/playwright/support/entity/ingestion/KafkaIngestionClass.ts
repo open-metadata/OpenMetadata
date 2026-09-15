@@ -66,7 +66,17 @@ class KafkaIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-topicFilterPattern').click();
+
+    // Since we need to ingest `__transaction_state` topic, the exclude rule startsWith:^__.* needs to be removed.
+    await page
+      .getByTestId('exclude-chip-startsWith:^__.*')
+      .getByTestId('remove-button')
+      .click();
+
     await page.getByTestId('topicFilterPattern-only-specific-button').click();
+
     await page
       .getByTestId('filter-section-topicFilterPattern')
       .getByTestId('include-filter-input')

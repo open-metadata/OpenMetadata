@@ -12,9 +12,10 @@
 Entity Fetcher
 """
 
-from typing import Iterator, Optional  # noqa: UP035
+from collections.abc import Iterator
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -27,6 +28,7 @@ from metadata.ingestion.progress.modes import ManualProgress
 from metadata.profiler.source.fetcher.fetcher_strategy import (
     DatabaseFetcherStrategy,
     FetcherStrategy,
+    MessagingFetcherStrategy,
     StorageFetcherStrategy,
 )
 from metadata.profiler.source.model import ProfilerSourceAndEntity
@@ -40,7 +42,7 @@ class EntityFetcher:
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],  # noqa: UP045
+        global_profiler_config: Settings | None,
         status: Status,
         progress: ManualProgress,
     ):
@@ -62,6 +64,11 @@ class EntityFetcher:
 
         if service_type is StorageService:
             return StorageFetcherStrategy(
+                self.config, self.metadata, self.global_profiler_config, self.status, self.progress
+            )
+
+        if service_type is MessagingService:
+            return MessagingFetcherStrategy(
                 self.config, self.metadata, self.global_profiler_config, self.status, self.progress
             )
 

@@ -13,23 +13,29 @@
 Module to define overridden dialect methods
 """
 
-import operator  # noqa: I001
-import os
-from collections import OrderedDict
+import operator
+from collections import OrderedDict, defaultdict
 from functools import reduce
-from typing import Dict, Optional  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
-from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import util as sa_util
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Connection, reflection
 from sqlalchemy.sql import text
 from sqlalchemy.types import FLOAT
 
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
+)
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    qualified_identifier as _qualified_identifier,
+)
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_account_usage_schema,
+)
+from metadata.ingestion.source.database.snowflake.identifiers import (
+    quote_identifier as _quote_identifier,
 )
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeTable,
@@ -39,19 +45,25 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_SEMANTIC_VIEWS,
     SNOWFLAKE_GET_STAGES,
-    SNOWFLAKE_GET_STREAM_DEFINITION,
     SNOWFLAKE_GET_STREAM_NAMES,
-    SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TABLE_NAMES,
-    SNOWFLAKE_GET_VIEW_DDL,
     SNOWFLAKE_GET_VIEW_DEFINITION,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
+    build_get_ddl_query,
 )
+from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+    SEMANTIC_COMMENT_IDX,
+    SEMANTIC_DATA_TYPE_IDX,
+    SEMANTIC_EXPRESSION_IDX,
+    SEMANTIC_NAME_IDX,
+)
+from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -59,12 +71,13 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 
 logger = ingestion_logger()
 
 dialect = SnowflakeDialect()
 Query = str
-QueryMap = Dict[str, Query]  # noqa: UP006
+QueryMap = dict[str, Query]
 
 
 # How many schemas' column dicts we keep in the get_schema_columns cache
@@ -78,24 +91,35 @@ QueryMap = Dict[str, Query]  # noqa: UP006
 #
 # Without this bound info_cache only clears between databases
 # (_release_engine in common_db_source.py:171), so multi-schema runs
-# accumulate every schema's column metadata in RAM -- ~1.6 GB per
-# pathologically wide schema, OOM-killing 4 GB pods on databases like
-# COM_US_IMDNA_ADL.
-_DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE = 2
-try:
-    SCHEMA_COLUMNS_CACHE_SIZE = max(
-        1,
-        int(
-            os.environ.get(
-                "OM_SNOWFLAKE_SCHEMA_COLUMNS_CACHE_SIZE",
-                _DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE,
-            )
-        ),
-    )
-except ValueError:
-    SCHEMA_COLUMNS_CACHE_SIZE = _DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE
+# accumulate every schema's column metadata in RAM (~1.6 GB per wide schema)
+# and OOM small pods.
+SCHEMA_COLUMNS_CACHE_SIZE = snowflake_settings.schema_columns_cache_size
 
 _SCHEMA_COLUMNS_LRU_KEY = "_om_snowflake_schema_columns_lru"
+
+# Snowflake errno for "Information schema query returned too much data". Both the
+# schema-wide column query and the schema-wide semantic catalog query fall back to
+# per-object reflection on it.
+INFO_SCHEMA_TOO_MUCH_DATA = 90030
+
+# The three INFORMATION_SCHEMA catalog views backing a semantic view.
+SEMANTIC_DIMENSIONS = "semantic_dimensions"
+SEMANTIC_FACTS = "semantic_facts"
+SEMANTIC_METRICS = "semantic_metrics"
+SEMANTIC_CATALOG_VIEWS = (SEMANTIC_DIMENSIONS, SEMANTIC_FACTS, SEMANTIC_METRICS)
+
+# Which catalog views become columns on the semantic view Table, and the kind label
+# used to deduplicate a name that appears as both a dimension and a fact. Metrics are
+# excluded: they are Metric entities, not columns.
+SEMANTIC_VIEW_COLUMN_KINDS = (
+    ("Dimension", SEMANTIC_DIMENSIONS),
+    ("Fact", SEMANTIC_FACTS),
+)
+
+SEMANTIC_CATALOG_CACHE_SIZE = snowflake_settings.semantic_catalog_cache_size
+
+# A schema's semantic catalog: {catalog_view: {view_name: [row, ...]}}
+SemanticCatalog = dict[str, dict[str, list[tuple]]]
 
 
 TABLE_QUERY_MAPS = {
@@ -141,7 +165,7 @@ def _denormalize_quote_join(*idents):
     return ".".join(normalized_identifiers)
 
 
-def _quoted_name(entity_name: Optional[str]) -> Optional[str]:  # noqa: UP045
+def _quoted_name(entity_name: str | None) -> str | None:
     if entity_name:
         return fqn.quote_name(entity_name)
 
@@ -211,7 +235,19 @@ def get_stage_names_reflection(self, schema=None, **kw):
         return self.dialect.get_stage_names(conn, schema, info_cache=self.info_cache, **kw)
 
 
-def _get_query_map(incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]):  # noqa: UP006, UP045
+def get_semantic_view_names_reflection(self, schema=None, **kw):
+    """Return all semantic view names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_semantic_view_names(conn, schema, info_cache=self.info_cache, **kw)
+
+
+def _get_query_map(incremental: IncrementalConfig | None, query_maps: dict[str, QueryMap]):
     """Returns the proper queries depending if the extraction is Incremental or Full."""
     if incremental and incremental.enabled:
         return query_maps["incremental"]
@@ -222,28 +258,28 @@ def _get_query_parameters(
     self,
     connection,
     schema: str,
-    incremental: Optional[IncrementalConfig],  # noqa: UP045
-    account_usage: Optional[str] = None,  # noqa: UP045
-    include_transient_tables: Optional[bool] = False,  # noqa: UP045
-    include_views: Optional[bool] = False,  # noqa: UP045
+    incremental: IncrementalConfig | None,
+    account_usage: str | None = None,
+    include_transient_tables: bool | None = False,
+    include_views: bool | None = False,
 ):
-    """Returns the proper query parameters depending if the extraction is Incremental or Full"""
-    parameters = {
-        "schema": fqn.unquote_name(schema),
+    """Return SQL-format values separately from driver bind values."""
+    format_parameters = {
         "include_transient_tables": ("TRUE" if include_transient_tables else "COALESCE(IS_TRANSIENT, 'NO') != 'YES'"),
         "include_views": "TRUE" if include_views else "TABLE_TYPE != 'VIEW'",
     }
+    bind_parameters = {"schema": fqn.unquote_name(schema)}
 
     if incremental and incremental.enabled:
         database, _ = self._current_database_schema(connection)  # pylint: disable=W0212
-        parameters = {
-            **parameters,
+        format_parameters["account_usage"] = quote_account_usage_schema(account_usage)
+        bind_parameters = {
+            **bind_parameters,
             "date": incremental.start_timestamp,
             "database": database,
-            "account_usage": account_usage or "SNOWFLAKE.ACCOUNT_USAGE",
         }
 
-    return parameters
+    return format_parameters, bind_parameters
 
 
 def get_table_names(self, connection, schema: str, **kw):
@@ -252,7 +288,7 @@ def get_table_names(self, connection, schema: str, **kw):
     account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
-    parameters = _get_query_parameters(
+    format_parameters, bind_parameters = _get_query_parameters(
         self,
         connection,
         schema,
@@ -264,7 +300,7 @@ def get_table_names(self, connection, schema: str, **kw):
 
     query = queries["default"]
 
-    cursor = connection.execute(text(query.format(**parameters)))
+    cursor = connection.execute(text(query.format(**format_parameters)), bind_parameters)
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -296,14 +332,20 @@ def get_view_names(self, connection, schema, **kw):
     account_usage = kw.get("account_usage")
 
     queries = _get_query_map(incremental, VIEW_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental, account_usage)
+    format_parameters, bind_parameters = _get_query_parameters(
+        self,
+        connection,
+        schema,
+        incremental,
+        account_usage,
+    )
 
     if kw.get("materialized_views"):
         query = queries["materialized_views"]
     else:
         query = queries["views"]
 
-    cursor = connection.execute(text(query.format(**parameters)))
+    cursor = connection.execute(text(query.format(**format_parameters)), bind_parameters)
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1]) for row in cursor]
     )
@@ -314,11 +356,9 @@ def get_stream_names(self, connection, schema, **kw):
     incremental = kw.get("incremental")
 
     queries = _get_query_map(incremental, STREAM_QUERY_MAPS)
-    parameters = _get_query_parameters(self, connection, schema, incremental)
-
     query = queries["default"]
-
-    cursor = connection.execute(text(query.format(**parameters)))
+    quoted_schema = _quote_identifier(schema)
+    cursor = connection.execute(text(query.format(schema=quoted_schema)))
     result = SnowflakeTableList(
         tables=[SnowflakeTable(name=self.normalize_name(row[1]), deleted=None) for row in cursor]
     )
@@ -327,8 +367,8 @@ def get_stream_names(self, connection, schema, **kw):
 
 def get_stage_names(self, connection, schema, **kw):
     """Return all stage names in schema."""
-    parameters = {"schema": fqn.unquote_name(schema)}
-    cursor = connection.execute(text(SNOWFLAKE_GET_STAGES.format(**parameters)))
+    quoted_schema = _quote_identifier(schema)
+    cursor = connection.execute(text(SNOWFLAKE_GET_STAGES.format(schema=quoted_schema)))
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
@@ -340,6 +380,104 @@ def get_stage_names(self, connection, schema, **kw):
         ]
     )
     return result  # noqa: RET504
+
+
+def get_semantic_view_names(self, connection, schema, **kw):
+    """Return all semantic view names in schema from INFORMATION_SCHEMA.SEMANTIC_VIEWS."""
+    cursor = connection.execute(
+        text(SNOWFLAKE_GET_SEMANTIC_VIEWS),
+        {"schema": fqn.unquote_name(schema)},
+    )
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(
+                name=self.normalize_name(row[0]),
+                deleted=None,
+                type_=TableType.SemanticView,
+            )
+            for row in cursor
+        ]
+    )
+    return result  # noqa: RET504
+
+
+def _resolve_semantic_column_type(data_type: str | None):
+    """Map a Snowflake INFORMATION_SCHEMA data_type string to a SQLAlchemy type.
+
+    Falls back to NullType (OpenMetadata maps this to DataType.UNKNOWN) when the
+    base type is unrecognized so a semantic view is never dropped over an exotic type.
+
+    Reads ``ischema_names`` at call time rather than import time: the Snowflake source
+    module registers VARIANT/GEOGRAPHY/GEOMETRY/VECTOR/MAP into that same dict when it
+    is imported, which happens before any semantic view is reflected.
+    """
+    resolved = sqltypes.NullType()
+    if data_type:
+        base_type = data_type.strip().split("(")[0].split()[0].upper()
+        type_class = ischema_names.get(base_type)
+        if type_class is not None:
+            try:
+                resolved = type_class()
+            except Exception:  # pylint: disable=broad-except
+                resolved = sqltypes.NullType()
+    return resolved
+
+
+def merge_semantic_view_column(merged: dict[str, dict], kind: str, row) -> None:
+    """Accumulate a dimension/fact row under its column name.
+
+    ``kind`` is unused: the semantic classification, owning logical table and
+    synonyms are carried by the Metric entity's ``dimensions``/``measures``, not
+    by the column. The merge still deduplicates names that appear in both the
+    dimension and the fact catalog.
+    """
+    name = row[SEMANTIC_NAME_IDX]
+    if name not in merged:
+        merged[name] = {
+            "name": name,
+            "data_type": row[SEMANTIC_DATA_TYPE_IDX],
+            "expression": row[SEMANTIC_EXPRESSION_IDX],
+            "comment": row[SEMANTIC_COMMENT_IDX],
+        }
+
+
+def build_semantic_view_column(entry: dict) -> dict:
+    """Convert an accumulated semantic object into an OpenMetadata column dict.
+
+    The description is the raw Snowflake ``COMMENT`` only. The semantic detail
+    (kind, logical table, synonyms, defining expression) lives on the Metric
+    entity so the column stays a plain, readable column.
+    """
+    return {
+        "name": entry["name"],
+        "type": _resolve_semantic_column_type(entry["data_type"]),
+        "system_data_type": entry["data_type"] or DataType.UNKNOWN.value,
+        "nullable": True,
+        "default": None,
+        "autoincrement": False,
+        "comment": entry["comment"] or None,
+        "primary_key": False,
+    }
+
+
+def _fetch_ddl(connection: Connection, object_type: str, object_name: str) -> str | None:
+    cursor = None
+    try:
+        cursor = connection.execute(text(build_get_ddl_query(object_type, object_name)))
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception as exc:
+        logger.warning(
+            "Failed to fetch DDL for %s [%s]: %s",
+            object_type,
+            object_name,
+            exc,
+        )
+    finally:
+        if cursor is not None:
+            cursor.close()
+    return None
 
 
 @reflection.cache
@@ -359,15 +497,8 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):  # pyl
     logger.debug(f"View definition not found via optimized query for {schema}.{table_name}, falling back to DDL query")
 
     schema = schema or self.default_schema_name
-    view_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-    cursor = connection.execute(text(SNOWFLAKE_GET_VIEW_DDL.format(view_name=view_name)))
-    try:
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-    except Exception:
-        pass
-    return None
+    view_name = _qualified_identifier(schema, table_name)
+    return _fetch_ddl(connection, "VIEW", view_name)
 
 
 @reflection.cache
@@ -378,15 +509,18 @@ def get_stream_definition(  # pylint: disable=unused-argument
     Gets the stream definition
     """
     schema = schema or self.default_schema_name
-    stream_name = f'"{schema}"."{stream_name}"' if schema else f'"{stream_name}"'
-    cursor = connection.execute(text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)))
-    try:
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-    except Exception:
-        pass
-    return None
+    stream_name = _qualified_identifier(schema, stream_name)
+    return _fetch_ddl(connection, "STREAM", stream_name)
+
+
+@reflection.cache
+def get_semantic_view_definition(  # pylint: disable=unused-argument
+    self, connection, semantic_view_name, schema=None, **kw
+):
+    """Gets the semantic view definition (DDL)."""
+    schema = schema or self.default_schema_name
+    semantic_view_name = _qualified_identifier(schema, semantic_view_name)
+    return _fetch_ddl(connection, "SEMANTIC_VIEW", semantic_view_name)
 
 
 @reflection.cache
@@ -485,7 +619,7 @@ def get_schema_columns(self, connection, schema, **kw):
         result = connection.execute(text(SNOWFLAKE_GET_SCHEMA_COLUMNS), {"table_schema": table_schema})
 
     except sa_exc.ProgrammingError as p_err:
-        if p_err.orig.errno == 90030:
+        if p_err.orig.errno == INFO_SCHEMA_TOO_MUCH_DATA:
             # Too many tables in the schema for the bulk query; signal the
             # per-table fallback in get_columns by returning None. Cache the
             # None so subsequent tables in the same schema don't re-run the
@@ -618,9 +752,15 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
     foreign_key_map = {}
     for row in result:
         name = self.normalize_name(row._mapping["fk_name"])
-        if name not in foreign_key_map:
+        table_name = self.normalize_name(row._mapping["fk_table_name"])
+        # Snowflake constraint names are unique per table, not per schema. Cloned
+        # tables (CREATE TABLE ... CLONE / LIKE) copy the constraint name, so the
+        # same fk_name can appear for different tables. Key on (fk_name, table_name)
+        # to avoid merging distinct tables' columns into a single constraint.
+        key = (name, table_name)
+        if key not in foreign_key_map:
             referred_schema = self.normalize_name(row._mapping["pk_schema_name"])
-            foreign_key_map[name] = {
+            foreign_key_map[key] = {
                 "constrained_columns": [self.normalize_name(row._mapping["fk_column_name"])],
                 # referred schema should be None in context where it doesn't need to be specified
                 # https://docs.sqlalchemy.org/en/14/core/reflection.html#reflection-schema-qualified-interaction
@@ -631,21 +771,21 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
                 "referred_columns": [self.normalize_name(row._mapping["pk_column_name"])],
                 "referred_database": self.normalize_name(row._mapping["pk_database_name"]),
                 "name": name,
-                "table_name": self.normalize_name(row._mapping["fk_table_name"]),
+                "table_name": table_name,
             }
             options = {}
             if self.normalize_name(row._mapping["delete_rule"]) != "NO ACTION":
                 options["ondelete"] = self.normalize_name(row._mapping["delete_rule"])
             if self.normalize_name(row._mapping["update_rule"]) != "NO ACTION":
                 options["onupdate"] = self.normalize_name(row._mapping["update_rule"])
-            foreign_key_map[name]["options"] = options
+            foreign_key_map[key]["options"] = options
         else:
-            foreign_key_map[name]["constrained_columns"].append(self.normalize_name(row._mapping["fk_column_name"]))
-            foreign_key_map[name]["referred_columns"].append(self.normalize_name(row._mapping["pk_column_name"]))
+            foreign_key_map[key]["constrained_columns"].append(self.normalize_name(row._mapping["fk_column_name"]))
+            foreign_key_map[key]["referred_columns"].append(self.normalize_name(row._mapping["pk_column_name"]))
 
     ans = {}
 
-    for _, v in foreign_key_map.items():  # noqa: PERF102
+    for v in foreign_key_map.values():
         if v["table_name"] not in ans:
             ans[v["table_name"]] = []
         ans[v["table_name"]].append({k2: v2 for k2, v2 in v.items() if k2 != "table_name"})
@@ -662,6 +802,35 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     return self._get_schema_unique_constraints(connection, self.denormalize_name(full_schema_name), **kw).get(
         table_name, []
     )
+
+
+@reflection.cache
+def _get_schema_unique_constraints(self, connection, schema, **kw):
+    result = connection.execute(
+        text(f"SHOW /* sqlalchemy:_get_schema_unique_constraints */ UNIQUE KEYS IN SCHEMA {schema}")
+    )
+    unique_constraints = {}
+    for row in result:
+        name = self.normalize_name(row._mapping["constraint_name"])
+        table_name = self.normalize_name(row._mapping["table_name"])
+
+        constraint_key = (name, table_name)
+
+        if constraint_key not in unique_constraints:
+            unique_constraints[constraint_key] = {
+                "column_names": [self.normalize_name(row._mapping["column_name"])],
+                "name": name,
+                "table_name": table_name,
+            }
+        else:
+            unique_constraints[constraint_key]["column_names"].append(self.normalize_name(row._mapping["column_name"]))
+
+    ans = defaultdict(list)
+    for constraint in unique_constraints.values():
+        t_name = constraint.pop("table_name")
+        ans[t_name].append(constraint)
+
+    return ans
 
 
 @reflection.cache
@@ -689,12 +858,5 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f'"{schema}"."{table_name}"' if schema else f'"{table_name}"'
-    cursor = connection.execute(text(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name)))
-    try:
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-    except Exception:
-        pass
-    return None
+    table_name = _qualified_identifier(schema, table_name)
+    return _fetch_ddl(connection, "TABLE", table_name)

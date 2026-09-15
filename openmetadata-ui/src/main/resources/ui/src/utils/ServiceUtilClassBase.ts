@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { ObjectFieldTemplatePropertyType, RJSFSchema } from '@rjsf/utils';
 import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
@@ -43,7 +43,7 @@ import {
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
 import {
-  ConfigObject,
+  Connection as ConfigObject,
   WorkflowType,
 } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -65,23 +65,12 @@ import {
   ExtraInfoType,
   ServicesType,
 } from '../interface/service.interface';
-import { getAPIConfig } from './APIServiceUtils';
-import { getDashboardConfig } from './DashboardServiceUtils';
-import { getDatabaseConfig } from './DatabaseServicePureUtils';
-import { getDriveConfig } from './DriveServiceUtils';
-import { getMessagingConfig } from './MessagingServiceUtils';
-import { getMetadataConfig } from './MetadataServiceUtils';
-import { getMlmodelConfig } from './MlmodelServiceUtils';
-import { getPipelineConfig } from './PipelineServiceUtils';
-import { getSearchServiceConfig } from './SearchServiceUtils';
-import { getSecurityConfig } from './SecurityServiceUtils';
 import { getServiceIcon } from './ServiceIconUtils';
 import { getDefaultInsightsTabWidgets } from './ServiceInsightsWidgets';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
 } from './ServicePureUtils';
-import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringUtils';
 
 type ServiceLogoStyle = {
@@ -250,6 +239,13 @@ class ServiceUtilClassBase {
     return null;
   }
 
+  public validateSecretPrefixFields(
+    _schema: RJSFSchema,
+    _formData: Record<string, unknown>
+  ): { path: (string | number)[]; message: string }[] {
+    return [];
+  }
+
   public getSupportedServiceFromList() {
     return {
       databaseServices: this.filterUnsupportedServiceType(
@@ -291,86 +287,48 @@ class ServiceUtilClassBase {
   public getEntityTypeFromServiceType(serviceType: string): EntityType {
     const serviceTypes = this.getSupportedServiceFromList();
 
-    // Check which service category the serviceType belongs to
-    if (serviceTypes.databaseServices.includes(serviceType)) {
-      return EntityType.TABLE;
-    }
+    // Ordered category → entity-type mapping; first matching category wins.
+    const categoryEntityTypes: Array<[string[], EntityType]> = [
+      [serviceTypes.databaseServices, EntityType.TABLE],
+      [serviceTypes.messagingServices, EntityType.TOPIC],
+      [serviceTypes.dashboardServices, EntityType.DASHBOARD],
+      [serviceTypes.pipelineServices, EntityType.PIPELINE],
+      [serviceTypes.mlmodelServices, EntityType.MLMODEL],
+      [serviceTypes.storageServices, EntityType.CONTAINER],
+      [serviceTypes.searchServices, EntityType.SEARCH_INDEX],
+      [serviceTypes.apiServices, EntityType.API_ENDPOINT],
+      // Security services typically work with tables
+      [serviceTypes.securityServices, EntityType.TABLE],
+      [serviceTypes.driveServices, EntityType.DIRECTORY],
+    ];
 
-    if (serviceTypes.messagingServices.includes(serviceType)) {
-      return EntityType.TOPIC;
-    }
+    const match = categoryEntityTypes.find(([services]) =>
+      services.includes(serviceType)
+    );
 
-    if (serviceTypes.dashboardServices.includes(serviceType)) {
-      return EntityType.DASHBOARD;
-    }
-
-    if (serviceTypes.pipelineServices.includes(serviceType)) {
-      return EntityType.PIPELINE;
-    }
-
-    if (serviceTypes.mlmodelServices.includes(serviceType)) {
-      return EntityType.MLMODEL;
-    }
-
-    if (serviceTypes.storageServices.includes(serviceType)) {
-      return EntityType.CONTAINER;
-    }
-
-    if (serviceTypes.searchServices.includes(serviceType)) {
-      return EntityType.SEARCH_INDEX;
-    }
-
-    if (serviceTypes.apiServices.includes(serviceType)) {
-      return EntityType.API_ENDPOINT;
-    }
-
-    if (serviceTypes.securityServices.includes(serviceType)) {
-      return EntityType.TABLE; // Security services typically work with tables
-    }
-
-    if (serviceTypes.driveServices.includes(serviceType)) {
-      return EntityType.DIRECTORY;
-    }
-
-    // Default fallback
-    return EntityType.TABLE;
+    return match?.[1] ?? EntityType.TABLE;
   }
 
   private getDefaultLogoForServiceType(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
 
-    if (serviceTypes.messagingServices.includes(type)) {
-      return getServiceIcon('topicdefault');
-    }
-    if (serviceTypes.dashboardServices.includes(type)) {
-      return getServiceIcon('dashboarddefault');
-    }
-    if (serviceTypes.pipelineServices.includes(type)) {
-      return getServiceIcon('pipelinedefault');
-    }
-    if (serviceTypes.databaseServices.includes(type)) {
-      return getServiceIcon('databasedefault');
-    }
-    if (serviceTypes.mlmodelServices.includes(type)) {
-      return getServiceIcon('mlmodeldefault');
-    }
-    if (serviceTypes.storageServices.includes(type)) {
-      return getServiceIcon('storagedefault');
-    }
-    if (serviceTypes.searchServices.includes(type)) {
-      return getServiceIcon('searchdefault');
-    }
-    if (serviceTypes.securityServices.includes(type)) {
-      return getServiceIcon('securitydefault');
-    }
-    if (serviceTypes.driveServices.includes(type)) {
-      return getServiceIcon('drivedefault');
-    }
-    if (serviceTypes.apiServices.includes(type)) {
-      return getServiceIcon('restservice');
-    }
+    // Ordered category → default icon-name mapping; first matching category wins.
+    const categoryIcons: Array<[string[], string]> = [
+      [serviceTypes.messagingServices, 'topicdefault'],
+      [serviceTypes.dashboardServices, 'dashboarddefault'],
+      [serviceTypes.pipelineServices, 'pipelinedefault'],
+      [serviceTypes.databaseServices, 'databasedefault'],
+      [serviceTypes.mlmodelServices, 'mlmodeldefault'],
+      [serviceTypes.storageServices, 'storagedefault'],
+      [serviceTypes.searchServices, 'searchdefault'],
+      [serviceTypes.securityServices, 'securitydefault'],
+      [serviceTypes.driveServices, 'drivedefault'],
+      [serviceTypes.apiServices, 'restservice'],
+    ];
 
-    return getServiceIcon('defaultservice');
+    const match = categoryIcons.find(([services]) => services.includes(type));
+
+    return getServiceIcon(match ? match[1] : 'defaultservice');
   }
 
   public getServiceLogo(type: string) {
@@ -401,22 +359,7 @@ class ServiceUtilClassBase {
 
     // Handle entities that don't have serviceType by using entity-specific icons
     if (isEmpty(type)) {
-      switch (entityType) {
-        case EntityType.TAG:
-          return TagIcon;
-        case EntityType.GLOSSARY_TERM:
-          return GlossaryIcon;
-        case EntityType.DATABASE:
-          return DatabaseIcon;
-        case EntityType.DATABASE_SCHEMA:
-          return DatabaseSchemaIcon;
-        case EntityType.METRIC:
-          return MetricIcon;
-        case EntityType.DATA_PRODUCT:
-          return DataProductIcon;
-        default:
-          return this.getServiceLogo('');
-      }
+      return this.getEntitySpecificLogo(entityType);
     }
 
     if (entityType === EntityType.CHART) {
@@ -424,6 +367,25 @@ class ServiceUtilClassBase {
     }
 
     return this.getServiceLogo(type);
+  }
+
+  private getEntitySpecificLogo(entityType: string): string {
+    switch (entityType) {
+      case EntityType.TAG:
+        return TagIcon;
+      case EntityType.GLOSSARY_TERM:
+        return GlossaryIcon;
+      case EntityType.DATABASE:
+        return DatabaseIcon;
+      case EntityType.DATABASE_SCHEMA:
+        return DatabaseSchemaIcon;
+      case EntityType.METRIC:
+        return MetricIcon;
+      case EntityType.DATA_PRODUCT:
+        return DataProductIcon;
+      default:
+        return this.getServiceLogo('');
+    }
   }
 
   public getDataAssetsService(serviceType: string): ExplorePageTabs {
@@ -482,46 +444,69 @@ class ServiceUtilClassBase {
     }
   }
 
-  public getPipelineServiceConfig(type: PipelineServiceType) {
+  public async getPipelineServiceConfig(type: PipelineServiceType) {
+    const { getPipelineConfig } = await import('./PipelineServiceUtils');
+
     return getPipelineConfig(type);
   }
 
-  public getDatabaseServiceConfig(type: DatabaseServiceType) {
+  public async getDatabaseServiceConfig(type: DatabaseServiceType) {
+    const { getDatabaseConfig } = await import('./DatabaseServicePureUtils');
+
     return getDatabaseConfig(type);
   }
 
-  public getDashboardServiceConfig(type: DashboardServiceType) {
+  public async getDashboardServiceConfig(type: DashboardServiceType) {
+    const { getDashboardConfig } = await import('./DashboardServiceUtils');
+
     return getDashboardConfig(type);
   }
 
-  public getMessagingServiceConfig(type: MessagingServiceType) {
+  public async getMessagingServiceConfig(type: MessagingServiceType) {
+    const { getMessagingConfig } = await import('./MessagingServiceUtils');
+
     return getMessagingConfig(type);
   }
 
-  public getMlModelServiceConfig(type: MlModelServiceType) {
+  public async getMlModelServiceConfig(type: MlModelServiceType) {
+    const { getMlmodelConfig } = await import('./MlmodelServiceUtils');
+
     return getMlmodelConfig(type);
   }
 
-  public getSearchServiceConfig(type: SearchServiceType) {
+  public async getSearchServiceConfig(type: SearchServiceType) {
+    const { getSearchServiceConfig } = await import('./SearchServiceUtils');
+
     return getSearchServiceConfig(type);
   }
 
-  public getStorageServiceConfig(type: StorageServiceType) {
+  public async getStorageServiceConfig(type: StorageServiceType) {
+    const { getStorageConfig } = await import('./StorageServiceUtils');
+
     return getStorageConfig(type);
   }
 
-  public getMetadataServiceConfig(type: MetadataServiceType) {
+  public async getMetadataServiceConfig(type: MetadataServiceType) {
+    const { getMetadataConfig } = await import('./MetadataServiceUtils');
+
     return getMetadataConfig(type);
   }
 
-  public getAPIServiceConfig(type: APIServiceType) {
+  public async getAPIServiceConfig(type: APIServiceType) {
+    const { getAPIConfig } = await import('./APIServiceUtils');
+
     return getAPIConfig(type);
   }
 
-  public getSecurityServiceConfig(type: SecurityServiceType) {
+  public async getSecurityServiceConfig(type: SecurityServiceType) {
+    const { getSecurityConfig } = await import('./SecurityServiceUtils');
+
     return getSecurityConfig(type);
   }
-  public getDriveServiceConfig(type: DriveServiceType) {
+
+  public async getDriveServiceConfig(type: DriveServiceType) {
+    const { getDriveConfig } = await import('./DriveServiceUtils');
+
     return getDriveConfig(type);
   }
 

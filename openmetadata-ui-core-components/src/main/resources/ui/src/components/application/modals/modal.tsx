@@ -79,10 +79,16 @@ interface DialogContentProps {
   className?: string;
 }
 
+// max-h-[60vh] + overflow-y-auto so long content scrolls within its own pane
+// instead of being silently clipped by the panel's overflow-hidden rounding
+// (Dialog.Footer sits below this, outside it, so it's unaffected either
+// way). Matches the value/pattern already duplicated across ~13 call sites
+// in openmetadata-ui/collate-ui that worked around this by hand; a consumer
+// can still override via className for a case that genuinely needs more.
 const DialogContent = ({ children, className }: DialogContentProps) => (
   <div
     className={cx(
-      'tw:flex tw:flex-col tw:justify-start tw:gap-4 tw:px-4 tw:pt-5 tw:sm:px-6',
+      'tw:flex tw:max-h-[60vh] tw:flex-col tw:justify-start tw:gap-4 tw:overflow-y-auto tw:px-4 tw:pt-5 tw:sm:px-6',
       className
     )}>
     {children}
@@ -114,6 +120,13 @@ interface DialogProps extends Omit<AriaDialogProps, 'children'> {
   showCloseButton?: boolean;
   width?: number;
   onClose?: () => void;
+  /**
+   * Classes for the panel itself — the element `width` is applied to.
+   * `className` lands on the outer dialog wrapper, which is not the element
+   * that carries the width, so styling that depends on it (e.g. transitioning
+   * `max-width` when `width` changes) has to go here.
+   */
+  panelClassName?: string;
 }
 
 type DialogComponent = ((props: DialogProps) => JSX.Element) & {
@@ -128,6 +141,7 @@ const DialogBase = ({
   showCloseButton,
   onClose,
   width = 688,
+  panelClassName,
   ...props
 }: DialogProps) => (
   <AriaDialog
@@ -138,7 +152,10 @@ const DialogBase = ({
     )}>
     {({ close }) => (
       <div
-        className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
+        className={cx(
+          'tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl',
+          panelClassName
+        )}
         style={{ maxWidth: width }}>
         <div className="tw:overflow-hidden tw:rounded-2xl">
           {title && (

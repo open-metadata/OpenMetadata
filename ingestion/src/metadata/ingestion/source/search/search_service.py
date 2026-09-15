@@ -13,10 +13,10 @@ Base class for ingesting search index services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated, Any
 
 from pydantic import Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -52,6 +52,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
+    close_on_failure,
     create_connection,
     get_connection,
     run_test_connection,
@@ -133,7 +134,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = SearchServiceTopology()
     context = TopologyContextManager(topology)
-    index_source_state: Set = set()  # noqa: RUF012, UP006
+    index_source_state: set = set()  # noqa: RUF012
 
     @retry_with_docker_host()
     def __init__(
@@ -151,11 +152,8 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @property
     def name(self) -> str:
@@ -169,7 +167,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         """Method to Get Sample Data of Search Index Entity"""
 
     @abstractmethod
-    def get_search_index_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_search_index_list(self) -> list[Any] | None:
         """Get List of all search index"""
 
     @abstractmethod
@@ -195,7 +193,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[CreateSearchIndexRequest]]:
         """Method to Get Search Index Templates"""
 
-    def get_search_index_template_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_search_index_template_list(self) -> list[Any] | None:
         """Get list of all search index templates"""
 
     def get_search_index_template_name(self, search_index_template_details: Any) -> str:

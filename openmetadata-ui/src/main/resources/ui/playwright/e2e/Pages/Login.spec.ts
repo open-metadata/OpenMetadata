@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
+import { expect, test } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  generateRandomUsername,
   getDefaultAdminAPIContext,
   redirectToHomePage,
   toastNotification,
@@ -36,15 +37,17 @@ test.describe.configure({
   timeout: 5 * 60 * 1000,
 });
 
+test.use({
+  trace: 'retain-on-failure',
+});
+
 test.describe(
   'Login flow should work properly',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction, page } = await performAdminLogin(
-        browser
-      );
-      const response = await page.request.get(
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const response = await apiContext.get(
         `/api/v1/users/name/${user.getUserDisplayName()}`
       );
 
@@ -120,7 +123,9 @@ test.describe(
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
 
-      await expect(page).toHaveURL(`/my-data`);
+      await expect(page).toHaveURL(
+        (url) => url.pathname === '/' || url.pathname === '/my-data'
+      );
 
       // Verify user profile
       await page.locator('[data-testid="dropdown-profile"]').click();
@@ -128,6 +133,42 @@ test.describe(
       await expect(page.getByTestId('nav-user-name')).toContainText(
         `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
       );
+    });
+
+    // The UI base64-encodes the password before POSTing it to
+    // /api/v1/auth/login and the server decodes those bytes as UTF-8. `btoa`
+    // maps every character to a single Latin-1 byte, so a non-ASCII password
+    // was reconstructed as a different string and the login was rejected —
+    // issue #28694.
+    test('Signin with a password containing non-ASCII characters', async ({
+      page,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      const nonAsciiUser = new UserClass({
+        ...generateRandomUsername(),
+        password: 'T\u00ebst\u00a7123\u00a3aA!',
+      });
+
+      try {
+        await nonAsciiUser.create(apiContext);
+        await nonAsciiUser.login(page);
+
+        await expect(page).toHaveURL(
+          (url) => !url.pathname.includes('/signin')
+        );
+
+        await page.getByTestId('dropdown-profile').click();
+
+        await expect(page.getByTestId('nav-user-name')).toContainText(
+          `${nonAsciiUser.data.firstName}${nonAsciiUser.data.lastName}`
+        );
+      } finally {
+        await nonAsciiUser.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('Signin using invalid credentials', async ({ page }) => {
@@ -165,90 +206,100 @@ test.describe(
       await page.locator('[data-testid="go-back-button"]').click();
     });
 
-    test('Refresh should work', async ({ page: page1, browser }) => {
-      test.slow();
+    test.describe('Token renewal', () => {
+      test.describe.configure({
+        retries: process.env.PLAYWRIGHT_IS_OSS ? 0 : 2,
+      });
 
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-        browser
-      );
-      const context = page1.context();
-      const page2 = await context.newPage();
+      test('Refresh should work', async ({ page: page1, browser }) => {
+        test.slow();
 
-      const testUser = new UserClass();
-      await testUser.create(apiContext);
-      await testUser.setAdminRole(apiContext);
-
-      await test.step('Login and wait for refresh call is made', async () => {
-        // User login
-
-        await testUser.login(page1);
-        await redirectToHomePage(page1);
-        await waitForAllLoadersToDisappear(page1);
-        await redirectToHomePage(page2);
-        await waitForAllLoadersToDisappear(page2);
-        await page2.reload();
-
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
-        await page1.waitForTimeout(3 * 60 * 1000);
-
-        await page1.bringToFront();
-        await visitOwnProfilePage(page1);
-        await waitForAllLoadersToDisappear(page1);
-        await expect(page1.getByTestId('user-display-name')).toHaveText(
-          testUser.responseData.displayName ?? testUser.responseData.name
+        const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+          browser
         );
+        const context = page1.context();
+        const page2 = await context.newPage();
 
-        await page2.bringToFront();
-        await page2.evaluate(() => {
-          document.dispatchEvent(
-            new Event('visibilitychange', { bubbles: true })
+        const testUser = new UserClass();
+        await testUser.create(apiContext);
+        await testUser.setAdminRole(apiContext);
+
+        await test.step('Login and wait for refresh call is made', async () => {
+          // User login
+
+          await testUser.login(page1);
+          await redirectToHomePage(page1);
+          await waitForAllLoadersToDisappear(page1);
+          await redirectToHomePage(page2);
+          await waitForAllLoadersToDisappear(page2);
+          await page2.reload();
+
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
+          await page1.waitForTimeout(2 * 61 * 1000);
+
+          await page1.bringToFront();
+          await visitOwnProfilePage(page1);
+          await waitForAllLoadersToDisappear(page1);
+          await expect(page1.getByTestId('user-display-name')).toHaveText(
+            testUser.responseData.displayName ?? testUser.responseData.name
           );
+
+          await page2.bringToFront();
+          await page2.evaluate(() => {
+            document.dispatchEvent(
+              new Event('visibilitychange', { bubbles: true })
+            );
+          });
+
+          await visitOwnProfilePage(page2);
+          await waitForAllLoadersToDisappear(page2);
+          await expect(page2.getByTestId('user-display-name')).toHaveText(
+            testUser.responseData.displayName ?? testUser.responseData.name
+          );
+
+          await page1.close();
+          await page2.close();
         });
 
-        await visitOwnProfilePage(page2);
-        await waitForAllLoadersToDisappear(page2);
-        await expect(page2.getByTestId('user-display-name')).toHaveText(
-          testUser.responseData.displayName ?? testUser.responseData.name
+        await afterAction();
+      });
+
+      test('accessing app with expired token should do auto renew token', async ({
+        browser,
+      }) => {
+        const browserContext = await browser.newContext();
+
+        // Create new page and validate access
+        const page1 = await browserContext.newPage();
+        const page2 = await browserContext.newPage();
+
+        const admin = new AdminClass();
+        await admin.login(page1);
+
+        await redirectToHomePage(page1);
+        await page1.getByTestId('dropdown-profile').click();
+        await clickOutside(page1);
+
+        await expect(page1.getByTestId('nav-user-name')).toContainText(
+          /admin/i
+        );
+
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
+        await page2.waitForTimeout(2 * 61 * 1000);
+
+        await redirectToHomePage(page2);
+
+        await page2.getByTestId('dropdown-profile').click();
+        await clickOutside(page2);
+
+        await expect(page2.getByTestId('nav-user-name')).toContainText(
+          /admin/i
         );
 
         await page1.close();
         await page2.close();
+        await browserContext.close();
       });
-
-      await afterAction();
-    });
-
-    test('accessing app with expired token should do auto renew token', async ({
-      browser,
-    }) => {
-      const browserContext = await browser.newContext();
-
-      // Create new page and validate access
-      const page1 = await browserContext.newPage();
-      const page2 = await browserContext.newPage();
-
-      const admin = new AdminClass();
-      await admin.login(page1);
-
-      await redirectToHomePage(page1);
-      await page1.getByTestId('dropdown-profile').click();
-      await clickOutside(page1);
-
-      await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
-
-      // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
-      await page2.waitForTimeout(2 * 61 * 1000);
-
-      await redirectToHomePage(page2);
-
-      await page2.getByTestId('dropdown-profile').click();
-      await clickOutside(page2);
-
-      await expect(page2.getByTestId('nav-user-name')).toContainText(/admin/i);
-
-      await page1.close();
-      await page2.close();
-      await browserContext.close();
     });
   }
 );

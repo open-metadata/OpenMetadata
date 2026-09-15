@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SftpConnection",
+  "description": "SFTP Connection Config for secure file transfer protocol servers.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.drive.SftpConnection",
+  "definitions": {
+    "sftpType": {
+      "description": "SFTP service type",
+      "type": "string",
+      "enum": [
+        "Sftp"
+      ],
+      "default": "Sftp"
+    },
+    "basicAuth": {
+      "title": "Username/Password Authentication",
+      "description": "Username and password authentication for SFTP",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "SFTP username",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "SFTP password",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": [
+        "username",
+        "password"
+      ],
+      "additionalProperties": false
+    },
+    "keyAuth": {
+      "title": "Private Key Authentication",
+      "description": "SSH private key authentication for SFTP",
+      "type": "object",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "SFTP username",
+          "type": "string"
+        },
+        "privateKey": {
+          "title": "Private Key",
+          "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
+          "type": "string",
+          "format": "password",
+          "uiFieldType": "fileOrInput"
+        },
+        "privateKeyPassphrase": {
+          "title": "Private Key Passphrase",
+          "description": "Passphrase for the private key (if encrypted)",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "required": [
+        "username",
+        "privateKey"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Sftp",
+      "type": "string",
+      "enum": [
+        "Sftp"
+      ]
+    },
+    "host": {
+      "title": "Host",
+      "description": "SFTP server hostname or IP address",
+      "type": "string"
+    },
+    "port": {
+      "title": "Port",
+      "description": "SFTP server port number",
+      "type": "integer",
+      "default": 22
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Authentication method: username/password or SSH private key",
+      "oneOf": [
+        {
+          "title": "Username/Password Authentication",
+          "description": "Username and password authentication for SFTP",
+          "type": "object",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "SFTP username",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "SFTP password",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "title": "Private Key Authentication",
+          "description": "SSH private key authentication for SFTP",
+          "type": "object",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "SFTP username",
+              "type": "string"
+            },
+            "privateKey": {
+              "title": "Private Key",
+              "description": "SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.",
+              "type": "string",
+              "format": "password",
+              "uiFieldType": "fileOrInput"
+            },
+            "privateKeyPassphrase": {
+              "title": "Private Key Passphrase",
+              "description": "Passphrase for the private key (if encrypted)",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "privateKey"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "rootDirectories": {
+      "title": "Root Directories",
+      "description": "List of root directories to scan for files and subdirectories. If not specified, defaults to the user's home directory.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "/"
+      ]
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+      "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": {
+          "type": "string"
+        }
+      }
+    },
+    "directoryFilterPattern": {
+      "title": "Directory Filter Pattern",
+      "description": "Regex to only include/exclude directories that match the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "fileFilterPattern": {
+      "title": "File Filter Pattern",
+      "description": "Regex to only include/exclude files that match the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "structuredDataFilesOnly": {
+      "title": "Structured Data Files Only",
+      "description": "When enabled, only catalog structured data files (CSV, TSV) that can have schema extracted. Non-structured files like images, PDFs, videos, etc. will be skipped.",
+      "type": "boolean",
+      "default": false
+    },
+    "extractSampleData": {
+      "title": "Extract Sample Data",
+      "description": "When enabled, extract sample data from structured files (CSV, TSV). This is disabled by default to avoid performance overhead.",
+      "type": "boolean",
+      "default": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "host",
+    "authType"
+  ],
+  "additionalProperties": false
+}

@@ -28,6 +28,7 @@ import {
   testTableSorting,
   uuid,
 } from '../../utils/common';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { test } from '../fixtures/pages';
 
 test.beforeEach(async ({ page }) => {
@@ -204,10 +205,14 @@ test.describe('Table Sorting', () => {
       await afterAction();
     });
 
-    test('should have sorting on name column', async ({ page }) => {
-      await page.goto('/settings/services/dataObservability?tab=pipelines');
-      await testTableSorting(page, 'Name', 1);
-    });
+    test(
+      'should have sorting on name column',
+      { tag: '@ingestion' },
+      async ({ page }) => {
+        await page.goto('/settings/services/dataObservability?tab=pipelines');
+        await testTableSorting(page, 'Name', 1);
+      }
+    );
   });
 
   test.describe('Data Models Table', () => {
@@ -306,22 +311,35 @@ test.describe('Table Sorting', () => {
     }) => {
       const { afterAction, apiContext } = await getApiContext(page);
       const file1 = EntityDataClass.file1.get();
-      const file2 = new FileClass();
+      const rootFiles = [new FileClass(), new FileClass()];
 
-      file2.service.name = file1.service.name;
-      file2.entity.service = file1.service.fullyQualifiedName;
+      await Promise.all(
+        rootFiles.map(async (file) => {
+          file.service.name = file1.service.name;
+          file.entity.service = file1.service.fullyQualifiedName;
 
-      const file2Response = await apiContext.post(
-        `/api/v1/${EntityTypeEndpoint.File}`,
-        {
-          data: {
-            name: file2.entity.name,
-            description: file2.entity.description,
-            service: file2.entity.service,
-          },
-        }
+          const response = await apiContext.post(
+            `/api/v1/${EntityTypeEndpoint.File}`,
+            {
+              data: {
+                name: file.entity.name,
+                description: file.entity.description,
+                service: file.entity.service,
+              },
+            }
+          );
+          file.entityResponseData = await response.json();
+        })
       );
-      file2.entityResponseData = await file2Response.json();
+      await Promise.all(
+        rootFiles.map((file) =>
+          waitForSearchIndexed(
+            apiContext,
+            file.entityResponseData.fullyQualifiedName,
+            'file_search_index'
+          )
+        )
+      );
 
       await page.goto(`/service/driveServices/${file1.service.name}/files`);
       await testTableSorting(page, 'Name');

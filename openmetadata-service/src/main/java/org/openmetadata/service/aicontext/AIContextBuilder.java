@@ -27,9 +27,11 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -52,6 +55,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableProfile;
@@ -61,11 +65,13 @@ import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -73,14 +79,16 @@ import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Assembles the {@link AIContext} (Context Profile) for a data asset: the common knowledge envelope
  * (attached glossary terms and Context Center articles) that applies to every entity type, plus the
  * type-specific structural {@link AssetContext} (schema, primary/foreign keys, frequent joins for
- * tables). It is the server-side, permission-agnostic core behind the {@code get_asset_context} MCP
+ * tables). It is the server-side core behind the {@code get_asset_context} MCP
  * tool and REST endpoint, so any agent can pull an asset's full context in a single call.
  *
  * <p>The structural transforms ({@link #buildTableContext}, {@link #extractForeignKeys}, etc.) are
@@ -93,9 +101,14 @@ public class AIContextBuilder {
   private static final int MAX_KNOWLEDGE_ITEMS = 50;
   private static final int MAX_ARTICLES = 20;
   private static final int MAX_JOIN_HINTS = 25;
+  static final int MAX_SAMPLE_ROWS = 10;
   static final int MAX_COLUMN_MAPPINGS_PER_EDGE = 25;
+
+  /** Upper bound on the model SQL inlined into a table's data-model context, in characters. */
+  static final int MAX_DATA_MODEL_SQL_CHARS = 4000;
+
   private static final String TABLE_FIELDS =
-      "columns,tableConstraints,joins,tablePartition,tags,testSuite";
+      "columns,tableConstraints,joins,tablePartition,tags,testSuite,dataModel";
   private static final String DEFAULT_FIELDS = "tags";
 
   /** Total characters of knowledge-item content allowed in one bundle before degradation. */
@@ -116,6 +129,9 @@ public class AIContextBuilder {
   /** Max query-relevant vector lookups per bundle; items beyond it use the structural preview. */
   private static final int MAX_QUERY_EXCERPTS = 5;
 
+  /** Max upstream edges whose data-quality standing is checked for staleness stamping. */
+  static final int MAX_UPSTREAM_DQ_CHECKS = 3;
+
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
@@ -123,6 +139,12 @@ public class AIContextBuilder {
   private int knowledgeBudgetChars = DEFAULT_KNOWLEDGE_BUDGET_CHARS;
   private String query;
   private int queryExcerptsRemaining = MAX_QUERY_EXCERPTS;
+  private Long assetUpdatedAt;
+  private DataQuality assetDataQuality;
+  private EntityLineage lineage;
+  private List<Edge> upstreamEdgeList;
+  private DataQuality upstreamDataQuality;
+  private boolean upstreamDataQualityResolved;
 
   public AIContextBuilder(String entityType, String fqn) {
     this.entityType = entityType;
@@ -170,13 +192,21 @@ public class AIContextBuilder {
     EntityLineage lineage = fetchLineage(entity);
     List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
     List<LineageEdgeContext> downstreamEdges = edgeContexts(lineage, false);
+    DataQuality dataQuality = resolveDataQuality(entity);
+    this.assetUpdatedAt = entity.getUpdatedAt();
+    this.assetDataQuality = dataQuality;
+    this.lineage = lineage;
+    this.upstreamEdgeList = lineage == null ? null : lineage.getUpstreamEdges();
     AIContext context =
         new AIContext()
             .withId(entity.getId())
+            .withName(entity.getName())
             .withFullyQualifiedName(entity.getFullyQualifiedName())
             .withEntityType(entityType)
+            .withService(serviceRef(entity))
+            .withServiceType(serviceType(entity))
             .withDisplayName(entity.getDisplayName())
-            .withDescription(entity.getDescription())
+            .withDescription(unescapeRichText(entity.getDescription()))
             .withResource(entity.getHref())
             .withTags(extractClassificationTags(entity))
             .withGlossaryTerms(resolveGlossaryTerms(entity))
@@ -187,7 +217,7 @@ public class AIContextBuilder {
             .withDownstream(edgeFqns(downstreamEdges))
             .withDownstreamEdges(downstreamEdges)
             .withAssetContext(buildAssetContext(entity))
-            .withObservability(resolveObservability(entity))
+            .withObservability(resolveObservability(entity, dataQuality))
             .withGeneratedAt(System.currentTimeMillis());
     applyKnowledgeBudget(context);
     return context;
@@ -221,13 +251,20 @@ public class AIContextBuilder {
     String content = item.getContent();
     int budget = remaining;
     if (!nullOrEmpty(content)) {
-      if (content.length() <= MAX_ITEM_CHARS && content.length() <= remaining) {
-        budget = remaining - content.length();
-      } else if (remaining >= MIN_EXCERPT_CHARS) {
-        String lead = buildExcerpt(item, content, Math.min(EXCERPT_CHARS, remaining));
+      // Stale items render a trust cue next to their excerpt in Compact Markdown; the cue's exact
+      // rendered length is charged to the shared budget so later items can never overrun it.
+      int cueChars =
+          Boolean.TRUE.equals(item.getStale()) ? AIContextMarkdown.staleCue(item).length() : 0;
+      int effective = remaining - cueChars;
+      if (content.length() <= MAX_ITEM_CHARS && content.length() <= effective) {
+        budget = remaining - content.length() - cueChars;
+      } else if (effective >= MIN_EXCERPT_CHARS) {
+        String lead = buildExcerpt(item, content, Math.min(EXCERPT_CHARS, effective));
         item.withContent(lead).withContentTruncated(true);
-        budget = remaining - lead.length();
+        budget = remaining - lead.length() - cueChars;
       } else {
+        // Budget exhausted: content is omitted, and with it the cue (the cue renders only
+        // alongside visible content, see AIContextMarkdown) — so nothing is charged.
         item.withContent(null).withContentTruncated(true);
       }
     }
@@ -252,6 +289,20 @@ public class AIContextBuilder {
     return result;
   }
 
+  /**
+   * The caller for memory visibility, null when this builder was given no usable security context. A
+   * knowledge item may be a context memory, whose excerpt is only retrievable with a subject. The
+   * principal check mirrors {@link ContextMemoryVisibility#enforceVisibility}: {@link
+   * DefaultAuthorizer#getSubjectContext} throws without one.
+   */
+  private SubjectContext subjectContextOrNull() {
+    SubjectContext subject = null;
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    }
+    return subject;
+  }
+
   /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
   private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
     String result = null;
@@ -264,7 +315,8 @@ public class AIContextBuilder {
             Entity.getEntityReferenceByName(
                 item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
         List<String> passages =
-            vectorService.searchChunksByParent(reference.getId().toString(), query, 1);
+            vectorService.searchChunksByParent(
+                reference.getId().toString(), query, 1, subjectContextOrNull());
         if (!nullOrEmpty(passages)) {
           result = excerpt(passages.getFirst(), limit);
         }
@@ -280,19 +332,27 @@ public class AIContextBuilder {
 
   /**
    * A relevance-judgeable preview of long content: the lead paragraph plus a {@code Sections:}
-   * outline of the body's markdown headings, so an agent sees what the document covers (not just its
-   * opening) before deciding to fetch the full body.
+   * outline of the body's markdown headings, so an agent sees what the document covers (not just
+   * its opening) before deciding to fetch the full body. The result never exceeds {@code limit}:
+   * when the outline alone fills the share, it is rendered bounded and the lead is elided, so the
+   * item's exact-length budget charge in {@link #fitItem} can never go negative.
    */
   static String structuralPreview(String content, int limit) {
+    if (nullOrEmpty(content)) {
+      return "";
+    }
     List<String> headings = extractHeadings(content);
     String outline =
         headings.size() >= 2
             ? "\n\nSections: " + String.join(" · ", capList(headings, MAX_OUTLINE_HEADINGS))
             : "";
-    // Reserve room for the outline so lead + Sections together stay within limit and the item
-    // never overruns its share of the knowledge budget.
-    String lead = excerpt(leadParagraph(content), Math.max(0, limit - outline.length()));
-    return lead + outline;
+    String result;
+    if (outline.length() >= limit) {
+      result = excerpt(outline.strip(), limit);
+    } else {
+      result = excerpt(leadParagraph(content), limit - outline.length()) + outline;
+    }
+    return result;
   }
 
   private static List<String> extractHeadings(String content) {
@@ -322,12 +382,23 @@ public class AIContextBuilder {
     return result;
   }
 
-  /** A lead excerpt bounded to {@code limit} characters, cut on a word boundary. */
+  /**
+   * A lead excerpt bounded to {@code limit} characters, cut on a word boundary. The ellipsis is
+   * counted inside the limit so budget accounting that charges {@code excerpt.length()} can never
+   * overrun the share it was sized against, and a non-positive limit yields an empty excerpt
+   * (the structural-preview path passes 0 when its heading outline consumes the whole allowance).
+   */
   static String excerpt(String content, int limit) {
+    if (content == null) {
+      return null;
+    }
+    if (limit <= 0) {
+      return "";
+    }
     String result = content;
-    if (content != null && content.length() > limit) {
-      int boundary = content.lastIndexOf(' ', limit);
-      int cut = boundary < limit / 2 ? limit : boundary;
+    if (content.length() > limit) {
+      int boundary = content.lastIndexOf(' ', limit - 1);
+      int cut = boundary < limit / 2 ? limit - 1 : boundary;
       result = content.substring(0, cut).stripTrailing() + "…";
     }
     return result;
@@ -348,10 +419,27 @@ public class AIContextBuilder {
     }
   }
 
-  private Observability resolveObservability(EntityInterface entity) {
+  /**
+   * The asset's owning-service reference (id, name, type), so a caller can execute queries against
+   * the right service without re-fetching the entity. Tables only for now — the type that backs the
+   * analytics/SQL-generation path.
+   */
+  static EntityReference serviceRef(EntityInterface entity) {
+    return entity instanceof Table table ? table.getService() : null;
+  }
+
+  static String serviceType(EntityInterface entity) {
+    String serviceType = null;
+    if (entity instanceof Table table && table.getServiceType() != null) {
+      serviceType = table.getServiceType().value();
+    }
+    return serviceType;
+  }
+
+  private Observability resolveObservability(EntityInterface entity, DataQuality dataQuality) {
     Observability observability = null;
     if (entity instanceof Table) {
-      observability = new Observability().withDataQuality(resolveDataQuality((Table) entity));
+      observability = new Observability().withDataQuality(dataQuality);
       applyProfile(observability, entity);
       if (isEmpty(observability)) {
         observability = null;
@@ -381,38 +469,152 @@ public class AIContextBuilder {
   static void populateProfile(Observability observability, Table profiled) {
     TableProfile profile = profiled.getProfile();
     if (profile != null) {
-      observability.withRowCount(profile.getRowCount()).withProfiledAt(profile.getTimestamp());
+      observability
+          .withRowCount(profile.getRowCount())
+          .withProfiledAt(profile.getTimestamp())
+          .withProfileSample(profile.getProfileSample())
+          .withProfileSampleType(
+              profile.getProfileSampleType() == null
+                  ? null
+                  : profile.getProfileSampleType().value());
     }
-    List<ColumnProfileSummary> columnProfiles = new ArrayList<>();
-    for (Column column : listOrEmpty(profiled.getColumns())) {
-      ColumnProfile columnProfile = column.getProfile();
-      if (columnProfile != null) {
-        columnProfiles.add(
-            new ColumnProfileSummary()
-                .withName(column.getName())
-                .withNullProportion(columnProfile.getNullProportion())
-                .withDistinctCount(columnProfile.getDistinctCount())
-                .withMin(toStringOrNull(columnProfile.getMin()))
-                .withMax(toStringOrNull(columnProfile.getMax())));
-      }
-    }
+    List<ColumnProfileSummary> columnProfiles =
+        listOrEmpty(profiled.getColumns()).stream()
+            .filter(column -> column.getProfile() != null)
+            .map(AIContextBuilder::toColumnProfileSummary)
+            .toList();
     if (!columnProfiles.isEmpty()) {
       observability.withColumnProfiles(columnProfiles);
     }
   }
 
-  private DataQuality resolveDataQuality(Table table) {
+  private static ColumnProfileSummary toColumnProfileSummary(Column column) {
+    ColumnProfile columnProfile = column.getProfile();
+    return new ColumnProfileSummary()
+        .withName(column.getName())
+        .withNullProportion(columnProfile.getNullProportion())
+        .withUniqueProportion(columnProfile.getUniqueProportion())
+        .withDistinctCount(columnProfile.getDistinctCount())
+        .withMin(toStringOrNull(columnProfile.getMin()))
+        .withMax(toStringOrNull(columnProfile.getMax()))
+        .withMean(columnProfile.getMean())
+        .withMedian(columnProfile.getMedian())
+        .withCardinalityDistribution(columnProfile.getCardinalityDistribution());
+  }
+
+  private DataQuality resolveDataQuality(EntityInterface entity) {
     DataQuality dataQuality = null;
-    EntityReference testSuiteRef = table.getTestSuite();
-    if (testSuiteRef != null) {
-      try {
-        TestSuite testSuite = Entity.getEntity(testSuiteRef, "summary", Include.NON_DELETED);
-        dataQuality = toDataQuality(testSuite.getSummary());
-      } catch (Exception e) {
-        LOG.warn("AIContext: failed to load data quality for {}: {}", fqn, e.getMessage());
+    if (entity instanceof Table table) {
+      EntityReference testSuiteRef = table.getTestSuite();
+      if (testSuiteRef != null) {
+        try {
+          TestSuite testSuite = Entity.getEntity(testSuiteRef, "summary", Include.NON_DELETED);
+          dataQuality = toDataQuality(testSuite.getSummary());
+        } catch (Exception e) {
+          LOG.warn("AIContext: failed to load data quality for {}: {}", fqn, e.getMessage());
+        }
       }
     }
     return dataQuality;
+  }
+
+  /**
+   * Data-quality standing of the asset's direct upstream, lazily computed once per bundle and
+   * capped at {@link #MAX_UPSTREAM_DQ_CHECKS} edges. Returns a minimal {@link DataQuality} carrying
+   * the first upstream's failed-test count, or null when no checked upstream is failing. A pill
+   * describing data that is currently failing its tests is a trust signal, not a content change.
+   */
+  private DataQuality upstreamDataQuality() {
+    if (upstreamDataQualityResolved) {
+      return upstreamDataQuality;
+    }
+    upstreamDataQualityResolved = true;
+    // Upstream test status is caller-relative: without a caller to authorize there is nobody to
+    // check VIEW_TESTS for, so the signal is not computed rather than disclosed. The only caller
+    // without security is persona materialization (PersonaContextBuilder builds shared, persona-
+    // keyed documents — threading a requester in would bake one member's permissions into
+    // everyone's cached doc), and persona docs exclude pills anyway, so the stamped value would be
+    // discarded; the guard still removes the unauthorized upstream reads that computation performs.
+    if (authorizer == null || securityContext == null) {
+      return null;
+    }
+    Map<UUID, EntityReference> nodeRefs = new HashMap<>();
+    for (EntityReference node : listOrEmpty(lineage == null ? null : lineage.getNodes())) {
+      nodeRefs.put(node.getId(), node);
+    }
+    int checked = 0;
+    for (Edge edge : listOrEmpty(upstreamEdgeList)) {
+      if (checked >= MAX_UPSTREAM_DQ_CHECKS) {
+        break;
+      }
+      EntityReference ref = nodeRefs.get(edge.getFromEntity());
+      if (ref == null || !Entity.TABLE.equals(ref.getType())) {
+        continue;
+      }
+      // Being allowed to view this asset does not imply access to its upstreams. The only datum
+      // read from the upstream is its test-suite summary, which the platform field-gates behind
+      // VIEW_TESTS (TableResource), so VIEW_BASIC is not sufficient. The asset's own DQ needs no
+      // such check on the direct path: AI-context endpoints require VIEW_ALL on the requested
+      // asset, which subsumes VIEW_TESTS. Persona documents are different — they are admin-curated
+      // shared artifacts whose boundary is the persona's rule set, not a requesting caller — which
+      // is exactly why the caller-relative upstream signal above is suppressed there.
+      if (!canViewKnowledge(
+          Entity.TABLE, ref.getFullyQualifiedName(), MetadataOperation.VIEW_TESTS)) {
+        continue;
+      }
+      checked++;
+      try {
+        Table upstream = (Table) Entity.getEntity(ref, "testSuite", Include.NON_DELETED);
+        if (upstream.getTestSuite() != null) {
+          TestSuite suite =
+              Entity.getEntity(upstream.getTestSuite(), "summary", Include.NON_DELETED);
+          TestSummary summary = suite.getSummary();
+          if (summary != null && summary.getFailed() != null && summary.getFailed() > 0) {
+            upstreamDataQuality = new DataQuality().withFailed(summary.getFailed());
+            break;
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "AIContext: failed to load upstream data quality for {}: {}",
+            ref.getName(),
+            e.getMessage());
+      }
+    }
+    return upstreamDataQuality;
+  }
+
+  /**
+   * Read-time trust stamping (issue #32260): a knowledge item is marked stale when the asset it is
+   * attached to was updated after the knowledge was last touched, or when the asset's (or a direct
+   * upstream's) data-quality tests are failing. Purely informational — never removes the item —
+   * so agents can weigh the signal instead of silently losing context.
+   */
+  static void stampStaleness(
+      KnowledgeItem item,
+      Long knowledgeUpdatedAt,
+      Long assetUpdatedAt,
+      DataQuality assetDataQuality,
+      DataQuality upstreamDataQuality) {
+    List<String> reasons = new ArrayList<>();
+    if (knowledgeUpdatedAt != null
+        && assetUpdatedAt != null
+        && assetUpdatedAt > knowledgeUpdatedAt) {
+      reasons.add("assetUpdatedAfterKnowledge");
+    }
+    if (isFailing(assetDataQuality)) {
+      reasons.add("dataQualityFailing");
+    }
+    if (isFailing(upstreamDataQuality)) {
+      reasons.add("upstreamDataQualityFailing");
+    }
+    if (!reasons.isEmpty()) {
+      item.withStale(true).withStaleReasons(reasons);
+    }
+  }
+
+  private static boolean isFailing(DataQuality dataQuality) {
+    return dataQuality != null && dataQuality.getFailed() != null && dataQuality.getFailed() > 0;
   }
 
   static DataQuality toDataQuality(TestSummary summary) {
@@ -565,12 +767,36 @@ public class AIContextBuilder {
    * callers (no security context) are not filtered.
    */
   private boolean canViewKnowledge(String knowledgeType, String knowledgeFqn) {
+    return canViewKnowledge(
+        authorizer, securityContext, knowledgeType, knowledgeFqn, MetadataOperation.VIEW_BASIC);
+  }
+
+  private boolean canViewKnowledge(
+      String knowledgeType, String knowledgeFqn, MetadataOperation operation) {
+    return canViewKnowledge(authorizer, securityContext, knowledgeType, knowledgeFqn, operation);
+  }
+
+  /**
+   * Per-item PBAC, parameterized by the operation the datum requires: glossary/metric/page
+   * knowledge needs VIEW_BASIC, while a table's test-suite summary is a VIEW_TESTS-protected field
+   * (TableResource maps {@code testSuite} to VIEW_TESTS), so upstream data-quality stamping checks
+   * that operation instead. Server-internal callers (authorizer == null, e.g. persona
+   * materialization) are not filtered here — the same fail-open convention as the other per-item
+   * checks in this builder. {@link #upstreamDataQuality()} is the deliberate exception: it is a
+   * caller-relative signal, so it is suppressed rather than computed without a caller.
+   */
+  static boolean canViewKnowledge(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      String knowledgeType,
+      String knowledgeFqn,
+      MetadataOperation operation) {
     boolean visible = true;
     if (authorizer != null && securityContext != null) {
       try {
         authorizer.authorize(
             securityContext,
-            new OperationContext(knowledgeType, MetadataOperation.VIEW_BASIC),
+            new OperationContext(knowledgeType, operation),
             new ResourceContext<>(knowledgeType, null, knowledgeFqn));
       } catch (AuthorizationException e) {
         LOG.debug(
@@ -611,7 +837,7 @@ public class AIContextBuilder {
                 .withName(term.getName())
                 .withDisplayName(term.getDisplayName())
                 .withFullyQualifiedName(term.getFullyQualifiedName())
-                .withContent(term.getDescription());
+                .withContent(unescapeRichText(term.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to resolve glossary term {}: {}", termFqn, e.getMessage());
@@ -667,7 +893,9 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       ContextMemory pill = Entity.getEntity(ref, "", Include.NON_DELETED);
-      if (canViewPill(pill)) {
+      // Mirror the glossary path's approval gating: Draft/Archived memories are not settled
+      // knowledge and must not reach agents as current context (issue #32260).
+      if (isActivePill(pill) && canViewPill(pill)) {
         item =
             new KnowledgeItem()
                 .withId(pill.getId())
@@ -676,11 +904,22 @@ public class AIContextBuilder {
                 .withDisplayName(pill.getDisplayName())
                 .withFullyQualifiedName(pill.getFullyQualifiedName())
                 .withContent(pillContent(pill));
+        stampStaleness(
+            item, pill.getUpdatedAt(), assetUpdatedAt, assetDataQuality, upstreamDataQuality());
       }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch knowledge pill {}: {}", ref.getName(), e.getMessage());
     }
     return item;
+  }
+
+  /**
+   * Pills with no lifecycle status (pre-lifecycle memories) are treated as active, matching how
+   * {@link #isApproved(GlossaryTerm)} treats a missing glossary review status.
+   */
+  static boolean isActivePill(ContextMemory pill) {
+    ContextMemoryStatus status = pill.getStatus();
+    return status == null || status == ContextMemoryStatus.ACTIVE;
   }
 
   private static String pillContent(ContextMemory pill) {
@@ -690,7 +929,7 @@ public class AIContextBuilder {
     } else if (!nullOrEmpty(pill.getAnswer())) {
       content = pill.getAnswer();
     }
-    return content;
+    return unescapeRichText(content);
   }
 
   private List<KnowledgeItem> resolveMetrics(EntityInterface entity) {
@@ -746,15 +985,24 @@ public class AIContextBuilder {
     } else if (entity instanceof ContextMemory pill) {
       content = pillContent(pill);
     } else {
-      content = entity.getDescription();
+      content = unescapeRichText(entity.getDescription());
     }
     return content;
+  }
+
+  /**
+   * Block-editor rich text is persisted HTML-entity-escaped (e.g. {@code &#96;} for a backtick,
+   * {@code &gt;&#61;} for {@code >=}). Un-escape it before it enters the AIContext so the markdown an
+   * LLM consumes carries real code fences and operators, not their entity references.
+   */
+  static String unescapeRichText(String value) {
+    return nullOrEmpty(value) ? value : StringEscapeUtils.unescapeHtml4(value);
   }
 
   static String metricContent(Metric metric) {
     StringBuilder content = new StringBuilder();
     if (!nullOrEmpty(metric.getDescription())) {
-      content.append(metric.getDescription());
+      content.append(unescapeRichText(metric.getDescription()));
     }
     MetricExpression expression = metric.getMetricExpression();
     if (expression != null && !nullOrEmpty(expression.getCode())) {
@@ -790,7 +1038,7 @@ public class AIContextBuilder {
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())
                 .withFullyQualifiedName(page.getFullyQualifiedName())
-                .withContent(page.getDescription());
+                .withContent(unescapeRichText(page.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn(
@@ -799,10 +1047,67 @@ public class AIContextBuilder {
     return item;
   }
 
-  private static AssetContext buildAssetContext(EntityInterface entity) {
+  private AssetContext buildAssetContext(EntityInterface entity) {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
-      context.withTable(buildTableContext(table));
+      context.withTable(buildTableContext(table).withSampleData(resolveSampleData(table)));
+    }
+    if (entity instanceof Metric metric) {
+      context.withGeneric(buildMetricContext(metric));
+    }
+    return context;
+  }
+
+  private TableData resolveSampleData(Table table) {
+    if (authorizer == null || securityContext == null) {
+      return null;
+    }
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+    // Resolved by id rather than wrapping the already-loaded table: the pre-resolved constructor
+    // never runs resolveEntity(), so owners and domains would be absent (TABLE_FIELDS does not ask
+    // for them) and every owner- or domain-conditioned rule would misfire — including the PII
+    // decision below, which would mask an owner's own sample data.
+    ResourceContext<Table> resourceContext =
+        new ResourceContext<>(Entity.TABLE, table.getId(), null);
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_SAMPLE_DATA),
+          resourceContext);
+      boolean canViewPii = authorizer.authorizePII(securityContext, resourceContext.getOwners());
+      return boundedSampleData(repository.getSampleData(table.getId(), canViewPii).getSampleData());
+    } catch (AuthorizationException e) {
+      LOG.debug("AIContext: sample data omitted for {}: permission denied", fqn);
+    } catch (RuntimeException e) {
+      LOG.warn("AIContext: failed to load sample data for {}: {}", fqn, e.getMessage());
+    }
+    return null;
+  }
+
+  static TableData boundedSampleData(TableData sampleData) {
+    if (sampleData == null) {
+      return null;
+    }
+    List<String> columns =
+        sampleData.getColumns() == null ? null : new ArrayList<>(sampleData.getColumns());
+    List<List<Object>> rows =
+        listOrEmpty(sampleData.getRows()).stream()
+            .limit(MAX_SAMPLE_ROWS)
+            .<List<Object>>map(row -> row == null ? null : new ArrayList<>(row))
+            .toList();
+    return new TableData().withColumns(columns).withRows(rows);
+  }
+
+  /**
+   * A metric's structural context is its expression — the query that defines it. Without this, asking
+   * get_asset_context about a metric returned only its description, while the same expression was
+   * already reachable through get_knowledge_content and as attached knowledge of a table.
+   */
+  private static GenericAssetContext buildMetricContext(Metric metric) {
+    MetricExpression expression = metric.getMetricExpression();
+    GenericAssetContext context = null;
+    if (expression != null && !nullOrEmpty(expression.getCode())) {
+      context = new GenericAssetContext().withDefinition(expression.getCode());
     }
     return context;
   }
@@ -839,7 +1144,52 @@ public class AIContextBuilder {
         .withForeignKeys(extractForeignKeys(table))
         .withFrequentJoins(extractJoins(table))
         .withPartitionColumns(extractPartitionColumns(table))
-        .withSchemaDefinition(table.getSchemaDefinition());
+        .withSchemaDefinition(table.getSchemaDefinition())
+        .withDataModel(toDataModelContext(table.getDataModel()));
+  }
+
+  /**
+   * Projects the table's dbt/DDL {@link DataModel} into the AI context: its type, model-file path,
+   * source project, and the SQL that defines it — the compiled SQL when present, else the raw
+   * (templated) SQL. Returns null when the table carries no model, so the section is skipped.
+   */
+  static TableDataModel toDataModelContext(DataModel dataModel) {
+    TableDataModel context = null;
+    if (dataModel != null) {
+      context =
+          new TableDataModel()
+              .withModelType(modelTypeValue(dataModel))
+              .withPath(dataModel.getPath())
+              .withSourceProject(dataModel.getDbtSourceProject())
+              .withSql(boundedSql(definingSql(dataModel)));
+      if (isEmptyDataModel(context)) {
+        context = null;
+      }
+    }
+    return context;
+  }
+
+  private static String definingSql(DataModel dataModel) {
+    return nullOrEmpty(dataModel.getSql()) ? dataModel.getRawSql() : dataModel.getSql();
+  }
+
+  private static String modelTypeValue(DataModel dataModel) {
+    return dataModel.getModelType() == null ? null : dataModel.getModelType().value();
+  }
+
+  private static String boundedSql(String sql) {
+    String result = sql;
+    if (!nullOrEmpty(sql) && sql.length() > MAX_DATA_MODEL_SQL_CHARS) {
+      result = sql.substring(0, MAX_DATA_MODEL_SQL_CHARS) + "\n… (truncated)";
+    }
+    return result;
+  }
+
+  private static boolean isEmptyDataModel(TableDataModel model) {
+    return nullOrEmpty(model.getModelType())
+        && nullOrEmpty(model.getPath())
+        && nullOrEmpty(model.getSourceProject())
+        && nullOrEmpty(model.getSql());
   }
 
   static List<FieldContext> toFieldContexts(List<Column> columns) {
@@ -849,9 +1199,10 @@ public class AIContextBuilder {
           new FieldContext()
               .withName(column.getName())
               .withDataType(columnType(column))
+              .withDataTypeEnum(column.getDataType() == null ? null : column.getDataType().value())
               .withConstraint(
                   column.getConstraint() == null ? null : column.getConstraint().value())
-              .withDescription(column.getDescription()));
+              .withDescription(unescapeRichText(column.getDescription())));
     }
     return fields;
   }

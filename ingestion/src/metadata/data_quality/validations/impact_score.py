@@ -230,7 +230,7 @@ def calculate_impact_score_pandas(
         1         EU         0.188
         2       Asia         0.005
     """
-    import numpy as np  # noqa: PLC0415
+    import numpy as np
 
     # Create a copy to avoid modifying original
     df = df_grouped.copy()

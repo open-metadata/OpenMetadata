@@ -15,6 +15,7 @@ import {
   Box,
   Divider,
   Input,
+  Popover,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -24,7 +25,7 @@ import {
   SlashDivider,
 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListBox as AriaListBox, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { DataAssetPickerShellProps } from './DataAssetPicker.interface';
@@ -34,32 +35,27 @@ import DataAssetPickerRow from './DataAssetPickerRow';
 // Index 0..n-1 = asset list items.
 const ALL_IDX = -1;
 
-const nextFocusIndex = (
+const nextFocusDown = (
   prev: number | null,
-  key: 'ArrowDown' | 'ArrowUp',
   hasAll: boolean,
   itemCount: number
 ): number | null => {
   const hasItems = itemCount > 0;
   const lastIdx = itemCount - 1;
+
+  if (prev === null) {
+    return hasAll ? ALL_IDX : 0;
+  }
+  if (prev === ALL_IDX) {
+    return hasItems ? 0 : ALL_IDX;
+  }
+
+  return prev < lastIdx ? prev + 1 : prev;
+};
+
+const nextFocusUp = (prev: number | null, hasAll: boolean): number | null => {
   const firstIdx = hasAll ? ALL_IDX : 0;
 
-  if (!hasAll && !hasItems) {
-    return null;
-  }
-
-  if (key === 'ArrowDown') {
-    if (prev === null) {
-      return hasAll ? ALL_IDX : 0;
-    }
-    if (prev === ALL_IDX) {
-      return hasItems ? 0 : ALL_IDX;
-    }
-
-    return prev < lastIdx ? prev + 1 : prev;
-  }
-
-  // ArrowUp
   if (prev === null || prev === firstIdx) {
     return prev;
   }
@@ -68,6 +64,23 @@ const nextFocusIndex = (
   }
 
   return prev - 1;
+};
+
+const nextFocusIndex = (
+  prev: number | null,
+  key: 'ArrowDown' | 'ArrowUp',
+  hasAll: boolean,
+  itemCount: number
+): number | null => {
+  const hasItems = itemCount > 0;
+
+  if (!hasAll && !hasItems) {
+    return null;
+  }
+
+  return key === 'ArrowDown'
+    ? nextFocusDown(prev, hasAll, itemCount)
+    : nextFocusUp(prev, hasAll);
 };
 
 const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
@@ -89,8 +102,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   allOptionLabel,
   onSelectAll,
   popoverClassName,
-  popoverAlign = 'left',
-  popoverPlacement = 'bottom',
+  popoverPlacement = 'bottom start',
   placeholder,
 }) => {
   const { t } = useTranslation();
@@ -200,55 +212,134 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   );
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        close();
-      }
-    };
-    document.addEventListener('keydown', handler, true);
-
-    return () => document.removeEventListener('keydown', handler, true);
-  }, [isOpen, close]);
-
-  useEffect(() => {
     onOpenChange?.(isOpen);
   }, [isOpen, onOpenChange]);
+
+  const allAssetsSection = useMemo(() => {
+    if (isLoading || !allowAllOption) {
+      return null;
+    }
+
+    return (
+      <>
+        <button
+          className={classNames(
+            'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1 tw:justify-between',
+            'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
+            'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
+            {
+              'tw:bg-utility-gray-blue-50': keyboardFocusIndex === ALL_IDX,
+            }
+          )}
+          type="button"
+          onClick={() => {
+            onSelectAll?.();
+            if (selectionMode === 'single') {
+              close();
+            }
+          }}>
+          <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
+            <span className="tw:flex tw:items-center tw:justify-center tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90 tw:bg-utility-gray-blue-50">
+              <SlashDivider className="tw:text-utility-gray-500" size={14} />
+            </span>
+
+            <Box
+              className="tw:min-w-0 tw:flex-1 tw:[&_.prose]:leading-tight"
+              direction="col">
+              <Typography
+                ellipsis
+                className="tw:truncate tw:leading-tight"
+                size="text-xs"
+                weight="medium">
+                {allOptionLabel ??
+                  t('label.all-entity', {
+                    entity: t('label.asset-plural'),
+                  })}
+              </Typography>
+
+              <Typography
+                ellipsis
+                className="tw:text-tertiary tw:truncate tw:leading-tight"
+                size="text-xs">
+                {t('label.clear-entity-filter', {
+                  entity: t('label.asset'),
+                })}
+              </Typography>
+            </Box>
+          </Box>
+
+          {selectedIds.size === 0 && (
+            <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
+          )}
+        </button>
+        <Divider className="tw:my-1" />
+      </>
+    );
+  }, [
+    isLoading,
+    allowAllOption,
+    keyboardFocusIndex,
+    onSelectAll,
+    selectionMode,
+    close,
+    allOptionLabel,
+    t,
+    selectedIds,
+  ]);
+
+  const listSection = useMemo(() => {
+    if (isLoading || options.length === 0) {
+      return null;
+    }
+
+    return (
+      <AriaListBox
+        aria-label={t('label.asset-plural')}
+        className="tw:outline-hidden tw:flex tw:flex-col"
+        escapeKeyBehavior="none"
+        ref={listBoxRef}
+        selectedKeys={selectedIds}
+        selectionMode={selectionMode}
+        onSelectionChange={handleSelectionChange}>
+        {options.map((option, idx) => (
+          <DataAssetPickerRow
+            isFocused={keyboardFocusIndex === idx}
+            key={option.id}
+            option={option}
+          />
+        ))}
+      </AriaListBox>
+    );
+  }, [
+    isLoading,
+    options,
+    t,
+    selectedIds,
+    selectionMode,
+    handleSelectionChange,
+    keyboardFocusIndex,
+  ]);
 
   return (
     <div className="tw:relative tw:leading-0" ref={wrapperRef}>
       {renderTrigger({ isOpen, open, close })}
 
-      {isOpen && (
-        <button
-          aria-label="close picker"
-          className="tw:fixed tw:inset-0 tw:z-49 tw:cursor-default tw:bg-transparent tw:border-0 tw:p-0"
-          data-testid="picker-overlay"
-          tabIndex={-1}
-          type="button"
-          onClick={close}
-        />
-      )}
-
-      {isOpen && (
+      <Popover
+        className="tw:w-95 tw:overflow-hidden"
+        containerClassName={classNames('tw:flex tw:flex-col', popoverClassName)}
+        data-testid="picker-popover"
+        isOpen={isOpen}
+        placement={popoverPlacement}
+        triggerRef={wrapperRef}
+        onOpenChange={(open) => !open && close()}>
         <Box
-          className={classNames(
-            'tw:absolute tw:z-50 tw:w-95 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:overflow-hidden',
-            popoverAlign === 'right' ? 'tw:right-0' : 'tw:left-0',
-            popoverPlacement === 'top'
-              ? 'tw:bottom-full tw:mb-1'
-              : 'tw:top-full tw:mt-1',
-            popoverClassName
-          )}
-          data-testid="picker-popover"
+          className="tw:contents"
           direction="col"
           onKeyDown={handleSearchKeyDown}>
           {searchable && (
             <Box>
               <Input
+                // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
                 autoFocus
                 className="tw:w-full"
                 icon={SearchLg}
@@ -259,7 +350,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                   t('label.search-entity', { entity: t('label.asset-plural') })
                 }
                 value={searchText}
-                wrapperClassName="tw:rounded-none tw:bg-transparent tw:shadow-none tw:ring-0"
+                wrapperClassName="tw:rounded-none tw:bg-transparent! tw:shadow-none! tw:outline-0!"
                 onChange={(value) => onSearchChange?.(value)}
               />
             </Box>
@@ -287,69 +378,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
               </Box>
             )}
 
-            {!isLoading && allowAllOption && (
-              <>
-                <button
-                  className={classNames(
-                    'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1 tw:justify-between',
-                    'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
-                    'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
-                    {
-                      'tw:bg-utility-gray-blue-50':
-                        keyboardFocusIndex === ALL_IDX,
-                    }
-                  )}
-                  type="button"
-                  onClick={() => {
-                    onSelectAll?.();
-                    if (selectionMode === 'single') {
-                      close();
-                    }
-                  }}>
-                  <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
-                    <span className="tw:flex tw:items-center tw:justify-center tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90 tw:bg-utility-gray-blue-50">
-                      <SlashDivider
-                        className="tw:text-utility-gray-500"
-                        size={14}
-                      />
-                    </span>
-
-                    <Box
-                      className="tw:min-w-0 tw:flex-1 tw:[&_.prose]:leading-tight"
-                      direction="col">
-                      <Typography
-                        ellipsis
-                        className="tw:truncate tw:leading-tight"
-                        size="text-xs"
-                        weight="medium">
-                        {allOptionLabel ??
-                          t('label.all-entity', {
-                            entity: t('label.asset-plural'),
-                          })}
-                      </Typography>
-
-                      <Typography
-                        ellipsis
-                        className="tw:text-tertiary tw:truncate tw:leading-tight"
-                        size="text-xs">
-                        {t('label.clear-entity-filter', {
-                          entity: t('label.asset'),
-                        })}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {selectedIds.size === 0 && (
-                    <Check
-                      className="tw:shrink-0"
-                      size={16}
-                      strokeWidth={1.5}
-                    />
-                  )}
-                </button>
-                <Divider className="tw:my-1" />
-              </>
-            )}
+            {allAssetsSection}
 
             {!isLoading && options.length === 0 && (
               <Box align="center" className="tw:py-4" justify="center">
@@ -359,23 +388,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
               </Box>
             )}
 
-            {!isLoading && options.length > 0 && (
-              <AriaListBox
-                aria-label={t('label.asset-plural')}
-                className="tw:outline-hidden tw:flex tw:flex-col"
-                ref={listBoxRef}
-                selectedKeys={selectedIds}
-                selectionMode={selectionMode}
-                onSelectionChange={handleSelectionChange}>
-                {options.map((option, idx) => (
-                  <DataAssetPickerRow
-                    isFocused={keyboardFocusIndex === idx}
-                    key={option.id}
-                    option={option}
-                  />
-                ))}
-              </AriaListBox>
-            )}
+            {listSection}
           </div>
 
           {showFooterHints && (
@@ -405,7 +418,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             </Box>
           )}
         </Box>
-      )}
+      </Popover>
     </div>
   );
 };

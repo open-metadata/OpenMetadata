@@ -16,7 +16,7 @@ Source connection handler
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -53,9 +53,11 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.databricks.auth import (
     catalog_url,
     get_auth_config,
+    get_data_diff_connection_dict,
     probe_target,
 )
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
@@ -72,6 +74,9 @@ from metadata.ingestion.source.database.databricks.queries import (
     TEST_TABLE_LINEAGE,
     TEST_TABLE_TAGS,
     TEST_VIEW_DEFINITIONS,
+)
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_user_agent,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -90,9 +95,19 @@ DEFAULT_CATALOG = "main"
 SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "sys"})
 
 
+# The listing checks raise a message carrying this token when no catalog/schema was
+# resolved; the pack matches on it. Shared so producer and matcher cannot drift.
+UNRESOLVED_TARGET_TOKEN = "Could not resolve a catalog and schema"
+
+
 # databricks-sql/thrift reports failures as message tokens, not numeric codes, so
 # rules key on tokens; specific ones precede broad ones (first match wins).
 DATABRICKS_ERRORS = ErrorPack(
+    when(Matchers.contains(UNRESOLVED_TARGET_TOKEN)).diagnose(
+        "Could not resolve a catalog and schema to probe",
+        fix="The earlier steps found no catalog/schema this user can use. Verify the configured "
+        "catalog and schema exist and that the user has USE CATALOG and USE SCHEMA on them.",
+    ),
     when(Matchers.contains("invalid access token")).diagnose(
         "Authentication failed",
         fix="Check the access token - the workspace rejected it. Verify the token is valid, "
@@ -102,11 +117,9 @@ DATABRICKS_ERRORS = ErrorPack(
         "Access token expired",
         fix="The access token has expired. Generate a new token and update the connection.",
     ),
-    when(Matchers.contains("forbidden")).diagnose(
-        "Access denied",
-        fix="The workspace returned 403 Forbidden. Verify the token's user is entitled to the "
-        "workspace and the configured HTTP path / SQL warehouse.",
-    ),
+    # No 403 rule: databricks-sql keeps the status in error.context["http-code"] and
+    # Error.__str__ returns only self.message (databricks/sql/exc.py), so no status
+    # reaches the text; "Forbidden" appears nowhere in the driver (4.2.6).
     when(Matchers.contains("malformed_request")).diagnose(
         "Invalid HTTP path",
         fix="The HTTP Path is malformed. Copy it from the SQL warehouse (or cluster) Connection "
@@ -175,7 +188,7 @@ class DatabricksEngineWrapper:
             self._inspector = inspect(self.engine)
         return self._inspector
 
-    def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
+    def get_schemas(self, schema_name: str | None = None):
         """Get schemas and cache them"""
         if schema_name is not None:
             if self.first_catalog:
@@ -195,27 +208,37 @@ class DatabricksEngineWrapper:
                     self.first_schema = self.schemas[0]
         return self.schemas
 
+    def _require_resolved_catalog_and_schema(self) -> tuple[str, str]:
+        """Fail loudly when the earlier steps resolved no catalog or schema.
+
+        Returning an empty list would be indistinguishable from "the schema is
+        genuinely empty", so a mandatory step would pass having proved nothing.
+        """
+        if not (self.first_catalog and self.first_schema):
+            raise SourceConnectionException(
+                f"{UNRESOLVED_TARGET_TOKEN}: catalog={self.first_catalog}, schema={self.first_schema}"
+            )
+        return self.first_catalog, self.first_schema
+
     def get_tables(self):
         """Get tables using the cached first schema"""
         if self.first_schema is None:
             self.get_schemas()
-        if self.first_catalog and self.first_schema:
-            with self.engine.connect() as connection:
-                tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
-                return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
-        return []
+        catalog, schema = self._require_resolved_catalog_and_schema()
+        with self.engine.connect() as connection:
+            tables = connection.execute(text(f"SHOW TABLES IN `{catalog}`.`{schema}`"))
+            return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
 
     def get_views(self):
         """Get views using the cached first schema"""
         if self.first_schema is None:
             self.get_schemas()
-        if self.first_catalog and self.first_schema:
-            with self.engine.connect() as connection:
-                views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
-                return views.fetchmany(DEFAULT_SAMPLE_ROWS)
-        return []
+        catalog, schema = self._require_resolved_catalog_and_schema()
+        with self.engine.connect() as connection:
+            views = connection.execute(text(f"SHOW VIEWS IN `{catalog}`.`{schema}`"))
+            return views.fetchmany(DEFAULT_SAMPLE_ROWS)
 
-    def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
+    def get_catalogs(self, catalog_name: str | None = None):
         """Get catalogs"""
         if catalog_name is not None:
             self.first_catalog = catalog_name
@@ -240,9 +263,15 @@ def get_connection(connection: DatabricksConnectionConfig) -> Engine:
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
+    connection_arguments = connection.connectionArguments.root
+    if connection_arguments is None:
+        connection_arguments = {}
+        connection.connectionArguments.root = connection_arguments
 
     if connection.httpPath:
-        connection.connectionArguments.root["http_path"] = connection.httpPath
+        connection_arguments["http_path"] = connection.httpPath
+
+    connection_arguments["user_agent_entry"] = get_databricks_user_agent()
 
     auth_args = get_auth_config(connection)
 
@@ -386,6 +415,10 @@ class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
         engine = get_connection(self.service_connection)
         self._on_close(engine.dispose)
         return engine
+
+    def get_connection_dict(self) -> dict:
+        """Return the connection parameters for data-diff."""
+        return get_data_diff_connection_dict(self.service_connection)
 
     def close(self) -> None:
         # Not _on_close: that registry is reset by close(), so a sub-owner

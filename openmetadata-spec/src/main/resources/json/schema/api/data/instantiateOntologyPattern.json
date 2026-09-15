@@ -1,0 +1,111 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/instantiateOntologyPattern.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateOntologyPattern",
+  "description": "Create a durable Draft change set from a typed ontology modeling pattern.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.InstantiateOntologyPattern",
+  "definitions": {
+    "termInput": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyPatternTermInput",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "../../type/basic.json#/definitions/entityName"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "$ref": "../../type/basic.json#/definitions/markdown"
+        }
+      },
+      "required": ["name", "description"],
+      "additionalProperties": false
+    },
+    "regulatoryControl": {
+      "javaType": "org.openmetadata.schema.api.data.RegulatoryControlPatternInput",
+      "type": "object",
+      "properties": {
+        "control": {
+          "$ref": "#/definitions/termInput"
+        },
+        "requirement": {
+          "$ref": "#/definitions/termInput"
+        },
+        "evidence": {
+          "$ref": "#/definitions/termInput"
+        }
+      },
+      "required": ["control", "requirement", "evidence"],
+      "additionalProperties": false
+    },
+    "measuredKpi": {
+      "javaType": "org.openmetadata.schema.api.data.MeasuredKpiPatternInput",
+      "type": "object",
+      "properties": {
+        "kpi": {
+          "$ref": "#/definitions/termInput"
+        },
+        "metric": {
+          "$ref": "#/definitions/termInput"
+        },
+        "dimension": {
+          "$ref": "#/definitions/termInput"
+        }
+      },
+      "required": ["kpi", "metric", "dimension"],
+      "additionalProperties": false
+    },
+    "productHierarchy": {
+      "javaType": "org.openmetadata.schema.api.data.ProductHierarchyPatternInput",
+      "type": "object",
+      "properties": {
+        "portfolio": {
+          "$ref": "#/definitions/termInput"
+        },
+        "product": {
+          "$ref": "#/definitions/termInput"
+        },
+        "feature": {
+          "$ref": "#/definitions/termInput"
+        }
+      },
+      "required": ["portfolio", "product", "feature"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "patternType": {
+      "$ref": "ontologyPatternTemplate.json#/definitions/patternType"
+    },
+    "glossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "changeSetName": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "changeSetDisplayName": {
+      "type": "string"
+    },
+    "changeSetDescription": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "regulatoryControl": {
+      "$ref": "#/definitions/regulatoryControl"
+    },
+    "measuredKpi": {
+      "$ref": "#/definitions/measuredKpi"
+    },
+    "productHierarchy": {
+      "$ref": "#/definitions/productHierarchy"
+    }
+  },
+  "required": [
+    "patternType",
+    "glossaryId",
+    "changeSetName",
+    "changeSetDescription"
+  ],
+  "additionalProperties": false
+}

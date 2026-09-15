@@ -1,0 +1,11 @@
+# Allowlist-style ignore for docker/docker-compose-quickstart/Dockerfile, same
+# shape as docker/storybook/Dockerfile.dockerignore. This image downloads the
+# release tarball rather than copying it, so the only thing it needs out of the
+# repo is the entrypoint script.
+
+# Exclude everything.
+**
+
+# The entrypoint script.
+!docker/
+!docker/openmetadata-start.sh

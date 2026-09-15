@@ -44,9 +44,14 @@ import org.openmetadata.service.util.Utilities;
 @Slf4j
 public final class SearchIndexUtils {
 
-  // Keeping the bots list static so we can call this from anywhere in the codebase
+  // Keeping the bots list static so we can call this from anywhere in the codebase.
+  // Bots whose changes count as AI-generated. The agent-app bots are still listed because
+  // fields they changed carry their name.
   public static final List<String> AI_BOTS =
-      List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
+      List.of(
+          "aiautomationapplicationbot",
+          "collateaiapplicationbot",
+          "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
 
@@ -560,13 +565,23 @@ public final class SearchIndexUtils {
       if (tagFQN == null || labelType == null) {
         continue;
       }
-      String tagSource = labelType.value();
+      String tagSource = resolveTagSource(tag, labelType);
       Map<String, Integer> bucket =
           tagFQN.startsWith("Tier.")
               ? tagAndTierSources.getTierSources()
               : tagAndTierSources.getTagSources();
       bucket.merge(tagSource, 1, Integer::sum);
     }
+  }
+
+  // AI-bot-applied tags count as Generated regardless of labelType, mirroring
+  // getDescriptionSource. Applier is recorded per-tag in appliedBy (set server-side).
+  private static String resolveTagSource(TagLabel tag, TagLabel.LabelType labelType) {
+    String tagSource = labelType.value();
+    if (tag.getAppliedBy() != null && AI_BOTS.contains(tag.getAppliedBy())) {
+      tagSource = TagLabel.LabelType.GENERATED.value();
+    }
+    return tagSource;
   }
 
   private static void processEntityTagSources(

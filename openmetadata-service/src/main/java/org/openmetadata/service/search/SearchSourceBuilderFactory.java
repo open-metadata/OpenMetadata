@@ -142,18 +142,34 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   }
 
   default S buildDataQualitySearchBuilderV2(String indexName, String query, int from, int size) {
+    return buildDataQualitySearchBuilderV2(indexName, query, from, size, false);
+  }
+
+  /**
+   * {@code freeText} selects how {@code query} is parsed, because this builder serves two endpoint
+   * families with opposing contracts. {@code /v1/search/query} and {@code /v1/search/export}
+   * document {@code q} as a Lucene expression and must keep {@code query_string}; the data quality
+   * list endpoints document it as free text and pass {@code true} so a pasted URL or a name
+   * containing Lucene syntax cannot produce a {@code query_shard_exception}.
+   */
+  default S buildDataQualitySearchBuilderV2(
+      String indexName, String query, int from, int size, boolean freeText) {
     return switch (indexName) {
       case "test_case_search_index",
           "testCase",
           "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
+          "testSuite" -> buildTestCaseSearchV2(query, from, size, freeText);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
 
   S buildTestCaseSearchV2(String query, int from, int size);
 
+  S buildTestCaseSearchV2(String query, int from, int size, boolean freeText);
+
   S buildTestCaseResultSearchV2(String query, int from, int size);
+
+  S buildTestCaseResultSearchV2(String query, int from, int size, boolean freeText);
 
   S buildTestCaseResolutionStatusSearchV2(String query, int from, int size);
 
@@ -172,6 +188,12 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * Build a search query builder with the specified fields and weights.
    */
   Q buildSearchQueryBuilderV2(String query, Map<String, Float> fields);
+
+  /**
+   * As above, but {@code freeText} parses {@code query} as literal text rather than as a Lucene
+   * expression. See {@link #buildDataQualitySearchBuilderV2(String, String, int, int, boolean)}.
+   */
+  Q buildSearchQueryBuilderV2(String query, Map<String, Float> fields, boolean freeText);
 
   /**
    * Build highlights for the specified fields.
@@ -194,22 +216,56 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     if (containsRangeQuery(query)) {
       return true;
     }
+    boolean pureQuotedQuery = isPureQuotedQuery(query);
+    boolean escapeNextCharacter = false;
+    boolean previousCharacterEscaped = false;
     for (int i = 0; i < query.length(); i++) {
       char current = query.charAt(i);
-      if (isSingleCharacterSyntax(current)
-          || isFieldQuerySeparator(query, i)
-          || isBooleanOperatorAt(query, i)) {
+      boolean currentCharacterEscaped = escapeNextCharacter;
+      escapeNextCharacter = !currentCharacterEscaped && current == '\\';
+      if (!currentCharacterEscaped
+          && (isSingleCharacterSyntax(query, i, pureQuotedQuery, previousCharacterEscaped)
+              || isFieldQuerySeparator(query, i)
+              || isBooleanOperatorAt(query, i))) {
         return true;
       }
+      previousCharacterEscaped = currentCharacterEscaped;
     }
     return false;
   }
 
-  private static boolean isSingleCharacterSyntax(char current) {
+  private static boolean isSingleCharacterSyntax(
+      String query, int index, boolean pureQuotedQuery, boolean previousCharacterEscaped) {
+    char current = query.charAt(index);
     return switch (current) {
-      case '*', '?', '(', ')', '"', '+', '-', '~', '^' -> true;
+      case '*', '?', '(', ')', '~', '^' -> true;
+      case '"' -> !pureQuotedQuery;
+      case '-' -> isTokenLeadingSyntax(query, index, previousCharacterEscaped);
+      case '+' -> isTokenLeadingSyntax(query, index, previousCharacterEscaped);
       default -> false;
     };
+  }
+
+  private static boolean isPureQuotedQuery(String query) {
+    if (query.length() < 2 || query.charAt(0) != '"' || query.charAt(query.length() - 1) != '"') {
+      return false;
+    }
+    for (int i = 1; i < query.length() - 1; i++) {
+      if (query.charAt(i) == '"') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean isTokenLeadingSyntax(
+      String query, int index, boolean previousCharacterEscaped) {
+    if (index == 0) {
+      return true;
+    }
+    char previous = query.charAt(index - 1);
+    return Character.isWhitespace(previous)
+        || (!previousCharacterEscaped && (previous == '(' || previous == ':'));
   }
 
   private static boolean isFieldQuerySeparator(String query, int index) {
@@ -261,11 +317,14 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     boolean hasValueBeforeTo = false;
     boolean sawTo = false;
     boolean hasValueAfterTo = false;
+    boolean escapeNextCharacter = false;
 
     for (int i = 0; i < query.length(); i++) {
       char current = query.charAt(i);
+      boolean currentCharacterEscaped = escapeNextCharacter;
+      escapeNextCharacter = !currentCharacterEscaped && current == '\\';
       if (openIndex < 0) {
-        if (current == '[') {
+        if (current == '[' && !currentCharacterEscaped) {
           openIndex = i;
           hasValueBeforeTo = false;
           sawTo = false;
@@ -273,7 +332,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
         }
         continue;
       }
-      if (current == ']') {
+      if (current == ']' && !currentCharacterEscaped) {
         if (sawTo && hasValueBeforeTo && hasValueAfterTo) {
           return true;
         }
@@ -281,7 +340,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
         continue;
       }
       if (!sawTo) {
-        if (isRangeToToken(query, i, openIndex, hasValueBeforeTo)) {
+        if (!currentCharacterEscaped && isRangeToToken(query, i, openIndex, hasValueBeforeTo)) {
           sawTo = true;
           i++;
         } else if (!Character.isWhitespace(current)) {

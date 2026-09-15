@@ -69,6 +69,11 @@ import org.openmetadata.sdk.network.HttpMethod;
 @Execution(ExecutionMode.CONCURRENT)
 public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
+  private static final String DIRECT_USER_ASSIGNMENT_ERROR =
+      "Team is of type Department. Direct users can only be assigned to teams of type Group.";
+  private static final String UPDATE_DIRECT_USER_ASSIGNMENT_ERROR =
+      "Failed to update entity: " + DIRECT_USER_ASSIGNMENT_ERROR;
+
   {
     supportsImportExport = true;
     supportsBatchImport = true;
@@ -256,6 +261,212 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     Team fetched = client.teams().get(team.getId().toString(), "users");
     assertNotNull(fetched.getUsers());
     assertEquals(2, fetched.getUsers().size());
+  }
+
+  @Test
+  void test_departmentRejectsDirectUsersOnCreate(TestNamespace ns) {
+    User user = createTestUser(ns, "departmentCreateUser");
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("departmentWithUsers"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withUsers(List.of(user.getId()))
+            .withDescription("Department cannot have direct users");
+
+    Exception exception = assertThrows(Exception.class, () -> createEntity(create));
+
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+  }
+
+  @Test
+  void test_putCreateDepartmentRejectsDirectUsers(TestNamespace ns) {
+    User user = createTestUser(ns, "departmentPutCreateUser");
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("departmentPutWithUsers"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withUsers(List.of(user.getId()))
+            .withDescription("Department cannot have direct users");
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.PUT, "/v1/teams", create, Team.class));
+
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+  }
+
+  @Test
+  void test_departmentRejectsDirectUsersOnPatch(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentPatch"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    User user = createTestUser(ns, "departmentPatchUser");
+
+    Team update = SdkClients.adminClient().teams().get(department.getId().toString(), "users");
+    update.setUsers(List.of(user.getEntityReference()));
+
+    Exception exception =
+        assertThrows(Exception.class, () -> patchEntity(update.getId().toString(), update));
+
+    assertEquals(UPDATE_DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+  }
+
+  @Test
+  void test_departmentCanUpdateMetadataWithoutChangingUsers(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentMetadata"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Initial description"));
+    department.setDescription("Updated description");
+
+    Team updated =
+        SdkClients.adminClient().teams().update(department.getId().toString(), department);
+
+    assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void test_userCannotBeAssignedToDepartment(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentUser"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    CreateUser create =
+        new CreateUser()
+            .withName(ns.prefix("assignedDepartmentUser"))
+            .withEmail(toValidEmail(ns.prefix("assignedDepartmentUser")))
+            .withTeams(List.of(department.getId()));
+
+    Exception exception =
+        assertThrows(Exception.class, () -> SdkClients.adminClient().users().create(create));
+
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+  }
+
+  @Test
+  void test_departmentRejectsBulkUserAddition(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentBulk"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    User user = createTestUser(ns, "departmentBulkUser");
+    BulkAssets request = new BulkAssets().withAssets(List.of(user.getEntityReference()));
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> bulkAddAssetsWithResult(SdkClients.adminClient(), department.getName(), request));
+
+    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+  }
+
+  @Test
+  void test_userCannotBeUpdatedToDepartment(TestNamespace ns) {
+    Team department =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("departmentUserUpdate"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withDescription("Department cannot have direct users"));
+    User user = createTestUser(ns, "departmentUserUpdate");
+    User update = SdkClients.adminClient().users().get(user.getId().toString(), "teams");
+    update.setTeams(List.of(department.getEntityReference()));
+
+    Exception exception =
+        assertThrows(
+            Exception.class,
+            () -> SdkClients.adminClient().users().update(user.getId().toString(), update));
+
+    assertEquals(UPDATE_DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+  }
+
+  @Test
+  void test_groupCanUpdateUsers(TestNamespace ns) {
+    Team group =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("groupUpdateUsers"))
+                .withTeamType(TeamType.GROUP)
+                .withDescription("Group can update direct users"));
+    User user = createTestUser(ns, "groupUpdateUser");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/teams/" + group.getId() + "/users",
+            List.of(user.getEntityReference()),
+            null);
+
+    Team updated = SdkClients.adminClient().teams().get(group.getId().toString(), "users");
+    assertTrue(updated.getUsers().stream().anyMatch(member -> member.getId().equals(user.getId())));
+  }
+
+  @Test
+  void test_groupCanRemoveUser(TestNamespace ns) {
+    User user = createTestUser(ns, "groupRemoveUser");
+    Team group =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("groupRemoveUser"))
+                .withTeamType(TeamType.GROUP)
+                .withUsers(List.of(user.getId()))
+                .withDescription("Group can remove direct users"));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE, "/v1/teams/" + group.getId() + "/users/" + user.getId(), null, null);
+
+    Team updated = SdkClients.adminClient().teams().get(group.getId().toString(), "users");
+    assertTrue(
+        updated.getUsers() == null
+            || updated.getUsers().stream()
+                .noneMatch(member -> member.getId().equals(user.getId())));
+  }
+
+  @Test
+  void test_userCountStaleAfterMemberSoftDeleted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    User user = createTestUser(ns, "staleCountUser");
+
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("staleCountTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withUsers(List.of(user.getId()))
+            .withDescription("Repro: userCount stays inflated after a member is soft-deleted");
+
+    Team team = createEntity(create);
+    String teamId = team.getId().toString();
+
+    Team before = client.teams().get(teamId, "users,userCount");
+    assertEquals(1, before.getUsers().size());
+    assertEquals(1, before.getUserCount());
+
+    client.users().delete(user.getId().toString());
+
+    Team after = client.teams().get(teamId, "users,userCount");
+    int visibleMembers = after.getUsers() == null ? 0 : after.getUsers().size();
+    assertEquals(0, visibleMembers, "Soft-deleted member must not appear in the team's users list");
+    assertEquals(
+        visibleMembers,
+        after.getUserCount(),
+        "userCount must match the visible users after a member is soft-deleted");
   }
 
   @Test
@@ -1283,6 +1494,121 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
               || e.getMessage().contains("participates in a loop"),
           "Expected circular dependency error but got: " + e.getMessage());
     }
+  }
+
+  @Test
+  void test_teamHierarchy_childCannotBeAncestor(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team org = client.teams().getByName("Organization");
+
+    Team grandParent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptGrandParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(org.getId()))
+                .withDescription("Grand parent department"));
+
+    Team parent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(grandParent.getId()))
+                .withDescription("Parent department"));
+
+    Team child =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptChild"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(parent.getId()))
+                .withDescription("Child department"));
+
+    Team toUpdate = client.teams().get(child.getId().toString(), "parents,children");
+    toUpdate.setChildren(List.of(grandParent.getEntityReference()));
+
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> patchEntity(child.getId().toString(), toUpdate),
+            "Adding an ancestor as a child must be rejected as a circular reference");
+    assertTrue(
+        ex.getMessage().contains("Circular reference detected"),
+        "Expected circular reference error but got: " + ex.getMessage());
+  }
+
+  @Test
+  void test_teamHierarchy_parentAndChildOverlapRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team org = client.teams().getByName("Organization");
+
+    Team other =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptOther"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(org.getId()))
+                .withDescription("Other department"));
+
+    CreateTeam createLoop =
+        new CreateTeam()
+            .withName(ns.prefix("deptLoop"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(other.getId()))
+            .withChildren(List.of(other.getId()))
+            .withDescription("Team declaring the same team as parent and child");
+
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> createEntity(createLoop),
+            "The same team as both parent and child must be rejected");
+    assertTrue(
+        ex.getMessage().contains("Circular reference detected"),
+        "Expected circular reference error but got: " + ex.getMessage());
+  }
+
+  @Test
+  void test_teamHierarchy_createWithChildThatIsAncestorRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team org = client.teams().getByName("Organization");
+
+    Team grandParent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptCrossGrandParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(org.getId()))
+                .withDescription("Grand parent department"));
+
+    Team parent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptCrossParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(grandParent.getId()))
+                .withDescription("Parent department"));
+
+    // New team declares parent=parent and child=grandParent; grandParent is already an ancestor of
+    // parent, so this closes the loop grandParent -> parent -> newTeam -> grandParent even though
+    // the new team is not persisted yet.
+    CreateTeam createLoop =
+        new CreateTeam()
+            .withName(ns.prefix("deptCrossLoop"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(parent.getId()))
+            .withChildren(List.of(grandParent.getId()))
+            .withDescription("Cross-edge cycle declared on create");
+
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> createEntity(createLoop),
+            "Creating a team whose child is an ancestor of its parent must be rejected");
+    assertTrue(
+        ex.getMessage().contains("Circular reference detected"),
+        "Expected circular reference error but got: " + ex.getMessage());
   }
 
   // ===================================================================

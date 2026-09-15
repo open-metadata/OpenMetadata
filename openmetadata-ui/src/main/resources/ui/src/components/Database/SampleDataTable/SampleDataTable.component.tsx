@@ -40,12 +40,13 @@ import {
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import TableComponent from '../../common/Table/Table';
+import TableComponent from '../../common/Table/TableV2';
 import { RowData } from './RowData';
 import './sample-data-table.less';
 import {
@@ -57,6 +58,18 @@ import {
   buildSampleDataCSVContent,
   ROW_LIMIT_OPTIONS,
 } from './SampleDataTable.utils';
+
+/**
+ * Ant Design treats `children` on a row record as nested rows and reads the row
+ * key off a record field, so raw column names cannot be used as record keys: a
+ * column named `children` crashes the table, and a repeated cell value collides
+ * as a row key. Addressing every cell by column index keeps record keys unique
+ * and clear of both reserved names.
+ */
+const ROW_KEY = '__rowKey';
+
+const getSampleDataColumnKey = (index: number, column: string) =>
+  `${index}-${column}`;
 
 const SampleDataTable: FC<SampleDataProps> = ({
   isTableDeleted,
@@ -79,12 +92,21 @@ const SampleDataTable: FC<SampleDataProps> = ({
     return owners?.some((owner) => owner.id === currentUser?.id);
   }, [owners, currentUser]);
 
+  // Consumer via the `permissions: OperationPermission` prop (raw contract kept per Task 8
+  // rule 2). No `deleted` argument: isTableDeleted is a separate prop gating a different
+  // concern (the fetch effect below) — the old `hasPermission` expression never referenced
+  // it. N-term raw OR containing a bare `EditAll` term (Task 8 Batch 2 KnowledgeCard
+  // precedent): naively dropping the EditAll term in favor of just canEditSampleData would
+  // regress the case where EditAll=true but EditSampleData is explicitly false (old code's
+  // bare `EditAll ||` wins unconditionally) — so canEditAll is kept as its own explicit
+  // OR-term alongside the prioritized canEditSampleData, restoring byte-for-byte equivalence.
+  const { canEditAll, canEditSampleData } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
   const hasPermission = useMemo(
-    () =>
-      permissions.EditAll ||
-      permissions.EditSampleData ||
-      isCurrentUserTableOwner,
-    [isCurrentUserTableOwner, permissions]
+    () => canEditAll || canEditSampleData || isCurrentUserTableOwner,
+    [canEditAll, canEditSampleData, isCurrentUserTableOwner]
   );
 
   const handleDeleteModal = useCallback(
@@ -101,9 +123,8 @@ const SampleDataTable: FC<SampleDataProps> = ({
     if (!sampleData?.rows || !sampleData?.columns) {
       return;
     }
-    const columnNames = sampleData.columns.map((col) => String(col.key ?? ''));
     const csvContent = buildSampleDataCSVContent(
-      columnNames,
+      sampleData.columns,
       sampleData.rows,
       rowLimit
     );
@@ -120,12 +141,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
     const columns =
       'columns' in entity ? entity.columns : entity.dataModel?.columns ?? [];
 
-    const updatedColumns = sampleData?.columns?.map((column) => {
+    const updatedColumns = sampleData?.columns?.map((column, index) => {
       const matchedColumn = columns.find((col) => col.name === column);
+      const columnKey = getSampleDataColumnKey(index, column);
 
       return {
         name: column,
-        dataType: matchedColumn?.dataType ?? '',
         title: (
           <div className="d-flex flex-column">
             <Typography.Text> {column}</Typography.Text>
@@ -136,17 +157,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
             )}
           </div>
         ),
-        dataIndex: column,
-        key: column,
+        dataIndex: columnKey,
+        key: columnKey,
         width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
 
-    const data = (sampleData?.rows ?? []).map((item) => {
-      const dataObject: Record<string, SampleDataType> = {};
+    const data = (sampleData?.rows ?? []).map((item, rowIndex) => {
+      const dataObject: Record<string, SampleDataType> = {
+        [ROW_KEY]: rowIndex,
+      };
       (sampleData?.columns ?? []).forEach((col, index) => {
-        dataObject[col] = item[index];
+        dataObject[getSampleDataColumnKey(index, col)] = item[index];
       });
 
       return dataObject;
@@ -346,8 +369,14 @@ const SampleDataTable: FC<SampleDataProps> = ({
         data-testid="sample-data-table"
         dataSource={slicedRows}
         pagination={false}
-        rowKey="name"
-        scroll={{ y: 'calc(100vh - 160px)' }}
+        rowKey={ROW_KEY}
+        // Each column is a fixed 250px; give the table an explicit horizontal
+        // extent so TableV2 keeps those widths and lets the wrapper scroll,
+        // instead of collapsing every column into a share of the viewport.
+        scroll={{
+          x: (sampleData?.columns?.length ?? 0) * 250,
+          y: 'calc(100vh - 160px)',
+        }}
         size="small"
       />
 

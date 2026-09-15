@@ -1,0 +1,216 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MatillionConnection",
+  "description": "Matillion Connection",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.MatillionConnection",
+  "definitions": {
+    "matillionType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Matillion"
+      ],
+      "default": "Matillion"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Matillion",
+      "type": "string",
+      "enum": [
+        "Matillion"
+      ]
+    },
+    "connection": {
+      "title": "Matillion Connection",
+      "description": "Matillion Auth Configuration",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Matillion ETL Auth Config",
+          "description": "Matillion ETL Auth Config.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionETLAuth",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "MatillionETL"
+              ],
+              "default": "MatillionETL"
+            },
+            "hostPort": {
+              "type": "string",
+              "title": "Host",
+              "description": "Matillion Host",
+              "default": "localhost"
+            },
+            "username": {
+              "title": "Username",
+              "description": "Username to connect to the Matillion. This user should have privileges to read all the metadata in Matillion.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Password to connect to the Matillion.",
+              "type": "string",
+              "format": "password"
+            },
+            "sslConfig": {
+              "title": "SSL Config",
+              "description": "Client SSL configuration",
+              "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+              "mask": true,
+              "oneOf": [
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Validate SSL Client Config",
+                  "description": "OpenMetadata Client configured to validate SSL certificates.",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                  "additionalProperties": false,
+                  "properties": {
+                    "caCertificate": {
+                      "title": "CA Certificate",
+                      "description": "The CA certificate used for SSL validation.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslCertificate": {
+                      "title": "SSL Certificate",
+                      "description": "The SSL certificate used for client authentication.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    },
+                    "sslKey": {
+                      "title": "SSL Key",
+                      "description": "The private key associated with the SSL certificate.",
+                      "type": "string",
+                      "format": "password",
+                      "accept": [
+                        ".pem",
+                        ".crt",
+                        ".cer",
+                        ".der",
+                        ".p12"
+                      ],
+                      "uiFieldType": "fileOrInput"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "hostPort",
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Matillion DPC Auth Config",
+          "description": "Matillion Data Productivity Cloud Auth Config.",
+          "javaType": "org.openmetadata.schema.services.connections.pipeline.matillion.MatillionDPCAuth",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "MatillionDPC"
+              ],
+              "default": "MatillionDPC"
+            },
+            "clientId": {
+              "title": "Client ID",
+              "description": "OAuth2 Client ID for Matillion DPC authentication.",
+              "type": "string"
+            },
+            "clientSecret": {
+              "title": "Client Secret",
+              "description": "OAuth2 Client Secret for Matillion DPC authentication.",
+              "type": "string",
+              "format": "password"
+            },
+            "region": {
+              "title": "Region",
+              "description": "Matillion DPC region. Determines the API base URL.",
+              "type": "string",
+              "enum": [
+                "us1",
+                "eu1"
+              ],
+              "default": "us1"
+            },
+            "personalAccessToken": {
+              "title": "Personal Access Token",
+              "description": "Personal Access Token for Matillion DPC. Alternative to OAuth2 Client Credentials.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "lineageLookbackDays": {
+      "title": "Lineage Lookback Days",
+      "description": "Number of days to look back when fetching lineage events from Matillion DPC OpenLineage API.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 365
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

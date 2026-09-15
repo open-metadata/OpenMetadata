@@ -40,15 +40,9 @@ import {
   transitionIncident,
 } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
-import {
-  createTask,
-  ResolveTask,
-  TaskCategory,
-  TaskEntityType,
-  TaskResolutionType,
-} from '../../../../rest/tasksAPI';
+import { ResolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
+import { reopenResolvedIncident } from '../../../../utils/DataQuality/IncidentManagerUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
@@ -61,6 +55,67 @@ import { InlineTestCaseIncidentStatusProps } from './TestCaseIncidentManagerStat
 
 const SELECTED_ITEM_CLASS =
   'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';
+
+interface StatusChangeAdditionalData {
+  assignee?: EntityReference;
+  reason?: TestCaseFailureReasonType;
+  comment?: string;
+}
+
+const buildAssignedResolveRequest = (
+  currentStatus: TestCaseResolutionStatusTypes,
+  additionalData?: StatusChangeAdditionalData
+): ResolveTask => {
+  const transitionId =
+    currentStatus === TestCaseResolutionStatusTypes.Assigned
+      ? 'reassign'
+      : 'assign';
+  const assignee = additionalData?.assignee;
+
+  return {
+    transitionId,
+    payload: assignee
+      ? {
+          assignees: [
+            {
+              id: assignee.id,
+              type: assignee.type ?? EntityType.USER,
+              name: assignee.name,
+              fullyQualifiedName: assignee.fullyQualifiedName ?? assignee.name,
+              displayName: assignee.displayName,
+            },
+          ],
+        }
+      : undefined,
+  };
+};
+
+const buildResolveRequest = (
+  status: TestCaseResolutionStatusTypes,
+  currentStatus: TestCaseResolutionStatusTypes,
+  additionalData?: StatusChangeAdditionalData
+): ResolveTask | undefined => {
+  const requestByStatus: Partial<
+    Record<TestCaseResolutionStatusTypes, ResolveTask>
+  > = {
+    [TestCaseResolutionStatusTypes.New]: { transitionId: 'new' },
+    [TestCaseResolutionStatusTypes.ACK]: { transitionId: 'ack' },
+    [TestCaseResolutionStatusTypes.Assigned]: buildAssignedResolveRequest(
+      currentStatus,
+      additionalData
+    ),
+    [TestCaseResolutionStatusTypes.Resolved]: {
+      transitionId: 'resolve',
+      resolutionType: TaskResolutionType.Completed,
+      comment: additionalData?.comment,
+      payload: additionalData?.reason
+        ? { testCaseFailureReason: additionalData.reason }
+        : undefined,
+    },
+  };
+
+  return requestByStatus[status];
+};
 
 const InlineTestCaseIncidentStatus = ({
   data,
@@ -160,7 +215,11 @@ const InlineTestCaseIncidentStatus = ({
   const reopenIncident = useCallback(
     async (
       targetStatus: TestCaseResolutionStatusTypes,
-      additionalData?: { assignee?: EntityReference }
+      additionalData?: {
+        assignee?: EntityReference;
+        reason?: TestCaseFailureReasonType;
+        comment?: string;
+      }
     ) => {
       const testCaseFqn = data.testCaseReference?.fullyQualifiedName;
       const testCaseName = data.testCaseReference?.name;
@@ -170,45 +229,13 @@ const InlineTestCaseIncidentStatus = ({
 
       setIsLoading(true);
       try {
-        const newTask = await createTask({
-          name: `Incident: ${testCaseName}`,
-          category: TaskCategory.Incident,
-          type: TaskEntityType.TestCaseResolution,
-          about: getEntityFeedLink('testCase', testCaseFqn),
+        const latest = await reopenResolvedIncident({
+          testCaseFqn,
+          testCaseName,
+          targetStatus,
+          currentStateId: data.stateId,
+          details: additionalData,
         });
-
-        if (targetStatus !== TestCaseResolutionStatusTypes.New && newTask?.id) {
-          const transitionMap: Partial<
-            Record<TestCaseResolutionStatusTypes, string>
-          > = {
-            [TestCaseResolutionStatusTypes.ACK]: 'ack',
-            [TestCaseResolutionStatusTypes.Assigned]: 'assign',
-          };
-          const transitionId = transitionMap[targetStatus];
-          if (transitionId) {
-            const assignee = additionalData?.assignee;
-            await transitionIncident(newTask.id, {
-              transitionId,
-              payload: assignee
-                ? {
-                    assignees: [
-                      {
-                        id: assignee.id,
-                        type: assignee.type ?? EntityType.USER,
-                        name: assignee.name,
-                        fullyQualifiedName:
-                          assignee.fullyQualifiedName ?? assignee.name,
-                        displayName: assignee.displayName,
-                      },
-                    ],
-                  }
-                : undefined,
-            });
-          }
-        }
-
-        const refreshed = await getListTestCaseIncidentByStateId(newTask.id);
-        const latest = refreshed?.data?.[0];
         if (latest) {
           onSubmit(latest);
         }
@@ -221,6 +248,7 @@ const InlineTestCaseIncidentStatus = ({
     [
       data.testCaseReference?.fullyQualifiedName,
       data.testCaseReference?.name,
+      data.stateId,
       onSubmit,
     ]
   );
@@ -247,44 +275,12 @@ const InlineTestCaseIncidentStatus = ({
         return;
       }
 
-      let resolveRequest: ResolveTask;
-      if (status === TestCaseResolutionStatusTypes.New) {
-        resolveRequest = { transitionId: 'new' };
-      } else if (status === TestCaseResolutionStatusTypes.ACK) {
-        resolveRequest = { transitionId: 'ack' };
-      } else if (status === TestCaseResolutionStatusTypes.Assigned) {
-        const transitionId =
-          currentStatus === TestCaseResolutionStatusTypes.Assigned
-            ? 'reassign'
-            : 'assign';
-        const assignee = additionalData?.assignee;
-        resolveRequest = {
-          transitionId,
-          payload: assignee
-            ? {
-                assignees: [
-                  {
-                    id: assignee.id,
-                    type: assignee.type ?? EntityType.USER,
-                    name: assignee.name,
-                    fullyQualifiedName:
-                      assignee.fullyQualifiedName ?? assignee.name,
-                    displayName: assignee.displayName,
-                  },
-                ],
-              }
-            : undefined,
-        };
-      } else if (status === TestCaseResolutionStatusTypes.Resolved) {
-        resolveRequest = {
-          transitionId: 'resolve',
-          resolutionType: TaskResolutionType.Completed,
-          comment: additionalData?.comment,
-          payload: additionalData?.reason
-            ? { testCaseFailureReason: additionalData.reason }
-            : undefined,
-        };
-      } else {
+      const resolveRequest = buildResolveRequest(
+        status,
+        currentStatus,
+        additionalData
+      );
+      if (!resolveRequest) {
         return;
       }
 

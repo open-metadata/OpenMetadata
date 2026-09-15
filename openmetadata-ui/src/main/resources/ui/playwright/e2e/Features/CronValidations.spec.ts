@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
-
-const inputCronExpression = async (page: Page, cron: string) => {
-  await page
-    .locator('[data-testid="cron-container"] #schedular-form_cron')
-    .click();
-  await page
-    .locator('[data-testid="cron-container"] #schedular-form_cron')
-    .clear();
-  await page
-    .locator('[data-testid="cron-container"] #schedular-form_cron')
-    .fill(cron);
-};
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  selectScheduleFrequency,
+  selectScheduleType,
+  setCustomCron,
+} from '../../utils/scheduleInterval';
 
 // use the admin user to login
 test.use({
@@ -35,11 +27,8 @@ test.use({
 });
 
 test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
-  const cronInvlidMessage =
+  const cronInvalidMessage =
     'Cron expression must have exactly 5 fields (minute hour day-of-month month day-of-week)';
-
-  const cronInvalidMinuteMessage =
-    'Invalid minute field. Must be 0-59, *, */n, or comma-separated values';
 
   const cronInvalidDayOfWeekMessage =
     'Invalid day-of-week field. Must be 0-6, *, */n, or comma-separated values';
@@ -47,146 +36,98 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('Validate different cron expressions', async ({ page }) => {
     await redirectToHomePage(page);
 
-    await settingClick(page, GlobalSettingOptions.APPLICATIONS);
-
-    const applicationResponse = page.waitForResponse(
-      '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
-    );
-
-    await page
-      .locator(
-        '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-      )
-      .click();
-
-    await applicationResponse;
+    // Navigate to Settings > Applications > Search Indexing Application
+    await page.goto('/settings/apps/SearchIndexingApplication');
+    await waitForAllLoadersToDisappear(page);
 
     await page.click('[data-testid="edit-button"]');
-    await page.getByTestId('schedular-card-container').waitFor();
-    await page
-      .getByTestId('schedular-card-container')
-      .getByText('Schedule', { exact: true })
-      .click();
-
-    await page
-      .getByTestId('time-dropdown-container')
-      .getByTestId('cron-type')
-      .click();
-
-    await page.click('.ant-select-dropdown:visible [title="Custom"]');
-
-    await page
-      .locator('[data-testid="cron-container"] #schedular-form_cron')
-      .waitFor();
+    await selectScheduleType(page);
+    await selectScheduleFrequency(page, 'custom');
 
     // Check Valid Crons
 
     // Check '0 0 * * *' to be valid
-    await inputCronExpression(page, '0 0 * * *');
+    await setCustomCron(page, '0 0 * * *');
 
-    await expect(
-      page.getByTestId('cron-container').getByText('At 12:00 AM, every day')
-    ).toBeAttached();
-    await expect(page.locator('#schedular-form_cron_help')).not.toBeAttached();
+    await expect(page.getByText('At 12:00 AM, every day')).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).not.toBeAttached();
 
-    // Check '0 0 1/3 * * 1' to be valid
-    await inputCronExpression(page, '0 0 1/3 * * 1');
+    // Field-count validation takes precedence over field-specific errors.
+    await setCustomCron(page, '0 0 1/3 * * 1');
 
-    await expect(
-      page.getByTestId('cron-container').getByText(cronInvlidMessage)
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidMessage
+    );
 
     // Check '0 0 * * 1-6' to be valid
-    await inputCronExpression(page, '0 0 * * 1-6');
+    await setCustomCron(page, '0 0 * * 1-6');
 
     await expect(
-      page
-        .getByTestId('cron-container')
-        .getByText('At 12:00 AM, Monday through Saturday')
+      page.getByText('At 12:00 AM, Monday through Saturday')
     ).toBeAttached();
-    await expect(page.locator('#schedular-form_cron_help')).not.toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).not.toBeAttached();
 
     // Check Invalid crons
 
     // Check every minute frequency throws an error
-    await inputCronExpression(page, '0/1 0 * * *');
+    await setCustomCron(page, '0/1 0 * * *');
 
-    await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText(
-          'Cron schedule too frequent. Please choose at least 1-hour intervals.'
-        )
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      'Cron schedule too frequent. Please choose at least 1-hour intervals.'
+    );
 
-    // Check every second frequency throws an error
-    await inputCronExpression(page, '0/1 0 * * * 1');
+    // Check six-field expressions are rejected
+    await setCustomCron(page, '0/1 0 * * * 1');
 
-    await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText(
-          'Cron schedule too frequent. Please choose at least 1-hour intervals.'
-        )
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidMessage
+    );
 
     // Check '0 0 * * 7' to be invalid
-    await inputCronExpression(page, '0 0 * * 7');
+    await setCustomCron(page, '0 0 * * 7');
 
-    await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText(cronInvalidDayOfWeekMessage)
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidDayOfWeekMessage
+    );
 
     // Check '0 0 * * 1 7' to be invalid
-    await inputCronExpression(page, '0 0 * * 1 7');
+    await setCustomCron(page, '0 0 * * 1 7');
 
-    await expect(
-      page.locator('#schedular-form_cron_help').getByText(cronInvlidMessage)
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidMessage
+    );
 
     // Check '0 0 * * 1 7 67' to be invalid
-    await inputCronExpression(page, '0 0 * * 1 7 67');
+    await setCustomCron(page, '0 0 * * 1 7 67');
 
-    await expect(
-      page.locator('#schedular-form_cron_help').getByText(cronInvlidMessage)
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidMessage
+    );
 
     // Check '0 0 * * 0-7' to be invalid
-    await inputCronExpression(page, '0 0 * * 0-7');
+    await setCustomCron(page, '0 0 * * 0-7');
 
-    await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText(cronInvalidDayOfWeekMessage)
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidDayOfWeekMessage
+    );
 
     // Check '0 0 * * 7-9' to be invalid
-    await inputCronExpression(page, '0 0 * * 7-9');
+    await setCustomCron(page, '0 0 * * 7-9');
 
-    await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText(cronInvalidDayOfWeekMessage)
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidDayOfWeekMessage
+    );
 
     // Check '0 0 * * -1-9' to be invalid
-    await inputCronExpression(page, '0 0 * * -1-9');
+    await setCustomCron(page, '0 0 * * -1-9');
 
-    await expect(
-      page
-        .locator('#schedular-form_cron_help')
-        .getByText(cronInvalidDayOfWeekMessage)
-    ).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).toHaveText(
+      cronInvalidDayOfWeekMessage
+    );
 
-    await inputCronExpression(page, '0 18 * * Fri	');
+    await setCustomCron(page, '0 18 * * Fri	');
 
-    await expect(
-      page
-        .getByTestId('cron-container')
-        .getByText('At 06:00 PM, only on Friday')
-    ).toBeAttached();
-    await expect(page.locator('#schedular-form_cron_help')).not.toBeAttached();
+    await expect(page.getByText('At 06:00 PM, only on Friday')).toBeAttached();
+    await expect(page.getByTestId('custom-cron-error')).not.toBeAttached();
   });
 });

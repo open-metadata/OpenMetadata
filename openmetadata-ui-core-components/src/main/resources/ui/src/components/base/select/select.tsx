@@ -86,8 +86,12 @@ const SelectValue = ({
   return (
     <AriaButton
       className={cx(
-        'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
-        (isFocused || isOpen) && 'tw:ring-2 tw:ring-brand',
+        // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow, so
+        // a ring thins/vanishes in Safari when zoomed out. `outline-hidden` is gone — the
+        // outline IS the border and focus indicator here, as in input.tsx.
+        'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
+        (isFocused || isOpen) &&
+          'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
         isDisabled &&
           'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled'
       )}

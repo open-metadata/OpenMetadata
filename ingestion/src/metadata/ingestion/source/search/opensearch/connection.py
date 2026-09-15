@@ -13,8 +13,8 @@
 Source connection handler for OpenSearch
 """
 
+import shutil
 from pathlib import Path
-from typing import Optional
 
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
@@ -99,6 +99,12 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
+def _cleanup_staging_dir(staging_dir: str | None) -> None:
+    """Remove the staging dir holding the cert/key files written by value."""
+    if staging_dir and Path(staging_dir).exists():
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
+
 class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch]):
     def _get_client(self) -> OpenSearch:
         """
@@ -120,6 +126,8 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
 
         if connection.sslConfig and connection.sslConfig.certificates:
             if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
+                staging_dir = connection.sslConfig.certificates.stagingDir
+                self._on_close(lambda: _cleanup_staging_dir(staging_dir))
                 ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
             elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
                 ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=connection.sslConfig)
@@ -170,8 +178,8 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection for OpenSearch. This can be executed either as part

@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   clickOutside,
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -52,7 +53,7 @@ const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#F14C75',
+  color: '#C11574',
   icon: 'Cube01',
 };
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
@@ -130,9 +131,13 @@ test('Classification Page', async ({ page }) => {
     ).toBeVisible();
     await expect(page.locator('[data-testid="table"]')).toBeVisible();
 
-    await expect(
-      page.locator('.ant-table-thead > tr > .ant-table-cell')
-    ).toHaveText(['Enabled', 'Tag', 'Display Name', 'Description', 'Actions']);
+    await expect(page.locator('thead > tr > th')).toHaveText([
+      'Enabled',
+      'Tag',
+      'Display Name',
+      'Description',
+      'Actions',
+    ]);
   });
 
   await test.step('Disabled system tags should not render', async () => {
@@ -167,7 +172,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
+    const tagDetailResponseDisable = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags') &&
+        response.url().includes(tag.responseData.name) &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId(tag.responseData.name).click();
+    await tagDetailResponseDisable;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).toBeVisible();
@@ -230,7 +242,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-domain')).toBeVisible();
     await expect(page.getByTestId('add-owner')).toBeVisible();
 
+    const tagDetailResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags') &&
+        response.url().includes(tag.responseData.name) &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId(tag.responseData.name).click();
+    await tagDetailResponse;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).not.toBeVisible();
@@ -266,7 +285,7 @@ test('Classification Page', async ({ page }) => {
       .getByTestId('displayName')
       .getByRole('textbox')
       .fill(NEW_CLASSIFICATION.displayName);
-    await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
+    await fillDescriptionBox(page, NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
     const createTagCategoryResponse = page.waitForResponse(
@@ -300,7 +319,7 @@ test('Classification Page', async ({ page }) => {
       .getByTestId('displayName')
       .getByRole('textbox')
       .fill(NEW_TAG.displayName);
-    await page.locator(descriptionBox).fill(NEW_TAG.description);
+    await fillDescriptionBox(page, NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
     await page.getByRole('button', { name: NEW_TAG.icon }).click();
     await page
@@ -459,9 +478,9 @@ test('Classification Page', async ({ page }) => {
     await permanentDeleteModal(page, NEW_TAG.name);
     await deleteTag;
 
-    await expect(page.locator('[data-testid="table"]')).not.toContainText(
-      NEW_TAG.name
-    );
+    await expect(
+      page.locator('[data-testid="empty-placeholder"]')
+    ).toBeVisible();
 
     // Verify term count is now 0 after deleting the tag
     await page.reload();

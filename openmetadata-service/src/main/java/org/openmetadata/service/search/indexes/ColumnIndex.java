@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -17,8 +19,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public interface ColumnIndex extends SearchIndex {
   default void parseColumns(
       List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
-    parseColumns(
-        columns, flattenColumns, parentColumn, 1, SearchFieldLimits.forEntity(getEntityTypeName()));
+    parseColumns(columns, flattenColumns, parentColumn, 1, SearchFieldLimits.active());
   }
 
   private void parseColumns(
@@ -85,14 +86,37 @@ public interface ColumnIndex extends SearchIndex {
   }
 
   default String getColumnDescriptionStatus(EntityInterface entity) {
+    String status = "COMPLETE";
     List<Class<?>> interfaces = Arrays.asList(entity.getClass().getInterfaces());
-    if (interfaces.contains(ColumnsEntityInterface.class)) {
-      for (Column col : ((ColumnsEntityInterface) entity).getColumns()) {
-        if (CommonUtil.nullOrEmpty(col.getDescription())) {
-          return "INCOMPLETE";
+    if (interfaces.contains(ColumnsEntityInterface.class)
+        && hasUndocumentedColumn(((ColumnsEntityInterface) entity).getColumns())) {
+      status = "INCOMPLETE";
+    }
+    return status;
+  }
+
+  private boolean hasUndocumentedColumn(List<Column> columns) {
+    boolean undocumented = false;
+    Deque<Column> pending = new ArrayDeque<>();
+    pushColumns(pending, columns);
+    while (!pending.isEmpty() && !undocumented) {
+      Column col = pending.pop();
+      if (CommonUtil.nullOrEmpty(col.getDescription())) {
+        undocumented = true;
+      } else {
+        pushColumns(pending, col.getChildren());
+      }
+    }
+    return undocumented;
+  }
+
+  private void pushColumns(Deque<Column> pending, List<Column> columns) {
+    if (columns != null) {
+      for (Column col : columns) {
+        if (col != null) {
+          pending.push(col);
         }
       }
     }
-    return "COMPLETE";
   }
 }

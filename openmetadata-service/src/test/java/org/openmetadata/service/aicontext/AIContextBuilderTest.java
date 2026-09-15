@@ -13,9 +13,16 @@
 package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,27 +31,35 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.CardinalityDistribution;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
@@ -53,6 +68,11 @@ import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 /**
  * Unit tests for the pure structural transforms of {@link AIContextBuilder}. These verify that the
@@ -154,6 +174,72 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void excerpt_zeroOrNegativeLimitYieldsEmptyWithoutCrashing() {
+    assertEquals("", AIContextBuilder.excerpt("lead paragraph", 0));
+    assertEquals("", AIContextBuilder.excerpt("lead paragraph", -3));
+  }
+
+  @Test
+  void structuralPreview_outlineExhaustingTheLimitDoesNotCrash() {
+    String body = "Lead paragraph.\n\n## Recognition timing\n\n## Refund exclusions";
+    // Limit exactly at the outline's length: the lead's excerpt allowance drops to 0.
+    String preview = AIContextBuilder.structuralPreview(body, 40);
+    assertTrue(preview.contains("Sections:"), "outline still renders when the lead is elided");
+  }
+
+  @Test
+  void structuralPreview_neverExceedsTheLimit() {
+    String body =
+        "Lead paragraph about revenue recognition.\n\n"
+            + "## Recognition timing\n\n## Refund exclusions\n\n"
+            + "## Territory rules\n\n## Reseller margins";
+    for (int limit : new int[] {20, 40, 120, 800}) {
+      String preview = AIContextBuilder.structuralPreview(body, limit);
+      assertTrue(
+          preview.length() <= limit,
+          "preview must respect the limit (" + limit + "), was " + preview.length());
+    }
+    String bounded = AIContextBuilder.structuralPreview(body, 20);
+    assertTrue(bounded.contains("Sections:"), "bounded outline still names the section list");
+  }
+
+  @Test
+  void canViewKnowledge_failsClosedAndAllowsInternalCallers() {
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorize(eq(securityContext), any(OperationContext.class), any());
+    assertFalse(
+        AIContextBuilder.canViewKnowledge(
+            authorizer,
+            securityContext,
+            Entity.TABLE,
+            "svc.db.sch.upstream",
+            MetadataOperation.VIEW_TESTS),
+        "authorization denial hides the upstream");
+
+    reset(authorizer);
+    doThrow(new IllegalStateException("policy store hiccup"))
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    assertFalse(
+        AIContextBuilder.canViewKnowledge(
+            authorizer,
+            securityContext,
+            Entity.TABLE,
+            "svc.db.sch.upstream",
+            MetadataOperation.VIEW_TESTS),
+        "non-authorization errors fail closed");
+
+    assertTrue(
+        AIContextBuilder.canViewKnowledge(
+            authorizer, null, Entity.TABLE, "svc.db.sch.upstream", MetadataOperation.VIEW_TESTS),
+        "server-internal callers (no security context) are not filtered");
+  }
+
+  @Test
   void applyKnowledgeBudget_keepsShortItemsFullAndExcerptsOversized() {
     KnowledgeItem term = knowledgeItem("term", "x".repeat(100));
     KnowledgeItem metric = knowledgeItem("metric", "y".repeat(100));
@@ -189,6 +275,138 @@ class AIContextBuilderTest {
     assertTrue(
         Boolean.TRUE.equals(second.getContentTruncated()), "second article marked truncated");
     assertTrue(second.getContent() == null, "second article content omitted (reference-only)");
+  }
+
+  @Test
+  void isActivePill_gatesNonActiveStatusesButTreatsMissingStatusAsActive() {
+    assertTrue(
+        AIContextBuilder.isActivePill(new ContextMemory()),
+        "pre-lifecycle memories (no status) stay visible");
+    assertTrue(
+        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ACTIVE)));
+    assertFalse(
+        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.DRAFT)),
+        "Draft memories are not settled knowledge");
+    assertFalse(
+        AIContextBuilder.isActivePill(new ContextMemory().withStatus(ContextMemoryStatus.ARCHIVED)),
+        "Archived memories must not reach agents as current context");
+  }
+
+  @Test
+  void stampStaleness_flagsNothingWhenSignalsHealthy() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(item, 1000L, 900L, null, null);
+    assertFalse(Boolean.TRUE.equals(item.getStale()), "fresh knowledge on a healthy asset");
+    assertTrue(item.getStaleReasons().isEmpty(), "no reasons when nothing is flagged");
+  }
+
+  @Test
+  void stampStaleness_flagsAssetUpdatedAfterKnowledge() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(item, 1000L, 2000L, null, null);
+    assertTrue(Boolean.TRUE.equals(item.getStale()));
+    assertEquals(List.of("assetUpdatedAfterKnowledge"), item.getStaleReasons());
+  }
+
+  @Test
+  void stampStaleness_flagsFailingAssetAndUpstreamDataQuality() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(
+        item, null, null, new DataQuality().withFailed(3), new DataQuality().withFailed(1));
+    assertTrue(Boolean.TRUE.equals(item.getStale()));
+    assertEquals(
+        List.of("dataQualityFailing", "upstreamDataQualityFailing"), item.getStaleReasons());
+  }
+
+  @Test
+  void stampStaleness_zeroFailuresAndMissingTimestampsAreNotStale() {
+    KnowledgeItem item = knowledgeItem("NPI", "definition");
+    AIContextBuilder.stampStaleness(
+        item, null, null, new DataQuality().withFailed(0), new DataQuality().withFailed(0));
+    assertFalse(Boolean.TRUE.equals(item.getStale()));
+  }
+
+  @Test
+  void applyKnowledgeBudget_reservesCueRoomForStaleItems() {
+    KnowledgeItem fresh = knowledgeItem("fresh", "z".repeat(4000));
+    KnowledgeItem stale =
+        knowledgeItem("stale", "z".repeat(4000))
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
+    AIContextBuilder builder =
+        new AIContextBuilder("table", "svc.db.sch.orders")
+            .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS);
+
+    AIContext freshContext = new AIContext().withArticles(List.of(fresh));
+    AIContext staleContext = new AIContext().withArticles(List.of(stale));
+    builder.applyKnowledgeBudget(freshContext);
+    builder.applyKnowledgeBudget(staleContext);
+
+    assertTrue(Boolean.TRUE.equals(fresh.getContentTruncated()));
+    assertTrue(Boolean.TRUE.equals(stale.getContentTruncated()));
+    // Invariant: rendered cue + excerpt stays within the fresh item's budget share (exact sizing,
+    // not an estimate).
+    assertTrue(
+        stale.getContent().length() + AIContextMarkdown.staleCue(stale).length()
+            <= fresh.getContent().length() + 1,
+        "stale excerpt plus its rendered cue stays within the budget share");
+  }
+
+  @Test
+  void applyKnowledgeBudget_chargesStaleCueAgainstTheSharedPool() {
+    // Two stale items share a small budget: the cue of item 1 must be charged to the pool, or the
+    // bundle's rendered total (content + cues) exceeds the configured budget.
+    KnowledgeItem first =
+        knowledgeItem("first", "z".repeat(4000))
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
+    KnowledgeItem second =
+        knowledgeItem("second", "z".repeat(4000))
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
+    AIContext context = new AIContext().withArticles(List.of(first, second));
+
+    new AIContextBuilder("table", "svc.db.sch.orders")
+        .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS)
+        .applyKnowledgeBudget(context);
+
+    String renderedFirst = AIContextMarkdown.staleCue(first);
+    assertTrue(Boolean.TRUE.equals(first.getContentTruncated()));
+    assertTrue(
+        first.getContent().length() + renderedFirst.length() <= AIContextBuilder.EXCERPT_CHARS,
+        "first stale item's excerpt + cue fits the budget");
+    assertTrue(Boolean.TRUE.equals(second.getContentTruncated()));
+    assertTrue(
+        second.getContent() == null,
+        "second item omitted once the first item's excerpt + cue consumed the pool");
+    // The omitted item renders no cue (it is only charged/rendered alongside visible content).
+    StringBuilder markdown = new StringBuilder();
+    AIContextMarkdown.appendKnowledgeSection(
+        markdown, "Knowledge", List.of(first, second), "#", true);
+    assertEquals(
+        1,
+        markdown.toString().split("⚠ Stale", -1).length - 1,
+        "exactly one cue renders — the omitted item carries no unbudgeted cue");
+  }
+
+  @Test
+  void appendKnowledgeSection_rendersTrustCueOnlyForStaleItems() {
+    KnowledgeItem stale =
+        knowledgeItem("NPI", "definition")
+            .withStale(true)
+            .withStaleReasons(List.of("assetUpdatedAfterKnowledge"));
+    KnowledgeItem fresh = knowledgeItem("MRR", "metric definition");
+    StringBuilder markdown = new StringBuilder();
+
+    AIContextMarkdown.appendKnowledgeSection(
+        markdown, "Knowledge", List.of(stale, fresh), "#", true);
+
+    String rendered = markdown.toString();
+    assertTrue(
+        rendered.contains("⚠ Stale — assetUpdatedAfterKnowledge"),
+        "stale item carries a trust cue naming the reasons");
+    assertEquals(
+        1, rendered.split("⚠ Stale", -1).length - 1, "cue is rendered for stale items only");
   }
 
   @Test
@@ -237,6 +455,16 @@ class AIContextBuilderTest {
     assertEquals("id", fields.get(0).getName());
     assertEquals("PRIMARY_KEY", fields.get(0).getConstraint());
     assertEquals("bigint", fields.get(1).getDataType());
+  }
+
+  @Test
+  void toFieldContexts_carriesRawDataTypeEnumAlongsideDisplayType() {
+    List<FieldContext> fields = AIContextBuilder.toFieldContexts(sampleTable().getColumns());
+    // customer_id has a display type ("bigint") that wins for dataType; the raw enum name must
+    // still be available for programmatic type branching.
+    assertEquals("bigint", fields.get(1).getDataType());
+    assertEquals("BIGINT", fields.get(1).getDataTypeEnum());
+    assertEquals("BIGINT", fields.get(0).getDataTypeEnum());
   }
 
   @Test
@@ -399,6 +627,109 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void unescapeRichText_decodesHtmlEntitiesFromBlockEditorContent() {
+    assertEquals(
+        "```\ncode\n```",
+        AIContextBuilder.unescapeRichText("&#96;&#96;&#96;\ncode\n&#96;&#96;&#96;"),
+        "backtick entities must decode to a real markdown code fence");
+    assertEquals(
+        "aum >= 250k for the bank's clients",
+        AIContextBuilder.unescapeRichText("aum &gt;&#61; 250k for the bank&#39;s clients"),
+        "operator and apostrophe entities must decode");
+  }
+
+  @Test
+  void unescapeRichText_leavesPlainTextNullAndBareAmpersandUntouched() {
+    assertEquals("R&D spend", AIContextBuilder.unescapeRichText("R&D spend"));
+    assertEquals("", AIContextBuilder.unescapeRichText(""));
+    assertNull(AIContextBuilder.unescapeRichText(null));
+  }
+
+  @Test
+  void metricContent_unescapesDescriptionAndPreservesExpressionCode() {
+    Metric metric =
+        new Metric()
+            .withName("HighValue")
+            .withDescription("Flag when deposits &gt;&#61; 50k for the bank&#39;s book.")
+            .withMetricExpression(new MetricExpression().withCode("SUM(deposit) >= 50000"));
+    String content = AIContextBuilder.metricContent(metric);
+    assertTrue(
+        content.contains("deposits >= 50k for the bank's book."),
+        "metric description entities must be unescaped");
+    assertTrue(content.contains("SUM(deposit) >= 50000"), "expression code must pass through raw");
+  }
+
+  @Test
+  void toFieldContexts_unescapesColumnDescriptionEntities() {
+    Column column =
+        new Column()
+            .withName("value_segment")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDescription(
+                "private_banking when aum &gt;&#61; 250k, else the bank&#39;s default");
+    FieldContext field = AIContextBuilder.toFieldContexts(List.of(column)).getFirst();
+    assertEquals(
+        "private_banking when aum >= 250k, else the bank's default", field.getDescription());
+  }
+
+  @Test
+  void toDataModelContext_prefersCompiledSqlAndMapsMeta() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withPath("models/marts/core/dim_customers.sql")
+            .withDbtSourceProject("banking_redshift")
+            .withSql("SELECT * FROM staging.customers")
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    TableDataModel context = AIContextBuilder.toDataModelContext(dataModel);
+    assertEquals("DBT", context.getModelType());
+    assertEquals("models/marts/core/dim_customers.sql", context.getPath());
+    assertEquals("banking_redshift", context.getSourceProject());
+    assertEquals("SELECT * FROM staging.customers", context.getSql(), "compiled SQL must win");
+  }
+
+  @Test
+  void toDataModelContext_fallsBackToRawSqlWhenCompiledAbsent() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    assertEquals(
+        "SELECT * FROM {{ ref('customers') }}",
+        AIContextBuilder.toDataModelContext(dataModel).getSql());
+  }
+
+  @Test
+  void toDataModelContext_nullWhenAbsentOrEmpty() {
+    assertNull(AIContextBuilder.toDataModelContext(null));
+    assertNull(AIContextBuilder.toDataModelContext(new DataModel()), "empty model must be dropped");
+  }
+
+  @Test
+  void toDataModelContext_boundsOversizedSql() {
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DDL).withSql("SELECT 1 ".repeat(2000));
+    String sql = AIContextBuilder.toDataModelContext(dataModel).getSql();
+    assertTrue(
+        sql.length() <= AIContextBuilder.MAX_DATA_MODEL_SQL_CHARS + 20,
+        "model SQL must be bounded");
+    assertTrue(sql.endsWith("(truncated)"), "bounded SQL must be marked truncated");
+  }
+
+  @Test
+  void buildTableContext_includesDataModelWhenPresent() {
+    Table table =
+        new Table()
+            .withName("orders")
+            .withColumns(List.of())
+            .withDataModel(
+                new DataModel().withModelType(DataModel.ModelType.DBT).withSql("SELECT 1"));
+    TableDataModel dataModel = AIContextBuilder.buildTableContext(table).getDataModel();
+    assertEquals("DBT", dataModel.getModelType());
+    assertEquals("SELECT 1", dataModel.getSql());
+  }
+
+  @Test
   void applySearchFields_materializesStructuralContextAndFkTargets() {
     Map<String, Object> doc = new HashMap<>();
     AIContextBuilder.applySearchFields(doc, sampleTable());
@@ -446,6 +777,59 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void populateProfile_carriesSampleMetadataAndDetailedColumnStats() {
+    CardinalityDistribution distribution =
+        new CardinalityDistribution()
+            .withCategories(List.of("active", "Others"))
+            .withCounts(List.of(80, 20))
+            .withPercentages(List.of(80.0, 20.0));
+    Table profiled =
+        new Table()
+            .withProfile(
+                new TableProfile()
+                    .withRowCount(1000.0)
+                    .withTimestamp(123L)
+                    .withProfileSample(50.0)
+                    .withProfileSampleType(TableProfile.ProfileSampleType.PERCENTAGE))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("status")
+                        .withProfile(
+                            new ColumnProfile()
+                                .withUniqueProportion(0.97)
+                                .withMean(12.5)
+                                .withMedian(11.0)
+                                .withCardinalityDistribution(distribution))));
+    Observability observability = new Observability();
+    AIContextBuilder.populateProfile(observability, profiled);
+    assertEquals(50.0, observability.getProfileSample());
+    assertEquals("PERCENTAGE", observability.getProfileSampleType());
+    ColumnProfileSummary summary = observability.getColumnProfiles().get(0);
+    assertEquals(0.97, summary.getUniqueProportion());
+    assertEquals(12.5, summary.getMean());
+    assertEquals(11.0, summary.getMedian());
+    assertEquals(distribution, summary.getCardinalityDistribution());
+  }
+
+  @Test
+  void serviceRef_andServiceType_resolveFromTable() {
+    EntityReference service =
+        new EntityReference()
+            .withId(UUID.fromString("33333333-3333-3333-3333-333333333333"))
+            .withName("snowflake_prod")
+            .withType("databaseService");
+    Table table =
+        sampleTable()
+            .withService(service)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+    assertEquals(service, AIContextBuilder.serviceRef(table));
+    assertEquals("Snowflake", AIContextBuilder.serviceType(table));
+    assertNull(AIContextBuilder.serviceRef(new Metric()), "non-table assets carry no service ref");
+    assertNull(AIContextBuilder.serviceType(new Metric()));
+  }
+
+  @Test
   void buildTableContext_composesAllStructuralSignals() {
     TableContext context = AIContextBuilder.buildTableContext(sampleTable());
     assertEquals(2, context.getColumns().size());
@@ -453,5 +837,22 @@ class AIContextBuilderTest {
     assertEquals(1, context.getForeignKeys().size());
     assertEquals(1, context.getFrequentJoins().size());
     assertEquals(List.of("created_at"), context.getPartitionColumns());
+  }
+
+  @Test
+  void boundedSampleData_keepsColumnsAndOnlyFirstTenRows() {
+    List<List<Object>> rows = new ArrayList<>();
+    for (int index = 0; index < 12; index++) {
+      rows.add(new ArrayList<>(List.of(index, "value-" + index)));
+    }
+    TableData source = new TableData().withColumns(List.of("id", "value")).withRows(rows);
+
+    TableData bounded = AIContextBuilder.boundedSampleData(source);
+
+    assertEquals(List.of("id", "value"), bounded.getColumns());
+    assertEquals(10, bounded.getRows().size());
+    assertEquals(List.of(9, "value-9"), bounded.getRows().get(9));
+    rows.get(0).set(1, "mutated");
+    assertEquals("value-0", bounded.getRows().get(0).get(1));
   }
 }

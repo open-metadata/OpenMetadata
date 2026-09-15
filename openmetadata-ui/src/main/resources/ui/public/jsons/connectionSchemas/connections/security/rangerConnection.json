@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RangerConnection",
+  "description": "Apache Ranger Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.security.RangerConnection",
+  "definitions": {
+    "rangerType": {
+      "title": "Ranger Type",
+      "description": "Apache Ranger service type",
+      "type": "string",
+      "enum": [
+        "Ranger"
+      ],
+      "default": "Ranger"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Ranger",
+      "type": "string",
+      "enum": [
+        "Ranger"
+      ]
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Apache Ranger Admin URL.",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Authentication type to connect to Apache Ranger.",
+      "oneOf": [
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Ranger Basic Auth",
+          "description": "Configuration for connecting to Ranger Basic Auth.",
+          "javaType": "org.openmetadata.schema.services.connections.security.ranger.RangerBasicAuth",
+          "type": "object",
+          "properties": {
+            "username": {
+              "title": "Username",
+              "description": "Ranger user to authenticate to the API.",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "description": "Ranger password to authenticate to the API.",
+              "type": "string",
+              "format": "password"
+            }
+          },
+          "required": [
+            "username",
+            "password"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort",
+    "authType"
+  ]
+}

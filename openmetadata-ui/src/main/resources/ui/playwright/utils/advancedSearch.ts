@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { escapeESReservedCharacters, getEncodedFqn } from './entity';
+import { getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
@@ -161,6 +161,11 @@ export const NULL_CONDITIONS = {
   },
 };
 
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const SEARCH_RESPONSE_TIMEOUT = 60_000;
+
 export const showAdvancedSearchDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();
   await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
@@ -174,52 +179,99 @@ export const selectOption = async (
   optionTitle: string,
   isSearchable = false
 ) => {
+  const comboboxInput = dropdownLocator.locator('input[role="combobox"]');
+  const triggerButton = dropdownLocator.locator(
+    'button[aria-haspopup="listbox"]'
+  );
+
+  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+
   if (isSearchable) {
-    // Wait for dropdown to be visible before clicking
-    const selector = dropdownLocator.locator('.ant-select-selector');
-    await expect(selector).toBeVisible();
-    await selector.click();
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-
-    // Clear any existing input and type the new value
-    const combobox = dropdownLocator.getByRole('combobox');
-    await combobox.clear();
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-
-    await combobox.fill(optionTitle);
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
+    if ((await triggerButton.count()) === 0) {
+      // MultiSelect: no chevron overlays the input, so clicking is safe —
+      // and required, since its popup opens from a mousedown handler.
+      await comboboxInput.click();
+    }
+    // Single fill (no clear first) — one input event, one async fetch.
+    await comboboxInput.fill(optionTitle);
+    // React Aria may close the focus-opened popup while processing the atomic
+    // fill; ArrowDown deterministically (re)opens it with the filter applied.
+    await comboboxInput.press('ArrowDown');
+  } else if ((await comboboxInput.count()) > 0) {
+    // Select.ComboBox: fill('') focuses the input (menuTrigger="focus" opens
+    // the popup) and clears the current-label filter so all options show.
+    // Never pointer-click the input — in narrow ComboBoxes (e.g. the RAQB
+    // operator column) the absolutely positioned chevron button covers the
+    // input's center and intercepts the click, hanging actionability retries.
+    await comboboxInput.fill('');
+    await comboboxInput.press('ArrowDown');
   } else {
-    await dropdownLocator.click();
+    // Plain Select (no combobox input): click the trigger button to open.
+    await triggerButton.click();
   }
 
-  await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
+  // Scope the popup to THIS control via aria-controls (react-aria sets it
+  // while expanded). Popovers portal to <body>, so a global
+  // [role="listbox"]:visible could match a popup left open by a previous
+  // interaction (MultiSelect keeps its popup open by design). The popup can
+  // also close and reopen under a new id while the builder re-renders, so
+  // re-resolve it (and reopen if needed) on every retry.
+  const control = comboboxInput.or(triggerButton).first();
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await control.press('ArrowDown');
+    }
+    const listboxId = await control.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Combobox popup did not open (aria-controls not set)');
+    }
+    const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
+    // Prefer the option's value over its label. Tag-like fields (Tier, Tags,
+    // Certification) render the display name — `Tier1` — while callers pass
+    // the FQN `Tier.Tier1`. react-aria puts the value on `data-key`, so this
+    // keeps working however the label is presented. `data-key` is unique
+    // within a listbox, so no positional locator is needed here.
+    //
+    // Matched case-insensitively (`i`): the value is the FQN as indexed
+    // (`Tier.Tier5`) while callers reasonably pass it lowercased, and
+    // `tier.tagFQN` is a normalised keyword, so case carries no meaning here.
+    const byValue = listbox.locator(
+      `[role="option"][data-key="${optionTitle}" i]`
+    );
+    const option = (await byValue.count())
+      ? byValue
+      : listbox.getByRole('option', { name: optionTitle, exact: true }).first();
+    if (isSearchable && (await option.count()) === 0) {
+      await comboboxInput.fill('');
+      await comboboxInput.fill(optionTitle);
+      throw new Error(`Option "${optionTitle}" not present yet; re-searched`);
+    }
+    await option.click({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
 
-  // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
-  // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
-  const optionLocator = page
-    .locator('.ant-select-dropdown:visible')
-    .getByTitle(optionTitle, { exact: true })
-    .first();
-  await expect(optionLocator).toBeVisible();
-
-  // Wait for dropdown animations to settle before clicking
-  // This prevents "element detached from DOM" errors during re-renders
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown animation settling
-  await page.waitForTimeout(100);
-  await optionLocator.click({ timeout: 10000 });
+  // Close the popup if the click didn't: re-selecting the current value emits
+  // no selection change (so the popup stays open) and MultiSelect popups stay
+  // open by design — either would pollute the next interaction's locators.
+  // The control itself may be GONE by now (selecting a field can morph the
+  // whole rule row), which also unmounts its popup — tolerate that.
+  const openListboxId = await control
+    .getAttribute('aria-controls', { timeout: 1000 })
+    .catch(() => null);
+  if (openListboxId) {
+    const openListbox = page.locator(`[role="listbox"][id="${openListboxId}"]`);
+    await openListbox
+      .waitFor({ state: 'hidden', timeout: 2000 })
+      .catch(async () => {
+        // Blur the control — react-aria comboboxes close their popup when
+        // focus leaves. NEVER send Escape here: surrounding antd modals and
+        // forms handle Escape in the capture phase and dismiss themselves.
+        await control.blur({ timeout: 1000 }).catch(() => undefined);
+        await openListbox
+          .waitFor({ state: 'hidden', timeout: 1000 })
+          .catch(() => undefined);
+      });
+  }
 };
 
 export const selectRange = async (
@@ -228,16 +280,8 @@ export const selectRange = async (
   startDate: string,
   endDate: string
 ) => {
-  await ruleLocator.locator('.rule--value .ant-picker-range').click();
-
-  await page.locator('.ant-picker-dropdown-range').waitFor({
-    state: 'visible',
-  });
-
-  await page.locator('.ant-picker-input-active input').fill(startDate);
-  await page.press('.ant-picker-input-active input', 'Enter');
-  await page.locator('.ant-picker-input-active input').fill(endDate);
-  await page.press('.ant-picker-input-active input', 'Enter');
+  await ruleLocator.getByTestId('query-date-value-0').fill(startDate);
+  await ruleLocator.getByTestId('query-date-value-1').fill(endDate);
 };
 
 export const fillRule = async (
@@ -254,15 +298,12 @@ export const fillRule = async (
     index: number;
   }
 ) => {
-  const escapeRegex = (value: string) =>
-    value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  const ruleLocator = page.locator('.rule').nth(index - 1);
+  const ruleLocator = page.getByTestId(`query-builder-rule-${index - 1}`);
 
   // Perform click on rule field
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     field.id,
     true
   );
@@ -270,13 +311,17 @@ export const fillRule = async (
   // Perform click on operator
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     condition
   );
 
   if (searchCriteria) {
+    // A react-aria combobox input is also `type="text"`, so the plain-text
+    // widget has to be told apart by the absent combobox role. Without that,
+    // a select-valued rule takes this branch: the text is typed, no option is
+    // ever chosen, and the rule is applied with a null value.
     const inputElement = ruleLocator.locator(
-      '.rule--widget--TEXT input[type="text"]'
+      '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
     );
     const searchData = searchCriteria.toLowerCase();
 
@@ -284,53 +329,106 @@ export const fillRule = async (
       await inputElement.fill(searchData);
     } else {
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget > .ant-select > .ant-select-selector input'
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
-      const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
+      const countMatchingOptions = async () => {
+        const listboxId = await dropdownInput.getAttribute('aria-controls');
+        if (!listboxId) {
+          return 0;
+        }
 
-      await dropdownInput.click();
+        const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
-      await aggregateRes1;
+        // Either the value matches (tag-like fields show a display name) or the
+        // visible text does.
+        const byValue = await listbox
+          .locator(`[role="option"][data-key="${searchCriteria}"]`)
+          .count();
 
-      const aggregateRes2 = page.waitForResponse(
-        `/api/v1/search/aggregate?*${getEncodedFqn(
-          escapeESReservedCharacters(searchData)
-        )}*`
+        return byValue > 0
+          ? byValue
+          : listbox
+              .getByRole('option')
+              .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+              .count();
+      };
+
+      await expect
+        .poll(
+          async () => {
+            await dropdownInput.fill('');
+            await dropdownInput.fill(searchData);
+
+            await page
+              .waitForResponse(
+                (response) =>
+                  response.url().includes('/api/v1/search/aggregate'),
+                { timeout: 5_000 }
+              )
+              .catch(() => null);
+
+            return countMatchingOptions();
+          },
+          { timeout: 30_000, intervals: [1_000, 2_000, 3_000] }
+        )
+        .toBeGreaterThan(0);
+
+      const listboxId = await dropdownInput.getAttribute('aria-controls');
+      const dropdown = page.locator(`[role="listbox"][id="${listboxId}"]`);
+
+      // Match on the option's value, not its label. Tag-like fields (Tier,
+      // Tags, Certification) render the display name — `Tier1` — while the
+      // fixtures carry the FQN `Tier.Tier1`, and the two are legitimately
+      // different. react-aria puts the value on `data-key`, so this stays
+      // correct however the label is presented.
+      const byValue = dropdown.locator(
+        `[role="option"][data-key="${searchCriteria}"]`
       );
 
-      await dropdownInput.fill(searchData);
-
-      await aggregateRes2;
-
-      const dropdown = page.locator('.ant-select-dropdown:visible');
-      const exactTitleMatch = dropdown
-        .locator('[title]')
-        .filter({
-          hasText: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
-        })
-        .first();
-      const partialTextMatch = dropdown
-        .locator('.ant-select-item-option-content')
-        .filter({
-          hasText: new RegExp(escapeRegex(searchData), 'i'),
-        })
-        .first();
-
-      if (await exactTitleMatch.count()) {
-        await exactTitleMatch.click();
-      } else if (await partialTextMatch.count()) {
-        await partialTextMatch.click();
+      if (await byValue.count()) {
+        await byValue.click();
       } else {
-        // Some suggestion backends normalize or delay option text; Enter keeps
-        // the typed criteria and avoids waiting forever on an exact title match.
-        await dropdownInput.press('Enter');
+        const exactMatch = dropdown
+          .getByRole('option', {
+            name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
+          })
+          .first();
+
+        if (await exactMatch.count()) {
+          await exactMatch.click();
+        } else {
+          await dropdown
+            .getByRole('option')
+            .filter({ hasText: new RegExp(escapeRegex(searchData), 'i') })
+            .first()
+            .click();
+        }
       }
     }
 
     await clickOutside(page);
   }
 };
+
+// Tag-like fields (tags, tier, certification, glossary) now apply the
+// original-cased value while other fields still apply the lowercased
+// aggregation key, so URL and chip expectations must be case-insensitive.
+const waitForSearchQueryWithValues = (page: Page, values: string[]) =>
+  page.waitForResponse(
+    (response) => {
+      const url = response.url().toLowerCase();
+
+      return (
+        url.includes('/api/v1/search/query') &&
+        url.includes('index=dataasset&from=0&size=15') &&
+        values.every((value) =>
+          url.includes(getEncodedFqn(value, true).toLowerCase())
+        )
+      );
+    },
+    { timeout: SEARCH_RESPONSE_TIMEOUT }
+  );
 
 export const checkMustPaths = async (
   page: Page,
@@ -355,25 +453,25 @@ export const checkMustPaths = async (
     index,
   });
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchData,
-      true
-    )}*`
-  );
+  const searchRes = waitForSearchQueryWithValues(page, [searchData]);
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(res.request().url().toLowerCase()).toContain(
+    getEncodedFqn(searchData, true).toLowerCase()
+  );
 
   const json = await res.json();
 
   expect(JSON.stringify(json.hits.hits)).toContain(searchCriteria);
 
+  // The summary renders the rule's stored value. Tag-like fields keep the
+  // FQN's own capitalisation (`Tier.Tier1`), others carry a lowercased
+  // aggregation key, so match without regard to case.
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(searchData);
+  ).toContainText(searchData, { ignoreCase: true });
 };
 
 export const checkMustNotPaths = async (
@@ -399,16 +497,13 @@ export const checkMustNotPaths = async (
     index,
   });
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchData,
-      true
-    )}*`
-  );
+  const searchRes = waitForSearchQueryWithValues(page, [searchData]);
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(res.request().url().toLowerCase()).toContain(
+    getEncodedFqn(searchData, true).toLowerCase()
+  );
 
   if (!['columns.name.keyword'].includes(field.name)) {
     const json = await res.json();
@@ -416,9 +511,12 @@ export const checkMustNotPaths = async (
     expect(JSON.stringify(json.hits.hits)).not.toContain(searchCriteria);
   }
 
+  // The summary renders the rule's stored value. Tag-like fields keep the
+  // FQN's own capitalisation (`Tier.Tier1`), others carry a lowercased
+  // aggregation key, so match without regard to case.
   await expect(
     page.getByTestId('advance-search-filter-container')
-  ).toContainText(searchData);
+  ).toContainText(searchData, { ignoreCase: true });
 };
 
 export const checkNullPaths = async (
@@ -443,7 +541,8 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*%22exists%22*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*%22exists%22*',
+    { timeout: SEARCH_RESPONSE_TIMEOUT }
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -566,9 +665,15 @@ export const checkAddRuleOrGroupWithOperator = async (
   });
 
   if (isGroupTest) {
+    // Adding a group asks how it joins the existing ones; these tests want
+    // the default.
     await page.getByTestId('advanced-search-add-group').first().click();
+    await page.getByTestId('advanced-search-add-group-and').click();
   } else {
-    await page.getByTestId('advanced-search-add-rule').nth(1).click();
+    // One button per card, and this branch works within a single card. The
+    // old builder also drew one for the wrapper group RAQB seeds, which is
+    // why this used to be the second button on the page.
+    await page.getByTestId('advanced-search-add-rule').click();
   }
 
   await fillRule(page, {
@@ -579,10 +684,23 @@ export const checkAddRuleOrGroupWithOperator = async (
   });
 
   if (operator === 'OR') {
-    await page
-      .getByTestId('advanced-search-modal')
-      .getByRole('button', { name: 'Or' })
-      .click();
+    if (isGroupTest) {
+      // Two groups are combined by the connector between their cards, not by
+      // the toggle inside either one — that only says how the rules within a
+      // single card combine. Addressing the card toggle here would also be
+      // ambiguous, since each card has one.
+      await selectOption(
+        page,
+        page.getByTestId('advanced-search-group-conjunction'),
+        'OR'
+      );
+    } else {
+      // A second rule in the same card: that card's toggle is the one.
+      await page
+        .getByTestId('advanced-search-modal')
+        .getByTestId('advanced-search-conjunction-or')
+        .click();
+    }
   }
 
   // Since the OR operator with must not conditions will result in huge API response
@@ -591,12 +709,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   if (field.id === 'Column') {
     await page.getByTestId('apply-btn').click();
   } else {
-    const searchRes = page.waitForResponse(
-      `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-        searchCriteria1.toLowerCase(),
-        true
-      )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
-    );
+    const searchRes = waitForSearchQueryWithValues(page, [
+      searchCriteria1,
+      searchCriteria2,
+    ]);
     await page.getByTestId('apply-btn').click();
     const res = await searchRes;
     const json = await res.json();
@@ -659,33 +775,48 @@ export const runRuleGroupTests = async (
 
 export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await showAdvancedSearchDialog(page);
-  const ruleLocator = page.locator('.rule').nth(0);
+  const ruleLocator = page.getByTestId('query-builder-rule-0');
 
   // Perform click on rule field
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     'Database',
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     '=='
   );
 
   const inputElement = ruleLocator.locator(
-    '.rule--widget--SELECT .ant-select-selection-search-input'
+    '[data-testid=advanced-search-value] input[role="combobox"]'
   );
-  await inputElement.fill('non-existing-value');
-  const dropdownText = page.locator('.ant-select-item-empty');
 
-  await expect(dropdownText).toContainText('Loading...');
+  await inputElement.fill('non-existing-value');
+  await inputElement.press('ArrowDown');
+
+  // Scope to this input's own popup — a popup from a previous step may
+  // still be visible, which would break a global :visible locator.
+  let listboxId: string | null = null;
+  await expect(async () => {
+    listboxId = await inputElement.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Combobox popup did not open (aria-controls not set)');
+    }
+  }).toPass({ timeout: 15000 });
+
+  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+
+  await expect(listbox).toBeVisible();
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
   await page.waitForTimeout(1000);
 
-  await expect(dropdownText).not.toContainText('Loading...');
+  // allowsEmptyCollection keeps the popup open and renders the "No data"
+  // empty state (as an option row) instead of an empty listbox.
+  await expect(listbox.getByText('No data')).toBeVisible();
 };
 
 // For fields backed by hard-coded listValues (no aggregate API call), options are
@@ -705,22 +836,22 @@ export const fillStaticListRule = async (
     ruleIndex: number;
   }
 ) => {
-  const ruleLocator = page.locator('.rule').nth(ruleIndex - 1);
+  const ruleLocator = page.getByTestId(`query-builder-rule-${ruleIndex - 1}`);
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.getByTestId('advanced-search-field-select'),
     fieldLabel,
     true
   );
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.getByTestId('advanced-search-operator-select'),
     condition
   );
   await selectOption(
     page,
-    ruleLocator.locator('.widget--widget > .ant-select'),
+    ruleLocator.getByTestId('advanced-search-value'),
     value
   );
 };

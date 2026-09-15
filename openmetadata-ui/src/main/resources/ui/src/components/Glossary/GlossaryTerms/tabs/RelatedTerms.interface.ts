@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactNode } from 'react';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../../generated/entity/type';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
+
+export interface BadgeListProps {
+  items: ReactNode[];
+  testId: string;
+}
 
 export interface TermItem {
   value: string;

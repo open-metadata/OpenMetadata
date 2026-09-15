@@ -81,7 +81,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Input: jest
     .fn()
     .mockImplementation(({ placeholder, value, onChange }) => (
-      <input placeholder={placeholder} value={value} onChange={onChange} />
+      <input
+        aria-label="Search"
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+      />
     )),
   Typography: jest
     .fn()
@@ -117,6 +122,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     Separator: jest.fn().mockImplementation(() => <hr />),
   },
   defaultColors: { gray: { 50: '#fafafa' } },
+}));
+
+jest.mock('../../../utils/ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
 }));
 
 const mockLocationPathname = '/mock-path';

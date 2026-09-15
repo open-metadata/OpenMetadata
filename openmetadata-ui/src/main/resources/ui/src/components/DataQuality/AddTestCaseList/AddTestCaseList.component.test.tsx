@@ -23,6 +23,7 @@ import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { AddTestCaseList } from './AddTestCaseList.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
@@ -34,6 +35,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
   return jest.fn().mockImplementation(({ onSearch, searchValue }) => (
     <div>
       <input
+        aria-label="search-bar"
         data-testid="search-bar"
         value={searchValue}
         onChange={(e) => onSearch(e.target.value)}
@@ -43,6 +45,7 @@ jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
 });
 jest.mock('../../../utils/StringUtils', () => {
   return {
+    ...jest.requireActual('../../../utils/StringUtils'),
     replacePlus: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
@@ -71,6 +74,10 @@ jest.mock('../../../utils/FqnUtils', () => ({
 }));
 jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
@@ -269,7 +276,7 @@ describe('AddTestCaseList', () => {
     expect(screen.getByTestId('cancel')).toBeInTheDocument();
     expect(screen.getByTestId('submit')).toBeInTheDocument();
     expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-      q: '*',
+      q: undefined,
       limit: 25,
       offset: 0,
     });
@@ -282,6 +289,19 @@ describe('AddTestCaseList', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    });
+  });
+
+  it('handles test case fetch failures without an unhandled rejection', async () => {
+    const fetchError = new Error('Failed to fetch test cases');
+    mockGetListTestCaseBySearch.mockRejectedValueOnce(fetchError);
+
+    await act(async () => {
+      renderWithRouter(mockProps);
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(fetchError);
     });
   });
 
@@ -355,45 +375,52 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: '*test_search*',
+          q: 'test_search',
           limit: 25,
           offset: 0,
         });
       });
     });
 
-    it('applies testCaseFilters when provided', async () => {
-      const testCaseFilters = 'testSuiteFullyQualifiedName:sample.test.suite';
+    // Issue #31077: `q` is escaped as free text by the search/list endpoint, so scoping filters
+    // must travel as first-class params. Composing Lucene into `q` silently returned 0 rows.
+    it('keeps q free text and sends scoping filters as params', async () => {
+      const testCaseParams = {
+        entityLink: '<#E::table::sample.test.table>',
+        includeAllTests: true,
+      };
 
       await act(async () => {
-        renderWithRouter({ ...mockProps, testCaseFilters });
+        renderWithRouter({ ...mockProps, testCaseParams });
       });
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `* && ${testCaseFilters}`,
+          q: undefined,
+          entityLink: '<#E::table::sample.test.table>',
+          includeAllTests: true,
           limit: 25,
           offset: 0,
         });
       });
     });
 
-    it('combines search term with testCaseFilters', async () => {
-      const testCaseFilters = 'testSuiteFullyQualifiedName:sample.test.suite';
-
+    it('sends a reserved-character term verbatim, since the endpoint parses q as literal text', async () => {
       await act(async () => {
-        renderWithRouter({ ...mockProps, testCaseFilters });
+        renderWithRouter(mockProps);
       });
 
       const searchBar = screen.getByTestId('search-bar');
 
       await act(async () => {
-        fireEvent.change(searchBar, { target: { value: 'column_test' } });
+        fireEvent.change(searchBar, {
+          target: { value: 'https://example.com/x' },
+        });
       });
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: `*column_test* && ${testCaseFilters}`,
+          q: 'https://example.com/x',
           limit: 25,
           offset: 0,
         });
@@ -415,7 +442,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: '*',
+          q: undefined,
           limit: 25,
           offset: 0,
           ...testCaseParams,
@@ -516,7 +543,7 @@ describe('AddTestCaseList', () => {
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*',
+            q: undefined,
             limit: 25,
             offset: 0,
           })
@@ -532,7 +559,7 @@ describe('AddTestCaseList', () => {
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*',
+            q: undefined,
             limit: 25,
             offset: 0,
             testCaseStatus: 'Success',
@@ -564,7 +591,7 @@ describe('AddTestCaseList', () => {
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith(
           expect.objectContaining({
-            q: '*',
+            q: undefined,
             limit: 25,
             offset: 0,
             testCaseType: 'table',
@@ -1020,7 +1047,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: '*',
+          q: undefined,
           limit: 25,
           offset: 0,
         });
@@ -1050,7 +1077,7 @@ describe('AddTestCaseList', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCaseBySearch).toHaveBeenCalledWith({
-          q: '*specific_test*',
+          q: 'specific_test',
           limit: 25,
           offset: 0,
         });

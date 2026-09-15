@@ -12,6 +12,7 @@
  */
 import { useMemo } from 'react';
 import type { ColumnOrColumnGroup } from 'react-data-grid';
+import '../../../../styles/components/om-rdg.less';
 import { LazyDataGrid } from '../../DataGrid/LazyDataGrid';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 

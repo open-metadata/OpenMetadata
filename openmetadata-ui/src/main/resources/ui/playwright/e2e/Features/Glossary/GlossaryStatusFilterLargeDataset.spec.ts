@@ -13,7 +13,10 @@
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import {
+  createNewPage,
+  disableEtagConditionalReads,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({
@@ -228,6 +231,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await disableEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
     await page
@@ -365,9 +369,11 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     test('should show no results for non-matching query', async ({ page }) => {
       await performSearch(page, 'NonExistentTermXYZ123');
 
-      // Check for the "No Glossary Term found" message in the table
-      const noResultsMessage = page.locator('text=/No Glossary Term found/');
-      await expect(noResultsMessage).toBeVisible();
+      // The search box is driven directly, so this lands on the isSearchActive
+      // branch, which renders NoSearchResultsPlaceholder.
+      await expect(
+        page.getByTestId('no-search-results-placeholder')
+      ).toBeVisible();
     });
 
     test('should restore all terms when search is cleared', async ({

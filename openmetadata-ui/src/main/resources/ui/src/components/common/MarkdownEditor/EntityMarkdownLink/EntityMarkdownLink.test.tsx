@@ -83,6 +83,7 @@ jest.mock('../../../../utils/EntityUtilClassBase', () => ({
         serviceCategory,
         serviceFqn
       ),
+    getEntityTypes: () => Object.values(EntityType),
   },
 }));
 

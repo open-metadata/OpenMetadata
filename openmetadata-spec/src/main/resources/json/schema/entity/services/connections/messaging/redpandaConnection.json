@@ -84,11 +84,19 @@
     "topicFilterPattern": {
       "description": "Regex to only fetch topics that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
-      "title": "Default Topic Filter Pattern"
+      "title": "Default Topic Filter Pattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^__.*", "^_schemas$", "^_confluent.*"]
+      }
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,

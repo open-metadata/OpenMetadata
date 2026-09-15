@@ -29,6 +29,7 @@ import {
   loadConnectionSchema,
   wrapFlatCredentialsIntoAuthType,
 } from '../../../../utils/ServiceConnectionUtils';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 const mockServicesData = {
@@ -196,6 +197,10 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
     );
 });
 
+let mockCapturedCustomValidate:
+  | ((formData: unknown, errors: unknown) => unknown)
+  | undefined;
+
 jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   forwardRef(
     jest
@@ -210,49 +215,54 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
           onFocus,
           onSubmit,
           onCancel,
-        }) => (
-          <div
-            data-no-validate={String(Boolean(noValidate))}
-            data-testid="form-builder">
-            {children}
-            <button
-              data-testid="focus-via-form-context"
-              onClick={() =>
-                formContext?.handleFocus?.('root/taxonomyProjectID')
-              }>
-              Focus via formContext
-            </button>
-            <button
-              data-testid="focus-via-rjsf"
-              onClick={() => onFocus?.('root/hostPort')}>
-              Focus via RJSF
-            </button>
-            <button
-              data-testid="change-valid-form"
-              onClick={() => onChange({ formData })}>
-              Change FormBuilder
-            </button>
-            <button
-              data-testid="change-edited-form"
-              onClick={() =>
-                onChange({
-                  formData: {
-                    ...formData,
-                    username: 'changed-admin',
-                  },
-                })
-              }>
-              Change FormBuilder With Edits
-            </button>
-            <button
-              data-testid="submit-button"
-              disabled={isSubmitDisabled}
-              onClick={() => onSubmit({ formData })}>
-              Submit FormBuilder
-            </button>
-            <button onClick={onCancel}>Cancel FormBuilder</button>
-          </div>
-        )
+          customValidate,
+        }) => {
+          mockCapturedCustomValidate = customValidate;
+
+          return (
+            <div
+              data-no-validate={String(Boolean(noValidate))}
+              data-testid="form-builder">
+              {children}
+              <button
+                data-testid="focus-via-form-context"
+                onClick={() =>
+                  formContext?.handleFocus?.('root/taxonomyProjectID')
+                }>
+                Focus via formContext
+              </button>
+              <button
+                data-testid="focus-via-rjsf"
+                onClick={() => onFocus?.('root/hostPort')}>
+                Focus via RJSF
+              </button>
+              <button
+                data-testid="change-valid-form"
+                onClick={() => onChange({ formData })}>
+                Change FormBuilder
+              </button>
+              <button
+                data-testid="change-edited-form"
+                onClick={() =>
+                  onChange({
+                    formData: {
+                      ...formData,
+                      username: 'changed-admin',
+                    },
+                  })
+                }>
+                Change FormBuilder With Edits
+              </button>
+              <button
+                data-testid="submit-button"
+                disabled={isSubmitDisabled}
+                onClick={() => onSubmit({ formData })}>
+                Submit FormBuilder
+              </button>
+              <button onClick={onCancel}>Cancel FormBuilder</button>
+            </div>
+          );
+        }
       )
   )
 );
@@ -336,6 +346,26 @@ describe('ServiceConfig', () => {
     ).toBeInTheDocument();
 
     expect(await screen.findByTestId('form-builder')).toBeInTheDocument();
+  });
+
+  it('wires validateSecretPrefixFields into RJSF customValidate and no-ops by default', async () => {
+    const validateSecretPrefixFieldsSpy = jest.spyOn(
+      serviceUtilClassBase,
+      'validateSecretPrefixFields'
+    );
+
+    render(<ConnectionConfigForm {...mockProps} />);
+
+    await waitFor(() => {
+      expect(mockCapturedCustomValidate).toBeDefined();
+    });
+
+    const errors = {} as Record<string, unknown>;
+    const result = mockCapturedCustomValidate?.(formData, errors);
+
+    expect(validateSecretPrefixFieldsSpy).toHaveBeenCalled();
+    expect(result).toBe(errors);
+    expect(Object.keys(errors)).toHaveLength(0);
   });
 
   it('should not render no config available message if form data has schema', async () => {
@@ -689,6 +719,18 @@ describe('ServiceConfig', () => {
     const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
 
     expect(testConnectionProps.missingRequiredFieldsCount).toBe(3);
+  });
+
+  it('should forward additional validation pending state to TestConnection', async () => {
+    await act(async () => {
+      render(
+        <ConnectionConfigForm {...mockProps} isAdditionalValidationPending />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.isFormValidationPending).toBe(true);
   });
 
   it('should call onValidateAdditionalRequiredFields when validating for test connection', async () => {

@@ -146,7 +146,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
   const handleEvaluate = async (values: EvaluationFormValues) => {
     if (!selectedUsername) {
-      showErrorToast(t('message.please-select-user-first'));
+      showErrorToast(t('message.select-user-first'));
 
       return;
     }
@@ -287,8 +287,8 @@ const AdminPermissionDebugger: React.FC = () => {
                   {step.conditionEvaluations.length > 0 && (
                     <div>
                       <Text>{t('label.condition-plural')}:</Text>
-                      {step.conditionEvaluations.map((cond, idx) => (
-                        <div className="condition-eval" key={idx}>
+                      {step.conditionEvaluations.map((cond) => (
+                        <div className="condition-eval" key={cond.condition}>
                           <Text code>{cond.condition}</Text>
                           <Text>
                             {' → '}
@@ -311,8 +311,8 @@ const AdminPermissionDebugger: React.FC = () => {
           {evaluationInfo.summary?.reasonsForDecision && (
             <div className="decision-reasons">
               <Title level={5}>{t('label.reasons-for-decision')}:</Title>
-              {evaluationInfo.summary.reasonsForDecision.map((reason, idx) => (
-                <Text key={idx}>
+              {evaluationInfo.summary.reasonsForDecision.map((reason) => (
+                <Text key={reason}>
                   {'• '}
                   <span>{reason}</span>
                 </Text>

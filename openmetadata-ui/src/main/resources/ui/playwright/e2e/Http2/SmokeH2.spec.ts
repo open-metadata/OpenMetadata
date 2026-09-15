@@ -25,7 +25,8 @@
  * a CDP session (Playwright's request/response API doesn't surface the wire
  * protocol directly).
  */
-import { CDPSession, expect, test } from '@playwright/test';
+import { CDPSession } from '@playwright/test';
+import { expect, test } from '../../support/fixtures/base';
 
 type ResponseRecord = {
   url: string;

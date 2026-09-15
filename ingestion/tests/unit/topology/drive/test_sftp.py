@@ -253,7 +253,8 @@ class TestSftpSource(TestCase):
         self.mock_client = MagicMock()
         self.mock_client.sftp = self.mock_sftp
         self.mock_client.transport = self.mock_transport
-        mock_create_connection.return_value.client = self.mock_client
+        self.mock_connection = mock_create_connection.return_value
+        self.mock_connection.client = self.mock_client
 
         # Set up mock listdir_attr
         self.mock_sftp.listdir_attr = get_mock_listdir_attr
@@ -360,7 +361,7 @@ class TestSftpSource(TestCase):
         self.assertEqual(self.sftp_source._directories_cache, {})
         self.assertEqual(self.sftp_source._files_by_parent_cache, {})
         self.assertEqual(self.sftp_source._directory_fqn_cache, {})
-        self.mock_client.close.assert_called_once()
+        self.mock_connection.close.assert_called_once()
 
 
 class TestSftpConnectionModule(TestCase):

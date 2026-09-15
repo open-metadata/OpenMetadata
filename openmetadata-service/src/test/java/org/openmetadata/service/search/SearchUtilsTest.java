@@ -282,9 +282,19 @@ class SearchUtilsTest {
 
       when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+
+      // A bot is policy-evaluated exactly like a human (#30023): exempting bots left every
+      // bot-authenticated search unfiltered, because a skipped injection matches everything.
       when(subjectContext.isAdmin()).thenReturn(false);
       when(subjectContext.isBot()).thenReturn(true);
+      assertTrue(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+
+      // Being a bot does not defeat the other exemptions.
+      when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      when(subjectContext.isAdmin()).thenReturn(false);
+      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
+
       when(subjectContext.isBot()).thenReturn(false);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
       assertFalse(SearchUtils.shouldApplyRbacConditions(null, evaluator));
@@ -292,6 +302,8 @@ class SearchUtilsTest {
       settingsCache
           .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
           .thenReturn(disabledSettings);
+      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      when(subjectContext.isBot()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
     }
 
@@ -552,7 +564,9 @@ class SearchUtilsTest {
         "directory_search_index",
         Entity.DIRECTORY,
         "file_search_index",
-        Entity.FILE
+        Entity.FILE,
+        "context_file_search_index",
+        Entity.CONTEXT_FILE
       })
   void isDataAssetIndexRecognizesDataAssetIndices(String index) {
     assertTrue(SearchUtils.isDataAssetIndex(index));
@@ -680,6 +694,8 @@ class SearchUtilsTest {
         "metric_search_index | metric",
         "user_search_index | user",
         "team_search_index | team",
+        "context_file_search_index | contextFile",
+        "contextFile | contextFile",
         "dataAsset | dataAsset",
         // unknown values fall through to dataAsset (the catch-all default)
         "totally_unknown_index | dataAsset"

@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
   ECustomizedDataAssets,
@@ -24,6 +19,7 @@ import {
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -463,8 +459,17 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button');
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
-        await addWidgetButton.click();
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -607,8 +612,17 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button');
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
-        await addWidgetButton.click();
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
 
         await adminPage
           .getByTestId('add-widget-modal')

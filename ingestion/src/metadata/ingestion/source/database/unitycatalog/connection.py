@@ -15,7 +15,7 @@ Source connection handler
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import (
@@ -64,6 +64,7 @@ from metadata.ingestion.connections.test_connections import SourceConnectionExce
 from metadata.ingestion.source.database.databricks.auth import (
     catalog_url,
     get_auth_config,
+    get_data_diff_connection_dict,
     normalize_host_port,
     probe_target,
 )
@@ -72,6 +73,10 @@ from metadata.ingestion.source.database.databricks.connection import (
 )
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
+)
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_product,
+    get_databricks_user_agent,
 )
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
@@ -183,7 +188,7 @@ def _require_resolved_catalog_and_schema(table_obj: DatabricksTable) -> tuple[st
     return table_obj.catalog_name, table_obj.schema_name
 
 
-def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalog_name: Optional[str] = None) -> None:  # noqa: UP045
+def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalog_name: str | None = None) -> None:
     """
     Resolve the catalog used by the remaining test connection steps. If a catalog is
     configured on the connection, validate access to that exact catalog.
@@ -197,7 +202,7 @@ def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalo
                 break
 
 
-def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: Optional[str] = None) -> None:  # noqa: UP045
+def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: str | None = None) -> None:
     """
     Resolve the schema used by the remaining test connection steps. If a databaseSchema is
     configured on the connection, validate access to that exact schema.
@@ -304,7 +309,13 @@ def get_connection(connection: UnityCatalogConnectionConfig) -> WorkspaceClient:
         client_params["azure_client_secret"] = connection.authType.azureClientSecret.get_secret_value()
         client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
-    return WorkspaceClient(host=normalize_host_port(connection.hostPort), **client_params)
+    product, product_version = get_databricks_product()
+    return WorkspaceClient(
+        host=normalize_host_port(connection.hostPort),
+        product=product,
+        product_version=product_version,
+        **client_params,
+    )
 
 
 def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engine:
@@ -314,9 +325,15 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engin
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
+    connection_arguments = connection.connectionArguments.root
+    if connection_arguments is None:
+        connection_arguments = {}
+        connection.connectionArguments.root = connection_arguments
 
     if connection.httpPath:
-        connection.connectionArguments.root["http_path"] = connection.httpPath
+        connection_arguments["http_path"] = connection.httpPath
+
+    connection_arguments["user_agent_entry"] = get_databricks_user_agent()
 
     auth_args = get_auth_config(connection)
 
@@ -458,6 +475,10 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
 
     def _get_client(self) -> WorkspaceClient:
         return get_connection(self.service_connection)
+
+    def get_connection_dict(self) -> dict:
+        """Return the connection parameters for data-diff."""
+        return get_data_diff_connection_dict(self.service_connection)
 
     def close(self) -> None:
         # Not _on_close: that registry is reset by close(), so a sub-owner

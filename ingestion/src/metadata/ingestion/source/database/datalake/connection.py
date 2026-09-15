@@ -13,8 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -49,19 +47,19 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
         connection = self.service_connection
 
         if isinstance(connection.configSource, S3Config):
-            from metadata.ingestion.source.database.datalake.clients.s3 import (  # noqa: PLC0415
+            from metadata.ingestion.source.database.datalake.clients.s3 import (
                 DatalakeS3Client,
             )
 
             client: DatalakeBaseClient = DatalakeS3Client.from_config(connection.configSource)
         elif isinstance(connection.configSource, GCSConfig):
-            from metadata.ingestion.source.database.datalake.clients.gcs import (  # noqa: PLC0415
+            from metadata.ingestion.source.database.datalake.clients.gcs import (
                 DatalakeGcsClient,
             )
 
             client = DatalakeGcsClient.from_config(connection.configSource)
         elif isinstance(connection.configSource, AzureConfig):
-            from metadata.ingestion.source.database.datalake.clients.azure_blob import (  # noqa: PLC0415
+            from metadata.ingestion.source.database.datalake.clients.azure_blob import (
                 DatalakeAzureBlobClient,
             )
 
@@ -76,8 +74,8 @@ class DatalakeConnection(BaseConnection[DatalakeConnectionConfig, DatalakeBaseCl
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

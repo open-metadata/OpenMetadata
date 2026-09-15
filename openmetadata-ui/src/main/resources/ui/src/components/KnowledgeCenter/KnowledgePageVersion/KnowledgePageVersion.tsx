@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { diffWordsWithSpace } from 'diff';
-import { isEmpty, map, toString } from 'lodash';
+import { toString } from 'lodash';
 import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -33,6 +32,7 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../utils/EntityDiffPureUtils';
+import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
@@ -42,6 +42,7 @@ import {
 } from '../../../utils/EntityVersionUtilsPure';
 import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { stringToHTML } from '../../../utils/StringUtils';
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
@@ -63,14 +64,10 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   );
 
   const descriptionDiff = useMemo(() => {
-    const changeDescription = knowledgePage.changeDescription ?? {};
-    const currentDescription = knowledgePage.description;
-
     const fieldDiff = getDiffByFieldName(
       EntityField.DESCRIPTION,
-      changeDescription
+      knowledgePage.changeDescription ?? {}
     );
-
     const oldField = getFrontEndFormat(
       toString(getChangedEntityOldValue(fieldDiff))
     );
@@ -78,30 +75,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
       toString(getChangedEntityNewValue(fieldDiff))
     );
 
-    if (isEmpty(newField) && isEmpty(oldField)) {
-      return currentDescription;
-    }
-
-    const diffArr = diffWordsWithSpace(oldField, newField);
-
-    const result = map(diffArr, (diff) => {
-      const value = diff.value.trim().replaceAll('\n', '<br>');
-
-      if (diff.added && value) {
-        return `<diff-view class="diff-added">${value}</diff-view>`;
-      }
-      if (diff.removed && value) {
-        return `<diff-view class="diff-removed">${value}</diff-view>`;
-      }
-
-      if (value) {
-        return `<diff-view>${value}</diff-view>`;
-      }
-
-      return '';
-    });
-
-    return result.join('');
+    return getRichTextDiff(oldField, newField, knowledgePage.description);
   }, [knowledgePage]);
 
   const tags = useMemo(() => {
@@ -153,9 +127,13 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 <Col>
                   <Space size={4}>
                     <Space direction="vertical" size={0}>
-                      <OwnerLabel
+                      <Owner
+                        isCompactView={false}
                         ownerDisplayName={ownerDisplayName}
-                        owners={knowledgePage?.owners ?? ownerRef}
+                        owners={toOwnerRefs(
+                          knowledgePage?.owners ?? ownerRef ?? []
+                        )}
+                        showLabel={false}
                       />
                       <span
                         className="self-center text-grey-muted"

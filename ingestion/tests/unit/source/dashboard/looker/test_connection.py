@@ -10,15 +10,23 @@
 #  limitations under the License.
 """Unit tests for Looker test-connection checks."""
 
+import contextlib
 import socket
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
+import looker_sdk
 import pytest
 from looker_sdk.error import SDKError
+from looker_sdk.rtl.requests_transport import RequestsTransport
+from looker_sdk.rtl.transport import HttpMethod
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection as LookerConnectionConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.dashboard.looker.connection import (
     LOOKER_ERRORS,
@@ -37,6 +45,20 @@ DASHBOARDS_429 = "https://cloud.google.com/looker/docs/r/err/4.0/429/get/api/4.0
 DASHBOARDS_400 = "https://cloud.google.com/looker/docs/r/err/4.0/400/get/api/4.0/dashboards"
 DASHBOARDS_401 = "https://cloud.google.com/looker/docs/r/err/4.0/401/get/api/4.0/dashboards"
 DASHBOARDS_403 = "https://cloud.google.com/looker/docs/r/err/4.0/403/get/api/4.0/dashboards"
+
+
+class _TransportSettings:
+    """The transport's settings contract, as looker_sdk.rtl.transport defines it.
+
+    Duck-typed rather than mocked: RequestsTransport reads these attributes at
+    configure() time, and a MagicMock would silently satisfy any shape.
+    """
+
+    base_url = "https://looker.example.com:19999"
+    verify_ssl = True
+    timeout = 10
+    agent_tag = "test"
+    headers: ClassVar[dict] = {}
 
 
 def _sdk_error(message: str, documentation_url: str = "") -> SDKError:
@@ -63,13 +85,27 @@ def test_looker_connection_is_base_connection():
     assert issubclass(LookerConnection, BaseConnection)
 
 
-def _config(host: str = "https://looker.example.com", client_id: str = "id", secret: str = "secret") -> MagicMock:
-    config = MagicMock()
-    config.hostPort = host
-    config.clientId = client_id
-    config.clientSecret.get_secret_value.return_value = secret
+def _config(
+    host: str = "https://looker.example.com", client_id: str = "id", secret: str = "secret"
+) -> LookerConnectionConfig:
+    """The real connection model, not a mock: ``hostPort`` is an ``AnyUrl``, and how
+    it renders back to a string is exactly what the SDK's URL building depends on."""
+    return LookerConnectionConfig(hostPort=host, clientId=client_id, clientSecret=secret)
 
-    return config
+
+def _urls_built_while_logging_in(host: str) -> list[str]:
+    """The URLs the SDK builds to log in, captured where it hands them to transport."""
+    urls: list[str] = []
+
+    def record(self, method, path, *args, **kwargs):
+        urls.append(path)
+        raise SDKError("stopped before the network")
+
+    sdk = looker_sdk.init40(config_settings=LookerSettings(_config(host=host)))
+    with patch.object(RequestsTransport, "request", record), contextlib.suppress(SDKError):
+        sdk.auth.authenticate({})
+
+    return urls
 
 
 def test_get_client_initialises_the_sdk():
@@ -96,6 +132,37 @@ def test_the_sdk_is_configured_from_this_service_not_the_environment(monkeypatch
         "client_id": "second-id",
         "client_secret": "second-secret",
     }
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "https://looker.example.com",  # pydantic renders a host with no path with a trailing slash
+        "https://looker.example.com/",  # as typed by a user who copied the URL from a browser
+        "https://looker.example.com:19999",
+    ],
+)
+def test_the_base_url_never_ends_in_the_slash_the_sdk_concatenates_onto(host):
+    # hostPort is an AnyUrl, and pydantic renders a URL with no path as "https://host/".
+    # auth_session builds the login URL as f"{base_url}/api/{version}/login", so that
+    # slash would survive into the request.
+    assert LookerSettings(_config(host=host)).base_url == host.rstrip("/")
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["https://looker.example.com", "https://looker.example.com/", "https://looker.example.com:19999"],
+)
+def test_the_login_url_the_sdk_builds_has_no_double_slash(host):
+    """Drives the real SDK: only ``login`` and ``logout`` are concatenated, every
+    other endpoint goes through ``urljoin`` and normalises itself. Login is the gate
+    for CheckAccess, so a malformed URL here fails the connection before anything else
+    runs - and Looker answers a 404, which reads as rejected credentials."""
+    urls = _urls_built_while_logging_in(host)
+
+    assert urls, "the SDK did not attempt to log in"
+    assert all("//api/" not in url for url in urls), urls
+    assert urls == [f"{host.rstrip('/')}/api/4.0/login"]
 
 
 def test_checks_run_against_the_client_the_connection_owns():
@@ -415,13 +482,44 @@ def test_an_unreachable_host_is_diagnosed_from_the_flattened_message():
     assert diagnosis.title == "Cannot reach the host"
 
 
-def test_the_shared_network_pack_still_classifies_a_raw_socket_error():
-    # Anything raised outside the SDK's transport keeps its type, so the folded
-    # NETWORK_ERRORS rules remain the fallback.
-    diagnosis = LOOKER_ERRORS.classify(socket.gaierror("nodename nor servname provided"))
+@pytest.mark.parametrize(
+    ("raised", "title"),
+    [
+        (ConnectionRefusedError(61, "Connection refused"), "Connection refused"),
+        (socket.gaierror(8, "nodename nor servname provided"), "Host could not be resolved"),
+        (TimeoutError("timed out"), "Connection timed out"),
+    ],
+)
+def test_a_socket_error_is_flattened_by_the_sdk_and_diagnosed_from_its_text(raised, title):
+    """Drives the real transport: the type is destroyed, the text still diagnoses.
 
-    assert diagnosis is not None
-    assert diagnosis.title == "Host could not be resolved"
+    This is why NETWORK_ERRORS (which matches by type) is not folded into the pack.
+    """
+    transport_ = RequestsTransport.configure(_TransportSettings())
+
+    with patch.object(transport_.session, "request", side_effect=raised):
+        response = transport_.request(HttpMethod.GET, "/api/4.0/user")
+
+    assert response.ok is False
+    assert isinstance(response.value, bytes)
+
+    # What the SDK hands the classifier: the flattened text, not the exception.
+    flattened = _sdk_error(response.value.decode())
+    assert LOOKER_ERRORS.classify(flattened).title == title
+
+
+@pytest.mark.parametrize(
+    ("raised", "title"),
+    [
+        (ConnectionRefusedError(61, "Connection refused"), "Connection refused"),
+        (socket.gaierror(8, "nodename nor servname provided"), "Host could not be resolved"),
+        (TimeoutError("timed out"), "Connection timed out"),
+    ],
+)
+def test_dropping_the_network_fold_changes_no_diagnosis(raised, title):
+    """_transport_text returns the same titles NETWORK_ERRORS would, so dropping the
+    fold is behaviour-preserving even where it could have been reached."""
+    assert LOOKER_ERRORS.classify(raised).title == title
 
 
 def test_an_unknown_error_is_not_classified():

@@ -54,8 +54,8 @@ class DbIntrospector:
         if self._installed:
             return True
         try:
-            from sqlalchemy import event  # noqa: PLC0415
-            from sqlalchemy.engine import Engine  # noqa: PLC0415
+            from sqlalchemy import event
+            from sqlalchemy.engine import Engine
         except ImportError:
             return False
 
@@ -74,7 +74,7 @@ class DbIntrospector:
         if not self._installed:
             return
         try:
-            from sqlalchemy import event  # noqa: PLC0415
+            from sqlalchemy import event
 
             event.remove(self._engine_cls, "before_cursor_execute", self._before)
             event.remove(self._engine_cls, "after_cursor_execute", self._after)

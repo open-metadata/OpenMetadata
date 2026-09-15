@@ -11,12 +11,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { omit } from 'lodash';
 import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   buildDataQualityDashboardFilters,
+  buildDataQualityTableFilters,
   buildMustEsFilterForDataProducts,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
@@ -29,7 +31,13 @@ export const fetchEntityCoveredWithDQ = (
   filters?: DataQualityDashboardChartFilters,
   unhealthy = false
 ) => {
-  const mustFilter = buildDataQualityDashboardFilters({ filters, unhealthy });
+  // The selected status filters test-case charts, but must not redefine the
+  // Healthy (Success + Queued) and Unhealthy (Failed + Aborted) asset groups.
+  const assetFilters = filters ? omit(filters, 'testCaseStatus') : undefined;
+  const mustFilter = buildDataQualityDashboardFilters({
+    filters: assetFilters,
+    unhealthy,
+  });
 
   return batchedDataQualityReport({
     q: JSON.stringify({
@@ -48,10 +56,9 @@ export const fetchEntityCoveredWithDQ = (
 export const fetchTotalEntityCount = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = buildDataQualityDashboardFilters({
-    filters,
-    isTableApi: true,
-  });
+  // The table index does not contain test-case-only fields such as entityLink,
+  // result status, dimension, platform, or last-run timestamp.
+  const mustFilter = buildDataQualityTableFilters(filters);
 
   return batchedDataQualityReport({
     q: JSON.stringify({
@@ -110,19 +117,11 @@ export const fetchTestCaseSummaryByDimension = (
 export const fetchTestCaseSummaryByNoDimension = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = [];
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-  if (filters?.tags && filters.tags.length > 0) {
-    mustFilter.push(buildMustEsFilterForTags(filters.tags));
-  }
-  if (filters?.tier && filters.tier.length > 0) {
-    mustFilter.push(buildMustEsFilterForTier(filters.tier));
-  }
-  if (filters?.dataProductFqns && filters.dataProductFqns.length > 0) {
-    mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
-  }
+  // Apply every active test-case filter except dimension, then select documents
+  // where the dimension field is absent for the dedicated No Dimension card.
+  const mustFilter = buildDataQualityDashboardFilters({
+    filters: filters ? omit(filters, 'dataQualityDimension') : undefined,
+  });
 
   return batchedDataQualityReport({
     q: JSON.stringify({

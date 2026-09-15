@@ -12,6 +12,20 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 public interface OAuthAuthorizationServerProvider {
 
   /**
+   * Returns the issuer identifier of this authorization server. It is sent as the {@code iss}
+   * parameter on authorization responses so clients can confirm who issued the code.
+   * @return The issuer identifier, or null if the base URL is not resolved yet.
+   */
+  String getIssuer();
+
+  /**
+   * Sets the issuer identifier. Called when the transport starts up and again whenever the
+   * configured base URL changes, so this value always matches the published OAuth metadata.
+   * @param issuer The issuer identifier.
+   */
+  void setIssuer(String issuer);
+
+  /**
    * Retrieves client information by client ID.
    * @param clientId The ID of the client to retrieve.
    * @return A CompletableFuture that resolves to the client information, or null if the
@@ -62,16 +76,6 @@ public interface OAuthAuthorizationServerProvider {
       OAuthClientInformation client, AuthorizationCode authorizationCode) throws TokenException;
 
   /**
-   * Loads a RefreshToken by its token string.
-   * @param client The client that is requesting to load the refresh token.
-   * @param refreshToken The refresh token string to load.
-   * @return A CompletableFuture that resolves to the RefreshToken object if found, or
-   * null if not found.
-   */
-  CompletableFuture<RefreshToken> loadRefreshToken(
-      OAuthClientInformation client, String refreshToken);
-
-  /**
    * Exchanges a refresh token for an access token and refresh token.
    * @param client The client exchanging the refresh token.
    * @param refreshToken The refresh token to exchange.
@@ -83,14 +87,6 @@ public interface OAuthAuthorizationServerProvider {
   CompletableFuture<OAuthToken> exchangeRefreshToken(
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException;
-
-  /**
-   * Loads an access token by its token.
-   * @param token The access token to verify.
-   * @return A CompletableFuture that resolves to the AccessToken, or null if the token
-   * is invalid.
-   */
-  CompletableFuture<AccessToken> loadAccessToken(String token);
 
   /**
    * Revokes an access or refresh token.

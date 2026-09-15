@@ -14,7 +14,6 @@ Test Redshift connector with CLI
 """
 
 from pathlib import Path
-from typing import List  # noqa: UP035
 
 import pytest
 from sqlalchemy.engine import Engine
@@ -54,7 +53,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
         return 72
 
     @staticmethod
-    def fqn_dbt_tables() -> List[str]:  # noqa: UP006
+    def fqn_dbt_tables() -> list[str]:
         return [
             "local_redshift.dev.dbt_cli_e2e.customers",
             "local_redshift.dev.dbt_cli_e2e.orders",

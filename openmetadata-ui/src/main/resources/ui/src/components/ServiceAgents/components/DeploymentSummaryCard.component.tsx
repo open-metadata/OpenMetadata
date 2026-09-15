@@ -13,6 +13,7 @@
 
 import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
+import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
@@ -22,6 +23,13 @@ import { fmtNum, formatEtaShort, getEtaInfo } from '../utils/agents.utils';
 
 interface DeploymentSummaryCardProps {
   agents: Agent[];
+  /**
+   * How many agents the service has in total, when the caller knows it. `agents` is one page of a
+   * paginated — and filterable — list, so without this the card would present a page as the whole
+   * deployment ("8 of 12 finished" beside a tab badge reading 30). Agents outside the page count as
+   * unfinished, making the summary a lower bound rather than an overstatement.
+   */
+  totalAgents?: number;
 }
 
 interface SummaryStatProps {
@@ -36,6 +44,116 @@ const STAT_VALUE_CLASS: Record<string, string> = {
   ok: 'tw:text-success-primary',
   neutral: 'tw:text-primary',
 };
+
+interface AgentCounts {
+  done: number;
+  failed: number;
+  queued: number;
+  running: number;
+  total: number;
+}
+
+function getActiveAgents(agents: Agent[]): Agent[] {
+  // Agents with status 'none' have never run — they are not part of any
+  // deployment and must not surface as queued/in-progress in the banner.
+  return agents.filter((a) => a.status !== 'none');
+}
+
+function getAgentCounts(
+  activeAgents: Agent[],
+  totalAgents: number | undefined
+): AgentCounts {
+  // Denominator counts the agents this page cannot see; the render gate below stays on the page's own
+  // active agents, so a service whose agents have all never run still shows nothing.
+  const total = Math.max(activeAgents.length, totalAgents ?? 0);
+  const running = activeAgents.filter((a) => a.status === 'running').length;
+  const done = activeAgents.filter((a) => a.status === 'success').length;
+  const failed = activeAgents.filter((a) => a.status === 'failed').length;
+  const queued = total - done - running - failed;
+
+  return { done, failed, queued, running, total };
+}
+
+// Assets ingested reflects only the Metadata agent — other agents count
+// different units (queries, models) or profile existing assets rather than
+// ingesting new ones.
+//
+// Of several Metadata agents, the newest run wins rather than their sum: each agent's `assets` is
+// already its own latest-run figure, so adding them reports the same catalog two or three times
+// over — most visibly after re-running one pipeline. A running run carries a fresh timestamp, so
+// it takes precedence while it is in flight. (Metadata pipelines with disjoint filters do ingest
+// different assets, and this under-reports that case; the card is a deployment snapshot, not an
+// all-time total.)
+function getLatestMetadataAssets(activeAgents: Agent[]): number {
+  const latestMetadataAgent = activeAgents
+    .filter(
+      (a) =>
+        // A queued agent's run has not started, so it has nothing to report; picking it because it is
+        // "newest" would blank the figure the moment the next run is scheduled.
+        a.pipelineType === PipelineType.Metadata && a.status !== 'queued'
+    )
+    .reduce<Agent | undefined>((latest, a) => {
+      const isNewerRun =
+        !latest || (a.lastRunAt ?? 0) > (latest.lastRunAt ?? 0);
+
+      return isNewerRun ? a : latest;
+    }, undefined);
+
+  return latestMetadataAgent?.assets ?? 0;
+}
+
+function getTotalErrors(activeAgents: Agent[]): number {
+  return activeAgents.reduce((sum, a) => sum + a.errors, 0);
+}
+
+function getMaxEta(activeAgents: Agent[]): number | null {
+  const etas = activeAgents
+    .filter((a) => a.status === 'running' && a.eta !== null)
+    .map((a) => a.eta as number);
+
+  return etas.length ? Math.max(...etas) : null;
+}
+
+function getOverallPercent(activeAgents: Agent[], total: number): number {
+  return total > 0
+    ? Math.round(activeAgents.reduce((sum, a) => sum + a.pct, 0) / total)
+    : 0;
+}
+
+function isAllDone(counts: AgentCounts): boolean {
+  return counts.running === 0 && counts.done + counts.failed === counts.total;
+}
+
+function getFailedSuffix(failed: number, t: TFunction): string {
+  return failed > 0 ? ` · ${failed} ${t('label.failed-lowercase')}` : '';
+}
+
+function getAttentionSuffix(failed: number, t: TFunction): string {
+  return failed > 0
+    ? ` · ${failed} ${t('label.need-attention')}`
+    : ` · ${t('message.everything-healthy')}`;
+}
+
+function getSubtitle(
+  allDone: boolean,
+  counts: AgentCounts,
+  t: TFunction
+): string {
+  if (allDone) {
+    return t('message.agents-finished-summary', {
+      attentionSuffix: getAttentionSuffix(counts.failed, t),
+      done: counts.done,
+      total: counts.total,
+    });
+  }
+
+  return t('message.agents-deploy-progress', {
+    done: counts.done,
+    failedSuffix: getFailedSuffix(counts.failed, t),
+    queued: counts.queued,
+    running: counts.running,
+  });
+}
 
 const SummaryStat: FC<SummaryStatProps> = ({
   label,
@@ -52,54 +170,62 @@ const SummaryStat: FC<SummaryStatProps> = ({
   </div>
 );
 
-const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
+const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
+  agents,
+  totalAgents,
+}) => {
   const { t } = useTranslation();
-  // Agents with status 'none' have never run — they are not part of any
-  // deployment and must not surface as queued/in-progress in the banner.
-  const activeAgents = agents.filter((a) => a.status !== 'none');
-  const total = activeAgents.length;
-  const running = activeAgents.filter((a) => a.status === 'running').length;
-  const done = activeAgents.filter((a) => a.status === 'success').length;
-  const failed = activeAgents.filter((a) => a.status === 'failed').length;
-  const queued = total - done - running - failed;
-  // Assets ingested reflects only the Metadata agent — other agents count
-  // different units (queries, models) or profile existing assets rather than
-  // ingesting new ones.
-  const assets = activeAgents
-    .filter((a) => a.pipelineType === PipelineType.Metadata)
-    .reduce((sum, a) => sum + a.assets, 0);
-  const errors = activeAgents.reduce((sum, a) => sum + a.errors, 0);
-  const etas = activeAgents
-    .filter((a) => a.status === 'running' && a.eta !== null)
-    .map((a) => a.eta as number);
-  const maxEta = etas.length ? Math.max(...etas) : null;
-  const overall =
-    total > 0
-      ? Math.round(activeAgents.reduce((sum, a) => sum + a.pct, 0) / total)
-      : 0;
-  const allDone = running === 0 && done + failed === total;
+  const activeAgents = getActiveAgents(agents);
+  const counts = getAgentCounts(activeAgents, totalAgents);
+  const { total } = counts;
+  const assets = getLatestMetadataAssets(activeAgents);
+  const errors = getTotalErrors(activeAgents);
+  const maxEta = getMaxEta(activeAgents);
+  const overall = getOverallPercent(activeAgents, total);
+  const allDone = isAllDone(counts);
 
-  if (total === 0) {
+  if (activeAgents.length === 0) {
     return null;
   }
 
   const etaDisplay = formatEtaShort(getEtaInfo(maxEta), t);
+  const subtitle = getSubtitle(allDone, counts, t);
 
-  const failedSuffix =
-    failed > 0 ? ` · ${failed} ${t('label.failed-lowercase')}` : '';
-  const attentionSuffix =
-    failed > 0
-      ? ` · ${failed} ${t('label.need-attention')}`
-      : ` · ${t('message.everything-healthy')}`;
+  function renderStatusIcon() {
+    return allDone ? (
+      <Check size={22} />
+    ) : (
+      <RunRunningIcon
+        className="tw:animate-spin tw:text-fg-white"
+        height={22}
+        width={22}
+      />
+    );
+  }
 
-  const subtitle = allDone
-    ? t('message.agents-finished-summary', { attentionSuffix, done, total })
-    : t('message.agents-deploy-progress', {
-        done,
-        failedSuffix,
-        queued,
-        running,
-      });
+  function renderProgressSection() {
+    if (allDone) {
+      return null;
+    }
+
+    return (
+      <div className="tw:mt-4" data-testid="deployment-progress-bar">
+        <ProgressBarBase
+          className="tw:h-2 tw:rounded-full tw:bg-tertiary"
+          progressClassName="tw:rounded-full tw:bg-brand-solid tw:duration-700"
+          value={overall}
+        />
+        <Box
+          className="tw:mt-2 tw:text-xs tw:font-medium tw:text-quaternary"
+          justify="between">
+          <span>
+            {t('message.percent-complete-all-agents', { percent: overall })}
+          </span>
+          <span>{t('message.leave-page-ingestion-continues')}</span>
+        </Box>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -114,15 +240,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
           className={`tw:grid tw:size-11 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:text-fg-white ${
             allDone ? 'tw:bg-utility-success-500' : 'tw:bg-brand-solid'
           }`}>
-          {allDone ? (
-            <Check size={22} />
-          ) : (
-            <RunRunningIcon
-              className="tw:animate-spin tw:text-fg-white"
-              height={22}
-              width={22}
-            />
-          )}
+          {renderStatusIcon()}
         </span>
 
         <div className="tw:flex-1">
@@ -160,23 +278,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
         </Box>
       </Box>
 
-      {!allDone && (
-        <div className="tw:mt-4" data-testid="deployment-progress-bar">
-          <ProgressBarBase
-            className="tw:h-2 tw:rounded-full tw:bg-tertiary"
-            progressClassName="tw:rounded-full tw:bg-brand-solid tw:duration-700"
-            value={overall}
-          />
-          <Box
-            className="tw:mt-2 tw:text-xs tw:font-medium tw:text-quaternary"
-            justify="between">
-            <span>
-              {t('message.percent-complete-all-agents', { percent: overall })}
-            </span>
-            <span>{t('message.leave-page-ingestion-continues')}</span>
-          </Box>
-        </div>
-      )}
+      {renderProgressSection()}
     </div>
   );
 };

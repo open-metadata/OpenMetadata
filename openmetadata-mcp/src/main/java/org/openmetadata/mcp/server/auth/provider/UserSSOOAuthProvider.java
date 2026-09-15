@@ -15,13 +15,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.mcp.auth.AccessToken;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.AuthorizationParams;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
@@ -85,6 +83,14 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // is revoked. Since JWTs are stateless and cannot be individually invalidated, a shorter
   // TTL ensures that a revoked session loses access within 10 minutes. MCP clients handle
   // automatic token refresh seamlessly using the long-lived refresh token.
+  // HttpSession attribute that carries the MCP authorization-request id across handleLogin() into
+  // the registered pending-state persister so it can be linked to the returning provider callback.
+  public static final String MCP_AUTH_REQUEST_ID = "mcp.auth.request.id";
+
+  // Request attribute the persister sets once it has linked the OIDC round-trip state to the MCP
+  // pending request, so the provider can confirm the link succeeded before it reports the redirect.
+  public static final String MCP_STATE_LINKED = "mcp.state.linked";
+
   private static final long JWT_EXPIRY_SECONDS = 600L;
 
   private static final long REFRESH_TOKEN_EXPIRY_DAYS = 30L;
@@ -106,6 +112,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // Cryptographically secure random number generator for authorization codes and tokens
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+  // Sent as the "iss" parameter on authorization responses. Volatile because the transport provider
+  // sets it again whenever the configured base URL changes while the server is running.
+  private volatile String issuer;
+
   public UserSSOOAuthProvider(
       JWTTokenGenerator jwtGenerator, AuthenticatorHandler credentialAuthenticator) {
     this.jwtGenerator = jwtGenerator;
@@ -118,6 +128,16 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.revocationHandler = new RevocationHandler(tokenRepository);
 
     LOG.info("Initialized UserSSOOAuthProvider with unified auth (SSO + Basic Auth)");
+  }
+
+  @Override
+  public String getIssuer() {
+    return issuer;
+  }
+
+  @Override
+  public void setIssuer(String issuer) {
+    this.issuer = issuer;
   }
 
   public AuthenticatorHandler getCredentialAuthenticator() {
@@ -339,8 +359,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           };
 
       HttpSession session = getHttpSession(currentRequest.get(), true);
-      session.setAttribute("mcp.auth.request.id", authRequestId);
+      session.setAttribute(MCP_AUTH_REQUEST_ID, authRequestId);
 
+      // For the MCP flow, handleLogin() persists the OIDC round-trip state/nonce/PKCE-verifier
+      // against this pending request (via the registered McpPendingStatePersister) before it issues
+      // the provider redirect, so the returning /callback?state=... is always resolvable
+      // (isMcpState -> findByPac4jState) and its pac4j session can be restored for the exchange.
       ssoHandler.handleLogin(wrappedRequest, currentResponse.get());
 
       LOG.debug(
@@ -348,78 +372,17 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           authRequestId,
           currentResponse.get() != null && currentResponse.get().isCommitted());
 
-      // After handleLogin(), pac4j has stored its state in the session
-      // Extract pac4j session attributes and store in database
-      // Note: pac4j stores State and CodeVerifier as objects, not strings
-      String pac4jState = null;
-      String pac4jNonce = null;
-      String pac4jCodeVerifier = null;
-
-      java.util.Enumeration<String> attrNames = session.getAttributeNames();
-      while (attrNames.hasMoreElements()) {
-        String attrName = attrNames.nextElement();
-        Object value = session.getAttribute(attrName);
-        LOG.debug(
-            "Session attribute: {} = {} (type: {})",
-            attrName,
-            value,
-            value != null ? value.getClass().getName() : "null");
-
-        if (attrName.contains("state") || attrName.contains("State")) {
-          // State is stored as com.nimbusds.oauth2.sdk.id.State object
-          if (value instanceof com.nimbusds.oauth2.sdk.id.State stateObj) {
-            pac4jState = stateObj.getValue();
-            LOG.debug("Found pac4j state: {}", pac4jState);
-          } else if (value instanceof String) {
-            pac4jState = (String) value;
-            LOG.debug("Found pac4j state (string): {}", pac4jState);
-          }
-        } else if (attrName.contains("nonce") || attrName.contains("Nonce")) {
-          // Nonce is stored as String
-          if (value instanceof String) {
-            pac4jNonce = (String) value;
-            LOG.debug("Found pac4j nonce");
-          }
-        } else if (attrName.contains("CodeVerifier")
-            || attrName.contains("codeVerifier")
-            || attrName.contains("pkce")) {
-          // CodeVerifier is stored as com.nimbusds.oauth2.sdk.pkce.CodeVerifier object
-          if (value instanceof com.nimbusds.oauth2.sdk.pkce.CodeVerifier verifierObj) {
-            pac4jCodeVerifier = verifierObj.getValue();
-            LOG.debug("Found pac4j code verifier");
-          } else if (value instanceof String) {
-            pac4jCodeVerifier = (String) value;
-            LOG.debug("Found pac4j code verifier (string)");
-          }
-        }
-      }
-
-      if (pac4jState != null) {
-        pendingAuthRepository.updatePac4jSession(
-            authRequestId, pac4jState, pac4jNonce, pac4jCodeVerifier);
-        LOG.info("Stored pac4j session data in database for auth request: {}", authRequestId);
+      // The persister runs inside handleLogin() before the redirect and marks the request once it
+      // has linked the round-trip state to this pending request. OM stores its OIDC state in the
+      // DB-backed pending session (not the HttpSession), so there is no pac4j session state to scan
+      // here — a missing mark means the link did not happen and the returning /callback will fail.
+      if (Boolean.TRUE.equals(wrappedRequest.getAttribute(MCP_STATE_LINKED))) {
+        LOG.info("Linked OIDC round-trip state to MCP pending request {}", authRequestId);
       } else {
-        HttpServletResponse resp = currentResponse.get();
-        if (resp != null && resp.isCommitted()) {
-          // Active-session shortcut: handleLogin() committed a direct 302 to /mcp/callback
-          // with the id_token in the URL fragment (implicit/hybrid flow). pac4j was never
-          // invoked, so no pac4j state was generated. The browser is already navigating to
-          // /mcp/callback where the JS fragment-extraction page will pull the id_token out
-          // of window.location.hash and retry as a query param so the server can read it.
-          LOG.info(
-              "MCP OAuth active-session shortcut detected for auth request {}: "
-                  + "handleLogin() redirected directly to /mcp/callback with id_token "
-                  + "in URL fragment — no pac4j state expected. "
-                  + "Fragment extraction page will complete the flow.",
-              authRequestId);
-        } else {
-          LOG.error(
-              "Could not find pac4j state in session after handleLogin() "
-                  + "for auth request {}. Session attributes: {}",
-              authRequestId,
-              Collections.list(session.getAttributeNames()));
-          throw new AuthorizeException("server_error", "Failed to initialize SSO session state");
-        }
+        LOG.warn(
+            "MCP pending request {} was not linked to the OIDC round-trip state; "
+                + "the returning /callback will fail to resolve (auth-request id missing?).",
+            authRequestId);
       }
 
       return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
@@ -624,7 +587,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     if (pendingRequest.mcpState() != null) {
       queryParams.put("state", pendingRequest.mcpState());
     }
-    String redirectUrl = UriUtils.constructRedirectUri(pendingRequest.redirectUri(), queryParams);
+    String redirectUrl =
+        UriUtils.constructAuthorizationResponseUri(
+            pendingRequest.redirectUri(), queryParams, issuer);
 
     // Serve an HTML success page that auto-redirects to the client callback.
     // A raw 302 redirect leaves the SSO provider's login page visible in the browser
@@ -842,16 +807,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   }
 
   @Override
-  public CompletableFuture<RefreshToken> loadRefreshToken(
-      OAuthClientInformation client, String refreshToken) {
-    // Refresh token validation happens in exchangeRefreshToken which verifies JWT directly
-    // This method is not used in the current implementation
-    return CompletableFuture.failedFuture(
-        new UnsupportedOperationException(
-            "loadRefreshToken not implemented - use exchangeRefreshToken instead"));
-  }
-
-  @Override
   public CompletableFuture<OAuthToken> exchangeRefreshToken(
       OAuthClientInformation client, RefreshToken refreshToken, List<String> scopes)
       throws TokenException {
@@ -972,15 +927,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       LOG.error("Refresh token exchange failed unexpectedly", e);
       throw new TokenException("server_error", "Token refresh failed");
     }
-  }
-
-  @Override
-  public CompletableFuture<AccessToken> loadAccessToken(String token) {
-    // Access token validation happens through JwtFilter which verifies JWT directly
-    // This method is not used in the current implementation
-    return CompletableFuture.failedFuture(
-        new UnsupportedOperationException(
-            "loadAccessToken not implemented - tokens are validated via JwtFilter"));
   }
 
   @Override

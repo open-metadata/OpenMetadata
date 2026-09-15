@@ -53,4 +53,7 @@ export interface AddIngestionProps {
   ingestionProgress?: number;
   handleViewServiceClick?: () => void;
   onFocus: (fieldName: string) => void;
+  // Reports whether the active step's form is mounted, so a footer rendered by
+  // the host page can disable its advance button until `submit()` will work.
+  onStepReadyChange?: (isReady: boolean) => void;
 }

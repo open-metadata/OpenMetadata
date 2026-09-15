@@ -12,9 +12,10 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
-import { ModelType } from '../../../generated/entity/data/table';
+import { DataType, ModelType } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
+import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 
 jest.mock('../../../hooks/useLineageStore', () => ({
@@ -37,14 +38,18 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getServiceIcon: jest.fn(() => <div>ServiceIcon</div>),
+jest.mock('../../../utils/EntityIconUtils', () => ({
   getEntityIcon: jest.fn(() => <div>EntityIcon</div>),
+}));
+jest.mock('../../../utils/EntityServiceIconUtils', () => ({
+  getServiceIcon: jest.fn(() => <div>ServiceIcon</div>),
 }));
 
 jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
   getEntityChildrenAndLabel: jest.fn((node) => {
-    const childrenCount = node.columns?.length ?? node.tasks?.length ?? 0;
+    const children =
+      node.entityType === 'pipeline' ? node.tasks ?? [] : node.columns ?? [];
+    const childrenCount = children.length;
     const isPlural = childrenCount !== 1;
     let childrenHeading = 'Columns';
 
@@ -55,7 +60,7 @@ jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
     }
 
     return {
-      children: node.columns ?? node.tasks ?? [],
+      children,
       childrenHeading,
       childrenCount,
     };
@@ -86,17 +91,19 @@ const mockBasicNode = {
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
   name: 'dim_customer',
   entityType: EntityType.TABLE,
+  type: EntityType.TABLE,
   deleted: false,
   columns: [
-    { name: 'col1', dataType: 'VARCHAR', fullyQualifiedName: 'col1' },
-    { name: 'col2', dataType: 'VARCHAR', fullyQualifiedName: 'col2' },
-    { name: 'col3', dataType: 'VARCHAR', fullyQualifiedName: 'col3' },
+    { name: 'col1', dataType: DataType.Varchar, fullyQualifiedName: 'col1' },
+    { name: 'col2', dataType: DataType.Varchar, fullyQualifiedName: 'col2' },
+    { name: 'col3', dataType: DataType.Varchar, fullyQualifiedName: 'col3' },
   ],
-};
+} satisfies LineageNodeType;
 
 const mockNodeWithDbt = {
   ...mockBasicNode,
   dataModel: {
+    columns: mockBasicNode.columns,
     modelType: ModelType.Dbt,
     resourceType: 'model',
   },
@@ -105,6 +112,7 @@ const mockNodeWithDbt = {
 const mockNodeWithDbtSeed = {
   ...mockBasicNode,
   dataModel: {
+    columns: mockBasicNode.columns,
     modelType: ModelType.Dbt,
     resourceType: 'seed',
   },
@@ -130,9 +138,10 @@ const mockNodeWithoutChildren = {
   fullyQualifiedName: 'sample_data.ecommerce_db.shopify.no_children',
   name: 'no_children',
   entityType: EntityType.TABLE,
+  type: EntityType.TABLE,
   deleted: false,
   columns: [],
-};
+} satisfies LineageNodeType;
 
 const defaultLineageStore = {
   isDQEnabled: false,
@@ -661,7 +670,11 @@ describe('LineageNodeLabelV1', () => {
       const nodeWithOneColumn = {
         ...mockBasicNode,
         columns: [
-          { name: 'col1', dataType: 'VARCHAR', fullyQualifiedName: 'col1' },
+          {
+            name: 'col1',
+            dataType: DataType.Varchar,
+            fullyQualifiedName: 'col1',
+          },
         ],
       };
 
@@ -678,9 +691,10 @@ describe('LineageNodeLabelV1', () => {
     it('should handle node with multiple entity types', () => {
       const pipelineNode = {
         ...mockBasicNode,
-        entityType: 'pipeline',
+        entityType: EntityType.PIPELINE,
+        type: EntityType.PIPELINE,
         tasks: [{ name: 'task1' }, { name: 'task2' }],
-        columns: undefined,
+        columns: [],
       };
 
       render(

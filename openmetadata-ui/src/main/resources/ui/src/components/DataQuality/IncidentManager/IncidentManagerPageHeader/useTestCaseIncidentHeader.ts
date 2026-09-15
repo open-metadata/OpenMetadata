@@ -40,7 +40,11 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+} from '../../../../utils/PermissionsUtils';
 import { getTaskDisplayId } from '../../../../utils/TaskNavigationUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -105,6 +109,8 @@ export const useTestCaseIncidentHeader = ({
     setTestCase,
   } = useTestCaseStore();
 
+  const isDeleted = Boolean(testCaseData?.deleted);
+
   const { dimensionKey } = useRequiredParams<{
     fqn: string;
     dimensionKey?: string;
@@ -143,7 +149,7 @@ export const useTestCaseIncidentHeader = ({
   );
 
   const handleSeverityUpdate = async (severity?: Severities) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -167,7 +173,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (isUndefined(testCaseStatusData)) {
+    if (isDeleted || isUndefined(testCaseStatusData)) {
       return;
     }
 
@@ -215,18 +221,17 @@ export const useTestCaseIncidentHeader = ({
     try {
       const { data } = await getListTestCaseIncidentByStateId(id);
 
-      setTestCaseStatusData(first(data));
+      return first(data);
     } catch {
-      setTestCaseStatusData(undefined);
+      return undefined;
     }
   };
 
   const fetchIncidentTask = async (stateId: string) => {
     try {
-      const task = await getIncidentTaskByStateId(stateId);
-      setIncidentTask(task);
+      return await getIncidentTaskByStateId(stateId);
     } catch {
-      setIncidentTask(null);
+      return null;
     }
   };
 
@@ -241,31 +246,63 @@ export const useTestCaseIncidentHeader = ({
 
     if (status?.stateId === incidentStateId) {
       setTestCaseStatusData(status);
-      if (
-        status?.testCaseResolutionStatusType ===
-        TestCaseResolutionStatusTypes.Resolved
-      ) {
-        fetchTaskCount();
-      }
+      // Refresh the open-task count on any transition: resolving closes a task and
+      // reopening opens one, so gating on Resolved left the tab badge stale after reopen.
+      fetchTaskCount();
     }
   }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);
 
   useEffect(() => {
-    if (testCaseData?.incidentId) {
-      setIsLoading(true);
-      Promise.allSettled([
-        fetchTestCaseResolution(testCaseData.incidentId),
-        fetchIncidentTask(testCaseData.incidentId),
-      ]).finally(() => setIsLoading(false));
-    } else {
+    const inlineStatus = testCaseData?.incidentStatus;
+    const resolvedStatus =
+      inlineStatus?.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Resolved
+        ? inlineStatus
+        : undefined;
+    const incidentId = testCaseData?.incidentId;
+    const stateId = incidentId ?? resolvedStatus?.stateId;
+
+    if (!stateId) {
+      setTestCaseStatusData(undefined);
+      setIncidentTask(null);
       setIsLoading(false);
+
+      return;
     }
-  }, [testCaseData?.incidentId]);
+
+    // Guard against a stale response landing after the test case changed:
+    // both fetches below resolve asynchronously, so the cleanup flips `active`
+    // and the late writer is dropped instead of showing the prior incident.
+    let active = true;
+    setIsLoading(true);
+
+    Promise.all([
+      incidentId
+        ? fetchTestCaseResolution(incidentId)
+        : Promise.resolve(resolvedStatus),
+      fetchIncidentTask(stateId),
+    ])
+      .then(([status, task]) => {
+        if (active) {
+          setTestCaseStatusData(status);
+          setIncidentTask(task);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [testCaseData?.incidentId, testCaseData?.incidentStatus]);
 
   const handleDomainUpdate = async (
     selectedDomain: EntityReference | EntityReference[]
   ) => {
-    if (!testCaseData) {
+    if (!testCaseData || isDeleted) {
       return;
     }
 
@@ -288,7 +325,7 @@ export const useTestCaseIncidentHeader = ({
   };
 
   const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
-    return isVersionPage
+    return isVersionPage || isDeleted
       ? {
           hasEditStatusPermission: false,
           hasEditOwnerPermission: false,
@@ -307,7 +344,7 @@ export const useTestCaseIncidentHeader = ({
               Operation.EditOwners
             ),
         };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
+  }, [testCasePermission, isVersionPage, isDeleted]);
 
   const taskLinkInfo = useMemo(
     () =>
@@ -336,8 +373,15 @@ export const useTestCaseIncidentHeader = ({
     dimensionKey,
     hasEditStatusPermission,
     hasEditOwnerPermission,
+    // testCasePermission is undefined until the store's fetch-owner populates it (out of
+    // this file's scope); DEFAULT_ENTITY_PERMISSION (all-false) reproduces the old
+    // Boolean(testCasePermission?.EditAll) undefined/absent-is-false behavior.
     hasEditDomainPermission:
-      !isVersionPage && Boolean(testCasePermission?.EditAll),
+      !isVersionPage &&
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION,
+        isDeleted
+      ).canEditAll,
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,

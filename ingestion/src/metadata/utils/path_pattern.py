@@ -17,7 +17,6 @@ All functions are cloud-agnostic — they operate on path strings only.
 """
 
 import re
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.utils.logger import ingestion_logger
@@ -43,7 +42,7 @@ EXTENSION_TO_FORMAT = {
 }
 
 
-def infer_structure_format(key: str) -> Optional[str]:  # noqa: UP045
+def infer_structure_format(key: str) -> str | None:
     """Infer the structure format from a file's extension.
 
     Returns the format string (e.g., 'parquet', 'csv') or None if unknown.
@@ -195,12 +194,12 @@ def extract_table_root(key: str) -> str:
 
 def _extract_partition_segments(
     relative: str,
-    partition_values: Dict[str, List[str]],  # noqa: UP006
-) -> List[str]:  # noqa: UP006
+    partition_values: dict[str, list[str]],
+) -> list[str]:
     """Walk the path segments (excluding the filename) and collect
     Hive-style ``key=value`` pairs. Updates ``partition_values`` in place
     so the caller can later infer types per column."""
-    current: List[str] = []  # noqa: UP006
+    current: list[str] = []
     for part in relative.split("/")[:-1]:
         match = HIVE_PARTITION_PATTERN.match(part)
         if match:
@@ -213,7 +212,7 @@ def _extract_partition_segments(
     return current
 
 
-def _check_partition_consistency(structures: List[List[str]], table_root: str) -> Optional[List[str]]:  # noqa: UP006, UP045
+def _check_partition_consistency(structures: list[list[str]], table_root: str) -> list[str] | None:
     """Return the shared partition structure if every entry matches;
     log and return None on mismatch."""
     reference = structures[0]
@@ -227,7 +226,7 @@ def _check_partition_consistency(structures: List[List[str]], table_root: str) -
     return reference
 
 
-def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Column]]:  # noqa: UP006, UP045
+def detect_hive_partitions(keys: list[str], table_root: str) -> list[Column] | None:
     """Detect Hive-style partition columns from file paths.
 
     Scans paths under ``table_root`` for consistent ``key=value``
@@ -243,8 +242,8 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
         return None
 
     root_prefix = table_root.rstrip("/") + "/" if table_root else ""
-    partition_structures: List[List[str]] = []  # noqa: UP006
-    partition_values: Dict[str, List[str]] = {}  # noqa: UP006
+    partition_structures: list[list[str]] = []
+    partition_values: dict[str, list[str]] = {}
     has_flat_files = False
 
     for key in keys:
@@ -268,7 +267,7 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
     if reference is None:
         return None
 
-    columns: List[Column] = []  # noqa: UP006
+    columns: list[Column] = []
     for col_name in reference:
         col_type = _infer_partition_type(partition_values.get(col_name, []))
         columns.append(
@@ -281,7 +280,7 @@ def detect_hive_partitions(keys: List[str], table_root: str) -> Optional[List[Co
     return columns
 
 
-def _infer_partition_type(values: List[str]) -> DataType:  # noqa: UP006
+def _infer_partition_type(values: list[str]) -> DataType:
     """Infer the data type of a partition column from its observed values."""
     if not values:
         return DataType.VARCHAR
@@ -308,13 +307,13 @@ def _is_integer(value: str) -> bool:
 
 
 def group_files_by_table(
-    keys: List[Tuple[str, int]],  # noqa: UP006
-) -> Dict[str, List[Tuple[str, int]]]:  # noqa: UP006
+    keys: list[tuple[str, int]],
+) -> dict[str, list[tuple[str, int]]]:
     """Group matched file keys by their logical table root.
 
     Returns a dict of {table_root: [(key, size), ...]}.
     """
-    groups: Dict[str, List[Tuple[str, int]]] = {}  # noqa: UP006
+    groups: dict[str, list[tuple[str, int]]] = {}
     for key, size in keys:
         root = extract_table_root(key)
         groups.setdefault(root, []).append((key, size))

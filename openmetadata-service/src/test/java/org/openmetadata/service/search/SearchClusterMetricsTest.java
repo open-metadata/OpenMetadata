@@ -62,17 +62,21 @@ public class SearchClusterMetricsTest {
   @Test
   void boundsQueueSizeToHeapBudget() {
     assertEquals(
-        10000,
+        4096,
         SearchClusterMetrics.boundQueueSizeToHeap(10000, 4L * 1024 * 1024 * 1024),
-        "4 GB heap has room for the full queue");
+        "4 GB heap / 256 KB entity caps the 10000 request at 25% of heap");
     assertEquals(
-        2621,
+        1024,
         SearchClusterMetrics.boundQueueSizeToHeap(10000, 1024L * 1024 * 1024),
-        "1 GB heap / 100 KB entity caps the queue well below 10000");
+        "1 GB heap / 256 KB entity caps the queue well below 10000");
     assertEquals(
-        1000,
+        748,
+        SearchClusterMetrics.boundQueueSizeToHeap(1840, 748L * 1024 * 1024),
+        "the 748 MB pod that OOM'd: AutoTune's 1840-entity queue capped to ~25% of heap");
+    assertEquals(
+        250,
         SearchClusterMetrics.boundQueueSizeToHeap(10000, 128L * 1024 * 1024),
-        "tiny heap floors at 1000 rather than zero");
+        "tiny heap floors at the small-heap minimum, not the old flat 1000");
   }
 
   @BeforeEach

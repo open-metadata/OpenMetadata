@@ -26,10 +26,12 @@ import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -188,6 +190,77 @@ class ContextMemorySearchVisibilityTest {
             .buildVisibilityFilter(null);
 
     assertNull(filter, "A missing subject must not silently expose memories");
+  }
+
+  @Test
+  void orgWideOnlyFilterLeavesNonMemoryDocumentsUntouched() {
+    DocumentContext json = JsonPath.parse(orgWideOnlyJson());
+
+    assertFieldExists(
+        json,
+        "$.bool.should[0].bool.must_not[?(@.term['entityType'].value=='"
+            + Entity.CONTEXT_MEMORY
+            + "')]",
+        "non-memory documents pass through via a must_not entityType branch");
+  }
+
+  @Test
+  void orgWideOnlyFilterAdmitsOnlyEntityVisibilityMemories() {
+    DocumentContext json = JsonPath.parse(orgWideOnlyJson());
+
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[?(@.term['visibility'].value=='Entity')]",
+        "the memory branch admits Entity-visibility memories");
+    assertFieldDoesNotExist(
+        json, "$..term['owners.id']", "a subject-less path must not match by ownership");
+    assertFieldDoesNotExist(
+        json, "$..terms['sharedWithIds']", "a subject-less path must not match by sharedWithIds");
+  }
+
+  @Test
+  void orgWideOnlyFilterIsShouldOnlySoMinimumShouldMatchDefaultsToOne() {
+    DocumentContext json = JsonPath.parse(orgWideOnlyJson());
+
+    assertFieldExists(json, "$.bool.should", "the outer access clause must be should-based");
+    assertFieldDoesNotExist(
+        json, "$.bool.must", "a must sibling would drop minimum_should_match to 0 (fail-open)");
+    assertFieldDoesNotExist(
+        json, "$.bool.filter", "a filter sibling would drop minimum_should_match to 0 (fail-open)");
+  }
+
+  @Test
+  void isOrgWideReadableAdmitsEveryNonMemoryDocument() {
+    assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(null));
+    assertTrue(ContextMemorySearchVisibility.isOrgWideReadable(Map.of()));
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of("entityType", Entity.TABLE, "name", "orders")));
+  }
+
+  @Test
+  void isOrgWideReadableRejectsRestrictedMemories() {
+    assertTrue(
+        ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.ENTITY)));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.PRIVATE)));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(memoryDocument(MemoryVisibility.SHARED)));
+    assertFalse(
+        ContextMemorySearchVisibility.isOrgWideReadable(
+            Map.of("entityType", Entity.CONTEXT_MEMORY)),
+        "a memory with no indexed visibility is not org-wide");
+  }
+
+  private Map<String, Object> memoryDocument(MemoryVisibility visibility) {
+    return Map.of("entityType", Entity.CONTEXT_MEMORY, "visibility", visibility.value());
+  }
+
+  private String orgWideOnlyJson() {
+    OMQueryBuilder filter =
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildOrgWideOnlyFilter();
+    return serializeElasticQuery(((ElasticQueryBuilder) filter).build());
   }
 
   @Test

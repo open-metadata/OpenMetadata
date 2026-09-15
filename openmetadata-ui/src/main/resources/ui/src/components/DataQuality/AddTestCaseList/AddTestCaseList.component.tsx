@@ -22,6 +22,7 @@ import {
   Typography,
 } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
+import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
 import VirtualList from 'rc-virtual-list';
@@ -49,7 +50,10 @@ import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
 import {
   COLUMN_AGGREGATE_FIELD,
   getColumnNameFromColumnFilterKey,
@@ -62,6 +66,7 @@ import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { replacePlus } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -73,12 +78,88 @@ import {
   seedSelectedFromExistingTest,
 } from './AddTestCaseListForm.utils';
 
+const getSelectionFlags = ({
+  loadedItemIds,
+  isLoadedRowSelected,
+  selectAll,
+  totalCount,
+  itemsLength,
+}: {
+  loadedItemIds: string[];
+  isLoadedRowSelected: (id: string) => boolean;
+  selectAll: boolean;
+  totalCount: number;
+  itemsLength: number;
+}) => {
+  const allLoadedSelected =
+    loadedItemIds.length > 0 &&
+    loadedItemIds.every((id) => isLoadedRowSelected(id));
+
+  return {
+    allLoadedSelected,
+    showSelectAllTotalLink:
+      !selectAll &&
+      totalCount > itemsLength &&
+      allLoadedSelected &&
+      itemsLength > 0,
+  };
+};
+
+const buildTestCaseSearchParams = ({
+  searchText,
+  page,
+  filterColumns,
+  filterTables,
+  filterStatus,
+  filterTestType,
+  testCaseParams,
+}: {
+  searchText?: string;
+  page: number;
+  filterColumns: string[];
+  filterTables: string[];
+  filterStatus?: TestCaseStatus;
+  filterTestType: TestCaseType;
+  testCaseParams?: ListTestCaseParamsBySearch;
+}): ListTestCaseParamsBySearch => {
+  // `q` must stay free text: /v1/dataQuality/testCases/search/list parses it as a literal
+  // term, so scoping filters travel as first-class params via `testCaseParams`. With no
+  // search text `q` is omitted rather than sent as `*` — a lone asterisk is no longer a
+  // match-all wildcard, it is a literal asterisk that matches nothing.
+  const q = searchText || undefined;
+
+  const columnNamesFromKeys =
+    filterColumns.length > 0
+      ? (filterColumns
+          .map((k) => getColumnNameFromColumnFilterKey(k))
+          .filter(Boolean) as string[])
+      : [];
+  const columnName =
+    columnNamesFromKeys.length > 0 ? columnNamesFromKeys[0] : undefined;
+  const filterTable = filterTables[0];
+  const entityLink = filterTable ? `<#E::table::${filterTable}>` : undefined;
+
+  const requestParams = {
+    q,
+    limit: PAGE_SIZE_MEDIUM,
+    offset: (page - 1) * PAGE_SIZE_MEDIUM,
+    testCaseStatus: filterStatus,
+    testCaseType:
+      filterTestType === TestCaseType.all ? undefined : filterTestType,
+    // includeAllTests=true: prefix-match entityFQN so column tests
+    // under the selected table are included.
+    ...(entityLink && { entityLink, includeAllTests: true }),
+    ...(columnName && { columnName }),
+  };
+
+  return { ...testCaseParams, ...requestParams };
+};
+
 export const AddTestCaseList = ({
   onCancel,
   onSubmit,
   cancelText,
   submitText,
-  testCaseFilters,
   columnFilters,
   selectedTest,
   existingTest,
@@ -269,37 +350,15 @@ export const AddTestCaseList = ({
     }) => {
       try {
         setIsLoading(true);
-        const globalSearch = searchText ? `*${searchText}*` : WILD_CARD_CHAR;
-        const q = testCaseFilters
-          ? `${globalSearch} && ${testCaseFilters}`
-          : globalSearch;
-
-        const columnNamesFromKeys =
-          filterColumns.length > 0
-            ? (filterColumns
-                .map((k) => getColumnNameFromColumnFilterKey(k))
-                .filter(Boolean) as string[])
-            : [];
-        const columnName =
-          columnNamesFromKeys.length > 0 ? columnNamesFromKeys[0] : undefined;
-        const filterTable = filterTables[0];
-        const entityLink = filterTable
-          ? `<#E::table::${filterTable}>`
-          : undefined;
-
-        const requestParams = {
-          q,
-          limit: PAGE_SIZE_MEDIUM,
-          offset: (page - 1) * PAGE_SIZE_MEDIUM,
-          testCaseStatus: filterStatus,
-          testCaseType:
-            filterTestType === TestCaseType.all ? undefined : filterTestType,
-          // includeAllTests=true: prefix-match entityFQN so column tests
-          // under the selected table are included.
-          ...(entityLink && { entityLink, includeAllTests: true }),
-          ...(columnName && { columnName }),
-        };
-        const mergedParams = { ...testCaseParams, ...requestParams };
+        const mergedParams = buildTestCaseSearchParams({
+          searchText,
+          page,
+          filterColumns,
+          filterTables,
+          filterStatus,
+          filterTestType,
+          testCaseParams,
+        });
 
         const testCaseResponse = await getListTestCaseBySearch(mergedParams);
 
@@ -328,13 +387,14 @@ export const AddTestCaseList = ({
             : (prevItems) => [...prevItems, ...testCaseResponse.data]
         );
         setPageNumber(page);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     },
     [
       items,
-      testCaseFilters,
       selectedTestNames,
       testCaseParams,
       filterStatus,
@@ -435,15 +495,13 @@ export const AddTestCaseList = ({
     [items, isLoadedRowSelected]
   );
 
-  const allLoadedSelected =
-    loadedItemIds.length > 0 &&
-    loadedItemIds.every((id) => isLoadedRowSelected(id));
-
-  const showSelectAllTotalLink =
-    !selectAll &&
-    totalCount > items.length &&
-    allLoadedSelected &&
-    items.length > 0;
+  const { allLoadedSelected, showSelectAllTotalLink } = getSelectionFlags({
+    loadedItemIds,
+    isLoadedRowSelected,
+    selectAll,
+    totalCount,
+    itemsLength: items.length,
+  });
 
   const handlePageSelectAllCheckbox = useCallback(
     (e: CheckboxChangeEvent) => {
@@ -583,7 +641,6 @@ export const AddTestCaseList = ({
     filterTestType,
     filterTables,
     filterColumns,
-    testCaseFilters,
     testCaseParams,
   ]);
 

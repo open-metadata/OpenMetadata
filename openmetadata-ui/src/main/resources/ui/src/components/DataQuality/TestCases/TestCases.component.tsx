@@ -16,11 +16,12 @@ import { Plus } from '@untitledui/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
+  TEST_CASE_STATUS_FILTER_OPTIONS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -28,12 +29,15 @@ import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import PieChartSummaryPanel from '../SummaryPannel/PieChartSummaryPanel.component';
 import TestCaseListTableHeader from './TestCaseListTableHeader.component';
+import { getTestCaseListDisplayState } from './TestCases.utils';
 import { useTestCaseListPage } from './useTestCaseListPage';
 
 export const TestCases = () => {
@@ -66,12 +70,27 @@ export const TestCases = () => {
     isLoading,
     pagingData,
     showPagination,
-    fetchTestCases,
     sortTestCase,
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    handleShowDeletedChange,
+    handleAfterDeleteAction,
   } = useTestCaseListPage();
+
+  // testCasePermission is a resource-level permission (usePermissionProvider().permissions.
+  // testCase, threaded through useTestCaseListPage). Itself OperationPermission-shaped, so it
+  // runs through getDerivedPermissionFlags exactly like an entity-level fetch (Task 8 Batch 3
+  // DatabaseSchemaTable.tsx precedent). Falls back to DEFAULT_ENTITY_PERMISSION (all-false) to
+  // reproduce the old `?.` optional-chaining undefined-is-falsy behavior.
+  const testCaseFlags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        testCasePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
+    [testCasePermission]
+  );
 
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
     let action: EmptyPlaceholderAction | undefined;
@@ -88,7 +107,176 @@ export const TestCases = () => {
     return action;
   }, [createActions?.canCreateTestCase, createActions?.onAddTestCase, t]);
 
-  if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
+  const { displayedEmptyStateAction, enableBulkActions, hasListActiveFilters } =
+    getTestCaseListDisplayState({
+      canCreate: Boolean(testSuitePermission?.Create),
+      emptyStateAction,
+      hasActiveFilters,
+      searchValue,
+      showDeleted,
+    });
+
+  const renderPrimaryFilters = () => (
+    <>
+      {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
+        <Form.Item
+          className="m-0 w-80"
+          label={t('label.table')}
+          name="tableFqn">
+          <Select
+            allowClear
+            showSearch
+            data-testid="table-select-filter"
+            getPopupContainer={getPopupContainer}
+            loading={isOptionsLoading}
+            options={tableOptions}
+            placeholder={t('label.table')}
+            onSearch={debounceFetchTableData}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.platform) && (
+        <Form.Item
+          className="m-0 w-min-20"
+          label={t('label.platform')}
+          name="testPlatforms">
+          <Select
+            allowClear
+            data-testid="platform-select-filter"
+            getPopupContainer={getPopupContainer}
+            mode="multiple"
+            options={TEST_CASE_PLATFORM_OPTION}
+            placeholder={t('label.platform')}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.type) && (
+        <Form.Item
+          className="m-0 w-40"
+          label={t('label.type')}
+          name="testCaseType">
+          <Select
+            allowClear
+            data-testid="test-case-type-select-filter"
+            getPopupContainer={getPopupContainer}
+            options={TEST_CASE_TYPE_OPTION}
+            placeholder={t('label.type')}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
+        <Form.Item
+          className="m-0 w-64"
+          label={t('label.status')}
+          name="testCaseStatus">
+          <Select
+            allowClear
+            data-testid="status-select-filter"
+            getPopupContainer={getPopupContainer}
+            mode="multiple"
+            options={TEST_CASE_STATUS_FILTER_OPTIONS}
+            placeholder={t('label.status')}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
+        <Form.Item
+          className="m-0"
+          label={t('label.last-run')}
+          name="lastRunRange"
+          trigger="handleDateRangeChange"
+          valuePropName="defaultDateRange">
+          <DatePickerMenu showSelectedCustomRange size="small" />
+        </Form.Item>
+      )}
+    </>
+  );
+
+  const renderSecondaryFilters = () => (
+    <>
+      {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
+        <Form.Item
+          className="m-0 w-80"
+          label={t('label.tag-plural')}
+          name="tags">
+          <Select
+            allowClear
+            showSearch
+            data-testid="tags-select-filter"
+            getPopupContainer={getPopupContainer}
+            loading={isOptionsLoading}
+            mode="multiple"
+            options={tagOptions}
+            placeholder={t('label.tag-plural')}
+            onSearch={debounceFetchTagOptions}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.tier) && (
+        <Form.Item className="m-0 w-40" label={t('label.tier')} name="tier">
+          <Select
+            allowClear
+            showSearch
+            data-testid="tier-select-filter"
+            getPopupContainer={getPopupContainer}
+            options={tierOptions}
+            placeholder={t('label.tier')}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
+        <Form.Item
+          className="m-0 w-80"
+          label={t('label.service')}
+          name="serviceName">
+          <Select
+            allowClear
+            showSearch
+            data-testid="service-select-filter"
+            getPopupContainer={getPopupContainer}
+            loading={isOptionsLoading}
+            options={serviceOptions}
+            placeholder={t('label.service')}
+            onSearch={debounceFetchServiceOptions}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
+        <Form.Item
+          className="m-0 w-80"
+          label={t('label.dimension')}
+          name="dataQualityDimension">
+          <Select
+            allowClear
+            showSearch
+            data-testid="dimension-select-filter"
+            getPopupContainer={getPopupContainer}
+            options={TEST_CASE_DIMENSIONS_OPTION}
+            placeholder={t('label.dimension')}
+          />
+        </Form.Item>
+      )}
+      {selectedFilter.includes(TEST_CASE_FILTERS.dataProduct) && (
+        <Form.Item
+          className="m-0 w-80"
+          label={t('label.data-product-plural')}
+          name="dataProductFqn">
+          <Select
+            allowClear
+            showSearch
+            data-testid="data-product-select-filter"
+            getPopupContainer={getPopupContainer}
+            loading={isOptionsLoading}
+            options={dataProductOptions}
+            placeholder={t('label.data-product-plural')}
+            onSearch={debounceFetchDataProductOptions}
+          />
+        </Form.Item>
+      )}
+    </>
+  );
+
+  if (!testCaseFlags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -127,158 +315,8 @@ export const TestCases = () => {
                 </Button>
               </Dropdown>
             </Form.Item>
-            {selectedFilter.includes(TEST_CASE_FILTERS.table) && (
-              <Form.Item
-                className="m-0 w-80"
-                label={t('label.table')}
-                name="tableFqn">
-                <Select
-                  allowClear
-                  showSearch
-                  data-testid="table-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  loading={isOptionsLoading}
-                  options={tableOptions}
-                  placeholder={t('label.table')}
-                  onSearch={debounceFetchTableData}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.platform) && (
-              <Form.Item
-                className="m-0 w-min-20"
-                label={t('label.platform')}
-                name="testPlatforms">
-                <Select
-                  allowClear
-                  data-testid="platform-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  mode="multiple"
-                  options={TEST_CASE_PLATFORM_OPTION}
-                  placeholder={t('label.platform')}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.type) && (
-              <Form.Item
-                className="m-0 w-40"
-                label={t('label.type')}
-                name="testCaseType">
-                <Select
-                  allowClear
-                  data-testid="test-case-type-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_TYPE_OPTION}
-                  placeholder={t('label.type')}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.status) && (
-              <Form.Item
-                className="m-0 w-40"
-                label={t('label.status')}
-                name="testCaseStatus">
-                <Select
-                  allowClear
-                  data-testid="status-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_STATUS_OPTION}
-                  placeholder={t('label.status')}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.lastRun) && (
-              <Form.Item
-                className="m-0"
-                label={t('label.last-run')}
-                name="lastRunRange"
-                trigger="handleDateRangeChange"
-                valuePropName="defaultDateRange">
-                <DatePickerMenu showSelectedCustomRange size="small" />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
-              <Form.Item
-                className="m-0 w-80"
-                label={t('label.tag-plural')}
-                name="tags">
-                <Select
-                  allowClear
-                  showSearch
-                  data-testid="tags-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  loading={isOptionsLoading}
-                  mode="multiple"
-                  options={tagOptions}
-                  placeholder={t('label.tag-plural')}
-                  onSearch={debounceFetchTagOptions}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.tier) && (
-              <Form.Item
-                className="m-0 w-40"
-                label={t('label.tier')}
-                name="tier">
-                <Select
-                  allowClear
-                  showSearch
-                  data-testid="tier-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  options={tierOptions}
-                  placeholder={t('label.tier')}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
-              <Form.Item
-                className="m-0 w-80"
-                label={t('label.service')}
-                name="serviceName">
-                <Select
-                  allowClear
-                  showSearch
-                  data-testid="service-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  loading={isOptionsLoading}
-                  options={serviceOptions}
-                  placeholder={t('label.service')}
-                  onSearch={debounceFetchServiceOptions}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
-              <Form.Item
-                className="m-0 w-80"
-                label={t('label.dimension')}
-                name="dataQualityDimension">
-                <Select
-                  allowClear
-                  showSearch
-                  data-testid="dimension-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  options={TEST_CASE_DIMENSIONS_OPTION}
-                  placeholder={t('label.dimension')}
-                />
-              </Form.Item>
-            )}
-            {selectedFilter.includes(TEST_CASE_FILTERS.dataProduct) && (
-              <Form.Item
-                className="m-0 w-80"
-                label={t('label.data-product-plural')}
-                name="dataProductFqn">
-                <Select
-                  allowClear
-                  showSearch
-                  data-testid="data-product-select-filter"
-                  getPopupContainer={getPopupContainer}
-                  loading={isOptionsLoading}
-                  options={dataProductOptions}
-                  placeholder={t('label.data-product-plural')}
-                  onSearch={debounceFetchDataProductOptions}
-                />
-              </Form.Item>
-            )}
+            {renderPrimaryFilters()}
+            {renderSecondaryFilters()}
           </Space>
         </Form>
       </Col>
@@ -290,7 +328,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <DataQualityTab
-          afterDeleteAction={fetchTestCases}
+          afterDeleteAction={handleAfterDeleteAction}
           breadcrumbData={[
             {
               name: t('label.data-quality'),
@@ -299,10 +337,11 @@ export const TestCases = () => {
               ),
             },
           ]}
-          emptyStateAction={emptyStateAction}
-          enableBulkActions={Boolean(testSuitePermission?.Create)}
+          deletionMode={TEST_CASE_DELETION_MODE.SOFT}
+          emptyStateAction={displayedEmptyStateAction}
+          enableBulkActions={enableBulkActions}
           fetchTestCases={sortTestCase}
-          hasActiveFilters={Boolean(searchValue) || hasActiveFilters}
+          hasActiveFilters={hasListActiveFilters}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}
@@ -310,7 +349,9 @@ export const TestCases = () => {
             <TestCaseListTableHeader
               extraDropdownContent={extraDropdownContent}
               searchValue={searchValue}
+              showDeleted={showDeleted}
               onSearch={(value) => handleSearchParam('searchValue', value)}
+              onShowDeletedChange={handleShowDeletedChange}
             />
           }
           testCases={testCase}

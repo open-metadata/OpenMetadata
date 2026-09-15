@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.api;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -60,6 +62,19 @@ class MigrationProcessImplTest {
     MigrationProcessImpl process = new MigrationProcessImpl(file);
 
     assertFalse(process.hasNewStatements());
+  }
+
+  @Test
+  void parsesEveryStatementInSqlFile() throws IOException {
+    Path sqlFile = tempDir.resolve("statements.sql");
+    Files.writeString(
+        sqlFile, "INSERT INTO sample VALUES ('value;with-semicolon');\nUPDATE sample SET id = 2;");
+
+    List<String> statements = MigrationFile.parseSQLFile(sqlFile.toFile(), ConnectionType.MYSQL);
+
+    assertEquals(
+        List.of("INSERT INTO sample VALUES ('value;with-semicolon')", "UPDATE sample SET id = 2"),
+        statements);
   }
 
   private MigrationFile createMigrationDir(

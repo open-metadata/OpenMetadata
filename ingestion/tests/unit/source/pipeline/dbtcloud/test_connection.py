@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Unit tests for dbt Cloud connection handling and its test-connection checks."""
 
+import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,6 +21,8 @@ from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.pipeline.dbtcloud.client import (
     TEST_RETRY_WAIT_SECONDS,
@@ -159,6 +162,37 @@ def test_error_pack_diagnoses_known_failures(error, title):
     assert diagnosis is not None
     assert diagnosis.title == title
     assert diagnosis.remediation
+
+
+def _dns_failure() -> RequestsConnectionError:
+    """A requests DNS failure, with the cause chain requests really builds.
+
+    Captured live from `requests.get("https://<unresolvable>/", timeout=5)`, whose
+    chain is ConnectionError <- MaxRetryError <- NameResolutionError <- gaierror.
+    Reproduced here rather than dialling a resolver, so the test cannot flake on
+    CI DNS - the shape is what matters, and the shape is the one observed.
+    """
+    error = RequestsConnectionError(
+        "HTTPSConnectionPool(host='nope.invalid', port=443): Max retries exceeded with url: "
+        "/api/v2/accounts/1/jobs/ (Caused by NameResolutionError(\"Failed to resolve 'nope.invalid'\"))"
+    )
+    error.__cause__ = socket.gaierror(8, "nodename nor servname provided, or not known")
+    return error
+
+
+def test_a_dns_failure_is_claimed_by_the_connectors_own_rule_not_the_network_pack():
+    """The gaierror IS in the chain - the fold was unreachable by precedence, not
+    absence: `including` appends lower, so the RequestsConnectionError rule wins."""
+    error = _dns_failure()
+
+    assert any(isinstance(current, socket.gaierror) for current in exception_chain(error))
+    assert DBTCLOUD_ERRORS.classify(error).title == "Cannot reach the host"
+
+
+def test_network_unreachable_is_impossible_without_a_preflight():
+    """The fold's fourth rule. Only tcp_probe raises NetworkUnreachableError, and
+    this connector runs no preflight, so the pack does not claim to diagnose one."""
+    assert DBTCLOUD_ERRORS.classify(NetworkUnreachableError("cloud.getdbt.com:443 is not reachable")) is None
 
 
 def test_error_pack_diagnoses_a_status_wrapped_by_a_check_error():

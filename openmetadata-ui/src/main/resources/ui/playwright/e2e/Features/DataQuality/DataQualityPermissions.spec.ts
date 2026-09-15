@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   CREATE_TEST_CASE_POLICY,
@@ -25,11 +25,13 @@ import {
   VIEW_ALL_TEST_CASE_POLICY,
 } from '../../../constant/dataQualityPermissions';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
+  verifyTestCaseLastRunBanner,
   visitTestSuiteDetailsPage,
   visitTestSuitesPage,
   waitForPermissionsResponse,
@@ -71,9 +73,11 @@ const test = base.extend<{
   suiteEditOnlyPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   createPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -595,6 +599,7 @@ test.describe(
           `/test-case/${encodeURIComponent(testCaseFqn)}`
         );
         await testCaseDetailsPromise;
+        await verifyTestCaseLastRunBanner(viewBasicPage, 'not-run-yet');
 
         await expect(
           viewBasicPage.getByTestId('entity-page-header')

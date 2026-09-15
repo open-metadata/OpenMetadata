@@ -14,7 +14,6 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 
@@ -22,19 +21,14 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -86,11 +80,6 @@ public class DefaultAuthorizer implements Authorizer {
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     try {
       SubjectContext subjectContext = getSubjectContext(securityContext);
-
-      if (subjectContext.impersonatedBy() != null) {
-        checkImpersonationAuthorization(subjectContext);
-      }
-
       if (subjectContext.isAdmin()) {
         return;
       }
@@ -107,7 +96,6 @@ public class DefaultAuthorizer implements Authorizer {
   public void authorizeRequests(
       SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-
     if (subjectContext.isAdmin()) {
       return;
     }
@@ -145,7 +133,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorizeAdmin(String adminName) {
-    SubjectContext subjectContext = SubjectContext.getSubjectContext(adminName);
+    SubjectContext subjectContext = subjectContextForUserName(adminName);
     if (subjectContext.isAdmin()) {
       return;
     }
@@ -167,24 +155,6 @@ public class DefaultAuthorizer implements Authorizer {
     return !subjectContext.isBot();
   }
 
-  public void authorizeImpersonation(SecurityContext securityContext, String targetUser) {
-    String botName = SecurityUtil.getUserName(securityContext);
-    SubjectContext botContext = SubjectContext.getSubjectContext(botName);
-
-    if (!botContext.isBot()) {
-      throw new AuthorizationException("Only bot users can impersonate");
-    }
-    if (!Boolean.TRUE.equals(botContext.user().getAllowImpersonation())) {
-      throw new AuthorizationException("Bot " + botName + " does not have impersonation enabled");
-    }
-
-    OperationContext operationContext =
-        new OperationContext(Entity.USER, MetadataOperation.IMPERSONATE);
-    ResourceContextInterface resourceContext = new ResourceContext<>(Entity.USER, null, targetUser);
-
-    PolicyEvaluator.hasPermission(botContext, resourceContext, operationContext);
-  }
-
   /** In 1.2, evaluate policies here instead of just checking the subject */
   @Override
   public boolean authorizePII(SecurityContext securityContext, List<EntityReference> owners) {
@@ -192,7 +162,42 @@ public class DefaultAuthorizer implements Authorizer {
     return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owners);
   }
 
+  /**
+   * Resolves the effective subject for the request and, when the caller is a bot acting through
+   * impersonation, checks that impersonation before the subject is handed out.
+   *
+   * <p>The check lives here rather than in the individual guards because every authorization entry
+   * point and every resource that filters on the effective subject funnels through this method.
+   */
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {
+    return validateImpersonation(resolveSubjectContext(securityContext));
+  }
+
+  /**
+   * Resolves the effective subject from a username, for the call sites that only have the effective
+   * user name rather than the {@link SecurityContext}. The impersonating bot is not carried by the
+   * name, so it is read from the request's {@link ImpersonationContext}.
+   *
+   * <p>Deliberately not an overload of {@code getSubjectContext}: that name is statically imported
+   * and stubbed with untyped {@code any()} matchers across the codebase, where a second overload
+   * makes the call ambiguous.
+   */
+  private static SubjectContext subjectContextForUserName(String userName) {
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    if (impersonatedBy == null) {
+      return SubjectContext.getSubjectContext(userName);
+    }
+    return validateImpersonation(SubjectContext.getSubjectContext(userName, impersonatedBy));
+  }
+
+  private static SubjectContext validateImpersonation(SubjectContext subjectContext) {
+    if (subjectContext.impersonatedBy() != null) {
+      checkImpersonationAuthorization(subjectContext);
+    }
+    return subjectContext;
+  }
+
+  private static SubjectContext resolveSubjectContext(SecurityContext securityContext) {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
@@ -251,60 +256,7 @@ public class DefaultAuthorizer implements Authorizer {
                 e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()));
   }
 
-  private void checkImpersonationAuthorization(SubjectContext subjectContext) {
-    User bot = getImpersonatingBot(subjectContext.impersonatedBy());
-
-    if (!Boolean.TRUE.equals(bot.getIsBot()) || !Boolean.TRUE.equals(bot.getAllowImpersonation())) {
-      LOG.warn(
-          "Impersonation denied: bot={} does not have allowImpersonation enabled", bot.getName());
-      throw new AuthorizationException(
-          "Bot " + bot.getName() + " does not have impersonation enabled");
-    }
-
-    authorizeImpersonationTarget(bot.getName(), subjectContext.user());
-  }
-
-  private User getImpersonatingBot(String botName) {
-    User bot;
-    try {
-      bot = Entity.getEntityByName(Entity.USER, botName, "id,name,isBot,allowImpersonation", ALL);
-    } catch (Exception e) {
-      LOG.error("Failed to get bot user: {}", botName, e);
-      throw new AuthorizationException("Bot user not found: " + botName);
-    }
-    if (bot == null) {
-      LOG.warn("Impersonation denied: bot user {} was not found", botName);
-      throw new AuthorizationException("Bot user not found: " + botName);
-    }
-    return bot;
-  }
-
-  /**
-   * Evaluates the bot's policies for the {@code Impersonate} operation with the target user as the
-   * resource. Policies scope who can be impersonated - for example, a deny rule with the {@code
-   * isAdminUser()} condition blocks impersonating admins.
-   */
-  private void authorizeImpersonationTarget(String botName, User targetUser) {
-    SubjectContext botSubjectContext = SubjectContext.getSubjectContext(botName);
-    OperationContext operationContext =
-        new OperationContext(Entity.USER, MetadataOperation.IMPERSONATE);
-    ResourceContextInterface targetResourceContext = targetUserResourceContext(targetUser);
-    try {
-      PolicyEvaluator.hasPermission(botSubjectContext, targetResourceContext, operationContext);
-    } catch (AuthorizationException e) {
-      LOG.warn(
-          "Impersonation denied: bot={} is not authorized to impersonate user={}",
-          botName,
-          targetUser.getName());
-      throw new AuthorizationException(
-          "Bot " + botName + " is not authorized to impersonate user " + targetUser.getName());
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  private ResourceContextInterface targetUserResourceContext(User targetUser) {
-    EntityRepository<User> userRepository =
-        (EntityRepository<User>) Entity.getEntityRepository(Entity.USER);
-    return new ResourceContext<>(Entity.USER, targetUser, userRepository);
+  private static void checkImpersonationAuthorization(SubjectContext subjectContext) {
+    ImpersonationAuthorizer.authorize(subjectContext.impersonatedBy(), subjectContext.user());
   }
 }

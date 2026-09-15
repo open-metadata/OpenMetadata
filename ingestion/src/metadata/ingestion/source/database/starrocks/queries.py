@@ -59,13 +59,17 @@ SHOW PARTITIONS FROM `{}`.`{}`
     """
 )
 
+# StarRocks has no database/schema split: the audit log `db` column is what metadata
+# ingestion stores as the OM *schema*, under a single service-level database. `database_name`
+# is therefore left NULL - emitting `db` there builds `service.db.db.table` FQNs that match
+# nothing, so lineage is parsed and then silently dropped. Same approach as MySQL and Oracle.
 STARROCKS_SQL_STATEMENT = textwrap.dedent(
     """
     SELECT
         `timestamp` AS start_time,
         DATE_ADD(`timestamp`, INTERVAL queryTime/1000 SECOND) AS end_time,
         queryTime AS duration,
-        db AS database_name,
+        NULL AS database_name,
         db AS schema_name,
         user AS user_name,
         state != 'EOF' AS aborted,

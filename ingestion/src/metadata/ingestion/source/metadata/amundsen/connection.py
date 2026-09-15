@@ -14,7 +14,6 @@ Source connection handler
 """
 
 from functools import partial
-from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -50,7 +49,9 @@ class AmundsenConnection(BaseConnection[AmundsenConnectionConfig, Neo4jHelper]):
                 neo4j_encrypted=connection.encrypted,  # pyright: ignore[reportArgumentType]
                 neo4j_validate_ssl=connection.validateSSL,  # pyright: ignore[reportArgumentType]
             )
-            return Neo4jHelper(neo4j_config)
+            client = Neo4jHelper(neo4j_config)
+            self._on_close(client.close)
+            return client  # noqa: TRY300
         except Exception as exc:
             msg = f"Unknown error connecting with {connection}: {exc}."
             raise SourceConnectionException(msg)  # noqa: B904
@@ -58,8 +59,8 @@ class AmundsenConnection(BaseConnection[AmundsenConnectionConfig, Neo4jHelper]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

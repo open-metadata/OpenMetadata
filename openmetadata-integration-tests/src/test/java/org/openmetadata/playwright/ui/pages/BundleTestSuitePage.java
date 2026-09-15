@@ -72,11 +72,10 @@ public final class BundleTestSuitePage extends PageObject {
 
   /** Navigate to {@code /test-suites/<encoded-name>}. */
   public BundleTestSuitePage openDetail(final String suiteName) {
-    final Page newPage = page.context().newPage();
     final String url =
         session.uiUrl("/test-suites/" + URLEncoder.encode(suiteName, StandardCharsets.UTF_8));
-    newPage.waitForResponse(r -> r.url().contains(API_LIST), () -> newPage.navigate(url));
-    return new BundleTestSuitePage(newPage, session);
+    page.waitForResponse(r -> r.url().contains(API_LIST), () -> page.navigate(url));
+    return this;
   }
 
   /** Click the Add Test Case button on the detail page; wait for modal list response. */

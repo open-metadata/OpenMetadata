@@ -14,14 +14,14 @@
 @import '../../../styles/variables.less';
 
 .activity-feed-card {
-  padding: 18px 12px;
-  margin: 0 12px;
+  padding: var(--om-space-18) var(--om-space-12);
+  margin: 0 var(--om-space-12);
   position: relative;
 }
 
 .thread-users-profile-pic .profile-image-span:first-child {
   margin-left: 0;
-  z-index: 1;
+  z-index: var(--om-z-1);
 }
 
 .thread-users-profile-pic {
@@ -31,6 +31,6 @@
   .profile-image-span {
     display: flex;
     align-items: center;
-    margin-left: -12px;
+    margin-left: calc(-1 * var(--om-space-12));
   }
 }
