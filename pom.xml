@@ -32,6 +32,7 @@
     <module>openmetadata-spec</module>
     <module>openmetadata-sdk</module>
     <module>common</module>
+    <module>docker/rdf-store</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
     <module>openmetadata-k8s-operator</module>
@@ -135,7 +136,14 @@
          at local resources, so an update could read data off the machine
          running the engine; 6.2.0 restricts them to http/ftp). There is no
          5.x line with the fix — 5.6.0 is the last 5.x release — so the only
-         way off the CVE is the major bump. Do not go back below 6.2.0. -->
+         way off the CVE is the major bump. Do not go back below 6.2.0.
+
+         The client can run against a 5.6 or 6.2 Fuseki interchangeably: the
+         SPARQL/GSP protocols and the RDF Thrift wire format are identical
+         across the two, so client and server upgrade independently. That
+         decoupling is what lets the server-side Fuseki bump roll out on its
+         own schedule; it is not a reason to leave a server on 5.6, which is
+         still exposed to the CVE above. -->
     <jena.version>6.2.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
@@ -173,7 +181,8 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>12.1.10</jetty.version>
+    <!-- 12.1.12 clears CVE-2026-19203 (jetty-http) and CVE-2026-19204 (jetty-websocket-core-common). -->
+    <jetty.version>12.1.12</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>1.1.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
@@ -232,7 +241,7 @@
       <dependency>
         <groupId>com.squareup.okhttp3</groupId>
         <artifactId>logging-interceptor</artifactId>
-        <version>4.12.0</version>
+        <version>5.5.0</version>
       </dependency>
       <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
            azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7

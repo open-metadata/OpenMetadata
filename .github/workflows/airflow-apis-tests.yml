@@ -121,8 +121,8 @@ jobs:
         make install_apis
         make coverage_apis
         rm pom.xml
-        # fix coverage xml report for github
-        sed -i 's/openmetadata_managed_apis/\/github\/workspace\/openmetadata-airflow-apis\/openmetadata_managed_apis/g' openmetadata-airflow-apis/ci-coverage.xml
+        # The scanner runs in the module directory; coverage runs from the repository root.
+        sed -i 's|filename="openmetadata-airflow-apis/|filename="|g' openmetadata-airflow-apis/ci-coverage.xml
 
     - name: Push Results in PR to Sonar
       id: push-to-sonar

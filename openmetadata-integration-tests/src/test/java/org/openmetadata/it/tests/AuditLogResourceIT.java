@@ -2129,7 +2129,7 @@ public class AuditLogResourceIT {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String[] unsupportedEventTypes = {
-      "threadUpdated", "postUpdated", "taskClosed", "taskResolved", "entityNoChange"
+      "threadUpdated", "postUpdated", "threadCreated", "postCreated", "entityNoChange"
     };
 
     for (String eventType : unsupportedEventTypes) {

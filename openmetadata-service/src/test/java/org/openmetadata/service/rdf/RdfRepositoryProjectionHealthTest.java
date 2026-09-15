@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -43,7 +44,11 @@ class RdfRepositoryProjectionHealthTest {
         .executeSparqlUpdate(anyString());
     final RdfRepository repository = new RdfRepository(configuration(), storage, null);
 
-    repository.delete(new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE));
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            repository.delete(
+                new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE)));
 
     assertTrue(RdfProjectionHealth.isDegraded());
   }

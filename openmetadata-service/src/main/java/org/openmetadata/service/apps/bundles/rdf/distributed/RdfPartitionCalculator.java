@@ -30,6 +30,17 @@ public class RdfPartitionCalculator {
   private static final int MIN_PARTITION_SIZE = 1000;
   private static final int MAX_PARTITION_SIZE = 50000;
 
+  /**
+   * Caps mirror the search-side PartitionCalculator: without them a pathological entity count
+   * creates hundreds of thousands of partition rows, and the claim/heartbeat traffic on
+   * rdf_index_partition overloads the database before indexing writes a single triple. When the
+   * per-entity cap binds, partitions are widened to fit rather than truncated, so coverage is
+   * never silently lost.
+   */
+  static final int MAX_PARTITIONS_PER_ENTITY_TYPE = 10000;
+
+  static final int MAX_TOTAL_PARTITIONS = 50000;
+
   private static final Map<String, Double> ENTITY_COMPLEXITY_FACTORS =
       Map.of(
           "table", 1.5,
@@ -52,6 +63,13 @@ public class RdfPartitionCalculator {
     List<RdfIndexPartition> partitions = new ArrayList<>();
     for (String entityType : entityTypes) {
       partitions.addAll(calculatePartitionsForEntity(jobId, entityType));
+      if (partitions.size() > MAX_TOTAL_PARTITIONS) {
+        throw new IllegalStateException(
+            String.format(
+                "RDF index job would create too many partitions (%d > %d). "
+                    + "Reduce entity types or increase partitionSize.",
+                partitions.size(), MAX_TOTAL_PARTITIONS));
+      }
     }
     return partitions;
   }
@@ -67,6 +85,16 @@ public class RdfPartitionCalculator {
         Math.max(MIN_PARTITION_SIZE, (long) (partitionSize / complexityFactor));
     int priority = EntityPriority.getNumericPriority(entityType);
     long numPartitions = (totalCount + adjustedPartitionSize - 1) / adjustedPartitionSize;
+    if (numPartitions > MAX_PARTITIONS_PER_ENTITY_TYPE) {
+      adjustedPartitionSize =
+          (totalCount + MAX_PARTITIONS_PER_ENTITY_TYPE - 1) / MAX_PARTITIONS_PER_ENTITY_TYPE;
+      numPartitions = (totalCount + adjustedPartitionSize - 1) / adjustedPartitionSize;
+      LOG.info(
+          "Capping {} partitions for {} by widening partition size to {}",
+          numPartitions,
+          entityType,
+          adjustedPartitionSize);
+    }
 
     List<RdfIndexPartition> partitions = new ArrayList<>();
     for (int index = 0; index < numPartitions; index++) {

@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { createElement, Fragment, ReactNode } from 'react';
+import {
+  ThemeProvider,
+  useTheme,
+} from '../../../context/UntitledUIThemeProvider/theme-provider';
 import {
   Characteristic,
   RelationshipType,
@@ -25,7 +30,11 @@ import {
   LayoutEngine,
   LayoutType,
 } from '../OntologyExplorer.constants';
-import { OntologyEdge, OntologyNode } from '../OntologyExplorer.interface';
+import {
+  BuildGraphDataProps,
+  OntologyEdge,
+  OntologyNode,
+} from '../OntologyExplorer.interface';
 import {
   ASSET_BINDING_EDGE_KIND,
   ASSET_RELATION_TYPE,
@@ -65,6 +74,112 @@ const studioNode = (overrides: Partial<OntologyNode>): OntologyNode => ({
   ...overrides,
 });
 
+const mockComputedStyle = (color: string): CSSStyleDeclaration =>
+  ({
+    backgroundColor: color,
+    getPropertyValue: () => '',
+  } as unknown as CSSStyleDeclaration);
+
+const GRAPH_THEME_STORAGE_KEY = 'ontology-graph-theme-test';
+let setGraphTheme: ReturnType<typeof useTheme>['setTheme'] | undefined;
+
+const ThemeCapture = () => {
+  setGraphTheme = useTheme().setTheme;
+
+  return null;
+};
+
+const GraphThemeProvider = ({ children }: { children: ReactNode }) =>
+  createElement(ThemeProvider, {
+    children: createElement(
+      Fragment,
+      null,
+      createElement(ThemeCapture),
+      children
+    ),
+    storageKey: GRAPH_THEME_STORAGE_KEY,
+  });
+
+const renderGraphData = (props: BuildGraphDataProps) =>
+  renderHook(() => useGraphDataBuilder(props), {
+    wrapper: GraphThemeProvider,
+  });
+
+describe('theme-aware graph data', () => {
+  beforeEach(() => {
+    localStorage.setItem(GRAPH_THEME_STORAGE_KEY, 'light');
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(GRAPH_THEME_STORAGE_KEY);
+    document.documentElement.classList.remove('dark-mode');
+    setGraphTheme = undefined;
+    jest.restoreAllMocks();
+  });
+
+  it('rebuilds resolved canvas styles when the active theme changes', () => {
+    jest
+      .spyOn(window, 'getComputedStyle')
+      .mockImplementation(() =>
+        mockComputedStyle(
+          document.documentElement.classList.contains('dark-mode')
+            ? 'rgb(12, 14, 18)'
+            : 'rgb(255, 255, 255)'
+        )
+      );
+    const baseProps = {
+      clickedEdgeId: null,
+      explorationMode: 'model' as const,
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [edge('A', 'B', 'unmappedRelation')],
+      inputNodes: [studioNode({ id: 'A' }), studioNode({ id: 'B' })],
+      layoutType: LayoutEngine.Dagre,
+      selectedNodeId: null,
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+    };
+    const { result } = renderGraphData(baseProps);
+
+    expect(result.current.graphData.nodes?.[0]?.style?.fill).toBe(
+      'rgb(255, 255, 255)'
+    );
+    expect(result.current.graphData.edges?.[0]?.style?.stroke).toBe(
+      'rgb(255, 255, 255)'
+    );
+
+    act(() => setGraphTheme?.('dark'));
+
+    expect(result.current.graphData.nodes?.[0]?.style?.fill).toBe(
+      'rgb(12, 14, 18)'
+    );
+    expect(result.current.graphData.edges?.[0]?.style?.stroke).toBe(
+      'rgb(12, 14, 18)'
+    );
+  });
+});
+
+describe('hierarchy neighbor selection', () => {
+  it('excludes every graph node representing the selected term', () => {
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'hierarchy',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [edge('A', 'B', 'relatedTo'), edge('B', 'C', 'relatedTo')],
+      inputNodes: [
+        studioNode({ id: 'A', termId: 'selected-term' }),
+        studioNode({ id: 'B', termId: 'selected-term' }),
+        studioNode({ id: 'C', termId: 'neighbor-term' }),
+      ],
+      layoutType: LayoutEngine.Dagre,
+      selectedNodeId: 'selected-term',
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+    });
+
+    expect([...result.current.neighborSet]).toEqual(['C']);
+  });
+});
+
 describe('getStudioNodeAccentColor', () => {
   it('uses the spec warning orange for isolated terms', () => {
     expect(
@@ -93,21 +208,19 @@ describe('getStudioNodeAccentColor', () => {
 
 describe('studio edit ports', () => {
   it('flags the in-node edit handle without a G6 port so edges anchor to the node boundary', () => {
-    const { result } = renderHook(() =>
-      useGraphDataBuilder({
-        clickedEdgeId: null,
-        explorationMode: 'model',
-        glossaries: [],
-        glossaryColorMap: {},
-        inputEdges: [],
-        inputNodes: [studioNode({})],
-        isEditMode: true,
-        layoutType: LayoutEngine.Dagre,
-        selectedNodeId: null,
-        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
-        studioMode: true,
-      })
-    );
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'model',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [],
+      inputNodes: [studioNode({})],
+      isEditMode: true,
+      layoutType: LayoutEngine.Dagre,
+      selectedNodeId: null,
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+      studioMode: true,
+    });
 
     const style = result.current.graphData.nodes?.[0]?.style;
 
@@ -140,21 +253,19 @@ const seededRelationTypes: RelationshipType[] = [
 
 describe('studio edge rendering', () => {
   it('renders every parallel relationship as a distinct curved arrow', () => {
-    const { result } = renderHook(() =>
-      useGraphDataBuilder({
-        clickedEdgeId: null,
-        explorationMode: 'model',
-        glossaries: [],
-        glossaryColorMap: {},
-        inputEdges: [edge('A', 'B', 'partOf'), edge('A', 'B', 'relatedTo')],
-        inputNodes: [studioNode({ id: 'A' }), studioNode({ id: 'B' })],
-        layoutType: LayoutEngine.Dagre,
-        relationTypes: seededRelationTypes,
-        selectedNodeId: null,
-        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
-        studioMode: true,
-      })
-    );
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'model',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [edge('A', 'B', 'partOf'), edge('A', 'B', 'relatedTo')],
+      inputNodes: [studioNode({ id: 'A' }), studioNode({ id: 'B' })],
+      layoutType: LayoutEngine.Dagre,
+      relationTypes: seededRelationTypes,
+      selectedNodeId: null,
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+      studioMode: true,
+    });
 
     expect(result.current.graphData.edges).toHaveLength(2);
     expect(result.current.graphData.edges).toEqual(
@@ -175,21 +286,19 @@ describe('studio edge rendering', () => {
   });
 
   it('draws both arrowheads for a symmetric relationship', () => {
-    const { result } = renderHook(() =>
-      useGraphDataBuilder({
-        clickedEdgeId: null,
-        explorationMode: 'model',
-        glossaries: [],
-        glossaryColorMap: {},
-        inputEdges: [edge('A', 'B', 'relatedTo')],
-        inputNodes: [studioNode({ id: 'A' }), studioNode({ id: 'B' })],
-        layoutType: LayoutEngine.Dagre,
-        relationTypes: seededRelationTypes,
-        selectedNodeId: null,
-        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
-        studioMode: true,
-      })
-    );
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'model',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [edge('A', 'B', 'relatedTo')],
+      inputNodes: [studioNode({ id: 'A' }), studioNode({ id: 'B' })],
+      layoutType: LayoutEngine.Dagre,
+      relationTypes: seededRelationTypes,
+      selectedNodeId: null,
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+      studioMode: true,
+    });
 
     expect(result.current.graphData.edges?.[0].style).toMatchObject({
       endArrow: true,
@@ -198,26 +307,24 @@ describe('studio edge rendering', () => {
   });
 
   it('restores label opacity on un-dimmed edges but dims unrelated ones when a node is selected', () => {
-    const { result } = renderHook(() =>
-      useGraphDataBuilder({
-        clickedEdgeId: null,
-        explorationMode: 'model',
-        glossaries: [],
-        glossaryColorMap: {},
-        inputEdges: [edge('A', 'B', 'partOf'), edge('C', 'D', 'relatedTo')],
-        inputNodes: [
-          studioNode({ id: 'A' }),
-          studioNode({ id: 'B' }),
-          studioNode({ id: 'C' }),
-          studioNode({ id: 'D' }),
-        ],
-        layoutType: LayoutEngine.Dagre,
-        relationTypes: seededRelationTypes,
-        selectedNodeId: 'A',
-        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
-        studioMode: true,
-      })
-    );
+    const { result } = renderGraphData({
+      clickedEdgeId: null,
+      explorationMode: 'model',
+      glossaries: [],
+      glossaryColorMap: {},
+      inputEdges: [edge('A', 'B', 'partOf'), edge('C', 'D', 'relatedTo')],
+      inputNodes: [
+        studioNode({ id: 'A' }),
+        studioNode({ id: 'B' }),
+        studioNode({ id: 'C' }),
+        studioNode({ id: 'D' }),
+      ],
+      layoutType: LayoutEngine.Dagre,
+      relationTypes: seededRelationTypes,
+      selectedNodeId: 'A',
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+      studioMode: true,
+    });
 
     const edges = result.current.graphData.edges ?? [];
     const connected = edges.find((e) => e.source === 'A' && e.target === 'B');
@@ -459,39 +566,37 @@ describe('mergeEdges', () => {
 
 describe('useGraphDataBuilder data projection', () => {
   it('keeps inferred asset-to-asset edges visible when both concepts are expanded', () => {
-    const { result } = renderHook(() =>
-      useGraphDataBuilder({
-        inputNodes: [
-          { id: 'concept-a', label: 'Concept A', type: 'glossaryTerm' },
-          { id: 'concept-b', label: 'Concept B', type: 'glossaryTerm' },
-          { id: 'asset-a', label: 'Asset A', type: 'dataAsset' },
-          { id: 'asset-b', label: 'Asset B', type: 'dataAsset' },
-        ],
-        inputEdges: [
-          {
-            ...edge('asset-a', 'concept-a', ASSET_RELATION_TYPE),
-            edgeKind: ASSET_BINDING_EDGE_KIND,
-          },
-          {
-            ...edge('asset-b', 'concept-b', ASSET_RELATION_TYPE),
-            edgeKind: ASSET_BINDING_EDGE_KIND,
-          },
-          {
-            ...edge('asset-a', 'asset-b', 'requires'),
-            edgeKind: SEMANTIC_PROJECTION_EDGE_KIND,
-            provenance: Provenance.Inferred,
-          },
-        ],
-        explorationMode: 'data',
-        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
-        selectedNodeId: null,
-        expandedTermIds: new Set(['concept-a', 'concept-b']),
-        clickedEdgeId: null,
-        glossaries: [],
-        glossaryColorMap: {},
-        layoutType: LayoutEngine.Dagre,
-      })
-    );
+    const { result } = renderGraphData({
+      inputNodes: [
+        { id: 'concept-a', label: 'Concept A', type: 'glossaryTerm' },
+        { id: 'concept-b', label: 'Concept B', type: 'glossaryTerm' },
+        { id: 'asset-a', label: 'Asset A', type: 'dataAsset' },
+        { id: 'asset-b', label: 'Asset B', type: 'dataAsset' },
+      ],
+      inputEdges: [
+        {
+          ...edge('asset-a', 'concept-a', ASSET_RELATION_TYPE),
+          edgeKind: ASSET_BINDING_EDGE_KIND,
+        },
+        {
+          ...edge('asset-b', 'concept-b', ASSET_RELATION_TYPE),
+          edgeKind: ASSET_BINDING_EDGE_KIND,
+        },
+        {
+          ...edge('asset-a', 'asset-b', 'requires'),
+          edgeKind: SEMANTIC_PROJECTION_EDGE_KIND,
+          provenance: Provenance.Inferred,
+        },
+      ],
+      explorationMode: 'data',
+      settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+      selectedNodeId: null,
+      expandedTermIds: new Set(['concept-a', 'concept-b']),
+      clickedEdgeId: null,
+      glossaries: [],
+      glossaryColorMap: {},
+      layoutType: LayoutEngine.Dagre,
+    });
 
     expect(result.current.graphData.edges).toEqual(
       expect.arrayContaining([

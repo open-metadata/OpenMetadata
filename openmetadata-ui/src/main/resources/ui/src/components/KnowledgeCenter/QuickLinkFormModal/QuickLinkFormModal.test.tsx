@@ -262,6 +262,47 @@ describe('QuickLinkFormModal', () => {
     jest.clearAllMocks();
   });
 
+  // Task 8 Batch 2 review, Finding 2: explicit-deny-wins wiring coverage — verifies
+  // `canEditDisplayName` (not the old raw `EditDisplayName || EditAll`) is actually the value
+  // reaching `displayNameField`'s `disabled` prop. `getField`'s TEXT branch (mocked above)
+  // renders the field's `disabled` prop straight onto the `<input>` element, so the DOM
+  // `disabled` attribute is a direct read of the wiring, not a re-derivation.
+  it('disables the displayName field when EditDisplayName is explicitly false, even though EditAll is true (explicit-deny-wins, prioritized over the old raw OR)', async () => {
+    render(
+      <QuickLinkFormModal
+        {...mockProps}
+        permissions={
+          {
+            EditAll: true,
+            EditDisplayName: false,
+            EditDescription: true,
+            EditTags: true,
+          } as OperationPermission
+        }
+      />
+    );
+
+    expect(screen.getByTestId('displayName')).toBeDisabled();
+  });
+
+  it('enables the displayName field when EditDisplayName is true', async () => {
+    render(
+      <QuickLinkFormModal
+        {...mockProps}
+        permissions={
+          {
+            EditAll: false,
+            EditDisplayName: true,
+            EditDescription: false,
+            EditTags: false,
+          } as OperationPermission
+        }
+      />
+    );
+
+    expect(screen.getByTestId('displayName')).toBeEnabled();
+  });
+
   it('Should render the form inputs', async () => {
     render(<QuickLinkFormModal {...mockProps} />);
 
