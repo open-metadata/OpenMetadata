@@ -1,0 +1,135 @@
+{
+  "events" : [ {
+    "currentVersion" : 0.1,
+    "entity" : "{\"attributes\":[],\"conceptMappings\":[],\"conceptType\":\"BOTH\",\"deleted\":false,\"description\":\"created\",\"domains\":[],\"effectiveAttributes\":[],\"entityStatus\":\"Approved\",\"fullyQualifiedName\":\"glossary.golden_entity\",\"glossary\":{\"deleted\":false,\"description\":\"Test glossary\",\"displayName\":\"glossary\",\"fullyQualifiedName\":\"glossary\",\"href\":\"http://localhost:8585/api/v1/glossaries/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"glossary\",\"type\":\"glossary\"},\"href\":\"http://localhost:8585/api/v1/glossaryTerms/entity-id\",\"id\":\"entity-id\",\"mutuallyExclusive\":false,\"name\":\"golden_entity\",\"owners\":[],\"provider\":\"user\",\"realizedIn\":[],\"references\":[],\"reviewers\":[],\"synonyms\":[],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.1}",
+    "entityFullyQualifiedName" : "glossary.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "glossaryTerm",
+    "eventType" : "entityCreated",
+    "id" : "generated-id-2",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "put",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "currentVersion" : 0.2,
+    "entity" : "{\"attributes\":[],\"changeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"put\",\"oldValue\":\"created\"}],\"previousVersion\":0.1},\"conceptMappings\":[],\"conceptType\":\"BOTH\",\"deleted\":false,\"description\":\"put\",\"domains\":[],\"effectiveAttributes\":[],\"entityStatus\":\"Approved\",\"fullyQualifiedName\":\"glossary.golden_entity\",\"glossary\":{\"deleted\":false,\"description\":\"Test glossary\",\"displayName\":\"glossary\",\"fullyQualifiedName\":\"glossary\",\"href\":\"http://localhost:8585/api/v1/glossaries/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"glossary\",\"type\":\"glossary\"},\"href\":\"http://localhost:8585/api/v1/glossaryTerms/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"put\",\"oldValue\":\"created\"}],\"previousVersion\":0.1},\"mutuallyExclusive\":false,\"name\":\"golden_entity\",\"owners\":[],\"provider\":\"user\",\"realizedIn\":[],\"references\":[],\"reviewers\":[],\"synonyms\":[],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.2}",
+    "entityFullyQualifiedName" : "glossary.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "glossaryTerm",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-3",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  } ],
+  "history" : [ {
+    "attributes" : [ ],
+    "conceptMappings" : [ ],
+    "conceptType" : "BOTH",
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "created",
+    "effectiveAttributes" : [ ],
+    "entityStatus" : "Approved",
+    "fullyQualifiedName" : "glossary.golden_entity",
+    "glossary" : {
+      "deleted" : false,
+      "description" : "Test glossary",
+      "displayName" : "glossary",
+      "fullyQualifiedName" : "glossary",
+      "id" : "generated-id-1",
+      "name" : "glossary",
+      "type" : "glossary"
+    },
+    "id" : "entity-id",
+    "mutuallyExclusive" : false,
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "provider" : "user",
+    "realizedIn" : [ ],
+    "references" : [ ],
+    "relatedTerms" : [ ],
+    "reviewers" : [ ],
+    "synonyms" : [ ],
+    "tags" : [ ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.1,
+    "votes" : {
+      "downVoters" : [ ],
+      "downVotes" : 0,
+      "upVoters" : [ ],
+      "upVotes" : 0
+    }
+  } ],
+  "stored" : [ {
+    "attributes" : [ ],
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "put",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "conceptMappings" : [ ],
+    "conceptType" : "BOTH",
+    "deleted" : false,
+    "description" : "put",
+    "effectiveAttributes" : [ ],
+    "entityStatus" : "Approved",
+    "fullyQualifiedName" : "glossary.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "put",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "mutuallyExclusive" : false,
+    "name" : "golden_entity",
+    "provider" : "user",
+    "realizedIn" : [ ],
+    "references" : [ ],
+    "synonyms" : [ ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.2
+  } ]
+}

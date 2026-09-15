@@ -1,0 +1,878 @@
+{
+  "events" : [ {
+    "currentVersion" : 0.1,
+    "entity" : "{\"autoCloseIncident\":false,\"computePassedFailedRowCount\":false,\"createdBy\":\"admin\",\"dataProducts\":[],\"deleted\":false,\"description\":\"created\",\"dimensionColumns\":[],\"domains\":[],\"entityFQN\":\"service.database.schema.table\",\"entityLink\":\"<#E::table::service.database.schema.table>\",\"entityStatus\":\"Unprocessed\",\"followers\":[],\"fullyQualifiedName\":\"service.database.schema.table.golden_entity\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testCases/entity-id\",\"id\":\"entity-id\",\"name\":\"golden_entity\",\"owners\":[],\"parameterValues\":[{\"name\":\"value\",\"value\":\"100\"}],\"tags\":[],\"testDefinition\":{\"deleted\":false,\"description\":\"This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.\",\"displayName\":\"Table Row Count To Equal\",\"fullyQualifiedName\":\"tableRowCountToEqual\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testDefinitions/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"tableRowCountToEqual\",\"type\":\"testDefinition\"},\"testSuite\":{\"deleted\":false,\"displayName\":\"service.database.schema.table.testSuite\",\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testSuites/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"service.database.schema.table.testSuite\",\"type\":\"testSuite\"},\"testSuites\":[],\"topDimensions\":5,\"updatedAt\":0,\"updatedBy\":\"admin\",\"useDynamicAssertion\":false,\"version\":0.1}",
+    "entityFullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "testCase",
+    "eventType" : "entityCreated",
+    "id" : "generated-id-3",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "put",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "currentVersion" : 0.2,
+    "entity" : "{\"autoCloseIncident\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"put\",\"oldValue\":\"created\"}],\"previousVersion\":0.1},\"computePassedFailedRowCount\":false,\"createdBy\":\"admin\",\"dataProducts\":[],\"deleted\":false,\"description\":\"put\",\"dimensionColumns\":[],\"domains\":[],\"entityFQN\":\"service.database.schema.table\",\"entityLink\":\"<#E::table::service.database.schema.table>\",\"entityStatus\":\"Unprocessed\",\"followers\":[],\"fullyQualifiedName\":\"service.database.schema.table.golden_entity\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testCases/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"put\",\"oldValue\":\"created\"}],\"previousVersion\":0.1},\"name\":\"golden_entity\",\"owners\":[],\"parameterValues\":[{\"name\":\"value\",\"value\":\"100\"}],\"reviewers\":[],\"tags\":[],\"testDefinition\":{\"deleted\":false,\"description\":\"This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.\",\"displayName\":\"Table Row Count To Equal\",\"fullyQualifiedName\":\"tableRowCountToEqual\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testDefinitions/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"tableRowCountToEqual\",\"type\":\"testDefinition\"},\"testSuite\":{\"deleted\":false,\"displayName\":\"service.database.schema.table.testSuite\",\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testSuites/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"service.database.schema.table.testSuite\",\"type\":\"testSuite\"},\"testSuites\":[{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.database.schema.table\",\"id\":\"generated-id-4\",\"name\":\"table\",\"type\":\"table\"},\"deleted\":false,\"domains\":[],\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"id\":\"generated-id-2\",\"inherited\":true,\"name\":\"service.database.schema.table.testSuite\",\"owners\":[],\"reviewers\":[],\"serviceType\":\"TestSuite\",\"tags\":[],\"testCaseResultSummary\":[],\"updatedAt\":0,\"updatedBy\":\"ingestion-bot\",\"version\":0.1}],\"topDimensions\":5,\"updatedAt\":0,\"updatedBy\":\"admin\",\"useDynamicAssertion\":false,\"version\":0.2}",
+    "entityFullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "testCase",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-5",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "first",
+        "oldValue" : "put"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "currentVersion" : 0.3,
+    "entity" : "{\"autoCloseIncident\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"first\",\"oldValue\":\"put\"}],\"previousVersion\":0.2},\"computePassedFailedRowCount\":false,\"createdBy\":\"admin\",\"dataProducts\":[],\"deleted\":false,\"description\":\"first\",\"dimensionColumns\":[],\"domains\":[],\"entityFQN\":\"service.database.schema.table\",\"entityLink\":\"<#E::table::service.database.schema.table>\",\"entityStatus\":\"Unprocessed\",\"followers\":[],\"fullyQualifiedName\":\"service.database.schema.table.golden_entity\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testCases/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"first\",\"oldValue\":\"put\"}],\"previousVersion\":0.2},\"name\":\"golden_entity\",\"owners\":[],\"parameterValues\":[{\"name\":\"value\",\"value\":\"100\"}],\"reviewers\":[],\"tags\":[],\"testDefinition\":{\"deleted\":false,\"description\":\"This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.\",\"displayName\":\"Table Row Count To Equal\",\"fullyQualifiedName\":\"tableRowCountToEqual\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testDefinitions/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"tableRowCountToEqual\",\"type\":\"testDefinition\"},\"testSuite\":{\"deleted\":false,\"displayName\":\"service.database.schema.table.testSuite\",\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testSuites/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"service.database.schema.table.testSuite\",\"type\":\"testSuite\"},\"testSuites\":[{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.database.schema.table\",\"id\":\"generated-id-4\",\"name\":\"table\",\"type\":\"table\"},\"deleted\":false,\"domains\":[],\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"id\":\"generated-id-2\",\"inherited\":true,\"name\":\"service.database.schema.table.testSuite\",\"owners\":[],\"reviewers\":[],\"serviceType\":\"TestSuite\",\"tags\":[],\"testCaseResultSummary\":[],\"updatedAt\":0,\"updatedBy\":\"ingestion-bot\",\"version\":0.1}],\"topDimensions\":5,\"updatedAt\":0,\"updatedBy\":\"admin\",\"useDynamicAssertion\":false,\"version\":0.3}",
+    "entityFullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "testCase",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-6",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "second",
+        "oldValue" : "first"
+      } ],
+      "previousVersion" : 0.3
+    },
+    "currentVersion" : 0.4,
+    "entity" : "{\"autoCloseIncident\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"second\",\"oldValue\":\"first\"}],\"previousVersion\":0.3},\"computePassedFailedRowCount\":false,\"createdBy\":\"admin\",\"dataProducts\":[],\"deleted\":false,\"description\":\"second\",\"dimensionColumns\":[],\"domains\":[],\"entityFQN\":\"service.database.schema.table\",\"entityLink\":\"<#E::table::service.database.schema.table>\",\"entityStatus\":\"Unprocessed\",\"followers\":[],\"fullyQualifiedName\":\"service.database.schema.table.golden_entity\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testCases/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"second\",\"oldValue\":\"first\"}],\"previousVersion\":0.3},\"name\":\"golden_entity\",\"owners\":[],\"parameterValues\":[{\"name\":\"value\",\"value\":\"100\"}],\"reviewers\":[],\"tags\":[],\"testDefinition\":{\"deleted\":false,\"description\":\"This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.\",\"displayName\":\"Table Row Count To Equal\",\"fullyQualifiedName\":\"tableRowCountToEqual\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testDefinitions/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"tableRowCountToEqual\",\"type\":\"testDefinition\"},\"testSuite\":{\"deleted\":false,\"displayName\":\"service.database.schema.table.testSuite\",\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testSuites/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"service.database.schema.table.testSuite\",\"type\":\"testSuite\"},\"testSuites\":[{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.database.schema.table\",\"id\":\"generated-id-4\",\"name\":\"table\",\"type\":\"table\"},\"deleted\":false,\"domains\":[],\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"id\":\"generated-id-2\",\"inherited\":true,\"name\":\"service.database.schema.table.testSuite\",\"owners\":[],\"reviewers\":[],\"serviceType\":\"TestSuite\",\"tags\":[],\"testCaseResultSummary\":[],\"updatedAt\":0,\"updatedBy\":\"ingestion-bot\",\"version\":0.1}],\"topDimensions\":5,\"updatedAt\":0,\"updatedBy\":\"admin\",\"useDynamicAssertion\":false,\"version\":0.4}",
+    "entityFullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "testCase",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-7",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "after rename",
+        "oldValue" : "second"
+      } ],
+      "previousVersion" : 0.4
+    },
+    "currentVersion" : 0.5,
+    "entity" : "{\"autoCloseIncident\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"after rename\",\"oldValue\":\"second\"}],\"previousVersion\":0.4},\"computePassedFailedRowCount\":false,\"createdBy\":\"admin\",\"dataProducts\":[],\"deleted\":false,\"description\":\"after rename\",\"dimensionColumns\":[],\"domains\":[],\"entityFQN\":\"service.database.schema.table\",\"entityLink\":\"<#E::table::service.database.schema.table>\",\"entityStatus\":\"Unprocessed\",\"followers\":[],\"fullyQualifiedName\":\"service.database.schema.table.golden_entity\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testCases/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"after rename\",\"oldValue\":\"second\"}],\"previousVersion\":0.4},\"name\":\"golden_entity\",\"owners\":[],\"parameterValues\":[{\"name\":\"value\",\"value\":\"100\"}],\"reviewers\":[],\"tags\":[],\"testDefinition\":{\"deleted\":false,\"description\":\"This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.\",\"displayName\":\"Table Row Count To Equal\",\"fullyQualifiedName\":\"tableRowCountToEqual\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testDefinitions/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"tableRowCountToEqual\",\"type\":\"testDefinition\"},\"testSuite\":{\"deleted\":false,\"displayName\":\"service.database.schema.table.testSuite\",\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testSuites/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"service.database.schema.table.testSuite\",\"type\":\"testSuite\"},\"testSuites\":[{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.database.schema.table\",\"id\":\"generated-id-4\",\"name\":\"table\",\"type\":\"table\"},\"deleted\":false,\"domains\":[],\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"id\":\"generated-id-2\",\"inherited\":true,\"name\":\"service.database.schema.table.testSuite\",\"owners\":[],\"reviewers\":[],\"serviceType\":\"TestSuite\",\"tags\":[],\"testCaseResultSummary\":[],\"updatedAt\":0,\"updatedBy\":\"ingestion-bot\",\"version\":0.1}],\"topDimensions\":5,\"updatedAt\":0,\"updatedBy\":\"admin\",\"useDynamicAssertion\":false,\"version\":0.5}",
+    "entityFullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "testCase",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-8",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "replayed",
+        "oldValue" : "csv"
+      } ],
+      "previousVersion" : 0.7
+    },
+    "currentVersion" : 0.8,
+    "entity" : "{\"autoCloseIncident\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"replayed\",\"oldValue\":\"csv\"}],\"previousVersion\":0.7},\"computePassedFailedRowCount\":false,\"dataProducts\":[],\"deleted\":false,\"description\":\"replayed\",\"dimensionColumns\":[],\"domains\":[],\"entityFQN\":\"service.database.schema.table\",\"entityLink\":\"<#E::table::service.database.schema.table>\",\"entityStatus\":\"Unprocessed\",\"followers\":[],\"fullyQualifiedName\":\"service.database.schema.table.golden_entity\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testCases/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"replayed\",\"oldValue\":\"csv\"}],\"previousVersion\":0.7},\"name\":\"golden_entity\",\"owners\":[],\"parameterValues\":[{\"name\":\"value\",\"value\":\"100\"}],\"reviewers\":[],\"tags\":[],\"testDefinition\":{\"deleted\":false,\"description\":\"This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.\",\"displayName\":\"Table Row Count To Equal\",\"fullyQualifiedName\":\"tableRowCountToEqual\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testDefinitions/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"tableRowCountToEqual\",\"type\":\"testDefinition\"},\"testSuite\":{\"deleted\":false,\"displayName\":\"service.database.schema.table.testSuite\",\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testSuites/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"service.database.schema.table.testSuite\",\"type\":\"testSuite\"},\"testSuites\":[{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.database.schema.table\",\"id\":\"generated-id-4\",\"name\":\"table\",\"type\":\"table\"},\"deleted\":false,\"domains\":[],\"fullyQualifiedName\":\"service.database.schema.table.testSuite\",\"id\":\"generated-id-2\",\"inherited\":true,\"name\":\"service.database.schema.table.testSuite\",\"owners\":[],\"reviewers\":[],\"serviceType\":\"TestSuite\",\"tags\":[],\"testCaseResultSummary\":[],\"updatedAt\":0,\"updatedBy\":\"ingestion-bot\",\"version\":0.1}],\"topDimensions\":5,\"updatedAt\":0,\"updatedBy\":\"admin\",\"useDynamicAssertion\":false,\"version\":0.8}",
+    "entityFullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "testCase",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-9",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  } ],
+  "history" : [ {
+    "autoCloseIncident" : false,
+    "computePassedFailedRowCount" : false,
+    "createdBy" : "admin",
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "created",
+    "dimensionColumns" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "followers" : [ ],
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "reviewers" : [ ],
+    "tags" : [ ],
+    "testDefinition" : {
+      "deleted" : false,
+      "description" : "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "displayName" : "Table Row Count To Equal",
+      "fullyQualifiedName" : "tableRowCountToEqual",
+      "id" : "generated-id-1",
+      "name" : "tableRowCountToEqual",
+      "type" : "testDefinition"
+    },
+    "testSuite" : {
+      "deleted" : false,
+      "displayName" : "service.database.schema.table.testSuite",
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "name" : "service.database.schema.table.testSuite",
+      "type" : "testSuite"
+    },
+    "testSuites" : [ {
+      "basic" : true,
+      "basicEntityReference" : {
+        "fullyQualifiedName" : "service.database.schema.table",
+        "id" : "generated-id-4",
+        "name" : "table",
+        "type" : "table"
+      },
+      "deleted" : false,
+      "domains" : [ ],
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "inherited" : true,
+      "name" : "service.database.schema.table.testSuite",
+      "owners" : [ ],
+      "reviewers" : [ ],
+      "serviceType" : "TestSuite",
+      "updatedAt" : 0,
+      "updatedBy" : "ingestion-bot",
+      "version" : 0.1
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.1
+  }, {
+    "autoCloseIncident" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "put",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "computePassedFailedRowCount" : false,
+    "createdBy" : "admin",
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "put",
+    "dimensionColumns" : [ ],
+    "domains" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "followers" : [ ],
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "put",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "reviewers" : [ ],
+    "tags" : [ ],
+    "testDefinition" : {
+      "deleted" : false,
+      "description" : "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "displayName" : "Table Row Count To Equal",
+      "fullyQualifiedName" : "tableRowCountToEqual",
+      "id" : "generated-id-1",
+      "name" : "tableRowCountToEqual",
+      "type" : "testDefinition"
+    },
+    "testSuite" : {
+      "deleted" : false,
+      "displayName" : "service.database.schema.table.testSuite",
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "name" : "service.database.schema.table.testSuite",
+      "type" : "testSuite"
+    },
+    "testSuites" : [ {
+      "basic" : true,
+      "basicEntityReference" : {
+        "fullyQualifiedName" : "service.database.schema.table",
+        "id" : "generated-id-4",
+        "name" : "table",
+        "type" : "table"
+      },
+      "deleted" : false,
+      "domains" : [ ],
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "inherited" : true,
+      "name" : "service.database.schema.table.testSuite",
+      "owners" : [ ],
+      "reviewers" : [ ],
+      "serviceType" : "TestSuite",
+      "updatedAt" : 0,
+      "updatedBy" : "ingestion-bot",
+      "version" : 0.1
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.2
+  }, {
+    "autoCloseIncident" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "first",
+        "oldValue" : "put"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "computePassedFailedRowCount" : false,
+    "createdBy" : "admin",
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "first",
+    "dimensionColumns" : [ ],
+    "domains" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "followers" : [ ],
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "first",
+        "oldValue" : "put"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "reviewers" : [ ],
+    "tags" : [ ],
+    "testDefinition" : {
+      "deleted" : false,
+      "description" : "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "displayName" : "Table Row Count To Equal",
+      "fullyQualifiedName" : "tableRowCountToEqual",
+      "id" : "generated-id-1",
+      "name" : "tableRowCountToEqual",
+      "type" : "testDefinition"
+    },
+    "testSuite" : {
+      "deleted" : false,
+      "displayName" : "service.database.schema.table.testSuite",
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "name" : "service.database.schema.table.testSuite",
+      "type" : "testSuite"
+    },
+    "testSuites" : [ {
+      "basic" : true,
+      "basicEntityReference" : {
+        "fullyQualifiedName" : "service.database.schema.table",
+        "id" : "generated-id-4",
+        "name" : "table",
+        "type" : "table"
+      },
+      "deleted" : false,
+      "domains" : [ ],
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "inherited" : true,
+      "name" : "service.database.schema.table.testSuite",
+      "owners" : [ ],
+      "reviewers" : [ ],
+      "serviceType" : "TestSuite",
+      "updatedAt" : 0,
+      "updatedBy" : "ingestion-bot",
+      "version" : 0.1
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.3
+  }, {
+    "autoCloseIncident" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "second",
+        "oldValue" : "first"
+      } ],
+      "previousVersion" : 0.3
+    },
+    "computePassedFailedRowCount" : false,
+    "createdBy" : "admin",
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "second",
+    "dimensionColumns" : [ ],
+    "domains" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "followers" : [ ],
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "second",
+        "oldValue" : "first"
+      } ],
+      "previousVersion" : 0.3
+    },
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "reviewers" : [ ],
+    "tags" : [ ],
+    "testDefinition" : {
+      "deleted" : false,
+      "description" : "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "displayName" : "Table Row Count To Equal",
+      "fullyQualifiedName" : "tableRowCountToEqual",
+      "id" : "generated-id-1",
+      "name" : "tableRowCountToEqual",
+      "type" : "testDefinition"
+    },
+    "testSuite" : {
+      "deleted" : false,
+      "displayName" : "service.database.schema.table.testSuite",
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "name" : "service.database.schema.table.testSuite",
+      "type" : "testSuite"
+    },
+    "testSuites" : [ {
+      "basic" : true,
+      "basicEntityReference" : {
+        "fullyQualifiedName" : "service.database.schema.table",
+        "id" : "generated-id-4",
+        "name" : "table",
+        "type" : "table"
+      },
+      "deleted" : false,
+      "domains" : [ ],
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "inherited" : true,
+      "name" : "service.database.schema.table.testSuite",
+      "owners" : [ ],
+      "reviewers" : [ ],
+      "serviceType" : "TestSuite",
+      "updatedAt" : 0,
+      "updatedBy" : "ingestion-bot",
+      "version" : 0.1
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.4
+  }, {
+    "autoCloseIncident" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "after rename",
+        "oldValue" : "second"
+      } ],
+      "previousVersion" : 0.4
+    },
+    "computePassedFailedRowCount" : false,
+    "createdBy" : "admin",
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "after rename",
+    "dimensionColumns" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "followers" : [ ],
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "after rename",
+        "oldValue" : "second"
+      } ],
+      "previousVersion" : 0.4
+    },
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "reviewers" : [ ],
+    "tags" : [ ],
+    "testDefinition" : {
+      "deleted" : false,
+      "description" : "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "displayName" : "Table Row Count To Equal",
+      "fullyQualifiedName" : "tableRowCountToEqual",
+      "id" : "generated-id-1",
+      "name" : "tableRowCountToEqual",
+      "type" : "testDefinition"
+    },
+    "testSuite" : {
+      "deleted" : false,
+      "displayName" : "service.database.schema.table.testSuite",
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "name" : "service.database.schema.table.testSuite",
+      "type" : "testSuite"
+    },
+    "testSuites" : [ {
+      "basic" : true,
+      "basicEntityReference" : {
+        "fullyQualifiedName" : "service.database.schema.table",
+        "id" : "generated-id-4",
+        "name" : "table",
+        "type" : "table"
+      },
+      "deleted" : false,
+      "domains" : [ ],
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "inherited" : true,
+      "name" : "service.database.schema.table.testSuite",
+      "owners" : [ ],
+      "reviewers" : [ ],
+      "serviceType" : "TestSuite",
+      "tags" : [ ],
+      "testCaseResultSummary" : [ ],
+      "updatedAt" : 0,
+      "updatedBy" : "ingestion-bot",
+      "version" : 0.1
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.5
+  }, {
+    "autoCloseIncident" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "import",
+        "oldValue" : "after rename"
+      } ],
+      "previousVersion" : 0.5
+    },
+    "computePassedFailedRowCount" : false,
+    "createdBy" : "admin",
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "import",
+    "dimensionColumns" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "followers" : [ ],
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "import",
+        "oldValue" : "after rename"
+      } ],
+      "previousVersion" : 0.5
+    },
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "reviewers" : [ ],
+    "tags" : [ ],
+    "testDefinition" : {
+      "deleted" : false,
+      "description" : "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "displayName" : "Table Row Count To Equal",
+      "fullyQualifiedName" : "tableRowCountToEqual",
+      "id" : "generated-id-1",
+      "name" : "tableRowCountToEqual",
+      "type" : "testDefinition"
+    },
+    "testSuite" : {
+      "deleted" : false,
+      "displayName" : "service.database.schema.table.testSuite",
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "name" : "service.database.schema.table.testSuite",
+      "type" : "testSuite"
+    },
+    "testSuites" : [ {
+      "basic" : true,
+      "basicEntityReference" : {
+        "fullyQualifiedName" : "service.database.schema.table",
+        "id" : "generated-id-4",
+        "name" : "table",
+        "type" : "table"
+      },
+      "deleted" : false,
+      "domains" : [ ],
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "inherited" : true,
+      "name" : "service.database.schema.table.testSuite",
+      "owners" : [ ],
+      "reviewers" : [ ],
+      "serviceType" : "TestSuite",
+      "tags" : [ ],
+      "testCaseResultSummary" : [ ],
+      "updatedAt" : 0,
+      "updatedBy" : "ingestion-bot",
+      "version" : 0.1
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.6
+  }, {
+    "autoCloseIncident" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "csv",
+        "oldValue" : "import"
+      } ],
+      "previousVersion" : 0.6
+    },
+    "computePassedFailedRowCount" : false,
+    "dataProducts" : [ ],
+    "deleted" : false,
+    "description" : "csv",
+    "dimensionColumns" : [ ],
+    "domains" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "followers" : [ ],
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "csv",
+        "oldValue" : "import"
+      } ],
+      "previousVersion" : 0.6
+    },
+    "name" : "golden_entity",
+    "owners" : [ ],
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "reviewers" : [ ],
+    "tags" : [ ],
+    "testDefinition" : {
+      "deleted" : false,
+      "description" : "This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.",
+      "displayName" : "Table Row Count To Equal",
+      "fullyQualifiedName" : "tableRowCountToEqual",
+      "id" : "generated-id-1",
+      "name" : "tableRowCountToEqual",
+      "type" : "testDefinition"
+    },
+    "testSuite" : {
+      "deleted" : false,
+      "displayName" : "service.database.schema.table.testSuite",
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "name" : "service.database.schema.table.testSuite",
+      "type" : "testSuite"
+    },
+    "testSuites" : [ {
+      "basic" : true,
+      "basicEntityReference" : {
+        "fullyQualifiedName" : "service.database.schema.table",
+        "id" : "generated-id-4",
+        "name" : "table",
+        "type" : "table"
+      },
+      "deleted" : false,
+      "domains" : [ ],
+      "fullyQualifiedName" : "service.database.schema.table.testSuite",
+      "id" : "generated-id-2",
+      "inherited" : true,
+      "name" : "service.database.schema.table.testSuite",
+      "owners" : [ ],
+      "reviewers" : [ ],
+      "serviceType" : "TestSuite",
+      "tags" : [ ],
+      "testCaseResultSummary" : [ ],
+      "updatedAt" : 0,
+      "updatedBy" : "ingestion-bot",
+      "version" : 0.1
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.7
+  } ],
+  "stored" : [ {
+    "autoCloseIncident" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "replayed",
+        "oldValue" : "csv"
+      } ],
+      "previousVersion" : 0.7
+    },
+    "computePassedFailedRowCount" : false,
+    "deleted" : false,
+    "description" : "replayed",
+    "dimensionColumns" : [ ],
+    "entityFQN" : "service.database.schema.table",
+    "entityLink" : "<#E::table::service.database.schema.table>",
+    "entityStatus" : "Unprocessed",
+    "fullyQualifiedName" : "service.database.schema.table.golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "replayed",
+        "oldValue" : "csv"
+      } ],
+      "previousVersion" : 0.7
+    },
+    "name" : "golden_entity",
+    "parameterValues" : [ {
+      "name" : "value",
+      "value" : "100"
+    } ],
+    "topDimensions" : 5,
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "useDynamicAssertion" : false,
+    "version" : 0.8
+  } ]
+}

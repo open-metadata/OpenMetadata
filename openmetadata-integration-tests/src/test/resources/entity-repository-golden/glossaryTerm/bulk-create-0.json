@@ -1,0 +1,32 @@
+{
+  "events" : [ ],
+  "history" : [ ],
+  "stored" : [ {
+    "attributes" : [ ],
+    "childrenCount" : 0,
+    "conceptMappings" : [ ],
+    "conceptType" : "BOTH",
+    "deleted" : false,
+    "description" : "bulk",
+    "effectiveAttributes" : [ ],
+    "entityStatus" : "Approved",
+    "fullyQualifiedName" : "glossary.golden_bulk0",
+    "id" : "entity-id",
+    "mutuallyExclusive" : false,
+    "name" : "golden_bulk0",
+    "provider" : "user",
+    "realizedIn" : [ ],
+    "references" : [ ],
+    "synonyms" : [ ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "usageCount" : 0,
+    "version" : 0.1,
+    "votes" : {
+      "downVoters" : [ ],
+      "downVotes" : 0,
+      "upVoters" : [ ],
+      "upVotes" : 0
+    }
+  } ]
+}

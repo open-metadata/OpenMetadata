@@ -1,0 +1,16 @@
+{
+  "events" : [ {
+    "currentVersion" : 0.1,
+    "entity" : "{\"autoCloseIncident\":false,\"computePassedFailedRowCount\":false,\"createdBy\":\"admin\",\"dataProducts\":[],\"deleted\":false,\"description\":\"cascade child\",\"dimensionColumns\":[],\"domains\":[],\"entityFQN\":\"service.database.schema.golden_entity\",\"entityLink\":\"<#E::table::service.database.schema.golden_entity>\",\"entityStatus\":\"Unprocessed\",\"followers\":[],\"fullyQualifiedName\":\"service.database.schema.golden_entity.golden_child\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testCases/entity-id\",\"id\":\"entity-id\",\"name\":\"golden_child\",\"owners\":[],\"parameterValues\":[{\"name\":\"value\",\"value\":\"100\"}],\"tags\":[],\"testDefinition\":{\"deleted\":false,\"description\":\"This schema defines the test TableRowCountToEqual. Test the number of rows equal to a value.\",\"displayName\":\"Table Row Count To Equal\",\"fullyQualifiedName\":\"tableRowCountToEqual\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testDefinitions/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"tableRowCountToEqual\",\"type\":\"testDefinition\"},\"testSuite\":{\"deleted\":false,\"displayName\":\"service.database.schema.golden_entity.testSuite\",\"fullyQualifiedName\":\"service.database.schema.golden_entity.testSuite\",\"href\":\"http://localhost:8585/api/v1/dataQuality/testSuites/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"service.database.schema.golden_entity.testSuite\",\"type\":\"testSuite\"},\"testSuites\":[],\"topDimensions\":5,\"updatedAt\":0,\"updatedBy\":\"admin\",\"useDynamicAssertion\":false,\"version\":0.1}",
+    "entityFullyQualifiedName" : "service.database.schema.golden_entity.golden_child",
+    "entityId" : "entity-id",
+    "entityType" : "testCase",
+    "eventType" : "entityCreated",
+    "id" : "generated-id-3",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  } ],
+  "history" : [ ],
+  "stored" : [ ]
+}

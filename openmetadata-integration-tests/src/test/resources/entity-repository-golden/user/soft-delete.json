@@ -1,0 +1,473 @@
+{
+  "events" : [ {
+    "currentVersion" : 0.1,
+    "entity" : "{\"allowImpersonation\":false,\"deleted\":false,\"description\":\"created\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"href\":\"http://localhost:8585/api/v1/users/entity-id\",\"id\":\"entity-id\",\"inheritedPersonas\":[],\"inheritedRoles\":[{\"deleted\":false,\"description\":\"Users with Data Consumer role use different data assets for their day to day work.\",\"displayName\":\"Data Consumer\",\"fullyQualifiedName\":\"DataConsumer\",\"href\":\"http://localhost:8585/api/v1/roles/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"DataConsumer\",\"type\":\"role\"}],\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"href\":\"http://localhost:8585/api/v1/teams/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.1}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entityCreated",
+    "id" : "generated-id-3",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "put",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "currentVersion" : 0.2,
+    "entity" : "{\"allowImpersonation\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"put\",\"oldValue\":\"created\"}],\"previousVersion\":0.1},\"deleted\":false,\"description\":\"put\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"href\":\"http://localhost:8585/api/v1/users/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changeSource\":\"Manual\",\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"put\",\"oldValue\":\"created\"}],\"previousVersion\":0.1},\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"href\":\"http://localhost:8585/api/v1/teams/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.2}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-4",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "first",
+        "oldValue" : "put"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "currentVersion" : 0.2,
+    "entity" : "{\"allowImpersonation\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"first\",\"oldValue\":\"put\"}],\"previousVersion\":0.2},\"deleted\":false,\"description\":\"first\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"href\":\"http://localhost:8585/api/v1/users/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"first\",\"oldValue\":\"put\"}],\"previousVersion\":0.2},\"inheritedPersonas\":[],\"inheritedRoles\":[{\"deleted\":false,\"description\":\"Users with Data Consumer role use different data assets for their day to day work.\",\"displayName\":\"Data Consumer\",\"fullyQualifiedName\":\"DataConsumer\",\"href\":\"http://localhost:8585/api/v1/roles/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"DataConsumer\",\"type\":\"role\"}],\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"personas\":[],\"roles\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"href\":\"http://localhost:8585/api/v1/teams/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.2}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-5",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "second",
+        "oldValue" : "first"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "currentVersion" : 0.2,
+    "entity" : "{\"allowImpersonation\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"second\",\"oldValue\":\"first\"}],\"previousVersion\":0.2},\"deleted\":false,\"description\":\"second\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"href\":\"http://localhost:8585/api/v1/users/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"second\",\"oldValue\":\"first\"}],\"previousVersion\":0.2},\"inheritedPersonas\":[],\"inheritedRoles\":[{\"deleted\":false,\"description\":\"Users with Data Consumer role use different data assets for their day to day work.\",\"displayName\":\"Data Consumer\",\"fullyQualifiedName\":\"DataConsumer\",\"href\":\"http://localhost:8585/api/v1/roles/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"DataConsumer\",\"type\":\"role\"}],\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"personas\":[],\"roles\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"href\":\"http://localhost:8585/api/v1/teams/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.2}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-6",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "after rename",
+        "oldValue" : "second"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "currentVersion" : 0.2,
+    "entity" : "{\"allowImpersonation\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"after rename\",\"oldValue\":\"second\"}],\"previousVersion\":0.2},\"deleted\":false,\"description\":\"after rename\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"href\":\"http://localhost:8585/api/v1/users/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"after rename\",\"oldValue\":\"second\"}],\"previousVersion\":0.2},\"inheritedPersonas\":[],\"inheritedRoles\":[{\"deleted\":false,\"description\":\"Users with Data Consumer role use different data assets for their day to day work.\",\"displayName\":\"Data Consumer\",\"fullyQualifiedName\":\"DataConsumer\",\"href\":\"http://localhost:8585/api/v1/roles/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"DataConsumer\",\"type\":\"role\"}],\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"personas\":[],\"roles\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"href\":\"http://localhost:8585/api/v1/teams/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.2}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-7",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "currentVersion" : 0.4,
+    "entity" : "{\"allowImpersonation\":false,\"deleted\":false,\"description\":\"csv\",\"displayName\":\"\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"id\":\"entity-id\",\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"timezone\":\"\",\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.4}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-8",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "replayed",
+        "oldValue" : "csv"
+      } ],
+      "previousVersion" : 0.4
+    },
+    "currentVersion" : 0.4,
+    "entity" : "{\"allowImpersonation\":false,\"changeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"replayed\",\"oldValue\":\"csv\"}],\"previousVersion\":0.4},\"deleted\":false,\"description\":\"replayed\",\"displayName\":\"\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"href\":\"http://localhost:8585/api/v1/users/entity-id\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"changeSummary\":{\"description\":{\"changedAt\":0,\"changedBy\":\"admin\"}},\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"description\",\"newValue\":\"replayed\",\"oldValue\":\"csv\"}],\"previousVersion\":0.4},\"inheritedPersonas\":[],\"inheritedRoles\":[{\"deleted\":false,\"description\":\"Users with Data Consumer role use different data assets for their day to day work.\",\"displayName\":\"Data Consumer\",\"fullyQualifiedName\":\"DataConsumer\",\"href\":\"http://localhost:8585/api/v1/roles/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"DataConsumer\",\"type\":\"role\"}],\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"personas\":[],\"roles\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"href\":\"http://localhost:8585/api/v1/teams/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"timezone\":\"\",\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.4}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entityUpdated",
+    "id" : "generated-id-9",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  }, {
+    "changeDescription" : {
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "deleted",
+        "newValue" : true,
+        "oldValue" : false
+      } ],
+      "previousVersion" : 0.4
+    },
+    "currentVersion" : 0.5,
+    "entity" : "{\"allowImpersonation\":false,\"changeDescription\":{\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"deleted\",\"newValue\":true,\"oldValue\":false}],\"previousVersion\":0.4},\"deleted\":true,\"description\":\"replayed\",\"displayName\":\"\",\"domains\":[],\"email\":\"golden_entity@example.test\",\"fullyQualifiedName\":\"golden_entity\",\"id\":\"entity-id\",\"incrementalChangeDescription\":{\"fieldsAdded\":[],\"fieldsDeleted\":[],\"fieldsUpdated\":[{\"name\":\"deleted\",\"newValue\":true,\"oldValue\":false}],\"previousVersion\":0.4},\"inheritedPersonas\":[],\"inheritedRoles\":[{\"deleted\":false,\"description\":\"Users with Data Consumer role use different data assets for their day to day work.\",\"displayName\":\"Data Consumer\",\"fullyQualifiedName\":\"DataConsumer\",\"href\":\"http://localhost:8585/api/v1/roles/generated-id-1\",\"id\":\"generated-id-1\",\"name\":\"DataConsumer\",\"type\":\"role\"}],\"isAdmin\":false,\"isBot\":false,\"name\":\"golden_entity\",\"personaPreferences\":[],\"personas\":[],\"roles\":[],\"teams\":[{\"deleted\":false,\"displayName\":\"team\",\"fullyQualifiedName\":\"team\",\"href\":\"http://localhost:8585/api/v1/teams/generated-id-2\",\"id\":\"generated-id-2\",\"name\":\"team\",\"type\":\"team\"}],\"timezone\":\"\",\"updatedAt\":0,\"updatedBy\":\"admin\",\"version\":0.5}",
+    "entityFullyQualifiedName" : "golden_entity",
+    "entityId" : "entity-id",
+    "entityType" : "user",
+    "eventType" : "entitySoftDeleted",
+    "id" : "generated-id-10",
+    "previousVersion" : 0.1,
+    "timestamp" : 0,
+    "userName" : "admin"
+  } ],
+  "history" : [ {
+    "allowImpersonation" : false,
+    "deleted" : false,
+    "description" : "created",
+    "domains" : [ ],
+    "email" : "golden_entity@example.test",
+    "fullyQualifiedName" : "golden_entity",
+    "id" : "entity-id",
+    "inheritedPersonas" : [ ],
+    "inheritedRoles" : [ {
+      "deleted" : false,
+      "description" : "Users with Data Consumer role use different data assets for their day to day work.",
+      "displayName" : "Data Consumer",
+      "fullyQualifiedName" : "DataConsumer",
+      "id" : "generated-id-1",
+      "name" : "DataConsumer",
+      "type" : "role"
+    } ],
+    "isAdmin" : false,
+    "isBot" : false,
+    "name" : "golden_entity",
+    "personaPreferences" : [ ],
+    "personas" : [ ],
+    "roles" : [ ],
+    "teams" : [ {
+      "deleted" : false,
+      "displayName" : "team",
+      "fullyQualifiedName" : "team",
+      "id" : "generated-id-2",
+      "name" : "team",
+      "type" : "team"
+    } ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.1
+  }, {
+    "allowImpersonation" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "after rename",
+        "oldValue" : "created"
+      } ],
+      "previousVersion" : 0.1
+    },
+    "deleted" : false,
+    "description" : "after rename",
+    "domains" : [ ],
+    "email" : "golden_entity@example.test",
+    "fullyQualifiedName" : "golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "after rename",
+        "oldValue" : "second"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "inheritedPersonas" : [ ],
+    "inheritedRoles" : [ {
+      "deleted" : false,
+      "description" : "Users with Data Consumer role use different data assets for their day to day work.",
+      "displayName" : "Data Consumer",
+      "fullyQualifiedName" : "DataConsumer",
+      "id" : "generated-id-1",
+      "name" : "DataConsumer",
+      "type" : "role"
+    } ],
+    "isAdmin" : false,
+    "isBot" : false,
+    "name" : "golden_entity",
+    "personaPreferences" : [ ],
+    "personas" : [ ],
+    "roles" : [ ],
+    "teams" : [ {
+      "deleted" : false,
+      "displayName" : "team",
+      "fullyQualifiedName" : "team",
+      "id" : "generated-id-2",
+      "name" : "team",
+      "type" : "team"
+    } ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.2
+  }, {
+    "allowImpersonation" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "import",
+        "oldValue" : "after rename"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "deleted" : false,
+    "description" : "import",
+    "domains" : [ ],
+    "email" : "golden_entity@example.test",
+    "follows" : [ ],
+    "fullyQualifiedName" : "golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "import",
+        "oldValue" : "after rename"
+      } ],
+      "previousVersion" : 0.2
+    },
+    "inheritedPersonas" : [ ],
+    "inheritedRoles" : [ {
+      "deleted" : false,
+      "description" : "Users with Data Consumer role use different data assets for their day to day work.",
+      "displayName" : "Data Consumer",
+      "fullyQualifiedName" : "DataConsumer",
+      "id" : "generated-id-1",
+      "name" : "DataConsumer",
+      "type" : "role"
+    } ],
+    "isAdmin" : false,
+    "isBot" : false,
+    "name" : "golden_entity",
+    "owns" : [ ],
+    "personaPreferences" : [ ],
+    "personas" : [ ],
+    "roles" : [ ],
+    "teams" : [ {
+      "deleted" : false,
+      "displayName" : "team",
+      "fullyQualifiedName" : "team",
+      "id" : "generated-id-2",
+      "name" : "team",
+      "type" : "team"
+    } ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.3
+  }, {
+    "allowImpersonation" : false,
+    "changeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ {
+        "name" : "displayName",
+        "newValue" : ""
+      }, {
+        "name" : "timezone",
+        "newValue" : ""
+      } ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "replayed",
+        "oldValue" : "import"
+      } ],
+      "previousVersion" : 0.3
+    },
+    "deleted" : false,
+    "description" : "replayed",
+    "displayName" : "",
+    "domains" : [ ],
+    "email" : "golden_entity@example.test",
+    "fullyQualifiedName" : "golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "changeSummary" : {
+        "description" : {
+          "changeSource" : "Manual",
+          "changedAt" : 0,
+          "changedBy" : "admin"
+        }
+      },
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "description",
+        "newValue" : "replayed",
+        "oldValue" : "csv"
+      } ],
+      "previousVersion" : 0.4
+    },
+    "inheritedPersonas" : [ ],
+    "inheritedRoles" : [ {
+      "deleted" : false,
+      "description" : "Users with Data Consumer role use different data assets for their day to day work.",
+      "displayName" : "Data Consumer",
+      "fullyQualifiedName" : "DataConsumer",
+      "id" : "generated-id-1",
+      "name" : "DataConsumer",
+      "type" : "role"
+    } ],
+    "isAdmin" : false,
+    "isBot" : false,
+    "name" : "golden_entity",
+    "personaPreferences" : [ ],
+    "personas" : [ ],
+    "roles" : [ ],
+    "teams" : [ {
+      "deleted" : false,
+      "displayName" : "team",
+      "fullyQualifiedName" : "team",
+      "id" : "generated-id-2",
+      "name" : "team",
+      "type" : "team"
+    } ],
+    "timezone" : "",
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.4
+  } ],
+  "stored" : [ {
+    "allowImpersonation" : false,
+    "changeDescription" : {
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "deleted",
+        "newValue" : true,
+        "oldValue" : false
+      } ],
+      "previousVersion" : 0.4
+    },
+    "deleted" : true,
+    "description" : "replayed",
+    "displayName" : "",
+    "email" : "golden_entity@example.test",
+    "fullyQualifiedName" : "golden_entity",
+    "id" : "entity-id",
+    "incrementalChangeDescription" : {
+      "fieldsAdded" : [ ],
+      "fieldsDeleted" : [ ],
+      "fieldsUpdated" : [ {
+        "name" : "deleted",
+        "newValue" : true,
+        "oldValue" : false
+      } ],
+      "previousVersion" : 0.4
+    },
+    "isAdmin" : false,
+    "isBot" : false,
+    "name" : "golden_entity",
+    "personaPreferences" : [ ],
+    "personas" : [ ],
+    "timezone" : "",
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.5
+  } ]
+}

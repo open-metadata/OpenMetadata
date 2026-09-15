@@ -1,0 +1,22 @@
+{
+  "events" : [ ],
+  "history" : [ ],
+  "stored" : [ {
+    "allowImpersonation" : false,
+    "deleted" : false,
+    "description" : "bulk",
+    "email" : "golden_bulk0@example.test",
+    "follows" : [ ],
+    "fullyQualifiedName" : "golden_bulk0",
+    "id" : "entity-id",
+    "isAdmin" : false,
+    "isBot" : false,
+    "name" : "golden_bulk0",
+    "owns" : [ ],
+    "personaPreferences" : [ ],
+    "personas" : [ ],
+    "updatedAt" : 0,
+    "updatedBy" : "admin",
+    "version" : 0.1
+  } ]
+}
