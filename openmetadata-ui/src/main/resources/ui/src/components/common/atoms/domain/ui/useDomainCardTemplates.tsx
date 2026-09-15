@@ -15,7 +15,6 @@ import {
   Avatar,
   Box,
   Grid,
-  Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ReactNode, useCallback } from 'react';
@@ -31,6 +30,7 @@ import {
   CARD_NAME_CLIP_CLASS,
   CLIPPED_NAME_CLASS,
   renderDomainClassificationTagsCell,
+  renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
   renderDomainTypeCell,
@@ -172,14 +172,12 @@ export const useDomainCardTemplates = () => {
                   weight="medium">
                   {t('label.expert-plural')}
                 </Typography>
-                <Owner
-                  showDashPlaceholder
-                  isCompactView={false}
-                  maxVisibleOwners={4}
-                  owners={toOwnersWithHref(entity.experts ?? [])}
-                  renderOwnerContent={renderOwnerContent}
-                  showLabel={false}
-                />
+                {renderDomainExpertsCell(
+                  entity,
+                  toOwnersWithHref,
+                  renderOwnerContent,
+                  { showDashPlaceholder: true }
+                )}
               </Box>
             </Grid.Item>
           </Grid>
