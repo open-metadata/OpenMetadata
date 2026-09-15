@@ -42,8 +42,11 @@ import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.TagPropagation;
 
 public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
@@ -83,6 +86,17 @@ public abstract class ServiceEntityRepository<
       descriptors.add(
           new PropagationDescriptor(
               FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    }
+    // Keeps the search index in step with the read-time tag inheritance in EntityRepository. Both
+    // halves are needed and both must be gated the same way: this cascade carries the service's
+    // OWN tags into child documents, not inherited ones, so registering it unconditionally would
+    // write tags into child docs that GET /{entity}/{id} does not report while propagation is off
+    // -- the Explore-vs-API disagreement this design exists to avoid. Descriptors are read per
+    // propagation event, so the check follows the setting without a restart.
+    if (supportsTags && TagPropagation.isEnabled()) {
+      descriptors.add(
+          new PropagationDescriptor(
+              Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
     }
     return descriptors;
   }
@@ -218,6 +232,17 @@ public abstract class ServiceEntityRepository<
   @Override
   protected void postDelete(T service, boolean hardDelete) {
     super.postDelete(service, hardDelete);
+    ServiceAttributeResolver.invalidate();
+    // A matchAnyServiceName condition left pointing at a deleted service silently stops matching,
+    // so a Deny rule meant to hide that service's assets would quietly grant access instead.
+    // Only on hard delete: a soft-deleted service still resolves (the snapshot reads Include.ALL)
+    // and so still hides its assets, and rewriting the condition would not survive a restore.
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeFromCondition(
+                  condition, service.getName(), PolicyConditionUpdater.SERVICE_FUNCTIONS));
+    }
     // Only delete secrets on hard delete to allow soft delete to be reversible
     if (hardDelete && service.getConnection() != null) {
       SecretsManagerFactory.getSecretsManager()
@@ -227,6 +252,41 @@ public abstract class ServiceEntityRepository<
               service.getName(),
               serviceType);
     }
+  }
+
+  /*
+   * The tag and name reverse index behind the matchAnyService* policy conditions is rebuilt after
+   * any service write rather than only when tags or the name actually change. Services are written
+   * rarely and a rebuild is one pass over them, so paying for it on every write is cheaper than the
+   * class of bug where a change slips past a narrower trigger and a Deny rule quietly stops
+   * matching until the snapshot TTL expires.
+   */
+
+  @Override
+  protected void postCreate(T service) {
+    super.postCreate(service);
+    ServiceAttributeResolver.invalidate();
+  }
+
+  @Override
+  protected void postUpdate(T original, T updated) {
+    super.postUpdate(original, updated);
+    ServiceAttributeResolver.invalidate();
+    if (!original.getName().equals(updated.getName())) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.renameInCondition(
+                  condition,
+                  original.getName(),
+                  updated.getName(),
+                  PolicyConditionUpdater.SERVICE_FUNCTIONS));
+    }
+  }
+
+  @Override
+  protected void postUpdate(T updated) {
+    super.postUpdate(updated);
+    ServiceAttributeResolver.invalidate();
   }
 
   @Override
@@ -246,6 +306,16 @@ public abstract class ServiceEntityRepository<
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("connection", this::updateConnection);
       compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
+      compareAndUpdate("serviceAttributes", this::updateServiceAttributes);
+    }
+
+    /**
+     * {@code serviceAttributes} is a plain inline object, so recording the change is all that is
+     * needed for it to persist and appear in the change description.
+     */
+    private void updateServiceAttributes() {
+      recordChange(
+          "serviceAttributes", original.getServiceAttributes(), updated.getServiceAttributes());
     }
 
     private void updateConnection() {

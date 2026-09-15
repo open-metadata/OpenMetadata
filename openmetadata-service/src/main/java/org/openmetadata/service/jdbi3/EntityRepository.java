@@ -273,6 +273,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.TagPropagation;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import software.amazon.awssdk.utils.Either;
 
@@ -1033,7 +1034,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * not declare is rejected as an unknown field.
    */
   protected String getInheritableFields(String parentEntityType) {
-    return getInheritableFields();
+    return withPropagatedTags(getInheritableFields(), parentEntityType);
+  }
+
+  /**
+   * Adds {@code tags} to the fields loaded on a parent, but only while tag propagation is enabled
+   * and only when both sides declare the field. Requesting a field the parent type does not declare
+   * is rejected as unknown, and loading the parent's tags on every read would be wasted work for the
+   * deployments — the default — that have propagation switched off.
+   */
+  protected final String withPropagatedTags(String fields, String parentEntityType) {
+    if (!supportsTags || parentEntityType == null || !TagPropagation.isEnabled()) {
+      return fields;
+    }
+    if (!Entity.hasEntityRepository(parentEntityType)
+        || !Entity.entityHasField(parentEntityType, FIELD_TAGS)) {
+      return fields;
+    }
+    return EntityUtil.addField(fields, FIELD_TAGS);
   }
 
   /** Get the list of propagatable fields to child entities in the search index **/
@@ -1161,6 +1179,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Apply inherited fields from a loaded parent to the entity. Override for custom inheritance logic. */
   protected void applyInheritance(T entity, Fields fields, EntityInterface parent) {
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
   }
 
   /**
@@ -8216,6 +8235,66 @@ public abstract class EntityRepository<T extends EntityInterface> {
           mergedInheritedEntityRefs(
               entity.getReviewers(), inheritedEntityReferences(parent.getReviewers())));
     }
+  }
+
+  /**
+   * Merges the parent's tags into the entity's own, when tag propagation is enabled.
+   *
+   * <p>Merge rather than replace, unlike {@link #inheritDomains}: a tag from the service is an
+   * addition to whatever the asset carries, not a fallback for an asset that has none. Applied at
+   * each hop, so a service tag reaches a table through database and schema.
+   *
+   * <p>Inherited labels are stamped {@code DERIVED}, which the platform already treats as
+   * not-user-editable, so a propagated tag cannot be removed from the asset — only from the parent
+   * it came from. Nothing is persisted; this is a read-time view, so turning the setting off
+   * restores the previous answer immediately and no {@code tag_usage} rows are written.
+   */
+  public final void inheritTags(T entity, Fields fields, EntityInterface parent) {
+    if (supportsTags) {
+      applyInheritedTags(entity, fields, parent);
+    }
+  }
+
+  /**
+   * The propagation rules themselves, free of any repository state so they can be exercised
+   * directly. Package-private for {@code InheritTagsTest}.
+   */
+  static void applyInheritedTags(EntityInterface entity, Fields fields, EntityInterface parent) {
+    if (fields == null
+        || !fields.contains(FIELD_TAGS)
+        || parent == null
+        || !TagPropagation.isEnabled()) {
+      return;
+    }
+    List<TagLabel> inherited = inheritedTagLabels(parent.getTags());
+    if (inherited.isEmpty()) {
+      return;
+    }
+    List<TagLabel> merged = new ArrayList<>(listOrEmpty(entity.getTags()));
+    Set<String> existing =
+        merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toCollection(HashSet::new));
+    for (TagLabel tag : inherited) {
+      // The asset's own label wins; an inherited duplicate would otherwise shadow it as read-only.
+      if (existing.add(tag.getTagFQN())) {
+        merged.add(tag);
+      }
+    }
+    entity.setTags(merged);
+  }
+
+  /** Copies so the parent's own labels are not mutated, and marks the copies as derived. */
+  private static List<TagLabel> inheritedTagLabels(List<TagLabel> tags) {
+    if (nullOrEmpty(tags)) {
+      return Collections.emptyList();
+    }
+    return tags.stream()
+        .map(
+            tag -> {
+              TagLabel copy = JsonUtils.deepCopy(tag, TagLabel.class);
+              copy.setLabelType(TagLabel.LabelType.DERIVED);
+              return copy;
+            })
+        .toList();
   }
 
   private List<EntityReference> inheritedEntityReferences(List<EntityReference> references) {

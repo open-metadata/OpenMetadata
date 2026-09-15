@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/tagPropagationSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tag Propagation Settings",
+  "description": "Controls whether tags applied to a service, database or schema flow down to the assets beneath them. Off by default: turning it on changes which tags every affected asset reports, and therefore what existing tag-based policies match.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.TagPropagationSettings",
+  "properties": {
+    "enabled": {
+      "description": "Propagate tags from a parent down to its assets. Propagated labels are reported as `Derived`, so they are read-only on the asset and disappear when the parent's tag is removed.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["enabled"],
+  "additionalProperties": false
+}
