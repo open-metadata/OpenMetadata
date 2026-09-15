@@ -48,6 +48,7 @@ def _view_lineage_source() -> LookerSource:
     source._explores_cache = {}
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_source_refs = {}
     source._lookml_constants_map = {}
     source._view_data_model = SimpleNamespace(name="table_details_view")
     return source
@@ -179,6 +180,7 @@ def test_model_liquid_context_selects_source_table_for_standalone_view_lineage()
     source = object.__new__(LookerSource)
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_source_refs = {}
     source._lookml_constants_map = {}
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
     # `_yield_bulk_datamodel_lineage` resolves this after the Barrier flush; the
@@ -206,6 +208,7 @@ def test_standalone_view_lineage_skips_when_the_data_model_was_never_written() -
     source = object.__new__(LookerSource)
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_source_refs = {}
     source._lookml_constants_map = {}
     source._view_data_model = None
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
