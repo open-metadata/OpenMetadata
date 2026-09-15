@@ -70,6 +70,6 @@ export const getElementWithPagination = async (
     await waitForAllLoadersToDisappear(page);
   }
   throw new Error(
-  `Element was not found after searching ${maxPages} page(s) of pagination.`
-);
+    `Element was not found after searching ${maxPages} page(s) of pagination.`
+  );
 };
