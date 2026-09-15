@@ -14,6 +14,7 @@ Redshift source ingestion
 
 import traceback
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -69,6 +70,9 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.redshift.datashare import (
+    RedshiftDatashareCatalog,
+)
 from metadata.ingestion.source.database.redshift.incremental_table_processor import (
     RedshiftIncrementalTableProcessor,
 )
@@ -76,11 +80,15 @@ from metadata.ingestion.source.database.redshift.models import RedshiftStoredPro
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_EXTERNAL_TABLE_LOCATION,
     REDSHIFT_GET_ALL_CONSTRAINTS,
-    REDSHIFT_GET_ALL_RELATION_INFO,
     REDSHIFT_GET_ALL_SCHEMAS,
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURES,
     REDSHIFT_LIFE_CYCLE_QUERY,
+)
+from metadata.ingestion.source.database.redshift.strategy import (
+    BaseStrategy,
+    DatashareStrategy,
+    RedshiftMetadataStrategy,
 )
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
@@ -105,15 +113,10 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_ddl,
 )
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine.interfaces import ReflectedColumn
+
 logger = ingestion_logger()
-
-
-STANDARD_TABLE_TYPES = {
-    "r": TableType.Regular,
-    "e": TableType.External,
-    "v": TableType.View,
-    "m": TableType.MaterializedView,
-}
 
 # pylint: disable=protected-access
 RedshiftDialectMixin._get_column_info = _get_column_info
@@ -154,6 +157,10 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         self.incremental = incremental_configuration
         self.incremental_table_processor: RedshiftIncrementalTableProcessor | None = None
         self.external_location_map = {}
+        self.datashare = RedshiftDatashareCatalog(lambda: self.connection)
+        # How the database currently being walked is read. Chosen per database in
+        # `get_database_names`; every read below goes through it.
+        self.strategy: RedshiftMetadataStrategy = BaseStrategy(self)
 
         if self.incremental.enabled:
             logger.info(
@@ -198,32 +205,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         # prevent unbounded memory growth (issue #20649)
         self._clear_reflection_cache()
 
-        self._set_constraint_details(schema_name)
-
-        result = self.connection.execute(
-            sql.text(
-                REDSHIFT_GET_ALL_RELATION_INFO.format(
-                    view_filter=(
-                        "OR c.relkind IN ('v', 'm')"
-                        if self.source_config.includeViews
-                        else "AND c.relkind NOT IN ('v', 'm')"
-                    )
-                )
-            ),
-            {"schema": schema_name},
-        )
-
-        if self.incremental.enabled:
-            result = [
-                (name, relkind)
-                for name, relkind in result
-                if name in self.incremental_table_processor.get_not_deleted(schema_name=schema_name)
-            ]
-
-        return [
-            TableNameAndType(name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular))
-            for name, relkind in result
-        ]
+        return self.strategy.table_names_and_types(schema_name)
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
@@ -242,7 +224,15 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         return None
 
     def get_database_names_raw(self) -> Iterable[str]:
-        yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
+        # `SHOW DATABASES` already lists the databases while classifying them, and
+        # unlike `pg_database` it leaves out template0/template1/padb_harvest -
+        # system databases the walk would otherwise try to connect to. Falls back
+        # to `pg_database` on a cluster or role that cannot run it.
+        database_types = self.datashare.database_types
+        if database_types is not None:
+            yield from database_types
+        else:
+            yield from self._execute_database_query(REDSHIFT_GET_DATABASE_NAMES)
 
     def _set_incremental_table_processor(self, database: str):
         """Prepares the needed data for doing incremental metadata extraction for a given database.
@@ -340,7 +330,11 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             self.set_external_location_map(configured_db)
             yield configured_db
         else:
+            # Resolved while the connection is still healthy, so that a failure to
+            # connect can be told apart from a datashare database.
+            shared_databases = self.datashare.shared_database_names
             for new_database in self.get_database_names_raw():
+                self.strategy = BaseStrategy(self)
                 if self._is_database_filtered(new_database):
                     database_fqn = fqn.build(
                         self.metadata,
@@ -351,14 +345,106 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
+                # Only a refused connection can mean a datashare database. A failure
+                # after the connection is open - a missing grant on an external-table
+                # view, say - must not downgrade a usable connection to the catalog
+                # views, so the two steps get their own handlers.
                 try:
                     self.set_inspector(database_name=new_database)
+                    # `set_inspector` only builds a lazy engine, so without this the
+                    # refusal would surface inside whichever query ran first and be
+                    # indistinguishable from a permission error on that query. The
+                    # connection is cached, so the queries below reuse it.
+                    self.connection  # noqa: B018  # pylint: disable=pointless-statement
+                except Exception as exc:
+                    datashare_strategy = (
+                        self._datashare_strategy(new_database, exc) if new_database in shared_databases else None
+                    )
+                    if datashare_strategy:
+                        self.strategy = datashare_strategy
+                        yield new_database
+                    else:
+                        logger.debug(traceback.format_exc())
+                        logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    continue
+
+                try:
                     self._set_incremental_table_processor(new_database)
                     self.set_external_location_map(new_database)
-                    yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    logger.error("Error preparing database %s: %s", new_database, exc)
+                    continue
+
+                yield new_database
+
+    def _datashare_strategy(self, database_name: str, connection_error: Exception) -> DatashareStrategy | None:
+        """Strategy for reading a datashare database from the catalog views, or
+        None when this database is not one we can read that way.
+
+        The failed `set_inspector` left the source without an engine, so the
+        connection to the configured database has to be restored before any
+        catalog query can run. Returns None if that does not succeed, leaving the
+        caller to report the original connection error.
+        """
+        try:
+            self.set_inspector(database_name=self.service_connection.database)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("Could not restore the connection to [%s]: %s", self.service_connection.database, exc)
+            return None
+        # The error is logged rather than matched on: the refusal is worded
+        # differently for a datashare and for a Data Catalog ARN database, and it
+        # keeps a genuine failure - a network blip, a missing grant - diagnosable.
+        # Claim the database only when the catalog views can actually see inside
+        # it, so a database we cannot read is skipped with an explanation instead
+        # of being registered with no schemas.
+        schema_names = self.datashare.get_schema_names(database_name)
+        if not schema_names:
+            logger.warning(
+                "Database [%s] did not accept a connection (%s) and the catalog views report no "
+                "schemas for it. A catalog database mounted from Glue needs an IAM-authenticated "
+                "session to be readable.",
+                database_name,
+                connection_error,
+            )
+            return None
+        logger.info(
+            "Database [%s] is shared and did not accept a connection (%s). "
+            "Reading its metadata from the cross-database catalog views.",
+            database_name,
+            connection_error,
+        )
+        # Populated from the database we just left; nothing repopulates it while
+        # reading from the catalog views.
+        self.external_location_map.clear()
+        return DatashareStrategy(self, database_name, schema_names, self.datashare)
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        yield from self.strategy.schema_names()
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,  # pyright: ignore[reportArgumentType] - matches the base signature
+    ) -> "list[ReflectedColumn]":
+        return self.strategy.columns(schema_name, table_name, db_name, inspector, table_type)
+
+    def get_table_description(  # pyright: ignore[reportIncompatibleMethodOverride] - the base is a staticmethod
+        self, schema_name: str, table_name: str, inspector: Inspector
+    ) -> str | None:
+        return self.strategy.table_description(schema_name, table_name, inspector)
+
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> str | None:
+        return self.strategy.schema_definition(table_type, table_name, schema_name, inspector)
 
     def process_additional_table_constraints(self, column: dict, table_constraints: list[TableConstraint]) -> None:
         """
@@ -383,7 +469,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
 
     def get_stored_procedures(self) -> Iterable[RedshiftStoredProcedure]:
         """List Snowflake stored procedures"""
-        if self.source_config.includeStoredProcedures:
+        if self.source_config.includeStoredProcedures and self.strategy.supports_stored_procedures:
             results = self.connection.execute(
                 text(
                     REDSHIFT_GET_STORED_PROCEDURES.format(
