@@ -1411,6 +1411,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>
@@ -1512,6 +1517,11 @@
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                    <!-- Keeps the pre-2026-09 cascade cap: this suite really does hard-delete a
+                         100k-table service, whose cascade ran ~6 min on an unloaded cluster. The
+                         NamespaceCleanup default dropped to 2 min so a *failed* cascade stops
+                         billing 15 idle minutes to every ordinary test. -->
+                    <jpw.cleanup.cascadeTimeoutMin>15</jpw.cleanup.cascadeTimeoutMin>
                   </systemPropertyVariables>
                   <trimStackTrace>false</trimStackTrace>
                   <reportFormat>plain</reportFormat>

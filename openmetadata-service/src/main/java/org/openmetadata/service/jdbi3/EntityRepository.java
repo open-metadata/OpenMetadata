@@ -3406,6 +3406,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       DEFERRED_CACHE_INVALIDATIONS = new ThreadLocal<>();
 
   /**
+   * Set while a recursive hard delete is cascading through a subtree. Lets a child's {@code
+   * postDelete} tell "the user asked to delete me" from "I am collateral of an ancestor's delete",
+   * which decides whether a failure cleaning up external state may abort the whole tree.
+   */
+  private static final ThreadLocal<Boolean> IN_HARD_DELETE_CASCADE = new ThreadLocal<>();
+
+  /** True when the current thread is inside {@link #bulkHardDeleteSubtreeChunk}'s cascade. */
+  public static boolean isInHardDeleteCascade() {
+    return Boolean.TRUE.equals(IN_HARD_DELETE_CASCADE.get());
+  }
+
+  /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
    * (entityType, id)} only so repeated relationship writes touching the same entity collapse to one
    * post-commit invalidation; the {@code fqn} is carried along (best non-null wins) so the by-name
@@ -7031,6 +7043,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return;
     }
     Runnable exitHardDeleteCascade = enterBulkHardDeleteCascade(entities);
+    // Restored rather than cleared: this method recurses through dispatchToContainedChildren, so
+    // an inner frame must not un-flag the outer cascade on its way out.
+    boolean outerCascade = isInHardDeleteCascade();
+    IN_HARD_DELETE_CASCADE.set(Boolean.TRUE);
     try {
       // Populate relation fields up front so the same subclass hooks the legacy
       // Entity.deleteEntity path called against a fully-loaded entity (e.g.,
@@ -7077,6 +7093,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
       }
     } finally {
+      if (outerCascade) {
+        IN_HARD_DELETE_CASCADE.set(Boolean.TRUE);
+      } else {
+        IN_HARD_DELETE_CASCADE.remove();
+      }
       exitHardDeleteCascade.run();
     }
   }
