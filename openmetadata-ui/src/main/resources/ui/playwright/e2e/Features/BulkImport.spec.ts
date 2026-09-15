@@ -546,10 +546,6 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
       await previewBulkImportChanges(page, 'databases');
 
-      await page.locator('.rdg-header-row').waitFor({
-        state: 'visible',
-      });
-
       const rowStatus = [
         'Entity updated',
         'Entity updated',

@@ -52,6 +52,8 @@ export interface AvatarGroupProps {
   overflowTitleLabel?: string;
   overflowTeamsLabel?: string;
   overflowUsersLabel?: string;
+  /** Show the "N Owners"/group labels in the overflow popover (default true). */
+  showOverflowHeadings?: boolean;
 }
 
 export const AvatarGroup = ({
@@ -64,6 +66,7 @@ export const AvatarGroup = ({
   overflowTitleLabel,
   overflowTeamsLabel,
   overflowUsersLabel,
+  showOverflowHeadings = true,
 }: AvatarGroupProps) => {
   const resolvedSize = groupAvatarSizeMap[avatarSize] ?? 'xs';
   const visibleOwners = owners.slice(0, maxCount);
@@ -147,6 +150,7 @@ export const AvatarGroup = ({
       {visibleOwners.map((owner, i) => (
         <span
           className={cx('tw:relative tw:block tw:rounded-full')}
+          data-testid="avatar-group-item"
           key={owner.id}
           style={{
             marginLeft: i > 0 ? `-${overlapPx}px` : undefined,
@@ -165,6 +169,7 @@ export const AvatarGroup = ({
               overflowTitleLabel ?? 'owners'
             }`}
             className="tw:rounded-full tw:bg-transparent tw:p-0"
+            data-testid="avatar-group-overflow"
             style={{
               marginLeft: `-${overlapPx}px`,
               zIndex: visibleOwners.length + 1,
@@ -195,6 +200,7 @@ export const AvatarGroup = ({
               overflowUsersLabel={overflowUsersLabel}
               ownerDisplayName={ownerDisplayName}
               owners={owners}
+              showHeadings={showOverflowHeadings}
             />
           </AriaTooltip>
         </AriaTooltipTrigger>

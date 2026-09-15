@@ -241,7 +241,6 @@ const AsyncSelectList: FC<
         data-testid={`selected-tag-${tagDisplayName}`}
         icon={tag.style?.iconURL}
         label={tagLabel}
-        maxWidth={140}
         size="sm"
         onDelete={
           isDerived

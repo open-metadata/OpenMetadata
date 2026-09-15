@@ -138,7 +138,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         page.getByTestId('search-dropdown-Tag').locator('span')
       ).toContainText('Tag');
 
-      await page.getByRole('button', { name: 'Tier' }).click();
+      await page.getByTestId('search-dropdown-tier.tagFQN').click();
 
       await expect(
         page.getByTestId('search-dropdown-Tier').locator('span')

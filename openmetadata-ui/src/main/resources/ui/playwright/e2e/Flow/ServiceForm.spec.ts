@@ -226,19 +226,26 @@ test.describe(
           .click();
 
         // Upload the test certificate file
-        const fileInput1 = page.locator(
-          '[data-field-name="caCertificate"] input[type="file"]'
+        const caCertificateField = page.locator(
+          '[data-field-name="caCertificate"]'
         );
-        await fileInput1.setInputFiles({
+        // main's locator, this branch's in-memory file. Uploading a buffer
+        // keeps the name the assertion below checks under this test's control
+        // and needs no temp file on disk, so there is nothing to write in a
+        // hook or clean up afterwards.
+        await caCertificateField.locator('input[type="file"]').setInputFiles({
           name: CERT_FILE,
           mimeType: 'application/x-pem-file',
           buffer: Buffer.from(CERT_FILE),
         });
 
-        // Wait for file upload to complete
+        // An attached credential is represented by its chip, not by its content
+        // in the paste box — the two would otherwise show the same secret twice.
+        // The chip carrying the (very long) file name is what has to survive
+        // without overflowing.
         await expect(
-          page.locator('[id="root/connection/sslConfig/caCertificate"]')
-        ).toHaveValue(CERT_FILE);
+          caCertificateField.getByTestId('credential-file-name')
+        ).toHaveText(CERT_FILE);
 
         // Verify the certificate content is sent correctly.
         const testConnectionResponse1 = page.waitForResponse(

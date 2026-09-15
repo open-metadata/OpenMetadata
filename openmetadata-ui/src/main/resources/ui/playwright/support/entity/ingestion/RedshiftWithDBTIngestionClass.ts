@@ -30,6 +30,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import { visitLineageTab } from '../../../utils/lineage';
+import { getCellByName } from '../../../utils/scopedLocators';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { selectOneOfOption } from '../../../utils/serviceFormUtils';
 import {
@@ -223,7 +224,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await page.getByTestId('table').waitFor();
 
-      await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
+      await expect(getCellByName(page, DBT.tagName)).toBeVisible();
 
       // Verify DBT in table entity
       await visitEntityPage({

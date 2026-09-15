@@ -462,10 +462,15 @@ export const deleteEdge = async (
       response.request().method() === 'DELETE' &&
       new URL(response.url()).pathname.startsWith('/api/v1/lineage/')
   );
+  const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
   await confirmation.getByTestId('confirm-button').click();
   const deleteResponse = await deleteRes;
   expect(deleteResponse.ok()).toBe(true);
   await expect(confirmation).toBeHidden();
+
+  // The canvas refetches the scene right after the delete. Wait for it before
+  // moving on, so the next action does not race the re-render (from main).
+  await sceneRes;
 
   // Confirm THIS edge is the one that went. The canvas click is by coordinate,
   // so a stale midpoint can select a neighbour: without a check the run deletes

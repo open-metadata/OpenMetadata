@@ -1061,7 +1061,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const partialSearchValue = durationPropertyValue.slice(0, 3);
           await page.getByTestId('advance-search-filter-btn').click();
-          await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+          await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
 
           await selectOption(
             page,
@@ -3497,26 +3497,24 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(dashboardCard).toBeVisible();
         });
-      });
 
-      test('Verify Dashboard custom property persists in search settings', async ({
-        page,
-      }) => {
-        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await test.step('Verify Dashboard custom property persists in search settings', async () => {
+          await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-        const dashboardCard = page.getByTestId(
-          'preferences.search-settings.dashboards'
-        );
-        await dashboardCard.click();
+          const dashboardCard = page.getByTestId(
+            'preferences.search-settings.dashboards'
+          );
+          await dashboardCard.click();
 
-        await waitForAllLoadersToDisappear(page);
+          await waitForAllLoadersToDisappear(page);
 
-        await openMatchingFieldsPanel(page);
+          await openMatchingFieldsPanel(page);
 
-        const customPropertyField = page.getByTestId(
-          `field-configuration-panel-extension.${dashboardSearchPropertyName}`
-        );
-        await expect(customPropertyField).toBeVisible();
+          const customPropertyField = page.getByTestId(
+            `field-configuration-panel-extension.${dashboardSearchPropertyName}`
+          );
+          await expect(customPropertyField).toBeVisible();
+        });
       });
     }
 
@@ -3634,26 +3632,24 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(pipelineCard).toBeVisible();
         });
-      });
 
-      test('Verify Pipeline custom property persists in search settings', async ({
-        page,
-      }) => {
-        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await test.step('Verify Pipeline custom property persists in search settings', async () => {
+          await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-        const pipelineCard = page.getByTestId(
-          'preferences.search-settings.pipelines'
-        );
-        await pipelineCard.click();
+          const pipelineCard = page.getByTestId(
+            'preferences.search-settings.pipelines'
+          );
+          await pipelineCard.click();
 
-        await waitForAllLoadersToDisappear(page);
+          await waitForAllLoadersToDisappear(page);
 
-        await openMatchingFieldsPanel(page);
+          await openMatchingFieldsPanel(page);
 
-        const customPropertyField = page.getByTestId(
-          `field-configuration-panel-extension.${pipelineSearchPropertyName}`
-        );
-        await expect(customPropertyField).toBeVisible();
+          const customPropertyField = page.getByTestId(
+            `field-configuration-panel-extension.${pipelineSearchPropertyName}`
+          );
+          await expect(customPropertyField).toBeVisible();
+        });
       });
     }
 

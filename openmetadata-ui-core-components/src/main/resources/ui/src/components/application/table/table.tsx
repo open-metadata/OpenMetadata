@@ -156,7 +156,7 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:shadow-xs tw:outline-1 tw:outline-secondary',
+          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:outline-subtle',
           className
         )}>
         {children}
@@ -190,7 +190,7 @@ const TableCardHeader = ({
   return (
     <div
       className={cx(
-        'tw:relative tw:flex tw:flex-col tw:items-start tw:gap-4 tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:md:flex-row',
+        'tw:relative tw:flex tw:flex-col tw:items-start tw:gap-4 tw:border-b tw:border-subtle tw:bg-surface tw:px-4 tw:md:flex-row',
         TABLE_SIZES[size].cardHeader,
         className
       )}>

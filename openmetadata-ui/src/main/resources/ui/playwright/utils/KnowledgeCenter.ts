@@ -83,12 +83,12 @@ export const addTitle = async (page: Page, title: string) => {
 };
 
 export const updateBody = async (page: Page, body: string) => {
-  await page.fill('.om-block-editor', body);
   const updateBodyResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
+  await page.fill('.om-block-editor', body);
   const res = await updateBodyResponse;
   expect(res.status()).toBe(200);
 

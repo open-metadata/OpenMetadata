@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { clickOutside } from './common';
 import { getEncodedFqn } from './entity';
 
 type EntityFields = {
@@ -170,7 +169,7 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();
   await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
 };
 
 export const selectOption = async (
@@ -266,8 +265,8 @@ export const selectOption = async (
       .waitFor({ state: 'hidden', timeout: 2000 })
       .catch(async () => {
         // Blur the control — react-aria comboboxes close their popup when
-        // focus leaves. NEVER send Escape here: surrounding antd modals and
-        // forms handle Escape in the capture phase and dismiss themselves.
+        // focus leaves. NEVER send Escape here: the surrounding modals and
+        // forms handle Escape themselves and would dismiss.
         await control.blur({ timeout: 1000 }).catch(() => undefined);
         await openListbox
           .waitFor({ state: 'hidden', timeout: 1000 })
@@ -400,9 +399,9 @@ export const fillRule = async (
             .click();
         }
       }
-    }
 
-    await clickOutside(page);
+      await page.getByTestId('advanced-search-message').click();
+    }
   }
 };
 
