@@ -13,19 +13,75 @@
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
+import type { QueryVote as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { CreateMetric } from '../generated/api/data/createMetric';
+import { MetricHierarchyContext } from '../generated/api/data/metricHierarchyContext';
+import { MetricHierarchyItem } from '../generated/api/data/metricHierarchyItem';
+import {
+  Direction,
+  MetricAssetDirection,
+  MetricObservability,
+} from '../generated/api/data/metricObservability';
 import { Metric } from '../generated/entity/data/metric';
 import { EntityReference } from '../generated/entity/type';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
-import { ListParams } from '../interface/API.interface';
+import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
+/**
+ * `parent` selects a slice of the hierarchy: omit it for every metric, pass the literal string
+ * `'null'` for root metrics only, or pass a parent metric's fully qualified name for its immediate
+ * children. Metric fully qualified names are flat, so the hierarchy cannot be inferred from the
+ * name and has to be asked for explicitly.
+ */
+export type MetricListParams = ListParams & {
+  parent?: string;
+  entityStatus?: string;
+};
+
+export const ROOT_METRICS_PARENT = 'null';
+
+export type MetricHierarchyListParams = Pick<
+  ListParamsWithOffset,
+  'limit' | 'offset'
+> & {
+  q?: string;
+};
+
+export type MetricHierarchyContextParams = {
+  childLimit?: number;
+  childOffset?: number;
+  siblingLimit?: number;
+  siblingOffset?: number;
+};
+
+export const getMetricHierarchy = async (params: MetricHierarchyListParams) => {
+  const response = await APIClient.get<PagingResponse<MetricHierarchyItem[]>>(
+    '/metrics/hierarchy',
+    { params }
+  );
+
+  return response.data;
+};
+
+export const getMetricHierarchyContext = async (
+  id: string,
+  params?: MetricHierarchyContextParams
+) => {
+  const response = await APIClient.get<MetricHierarchyContext>(
+    `/metrics/${id}/hierarchy`,
+    { params }
+  );
+
+  return response.data;
+};
+
 export const getMetrics = async (
-  params: ListParams,
+  params: MetricListParams,
   config?: Pick<AxiosRequestConfig, 'signal'>
 ) => {
   const response = await APIClient.get<PagingResponse<Metric[]>>(`/metrics`, {
@@ -155,6 +211,62 @@ export const deleteMetricAsync = async (id: string) => {
 
 export const getCustomUnitsOfMeasurement = async () => {
   const response = await APIClient.get<string[]>('/metrics/customUnits');
+
+  return response.data;
+};
+
+export const addAssetsToMetric = async (
+  fqn: string,
+  assets: EntityReference[]
+) => {
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<BulkOperationResult>
+  >(`/metrics/${getEncodedFqn(fqn)}/assets/add`, { assets });
+
+  return response.data;
+};
+
+export const removeAssetsFromMetric = async (
+  fqn: string,
+  assets: EntityReference[]
+) => {
+  const response = await APIClient.put<
+    { assets: EntityReference[] },
+    AxiosResponse<BulkOperationResult>
+  >(`/metrics/${getEncodedFqn(fqn)}/assets/remove`, { assets });
+
+  return response.data;
+};
+
+export interface MetricAssetsParams {
+  direction?: Direction;
+  entityType?: string;
+  limit?: number;
+  offset?: number;
+  q?: string;
+}
+
+export const getMetricAssets = async (
+  id: string,
+  params?: MetricAssetsParams,
+  config?: Pick<AxiosRequestConfig, 'signal'>
+) => {
+  const response = await APIClient.get<PagingResponse<MetricAssetDirection[]>>(
+    `/metrics/${id}/assets`,
+    {
+      params,
+      signal: config?.signal,
+    }
+  );
+
+  return response.data;
+};
+
+export const getMetricObservability = async (id: string) => {
+  const response = await APIClient.get<MetricObservability>(
+    `/metrics/${id}/observability`
+  );
 
   return response.data;
 };

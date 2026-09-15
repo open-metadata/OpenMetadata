@@ -6,8 +6,8 @@
     Arial, sans-serif;
   --font-display: theme(--font-inter, 'Inter'), -apple-system, 'Segoe UI',
     Roboto, Arial, sans-serif;
-  --font-mono: ui-monospace, 'Roboto Mono', SFMono-Regular, Menlo, Monaco,
-    Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-mono: 'Geist Mono', ui-monospace, 'Roboto Mono', SFMono-Regular, Menlo,
+    Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 
   /* Keep Tailwind scale stable regardless of host/root rem size. */
   --spacing: 4px;

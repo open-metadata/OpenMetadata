@@ -152,6 +152,10 @@ om:Metric a owl:Class ;
     rdfs:label "Metric" ;
     rdfs:subClassOf om:DataAsset .
 
+om:MetricGroup a owl:Class ;
+    rdfs:label "Metric Group" ;
+    rdfs:subClassOf om:Entity .
+
 om:Pipeline a owl:Class ;
     rdfs:label "Pipeline" ;
     rdfs:subClassOf om:DataAsset, dcat:DataService .
@@ -2171,6 +2175,10 @@ om:allowImpersonation a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "allowImpersonation" .
 
+om:aliases a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "aliases" .
+
 om:answer a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "answer" .
@@ -3269,6 +3277,14 @@ om:memoryStats a rdf:Property ;
 om:memoryType a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "memoryType" .
+
+om:metricCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "metricCount" .
+
+om:metricGroup a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "metricGroup" .
 
 om:metrics a rdf:Property ;
     om:projectionStatus om:Stored ;

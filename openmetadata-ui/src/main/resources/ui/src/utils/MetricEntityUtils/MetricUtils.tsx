@@ -55,9 +55,19 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const MetricExpression = withSuspenseFallback(
+const MetricHierarchyCard = withSuspenseFallback(
   lazy(
-    () => import('../../components/Metric/MetricExpression/MetricExpression')
+    () =>
+      import('../../components/Metric/MetricHierarchyCard/MetricHierarchyCard')
+  )
+);
+
+const MetricDefinitionCard = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Metric/MetricDefinitionCard/MetricDefinitionCard'
+      )
   )
 );
 
@@ -113,20 +123,6 @@ export const getMetricDetailsPageTabs = ({
       ),
       key: EntityTabs.OVERVIEW,
       children: <GenericTab type={PageType.Metric} />,
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.EXPRESSION}
-          name={labelMap[EntityTabs.EXPRESSION] ?? i18n.t('label.expression')}
-        />
-      ),
-      key: EntityTabs.EXPRESSION,
-      children: (
-        <div className="p-t-sm m-x-lg">
-          <MetricExpression />
-        </div>
-      ),
     },
     {
       label: (
@@ -199,6 +195,14 @@ export const getMetricDetailsPageTabs = ({
 export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.RELATED_METRICS)) {
     return <RelatedMetrics />;
+  }
+
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_HIERARCHY)) {
+    return <MetricHierarchyCard />;
+  }
+
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DEFINITION)) {
+    return <MetricDefinitionCard />;
   }
 
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DIMENSIONS)) {

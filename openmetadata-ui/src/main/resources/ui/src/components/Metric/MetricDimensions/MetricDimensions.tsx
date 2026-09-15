@@ -12,13 +12,28 @@
  */
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Metric, MetricDimension } from '../../../generated/entity/data/metric';
+import type { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import type {
+  Metric,
+  MetricDimension,
+} from '../../../generated/entity/data/metric';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricSemanticList from '../MetricSemanticList/MetricSemanticList';
 
-const MetricDimensions: FC = () => {
+interface MetricDimensionsProps {
+  metric?: Metric;
+  permissions?: OperationPermission;
+  onUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
+}
+
+const MetricDimensions: FC<MetricDimensionsProps> = ({
+  metric,
+  permissions,
+  onUpdate,
+}) => {
   const { t } = useTranslation();
-  const { data: metricDetails } = useGenericContext<Metric>();
+  const context = useGenericContext<Metric>();
+  const metricDetails = metric ?? context.data;
 
   return (
     <MetricSemanticList<MetricDimension>
@@ -28,7 +43,10 @@ const MetricDimensions: FC = () => {
       fieldKey="dimensions"
       getBadge={(item) => item.type}
       items={metricDetails.dimensions ?? []}
+      metric={metricDetails}
+      permissions={permissions ?? context.permissions}
       title={t('label.dimension-plural')}
+      onUpdate={onUpdate ?? context.onUpdate}
     />
   );
 };

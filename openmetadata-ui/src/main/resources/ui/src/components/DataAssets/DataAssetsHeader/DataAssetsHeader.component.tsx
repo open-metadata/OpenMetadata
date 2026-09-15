@@ -113,7 +113,6 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
 import IconColorModal from '../../Modals/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
@@ -173,7 +172,6 @@ export const DataAssetsHeader = ({
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
   extraDropdownContent,
-  onMetricUpdate,
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
@@ -1190,14 +1188,6 @@ export const DataAssetsHeader = ({
             onUpdate={onUpdateRetentionPeriod}
           />
         </>
-      )}
-
-      {entityType === EntityType.METRIC && onMetricUpdate && (
-        <MetricHeaderInfo
-          metricDetails={dataAsset}
-          metricPermissions={permissions}
-          onUpdateMetricDetails={onMetricUpdate}
-        />
       )}
     </>
   );
