@@ -115,19 +115,23 @@ function ParameterRows({
   );
 }
 
+// The prototype's supporting line is #3E7BC2, which is not on the palette
+// (blue-600 #1570EF, blue-700 #175CD3). blue-600 reads too vivid against it;
+// blue-700 at 80% lands within ~26 RGB units instead of ~62, and keeps the
+// subtitle lighter than the title the way the prototype has it. Opacity rather
+// than a raw hex so the token still flips for dark mode.
 function DynamicAssertionCallout() {
   const { t } = useTranslation();
 
   return (
     <Box
       align="center"
-      className="tw:rounded-lg tw:border tw:border-utility-blue-200 tw:bg-utility-blue-50 tw:px-3 tw:py-2.5"
-      data-testid="dynamic-assertion"
-      gap={3}>
-      {/* The sparkle takes the callout's blue — the asset draws in currentColor. */}
+      className="tw:gap-2.5 tw:rounded-lg tw:border tw:border-utility-blue-200 tw:bg-utility-blue-50 tw:px-3 tw:py-2.5"
+      data-testid="dynamic-assertion">
+      {/* The sparkle matches the title colour; the asset draws in currentColor. */}
       <StarIcon
         aria-hidden
-        className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-utility-blue-600"
+        className="tw:h-[18px] tw:w-[18px] tw:shrink-0 tw:text-utility-blue-700"
       />
       <div>
         <Typography
@@ -137,7 +141,7 @@ function DynamicAssertionCallout() {
         </Typography>
         <Typography
           as="span"
-          className="tw:block tw:text-xs tw:text-utility-blue-600">
+          className="tw:mt-px tw:block tw:text-xs tw:text-utility-blue-700/80">
           {t('message.bounds-learned-automatically')}
         </Typography>
       </div>
