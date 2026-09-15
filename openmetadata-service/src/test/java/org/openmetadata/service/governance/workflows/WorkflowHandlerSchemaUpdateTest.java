@@ -15,13 +15,16 @@ package org.openmetadata.service.governance.workflows;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -54,6 +57,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -190,13 +194,16 @@ class WorkflowHandlerSchemaUpdateTest {
   }
 
   @Test
-  void runtimeModeEnablesConnectionPoolHealthChecks() {
+  void runtimeModeUsesManagedPoolInsteadOfFlowablePing() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
     try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
             mockConstruction(
                 StandaloneProcessEngineConfiguration.class,
-                (mock, ctx) ->
-                    when(mock.buildProcessEngine())
-                        .thenThrow(new FlowableWrongDbException("7.2.0.2", "7.1.0.0")));
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
         MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<PipelineServiceClientFactory> pscMock =
@@ -207,13 +214,19 @@ class WorkflowHandlerSchemaUpdateTest {
           .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
           .thenReturn(null);
 
-      assertThrows(
-          IllegalStateException.class, () -> WorkflowHandler.initialize(buildMockConfig(), false));
+      WorkflowHandler.initialize(buildMockConfig(), false);
 
+      // The runtime engine must reach the DB through the application's pool, never by handing
+      // Flowable raw JDBC settings to build a MyBatis pool of its own. Flowable's pool-ping knobs
+      // only apply to that self-built pool, so they must not be set — HikariCP validates borrowed
+      // connections itself.
       StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
-      verify(engineConfig).setJdbcPingEnabled(true);
-      verify(engineConfig).setJdbcPingQuery("SELECT 1");
-      verify(engineConfig).setJdbcPingConnectionNotUsedFor(30000);
+      verify(engineConfig).setDataSource(any(HikariDataSource.class));
+      verify(engineConfig, never()).setJdbcUrl(anyString());
+      verify(engineConfig, never()).setJdbcUsername(anyString());
+      verify(engineConfig, never()).setJdbcPassword(anyString());
+      verify(engineConfig, never()).setJdbcDriver(anyString());
+      verify(engineConfig, never()).setJdbcPingEnabled(anyBoolean());
     }
   }
 
@@ -400,38 +413,144 @@ class WorkflowHandlerSchemaUpdateTest {
   }
 
   @Test
-  void runtimeModeDoesNotBuildMigrationPool() {
+  void runtimePoolIsSizedFromTheAsyncExecutorPool() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
     try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
             mockConstruction(
                 StandaloneProcessEngineConfiguration.class,
-                (mock, ctx) ->
-                    when(mock.buildProcessEngine())
-                        .thenThrow(new FlowableWrongDbException("7.2.0.2", "7.1.0.0")));
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
         MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
         MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<PipelineServiceClientFactory> pscMock =
-            mockStatic(PipelineServiceClientFactory.class);
-        MockedConstruction<HikariDataSource> hikariMock =
-            mockConstruction(HikariDataSource.class)) {
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock, 20);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), false);
+
+      // Flowable's own default is 10 connections no matter how many workers the executor runs,
+      // which starves a 20-worker pool. The pool must track the configured worker count plus
+      // headroom for the acquisition/reset threads and history cleaning.
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
+      ArgumentCaptor<DataSource> dsCaptor = ArgumentCaptor.forClass(DataSource.class);
+      verify(engineConfig).setDataSource(dsCaptor.capture());
+      HikariDataSource pool = assertInstanceOf(HikariDataSource.class, dsCaptor.getValue());
+      assertEquals(24, pool.getMaximumPoolSize());
+      assertEquals("flowable-runtime-pool", pool.getPoolName());
+    }
+  }
+
+  @Test
+  void runtimePoolRunsAtReadCommittedOnMysql() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock, ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
+                });
+        MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
 
       setupEntityMock(entityMock);
       pscMock
           .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
           .thenReturn(null);
 
-      assertThrows(
-          IllegalStateException.class, () -> WorkflowHandler.initialize(buildMockConfig(), false));
+      WorkflowHandler.initialize(buildMockConfig(), false);
 
-      // Runtime path must configure the engine with raw JDBC settings + Flowable's own pool;
-      // it must NOT stand up a migration HikariDataSource.
-      assertTrue(
-          hikariMock.constructed().isEmpty(),
-          "Runtime mode must not construct a migration HikariDataSource");
-      StandaloneProcessEngineConfiguration runtimeEngineConfig = engineMock.constructed().getLast();
-      verify(runtimeEngineConfig, never()).setDataSource(any());
-      // Wrapper's getJdbcUrl returns Mockito's default null; only assert the setter was invoked
-      // via the raw-JDBC branch (not that the string is non-null).
-      verify(runtimeEngineConfig).setJdbcUrl(any());
+      // MySQL's REPEATABLE_READ gap locks deadlock Flowable's concurrent ACT_RU_* writes. The
+      // isolation level has to ride on the pool now: an engine handed a ready-made DataSource
+      // ignores setJdbcDefaultTransactionIsolationLevel.
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
+      ArgumentCaptor<DataSource> dsCaptor = ArgumentCaptor.forClass(DataSource.class);
+      verify(engineConfig).setDataSource(dsCaptor.capture());
+      HikariDataSource pool = assertInstanceOf(HikariDataSource.class, dsCaptor.getValue());
+      assertEquals("TRANSACTION_READ_COMMITTED", pool.getTransactionIsolation());
+      verify(engineConfig, never()).setJdbcDefaultTransactionIsolationLevel(anyInt());
+    }
+  }
+
+  @Test
+  void shutDownStopsTheEngineBeforeClosingItsPool() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), false);
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
+      ArgumentCaptor<DataSource> dsCaptor = ArgumentCaptor.forClass(DataSource.class);
+      verify(engineConfig).setDataSource(dsCaptor.capture());
+      HikariDataSource pool = assertInstanceOf(HikariDataSource.class, dsCaptor.getValue());
+
+      WorkflowHandler.shutDown();
+
+      // Order matters and cannot be left to ProcessEngines.destroy(), which is guarded by
+      // ProcessEngines.isInitialized() and so never touches an engine built straight from a
+      // StandaloneProcessEngineConfiguration. Close the pool while the async executor is still
+      // acquiring and every acquisition cycle logs a "HikariDataSource has been closed" trace.
+      InOrder inOrder = inOrder(mockEngine);
+      inOrder.verify(mockEngine).close();
+      assertTrue(pool.isClosed(), "the engine's pool must be closed on shutdown");
+      assertFalse(WorkflowHandler.isInitialized());
+    }
+  }
+
+  @Test
+  void runtimeModeDoesNotBuildMigrationPool() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), false);
+
+      // Runtime gets exactly one pool, and it is not the migration one: the migration engine
+      // opens a connection per command and is sized and named separately.
+      StandaloneProcessEngineConfiguration engineConfig = engineMock.constructed().getLast();
+      ArgumentCaptor<DataSource> dsCaptor = ArgumentCaptor.forClass(DataSource.class);
+      verify(engineConfig).setDataSource(dsCaptor.capture());
+      HikariDataSource pool = assertInstanceOf(HikariDataSource.class, dsCaptor.getValue());
+      assertEquals("flowable-runtime-pool", pool.getPoolName());
     }
   }
 
@@ -563,25 +682,35 @@ class WorkflowHandlerSchemaUpdateTest {
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   private void setupEntityMock(MockedStatic<Entity> entityMock) {
+    setupEntityMock(entityMock, 0);
+  }
+
+  private void setupEntityMock(MockedStatic<Entity> entityMock, int asyncExecutorMaxPoolSize) {
     SystemRepository systemRepository = mock(SystemRepository.class);
     WorkflowSettings workflowSettings = mock(WorkflowSettings.class, RETURNS_DEEP_STUBS);
     entityMock.when(Entity::getSystemRepository).thenReturn(systemRepository);
     lenient().when(systemRepository.getWorkflowSettingsOrDefault()).thenReturn(workflowSettings);
+    lenient()
+        .when(workflowSettings.getExecutorConfiguration().getMaxPoolSize())
+        .thenReturn(asyncExecutorMaxPoolSize);
   }
 
   private OpenMetadataApplicationConfig buildMockConfig() {
     return buildMockConfig(null);
   }
 
+  // A real factory, not a mock: every engine pool is built through it, so stubbing it out would
+  // leave the pool sizing, naming, timeout and isolation wiring untested. Nothing here opens a
+  // socket — buildSubsystemPool defers the first connect past pool construction.
   private OpenMetadataApplicationConfig buildMockConfig(Long connectionTimeoutMs) {
     OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
-    HikariCPDataSourceFactory dsf = mock(HikariCPDataSourceFactory.class);
+    HikariCPDataSourceFactory dsf = new HikariCPDataSourceFactory();
+    dsf.setUrl("jdbc:postgresql://localhost:5432/openmetadata_db");
+    dsf.setUser("openmetadata_user");
+    dsf.setPassword("openmetadata_password");
+    dsf.setDriverClass("org.postgresql.Driver");
+    dsf.setConnectionTimeout(connectionTimeoutMs);
     lenient().when(config.getDataSourceFactory()).thenReturn(dsf);
-    lenient().when(dsf.getUrl()).thenReturn("jdbc:postgresql://localhost:5432/openmetadata_db");
-    lenient().when(dsf.getUser()).thenReturn("openmetadata_user");
-    lenient().when(dsf.getPassword()).thenReturn("openmetadata_password");
-    lenient().when(dsf.getDriverClass()).thenReturn("org.postgresql.Driver");
-    lenient().when(dsf.getConnectionTimeout()).thenReturn(connectionTimeoutMs);
     lenient().when(config.getPipelineServiceClientConfiguration()).thenReturn(null);
     return config;
   }
@@ -594,16 +723,15 @@ class WorkflowHandlerSchemaUpdateTest {
   }
 
   // WorkflowHandler constructs two StandaloneProcessEngineConfiguration instances: the outer
-  // wrapper in the constructor (with raw JDBC settings) and the inner engine in
-  // initializeNewProcessEngine (which now reads getJdbcUrl/etc. off the wrapper to build a
-  // HikariDataSource). Mockito mockConstruction returns default-value stubs, so we must
-  // pre-stub the getters or HikariDataSource construction rejects the null jdbcUrl.
+  // wrapper in the constructor and the inner engine in initializeNewProcessEngine, which reads
+  // the database type off the wrapper to pick the engine dialect and the pool's isolation level.
+  // Mockito mockConstruction returns default-value stubs, so the type must be pre-stubbed.
   private static void stubWrapperGetters(StandaloneProcessEngineConfiguration mock) {
-    lenient()
-        .when(mock.getJdbcUrl())
-        .thenReturn("jdbc:postgresql://localhost:5432/openmetadata_db");
-    lenient().when(mock.getJdbcUsername()).thenReturn("openmetadata_user");
-    lenient().when(mock.getJdbcPassword()).thenReturn("openmetadata_password");
-    lenient().when(mock.getJdbcDriver()).thenReturn("org.postgresql.Driver");
+    stubWrapperGetters(mock, ProcessEngineConfiguration.DATABASE_TYPE_POSTGRES);
+  }
+
+  private static void stubWrapperGetters(
+      StandaloneProcessEngineConfiguration mock, String databaseType) {
+    lenient().when(mock.getDatabaseType()).thenReturn(databaseType);
   }
 }
