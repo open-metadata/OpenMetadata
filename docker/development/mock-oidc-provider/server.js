@@ -16,7 +16,21 @@ const express = require('express');
 const crypto = require('crypto');
 
 const PORT = parseInt(process.env.PORT || '9090', 10);
-const ISSUER = process.env.ISSUER || `http://localhost:${PORT}`;
+// ISSUER_BASE (no trailing slash) is used to build endpoint URLs; ISSUER
+// (WITH trailing slash) is the identity string oidc-provider stamps into
+// the `iss` claim of every issued token and echoes back in discovery.
+// The @auth0/auth0-spa-js SDK computes its expected issuer as `${domain}/`
+// (a mandatory trailing slash — mirroring how real Auth0 tenants advertise
+// `iss` as `https://<tenant>.auth0.com/`) and refuses any token whose
+// `iss` differs by a single character, so the mock has to emit `iss`
+// with the slash. Keeping URL construction on the bare base avoids the
+// `//` double-slash paths every `${ISSUER}/auth` template would otherwise
+// generate.
+const ISSUER_BASE = (process.env.ISSUER || `http://localhost:${PORT}`).replace(
+  /\/+$/,
+  ''
+);
+const ISSUER = `${ISSUER_BASE}/`;
 
 // Mutable test state — controlled via /test/* endpoints
 const DEFAULT_LOGIN_ACCOUNT = 'admin';
@@ -309,8 +323,9 @@ async function init() {
   // Server-facing base URL for endpoints that the OM server calls from
   // inside Docker (token exchange, JWKS, userinfo). Defaults to ISSUER
   // so that outside-Docker usage (tests hitting localhost) works unchanged.
-  const INTERNAL_BASE =
-    process.env.INTERNAL_BASE_URL || ISSUER;
+  const INTERNAL_BASE = (
+    process.env.INTERNAL_BASE_URL || ISSUER_BASE
+  ).replace(/\/+$/, '');
 
   // Custom discovery endpoint returning hybrid URLs:
   //   - Browser-facing (authorization, end_session): ISSUER (localhost:9090)
@@ -319,11 +334,11 @@ async function init() {
   app.get('/.well-known/openid-configuration', (_req, res) => {
     res.json({
       issuer: ISSUER,
-      authorization_endpoint: `${ISSUER}/auth`,
+      authorization_endpoint: `${ISSUER_BASE}/auth`,
       token_endpoint: `${INTERNAL_BASE}/token`,
       jwks_uri: `${INTERNAL_BASE}/jwks`,
       userinfo_endpoint: `${INTERNAL_BASE}/me`,
-      end_session_endpoint: `${ISSUER}/session/end`,
+      end_session_endpoint: `${ISSUER_BASE}/session/end`,
       pushed_authorization_request_endpoint: `${INTERNAL_BASE}/request`,
       claims_parameter_supported: false,
       claims_supported: [
@@ -603,13 +618,11 @@ async function init() {
   app.use(provider.callback());
 
   app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Mock OIDC Provider listening on ${ISSUER_BASE}`);
     console.log(
-      `Mock OIDC Provider listening on ${ISSUER}`
+      `Discovery: ${ISSUER_BASE}/.well-known/openid-configuration`
     );
-    console.log(
-      `Discovery: ${ISSUER}/.well-known/openid-configuration`
-    );
-    console.log(`Test control: POST ${ISSUER}/test/configure`);
+    console.log(`Test control: POST ${ISSUER_BASE}/test/configure`);
   });
 }
 
