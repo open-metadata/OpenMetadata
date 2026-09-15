@@ -796,7 +796,12 @@ export const removeColumnLineage = async (
 
 export const dismissLineageMapOnboarding = async (page: Page) => {
   const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
-  if (await onboardingDialog.isVisible()) {
+  const hasSeenOnboarding = (await page.context().cookies()).some(
+    ({ name, value }) =>
+      name === 'lineageMapsOnboardingSeen' && value === 'true'
+  );
+  if (!hasSeenOnboarding) {
+    await expect(onboardingDialog).toBeVisible();
     await onboardingDialog.getByRole('button').click();
     await expect(onboardingDialog).not.toBeVisible();
   }
