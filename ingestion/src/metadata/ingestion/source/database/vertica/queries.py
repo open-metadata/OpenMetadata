@@ -14,6 +14,13 @@ SQL Queries used during ingestion
 
 import textwrap
 
+# Issued by the dialect while it initializes, on the first engine.connect().
+# sqlalchemy-vertica hands both to Connection.scalar() as bare strings, which
+# SQLAlchemy 2.x refuses to execute, so we re-issue them wrapped in text().
+VERTICA_GET_SERVER_VERSION = "SELECT version()"
+
+VERTICA_GET_CURRENT_SCHEMA = "SELECT current_schema()"
+
 # Column comments in Vertica can only happen on Projections
 #   https://forum.vertica.com/discussion/238945/vertica-try-to-create-comment
 # And Vertica projections follow this naming:

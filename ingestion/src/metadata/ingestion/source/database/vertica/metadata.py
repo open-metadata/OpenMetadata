@@ -17,8 +17,9 @@ import traceback
 from collections.abc import Iterable
 from textwrap import dedent
 
-from sqlalchemy import sql, util
+from sqlalchemy import sql, text, util
 from sqlalchemy.engine import reflection
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_vertica.base import VerticaDialect, ischema_names
 
@@ -36,7 +37,9 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
+    VERTICA_GET_CURRENT_SCHEMA,
     VERTICA_GET_PRIMARY_KEYS,
+    VERTICA_GET_SERVER_VERSION,
     VERTICA_LIST_DATABASES,
     VERTICA_SCHEMA_COMMENTS,
     VERTICA_TABLE_COMMENTS,
@@ -249,11 +252,65 @@ def get_table_comment(
     )
 
 
+VERTICA_VERSION_PATTERN = re.compile(r".*Vertica Analytic Database v(\d+)\.(\d+)\.(\d)+.*")
+
+
+def _get_server_version_info(self, connection):  # pylint: disable=unused-argument
+    """Read the server version while the dialect initializes.
+
+    sqlalchemy-vertica passes this statement to Connection.scalar() as a bare
+    string, which SQLAlchemy 2.x refuses to execute, so the first
+    engine.connect() raises instead of returning a connection and the
+    CheckAccess step of Test Connection fails.
+    """
+    version = connection.scalar(text(VERTICA_GET_SERVER_VERSION))
+    match = VERTICA_VERSION_PATTERN.match(version or "")
+    if not match:
+        raise AssertionError(f"Could not determine version from string '{version}'")
+    return tuple(int(group) for group in match.group(1, 2, 3) if group is not None)
+
+
+def _get_default_schema_name(self, connection):  # pylint: disable=unused-argument
+    """Read the default schema while the dialect initializes.
+
+    initialize() calls this straight after the server version and the upstream
+    dialect has the same bare-string defect here, so correcting only the version
+    moves the failure rather than clearing it.
+    """
+    return connection.scalar(text(VERTICA_GET_CURRENT_SCHEMA))
+
+
 VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
 VerticaDialect.get_view_definition = get_view_definition  # pyright: ignore[reportAttributeAccessIssue]
 VerticaDialect.get_all_table_comments = get_all_table_comments
 VerticaDialect.get_table_comment = get_table_comment  # pyright: ignore[reportAttributeAccessIssue]
+VerticaDialect._get_server_version_info = _get_server_version_info  # pylint: disable=protected-access
+VerticaDialect._get_default_schema_name = _get_default_schema_name  # pylint: disable=protected-access
+
+# sqlalchemy-vertica predates SQLAlchemy 2.0 and overrides only the singular
+# get_* reflection methods. The batched get_multi_* API that MetaData.reflect()
+# now calls is therefore inherited from PGDialect, which reads pg_catalog, a
+# schema Vertica does not have. Reflection fails with MissingSchema, and because
+# get_all_table_ddls swallows that at debug level, tables silently end up with no
+# schema definition while views, reflected one at a time, are unaffected.
+#
+# DefaultDialect's versions are generic loops over the singular methods, so this
+# routes the batched API back onto the Vertica implementations above.
+for _batched_reflection_method in (
+    "get_multi_columns",
+    "get_multi_pk_constraint",
+    "get_multi_foreign_keys",
+    "get_multi_indexes",
+    "get_multi_table_comment",
+    "get_multi_unique_constraints",
+    "get_multi_check_constraints",
+):
+    setattr(
+        VerticaDialect,
+        _batched_reflection_method,
+        getattr(DefaultDialect, _batched_reflection_method),
+    )
 
 
 class VerticaSource(CommonDbSourceService, MultiDBSource):
