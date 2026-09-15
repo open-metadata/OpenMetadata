@@ -71,7 +71,32 @@ The fixture: tables A, B, C and D, with `A om:upstream B`, `B om:upstream C`, `A
 | column | `rdf:type`, `rdfs:label`, `om:fullyQualifiedName`, `om:columnDataType`, `om:hasChildColumn` | owner's `columns` field | same |
 | extension / extension property | `rdf:type`, `om:hasExtensionProperty`, `om:extensionKey`, `om:extensionValue` | owner's `extension` field | same |
 
-Approved `rdf:type` objects: `om:Table`, `om:Tag`, `om:Column`, `om:Extension`, `om:ExtensionProperty`, `dcat:Dataset`, `skos:Concept`, `prov:Entity`.
+| table | `om:domains` | domains → `VIEW_BASIC`; the domain object must be visible | `EntityResource` constructor |
+| table | `dct:hasVersion`, `om:hasServiceType`, `om:entityStatus`, `om:processedLineage` | core → `VIEW_BASIC` | see "Scalar attribute evidence" |
+| domain | `rdf:type`, `rdfs:label`, `om:fullyQualifiedName`, `dct:description`, `dct:modified`, `dcat:version`, `dct:hasVersion`, `om:domainType`, `om:entityStatus` | core → `VIEW_BASIC` on the **domain** resource | see "Scalar attribute evidence" |
+
+Approved `rdf:type` objects: `om:Table`, `om:Tag`, `om:Domain`, `om:Column`, `om:Extension`, `om:ExtensionProperty`, `dcat:Dataset`, `skos:Concept`, `skos:Collection`, `prov:Entity`.
+
+### Scalar attribute evidence
+
+A predicate is mapped to core only when both links below are traced in code. `EntityResource.getViewOperations` requires only `VIEW_BASIC` for a GET without a fields parameter. None of these fields is stripped from storage (`TableRepository` strips `service`, `DomainRepository` strips `parent`), and none is cleared on read: `EntityRepository.clearFieldsInternal`, `TableRepository.clearFields` and `DomainRepository.clearFields` leave them alone. The only response maskers, `PIIMasker` and `EntityMasker`, act on column/sample data and service secrets.
+
+| Predicate | Source | Field and schema type |
+| --- | --- | --- |
+| `dct:hasVersion` | `base.jsonld` `version` | `version`, entity version number |
+| `dcat:version` | `RdfPropertyMapper` from `entity.getVersion()` | `version` |
+| `dct:modified` | `base.jsonld` `updatedAt` | `updatedAt`, timestamp |
+| `dct:description` | `base.jsonld` `description` | `description`, markdown |
+| `om:hasServiceType` | `dataAsset.jsonld` `serviceType` | table `serviceType`, database service type enum |
+| `om:domainType` | `governance.jsonld` `domainType` | domain `domainType` enum |
+| `om:entityStatus` | `RdfPropertyMapper` unmapped-field path, `om:` + field name | `entityStatus`, `EntityStatus` enum |
+| `om:processedLineage` | same unmapped-field path | table `processedLineage`, boolean |
+| `rdf:type om:Domain`, `rdf:type skos:Collection` | `JsonLdTranslator` via `RdfUtils.getOpenMetadataType` and `getRdfType` | entity type |
+
+Open semantics, not resolved by this mapping:
+- **Free text:** `description` is markdown and can embed entity links. It is admitted with the same `VIEW_BASIC` the REST GET needs, which reproduces what REST returns; whether SPARQL should follow that is undecided.
+- **Explicitly requested fields:** a GET that names one of these fields in `fields=` asks `getViewOperations` for `VIEW_ALL`, because the resources do not register them. The mapping follows the default GET response instead.
+- **Deferred:** `om:isDeleted` (from `deleted`) stays unmapped because whether deleted entities appear is an include question. `om:childrenCount` stays unmapped because `DomainRepository.clearFields` returns it only when requested.
 
 ## Results
 
@@ -147,10 +172,10 @@ mvn -pl openmetadata-service -am package -Dtest='SanitizedModel*Test' \
 | That role removed | A, C, D |
 | `DomainOnlyAccessRole` removed; its `!hasDomain()` deny goes, `OrganizationPolicy` still allows | A, B, C, D |
 
-Result: all six phases passed, in three separate runs on 2026-09-15. The last is the verification run below, with the final test code.
+Result: all six phases passed, in four separate runs on 2026-09-15. The last two used the final authorization test code: the verification run below, and a run with the scalar slice.
 
-**Request-lifecycle finding (test harness, not production).** A first version made in-process decisions on the long-lived JUnit thread. `RequestEntityCache` is thread-local and cleared only by the request filters, so that thread kept the entity it loaded first. All three passing runs also recorded, without asserting, decisions on a reused thread:
-- In all three, after B moved into the visible domain, the reused thread still denied B, with the REST context shape and with a cache-backed one. Fresh-request decisions matched REST, and every other recorded cell matched REST.
+**Request-lifecycle finding (test harness, not production).** A first version made in-process decisions on the long-lived JUnit thread. `RequestEntityCache` is thread-local and cleared only by the request filters, so that thread kept the entity it loaded first. All four passing runs also recorded, without asserting, decisions on a reused thread:
+- In all four, after B moved into the visible domain, the reused thread still denied B, with the REST context shape and with a cache-backed one. Fresh-request decisions matched REST, and every other recorded cell matched REST.
 - In a separate run, where the reused thread first loaded B after that move, it kept allowing B after B moved back.
 
 This concerns thread reuse in the test only. Production request threads, the shared entity cache and cross-pod invalidation were not examined.
@@ -160,7 +185,7 @@ This concerns thread reuse in the test only. Production request threads, the sha
 - Domains: `dct:description`, `dct:hasVersion`, `dct:modified`, `dcat:version`, `om:domainType`, `om:entityStatus`, `om:childrenCount`, `om:has`, `om:upstream`, `om:downstream`, `prov:wasDerivedFrom`.
 - Types: `om:Domain`, `skos:Collection`.
 
-The test asserts the rejection, that every violation is a mapping gap (no ownership or retrieval error), and that domain membership (`om:has`), domain lineage (`om:upstream`), a container link (`om:belongsToSchema`) and the `om:Domain` type are among the violations. It proves that unsupported live facts are rejected. It does not show that a sanitized model can be built from live projections.
+The test asserts the rejection and that every violation is a mapping gap (no ownership or retrieval error). It also asserts that four deferred facts are among the violations: domain membership (`om:has`), domain lineage (`om:upstream`), a container link (`om:belongsToSchema`) and the soft-delete flag (`om:isDeleted`). Finally, no violation may name a scalar term the builder maps. The `om:isDeleted` and mapped-scalar assertions came with the scalar slice. They passed on 2026-09-15 with the verification command and image below: `RdfAuthorizationAlignmentIT` 2 tests, 0 failures, 0 errors, 0 skipped; `SanitizedModelExperimentTest` 59 tests, 0 failures, 0 errors, 0 skipped; Maven exit 0. It proves that unsupported live facts are rejected. It does not show that a sanitized model can be built from live projections.
 
 **Verification run, 2026-09-15, with the final test code.**
 
@@ -180,7 +205,7 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
 - **Earlier run of the same command:** it also reported 2 tests, 0 failures, 0 errors, 0 skipped. That was before the class-level RDF condition replaced a `@BeforeAll` assumption.
 - **What the passing rejection test shows:** the build was rejected, the four selected violations were among those reported, and every violation was a mapping gap. Neither passing run of this test recorded the full violation list, so the 22 above come from the run in which the build was still a plain test.
 
-**Diagnostics, not latency evidence.** Across the three passing runs, REST checks took 50–99 ms per phase for four tables, and fresh-request checks 13–20 ms. Container peaks: OpenSearch 2,571–2,755 MiB, Fuseki 557–728 MiB (1 GiB limit), Postgres 199–271 MiB. The host recorded no swap-outs.
+**Diagnostics, not latency evidence.** Across the four passing runs, REST checks took 50–104 ms per phase for four tables, and fresh-request checks 13–20 ms. Container peaks: OpenSearch 2,571–2,755 MiB, Fuseki 557–728 MiB (1 GiB limit), Postgres 199–271 MiB. The host recorded no swap-outs.
 
 ### Findings
 
@@ -213,7 +238,7 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
    - `"0.1"^^xsd:double` comes back from Fuseki as `"0.1e0"`, which a separate throwaway container probe confirmed. The value is the same, but the RDF term differs.
    - Comparisons by term must therefore use a reference read through the same store; comparing against the in-memory fixture instead makes whole-model comparisons fail.
    - The tests read the unrestricted reference through the same source as the sanitized build.
-10. **Live projections carry facts outside the map (blocking).** On API-created tables and domains the build fails closed with 22 violations (see "Integration run"). The scalar ones need their field and operation derived from the resource's registered view operations, one field group at a time.
+10. **Live projections carry facts outside the map (blocking).** On API-created tables and domains the build failed closed with 22 violations (see "Integration run"). The scalar slice resolves 12 of them, traced in "Scalar attribute evidence": 10 predicate violations (4 on tables, 6 on domains) and the 2 domain-type violations. Still rejected: the container links, `om:joins`, `om:isDeleted`, `om:childrenCount`, domain membership and domain lineage. An integration run on 2026-09-15 confirmed this on live data. No violation named a mapped term, the four asserted deferred facts were still rejected, and every violation was a mapping gap. That run did not record the full remaining list.
 11. **Relationship and shared facts need target-aware rules, not field mappings.** Domain membership (`om:has`) and domain-level lineage, which `LineageRepository.addDomainLineage` derives from asset lineage, both reference other assets. `om:joins` is a JSON literal naming other tables. Container links point at service, database and schema entities. A visible domain must not reveal hidden members. These rules are undecided.
 
 ## Proven vs not proven

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.QueryExecution;
@@ -50,6 +51,8 @@ final class SanitizedModelFixture {
   static final UUID TABLE_D = UUID.fromString("d0000000-0000-4000-8000-000000000000");
   static final UUID RESTRICTED_TAG_ID = UUID.fromString("e0000000-0000-4000-8000-000000000001");
   static final UUID SHARED_TAG_ID = UUID.fromString("e0000000-0000-4000-8000-000000000002");
+  static final UUID DOMAIN_VISIBLE = UUID.fromString("f0000000-0000-4000-8000-000000000001");
+  static final UUID DOMAIN_RESTRICTED = UUID.fromString("f0000000-0000-4000-8000-000000000002");
   static final String HIDDEN_COLUMN_PREFIX = BASE + "entity/column/service.db.schema.secret_b.";
 
   private static final ObjectMapper JSON = new ObjectMapper();
@@ -95,6 +98,37 @@ final class SanitizedModelFixture {
     store.getNamedModel(KNOWLEDGE).add(project(Entity.TABLE, TABLE_C, fields));
   }
 
+  /**
+   * Scalar attributes a GET without a fields parameter returns: on visible A and hidden B, and on a
+   * visible domain and a restricted one.
+   */
+  static void addScalarAttributes(final Dataset store) {
+    final Model knowledge = store.getNamedModel(KNOWLEDGE);
+    knowledge.add(
+        project(
+            Entity.TABLE,
+            TABLE_A,
+            withScalarAttributes(withExtension(table("orders", SHARED_TAG)))));
+    knowledge.add(
+        project(
+            Entity.TABLE,
+            TABLE_B,
+            withScalarAttributes(table("secret_b", RESTRICTED_TAG, SHARED_TAG))));
+    knowledge.add(project(Entity.DOMAIN, DOMAIN_VISIBLE, domain("Finance")));
+    knowledge.add(project(Entity.DOMAIN, DOMAIN_RESTRICTED, domain("Secret")));
+  }
+
+  /** The soft-delete flag, whose visibility depends on undecided include semantics. */
+  static void addDeletedFlag(final Dataset store) {
+    final ObjectNode fields = table("customers");
+    fields.put("deleted", false);
+    store.getNamedModel(KNOWLEDGE).add(project(Entity.TABLE, TABLE_C, fields));
+  }
+
+  static String domainIri(final UUID id) {
+    return BASE + "entity/domain/" + id;
+  }
+
   static String tableIri(final UUID id) {
     return BASE + "entity/table/" + id;
   }
@@ -113,6 +147,16 @@ final class SanitizedModelFixture {
         new CatalogResource(Entity.TAG, SHARED_TAG_ID, List.of()));
   }
 
+  /** The catalog plus both domains; the restricted domain carries the restricted tag. */
+  static List<CatalogResource> catalogWithDomains() {
+    return Stream.concat(
+            catalog().stream(),
+            Stream.of(
+                new CatalogResource(Entity.DOMAIN, DOMAIN_VISIBLE, List.of()),
+                new CatalogResource(Entity.DOMAIN, DOMAIN_RESTRICTED, labels(RESTRICTED_TAG))))
+        .toList();
+  }
+
   static KnowledgeSource local(final Dataset store) {
     return sparql -> {
       try (QueryExecution execution = QueryExecution.dataset(store).query(sparql).build()) {
@@ -128,6 +172,10 @@ final class SanitizedModelFixture {
 
   static CallerPermissions restrictedTablesAndTagsHidden() {
     return evaluatedBy(List.of(allowViewAll(), denyRestrictedTables(), denyTags()));
+  }
+
+  static CallerPermissions restrictedTablesAndDomainsHidden() {
+    return evaluatedBy(List.of(allowViewAll(), denyRestrictedTables(), denyRestrictedDomains()));
   }
 
   private static CallerPermissions evaluatedBy(final List<Rule> rules) {
@@ -168,6 +216,15 @@ final class SanitizedModelFixture {
         .withCondition("matchAnyTag('" + RESTRICTED_TAG + "')");
   }
 
+  private static Rule denyRestrictedDomains() {
+    return new Rule()
+        .withName("HideRestrictedDomains")
+        .withResources(List.of(Entity.DOMAIN))
+        .withOperations(List.of(MetadataOperation.VIEW_ALL))
+        .withEffect(Rule.Effect.DENY)
+        .withCondition("matchAnyTag('" + RESTRICTED_TAG + "')");
+  }
+
   private static Rule denyTags() {
     return new Rule()
         .withName("HideTags")
@@ -200,6 +257,27 @@ final class SanitizedModelFixture {
     for (String tagFqn : tagFqns) {
       fields.withArray("tags").add(tagLabel(tagFqn));
     }
+    return fields;
+  }
+
+  private static ObjectNode withScalarAttributes(final ObjectNode fields) {
+    fields.put("serviceType", "Postgres");
+    fields.put("entityStatus", "Approved");
+    fields.put("processedLineage", true);
+    fields.put("version", 0.1);
+    fields.put("updatedAt", 1000L);
+    return fields;
+  }
+
+  private static ObjectNode domain(final String name) {
+    final ObjectNode fields = JSON.createObjectNode();
+    fields.put("name", name);
+    fields.put("fullyQualifiedName", name);
+    fields.put("description", "Domain " + name);
+    fields.put("domainType", "Aggregate");
+    fields.put("entityStatus", "Approved");
+    fields.put("version", 0.1);
+    fields.put("updatedAt", 1000L);
     return fields;
   }
 

@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.BASE;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.DOMAIN_RESTRICTED;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.DOMAIN_VISIBLE;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.HIDDEN_COLUMN_PREFIX;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.KNOWLEDGE;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.RESTRICTED_TAG_ID;
@@ -15,6 +17,7 @@ import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_A;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_B;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_C;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_D;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.domainIri;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.tableIri;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.tagIri;
 
@@ -64,7 +67,23 @@ class SanitizedModelExperimentTest {
           "<C>", "<" + tableIri(TABLE_C) + ">",
           "<D>", "<" + tableIri(TABLE_D) + ">",
           "<T_RESTRICTED>", "<" + tagIri(RESTRICTED_TAG_ID) + ">",
-          "<T_SHARED>", "<" + tagIri(SHARED_TAG_ID) + ">");
+          "<T_SHARED>", "<" + tagIri(SHARED_TAG_ID) + ">",
+          "<D_VISIBLE>", "<" + domainIri(DOMAIN_VISIBLE) + ">",
+          "<D_RESTRICTED>", "<" + domainIri(DOMAIN_RESTRICTED) + ">");
+  private static final String TABLE_SCALAR_ATTRIBUTES =
+      """
+      ASK { %s om:hasServiceType "Postgres" ; om:entityStatus "Approved" ;
+               om:processedLineage true ; <http://purl.org/dc/terms/hasVersion> ?version }
+      """;
+  private static final String DOMAIN_SCALAR_ATTRIBUTES =
+      """
+      ASK { %s a om:Domain , <http://www.w3.org/2004/02/skos/core#Collection> ;
+               om:domainType "Aggregate" ; om:entityStatus "Approved" ;
+               <http://purl.org/dc/terms/description> "Domain %s" ;
+               <http://purl.org/dc/terms/modified> ?modified ;
+               <http://www.w3.org/ns/dcat#version> ?version ;
+               <http://purl.org/dc/terms/hasVersion> ?number }
+      """;
   private static final List<String> INVARIANCE_QUERIES =
       List.of(
           "SELECT (COUNT(?x) AS ?n) WHERE { <A> om:upstream ?x }",
@@ -221,6 +240,31 @@ class SanitizedModelExperimentTest {
   }
 
   @Test
+  void scalarTableAttributesFollowTheirTable() {
+    SanitizedModelFixture.addScalarAttributes(store);
+    final Model model = sanitizedWithDomains().model();
+    assertTrue(ask(knowledgeGraph(), TABLE_SCALAR_ATTRIBUTES.formatted("<B>")));
+    assertTrue(ask(model, TABLE_SCALAR_ATTRIBUTES.formatted("<A>")));
+    assertFalse(ask(model, "ASK { <B> ?p ?o }"));
+  }
+
+  @Test
+  void scalarDomainAttributesFollowTheirDomain() {
+    SanitizedModelFixture.addScalarAttributes(store);
+    final Model model = sanitizedWithDomains().model();
+    assertTrue(
+        ask(knowledgeGraph(), DOMAIN_SCALAR_ATTRIBUTES.formatted("<D_RESTRICTED>", "Secret")));
+    assertTrue(ask(model, DOMAIN_SCALAR_ATTRIBUTES.formatted("<D_VISIBLE>", "Finance")));
+    assertFalse(ask(model, "ASK { <D_RESTRICTED> ?p ?o }"));
+  }
+
+  @Test
+  void deletedFlagStaysUnmappedUntilIncludeSemanticsAreDecided() {
+    SanitizedModelFixture.addDeletedFlag(store);
+    assertFailsClosedOn(BASE + "ontology/isDeleted");
+  }
+
+  @Test
   void lineageDetailsWithoutAPermissionMappingFailClosed() {
     SanitizedModelFixture.addLineageDetails(store, TABLE_A, TABLE_D);
     assertFailsClosedOn(BASE + "ontology/hasLineageDetails");
@@ -371,6 +415,15 @@ class SanitizedModelExperimentTest {
 
   private SanitizedModel sanitized(final CallerPermissions permissions) {
     return sanitized(permissions, TRIPLE_BUDGET);
+  }
+
+  private SanitizedModel sanitizedWithDomains() {
+    return new SanitizedModelBuilder(
+            source(store),
+            SanitizedModelFixture.catalogWithDomains(),
+            SanitizedModelFixture.restrictedTablesAndDomainsHidden(),
+            TRIPLE_BUDGET)
+        .build();
   }
 
   private SanitizedModel sanitized(final CallerPermissions permissions, final int budget) {

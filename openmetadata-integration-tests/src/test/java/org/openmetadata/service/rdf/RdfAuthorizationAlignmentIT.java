@@ -121,16 +121,30 @@ class RdfAuthorizationAlignmentIT {
   private static final String UNAPPROVED_TYPE = " is not an approved vocabulary term";
 
   /**
-   * Relationship and shared facts whose rules are not reviewed: domain membership and domain lineage
-   * reference other assets, and container links reference other entities. They must keep rejecting
-   * the build until a reviewed rule checks their targets.
+   * Deferred facts that must keep rejecting the build until reviewed: domain membership and domain
+   * lineage reference other assets, container links reference other entities, and the soft-delete
+   * flag depends on undecided include semantics.
    */
-  private static final Set<String> UNREVIEWED_FACT_VIOLATIONS =
+  private static final Set<String> DEFERRED_FACT_VIOLATIONS =
       Set.of(
           UNMAPPED_PREDICATE + OM + "has on DOMAIN",
           UNMAPPED_PREDICATE + OM + "upstream on DOMAIN",
           UNMAPPED_PREDICATE + OM + "belongsToSchema on TABLE",
-          "Type " + OM + "Domain" + UNAPPROVED_TYPE);
+          UNMAPPED_PREDICATE + OM + "isDeleted on TABLE");
+
+  /** Scalar attributes and types the builder now maps; live facts using them must be admitted. */
+  private static final Set<String> MAPPED_SCALAR_TERMS =
+      Set.of(
+          "http://purl.org/dc/terms/description",
+          "http://purl.org/dc/terms/modified",
+          "http://purl.org/dc/terms/hasVersion",
+          "http://www.w3.org/ns/dcat#version",
+          OM + "hasServiceType",
+          OM + "entityStatus",
+          OM + "processedLineage",
+          OM + "domainType",
+          OM + "Domain",
+          "http://www.w3.org/2004/02/skos/core#Collection");
 
   private final Authorizer authorizer = new DefaultAuthorizer();
 
@@ -168,12 +182,24 @@ class RdfAuthorizationAlignmentIT {
     assertAll(
         () ->
             assertTrue(
-                violations.containsAll(UNREVIEWED_FACT_VIOLATIONS),
-                "unreviewed relationship and shared facts must be rejected: " + violations),
+                violations.containsAll(DEFERRED_FACT_VIOLATIONS),
+                "deferred facts must be rejected: " + violations),
+        () ->
+            assertTrue(
+                violations.stream().noneMatch(RdfAuthorizationAlignmentIT::namesMappedScalarTerm),
+                "mapped scalar attributes must be admitted: " + violations),
         () ->
             assertTrue(
                 violations.stream().allMatch(RdfAuthorizationAlignmentIT::isMappingGap),
                 "every violation must be a mapping gap: " + violations));
+  }
+
+  private static boolean namesMappedScalarTerm(final String violation) {
+    return MAPPED_SCALAR_TERMS.stream()
+        .anyMatch(
+            term ->
+                violation.startsWith(UNMAPPED_PREDICATE + term + " on ")
+                    || violation.equals("Type " + term + UNAPPROVED_TYPE));
   }
 
   private static boolean isMappingGap(final String violation) {

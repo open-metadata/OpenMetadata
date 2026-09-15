@@ -48,11 +48,16 @@ final class SanitizedModelBuilder {
   private static final String DESCRIPTION = "http://purl.org/dc/terms/description";
   private static final String MODIFIED = "http://purl.org/dc/terms/modified";
   private static final String VERSION = "http://www.w3.org/ns/dcat#version";
+  private static final String HAS_VERSION = "http://purl.org/dc/terms/hasVersion";
   private static final int SUBJECTS_PER_QUERY = 100;
   private static final int MAX_OWNERSHIP_DEPTH = 8;
 
   /** View operation per field: EntityResource, TableResource and LineageResource. */
   enum ViewField {
+    /**
+     * Attributes returned by a GET without a fields parameter, which requires only VIEW_BASIC. They
+     * are neither stripped from storage nor cleared on read by the entity's repository.
+     */
     CORE,
     TAGS,
     COLUMNS,
@@ -90,6 +95,10 @@ final class SanitizedModelBuilder {
               entry(DESCRIPTION, ViewField.CORE),
               entry(MODIFIED, ViewField.CORE),
               entry(VERSION, ViewField.CORE),
+              entry(HAS_VERSION, ViewField.CORE),
+              entry(OM + "hasServiceType", ViewField.CORE),
+              entry(OM + "entityStatus", ViewField.CORE),
+              entry(OM + "processedLineage", ViewField.CORE),
               entry(OM + "hasTag", ViewField.TAGS),
               entry(OM + "domains", ViewField.DOMAINS),
               entry(OM + "hasColumn", ViewField.COLUMNS),
@@ -116,7 +125,16 @@ final class SanitizedModelBuilder {
               OM + "tagSource",
               ViewField.CORE),
           NodeKind.DOMAIN,
-          Map.of(TYPE, ViewField.CORE, LABEL, ViewField.CORE, FQN, ViewField.CORE),
+          Map.ofEntries(
+              entry(TYPE, ViewField.CORE),
+              entry(LABEL, ViewField.CORE),
+              entry(FQN, ViewField.CORE),
+              entry(DESCRIPTION, ViewField.CORE),
+              entry(MODIFIED, ViewField.CORE),
+              entry(VERSION, ViewField.CORE),
+              entry(HAS_VERSION, ViewField.CORE),
+              entry(OM + "domainType", ViewField.CORE),
+              entry(OM + "entityStatus", ViewField.CORE)),
           NodeKind.COLUMN,
           Map.of(
               TYPE,
@@ -151,11 +169,13 @@ final class SanitizedModelBuilder {
       Set.of(
           OM + "Table",
           OM + "Tag",
+          OM + "Domain",
           OM + "Column",
           OM + "Extension",
           OM + "ExtensionProperty",
           "http://www.w3.org/ns/dcat#Dataset",
           "http://www.w3.org/2004/02/skos/core#Concept",
+          "http://www.w3.org/2004/02/skos/core#Collection",
           "http://www.w3.org/ns/prov#Entity");
 
   private final KnowledgeSource source;
