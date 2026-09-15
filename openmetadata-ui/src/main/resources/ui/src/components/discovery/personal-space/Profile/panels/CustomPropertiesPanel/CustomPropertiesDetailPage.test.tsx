@@ -47,6 +47,7 @@ const mockEntityType = {
 const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockEntityType);
 const mockUpdateType = jest.fn().mockResolvedValue(mockEntityType);
 const mockGetEntityPermission = jest.fn().mockResolvedValue({
+  Create: true,
   EditAll: true,
   Delete: true,
 });
@@ -66,6 +67,7 @@ jest.mock(
 );
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
+  ...jest.requireActual('../../../../../../utils/PermissionsUtils'),
   DEFAULT_ENTITY_PERMISSION: {
     Create: false,
     Delete: false,
@@ -318,7 +320,7 @@ describe('CustomPropertiesDetailPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetTypeByFQN.mockResolvedValue(mockEntityType);
-    mockGetEntityPermission.mockResolvedValue({ EditAll: true, Delete: true });
+    mockGetEntityPermission.mockResolvedValue({ Create: true, EditAll: true, Delete: true });
   });
 
   it('renders the component with table', async () => {

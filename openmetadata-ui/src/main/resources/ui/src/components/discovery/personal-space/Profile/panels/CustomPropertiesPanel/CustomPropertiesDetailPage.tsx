@@ -247,7 +247,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                     onPress={() => onEditProperty(property)}
                   />
                 )}
-                {canEditAll && (
+                {canDelete && (
                   <Button
                     aria-label={t('label.delete')}
                     color="tertiary-destructive"

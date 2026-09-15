@@ -51,7 +51,9 @@ jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({
-    usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
+    usePermissionProvider: jest
+      .fn()
+      .mockReturnValue({ permissions: { type: { Create: true, EditAll: true, Delete: true } } }),
   })
 );
 
