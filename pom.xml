@@ -163,7 +163,9 @@
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
-    <freemarker.version>2.3.33</freemarker.version>
+    <!-- CVE-2026-84939: relative path traversal via ClassTemplateLoader / WebappTemplateLoader
+         during localized template lookup, fixed in 2.3.35. -->
+    <freemarker.version>2.3.35</freemarker.version>
     <passay.version>1.6.6</passay.version>
     <bcrypt.version>0.10.2</bcrypt.version>
     <simplejavamail.version>8.12.6</simplejavamail.version>
