@@ -332,3 +332,58 @@ class TestVerticaSchemaDefinitionPath:
         )
 
         assert definition is None
+
+
+class TestVerticaGetColumnsWithComments:
+    """The other side of the same branch, on a server that does expose
+    child_object.
+
+    The fallback tests above only pin the unsupported case, so a dialect that
+    always chose the comment-less template would keep them green while quietly
+    dropping every comment on Vertica 10 and later.
+    """
+
+    @staticmethod
+    def _connection():
+        """Answers the three statements get_columns issues, with the probe
+        accepted the way a Vertica 10 or later server accepts it.
+
+        A comment comes back only for the template that joins the comments
+        catalog. The other one selects ``'' AS comment``, so answering both the
+        same way would let the comment-less template look correct.
+        """
+        connection = Mock()
+
+        def _execute(statement, *_args, **_kw):
+            rendered = str(statement)
+            if "v_catalog.columns" in rendered:
+                comment = "surrogate key" if "cm.child_object" in rendered else ""
+                return [
+                    _column_row("customer_id", "int", comment=comment),
+                    _column_row("region", "varchar(40)", comment=""),
+                ]
+            if "primary_keys" in rendered:
+                return [("customer_id",)]
+            return []  # the probe, LIMIT 0
+
+        connection.execute.side_effect = _execute
+        return connection
+
+    def test_comments_reach_the_column_info(self):
+        connection = self._connection()
+
+        columns = {
+            column["name"]: column
+            for column in get_columns(VerticaDialect(), connection, "customers", schema="omd_test")
+        }
+
+        assert columns["customer_id"]["comment"] == "surrogate key"
+
+    def test_the_commented_template_is_the_one_executed(self):
+        connection = self._connection()
+
+        list(get_columns(VerticaDialect(), connection, "customers", schema="omd_test"))
+
+        executed = [str(call.args[0]) for call in connection.execute.call_args_list]
+        columns_statement = next(statement for statement in executed if "v_catalog.columns" in statement)
+        assert "cm.child_object" in columns_statement
