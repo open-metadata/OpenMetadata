@@ -55,12 +55,17 @@ RUN apt-get -qq update \
   # that fix exists only in trixie-security (6.12.105-1, DSA-6466-1), and bookworm
   # and bookworm-security are both still "vulnerable" on the 6.1 line. The image
   # that reports it is trixie-based -- see ingestion/operators/docker/Dockerfile.
+  # libexpat1 -> 2.5.0-1+deb12u3 (CVE-2026-76957, Use After Free) and
+  # libssh2-1 -> 1.10.0-3+deb12u1 (CVE-2026-7598, CVE-2026-58050, CVE-2026-66032,
+  # CVE-2026-66034). Both arrive transitively -- libexpat1 via git, libssh2-1 via
+  # libcurl4 -- and both fixed versions are published in bookworm-security.
   # --only-upgrade is a no-op for packages not present in the base image.
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
        perl perl-base perl-modules-5.36 libperl5.36 libnss3 linux-libc-dev \
+       libexpat1 libssh2-1 \
   # docker-ce-cli comes from the airflow base and nothing in this image runs it:
   # Airflow's DockerOperator and the ingestion test helpers both drive the daemon
   # through the docker-py SDK over the socket, never the binary. It is a 42 MB Go
