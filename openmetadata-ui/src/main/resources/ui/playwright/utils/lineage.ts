@@ -227,7 +227,9 @@ export const deleteEdge = async (
     )
     .click();
   await deleteRes;
-  await page.getByTestId('delete-edge-confirmation-modal').waitFor({ state: 'detached' });
+  await page
+    .getByTestId('delete-edge-confirmation-modal')
+    .waitFor({ state: 'detached' });
   await sceneRes;
 };
 

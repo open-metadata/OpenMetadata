@@ -1560,8 +1560,8 @@ test.describe('Context Center Articles', () => {
           );
           const data = await res.json();
 
-          return (data.editors ?? []).some(
-            (e: { name: string }) => e.name.startsWith('pw-data-consumer')
+          return (data.editors ?? []).some((e: { name: string }) =>
+            e.name.startsWith('pw-data-consumer')
           );
         },
         { timeout: 15_000, intervals: [1000, 2000, 3000] }
