@@ -149,12 +149,7 @@ export const Tooltip = ({
       <span className={triggerClassName}>{children}</span>
     ) : (
       <AriaButton
-        // cursor inherits: a button's UA `cursor: default` would otherwise
-        // override a clickable ancestor's pointer (e.g. a table row).
-        className={cx(
-          'tw:h-max tw:w-max tw:cursor-[inherit] tw:outline-hidden',
-          triggerClassName
-        )}
+        className={cx('tw:h-max tw:w-max tw:outline-hidden', triggerClassName)}
         isDisabled={triggerIsDisabled}
         onPress={onTriggerPress}>
         {children}
