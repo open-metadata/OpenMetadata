@@ -4,8 +4,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
@@ -316,6 +319,101 @@ public class RuleEvaluator {
   }
 
   @Function(
+      name = "matchAnyServiceTag",
+      input = "List of comma separated tag or glossary fully qualified names",
+      description =
+          "Returns true if the service that ingested the entity being accessed carries at least "
+              + "one of the tags given as input. Pair it with a Deny rule to hide every asset "
+              + "ingested by a tagged service. Returns false for entities that are not backed by "
+              + "a service (glossary terms, users, teams, domains, tags), so an Allow rule using "
+              + "this condition grants nothing for them. When the resource is the service itself, "
+              + "its own tags are matched, so the service is hidden along with its assets.",
+      examples = {
+        "matchAnyServiceTag('Environment.Development')",
+        "matchAnyServiceTag('Environment.Development', 'Environment.Staging')"
+      })
+  @SuppressWarnings("unused")
+  public boolean matchAnyServiceTag(String... tagFQNs) {
+    if (expressionValidation) {
+      for (String tagFqn : tagFQNs) {
+        validateEntityReference(Entity.TAG, tagFqn);
+      }
+      return false;
+    }
+    if (resourceContext == null || tagFQNs.length == 0) {
+      return false;
+    }
+    List<TagLabel> serviceTags = resourceContext.getServiceTags();
+    if (nullOrEmpty(serviceTags)) {
+      return false;
+    }
+    // A HashSet rather than Set.of: a condition may repeat an argument, and Set.of rejects
+    // duplicates by throwing, which would surface as a failed authorization rather than a match.
+    Set<String> wanted = new HashSet<>(Arrays.asList(tagFQNs));
+    return serviceTags.stream().anyMatch(tag -> wanted.contains(tag.getTagFQN()));
+  }
+
+  @Function(
+      name = "matchAnyServiceType",
+      input = "List of comma separated service types",
+      description =
+          "Returns true if the service that ingested the entity being accessed is of any of the "
+              + "given service types. Matching is case-insensitive. Returns false for entities "
+              + "that are not backed by a service.",
+      examples = {
+        "matchAnyServiceType('Snowflake')",
+        "matchAnyServiceType('Snowflake', 'BigQuery')"
+      })
+  @SuppressWarnings("unused")
+  public boolean matchAnyServiceType(String... serviceTypes) {
+    if (expressionValidation) {
+      return false;
+    }
+    if (resourceContext == null || serviceTypes.length == 0) {
+      return false;
+    }
+    String serviceType = resourceContext.getServiceType();
+    if (nullOrEmpty(serviceType)) {
+      return false;
+    }
+    // Case-insensitive to agree with the search translation: the serviceType search field carries
+    // a lowercase normalizer, which ElasticSearch applies to the query term as well as to the
+    // indexed one, so an exact comparison here would hide assets in search that stayed visible
+    // over the API.
+    return Arrays.stream(serviceTypes).anyMatch(serviceType::equalsIgnoreCase);
+  }
+
+  @Function(
+      name = "matchAnyServiceName",
+      input = "List of comma separated service names",
+      description =
+          "Returns true if the entity being accessed was ingested by any of the named services. "
+              + "Takes the service name, not its fully qualified name. Returns false for entities "
+              + "that are not backed by a service. When the resource is the service itself, its "
+              + "own name is matched, so the service is hidden along with its assets.",
+      examples = {
+        "matchAnyServiceName('snowflake-sandbox')",
+        "matchAnyServiceName('snowflake-sandbox', 'redshift-dev')"
+      })
+  @SuppressWarnings("unused")
+  public boolean matchAnyServiceName(String... serviceNames) {
+    if (expressionValidation) {
+      for (String serviceName : serviceNames) {
+        validateServiceByName(serviceName);
+      }
+      return false;
+    }
+    if (resourceContext == null || serviceNames.length == 0) {
+      return false;
+    }
+    EntityReference service = resourceContext.getServiceReference();
+    if (service == null || service.getName() == null) {
+      return false;
+    }
+    return Arrays.asList(serviceNames).contains(service.getName());
+  }
+
+  @Function(
       name = "matchAnyCertification",
       input = "List of comma separated Certification fully qualified names",
       description =
@@ -492,6 +590,29 @@ public class RuleEvaluator {
           entityType,
           fqn);
     }
+  }
+
+  /**
+   * A service name is not scoped to one entity type — {@code prod} could be a database service or a
+   * dashboard service — so every service type is tried before the name is called unknown.
+   */
+  private void validateServiceByName(String serviceName) {
+    for (String serviceEntityType : Entity.getServiceEntityTypes()) {
+      try {
+        Entity.getEntityByName(serviceEntityType, serviceName, "", NON_DELETED);
+        return;
+      } catch (EntityNotFoundException ignored) {
+        // Try the next service type; only an exhausted search means the name is unknown.
+      }
+    }
+    if (!isUpdate) {
+      throw new EntityNotFoundException(
+          CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, serviceName));
+    }
+    LOG.warn(
+        "Stale reference in policy condition: no service named '{}' found. "
+            + "Consider updating the policy rule condition.",
+        serviceName);
   }
 
   private void validateEntityByName(String entityType, String name) {

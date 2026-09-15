@@ -18,8 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.Function;
 
 public class ExpressionValidatorTest {
 
@@ -704,5 +710,103 @@ public class ExpressionValidatorTest {
         IllegalArgumentException.class,
         () -> ExpressionValidator.validateExpressionSafety("((0.0 / 1500.0) * 100)"),
         "Substituted DI chart formula shape should be rejected by the policy/alert validator");
+  }
+
+  @Test
+  void testServiceConditionsAreAllowed() {
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyServiceTag('Environment.Development')"));
+    assertDoesNotThrow(
+        () -> ExpressionValidator.validateExpressionSafety("matchAnyServiceType('Snowflake')"));
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyServiceName('snowflake-sandbox') && !isOwner()"));
+  }
+
+  /** Arg-taking functions resolve to a getter when written bare, so they must not be usable so. */
+  @Test
+  void testBareServiceConditionIsRejected() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("matchAnyServiceTag"),
+        "matchAnyServiceTag takes arguments and must not be accepted as a bare reference");
+  }
+
+  /**
+   * Property navigation stays rejected. Issue #22095 proposed {@code
+   * asset.ingestedByService.hasTag('X')}; SpEL parses that as a CompoundExpression, which the
+   * default-deny node allowlist refuses — which is why the service conditions are flat functions.
+   */
+  @Test
+  void testPropertyNavigationOnServiceIsRejected() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "asset.ingestedByService.hasTag('HiddenService')"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("service.environment == 'Development'"));
+  }
+
+  /**
+   * The reflection-failure fallback list is hand-maintained. A name missing from it is rejected
+   * outright on that path, so an existing policy would stop loading precisely when reflection is
+   * already broken. This keeps the two in step.
+   */
+  @Test
+  void testFallbackListCoversEveryAnnotatedRuleEvaluatorFunction() {
+    Set<String> annotated = annotatedFunctionNames(method -> true);
+    assertFalse(annotated.isEmpty(), "RuleEvaluator should declare @Function methods");
+
+    List<String> missing =
+        annotated.stream()
+            .filter(name -> !ExpressionValidator.FALLBACK_ALLOWED_FUNCTIONS.contains(name))
+            .sorted()
+            .toList();
+    assertTrue(
+        missing.isEmpty(),
+        "every @Function on RuleEvaluator must be in the reflection-failure fallback list; "
+            + "missing: "
+            + missing);
+  }
+
+  /** A no-arg boolean function can be written bare ({@code !isOwner}); an arg-taking one cannot. */
+  @Test
+  void testFallbackBareListMatchesTheNoArgBooleanFunctions() {
+    Set<String> noArgBooleans =
+        annotatedFunctionNames(
+            method ->
+                method.getParameterCount() == 0
+                    && (method.getReturnType() == boolean.class
+                        || method.getReturnType() == Boolean.class));
+
+    List<String> missing =
+        noArgBooleans.stream()
+            .filter(name -> !ExpressionValidator.FALLBACK_BARE_FUNCTIONS.contains(name))
+            .sorted()
+            .toList();
+    assertTrue(missing.isEmpty(), "missing from the fallback bare list: " + missing);
+
+    Set<String> argTaking = new java.util.HashSet<>(annotatedFunctionNames(method -> true));
+    argTaking.removeAll(noArgBooleans);
+    List<String> wronglyBare =
+        argTaking.stream()
+            .filter(ExpressionValidator.FALLBACK_BARE_FUNCTIONS::contains)
+            .sorted()
+            .toList();
+    assertTrue(
+        wronglyBare.isEmpty(), "arg-taking functions must not be usable bare: " + wronglyBare);
+  }
+
+  private static Set<String> annotatedFunctionNames(Predicate<Method> filter) {
+    return Arrays.stream(RuleEvaluator.class.getDeclaredMethods())
+        .filter(method -> method.isAnnotationPresent(Function.class))
+        .filter(filter)
+        .map(method -> method.getAnnotation(Function.class).name())
+        .collect(Collectors.toSet());
   }
 }

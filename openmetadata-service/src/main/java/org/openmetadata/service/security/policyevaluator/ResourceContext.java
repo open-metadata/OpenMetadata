@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
@@ -46,6 +47,13 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   // When set (bulk authorization), on-demand fields are batch-loaded for the whole request instead
   // of once per entity. Null for single-entity requests, which keep the per-entity load.
   private BulkFieldHydrator bulkFieldHydrator;
+  // Service attributes are read only when a condition asks for them, then memoized for this
+  // context. The loaded flags are needed separately because "no service" is a valid null result.
+  private EntityInterface serviceEntity;
+  private boolean serviceEntityLoaded;
+  private List<TagLabel> serviceTags;
+  private boolean serviceTagsLoaded;
+  private Boolean serviceResource;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
@@ -211,6 +219,108 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       }
       loadedFieldNames.add(Entity.FIELD_TAGS);
     }
+  }
+
+  /**
+   * A service is its own service, so a condition over service attributes hides the service itself
+   * alongside its assets. Without this a Deny would strip every table from the catalog but leave
+   * the service listed, which reads as a bug rather than as a policy. Mirrors {@link #getOwners()}
+   * treating a user as its own owner and {@link #getDomains()} treating a domain as its own domain.
+   */
+  @Override
+  public EntityReference getServiceReference() {
+    resolveEntity();
+    if (entity == null) {
+      return null;
+    }
+    if (isServiceResource()) {
+      return entity.getEntityReference();
+    }
+    return entity.getService();
+  }
+
+  /**
+   * Tags of the service that ingested this resource.
+   *
+   * <p>Loaded on demand and memoized for the life of this context: a rule set with several service
+   * conditions evaluates each of them against every requested operation, so the accessor is called
+   * many times per entity.
+   *
+   * <p>No {@link BulkFieldHydrator} entry is needed even in bulk requests. Unlike the entity's own
+   * tags, this read is keyed by the service rather than by the entity, and {@link
+   * org.openmetadata.service.util.RequestEntityCache} keys on (type, id, fields, include) — so a
+   * fixed {@code tags} projection collapses the whole batch to one read per distinct service, not
+   * one per entity.
+   */
+  @Override
+  public List<TagLabel> getServiceTags() {
+    if (!serviceTagsLoaded) {
+      serviceTags = loadServiceTags();
+      serviceTagsLoaded = true;
+    }
+    return serviceTags;
+  }
+
+  /** Read off the already-resolved service entity, so matching a type costs no extra read. */
+  @Override
+  public String getServiceType() {
+    EntityInterface service = getServiceEntity();
+    if (service instanceof ServiceEntityInterface typedService
+        && typedService.getServiceType() != null) {
+      return typedService.getServiceType().value();
+    }
+    return null;
+  }
+
+  /**
+   * The resolved service entity, or null when the resource has no service or the service is gone.
+   * Carries the service's {@code tags}; every other service field is stored inline, so callers
+   * needing {@code serviceType} or {@code name} can read them off the same instance.
+   */
+  private EntityInterface getServiceEntity() {
+    if (!serviceEntityLoaded) {
+      serviceEntity = loadServiceEntity();
+      serviceEntityLoaded = true;
+    }
+    return serviceEntity;
+  }
+
+  private List<TagLabel> loadServiceTags() {
+    if (isServiceResource()) {
+      // The resource is the service: its own tags are already reachable through the entity's
+      // on-demand tag load, so resolving a separate service entity would be a redundant read.
+      return getTags();
+    }
+    EntityInterface service = getServiceEntity();
+    if (service == null) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityTags(service.getEntityReference().getType(), service);
+  }
+
+  /**
+   * Uses {@code getEntityOrNull} rather than {@code getEntity}: a hard-deleted service would
+   * otherwise raise {@link EntityNotFoundException} from inside the authorization decision and
+   * surface as a 500 on a read that should simply not match the condition.
+   */
+  private EntityInterface loadServiceEntity() {
+    if (isServiceResource()) {
+      resolveEntity();
+      return entity;
+    }
+    EntityReference serviceReference = getServiceReference();
+    return Entity.getEntityOrNull(serviceReference, Entity.FIELD_TAGS, Include.ALL);
+  }
+
+  /**
+   * Memoized because {@code getServiceEntityTypes()} copies its backing map on every call, and the
+   * service accessors consult this on each condition evaluated against each requested operation.
+   */
+  private boolean isServiceResource() {
+    if (serviceResource == null) {
+      serviceResource = Entity.getServiceEntityTypes().contains(entityRepository.getEntityType());
+    }
+    return serviceResource;
   }
 
   @Override

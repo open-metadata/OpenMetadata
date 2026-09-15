@@ -16,6 +16,7 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.ROLE_FUNCTIONS;
+import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.SERVICE_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TAG_FUNCTIONS;
 import static org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater.TEAM_FUNCTIONS;
 
@@ -343,5 +344,68 @@ class PolicyConditionUpdaterTest {
   @Test
   void extractArgs_noArgs() {
     assertEquals(java.util.List.of(), PolicyConditionUpdater.extractArgs("isOwner()"));
+  }
+
+  // ===================================================================
+  // SERVICE CONDITION TESTS
+  // ===================================================================
+
+  /**
+   * matchAnyServiceTag takes a tag FQN, so a classification or tag rename has to rewrite it — a
+   * condition left pointing at the old FQN resolves to no service, and the Deny rule that was
+   * hiding a service's assets silently starts granting access.
+   */
+  @Test
+  void renameInCondition_serviceTagIsRewrittenWithTheOtherTagFunctions() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Dev')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceTag('Env.Dev')", "Env.Dev", "Environment.Dev", TAG_FUNCTIONS));
+  }
+
+  @Test
+  void renamePrefixInCondition_serviceTagFollowsAClassificationRename() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Development') && isOwner()",
+        PolicyConditionUpdater.renamePrefixInCondition(
+            "matchAnyServiceTag('Env.Development') && isOwner()",
+            "Env",
+            "Environment",
+            TAG_FUNCTIONS));
+  }
+
+  @Test
+  void removeFromCondition_serviceTagIsDroppedWhenTheTagIsDeleted() {
+    assertEquals(
+        "matchAnyServiceTag('Environment.Staging')",
+        PolicyConditionUpdater.removeFromCondition(
+            "matchAnyServiceTag('Environment.Development', 'Environment.Staging')",
+            "Environment.Development",
+            TAG_FUNCTIONS));
+  }
+
+  /** A service rename must follow the condition, for the same fail-open reason. */
+  @Test
+  void renameInCondition_serviceName() {
+    assertEquals(
+        "matchAnyServiceName('snowflake-production')",
+        PolicyConditionUpdater.renameInCondition(
+            "matchAnyServiceName('snowflake-prod')",
+            "snowflake-prod",
+            "snowflake-production",
+            SERVICE_FUNCTIONS));
+  }
+
+  /** A tag rename must not reach into a service-name argument, or vice versa. */
+  @Test
+  void renameInCondition_serviceFunctionsAreScopedToTheirOwnArguments() {
+    String condition = "matchAnyServiceName('prod') && matchAnyServiceTag('prod')";
+
+    assertEquals(
+        "matchAnyServiceName('prod') && matchAnyServiceTag('staging')",
+        PolicyConditionUpdater.renameInCondition(condition, "prod", "staging", TAG_FUNCTIONS));
+    assertEquals(
+        "matchAnyServiceName('staging') && matchAnyServiceTag('prod')",
+        PolicyConditionUpdater.renameInCondition(condition, "prod", "staging", SERVICE_FUNCTIONS));
   }
 }

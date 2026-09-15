@@ -40,9 +40,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public final class PolicyConditionUpdater {
 
   public static final Set<String> TAG_FUNCTIONS =
-      Set.of("matchAnyTag", "matchAllTags", "matchAnyCertification");
+      Set.of("matchAnyTag", "matchAllTags", "matchAnyCertification", "matchAnyServiceTag");
   public static final Set<String> ROLE_FUNCTIONS = Set.of("hasAnyRole");
   public static final Set<String> TEAM_FUNCTIONS = Set.of("inAnyTeam");
+  public static final Set<String> SERVICE_FUNCTIONS = Set.of("matchAnyServiceName");
 
   private static final Pattern SINGLE_QUOTED_ARG = Pattern.compile("'([^']*)'");
 

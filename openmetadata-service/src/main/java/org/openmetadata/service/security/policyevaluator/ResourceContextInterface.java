@@ -45,4 +45,31 @@ public interface ResourceContextInterface {
   }
 
   List<EntityReference> getDomains();
+
+  /**
+   * The service that ingested this resource, or null when the resource is not backed by one.
+   *
+   * <p>{@link org.openmetadata.schema.EntityInterface#getService()} defaults to null, so entities
+   * outside a service hierarchy — glossary terms, users, teams, domains, tags — answer null here
+   * without any per-type handling. The same holds for the contexts whose {@link #getEntity()} is
+   * always null.
+   */
+  default EntityReference getServiceReference() {
+    EntityInterface entity = getEntity();
+    return entity == null ? null : entity.getService();
+  }
+
+  /** Tags on {@link #getServiceReference()}, empty when the resource has no service. */
+  default List<TagLabel> getServiceTags() {
+    return Collections.emptyList();
+  }
+
+  /**
+   * Connector type of {@link #getServiceReference()} — {@code Snowflake}, {@code Postgres} — or
+   * null when the resource has no service. This is the service's own {@code serviceType}, not the
+   * {@code databaseService}/{@code dashboardService} entity type carried by its reference.
+   */
+  default String getServiceType() {
+    return null;
+  }
 }
