@@ -460,6 +460,51 @@ async function init() {
   // The redirect_uri (http://localhost:8585/callback) and client_id
   // (openmetadata-auth0-client) are already registered on the shared
   // provider above, so no per-alias client bookkeeping is needed.
+
+  // CORS for the Auth0-flavored endpoints. The SPA runs at
+  // http://localhost:8585 and the SDK's POST /oauth/token + GET
+  // /.well-known/jwks.json (called by @auth0/auth0-spa-js during id_token
+  // validation) are cross-origin fetches. Without CORS they fail with the
+  // browser's "Failed to fetch" — no useful error surfaces on the SPA. The
+  // list of allowed origins mirrors SPA_REDIRECT_URIS' hosts so any port
+  // change happens in one place. Reflect the request Origin when it's on
+  // the allow-list rather than a wildcard because the SDK sends
+  // credentials on the token exchange.
+  const CORS_ALLOWED_ORIGINS = new Set([
+    'http://localhost:8585',
+    'http://localhost:3000',
+  ]);
+  const applyCors = (req, res) => {
+    const origin = req.headers.origin;
+    if (origin && CORS_ALLOWED_ORIGINS.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET,POST,PUT,DELETE,OPTIONS'
+    );
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      req.headers['access-control-request-headers'] ||
+        'authorization,content-type,accept'
+    );
+    res.setHeader('Access-Control-Max-Age', '600');
+  };
+  const corsMiddleware = (req, res, next) => {
+    applyCors(req, res);
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  };
+  app.use(
+    ['/oauth/token', '/authorize', '/userinfo', '/v2/logout', '/.well-known/jwks.json'],
+    corsMiddleware
+  );
+
   const rewriteTo = (targetPath) => (req, _res, next) => {
     const [, search = ''] = req.originalUrl.split('?');
     req.url = search ? `${targetPath}?${search}` : targetPath;
@@ -525,6 +570,16 @@ async function init() {
             name === 'transfer-encoding' ||
             name === 'content-length'
           ) {
+            continue;
+          }
+          // oidc-provider's /token emits `Access-Control-Allow-Origin: *`
+          // which conflicts with our `Access-Control-Allow-Credentials:
+          // true` (browsers refuse to trust `*` when credentials mode is
+          // include — the Auth0 SPA SDK sends credentials on the token
+          // exchange). Drop the upstream CORS block; the `corsMiddleware`
+          // on /oauth/token has already set the correct per-origin
+          // headers on `res` before this proxy handler ran.
+          if (name.startsWith('access-control-')) {
             continue;
           }
           res.setHeader(name, value);
