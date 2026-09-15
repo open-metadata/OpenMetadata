@@ -19,12 +19,14 @@ import {
   Input,
   Modal,
   ModalOverlay,
+  Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -36,8 +38,8 @@ import ManageButton from '../../components/common/EntityPageInfos/ManageButton/M
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -46,12 +48,15 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/entity/type';
 import { useClipboard } from '../../hooks/useClipBoard';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import { HeaderDotSeparator } from '../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { useTestSuiteDetailsPage } from './hooks/useTestSuiteDetailsPage';
 import './test-suite-details-page.less';
 
@@ -235,6 +240,17 @@ const TestSuiteDetailsPage = () => {
     handleTestSuiteUpdate,
   } = useTestSuiteDetailsPage();
 
+  // Consumer via the hook's raw `testSuitePermissions: OperationPermission` field (Task 8
+  // rule 2) — derive named flags locally instead of reading `.EditAll`/`.ViewAll`/`.ViewBasic`
+  // directly. No `deleted` argument: none of the reads below were ever ANDed with
+  // `testSuite?.deleted` in the old code. Also an explicit-deny-wins fix, same precedent as
+  // canViewBasic (Task 6 Finding 1): a field-specific deny now wins over a broader EditAll
+  // grant.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(testSuitePermissions),
+    [testSuitePermissions]
+  );
+
   const { searchInputProps } = useListSearchInput({
     searchQuery: testCaseSearchQuery,
     onSearchChange: handleTestCaseSearch,
@@ -290,8 +306,7 @@ const TestSuiteDetailsPage = () => {
     const removeFromTestSuite = testSuite
       ? {
           testSuite,
-          isAllowed:
-            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+          isAllowed: flags.can(Operation.EditTests),
         }
       : undefined;
 
@@ -360,7 +375,7 @@ const TestSuiteDetailsPage = () => {
     descriptionChangeSummaryEntry,
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
-    testSuitePermissions,
+    flags,
     fetchTestCases,
     incidentUrlState,
     handleSortTestCase,
@@ -383,7 +398,7 @@ const TestSuiteDetailsPage = () => {
     return <Loader />;
   }
 
-  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+  if (!flags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -393,6 +408,10 @@ const TestSuiteDetailsPage = () => {
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
+  }
+
+  if (isUndefined(testSuite)) {
+    return <ErrorPlaceHolder />;
   }
 
   return (
@@ -444,9 +463,7 @@ const TestSuiteDetailsPage = () => {
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
               <AddTestCaseDialogTrigger
-                canAddTestCase={Boolean(
-                  testSuitePermissions.EditAll || testSuitePermissions.EditTests
-                )}
+                canAddTestCase={flags.can(Operation.EditTests)}
                 existingTest={testSuite?.tests ?? []}
                 isTestCaseModalOpen={isTestCaseModalOpen}
                 setIsTestCaseModalOpen={setIsTestCaseModalOpen}
@@ -460,10 +477,7 @@ const TestSuiteDetailsPage = () => {
                 canDelete={permissions.hasDeletePermission}
                 deleted={testSuite?.deleted}
                 displayName={getEntityName(testSuite)}
-                editDisplayNamePermission={
-                  testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditDisplayName
-                }
+                editDisplayNamePermission={flags.canEditDisplayName}
                 entityId={testSuite?.id}
                 entityName={testSuite?.fullyQualifiedName as string}
                 entityType={EntityType.TEST_SUITE}
@@ -480,25 +494,31 @@ const TestSuiteDetailsPage = () => {
               entityFqn={testSuite?.fullyQualifiedName ?? ''}
               entityId={testSuite?.id ?? ''}
               entityType={EntityType.TEST_SUITE}
-              hasPermission={Boolean(testSuitePermissions.EditAll)}
+              hasPermission={flags.canEditAll}
               multiple={canAddMultipleDomains}
               textClassName="render-domain-lebel-style"
               onUpdate={handleDomainUpdate}
             />
             <HeaderDotSeparator />
-            <OwnerLabel
+            <Owner
               showDashPlaceholder
               avatarSize={24}
               className="header-owner-heading"
               hasPermission={Boolean(permissions.hasEditOwnerPermission)}
               isCompactView={false}
               maxVisibleOwners={3}
-              multiple={{
-                user: canAddMultipleUserOwners,
-                team: canAddMultipleTeamOwner,
-              }}
-              owners={testOwners}
-              onUpdate={onUpdateOwner}
+              owners={toOwnerRefs(testOwners)}
+              selectorContent={
+                <UserTeamSelectableList
+                  hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                  multiple={{
+                    user: canAddMultipleUserOwners,
+                    team: canAddMultipleTeamOwner,
+                  }}
+                  owner={testOwners}
+                  onUpdate={onUpdateOwner}
+                />
+              }
             />
           </div>
         </Box>
