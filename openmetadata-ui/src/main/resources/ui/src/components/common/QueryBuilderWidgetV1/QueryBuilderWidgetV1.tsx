@@ -48,8 +48,11 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEmptyJsonTreeForQueryBuilder } from '../../../utils/AdvancedSearchPureUtils';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
+import {
+  getEmptyJsonTreeForQueryBuilder,
+  READONLY_SETTINGS,
+} from '../../../utils/queryBuilder/tree';
 import {
   elasticSearchFormat,
   hasUnfinishedRule,
@@ -58,7 +61,6 @@ import {
   addEntityTypeFilter,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
-  READONLY_SETTINGS,
 } from '../../../utils/QueryBuilderPureUtils';
 import { getExplorePath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -220,8 +222,8 @@ const QueryBuilderWidgetV1: FC<{
     onTreeUpdate(nTree, nConfig);
 
     if (outputType === SearchOutputType.ElasticSearch) {
-      // Same tree and config the emitted filter is built from, so the caller can block a save that
-      // would otherwise drop an unfinished condition and silently widen the filter.
+      // Same tree and config the emitted filter is built from, so the caller can block a save that would otherwise drop
+      // an unfinished condition and silently widen the filter.
       props.onValidityChange?.(!hasUnfinishedRule(nTree, config));
       const data = elasticSearchFormat(nTree, config) ?? '';
       const qFilter = {

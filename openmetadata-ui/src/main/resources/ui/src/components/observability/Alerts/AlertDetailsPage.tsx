@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Owner,
+  PageLayout,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Edit03, RefreshCw04, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -22,9 +28,8 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
@@ -34,6 +39,7 @@ import { useAlertDetailsPage } from '../../../pages/AlertDetailsPage/hooks/useAl
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
@@ -221,10 +227,16 @@ const AlertDetailsPage = () => {
         className="tw:mt-1.5 tw:flex-wrap tw:text-secondary"
         gap={3}>
         {ownerLoading ? null : (
-          <OwnerLabel
+          <Owner
             hasPermission={editOwnersPermission}
-            owners={alertDetails?.owners}
-            onUpdate={onOwnerUpdate}
+            owners={toOwnerRefs(alertDetails?.owners ?? [])}
+            selectorContent={
+              <UserTeamSelectableList
+                hasPermission={Boolean(editOwnersPermission)}
+                owner={alertDetails?.owners}
+                onUpdate={onOwnerUpdate}
+              />
+            }
           />
         )}
         {extraInfo}
@@ -339,7 +351,7 @@ const AlertDetailsPage = () => {
         <ObservabilityPageShell
           data-testid="alert-details-ai-page"
           header={
-            <HeaderShell
+            <PageLayout.PageHeader
               actions={headerActions}
               breadcrumb={
                 <HeaderBreadcrumb
@@ -352,7 +364,6 @@ const AlertDetailsPage = () => {
               data-testid="alerts-observability-ai-details-header"
               footer={headerFooter}
               meta={headerMetadata}
-              padding="comfortable"
               /* The subtitle should mirror the alert identifier from the route,
                * not the backend entity id returned in alertDetails. */
               subtitle={fqn}

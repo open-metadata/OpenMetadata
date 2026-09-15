@@ -663,7 +663,7 @@ const EXPLORE_MODE_PAGE_CLASS_NAME =
   'tw:flex tw:h-full tw:flex-col tw:overflow-y-auto tw:bg-primary';
 
 const EXPLORE_MODE_SEARCH_CARD_WRAPPER_CLASS_NAME =
-  'tw:mx-2 tw:mt-2 tw:shrink-0';
+  'tw:mt-2 tw:w-full tw:shrink-0 tw:px-2';
 
 const EXPLORE_MODE_CONTENT_CLASS_NAME = classNames(
   'tw:flex tw:h-full tw:flex-col tw:bg-primary',
