@@ -3,11 +3,13 @@
 - **Status:** test-only prototype evidence for the proposed ADR [`docs/adr/2026-09-14-authorized-sparql.md`](adr/2026-09-14-authorized-sparql.md), candidate **L** of [`docs/rdf-authorization-research.md`](rdf-authorization-research.md). No production code, endpoint, schema, POM, or configuration changed. Not an approved architecture.
 - **Date / base:** 2026-09-14, on top of `9c2f27a7682`.
 - **Question:** On real projected triples, does a request-local model that physically contains only admitted facts give the ADR's answers for `COUNT`, `ASK`, paths, joins and `EXISTS`? Can a bounded retrieval from `graph/knowledge` build that model without guessing?
-- **Scope:** the core model, its fixture and the semantic tests, plus a test-only query profile that confines queries to the sanitized model. Everything runs on in-process Jena. An opt-in Fuseki 6.2.0 run is planned as a separate follow-up.
+- **Scope:** the core model, its fixture and the semantic tests, plus a test-only query profile that confines queries to the sanitized model. Local tests run on in-process Jena. An opt-in subclass reruns the same tests with every retrieval sent to an isolated, memory-capped Fuseki 6.2.0 container built from `docker/rdf-store`.
 
 ## Short answer
 
-- **Semantics: yes, on four tables, in-process.** All ADR example answers hold. Changes that touch only the hidden table leave visible answers unchanged.
+- **Semantics: yes, on four tables.** All ADR example answers hold. Changes that touch only the hidden table leave visible answers unchanged.
+  - The current 56 tests pass in-process.
+  - All 56 also pass with retrieval from Fuseki 6.2.0 built from this checkout.
 - **Retrieval without guessing: not yet for realistic data.** Ordinary projected facts fail closed because no documented permission covers them:
   - `om:labelType` and `om:tagState` on shared tag nodes;
   - lineage details.
@@ -20,6 +22,7 @@ All files are under `openmetadata-service/src/test/java/org/openmetadata/service
 | File | Role |
 | --- | --- |
 | `rdf/SanitizedModelExperimentTest.java` | 56 tests: the ADR A1–A4, A6, A8 and A10 cases, owned nodes, tag policy, fail-closed cases, structured-node ownership conflicts, query-profile rejections. |
+| `rdf/SanitizedModelFusekiTest.java` | Opt-in subclass. Inherits every local test and reruns it with retrieval from a throwaway Fuseki container capped at 1 GiB. It asserts the server reports version 6.2.0, and before every `DROP ALL` it checks that the endpoint belongs to that container. Disabled unless `-DrdfAuthorizationFusekiImage` is set. |
 | `rdf/SanitizedModelFixture.java` | Tables A–D and tags projected by the production `JsonLdTranslator` and `RdfRepository.buildLineageModel`. Also holds the catalog and the policy rules. |
 | `rdf/SanitizedModelBuilder.java` | The experiment itself: bounded retrieval, the per-fact admission map, and a fresh `Model`. |
 | `rdf/SanitizedQueryProfile.java` | Test-only query profile: `SELECT`/`ASK` only, confined to the model. |
@@ -83,9 +86,38 @@ Local test command: `mvn -pl openmetadata-service -am package -Dtest='SanitizedM
 | RED: query profile (before the split) | The first profile let `apf:strSplit` and `ORDER BY <fn>(…)` through. The ARQ namespace and explicit `ORDER BY`/TopN/`GROUP BY` walking were added before GREEN. |
 | GREEN: core model only, local | **33 tests, 0 failures, 0 errors, 0 skipped** |
 | GREEN: with query profile, local | **56 tests, 0 failures, 0 errors, 0 skipped**. Every core query also passes through the profile. |
+| GREEN: local + Fuseki 6.2.0 from this checkout | See "Opt-in Fuseki run" below: **112 tests (56 local + 56 Fuseki), 0 failures, 0 errors, 0 skipped**. |
 | Formatting | `mvn spotless:check -pl openmetadata-service -DspotlessFiles='.*/(SanitizedModel[A-Za-z0-9]*\|SanitizedQueryProfile\|PolicyContextFixture)\.java'`: clean |
 
-**Not measured:** heap, model memory, retrieval latency or evaluation latency per request.
+Without `-DrdfAuthorizationFusekiImage` the Fuseki class is disabled, and CI is unaffected. With the Fuseki subclass restored, `-Dtest='SanitizedModel*Test'` (no image property) was verified to report:
+- `SanitizedModelExperimentTest`: 56 tests, 0 failures, 0 errors, 0 skipped.
+- `SanitizedModelFusekiTest`: 21 tests, all 21 skipped. JUnit counts the disabled class per test method, without expanding parameterized cases.
+- Total: 77 run, 21 skipped, and no container created.
+
+### Opt-in Fuseki run
+
+**What runs where.** In the Fuseki class, the four-table fixture is loaded into Fuseki with SPARQL Update, and the builder's retrieval `CONSTRUCT` queries run against Fuseki. The sanitized `Model` and every test query are then evaluated locally by Jena. The unrestricted reference is also read back through Fuseki.
+
+**Docker requirements.**
+- Docker must be able to run one extra container with a 1 GiB memory limit and no swap. Measured on 2026-09-14: the Docker VM had 5.78 GiB, and existing services used about 1.5 GiB.
+- The test container runs with `-Xms384m -Xmx384m -XX:MaxMetaspaceSize=128m`, overriding the image's 4 GiB production heap, and a 256 MiB tmpfs `/fuseki-data`. The tmpfs and TDB2's memory-mapped files count against the same limit.
+- Maven and the test JVM run on the host, not in the VM.
+- Check free Docker memory before running. Do not point the test at a shared Fuseki: it drops and reloads the dataset.
+
+**Commands used** (2026-09-14):
+
+```bash
+docker build --pull=false -t openmetadata-fuseki:6.2.0-rbac-recheck docker/rdf-store
+mvn -pl openmetadata-service -am package -Dtest='SanitizedModel*Test' \
+  -DrdfAuthorizationFusekiImage=openmetadata-fuseki:6.2.0-rbac-recheck \
+  -Dsurefire.failIfNoSpecifiedTests=false -Dspotless.check.skip=true
+```
+
+- **Image:** built from commit `2e2ed48d800` (`docker/rdf-store` tree `ed6684dfd7f5`, no uncommitted changes there). Image ID `sha256:bd9d053889fa…`, arm64, base images `eclipse-temurin:21-jre-jammy` / `21-jdk-jammy` already present locally. The build verified the Fuseki 6.2.0 tarball's sha512, reported `Apache Jena version 6.2.0`, and included the OpenMetadata extension jar. The image was removed after the run.
+- **Surefire XML:** `SanitizedModelExperimentTest` 56 tests, 0 failures, 0 errors, 0 skipped, 1.6 s. `SanitizedModelFusekiTest` 56 tests, 0 failures, 0 errors, 0 skipped, 22.5 s, including all 6 ownership tests. Maven exit 0, wall time 124 s.
+- **Container:** started in 5.5 s. `HostConfig.Memory` = `MemorySwap` = 1 GiB; random host port. Sampled usage reached 458 MiB of 1 GiB (3 samples at about 4 s intervals, so not a guaranteed peak). All Docker containers together stayed below 2.0 GiB. The container was not OOM-killed (asserted after the class); it and the Testcontainers Ryuk container exited after the run.
+
+**Not measured:** Fuseki or model heap per request, retrieval latency or evaluation latency per request. The Fuseki timings above are whole test classes, and the memory figures are coarse container samples.
 
 ### Findings
 
@@ -114,10 +146,14 @@ Local test command: `mvn -pl openmetadata-service -am package -Dtest='SanitizedM
    - A node already governed silently ignores a later, conflicting claim.
    - A structured edge can turn a hidden table into a "column" of a visible one, so the hidden table's facts are fetched under the wrong governance.
    Such claims now fail closed.
+9. **TDB2 canonicalizes literal terms.**
+   - `"0.1"^^xsd:double` comes back from Fuseki as `"0.1e0"`, which a separate throwaway container probe confirmed. The value is the same, but the RDF term differs.
+   - Comparisons by term must therefore use a reference read through the same store; comparing against the in-memory fixture instead makes whole-model comparisons fail.
+   - The tests read the unrestricted reference through the same source as the sanitized build.
 
 ## Proven vs not proven
 
-**Supported by this evidence (four tables, in-process Jena):**
+**Supported by this evidence (four tables; 56 tests in-process, and the same 56 with retrieval from one memory-capped Fuseki 6.2.0 container built from this checkout):**
 - A physically sanitized, request-local model gives the ADR answers for `COUNT`, `ASK`, inverse, transitive and cyclic paths, joins, subqueries and `EXISTS`, including hidden-only mutation invariance.
 - Subject-keyed, budgeted retrieval from `graph/knowledge` avoids inferred and default graphs, and refuses to answer partially.
 - An explicit predicate → field → operation map, with order-independent ownership, can fail closed on unknown or conflicting facts. It found real gaps (Findings 3–5).
@@ -126,7 +162,7 @@ Local test command: `mvn -pl openmetadata-service -am package -Dtest='SanitizedM
 
 **Not proven (explicitly out of scope or not reached):**
 - **The query profile as a security boundary.** It is a test helper, not reviewed as one. No endpoint uses it, and untested SPARQL forms are not covered by evidence.
-- **Retrieval from a remote Fuseki store.** It is not exercised here.
+- **Remote retrieval beyond one small run.** The remote evidence is a single run of 56 tests on four tables, against one arm64 image built locally. Query evaluation happened on the local sanitized model, not inside Fuseki.
 - **Real policy integration end to end.** Not exercised: `SubjectCache` role/team/persona policy resolution, `DefaultAuthorizer` (admin, bot, domain and reviewer handling), `ResourceContext` entity loading, owner conditions such as `isOwner()`, and the search-side compiled RBAC filter. The catalog attributes (tags) are fixture values, not loaded from the database.
 - **Field coverage** beyond the predicates this fixture emits. Also unproven: the documented map for glossary terms, domains, owners, data products, usage, sample data, tests, queries, custom properties, lifecycle and certification.
 - **Candidate selection at scale.** The builder evaluates every catalog resource; a real system needs a pre-filter (for example the search RBAC compiler).

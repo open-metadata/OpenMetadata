@@ -100,7 +100,7 @@ Policy questions answered above are closed: fact and shared-node authorization f
 
 ## Next steps
 
-- [ ] Test the authorized-model approach on four assets, including one hidden asset; verify counts and paths cannot reveal it.
+- [x] Test the authorized-model approach on four assets, including one hidden asset; verify counts and paths cannot reveal it. This is a test-only prototype; see [docs/rdf-authorization-experiment.md](../rdf-authorization-experiment.md). All 56 tests pass on in-process Jena. They also pass with retrieval from an isolated, memory-capped Fuseki 6.2.0 container built from `docker/rdf-store`. Realistic tag-application and lineage-detail facts still fail closed.
 - [ ] Verify field/shared-node permissions and retrieval completeness against existing OpenMetadata behavior.
 - [ ] Measure practical memory, latency, and execution limits at representative scope.
 - [ ] Agree the typed API contract, including errors and completeness, with #1299.
