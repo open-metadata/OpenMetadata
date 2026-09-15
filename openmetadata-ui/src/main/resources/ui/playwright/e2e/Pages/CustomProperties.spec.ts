@@ -1033,7 +1033,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const partialSearchValue = durationPropertyValue.slice(0, 3);
           await page.getByTestId('advance-search-filter-btn').click();
-          await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+          await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
 
           await selectOption(
             page,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { clickOutside } from './common';
 import { getEncodedFqn } from './entity';
 
 type EntityFields = {
@@ -405,9 +404,9 @@ export const fillRule = async (
             .click();
         }
       }
-    }
 
-    await clickOutside(page);
+      await page.getByTestId('advanced-search-message').click();
+    }
   }
 };
 
