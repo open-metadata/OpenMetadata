@@ -14,6 +14,7 @@
 /* Focused round-trip checks for the token scanner. Run: node scanner.test.js */
 const assert = require('assert');
 const { processText } = require('./scanner');
+const tokenMap = require('./token-map');
 
 let pass = 0;
 function check(name, input, expected) {
@@ -22,7 +23,13 @@ function check(name, input, expected) {
     assert.strictEqual(newText, expected);
     pass++;
   } catch (e) {
-    process.stderr.write(`\nFAIL: ${name}\n  in:  ${JSON.stringify(input)}\n  got: ${JSON.stringify(newText)}\n  exp: ${JSON.stringify(expected)}\n`);
+    process.stderr.write(
+      `\nFAIL: ${name}\n  in:  ${JSON.stringify(
+        input
+      )}\n  got: ${JSON.stringify(newText)}\n  exp: ${JSON.stringify(
+        expected
+      )}\n`
+    );
     process.exitCode = 1;
   }
 }
@@ -34,7 +41,11 @@ check(
   '.a { color: var(--om-color-brand-500); }'
 );
 // color: 3-digit expands and matches white
-check('short hex white', '.a { color: #FFF; }', '.a { color: var(--om-color-white); }');
+check(
+  'short hex white',
+  '.a { color: #FFF; }',
+  '.a { color: var(--om-color-white); }'
+);
 // color: no upstream home -> legacy token, exact value preserved
 check(
   'legacy color',
@@ -80,9 +91,17 @@ check(
   '.a { width: 100px; /* padding: 8px */ color: var(--om-color-white); }'
 );
 // width/top are out of scope -> untouched
-check('width out of scope', '.a { width: 20px; top: 8px; }', '.a { width: 20px; top: 8px; }');
+check(
+  'width out of scope',
+  '.a { width: 20px; top: 8px; }',
+  '.a { width: 20px; top: 8px; }'
+);
 // border-radius -> radius token
-check('radius', '.a { border-radius: 4px; }', '.a { border-radius: var(--om-radius-sm); }');
+check(
+  'radius',
+  '.a { border-radius: 4px; }',
+  '.a { border-radius: var(--om-radius-sm); }'
+);
 // font-size + font-weight
 check(
   'font-size and weight',
@@ -104,7 +123,11 @@ check(
   '.a { box-shadow: 0px 2px 10px var(--om-legacy-color-0-0-0-0-12); }'
 );
 // LESS @variable usage untouched (not a literal)
-check('less var untouched', '.a { color: @grey-15; }', '.a { color: @grey-15; }');
+check(
+  'less var untouched',
+  '.a { color: @grey-15; }',
+  '.a { color: @grey-15; }'
+);
 // LESS color function: hex inside darken() must stay raw (LESS needs a literal)
 check(
   'less color fn untouched',
@@ -167,4 +190,27 @@ const once = processText(rich, 't').newText;
 const twice = processText(once, 't').newText;
 check('idempotent (all categories)', twice, once);
 
-process.stdout.write(`\n${pass} checks passed${process.exitCode ? ' (with failures above)' : ''}\n`);
+tokenMap.resetRegistry();
+for (const radius of [10, 16, 24, 1, 3.2]) {
+  tokenMap.resolveRadius(radius, 'px');
+}
+const generatedTokens = tokenMap.emitGeneratedBlocks();
+const generatedRadiusLines = generatedTokens
+  .split('\n')
+  .filter((line) => line.includes('--om-radius-'));
+assert.deepStrictEqual(generatedRadiusLines, [
+  '  --om-radius-1: 1px;',
+  '  --om-radius-3_2: 3.2px;',
+  '  --om-radius-10: 10px;',
+]);
+assert.deepStrictEqual(
+  generatedTokens
+    .split('\n')
+    .filter((line) => /--om-color-(?:black|white):/.test(line)),
+  []
+);
+pass++;
+
+process.stdout.write(
+  `\n${pass} checks passed${process.exitCode ? ' (with failures above)' : ''}\n`
+);

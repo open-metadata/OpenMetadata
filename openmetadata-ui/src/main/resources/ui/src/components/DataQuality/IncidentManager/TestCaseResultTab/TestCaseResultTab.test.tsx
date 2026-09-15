@@ -78,7 +78,7 @@ const mockUseTestCaseStore = {
   testCasePermission: MOCK_PERMISSIONS,
   setTestCasePermission: jest.fn(),
   setIsPermissionLoading: jest.fn(),
-  isTabExpanded: false,
+  isTabExpanded: true,
 };
 
 jest.mock('react-router-dom', () => ({
@@ -193,7 +193,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
-    mockUseTestCaseStore.isTabExpanded = false;
+    mockUseTestCaseStore.isTabExpanded = true;
     mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
 
@@ -208,7 +208,7 @@ describe('TestCaseResultTab', () => {
       await screen.findByTestId('test-case-result-tab-container')
     ).toBeInTheDocument();
     expect(
-      await screen.findByTestId('parameter-container')
+      await screen.findByTestId('test-case-configuration-card')
     ).toBeInTheDocument();
     expect(
       await screen.findByTestId('edit-parameter-icon')
@@ -232,15 +232,6 @@ describe('TestCaseResultTab', () => {
     render(<TestCaseResultTab />);
 
     const editButton = await screen.findByTestId('edit-parameter-icon');
-    fireEvent.click(editButton);
-
-    expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
-  });
-
-  it("EditTestCaseModal should be rendered when 'Edit SQL expression' button is clicked", async () => {
-    render(<TestCaseResultTab />);
-
-    const editButton = await screen.findByTestId('edit-sql-param-icon');
     fireEvent.click(editButton);
 
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
@@ -321,10 +312,10 @@ describe('TestCaseResultTab', () => {
 
     render(<TestCaseResultTab />);
 
-    await screen.findByTestId('parameter-container');
+    await screen.findByTestId('test-case-configuration-card');
 
     expect(screen.queryByTestId('dynamic-assertion')).not.toBeInTheDocument();
-    expect(screen.getByText('columnCount:')).toBeInTheDocument();
+    expect(screen.getByText('columnCount')).toBeInTheDocument();
     expect(screen.getByText('10')).toBeInTheDocument();
   });
 
@@ -337,10 +328,10 @@ describe('TestCaseResultTab', () => {
 
     render(<TestCaseResultTab />);
 
-    await screen.findByTestId('parameter-container');
+    await screen.findByTestId('test-case-configuration-card');
 
     expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
-    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+    expect(screen.queryByText('columnCount')).not.toBeInTheDocument();
     expect(screen.queryByText('10')).not.toBeInTheDocument();
   });
 
@@ -359,11 +350,11 @@ describe('TestCaseResultTab', () => {
 
     render(<TestCaseResultTab />);
 
-    await screen.findByTestId('parameter-container');
+    await screen.findByTestId('test-case-configuration-card');
 
     expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
-    expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
-    expect(screen.queryByText('columnCount:')).not.toBeInTheDocument();
+    expect(screen.getByText('label.compute-row-count')).toBeInTheDocument();
+    expect(screen.queryByText('columnCount')).not.toBeInTheDocument();
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {
@@ -409,7 +400,7 @@ describe('TestCaseResultTab', () => {
     beforeEach(() => {
       mockGetTestDefinitionById.mockClear();
       mockUseTestCaseStore.testCase = mockTestCaseData;
-      mockUseTestCaseStore.isTabExpanded = false;
+      mockUseTestCaseStore.isTabExpanded = true;
     });
 
     it('should show Compute Row Count when testDefinition supports supportsRowLevelPassedFailed', async () => {
@@ -427,12 +418,12 @@ describe('TestCaseResultTab', () => {
       render(<TestCaseResultTab />);
 
       const parameterContainer = await screen.findByTestId(
-        'parameter-container'
+        'test-case-configuration-card'
       );
 
       expect(parameterContainer).toBeInTheDocument();
       // Check that compute row count label is present in the parameter section
-      expect(screen.getByText('label.compute-row-count:')).toBeInTheDocument();
+      expect(screen.getByText('label.compute-row-count')).toBeInTheDocument();
       // Check that the value "true" is present
       expect(screen.getByText('true')).toBeInTheDocument();
     });
@@ -700,16 +691,48 @@ describe('TestCaseResultTab', () => {
   // TCD-0 — the page shell. The result history region leads the main column,
   // and the description moves to the rail alongside the other metadata cards.
   describe('main column order', () => {
-    it('renders the result history chart above the parameters', async () => {
+    // TCD-10a moved the parameters and the assertion SQL out of the main
+    // column into the rail's Configuration card, so the main column now leads
+    // with the result history and carries no configuration at all.
+    it('renders the configuration in the rail, not the main column', async () => {
       render(<TestCaseResultTab />);
 
-      const chart = await screen.findByText('TestSummary');
-      const parameters = await screen.findByTestId('parameter-container');
+      const rail = await screen.findByTestId('test-case-rail');
+      const configuration = await screen.findByTestId(
+        'test-case-configuration-card'
+      );
+
+      expect(rail).toContainElement(configuration);
+      expect(await screen.findByText('TestSummary')).toBeInTheDocument();
+    });
+
+    it('leads the rail with the configuration card, above the description', async () => {
+      render(<TestCaseResultTab />);
+
+      const configuration = await screen.findByTestId(
+        'test-case-configuration-card'
+      );
+      const description = await screen.findByText('Description');
 
       expect(
-        chart.compareDocumentPosition(parameters) &
+        configuration.compareDocumentPosition(description) &
           Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
+    });
+
+    // The collapse toggle is deliberately kept (epic #6074, Sep 8), so
+    // collapsing the rail now also hides the configuration — content that
+    // used to sit in the always-visible main column.
+    it('hides the configuration when the rail is collapsed', async () => {
+      mockUseTestCaseStore.isTabExpanded = false;
+
+      render(<TestCaseResultTab />);
+
+      expect(await screen.findByText('TestSummary')).toBeInTheDocument();
+      expect(screen.queryByTestId('test-case-rail')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-case-configuration-card')
+      ).not.toBeInTheDocument();
     });
 
     it('renders the description in the rail, not the main column', async () => {
