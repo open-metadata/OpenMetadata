@@ -138,18 +138,16 @@ export const Tooltip = ({
     return typeof type === 'string' && !NATIVELY_FOCUSABLE_HTML.has(type);
   })();
 
-  const trigger_ = (() => {
-    if (!shouldWrap) {
-      return children;
-    }
-
-    // A span has no focusability at all; AriaButton with tabindex="-1" still
-    // has, so FocusTrap.restoreFocus() can land on it inside rdg cells.
-    if (excludeTriggerFromTabOrder) {
-      return <span className={triggerClassName}>{children}</span>;
-    }
-
-    return (
+  const trigger_ = shouldWrap ? (
+    excludeTriggerFromTabOrder ? (
+      // Use a plain span instead of AriaButton when the trigger is explicitly
+      // excluded from the tab order. AriaButton with tabindex="-1" is still
+      // programmatically focusable, so Ant Design FocusTrap.restoreFocus() can
+      // accidentally land on it inside rdg cells. A span has no focusability at
+      // all — FocusTrap cannot reach it — while RAC's TooltipTrigger still
+      // passes hover handlers via cloneElement, so mouse tooltips work normally.
+      <span className={triggerClassName}>{children}</span>
+    ) : (
       <AriaButton
         // cursor inherits: a button's UA `cursor: default` would otherwise
         // override a clickable ancestor's pointer (e.g. a table row).
@@ -161,8 +159,10 @@ export const Tooltip = ({
         onPress={onTriggerPress}>
         {children}
       </AriaButton>
-    );
-  })();
+    )
+  ) : (
+    children
+  );
 
   const isTopOrBottomLeft = [
     'top left',
