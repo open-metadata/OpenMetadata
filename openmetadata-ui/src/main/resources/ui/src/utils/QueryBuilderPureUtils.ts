@@ -16,7 +16,7 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isEmpty, isUndefined } from 'lodash';
+import { isBoolean, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import type {
@@ -27,6 +27,7 @@ import type {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { QUERY_BUILDER_CONJUNCTION } from './queryBuilder/types';
 import { generateUUID } from './StringUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
@@ -113,15 +114,6 @@ export const getSelectEqualsNotEqualsProperties = (
       path: [...parentPath, id],
     },
   };
-};
-
-export const READONLY_SETTINGS = {
-  immutableGroupsMode: true,
-  immutableFieldsMode: true,
-  immutableOpsMode: true,
-  immutableValuesMode: true,
-  canRegroup: false,
-  canRemove: false,
 };
 
 export const getSelectAnyInProperties = (
@@ -405,9 +397,422 @@ const matchBoolMust: QueryFilterBranchHandler = (
   );
 };
 
-// Order matters: mirrors the original if/else-if cascade — first matching
-// handler wins, exactly like the original exclusive branches.
+const CUSTOM_PROPERTIES_PATH = 'customPropertiesTyped';
+const CUSTOM_PROPERTY_NAME_KEY = `${CUSTOM_PROPERTIES_PATH}.name`;
+const CUSTOM_PROPERTY_VALUE_PREFIX = `${CUSTOM_PROPERTIES_PATH}.`;
+
+// How the value clause states its condition.
+type CustomPropertyShape =
+  | 'exists'
+  | 'term'
+  | 'wildcard'
+  | 'regexp'
+  | 'match'
+  | 'range';
+
+interface CustomPropertyClause {
+  // The property as written into `customPropertiesTyped.name`.
+  name: string;
+  shape: CustomPropertyShape;
+  // The typed value field read: `stringValue`, `longValue`, `start`, …
+  valueField?: string;
+  value?: unknown;
+  range?: Record<string, unknown>;
+  negated: boolean;
+}
+
+type UnknownRecord = Record<string, unknown>;
+
+const asClauseArray = (value: unknown): UnknownRecord[] => {
+  if (Array.isArray(value)) {
+    return value as UnknownRecord[];
+  }
+
+  return isUndefined(value) ? [] : [value as UnknownRecord];
+};
+
+const firstEntry = (value: unknown): [string, unknown] | undefined =>
+  Object.entries((value ?? {}) as UnknownRecord)[0];
+
+const toValueField = (key: string): string =>
+  key.startsWith(CUSTOM_PROPERTY_VALUE_PREFIX)
+    ? key.slice(CUSTOM_PROPERTY_VALUE_PREFIX.length)
+    : key;
+
+type ParsedValueClause = Pick<
+  CustomPropertyClause,
+  'shape' | 'valueField' | 'value' | 'range'
+>;
+
+// Each shape states its value differently, so the reader rides on the key.
+const VALUE_CLAUSE_READERS: Array<
+  [
+    CustomPropertyShape,
+    (body: unknown) => Pick<CustomPropertyClause, 'value' | 'range'>
+  ]
+> = [
+  ['term', (body) => ({ value: body })],
+  ['wildcard', (body) => ({ value: (body as { value?: unknown })?.value })],
+  ['regexp', (body) => ({ value: (body as { value?: unknown })?.value })],
+  ['match', (body) => ({ value: (body as { query?: unknown })?.query })],
+  ['range', (body) => ({ range: body as UnknownRecord })],
+];
+
+const readValueClause = (
+  clause: UnknownRecord
+): ParsedValueClause | undefined => {
+  for (const [shape, read] of VALUE_CLAUSE_READERS) {
+    const entry = firstEntry(clause[shape]);
+
+    if (entry) {
+      return { shape, valueField: toValueField(entry[0]), ...read(entry[1]) };
+    }
+  }
+
+  return undefined;
+};
+
+// Reads one `nested` custom-property query, or nothing if it is not one.
+const readNestedCustomProperty = (
+  clause: UnknownRecord | undefined
+): Omit<CustomPropertyClause, 'negated'> | undefined => {
+  const nested = clause?.nested as
+    | { path?: string; query?: UnknownRecord }
+    | undefined;
+
+  if (nested?.path !== CUSTOM_PROPERTIES_PATH || !nested.query) {
+    return undefined;
+  }
+
+  // `is_not_null` writes the name term on its own, with no value clause.
+  const bareName = (nested.query.term as UnknownRecord)?.[
+    CUSTOM_PROPERTY_NAME_KEY
+  ];
+
+  if (!isUndefined(bareName)) {
+    return { name: String(bareName), shape: 'exists' };
+  }
+
+  const must = asClauseArray((nested.query.bool as EsBoolQuery)?.must);
+  const nameClause = must.find(
+    (entry) =>
+      !isUndefined((entry.term as UnknownRecord)?.[CUSTOM_PROPERTY_NAME_KEY])
+  );
+
+  if (!nameClause) {
+    return undefined;
+  }
+
+  const name = String(
+    (nameClause.term as UnknownRecord)[CUSTOM_PROPERTY_NAME_KEY]
+  );
+  const valueClause = must.find((entry) => entry !== nameClause);
+  const parsed = valueClause ? readValueClause(valueClause) : undefined;
+
+  return parsed ? { name, ...parsed } : { name, shape: 'exists' };
+};
+
+// The clause a `bool.must` envelope wraps, minus the `entityType` scope.
+const unwrapCustomPropertyEnvelope = (
+  clause: UnknownRecord
+): UnknownRecord | undefined => {
+  const must = asClauseArray((clause.bool as EsBoolQuery)?.must);
+
+  if (must.length === 0) {
+    return undefined;
+  }
+
+  const body = must.find((entry) =>
+    isUndefined((entry.term as UnknownRecord)?.entityType)
+  );
+  const rest = must.filter((entry) => entry !== body);
+
+  return body &&
+    rest.every(
+      (entry) => !isUndefined((entry.term as UnknownRecord)?.entityType)
+    )
+    ? body
+    : undefined;
+};
+
+// A range fans out over the typed value fields; any branch describes it.
+const readCustomPropertyClause = (
+  clause: UnknownRecord | undefined,
+  negated = false
+): CustomPropertyClause | undefined => {
+  const direct = readNestedCustomProperty(clause);
+
+  if (direct) {
+    return { ...direct, negated };
+  }
+
+  const bool = clause?.bool as EsBoolQuery | undefined;
+
+  if (!bool) {
+    return undefined;
+  }
+
+  // How deeply the group formatter wraps the clause varies with the rule, so each `bool` layer is followed rather than
+  // matched at a fixed depth.
+  const nested = [
+    ...asClauseArray(unwrapCustomPropertyEnvelope(clause as UnknownRecord)),
+    ...asClauseArray(bool.should),
+  ];
+
+  for (const branch of nested) {
+    const parsed = readCustomPropertyClause(branch, negated);
+
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  if (negated) {
+    return undefined;
+  }
+
+  for (const inner of asClauseArray(bool.must_not)) {
+    const parsed = readCustomPropertyClause(inner, true);
+
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
+// The config key for a property, below `extension`.
+const findExtensionField = (
+  fields: Fields | undefined,
+  name: string,
+  valueField?: string
+): { key: string; scope: string } | undefined => {
+  const subfields = (fields?.extension as FieldWithSubFields | undefined)
+    ?.subfields;
+
+  if (!subfields) {
+    return undefined;
+  }
+
+  // Explore groups by entity type; a pinned builder exposes them directly.
+  const scopes: Array<[string, Fields]> = [['', subfields]];
+  Object.entries(subfields).forEach(([key, definition]) => {
+    const nested = (definition as FieldWithSubFields)?.subfields;
+
+    if (nested) {
+      scopes.push([key, nested]);
+    }
+  });
+
+  const candidates = scopes.flatMap(([scope, scopeFields]) =>
+    Object.keys(scopeFields)
+      .filter((key) => key === name || key.startsWith(`${name}.`))
+      .map((key) => ({ key, scope }))
+  );
+
+  if (candidates.length === 0) {
+    return undefined;
+  }
+
+  const preferred = [
+    name,
+    `${name}.keyword`,
+    ...(valueField ? [`${name}.${valueField}`] : []),
+  ];
+
+  // `is_null` writes no value field, so a property declaring two keys (a time interval's start and end) cannot be told
+  // apart.
+  return (
+    candidates.find((candidate) => preferred.includes(candidate.key)) ??
+    candidates[0]
+  );
+};
+
+// Equality and containment name themselves per field type, not per query.
+const CUSTOM_PROPERTY_EQUALITY_OPERATORS: Record<string, [string, string]> = {
+  select: ['select_equals', 'select_not_equals'],
+  multiselect: ['multiselect_equals', 'multiselect_not_equals'],
+};
+
+const CUSTOM_PROPERTY_CONTAINS_OPERATORS: Record<string, [string, string]> = {
+  select: ['like', 'not_like'],
+  multiselect: ['multiselect_contains', 'multiselect_not_contains'],
+};
+
+const pickOperator = (
+  pairs: Record<string, [string, string]>,
+  fallback: [string, string],
+  fieldType: string | undefined,
+  negated: boolean
+): string => (pairs[fieldType ?? ''] ?? fallback)[negated ? 1 : 0];
+
+const RANGE_BOUND_OPERATORS: Array<[string[], string]> = [
+  [['gte', 'lte'], 'between'],
+  [['lt'], 'less'],
+  [['lte'], 'less_or_equal'],
+  [['gt'], 'greater'],
+  [['gte'], 'greater_or_equal'],
+];
+
+const readRange = (
+  range: UnknownRecord,
+  negated: boolean
+): { operator: string; value: unknown[] } | undefined => {
+  const bounds = RANGE_BOUND_OPERATORS.find(([keys]) =>
+    keys.every((key) => !isUndefined(range[key]))
+  );
+
+  if (!bounds) {
+    return undefined;
+  }
+
+  const [keys, operator] = bounds;
+
+  return {
+    operator: operator === 'between' && negated ? 'not_between' : operator,
+    value: keys.map((key) => range[key]),
+  };
+};
+
+const stripWildcards = (value: unknown): string =>
+  String(value ?? '').replace(/^\*|\*$/g, '');
+
+// A multiselect holds its choices in a single value slot, so it nests.
+const toRuleValue = (
+  fieldType: string | undefined,
+  value: unknown
+): unknown[] => (fieldType === 'multiselect' ? [[value]] : [value]);
+
+// The rule a parsed clause describes, or nothing if it describes none.
+const toCustomPropertyRule = (
+  parsed: CustomPropertyClause,
+  fieldType: string | undefined
+): { operator: string; value: unknown[] } | undefined => {
+  const { shape, negated, value, range } = parsed;
+
+  if (shape === 'exists') {
+    return { operator: negated ? 'is_null' : 'is_not_null', value: [] };
+  }
+
+  if (shape === 'range') {
+    return range ? readRange(range, negated) : undefined;
+  }
+
+  if (shape === 'wildcard') {
+    return {
+      operator: pickOperator(
+        CUSTOM_PROPERTY_CONTAINS_OPERATORS,
+        ['like', 'not_like'],
+        fieldType,
+        negated
+      ),
+      value: toRuleValue(fieldType, stripWildcards(value)),
+    };
+  }
+
+  if (shape === 'regexp') {
+    return { operator: 'regexp', value: toRuleValue(fieldType, value) };
+  }
+
+  return {
+    operator: pickOperator(
+      CUSTOM_PROPERTY_EQUALITY_OPERATORS,
+      ['equal', 'not_equal'],
+      fieldType,
+      negated
+    ),
+    value: toRuleValue(fieldType, value),
+  };
+};
+
+// Nests a rule in one `rule_group` per level of its field, the way RAQB does — the canvas draws a Field control per
+// wrapper, so a flat rule left the first control blank.
+const wrapInDrillGroups = (
+  parentPath: Array<string>,
+  levels: string[],
+  rule: OldJsonItem
+): Record<string, OldJsonItem> => {
+  const level = levels[0];
+
+  if (isUndefined(level)) {
+    return {
+      [rule.id as string]: {
+        ...rule,
+        path: [...parentPath, rule.id as string],
+      },
+    } as unknown as Record<string, OldJsonItem>;
+  }
+
+  const id = generateUUID();
+
+  return {
+    [id]: {
+      type: 'rule_group',
+      id,
+      properties: {
+        conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+        not: false,
+        field: level,
+        fieldSrc: 'field',
+      },
+      children1: wrapInDrillGroups([...parentPath, id], levels.slice(1), rule),
+      path: [...parentPath, id],
+    } as OldJsonItem,
+  } as Record<string, OldJsonItem>;
+};
+
+const matchCustomProperty: QueryFilterBranchHandler = (
+  curr,
+  parentPath,
+  fields
+) => {
+  const clause = curr as unknown as UnknownRecord;
+  const parsed = readCustomPropertyClause(clause);
+
+  if (!parsed) {
+    return undefined;
+  }
+
+  const found = findExtensionField(fields, parsed.name, parsed.valueField);
+
+  if (!found) {
+    return undefined;
+  }
+
+  const extension = EntityReferenceFields.EXTENSION as string;
+  // Explore's per-entity-type grouping adds a level between `extension` and the property; a pinned builder has none.
+  const levels = found.scope
+    ? [extension, `${extension}.${found.scope}`]
+    : [extension];
+  const field = [...levels.slice(-1), found.key].join('.');
+  const fieldType = resolveFieldType(fields, field);
+  const rule = toCustomPropertyRule(parsed, fieldType);
+
+  if (!rule) {
+    return undefined;
+  }
+
+  const id = generateUUID();
+
+  return wrapInDrillGroups(parentPath, levels, {
+    type: 'rule',
+    id,
+    properties: {
+      field,
+      operator: rule.operator,
+      value: rule.value,
+      valueSrc: rule.value.map(() => 'value'),
+      operatorOptions: null,
+      valueType: rule.value.map(() => fieldType ?? 'text'),
+    },
+  } as OldJsonItem);
+};
+
+// Order matters: mirrors the original if/else-if cascade — first matching handler wins, exactly like the original
+// exclusive branches.
 const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
+  matchCustomProperty,
   matchDeletedTerm,
   matchTerm,
   matchMustNotTerm,
@@ -420,12 +825,31 @@ const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchBoolMust,
 ];
 
+const withoutCustomPropertyScope = (
+  queryFilter: QueryFieldInterface[]
+): QueryFieldInterface[] => {
+  const isEntityTypeScope = (clause: QueryFieldInterface) =>
+    !isUndefined(
+      ((clause as unknown as UnknownRecord).term as UnknownRecord)?.entityType
+    );
+
+  const hasCustomProperty = queryFilter.some(
+    (clause) =>
+      !isEntityTypeScope(clause) &&
+      !isUndefined(readCustomPropertyClause(clause as unknown as UnknownRecord))
+  );
+
+  return hasCustomProperty
+    ? queryFilter.filter((clause) => !isEntityTypeScope(clause))
+    : queryFilter;
+};
+
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
   queryFilter: QueryFieldInterface[],
   fields?: Fields
 ) => {
-  const convertedObj = queryFilter.reduce(
+  const convertedObj = withoutCustomPropertyScope(queryFilter).reduce(
     (acc, curr: QueryFieldInterface): Record<string, unknown> => {
       for (const matchBranch of QUERY_FILTER_BRANCH_HANDLERS) {
         const branchResult = matchBranch(
@@ -466,11 +890,14 @@ export const getJsonTreeFromQueryFilter = (
 
     return {
       type: 'group',
-      properties: { conjunction: 'AND', not: false },
+      properties: { conjunction: QUERY_BUILDER_CONJUNCTION.AND, not: false },
       children1: {
         [id2]: {
           type: 'group',
-          properties: { conjunction: 'AND', not: false },
+          properties: {
+            conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+            not: false,
+          },
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
             innerMust ?? mustFilters,
@@ -850,9 +1277,6 @@ type JsonLogicHandler = (
 ) => ElasticsearchQuery | undefined;
 
 // Order matters: mirrors the original if-cascade — first matching key wins.
-// A handler returning `undefined` (only possible for `some`) falls through to
-// the next entry, exactly like the original code continuing past a failed
-// inner check without a `return`.
 const JSON_LOGIC_HANDLERS: Array<
   [(logic: JsonLogic) => boolean, JsonLogicHandler]
 > = [
@@ -941,6 +1365,22 @@ export const addEntityTypeFilter = (
         ],
       },
     });
+
+    return qFilter;
+  }
+
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.should)) {
+    return {
+      ...qFilter,
+      query: {
+        bool: {
+          must: [
+            qFilter.query,
+            { term: { 'entityType.keyword': entityType } },
+          ] as QueryFieldInterface[],
+        },
+      },
+    } as QueryFilterInterface;
   }
 
   return qFilter;
@@ -993,6 +1433,51 @@ export const migrateJsonLogic = (
     );
   };
 
+  // An old table-property rule, written from the flat field it used to use.
+  const migrateTableRowsField = (node: JsonLogic): JsonLogic | undefined => {
+    if (Array.isArray(node)) {
+      return undefined;
+    }
+
+    const entries = Object.entries(node);
+
+    if (entries.length !== 1) {
+      return undefined;
+    }
+
+    const [operator, argument] = entries[0];
+    // `some` already asks about the array, and a conjunction is not a rule.
+    if (['some', 'all', 'none', 'and', 'or'].includes(operator)) {
+      return undefined;
+    }
+
+    const operand = Array.isArray(argument) ? argument[0] : argument;
+
+    if (!isVarObject(operand)) {
+      return undefined;
+    }
+
+    const match = /^(extension\..+\.rows)\.([^.]+)$/.exec(operand.var);
+
+    if (!match) {
+      return undefined;
+    }
+
+    const [, rowsPath, column] = match;
+    const columnVar = { var: column };
+
+    return {
+      some: [
+        { var: rowsPath },
+        {
+          [operator]: Array.isArray(argument)
+            ? [columnVar, ...argument.slice(1)]
+            : columnVar,
+        },
+      ],
+    } as JsonLogic;
+  };
+
   const migrateNode = (node: JsonLogic): JsonLogic => {
     if (node === null || typeof node !== 'object') {
       return node;
@@ -1006,6 +1491,12 @@ export const migrateJsonLogic = (
         };
       }
     }
+    const migratedRows = migrateTableRowsField(node);
+
+    if (migratedRows) {
+      return migratedRows;
+    }
+
     if (Array.isArray(node)) {
       return node.map(migrateNode) as unknown as JsonLogic;
     }
@@ -1034,12 +1525,3 @@ export const getFieldsByKeys = (
 
   return filteredFields;
 };
-
-export const buildExploreUrlParams = (
-  tree: unknown,
-  qFilter?: QueryFilterInterface
-): Record<string, string> => ({
-  ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
-  ...(!isEmpty(qFilter) &&
-    qFilter?.query && { quickFilter: JSON.stringify(qFilter) }),
-});

@@ -13,8 +13,10 @@
 
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { APIRequestMethod } from '../../../generated/api/data/createAPIEndpoint';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import APIEndpointDetails from './APIEndpointDetails';
@@ -152,5 +154,83 @@ describe('APIEndpointDetails component', () => {
       }),
       expect.anything()
     );
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 7):
+  // editCustomAttributePermission/editLineagePermission must keep explicit-deny-wins
+  // semantics (Task 6 Finding 1) and stay gated on `deleted`; viewAllPermission is a pure
+  // rename and must never be deleted-gated. Read the props actually passed to
+  // apiEndpointClassBase.getAPIEndpointDetailPageTabs (mocked) to inspect the derivation.
+  describe('permission wiring (getDerivedPermissionFlags)', () => {
+    const getLastTabsCall = () =>
+      (
+        apiEndpointClassBase.getAPIEndpointDetailPageTabs as jest.Mock
+      ).mock.calls.at(-1)[0];
+
+    it('denies editCustomAttributePermission when EditCustomFields is explicitly false, even with EditAll true', () => {
+      render(
+        <APIEndpointDetails
+          {...mockProps}
+          apiEndpointPermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: true,
+            EditCustomFields: false,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(getLastTabsCall().editCustomAttributePermission).toBe(false);
+    });
+
+    it('denies editLineagePermission when EditLineage is explicitly false, even with EditAll true', () => {
+      render(
+        <APIEndpointDetails
+          {...mockProps}
+          apiEndpointPermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: true,
+            EditLineage: false,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(getLastTabsCall().editLineagePermission).toBe(false);
+    });
+
+    it('gates edit permissions off when the entity is deleted, even with EditAll true', () => {
+      // Deliberately NOT spread with DEFAULT_ENTITY_PERMISSION: that fixture defines every
+      // Operation key (including EditCustomFields/EditLineage) as an explicit `false`, which
+      // would make getPrioritizedEditPermission's "key present" check deny via the explicit
+      // key rather than the deleted-gate this test exists to cover (SchemaTable.test.tsx /
+      // WorksheetColumnsTable.test.tsx precedent).
+      render(
+        <APIEndpointDetails
+          {...mockProps}
+          apiEndpointDetails={{ ...mockApiEndpointDetails, deleted: true }}
+          apiEndpointPermissions={{ EditAll: true } as OperationPermission}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(getLastTabsCall().editCustomAttributePermission).toBe(false);
+      expect(getLastTabsCall().editLineagePermission).toBe(false);
+    });
+
+    it('passes viewAllPermission through as a pure rename of ViewAll', () => {
+      render(
+        <APIEndpointDetails
+          {...mockProps}
+          apiEndpointPermissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            ViewAll: true,
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(getLastTabsCall().viewAllPermission).toBe(true);
+    });
   });
 });

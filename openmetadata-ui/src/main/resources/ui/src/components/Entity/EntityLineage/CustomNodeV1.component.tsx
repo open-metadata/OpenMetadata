@@ -11,12 +11,27 @@
  *  limitations under the License.
  */
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+} from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
+import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import {
+  LineageBand,
+  LineageSceneNode,
+} from '../../../generated/api/lineage/lineageScene';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
@@ -24,6 +39,7 @@ import {
   getCollapseHandle,
   getExpandHandle,
   getNodeClassNames,
+  shouldShowNodeRemoveButton,
 } from './CustomNode.utils';
 import {
   ExpandCollapseHandlesProps,
@@ -148,6 +164,38 @@ const ExpandCollapseHandles = memo((props: ExpandCollapseHandlesProps) => {
   );
 });
 
+const SceneDrillButton = ({
+  node,
+  label,
+  onDrill,
+}: {
+  node?: LineageSceneNode;
+  label?: string;
+  onDrill?: (node: LineageSceneNode) => void;
+}) => {
+  const { t } = useTranslation();
+  if (!node?.isExpandable || !onDrill) {
+    return null;
+  }
+  const drillLabel = label || t('label.zoom-in');
+
+  return (
+    <Tooltip title={drillLabel}>
+      <Button
+        aria-label={drillLabel}
+        className="lineage-scene-drill-button nodrag nopan"
+        color="tertiary"
+        iconLeading={ZoomInIcon}
+        size="sm"
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onDrill(node);
+        }}
+      />
+    </Tooltip>
+  );
+};
+
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
@@ -179,6 +227,16 @@ const CustomNodeV1 = (props: NodeProps) => {
     hasIncomers = false,
     isUpstreamNode = false,
     isDownstreamNode = false,
+    sceneNode,
+    sceneBand,
+    nodeWidth = NODE_WIDTH,
+    onSceneDrill,
+    onSceneNodeSelect,
+    sceneDrillLabel,
+    onSceneColumnHover,
+    onSceneColumnSelect,
+    onSceneNodeRemove,
+    isNodeRemovable = true,
   } = data;
 
   // sync expand state based on edit or column layer active
@@ -227,12 +285,25 @@ const CustomNodeV1 = (props: NodeProps) => {
     [isDQEnabled, dataQualityLineage, id]
   );
 
-  const containerClass = getNodeClassNames({
+  const containerClass = classNames(
+    getNodeClassNames({
+      isSelected,
+      showDqTracing: Boolean(showDqTracing),
+      isTraced: tracedNodes.has(id),
+      isBaseNode: isRootNode,
+      isChildrenListExpanded: columnsExpanded || isColumnLevelLineage,
+    }),
+    {
+      'lineage-scene-node': Boolean(sceneNode),
+      'lineage-scene-layer-node':
+        Boolean(sceneNode) && sceneBand === LineageBand.Layer,
+    }
+  );
+  const showRemoveButton = shouldShowNodeRemoveButton({
     isSelected,
-    showDqTracing: showDqTracing ?? false,
-    isTraced: tracedNodes.has(id),
-    isBaseNode: isRootNode,
-    isChildrenListExpanded: columnsExpanded || isColumnLevelLineage,
+    isEditMode,
+    isRootNode: Boolean(isRootNode),
+    isNodeRemovable,
   });
 
   const onExpand = useCallback(
@@ -257,8 +328,21 @@ const CustomNodeV1 = (props: NodeProps) => {
   }, [showColumnsWithLineageOnly, setNodeFilterState, node.id]);
 
   const handleNodeRemove = useCallback(() => {
+    if (onSceneNodeRemove) {
+      onSceneNodeRemove(props);
+
+      return;
+    }
     removeNodeHandler(props);
-  }, [removeNodeHandler, props]);
+  }, [onSceneNodeRemove, props, removeNodeHandler]);
+
+  const handleEntityClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      onSceneNodeSelect?.(props.id);
+    },
+    [onSceneNodeSelect, props.id]
+  );
 
   const nodeLabel = useMemo(() => {
     if (isNewNode) {
@@ -275,24 +359,28 @@ const CustomNodeV1 = (props: NodeProps) => {
           toggleOnlyShowColumnsWithLineageFilterActive={
             toggleShowColumnsWithLineageOnly
           }
+          onEntityClick={
+            !isEditMode && onSceneNodeSelect ? handleEntityClick : undefined
+          }
         />
-        {isSelected && isEditMode && !isRootNode && (
+        {showRemoveButton && (
           <LineageNodeRemoveButton onRemove={handleNodeRemove} />
         )}
       </>
     );
   }, [
-    node.id,
+    node,
+    onSceneNodeSelect,
+    handleEntityClick,
     isNewNode,
     label,
-    isSelected,
-    isRootNode,
     columnsExpanded,
     showColumnsWithLineageOnly,
     toggleShowColumnsWithLineageOnly,
     handleNodeRemove,
     toggleColumnsExpanded,
     isEditMode,
+    showRemoveButton,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
@@ -340,22 +428,38 @@ const CustomNodeV1 = (props: NodeProps) => {
         isConnectable={isConnectable}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
+        onColumnHover={onSceneColumnHover}
+        onColumnSelect={onSceneColumnSelect}
       />
     );
-  }, [columnsExpanded, isConnectable, showColumnsWithLineageOnly, node]);
+  }, [
+    columnsExpanded,
+    isConnectable,
+    node,
+    onSceneColumnHover,
+    onSceneColumnSelect,
+    showColumnsWithLineageOnly,
+  ]);
 
   return (
     <div
       className={containerClass}
       data-nodedepth={nodeDepth}
       data-testid={`lineage-node-${fullyQualifiedName}`}
-      style={{ width: NODE_WIDTH }}>
+      style={{ width: nodeWidth }}>
       {isRootNode && (
         <div className="lineage-node-badge-container">
           <div className="lineage-node-badge" />
         </div>
       )}
       <div className="lineage-node-content">
+        {!isEditMode && (
+          <SceneDrillButton
+            label={sceneDrillLabel}
+            node={sceneNode}
+            onDrill={onSceneDrill}
+          />
+        )}
         <div className="label-container bg-white">{nodeLabel}</div>
         <NodeHandles
           expandCollapseHandles={handlesElement}
