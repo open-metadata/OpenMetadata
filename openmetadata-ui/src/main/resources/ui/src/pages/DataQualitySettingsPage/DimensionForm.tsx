@@ -17,9 +17,20 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { KeyboardEvent, useCallback, useRef } from 'react';
 import { Controller, useWatch, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
+import { DIMENSION_COLOR_OPTIONS } from '../../constants/DataQualityDimension.constants';
+
+const COLOR_GROUP_LABEL_ID = 'dimension-color-group-label';
+
+/** Arrow keys move the selection inside a radio group; Home/End jump to its ends. */
+const KEY_OFFSETS: Record<string, number> = {
+  ArrowRight: 1,
+  ArrowDown: 1,
+  ArrowLeft: -1,
+  ArrowUp: -1,
+};
 
 export interface DimensionFormValues {
   name: string;
@@ -43,6 +54,46 @@ const DimensionForm = ({ hookForm, isEditing }: DimensionFormProps) => {
   const name = useWatch({ control, name: 'name' });
   const displayName = useWatch({ control, name: 'displayName' });
   const previewLabel = displayName || name || t('label.dimension');
+
+  const swatchRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const selectColor = useCallback(
+    (swatch: string) => setValue('color', swatch, { shouldDirty: true }),
+    [setValue]
+  );
+
+  // One tab stop for the whole group: the selected swatch, or the first one when the current
+  // colour is not in the palette.
+  const isRovingTabStop = (swatch: string, index: number) =>
+    color === swatch ||
+    (index === 0 &&
+      !DIMENSION_COLOR_OPTIONS.some((option) => option.color === color));
+
+  const handleSwatchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+      const offset = KEY_OFFSETS[event.key];
+      let nextIndex: number | undefined;
+
+      if (offset !== undefined) {
+        nextIndex =
+          (index + offset + DIMENSION_COLOR_OPTIONS.length) %
+          DIMENSION_COLOR_OPTIONS.length;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = DIMENSION_COLOR_OPTIONS.length - 1;
+      }
+
+      if (nextIndex === undefined) {
+        return;
+      }
+
+      event.preventDefault();
+      selectColor(DIMENSION_COLOR_OPTIONS[nextIndex].color);
+      swatchRefs.current[nextIndex]?.focus();
+    },
+    [selectColor]
+  );
 
   return (
     <Grid colGap="6">
@@ -73,7 +124,9 @@ const DimensionForm = ({ hookForm, isEditing }: DimensionFormProps) => {
               required: t('label.field-required', { field: t('label.name') }),
               pattern: {
                 value: /^[\w-]+$/,
-                message: t('message.dimension-name-help'),
+                // Distinct from the hint: reusing it would leave the text unchanged when the
+                // field flips to invalid, so nothing but the styling would move.
+                message: t('message.dimension-name-invalid'),
               },
             }}
           />
@@ -107,27 +160,44 @@ const DimensionForm = ({ hookForm, isEditing }: DimensionFormProps) => {
             )}
           />
 
+          {/* A single-choice palette, so it is a radio group: one tab stop, arrow keys move
+              between swatches, and the group takes its accessible name from the text above it
+              rather than from a <label> with no control attached to it. */}
           <Box direction="col" gap={2}>
-            <Typography as="label" size="text-sm" weight="medium">
+            <Typography
+              as="span"
+              id={COLOR_GROUP_LABEL_ID}
+              size="text-sm"
+              weight="medium">
               {t('label.color')}
             </Typography>
-            <Box gap={2} wrap="wrap">
-              {DIMENSION_COLOR_PALETTE.map((swatch) => (
-                <button
-                  aria-label={swatch}
-                  aria-pressed={color === swatch}
-                  className={`dimension-color-swatch${
-                    color === swatch ? ' selected' : ''
-                  }`}
-                  data-testid={`color-${swatch}`}
-                  key={swatch}
-                  style={{ backgroundColor: swatch }}
-                  type="button"
-                  onClick={() =>
-                    setValue('color', swatch, { shouldDirty: true })
-                  }
-                />
-              ))}
+            <Box
+              aria-labelledby={COLOR_GROUP_LABEL_ID}
+              gap={2}
+              role="radiogroup"
+              wrap="wrap">
+              {DIMENSION_COLOR_OPTIONS.map(
+                ({ color: swatch, labelKey }, index) => (
+                  <button
+                    aria-checked={color === swatch}
+                    aria-label={t(labelKey)}
+                    className={`dimension-color-swatch${
+                      color === swatch ? ' selected' : ''
+                    }`}
+                    data-testid={`color-${swatch}`}
+                    key={swatch}
+                    ref={(element) => {
+                      swatchRefs.current[index] = element;
+                    }}
+                    role="radio"
+                    style={{ backgroundColor: swatch }}
+                    tabIndex={isRovingTabStop(swatch, index) ? 0 : -1}
+                    type="button"
+                    onClick={() => selectColor(swatch)}
+                    onKeyDown={(event) => handleSwatchKeyDown(event, index)}
+                  />
+                )
+              )}
             </Box>
           </Box>
         </Box>

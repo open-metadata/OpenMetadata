@@ -399,6 +399,25 @@ test.describe(
 
       await expect(editButton).toBeEnabled();
 
+      // An enabled edit button on its own says nothing about what the form lets through, so
+      // open it and check that a field other than the dimension is still read-only.
+      await editButton.click();
+      await dataStewardPage
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
+
+      await expect(
+        dataStewardPage.locator('[id="root/entityType"]')
+      ).toBeDisabled();
+      await expect(
+        dataStewardPage.getByTestId('data-quality-dimension')
+      ).not.toBeDisabled();
+
+      await dataStewardPage.getByRole('button', { name: /Cancel/i }).click();
+      await expect(
+        dataStewardPage.getByTestId('test-definition-form-body')
+      ).not.toBeVisible();
+
       // Verify enabled switch exists and can be toggled
       const enabledSwitch = dataStewardPage.getByTestId(
         `enable-switch-${systemTestDef.name}`

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ProviderType } from '../generated/entity/bot';
 import {
+  ProviderType,
   TestDefinition,
   TestPlatform,
 } from '../generated/tests/testDefinition';

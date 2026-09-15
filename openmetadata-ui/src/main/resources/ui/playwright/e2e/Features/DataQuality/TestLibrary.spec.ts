@@ -523,6 +523,23 @@ test.describe(
 
       await expect(editButton).toBeEnabled();
 
+      // An enabled edit button on its own says nothing about what the form lets through, so
+      // open it and check that a field other than the dimension is still read-only.
+      await editButton.click();
+      await page
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
+
+      await expect(page.locator('[id="root/entityType"]')).toBeDisabled();
+      await expect(
+        page.getByTestId('data-quality-dimension')
+      ).not.toBeDisabled();
+
+      await page.getByRole('button', { name: /Cancel/i }).click();
+      await expect(
+        page.getByTestId('test-definition-form-body')
+      ).not.toBeVisible();
+
       // Verify delete button does not exist for system test definition
       const deleteButton = page.getByTestId(
         `delete-test-definition-${systemTestDef.name}`

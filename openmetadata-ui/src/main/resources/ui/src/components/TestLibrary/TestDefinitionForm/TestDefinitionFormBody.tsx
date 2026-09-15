@@ -40,15 +40,15 @@ import { useTranslation } from 'react-i18next';
 import { TEST_DEFINITION_FORM } from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
-import { DataQualityDimension } from '../../../generated/tests/dataQualityDimension';
 import {
   DataType,
   EntityType,
   TestDataType,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import { getDataQualityDimensions } from '../../../rest/dataQualityDimensionAPI';
+import { useDataQualityDimensions } from '../../../hooks/useDataQualityDimensions';
 import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
+import { getDimensionSelectOptions } from '../../../utils/DataQualityDimensionUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { TestDefinitionFormBodyProps } from './TestDefinitionForm.interface';
 import { TEST_DEFINITION_FIELD_DOCS } from './testDefinitionFormDocs';
@@ -99,35 +99,18 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
 
   // Dimensions are entities managed in Settings > Preferences > Data Quality, so the picker
   // lists what exists there — custom dimensions included — instead of the built-in names only.
-  const [dataQualityDimensions, setDataQualityDimensions] = useState<
-    DataQualityDimension[]
-  >([]);
-
-  useEffect(() => {
-    getDataQualityDimensions({ limit: 1000 })
-      // A failure degrades the picker to the dimension already set rather than blocking the
-      // rest of the form.
-      .then(({ data }) => setDataQualityDimensions(data))
-      .catch(() => setDataQualityDimensions([]));
-  }, []);
+  // The shared hook owns the fetch, so this form degrades the same way as the test case form.
+  const { dimensions: dataQualityDimensions } = useDataQualityDimensions();
 
   // The dimension already set on the test definition is kept as an option even if it has since
   // been removed, so opening the form does not silently clear it.
-  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(() => {
-    const options = new Map<string, FormSelectItem>();
-    dataQualityDimensions.forEach((dimension) => {
-      options.set(dimension.name, {
-        id: dimension.name,
-        label: dimension.displayName ?? dimension.name,
-      });
-    });
-    const currentValue = dataQualityDimensionValue?.id;
-    if (currentValue && !options.has(currentValue)) {
-      options.set(currentValue, { id: currentValue, label: currentValue });
-    }
-
-    return Array.from(options.values());
-  }, [dataQualityDimensions, dataQualityDimensionValue]);
+  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(
+    () =>
+      getDimensionSelectOptions(dataQualityDimensions, [
+        dataQualityDimensionValue?.id,
+      ]),
+    [dataQualityDimensions, dataQualityDimensionValue]
+  );
 
   // Per-field "Form Hint" text is sourced from the same TestDefinitionForm.md
   // that backs the classic documentation panel, so the modal popover and the

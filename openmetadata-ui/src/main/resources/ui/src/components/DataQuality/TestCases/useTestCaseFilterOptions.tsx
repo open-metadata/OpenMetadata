@@ -16,11 +16,13 @@ import { debounce, isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
+  AGGREGATE_PAGE_SIZE_LARGE,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
+  TEST_CASE_DIMENSION_LABELS,
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
 } from '../../../constants/profiler.constant';
@@ -37,6 +39,19 @@ export interface FetchedOption extends DefaultOptionType {
   name?: string;
   subLabel?: string;
 }
+
+/** The unset marker. It has no dimension entity of its own, so it is spelled out here. */
+const NO_DIMENSION_OPTION: FetchedOption = {
+  label: TEST_CASE_DIMENSION_LABELS[DataQualityDimensions.NoDimension],
+  name: TEST_CASE_DIMENSION_LABELS[DataQualityDimensions.NoDimension],
+  value: DataQualityDimensions.NoDimension,
+};
+
+/** Dimension options carry the plain name alongside the label; both paths must set it. */
+const withName = (option: { label: string; value: string }): FetchedOption => ({
+  ...option,
+  name: option.label,
+});
 
 const optionLabel = (name: string, fqn?: string, testId?: string) => (
   <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
@@ -77,24 +92,18 @@ export const useTestCaseFilterOptions = () => {
   const fetchDimensionOptions = async () => {
     setIsOptionsLoading(true);
     try {
-      const { data } = await getDataQualityDimensions({ limit: 1000 });
+      const { data } = await getDataQualityDimensions({
+        limit: AGGREGATE_PAGE_SIZE_LARGE,
+      });
       setDimensionOptions([
-        ...TEST_CASE_DIMENSIONS_OPTION.filter(
-          ({ value }) => value === DataQualityDimensions.NoDimension
-        ).map(({ label, value }) => ({
-          label,
-          name: String(label),
-          value,
-        })),
-        ...data.map((dimension) => ({
-          label: getEntityName(dimension),
-          name: getEntityName(dimension),
-          value: dimension.name,
-        })),
+        NO_DIMENSION_OPTION,
+        ...data.map((dimension) =>
+          withName({ label: getEntityName(dimension), value: dimension.name })
+        ),
       ]);
     } catch {
       // Degrade to the shipped dimensions rather than to an empty dropdown.
-      setDimensionOptions(TEST_CASE_DIMENSIONS_OPTION);
+      setDimensionOptions(TEST_CASE_DIMENSIONS_OPTION.map(withName));
     } finally {
       setIsOptionsLoading(false);
     }

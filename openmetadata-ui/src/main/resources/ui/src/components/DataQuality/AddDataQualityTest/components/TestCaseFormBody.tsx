@@ -49,15 +49,14 @@ import { PipelineType } from '../../../../generated/api/services/ingestionPipeli
 import { TagSource } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import { DataQualityDimension } from '../../../../generated/tests/dataQualityDimension';
 import {
   EntityType,
   TestDefinition,
   TestPlatform,
 } from '../../../../generated/tests/testDefinition';
+import { useDataQualityDimensions } from '../../../../hooks/useDataQualityDimensions';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
-import { getDataQualityDimensions } from '../../../../rest/dataQualityDimensionAPI';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
@@ -71,6 +70,7 @@ import {
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
+import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
 import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
@@ -467,9 +467,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     useState(false);
   const [isDimensionManuallyEdited, setIsDimensionManuallyEdited] =
     useState(false);
-  const [dataQualityDimensions, setDataQualityDimensions] = useState<
-    DataQualityDimension[]
-  >([]);
+  // Dimensions are entities managed in Settings > Preferences > Data Quality; the shared hook
+  // owns the fetch so this form, the test definition form and the test case filters all list the
+  // same set and degrade the same way.
+  const { dimensions: dataQualityDimensions, isLoading: isDimensionsLoading } =
+    useDataQualityDimensions();
 
   const testLevelFieldValue = useWatch({
     control: form.control,
@@ -663,42 +665,19 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     return result;
   }, [columnOptions, selectedColumn, dimensionColumnsValue]);
 
-  // Dimensions are entities managed in Settings > Preferences > Data Quality, so the picker
-  // lists what exists there. The dimension already set on the test case is kept as an option
-  // even if it has since been removed, so opening the form does not silently clear it.
-  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(() => {
-    const options = new Map<string, FormSelectItem>();
-    dataQualityDimensions.forEach((dimension) => {
-      options.set(dimension.name, {
-        id: dimension.name,
-        label: dimension.displayName ?? dimension.name,
-      });
-    });
-    [
-      selectedTestDefinition?.dataQualityDimension,
-      fqnFromSelectItem(
-        dataQualityDimensionValue as FormSelectItem | string | null
-      ),
-    ].forEach((dimension) => {
-      if (dimension && !options.has(dimension)) {
-        options.set(dimension, { id: dimension, label: dimension });
-      }
-    });
-
-    return Array.from(options.values());
-  }, [
-    dataQualityDimensions,
-    selectedTestDefinition,
-    dataQualityDimensionValue,
-  ]);
-
-  useEffect(() => {
-    getDataQualityDimensions({ limit: 1000 })
-      .then(({ data }) => setDataQualityDimensions(data))
-      // The field falls back to the test definition's dimension, so a failure here degrades
-      // the picker rather than blocking test case creation.
-      .catch(() => setDataQualityDimensions([]));
-  }, []);
+  // The dimension already set on the test case — and the one the test definition defaults to —
+  // are kept as options even if they have since been removed, so opening the form does not
+  // silently clear the value.
+  const dataQualityDimensionOptions: FormSelectItem[] = useMemo(
+    () =>
+      getDimensionSelectOptions(dataQualityDimensions, [
+        selectedTestDefinition?.dataQualityDimension,
+        fqnFromSelectItem(
+          dataQualityDimensionValue as FormSelectItem | string | null
+        ),
+      ]),
+    [dataQualityDimensions, selectedTestDefinition, dataQualityDimensionValue]
+  );
 
   const fetchTables = useCallback(
     async (searchValue = '') => {
@@ -1262,7 +1241,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const dataQualityDimensionField: FieldProp = {
     name: 'dataQualityDimension',
     label: t('label.data-quality-dimension'),
-    type: FieldTypes.SELECT,
+    // AUTOCOMPLETE, not SELECT, for the same reason as the test type field above: the registered
+    // dimensions load async and an already-open react-aria Select never refreshes its collection,
+    // so a dropdown opened before the fetch lands would only ever show the seeded value.
+    type: FieldTypes.AUTOCOMPLETE,
     required: false,
     id: 'root/dataQualityDimension',
     doc:
@@ -1273,6 +1255,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'data-quality-dimension',
+      isLoading: isDimensionsLoading,
       options: dataQualityDimensionOptions,
       onItemInserted: () => setIsDimensionManuallyEdited(true),
       onItemCleared: () => setIsDimensionManuallyEdited(true),

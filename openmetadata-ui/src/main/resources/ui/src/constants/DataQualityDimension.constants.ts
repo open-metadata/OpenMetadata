@@ -14,17 +14,24 @@
 /**
  * Colours offered when creating or editing a data quality dimension. The system dimensions
  * seeded by the server pick their colour from this same list.
+ *
+ * Each carries the label key its swatch is announced with — a screen reader saying "#175CD3"
+ * is not a usable name. The keys are the shared colour labels the ontology palette also uses.
  */
-export const DIMENSION_COLOR_PALETTE = [
-  '#175CD3',
-  '#2E90FA',
-  '#067647',
-  '#B54708',
-  '#C4320A',
-  '#D92D20',
-  '#7A5AF8',
-  '#6938EF',
-  '#C11574',
-  '#099250',
-  '#475467',
+export const DIMENSION_COLOR_OPTIONS = [
+  { color: '#175CD3', labelKey: 'label.color-dark-blue' },
+  { color: '#2E90FA', labelKey: 'label.color-blue' },
+  { color: '#067647', labelKey: 'label.color-green' },
+  { color: '#B54708', labelKey: 'label.color-yellow' },
+  { color: '#C4320A', labelKey: 'label.color-orange' },
+  { color: '#D92D20', labelKey: 'label.color-red' },
+  { color: '#7A5AF8', labelKey: 'label.color-violet' },
+  { color: '#6938EF', labelKey: 'label.color-purple' },
+  { color: '#C11574', labelKey: 'label.color-pink' },
+  { color: '#099250', labelKey: 'label.color-teal' },
+  { color: '#475467', labelKey: 'label.color-gray' },
 ];
+
+export const DIMENSION_COLOR_PALETTE = DIMENSION_COLOR_OPTIONS.map(
+  ({ color }) => color
+);

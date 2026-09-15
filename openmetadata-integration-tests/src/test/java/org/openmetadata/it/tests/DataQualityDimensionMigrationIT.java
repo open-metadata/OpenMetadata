@@ -75,8 +75,11 @@ public class DataQualityDimensionMigrationIT {
     assertEquals(0, countDimensionRows(SACRIFICIAL_DIMENSION), "precondition: dimension removed");
     assertNull(refOf(testCase), "precondition: test case looks like one created before 2.1.0");
 
-    DataQualityDimensionMigration.backfillTestCaseDimensions(
-        TestSuiteBootstrap.getJdbi().open(), TestSuiteBootstrap.getConnectionType());
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                DataQualityDimensionMigration.backfillTestCaseDimensions(
+                    handle, TestSuiteBootstrap.getConnectionType()));
 
     assertEquals(
         1,

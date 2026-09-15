@@ -12,12 +12,15 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
 import { ProviderType } from '../../generated/tests/dataQualityDimension';
 import {
   createDataQualityDimension,
+  deleteDataQualityDimension,
   getDataQualityDimensions,
   getDataQualityDimensionTestCaseCounts,
   getDataQualityDimensionTestDefinitionCounts,
+  patchDataQualityDimension,
 } from '../../rest/dataQualityDimensionAPI';
 import DataQualitySettingsPage from './DataQualitySettingsPage';
 
@@ -69,7 +72,23 @@ describe('DataQualitySettingsPage', () => {
       getDataQualityDimensionTestDefinitionCounts as jest.Mock
     ).mockResolvedValue({});
     (createDataQualityDimension as jest.Mock).mockResolvedValue({});
+    (patchDataQualityDimension as jest.Mock).mockResolvedValue({});
+    (deleteDataQualityDimension as jest.Mock).mockResolvedValue({});
   });
+
+  const openCreateDrawer = async () => {
+    await screen.findByText('BCBS 239');
+    fireEvent.click(await screen.findByTestId('add-dimension'));
+
+    return screen.findByTestId('dimension-name');
+  };
+
+  const openDeleteModal = async () => {
+    await screen.findByText('BCBS 239');
+    fireEvent.click(await screen.findByTestId('delete-BCBS-239'));
+
+    return screen.findByTestId('confirm-button');
+  };
 
   it('should list the dimensions returned by the API', async () => {
     renderPage();
@@ -145,6 +164,133 @@ describe('DataQualitySettingsPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('dimension-name')).toHaveValue('')
     );
+  });
+
+  it('should create a dimension from the values entered in the drawer', async () => {
+    renderPage();
+
+    const nameInput = await openCreateDrawer();
+    fireEvent.change(nameInput, { target: { value: 'timeliness' } });
+    fireEvent.change(screen.getByTestId('dimension-display-name'), {
+      target: { value: 'Timeliness' },
+    });
+    fireEvent.click(screen.getByTestId('save-dimension'));
+
+    await waitFor(() =>
+      expect(createDataQualityDimension).toHaveBeenCalledWith({
+        name: 'timeliness',
+        displayName: 'Timeliness',
+        description: undefined,
+        style: { color: DIMENSION_COLOR_PALETTE[0] },
+      })
+    );
+  });
+
+  it('should reject a name that is not a valid technical name', async () => {
+    renderPage();
+
+    const nameInput = await openCreateDrawer();
+    fireEvent.change(nameInput, { target: { value: 'not a valid name' } });
+    fireEvent.click(screen.getByTestId('save-dimension'));
+
+    // The distinct message matters: the hint is shown when the field is valid, so reusing it
+    // would leave the user with no visible change on a failed submit.
+    expect(
+      await screen.findByText('message.dimension-name-invalid')
+    ).toBeInTheDocument();
+    expect(createDataQualityDimension).not.toHaveBeenCalled();
+  });
+
+  it('should patch only what changed when an existing dimension is saved', async () => {
+    renderPage();
+
+    await screen.findByText('BCBS 239');
+    fireEvent.click(await screen.findByTestId('edit-BCBS-239'));
+    await waitFor(() =>
+      expect(screen.getByTestId('dimension-name')).toHaveValue('BCBS-239')
+    );
+
+    fireEvent.change(screen.getByTestId('dimension-display-name'), {
+      target: { value: 'BCBS 239 (risk)' },
+    });
+    fireEvent.click(screen.getByTestId('save-dimension'));
+
+    await waitFor(() =>
+      expect(patchDataQualityDimension).toHaveBeenCalledWith('dim-custom', [
+        {
+          op: 'replace',
+          path: '/displayName',
+          value: 'BCBS 239 (risk)',
+        },
+      ])
+    );
+    expect(createDataQualityDimension).not.toHaveBeenCalled();
+  });
+
+  it('should delete the dimension once the confirmation is accepted', async () => {
+    renderPage();
+
+    fireEvent.click(await openDeleteModal());
+
+    await waitFor(() =>
+      expect(deleteDataQualityDimension).toHaveBeenCalledWith('dim-custom')
+    );
+    // The list is refetched so the deleted row disappears.
+    expect(getDataQualityDimensions).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not delete anything when the confirmation is dismissed', async () => {
+    renderPage();
+
+    await openDeleteModal();
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('confirm-button')).not.toBeInTheDocument()
+    );
+    expect(deleteDataQualityDimension).not.toHaveBeenCalled();
+  });
+
+  it('should warn about the test cases and test definitions that reference the dimension', async () => {
+    (getDataQualityDimensionTestCaseCounts as jest.Mock).mockResolvedValue({
+      'dim-custom': 4,
+    });
+    (
+      getDataQualityDimensionTestDefinitionCounts as jest.Mock
+    ).mockResolvedValue({ 'dim-custom': 2 });
+
+    renderPage();
+
+    await openDeleteModal();
+
+    expect(
+      screen.getByText('message.dimension-in-use-count')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.dimension-in-use-test-definition-count')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.dimension-impact-unknown')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should say the impact is unknown when a count could not be fetched', async () => {
+    (getDataQualityDimensionTestCaseCounts as jest.Mock).mockRejectedValue(
+      new Error('boom')
+    );
+
+    renderPage();
+
+    await openDeleteModal();
+
+    // A failed count must not read as "no test case uses this dimension".
+    expect(
+      screen.getByText('message.dimension-impact-unknown')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.dimension-in-use-count')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('--')).toBeInTheDocument();
   });
 
   it('should not let a system dimension be edited or deleted', async () => {

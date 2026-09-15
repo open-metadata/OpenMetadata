@@ -11,35 +11,36 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../styles/variables.less';
-
 .data-quality-settings-page {
   .dimension-technical-name {
     margin-bottom: 0;
     font-family: monospace;
-    font-size: 12px;
-    color: @text-grey-muted;
+    font-size: var(--om-font-size-xs);
+    color: var(--om-color-text-tertiary);
   }
 }
 
 .dimension-color-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 6px;
+  width: var(--om-space-8);
+  height: var(--om-space-8);
+  border-radius: var(--om-radius-full);
+  margin-top: var(--om-space-6);
 }
 
 .dimension-color-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: var(--om-space-24);
+  height: var(--om-space-24);
+  border-radius: var(--om-radius-full);
   border: 2px solid transparent;
   padding: 0;
   cursor: pointer;
 
+  // Drawn as an outline rather than a ring: rings compile to box-shadow, which WebKit does not
+  // pixel-snap, so the selected indicator thins or vanishes in Safari at non-100% zoom.
   &.selected {
-    box-shadow: 0 0 0 2px @white, 0 0 0 4px currentColor;
+    outline: 2px solid currentColor;
+    outline-offset: var(--om-space-2);
   }
 }
 
@@ -47,27 +48,40 @@
   .dimension-side-panel {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: @padding-md;
-    border: 1px solid @border-color;
-    border-radius: @border-rad-sm;
-    background-color: @grey-50;
+    gap: var(--om-space-12);
+    padding: var(--om-space-16);
+    border: 1px solid var(--om-color-border);
+    border-radius: var(--om-radius-sm);
+    background-color: var(--om-color-bg-secondary);
   }
 
   .dimension-preview {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
-    border: 1px solid @border-color;
-    border-radius: 8px;
-    background-color: @white;
+    gap: var(--om-space-12);
+    padding: var(--om-space-12);
+    border: 1px solid var(--om-color-border);
+    border-radius: var(--om-radius-lg);
+    background-color: var(--om-color-bg-surface);
   }
 }
 
+// Inline elements: the shared delete modal renders its message inside a <p>, so the impact
+// block is laid out with flex on spans rather than nesting block elements there.
 .dimension-delete-warning {
-  padding: 12px;
-  border: 1px solid @yellow-3;
-  border-radius: 8px;
-  background-color: @yellow-1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--om-space-8);
+  margin-top: var(--om-space-12);
+  padding: var(--om-space-12);
+  border: 1px solid var(--om-color-border-warning-subtle);
+  border-radius: var(--om-radius-lg);
+  background-color: var(--om-color-bg-warning);
+  text-align: left;
+}
+
+.dimension-delete-impact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--om-space-4);
 }

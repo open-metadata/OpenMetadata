@@ -35,6 +35,7 @@ import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../../constants/constants';
 import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -59,10 +60,36 @@ import DimensionForm, { type DimensionFormValues } from './DimensionForm';
 
 const DEFAULT_COLOR = DIMENSION_COLOR_PALETTE[0];
 
-const countFor = (
-  counts: Record<string, number>,
-  dimension?: DataQualityDimension
-): number => counts[dimension?.id ?? ''] ?? 0;
+/**
+ * The drawer is a three-state affair — closed, creating, editing something — so it is modelled
+ * as a discriminated union rather than as `null` vs `undefined` on the edited dimension.
+ */
+type DrawerState =
+  | { mode: 'closed' }
+  | { mode: 'create' }
+  | { mode: 'edit'; dimension: DataQualityDimension };
+
+const CLOSED_DRAWER: DrawerState = { mode: 'closed' };
+
+/**
+ * The dimension list and its two count maps always arrive from the same request, so they are
+ * held together. A count map is `undefined` when its request failed — unknown, not zero.
+ *
+ * Test definitions reference a dimension by name rather than by relationship, so they are
+ * counted separately from test cases — without them the delete confirmation reports no impact
+ * for a dimension a dozen test definitions are classified under.
+ */
+interface DimensionListState {
+  dimensions: DataQualityDimension[];
+  testCaseCounts?: Record<string, number>;
+  testDefinitionCounts?: Record<string, number>;
+}
+
+const countFor = <T,>(
+  counts: Record<string, number> | undefined,
+  dimension: DataQualityDimension | undefined,
+  fallback: T
+): number | T => counts?.[dimension?.id ?? ''] ?? fallback;
 
 const DataQualitySettingsPage = () => {
   const { t } = useTranslation();
@@ -80,20 +107,16 @@ const DataQualitySettingsPage = () => {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [dimensions, setDimensions] = useState<DataQualityDimension[]>([]);
-  const [testCaseCounts, setTestCaseCounts] = useState<Record<string, number>>(
-    {}
-  );
-  // Test definitions reference a dimension by name rather than by relationship, so they are
-  // counted separately — without them the delete confirmation reports no impact for a dimension
-  // a dozen test definitions are classified under.
-  const [testDefinitionCounts, setTestDefinitionCounts] = useState<
-    Record<string, number>
-  >({});
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [listState, setListState] = useState<DimensionListState>({
+    dimensions: [],
+  });
   const [searchTerm, setSearchTerm] = useState('');
-  // `undefined` closes the drawer, `null` opens it in create mode.
-  const [editing, setEditing] = useState<DataQualityDimension | null>();
+  const [drawer, setDrawer] = useState<DrawerState>(CLOSED_DRAWER);
   const [deleting, setDeleting] = useState<DataQualityDimension>();
+
+  const { dimensions, testCaseCounts, testDefinitionCounts } = listState;
+  const editing = drawer.mode === 'edit' ? drawer.dimension : undefined;
 
   const breadcrumbs = useMemo(
     () =>
@@ -108,14 +131,18 @@ const DataQualitySettingsPage = () => {
     setIsLoading(true);
     try {
       const [{ data }, counts, definitionCounts] = await Promise.all([
-        getDataQualityDimensions({ limit: 1000 }),
-        // A missing count must not hide the dimension list itself.
-        getDataQualityDimensionTestCaseCounts().catch(() => ({})),
-        getDataQualityDimensionTestDefinitionCounts().catch(() => ({})),
+        getDataQualityDimensions({ limit: AGGREGATE_PAGE_SIZE_LARGE }),
+        // A missing count must not hide the dimension list itself. It stays `undefined` rather
+        // than falling back to `{}`, so a count that could not be fetched is reported as
+        // unknown instead of as zero in the table and in the delete confirmation.
+        getDataQualityDimensionTestCaseCounts().catch(() => undefined),
+        getDataQualityDimensionTestDefinitionCounts().catch(() => undefined),
       ]);
-      setDimensions(data);
-      setTestCaseCounts(counts);
-      setTestDefinitionCounts(definitionCounts);
+      setListState({
+        dimensions: data,
+        testCaseCounts: counts,
+        testDefinitionCounts: definitionCounts,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -183,7 +210,7 @@ const DataQualitySettingsPage = () => {
             { entity: t('label.dimension') }
           )
         );
-        setEditing(undefined);
+        setDrawer(CLOSED_DRAWER);
         await fetchDimensions();
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -198,7 +225,7 @@ const DataQualitySettingsPage = () => {
     if (!deleting?.id) {
       return;
     }
-    setIsSaving(true);
+    setIsDeleting(true);
     try {
       await deleteDataQualityDimension(deleting.id);
       showSuccessToast(
@@ -211,7 +238,7 @@ const DataQualitySettingsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsSaving(false);
+      setIsDeleting(false);
     }
   }, [deleting, fetchDimensions, t]);
 
@@ -261,7 +288,9 @@ const DataQualitySettingsPage = () => {
         title: t('label.test-case-plural'),
         key: 'testCases',
         width: '120px',
-        render: (_, record) => testCaseCounts[record.id ?? ''] ?? '--',
+        // '--' rather than 0: the count request can fail on its own, and an unknown count must
+        // not read as "no test case uses this".
+        render: (_, record) => countFor(testCaseCounts, record, '--'),
       },
       {
         title: t('label.action-plural'),
@@ -286,7 +315,7 @@ const DataQualitySettingsPage = () => {
                   disabledTitle ??
                   t('label.edit-entity', { entity: t('label.dimension') })
                 }
-                onClick={() => setEditing(record)}
+                onClick={() => setDrawer({ mode: 'edit', dimension: record })}
               />
               <DeleteIconButton
                 data-testid={`delete-${record.name}`}
@@ -311,15 +340,15 @@ const DataQualitySettingsPage = () => {
   );
 
   // Every dismissal path — cancel, the header X, Escape and the backdrop — ends up in the base
-  // drawer's onClose, so clearing `editing` there keeps the state below in step with the drawer
-  // and stops the effect from immediately reopening it.
+  // drawer's onClose, so moving back to `closed` there keeps the state below in step with the
+  // drawer and stops the effect from immediately reopening it.
   //
   // Deliberately does NOT reset the form. onClose fires twice — once from our own closeDrawer
   // and again when the overlay finishes its transition — and that second, late call lands after
   // the user may already have reopened the drawer, wiping the values the open path had just
   // seeded. Seeding on open is what keeps the form clean, so there is nothing to clear here.
   const handleDrawerClose = useCallback(() => {
-    setEditing(undefined);
+    setDrawer(CLOSED_DRAWER);
   }, []);
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
@@ -340,22 +369,33 @@ const DataQualitySettingsPage = () => {
       onSubmit: handleSave,
     });
 
+  // Split from the close effect below so that opening does not depend on `isOpen`: an effect
+  // that both reads and writes it re-runs once the drawer reports itself open, which would seed
+  // the form twice on every open.
   useEffect(() => {
-    if (editing !== undefined) {
+    if (drawer.mode !== 'closed') {
       // Seeded on open rather than on mount: one form instance serves both create and edit.
       hookForm.reset(initialValues);
       openDrawer();
-    } else if (isOpen) {
+    }
+  }, [drawer, initialValues, hookForm, openDrawer]);
+
+  useEffect(() => {
+    if (drawer.mode === 'closed' && isOpen) {
       closeDrawer();
     }
-  }, [editing, initialValues, hookForm, isOpen, openDrawer, closeDrawer]);
+  }, [drawer.mode, isOpen, closeDrawer]);
 
   if (isLoading) {
     return <Loader />;
   }
 
-  const deletingCount = countFor(testCaseCounts, deleting);
-  const deletingDefinitionCount = countFor(testDefinitionCounts, deleting);
+  const deletingCount = countFor(testCaseCounts, deleting, undefined);
+  const deletingDefinitionCount = countFor(
+    testDefinitionCounts,
+    deleting,
+    undefined
+  );
 
   return (
     <PageLayoutV1 pageTitle={t('label.data-quality')}>
@@ -379,7 +419,7 @@ const DataQualitySettingsPage = () => {
               data-testid="add-dimension"
               iconLeading={PlusCircle}
               size="md"
-              onClick={() => setEditing(null)}>
+              onClick={() => setDrawer({ mode: 'create' })}>
               {t('label.add-entity', {
                 entity: t('label.dimension'),
               })}
@@ -407,7 +447,7 @@ const DataQualitySettingsPage = () => {
                       ? ERROR_PLACEHOLDER_TYPE.FILTER
                       : ERROR_PLACEHOLDER_TYPE.CREATE
                   }
-                  onClick={() => setEditing(null)}
+                  onClick={() => setDrawer({ mode: 'create' })}
                 />
               ),
             }}
@@ -431,7 +471,7 @@ const DataQualitySettingsPage = () => {
 
       <DeleteDimensionModal
         dimension={deleting}
-        isDeleting={isSaving}
+        isDeleting={isDeleting}
         testCaseCount={deletingCount}
         testDefinitionCount={deletingDefinitionCount}
         onCancel={() => setDeleting(undefined)}
