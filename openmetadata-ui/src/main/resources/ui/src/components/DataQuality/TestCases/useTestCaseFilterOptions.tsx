@@ -22,8 +22,8 @@ import {
   TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
-  TEST_CASE_DIMENSION_LABELS,
   TEST_CASE_DIMENSIONS_OPTION,
+  TEST_CASE_DIMENSION_LABELS,
   TEST_CASE_FILTERS,
 } from '../../../constants/profiler.constant';
 import { DataQualityDimensions } from '../../../enums/DataQuality.enum';

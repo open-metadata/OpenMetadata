@@ -224,6 +224,7 @@ describe('DataQualitySettingsPage', () => {
         },
       ])
     );
+
     expect(createDataQualityDimension).not.toHaveBeenCalled();
   });
 
@@ -235,6 +236,7 @@ describe('DataQualitySettingsPage', () => {
     await waitFor(() =>
       expect(deleteDataQualityDimension).toHaveBeenCalledWith('dim-custom')
     );
+
     // The list is refetched so the deleted row disappears.
     expect(getDataQualityDimensions).toHaveBeenCalledTimes(2);
   });
@@ -248,6 +250,7 @@ describe('DataQualitySettingsPage', () => {
     await waitFor(() =>
       expect(screen.queryByTestId('confirm-button')).not.toBeInTheDocument()
     );
+
     expect(deleteDataQualityDimension).not.toHaveBeenCalled();
   });
 

@@ -13,10 +13,7 @@
 
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
-import {
-  TestCase,
-  TestCaseParameterValue,
-} from '../../../../generated/tests/testCase';
+import { TestCase } from '../../../../generated/tests/testCase';
 
 export const shouldShowEditParameterButton = (
   hasEditPermission: boolean | undefined,
@@ -42,11 +39,6 @@ export const shouldShowAILearningBanner = (
 ): boolean =>
   Boolean(showAILearningBanner && testCaseData?.useDynamicAssertion);
 
-export const shouldShowSqlParamsSection = (
-  withSqlParams: TestCaseParameterValue[] | undefined,
-  isVersionPage: boolean
-): boolean => !isUndefined(withSqlParams) && !isVersionPage;
-
 export const hasAdditionalComponents = (
   additionalComponents: unknown[]
 ): boolean => !isEmpty(additionalComponents);
@@ -67,7 +59,7 @@ export const canEditTestCaseParameters = (
 ): boolean => Boolean(hasEditPermission && isParameterEdit);
 
 export const getSidePanelColSpanClass = (isSidePanelVisible: boolean): string =>
-  isSidePanelVisible ? 'tw:col-span-9' : 'tw:col-span-12';
+  isSidePanelVisible ? 'tw:col-span-8' : 'tw:col-span-12';
 
 export const resolveIsSidePanelVisible = (
   showSidePanel: boolean | undefined,
