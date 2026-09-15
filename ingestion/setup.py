@@ -548,6 +548,7 @@ test = {
     VERSIONS["starrocks"],
     *plugins["vertica"],
     "testcontainers~=4.8.0",
+    # S3 client for the S3Proxy-backed object-storage test containers
     "minio==7.2.5",
     *plugins["mlflow"],
     "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in
