@@ -34,17 +34,21 @@ the join cannot be expressed, so the statement fails and takes the whole column
 read with it instead of merely losing the comments.
 """
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine.reflection import ObjectKind, ObjectScope
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.pool import StaticPool
 from sqlalchemy_vertica.dialect_vertica_python import VerticaDialect
 
 # Importing the connector applies the dialect corrections under test, and this
 # is the dialect the vertica_python scheme actually builds.
-from metadata.ingestion.source.database.vertica.metadata import supports_column_comments
+from metadata.ingestion.source.database.vertica.metadata import (
+    get_columns,
+    supports_column_comments,
+)
 
 BATCHED_REFLECTION_METHODS = (
     "get_multi_columns",
@@ -188,3 +192,89 @@ class TestVerticaColumnCommentSupport:
         # The next call asks again rather than trusting the earlier failure.
         connection.execute.side_effect = None
         assert supports_column_comments(dialect, connection) is True
+
+
+def _column_row(name: str, data_type: str, comment: str | None = None):
+    """One row shaped like the column query returns, read by attribute."""
+    row = Mock()
+    row.column_name = name
+    row.data_type = data_type
+    row.column_default = None
+    row.is_nullable = True
+    row.comment = comment
+    return row
+
+
+class TestVerticaGetColumnsFallback:
+    """The branch that keeps older servers working, exercised end to end."""
+
+    @staticmethod
+    def _connection():
+        """Answers the three statements get_columns issues, with the probe
+        rejected the way a pre-10 server rejects it.
+
+        Only the driver is stood in for. The dialect code under test runs for
+        real, including the branch that picks the template.
+        """
+        connection = Mock()
+
+        def _execute(statement, *_args, **_kw):
+            rendered = str(statement)
+            if "child_object" in rendered:
+                raise ProgrammingError("SELECT child_object", {}, Exception("does not exist"))
+            if "primary_keys" in rendered:
+                return [("customer_id",)]
+            return [_column_row("customer_id", "int"), _column_row("region", "varchar(40)")]
+
+        connection.execute.side_effect = _execute
+        return connection
+
+    def test_columns_survive_when_the_probe_reports_no_support(self):
+        """A server without child_object must still yield its columns. Without
+        this the whole read fails and the table arrives with no schema
+        definition, which is the defect being fixed.
+        """
+        columns = list(get_columns(VerticaDialect(), self._connection(), "customers", schema="omd_test"))
+
+        assert [column["name"] for column in columns] == ["customer_id", "region"]
+
+    def test_the_fallback_template_is_the_one_executed(self):
+        """Guards the branch itself. Selecting the commented template regardless
+        would leave older servers broken while every other test stays green.
+        """
+        connection = self._connection()
+
+        list(get_columns(VerticaDialect(), connection, "customers", schema="omd_test"))
+
+        executed = [str(call.args[0]) for call in connection.execute.call_args_list]
+        columns_statement = next(statement for statement in executed if "v_catalog.columns" in statement)
+        assert "child_object" not in columns_statement
+
+
+class TestVerticaBatchedReflectionDelegates:
+    """Resolving away from Postgres is not enough. The batched API has to route
+    back onto the Vertica implementation rather than issue its own catalog query.
+    """
+
+    def test_get_multi_columns_calls_the_dialect_get_columns(self):
+        dialect = VerticaDialect()
+        connection = Mock()
+        reflected = [{"name": "customer_id"}]
+
+        with (
+            patch.object(VerticaDialect, "get_columns", return_value=reflected) as singular,
+            patch.object(VerticaDialect, "get_table_names", return_value=["customers"]),
+            patch.object(VerticaDialect, "get_temp_table_names", return_value=[]),
+        ):
+            result = dict(
+                dialect.get_multi_columns(
+                    connection,
+                    schema="omd_test",
+                    filter_names=["customers"],
+                    kind=(ObjectKind.TABLE,),
+                    scope=ObjectScope.DEFAULT,
+                )
+            )
+
+        assert singular.called
+        assert list(result.values()) == [reflected]
