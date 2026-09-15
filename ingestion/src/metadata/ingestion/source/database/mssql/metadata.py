@@ -94,7 +94,10 @@ MSDialect.get_all_view_definitions = get_all_view_definitions
 MSDialect.get_all_table_comments = get_all_table_comments
 MSDialect.get_columns = get_columns
 MSDialect.get_pk_constraint = get_pk_constraint
-MSDialect.get_unique_constraints = get_unique_constraints
+# db_plus_owner widens the reflection signature with the database and owner it
+# resolves, so the dialect's own narrower one no longer matches - as it already
+# does not for the primary key and foreign key readers above.
+MSDialect.get_unique_constraints = get_unique_constraints  # pyright: ignore[reportAttributeAccessIssue]
 MSDialect.get_foreign_keys = get_foreign_keys
 MSDialect.get_table_names = get_table_names
 MSDialect.get_view_names = get_view_names

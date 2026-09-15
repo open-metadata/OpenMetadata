@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.event import listen
@@ -185,7 +185,8 @@ def get_connection_url(connection: MssqlConnectionConfig) -> str:
 
 
 def uses_pyodbc(connection: MssqlConnectionConfig) -> bool:
-    return connection.scheme.value == connection.scheme.mssql_pyodbc.value
+    scheme = connection.scheme or MssqlScheme.mssql_pytds
+    return scheme.value == MssqlScheme.mssql_pyodbc.value
 
 
 def with_default_query_timeout(connection: MssqlConnectionConfig) -> MssqlConnectionConfig:
@@ -216,7 +217,7 @@ def bound_pyodbc_query_timeout(engine: Engine, timeout_seconds: int = DEFAULT_QU
     connect keyword, so it can only be set once the DBAPI connection exists.
     """
 
-    def set_query_timeout(dbapi_connection, _connection_record) -> None:
+    def set_query_timeout(dbapi_connection: Any, _connection_record: Any) -> None:
         dbapi_connection.timeout = timeout_seconds
 
     listen(engine, "connect", set_query_timeout)
