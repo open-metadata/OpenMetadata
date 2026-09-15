@@ -154,8 +154,15 @@ export const updateRelatedMetric = async (
   dataAsset: MetricClass,
   type: 'add' | 'update'
 ) => {
-  const dialog = await openMetricDefinitionEditor(page);
-  const relatedMetricForm = dialog.getByTestId('related-metric-form');
+  const trigger =
+    type === 'add'
+      ? page.getByTestId('add-related-metrics-container')
+      : page.getByTestId('edit-related-metrics');
+  await trigger.click();
+
+  const relatedMetricForm = page.getByTestId('related-metric-form');
+  await expect(relatedMetricForm).toBeVisible();
+
   const searchPromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
 
@@ -190,12 +197,21 @@ export const updateRelatedMetric = async (
     await target.press('Space');
   }
 
-  await saveMetricDefinition(page);
+  const patchPromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      response.request().method() === 'PATCH' &&
+      url.pathname.startsWith('/api/v1/metrics/')
+    );
+  });
+  await relatedMetricForm.getByTestId('saveRelatedMetrics').click();
+  expect((await patchPromise).ok()).toBeTruthy();
 
   await expect(
     page
-      .getByTestId('metric-definition-related-metrics')
-      .getByRole('link', { exact: true, name: dataAsset.entity.name })
+      .getByTestId('metric-entity-list-body')
+      .getByTestId(dataAsset.entity.name)
   ).toBeVisible();
 };
 

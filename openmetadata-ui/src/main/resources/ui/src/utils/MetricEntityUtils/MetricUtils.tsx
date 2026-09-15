@@ -55,12 +55,6 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const MetricExpression = withSuspenseFallback(
-  lazy(
-    () => import('../../components/Metric/MetricExpression/MetricExpression')
-  )
-);
-
 const MetricHierarchyCard = withSuspenseFallback(
   lazy(
     () =>
@@ -129,20 +123,6 @@ export const getMetricDetailsPageTabs = ({
       ),
       key: EntityTabs.OVERVIEW,
       children: <GenericTab type={PageType.Metric} />,
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.EXPRESSION}
-          name={labelMap[EntityTabs.EXPRESSION] ?? i18n.t('label.expression')}
-        />
-      ),
-      key: EntityTabs.EXPRESSION,
-      children: metricDetails && (
-        <div className="p-t-sm m-x-lg">
-          <MetricExpression metric={metricDetails} />
-        </div>
-      ),
     },
     {
       label: (

@@ -67,7 +67,7 @@ const metric = {
 } as Metric;
 
 describe('MetricDefinitionCard', () => {
-  it('renders the complete definition and related metrics', () => {
+  it('renders the complete definition', () => {
     const { container } = render(
       <MemoryRouter>
         <MetricDefinitionCard canEdit metric={metric} onUpdate={jest.fn()} />
@@ -99,7 +99,7 @@ describe('MetricDefinitionCard', () => {
     );
     expect(screen.getByTestId('metric-definition-fields')).toHaveClass(
       'tw:grid',
-      'tw:lg:grid-cols-4'
+      'tw:lg:grid-cols-3'
     );
     expect(screen.getByTestId('metric-definition-type')).toHaveTextContent(
       'label.ratio'
@@ -116,15 +116,9 @@ describe('MetricDefinitionCard', () => {
       screen.getByTestId('metric-definition-granularity')
     ).toHaveTextContent('label.day');
 
-    const relatedMetricLink = screen.getByRole('link', {
-      name: 'Net Margin',
-    });
-
-    expect(relatedMetricLink).toHaveAttribute(
-      'href',
-      expect.stringContaining('finance.net_margin')
-    );
-    expect(relatedMetricLink).toHaveClass('tw:bg-secondary', 'tw:text-xs');
+    expect(
+      screen.queryByTestId('metric-definition-related-metrics')
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('metric-definition-edit')).toHaveClass(
       'tw:shadow-none',
       'tw:after:outline-dashed'
@@ -160,7 +154,7 @@ describe('MetricDefinitionCard', () => {
     expect(screen.getAllByText('label.empty-dash')).not.toHaveLength(0);
   });
 
-  it('edits every definition field and related Metric references in one update', async () => {
+  it('edits every definition field in one update', async () => {
     const onUpdate = jest.fn().mockResolvedValue(undefined);
     render(
       <MemoryRouter>
@@ -177,7 +171,6 @@ describe('MetricDefinitionCard', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /label.code/ }), {
       target: { value: 'SUM(gross_profit) / SUM(revenue)' },
     });
-    fireEvent.click(screen.getByTestId('select-related-definition'));
     fireEvent.click(screen.getByTestId('metric-definition-save'));
 
     await waitFor(() =>
@@ -190,9 +183,6 @@ describe('MetricDefinitionCard', () => {
             code: 'SUM(gross_profit) / SUM(revenue)',
             language: Language.SQL,
           },
-          relatedMetrics: [
-            expect.objectContaining({ id: 'revenue-id', type: 'metric' }),
-          ],
         })
       )
     );

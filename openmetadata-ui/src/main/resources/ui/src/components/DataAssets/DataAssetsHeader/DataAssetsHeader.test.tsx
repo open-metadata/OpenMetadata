@@ -382,7 +382,7 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
-  it('should render the read-only metric header information', () => {
+  it('does not render metric type, unit, or granularity in the header', () => {
     const metric: Metric = {
       fullyQualifiedName: 'metric.orders-count',
       id: 'metric-id',
@@ -398,9 +398,9 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    expect(screen.getByTestId('metric-header-info')).toHaveTextContent(
-      'orders-count'
-    );
+    expect(
+      screen.queryByTestId('metric-header-info')
+    ).not.toBeInTheDocument();
   });
 
   it('should render an explicitly supplied breadcrumb trail', () => {

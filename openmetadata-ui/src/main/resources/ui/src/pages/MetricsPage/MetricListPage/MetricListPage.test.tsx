@@ -274,6 +274,37 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <nav>{items.map(({ label }) => label).join(' / ')}</nav>
     ),
     Button,
+    PageLayout: Object.assign(
+      ({
+        children,
+        'data-testid': dataTestId,
+      }: {
+        children?: React.ReactNode;
+        'data-testid'?: string;
+      }) => <div data-testid={dataTestId}>{children}</div>,
+      {
+        PageHeader: ({
+          title,
+          subtitle,
+          actions,
+          'data-testid': dataTestId,
+        }: {
+          title?: React.ReactNode;
+          subtitle?: React.ReactNode;
+          actions?: React.ReactNode;
+          'data-testid'?: string;
+        }) => (
+          <div data-testid={dataTestId}>
+            <h1>{title}</h1>
+            <div>{subtitle}</div>
+            <div>{actions}</div>
+          </div>
+        ),
+        Content: ({ children }: { children?: React.ReactNode }) => (
+          <div>{children}</div>
+        ),
+      }
+    ),
     ButtonGroup: ({
       children,
       onSelectionChange,
@@ -537,7 +568,9 @@ describe('MetricListPage', () => {
     expect(screen.getByTestId('metric-icon-metric-1')).toBeInTheDocument();
     expect(screen.queryByText(/preview/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/value trend/i)).not.toBeInTheDocument();
-    expect(mockDocumentTitle).toHaveBeenCalledWith('label.metric-plural');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'label.metric-plural' })
+    ).toBeInTheDocument();
   });
 
   it('renders metric type colors and uppercase mono granularity consistently', async () => {
@@ -579,15 +612,17 @@ describe('MetricListPage', () => {
   it('matches the prototype page heading and single-line toolbar structure', async () => {
     renderPage();
 
-    const heading = await screen.findByRole('heading', {
-      level: 1,
-      name: 'label.metric-plural',
-    });
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'label.metric-plural',
+      })
+    ).toBeInTheDocument();
 
-    expect(heading).toHaveAttribute('data-size', 'text-xl');
-    expect(heading).toHaveAttribute('data-weight', 'bold');
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
-    expect(screen.getByTestId('metric-search')).toHaveClass('tw:sm:max-w-84');
+    expect(await screen.findByTestId('metric-search')).toHaveClass(
+      'tw:sm:max-w-84'
+    );
     expect(screen.getByTestId('metric-list-toolbar')).toHaveClass(
       'tw:sm:flex-row'
     );

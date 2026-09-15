@@ -27,10 +27,8 @@ import {
 import { Calendar, Edit03, Percent01, Variable } from '@untitledui/icons';
 import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { EntityType } from '../../../enums/entity.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
 import {
   Language,
@@ -45,11 +43,8 @@ import {
   METRIC_TYPE_BADGE_CLASS_NAME,
 } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricExpression from '../MetricExpression/MetricExpression';
-import type { RelatedMetricOption } from '../RelatedMetrics/RelatedMetricsForm';
-import { RelatedMetricsForm } from '../RelatedMetrics/RelatedMetricsForm';
 
 interface MetricDefinitionCardProps {
   metric?: Metric;
@@ -104,15 +99,6 @@ const MetricDefinitionEditDialog = ({
   open,
 }: MetricDefinitionEditDialogProps) => {
   const { t } = useTranslation();
-  const initialRelatedOptions = useMemo<RelatedMetricOption[]>(
-    () =>
-      (metric.relatedMetrics ?? []).map((reference) => ({
-        label: getEntityName(reference),
-        reference,
-        value: reference.id,
-      })),
-    [metric.relatedMetrics]
-  );
   const [metricType, setMetricType] = useState(metric.metricType);
   const [granularity, setGranularity] = useState(metric.granularity);
   const [unit, setUnit] = useState(metric.unitOfMeasurement);
@@ -123,7 +109,6 @@ const MetricDefinitionEditDialog = ({
     metric.metricExpression?.language ?? Language.SQL
   );
   const [code, setCode] = useState(metric.metricExpression?.code ?? '');
-  const [relatedOptions, setRelatedOptions] = useState(initialRelatedOptions);
   const [codeError, setCodeError] = useState<string>();
   const [customUnitError, setCustomUnitError] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
@@ -139,11 +124,10 @@ const MetricDefinitionEditDialog = ({
     setCustomUnit(metric.customUnitOfMeasurement ?? '');
     setLanguage(metric.metricExpression?.language ?? Language.SQL);
     setCode(metric.metricExpression?.code ?? '');
-    setRelatedOptions(initialRelatedOptions);
     setCodeError(undefined);
     setCustomUnitError(undefined);
     setSaveError(false);
-  }, [initialRelatedOptions, metric, open]);
+  }, [metric, open]);
 
   const handleSave = async () => {
     const requiredCodeError = code.trim()
@@ -176,7 +160,6 @@ const MetricDefinitionEditDialog = ({
           code: code.trim(),
           language,
         },
-        relatedMetrics: relatedOptions.map(({ reference }) => reference),
       });
       onClose();
     } catch {
@@ -333,20 +316,6 @@ const MetricDefinitionEditDialog = ({
                   setCodeError(undefined);
                 }}
               />
-              <Box direction="col" gap={2}>
-                <Typography size="text-sm" weight="medium">
-                  {t('label.related-metric-plural')}
-                </Typography>
-                <RelatedMetricsForm
-                  defaultValue={relatedOptions.map(({ value }) => value)}
-                  initialOptions={initialRelatedOptions}
-                  metricFqn={metric.fullyQualifiedName ?? ''}
-                  showActions={false}
-                  onCancel={() => undefined}
-                  onSelectionChange={setRelatedOptions}
-                  onSubmit={async () => undefined}
-                />
-              </Box>
             </Box>
           </Dialog.Content>
           <Dialog.Footer>
@@ -417,7 +386,7 @@ const MetricDefinitionCard = ({
         <Box direction="col" gap={5}>
           <MetricExpression isEmbedded metric={metric} />
           <Box
-            className="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-4"
+            className="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:lg:grid-cols-3"
             data-testid="metric-definition-fields">
             <DefinitionField
               label={t('label.metric-type')}
@@ -457,36 +426,6 @@ const MetricDefinitionCard = ({
                 weight="semibold">
                 {getOptionalMetricEnumLabel(t, metric.granularity)}
               </Typography>
-            </DefinitionField>
-            <DefinitionField
-              label={t('label.related-metric-plural')}
-              testId="metric-definition-related-metrics">
-              {metric.relatedMetrics?.length ? (
-                <Box
-                  aria-label={t('label.related-metric-plural')}
-                  gap={1}
-                  wrap="wrap">
-                  {metric.relatedMetrics.map((relatedMetric) => (
-                    <Link
-                      className={
-                        'tw:inline-flex tw:items-center tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 ' +
-                        'tw:text-xs tw:font-medium tw:text-secondary tw:outline-brand tw:hover:bg-primary_hover ' +
-                        'tw:hover:text-secondary_hover tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2'
-                      }
-                      key={relatedMetric.id}
-                      to={getEntityDetailsPath(
-                        EntityType.METRIC,
-                        relatedMetric.fullyQualifiedName ?? ''
-                      )}>
-                      {getEntityName(relatedMetric)}
-                    </Link>
-                  ))}
-                </Box>
-              ) : (
-                <Typography className="tw:text-tertiary" size="text-sm">
-                  {t('label.empty-dash')}
-                </Typography>
-              )}
             </DefinitionField>
           </Box>
         </Box>

@@ -216,13 +216,16 @@ describe('MetricHierarchyCard', () => {
     expect(screen.getByTestId('hierarchy-health-child-id')).toBeInTheDocument();
     expect(screen.getByLabelText('4 label.metric-plural')).toBeInTheDocument();
 
-    [
-      'metric-tree-ancestor-root-id',
-      'metric-tree-peer-peer-id',
-      'metric-tree-current',
-      'metric-tree-child-child-id',
-    ].forEach((testId) => {
-      expect(screen.getByTestId(testId)).toHaveClass('tw:pl-8');
+    // Graduated indent by hierarchy depth: group(0) > ancestor(1) > peer/current(2) > child(3).
+    (
+      [
+        ['metric-tree-ancestor-root-id', 'tw:pl-8'],
+        ['metric-tree-peer-peer-id', 'tw:pl-16'],
+        ['metric-tree-current', 'tw:pl-16'],
+        ['metric-tree-child-child-id', 'tw:pl-24'],
+      ] as const
+    ).forEach(([testId, indentClass]) => {
+      expect(screen.getByTestId(testId)).toHaveClass(indentClass);
       expect(screen.getByTestId(`${testId}-elbow`)).toBeInTheDocument();
     });
 

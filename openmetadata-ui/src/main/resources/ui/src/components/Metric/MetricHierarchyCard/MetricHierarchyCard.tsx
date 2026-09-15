@@ -56,8 +56,21 @@ interface MetricTreeRowProps {
   metric: Metric;
   testId: string;
   isCurrent?: boolean;
-  isNested?: boolean;
+  depth?: number;
 }
+
+// Each hierarchy level steps in by one padding stop. Kept as explicit classes
+// (not an interpolated value) so Tailwind's static scan keeps them.
+const INDENT_CLASS_BY_DEPTH = [
+  '',
+  'tw:pl-8',
+  'tw:pl-16',
+  'tw:pl-24',
+  'tw:pl-32',
+];
+
+const getIndentClass = (depth: number) =>
+  INDENT_CLASS_BY_DEPTH[Math.min(depth, INDENT_CLASS_BY_DEPTH.length - 1)];
 
 const getOwnerInitials = (owner: NonNullable<Metric['owners']>[number]) => {
   const ownerName = getEntityName(owner).trim();
@@ -173,8 +186,9 @@ const MetricTreeRow = ({
   metric,
   testId,
   isCurrent = false,
-  isNested = false,
+  depth = 0,
 }: MetricTreeRowProps) => {
+  const isNested = depth > 0;
   const content = (
     <>
       <span
@@ -200,7 +214,7 @@ const MetricTreeRow = ({
   );
   const className = `tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:px-3 tw:py-2.5 ${
     isCurrent ? 'tw:bg-brand-primary_alt' : 'tw:hover:bg-secondary'
-  } ${isNested ? 'tw:pl-8' : ''}`;
+  } ${getIndentClass(depth)}`;
 
   return isCurrent ? (
     <div className={className} data-testid={testId}>
@@ -263,6 +277,91 @@ interface MetricHierarchyContentProps {
   metric: Metric;
 }
 
+const MetricHierarchyTree = ({
+  hierarchy,
+  metric,
+}: MetricHierarchyContentProps) => {
+  const { t } = useTranslation();
+  const isStandalone =
+    !hierarchy.group &&
+    hierarchy.ancestors.length === 0 &&
+    hierarchy.siblings.length === 0 &&
+    hierarchy.children.length === 0;
+
+  const base = hierarchy.group ? 1 : 0;
+  const currentDepth = base + hierarchy.ancestors.length;
+
+  return (
+    <Box direction="col">
+      {isStandalone && (
+        <Typography
+          className="tw:px-3 tw:py-2 tw:text-tertiary"
+          data-testid="metric-tree-empty"
+          size="text-sm">
+          {t('message.metric-not-in-hierarchy')}
+        </Typography>
+      )}
+      {hierarchy.group && <GroupRow group={hierarchy.group} />}
+      {hierarchy.ancestors.map((ancestor, index) => (
+        <MetricTreeRow
+          depth={base + index}
+          key={ancestor.id}
+          metric={ancestor}
+          testId={`metric-tree-ancestor-${ancestor.id}`}
+        />
+      ))}
+      {hierarchy.siblings.map((sibling) => (
+        <MetricTreeRow
+          depth={currentDepth}
+          key={sibling.id}
+          metric={sibling}
+          testId={`metric-tree-peer-${sibling.id}`}
+        />
+      ))}
+      {hierarchy.hasMoreSiblings && (
+        <Button
+          className="tw:self-start tw:ml-8"
+          color="link-color"
+          data-testid="metric-tree-more-peers"
+          isDisabled={hierarchy.isLoadingSiblings}
+          size="sm"
+          onPress={hierarchy.loadMoreSiblings}>
+          {t('label.show-more-entity', {
+            entity: t('label.metric-plural'),
+          })}
+        </Button>
+      )}
+      <MetricTreeRow
+        isCurrent
+        depth={currentDepth}
+        metric={metric}
+        testId="metric-tree-current"
+      />
+      {hierarchy.children.map((child) => (
+        <MetricTreeRow
+          depth={currentDepth + 1}
+          key={child.id}
+          metric={child}
+          testId={`metric-tree-child-${child.id}`}
+        />
+      ))}
+      {hierarchy.hasMoreChildren && (
+        <Button
+          className="tw:self-start tw:ml-8"
+          color="link-color"
+          data-testid="metric-tree-more-children"
+          isDisabled={hierarchy.isLoadingChildren}
+          size="sm"
+          onPress={hierarchy.loadMoreChildren}>
+          {t('label.show-more-entity', {
+            entity: t('label.variant-plural'),
+          })}
+        </Button>
+      )}
+    </Box>
+  );
+};
+
 const MetricHierarchyContent = ({
   hierarchy,
   metric,
@@ -299,81 +398,7 @@ const MetricHierarchyContent = ({
     );
   }
 
-  const isStandalone =
-    !hierarchy.group &&
-    hierarchy.ancestors.length === 0 &&
-    hierarchy.siblings.length === 0 &&
-    hierarchy.children.length === 0;
-
-  return (
-    <Box direction="col">
-      {isStandalone && (
-        <Typography
-          className="tw:px-3 tw:py-2 tw:text-tertiary"
-          data-testid="metric-tree-empty"
-          size="text-sm">
-          {t('message.metric-not-in-hierarchy')}
-        </Typography>
-      )}
-      {hierarchy.group && <GroupRow group={hierarchy.group} />}
-      {hierarchy.ancestors.map((ancestor) => (
-        <MetricTreeRow
-          isNested
-          key={ancestor.id}
-          metric={ancestor}
-          testId={`metric-tree-ancestor-${ancestor.id}`}
-        />
-      ))}
-      {hierarchy.siblings.map((sibling) => (
-        <MetricTreeRow
-          isNested={Boolean(hierarchy.group)}
-          key={sibling.id}
-          metric={sibling}
-          testId={`metric-tree-peer-${sibling.id}`}
-        />
-      ))}
-      {hierarchy.hasMoreSiblings && (
-        <Button
-          className="tw:self-start tw:ml-8"
-          color="link-color"
-          data-testid="metric-tree-more-peers"
-          isDisabled={hierarchy.isLoadingSiblings}
-          size="sm"
-          onPress={hierarchy.loadMoreSiblings}>
-          {t('label.show-more-entity', {
-            entity: t('label.metric-plural'),
-          })}
-        </Button>
-      )}
-      <MetricTreeRow
-        isCurrent
-        isNested={Boolean(hierarchy.group)}
-        metric={metric}
-        testId="metric-tree-current"
-      />
-      {hierarchy.children.map((child) => (
-        <MetricTreeRow
-          isNested
-          key={child.id}
-          metric={child}
-          testId={`metric-tree-child-${child.id}`}
-        />
-      ))}
-      {hierarchy.hasMoreChildren && (
-        <Button
-          className="tw:self-start tw:ml-8"
-          color="link-color"
-          data-testid="metric-tree-more-children"
-          isDisabled={hierarchy.isLoadingChildren}
-          size="sm"
-          onPress={hierarchy.loadMoreChildren}>
-          {t('label.show-more-entity', {
-            entity: t('label.variant-plural'),
-          })}
-        </Button>
-      )}
-    </Box>
-  );
+  return <MetricHierarchyTree hierarchy={hierarchy} metric={metric} />;
 };
 
 const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({

@@ -26,6 +26,7 @@ import {
   Input,
   Modal,
   ModalOverlay,
+  PageLayout,
   Skeleton,
   Table,
   Typography,
@@ -62,11 +63,11 @@ import type { ChangeEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
 } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth.component';
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill.component';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -1483,71 +1484,65 @@ const MetricListPage = () => {
 
   if (isPermissionPending) {
     return (
-      <main className="tw:min-h-full tw:bg-primary tw:px-4 tw:py-7 tw:md:px-8">
+      <PageLayout data-testid="metric-list-page">
         <DocumentTitle title={t('label.metric-plural')} />
-        {renderLoading()}
-      </main>
+        <PageLayout.PageHeader
+          data-testid="metric-list-header"
+          subtitle={t('message.metric-description')}
+          title={t('label.metric-plural')}
+        />
+        <PageLayout.Content>{renderLoading()}</PageLayout.Content>
+      </PageLayout>
     );
   }
 
   return (
-    <main
-      className="tw:min-h-full tw:bg-primary tw:px-4 tw:py-7 tw:md:px-8 tw:md:pb-10"
-      data-testid="metric-list-page">
+    <PageLayout data-testid="metric-list-page">
       <DocumentTitle title={t('label.metric-plural')} />
-      <Box
-        align="start"
-        className="tw:mb-6 tw:flex-wrap"
+      <PageLayout.PageHeader
+        actions={renderMetricActions()}
         data-testid="metric-list-header"
-        gap={4}
-        justify="between">
-        <Box direction="col" gap={1}>
-          <Typography as="h1" size="text-xl" weight="bold">
-            {t('label.metric-plural')}
-          </Typography>
-          <Typography className="tw:text-tertiary" size="text-sm">
-            {t('message.metric-description')}
-          </Typography>
-        </Box>
-        {renderMetricActions()}
-      </Box>
-
-      {renderAccessibleList()}
-      <ModalOverlay
-        isDismissable
-        isOpen={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}>
-        <Modal>
-          <Dialog
-            showCloseButton
-            title={t('label.delete-entity', {
-              entity: t('label.metric-plural'),
-            })}
-            onClose={() => setIsDeleteDialogOpen(false)}>
-            <Dialog.Content>
-              <Typography className="tw:text-secondary" size="text-sm">
-                {t('message.delete-metrics-warning')}
-              </Typography>
-            </Dialog.Content>
-            <Dialog.Footer>
-              <Button
-                color="secondary"
-                onPress={() => setIsDeleteDialogOpen(false)}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary-destructive"
-                data-testid="confirm-button"
-                isLoading={isDeletingMetrics}
-                onPress={handleBulkDelete}>
-                {t('label.delete')}
-              </Button>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
-      {metricCreateDrawer}
-    </main>
+        subtitle={t('message.metric-description')}
+        title={t('label.metric-plural')}
+      />
+      <PageLayout.Content>
+        {renderAccessibleList()}
+        <ModalOverlay
+          isDismissable
+          isOpen={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}>
+          <Modal>
+            <Dialog
+              showCloseButton
+              title={t('label.delete-entity', {
+                entity: t('label.metric-plural'),
+              })}
+              onClose={() => setIsDeleteDialogOpen(false)}>
+              <Dialog.Content>
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {t('message.delete-metrics-warning')}
+                </Typography>
+              </Dialog.Content>
+              <Dialog.Footer>
+                <Button
+                  color="secondary"
+                  onPress={() => setIsDeleteDialogOpen(false)}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary-destructive"
+                  data-testid="confirm-button"
+                  isLoading={isDeletingMetrics}
+                  onPress={handleBulkDelete}>
+                  {t('label.delete')}
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+        {metricCreateDrawer}
+      </PageLayout.Content>
+    </PageLayout>
   );
 };
 

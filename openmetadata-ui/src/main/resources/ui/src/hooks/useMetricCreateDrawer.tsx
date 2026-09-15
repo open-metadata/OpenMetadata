@@ -97,6 +97,7 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
     title: t('label.add-entity', { entity: t('label.metric') }),
     width: 670,
     closeOnEscape: false,
+    closeOnBackdrop: false,
     hookForm: form,
     submitTestId: 'create-button',
     form: (

@@ -1025,14 +1025,20 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page
         .getByRole('textbox', { name: 'Description' })
         .fill(`Metric ${metricName}`);
-      const reviewerPicker = page.getByRole('group', { name: 'Reviewers' });
-      await reviewerPicker.getByRole('textbox').fill(reviewerName);
-      const reviewerCheckbox = reviewerPicker.getByRole('checkbox', {
-        name: reviewer.responseData.displayName ?? reviewerName,
-      });
-      await reviewerCheckbox.focus();
-      await reviewerCheckbox.press('Space');
-      await expect(reviewerCheckbox).toBeChecked();
+      const reviewerField = page.getByRole('combobox', { name: 'Reviewers' });
+      await reviewerField.click();
+      await reviewerField.fill(reviewerName);
+      const reviewerOption = page.getByRole('option', { name: reviewerName });
+      await expect(reviewerOption).toBeVisible();
+      await reviewerOption.click();
+      const reviewerGroup = reviewerField.locator(
+        'xpath=ancestor::div[@role="group"]'
+      );
+      await expect(
+        reviewerGroup.getByText(
+          reviewer.responseData.displayName ?? reviewerName
+        )
+      ).toBeVisible();
 
       const createResponse = page.waitForResponse(
         (response) =>

@@ -93,7 +93,6 @@ class MetricDetailsClassBase {
   public getMetricDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.OVERVIEW,
-      EntityTabs.EXPRESSION,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
       EntityTabs.CUSTOM_PROPERTIES,
