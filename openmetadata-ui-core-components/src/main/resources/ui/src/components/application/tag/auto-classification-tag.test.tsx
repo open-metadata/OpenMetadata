@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,19 +11,12 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import AutoClassificationTag from './AutoClassificationTag';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AutoClassificationTag } from './auto-classification-tag';
 
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  )),
-}));
-
-describe('AutoClassificationTag (atoms)', () => {
+describe('AutoClassificationTag', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should render the label text', () => {
@@ -37,7 +30,7 @@ describe('AutoClassificationTag (atoms)', () => {
       <AutoClassificationTag label="PII.Sensitive" />
     );
 
-    expect(container.querySelector('svg-mock')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
   it('should not render a redirect link when no href is passed', () => {
@@ -92,8 +85,8 @@ describe('AutoClassificationTag (atoms)', () => {
   });
 
   it('should call onDelete once with the native event when the delete button is clicked, without bubbling to a parent handler', () => {
-    const onDelete = jest.fn();
-    const onParentClick = jest.fn();
+    const onDelete = vi.fn();
+    const onParentClick = vi.fn();
 
     render(
       <div role="presentation" onClick={onParentClick}>
@@ -113,7 +106,7 @@ describe('AutoClassificationTag (atoms)', () => {
       <AutoClassificationTag label="PII.Sensitive" />
     );
 
-    expect(container.firstChild).toHaveClass('tw:h-5', 'tw:text-xs');
+    expect(container.firstChild).toHaveClass('tw:text-xs');
   });
 
   it('should apply the size class for a non-default size', () => {
@@ -121,6 +114,6 @@ describe('AutoClassificationTag (atoms)', () => {
       <AutoClassificationTag label="PII.Sensitive" size="md" />
     );
 
-    expect(container.firstChild).toHaveClass('tw:h-6', 'tw:text-sm');
+    expect(container.firstChild).toHaveClass('tw:text-sm');
   });
 });

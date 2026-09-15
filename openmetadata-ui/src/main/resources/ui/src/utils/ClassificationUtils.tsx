@@ -16,11 +16,11 @@ import {
   Tooltip as UTTooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Button, Space, Tooltip, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
-import { Icon } from '../components/common/Icon/Icon';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ColumnsType } from '../components/common/Table/Table.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';

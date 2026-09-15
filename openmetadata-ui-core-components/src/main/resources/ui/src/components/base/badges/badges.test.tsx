@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Badge, BadgeWithDot } from './badges';
+import { Badge, BadgeWithButton, BadgeWithDot } from './badges';
 
 describe('Badge theme roles', () => {
   it('uses shared surface and border roles for a modern badge', () => {
@@ -40,5 +40,48 @@ describe('Badge theme roles', () => {
 
     expect(badge).toHaveClass('tw:bg-surface', 'tw:outline-subtle');
     expect(badge?.querySelector('svg')).toHaveClass('tw:text-utility-gray-500');
+  });
+});
+
+describe('Badge tooltip', () => {
+  it('does not render a tooltip trigger when no tooltip is passed', () => {
+    render(<Badge data-testid="badge">Active</Badge>);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('renders a tooltip trigger when tooltip is passed', () => {
+    render(
+      <Badge data-testid="badge" tooltip="Contains PII data">
+        Active
+      </Badge>
+    );
+
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+  });
+});
+
+describe('BadgeWithButton tooltip', () => {
+  it('renders both the tooltip trigger and the delete button without nesting a button in a button', () => {
+    render(
+      <BadgeWithButton buttonTestId="delete-button" tooltip="Delete this tag">
+        Active
+      </BadgeWithButton>
+    );
+
+    const buttons = screen.getAllByRole('button');
+
+    expect(buttons).toHaveLength(2);
+    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+  });
+
+  it('does not render a tooltip trigger when no tooltip is passed', () => {
+    render(
+      <BadgeWithButton buttonTestId="delete-button">Active</BadgeWithButton>
+    );
+
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });
