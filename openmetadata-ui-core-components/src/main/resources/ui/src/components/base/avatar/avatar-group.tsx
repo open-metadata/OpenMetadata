@@ -128,6 +128,7 @@ export const AvatarGroup = ({
       {visibleOwners.map((owner, i) => (
         <span
           className={cx('tw:relative tw:block tw:rounded-full')}
+          data-testid="avatar-group-item"
           key={owner.id}
           style={{
             marginLeft: i > 0 ? `-${overlapPx}px` : undefined,
@@ -146,6 +147,7 @@ export const AvatarGroup = ({
               overflowTitleLabel ?? 'owners'
             }`}
             className="tw:rounded-full tw:bg-transparent tw:p-0"
+            data-testid="avatar-group-overflow"
             style={{
               marginLeft: `-${overlapPx}px`,
               zIndex: visibleOwners.length + 1,
