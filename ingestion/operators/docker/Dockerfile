@@ -244,7 +244,8 @@ RUN set -eu; \
     [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl; \
+    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
+    apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
     apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-mark manual libmariadb3 mariadb-common; \
     apt-get -qq autoremove -y --purge; \

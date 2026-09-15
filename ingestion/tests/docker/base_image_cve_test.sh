@@ -81,7 +81,7 @@ done
 echo "== libssh2 version assertion (stands in for CVE-2026-66032 / CVE-2026-66034) =="
 # Snyk flagged libssh2 1.10.0-3+b1 specifically. Trivy cannot see those two CVE
 # IDs, so assert the vulnerable version is gone and the t64-renamed replacement
-# is >= 1.11. Authoritative confirmation is Snyk in the Collate CI.
+# is >= 1.11.1-1+deb13u2. Authoritative confirmation is Snyk in the Collate CI.
 # NOTE: use dpkg-query's default tab-separated output plus `cut -f2`. Do NOT use
 # -f/--showformat here: its ${Version} placeholder gets eaten by the nested
 # host-shell -> docker -> container-bash quoting layers and silently yields an
@@ -98,13 +98,13 @@ fi
 
 new="$(in_image 'dpkg-query -W libssh2-1t64 2>/dev/null | cut -f2')"
 if [ -z "$new" ]; then
-  fail "libssh2-1t64 not installed (expected the trixie replacement, >= 1.11)"
+  fail "libssh2-1t64 not installed (expected the trixie replacement, >= 1.11.1-1+deb13u2)"
 else
-  major_minor="$(printf '%s' "$new" | cut -d. -f1-2)"
-  case "$major_minor" in
-    1.1[1-9]|1.[2-9]*) pass "libssh2-1t64 ${new} (>= 1.11)" ;;
-    *)                 fail "libssh2-1t64 ${new} is below 1.11" ;;
-  esac
+  if [ "$(in_image "dpkg --compare-versions '$new' ge '1.11.1-1+deb13u2' && echo ok")" = "ok" ]; then
+    pass "libssh2-1t64 ${new} (>= 1.11.1-1+deb13u2)"
+  else
+    fail "libssh2-1t64 ${new} is below 1.11.1-1+deb13u2"
+  fi
 fi
 
 echo "== OS release =="
