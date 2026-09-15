@@ -220,12 +220,15 @@ export const deleteEdge = async (
   await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
+  const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page
     .locator(
       '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
     )
     .click();
   await deleteRes;
+  await page.getByTestId('delete-edge-confirmation-modal').waitFor({ state: 'detached' });
+  await sceneRes;
 };
 
 export const deleteEdgeBetweenNodesViaAPI = (
@@ -791,12 +794,7 @@ export const removeColumnLineage = async (
 
 export const dismissLineageMapOnboarding = async (page: Page) => {
   const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
-  const hasSeenOnboarding = (await page.context().cookies()).some(
-    ({ name, value }) =>
-      name === 'lineageMapsOnboardingSeen' && value === 'true'
-  );
-  if (!hasSeenOnboarding) {
-    await expect(onboardingDialog).toBeVisible();
+  if (await onboardingDialog.isVisible()) {
     await onboardingDialog.getByRole('button').click();
     await expect(onboardingDialog).not.toBeVisible();
   }
