@@ -193,7 +193,8 @@ public final class DescriptionSanitizer {
     }
     matcher.appendTail(replaced);
 
-    String sanitized = policy.sanitize(replaced.toString());
+    String toSanitize = replaced.toString();
+    String sanitized = toSanitize.contains("<") ? policy.sanitize(toSanitize) : toSanitize;
 
     for (int i = 0; i < entityLinks.size(); i++) {
       sanitized =
