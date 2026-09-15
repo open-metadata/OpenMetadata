@@ -34,6 +34,7 @@ import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
 import type { MetricGroup } from '../../../generated/entity/data/metricGroup';
+import { useMetricCreateDrawer } from '../../../hooks/useMetricCreateDrawer';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getMetricEnumLabel,
@@ -389,9 +390,11 @@ const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
   const allowAddChild =
     canAddChild ?? Boolean(permissions.Create && !isVersionView);
   const hierarchy = useMetricHierarchyCard(metric);
+  const { formDrawer, openDrawer } = useMetricCreateDrawer();
 
   return (
     <Card className="tw:shadow-xs" data-testid="metric-hierarchy-card">
+      {formDrawer}
       <Card.Header
         className="tw:flex-col tw:gap-3 tw:sm:flex-row tw:sm:gap-4"
         data-testid="metric-hierarchy-header"
@@ -400,11 +403,10 @@ const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
             <Button
               className="tw:border tw:border-dashed tw:border-primary tw:shadow-none tw:after:outline-0"
               color="secondary"
-              href={`${ROUTES.ADD_METRIC}?parent=${encodeURIComponent(
-                metric.fullyQualifiedName ?? ''
-              )}`}
+              data-testid="add-child-metric"
               iconLeading={Plus}
-              size="xs">
+              size="xs"
+              onPress={() => openDrawer(metric.fullyQualifiedName)}>
               {t('label.add-child-metric')}
             </Button>
           ) : undefined
