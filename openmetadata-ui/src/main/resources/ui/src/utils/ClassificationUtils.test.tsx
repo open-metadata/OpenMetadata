@@ -12,7 +12,6 @@
  */
 
 import { EntityField } from '../constants/Feeds.constants';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
 import { Classification } from '../generated/entity/classification/classification';
 import { ChangeDescription } from '../generated/entity/type';
