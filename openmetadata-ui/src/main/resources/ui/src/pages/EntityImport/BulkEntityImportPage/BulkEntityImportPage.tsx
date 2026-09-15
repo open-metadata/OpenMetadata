@@ -56,7 +56,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
-import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import {
+  CSV_JOBS_POLL_INTERVAL_MS,
+  CSV_JOBS_REFRESH_EVENT,
+} from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import CsvWorkflowHeader from '../../../components/common/EntityImport/CsvWorkflowHeader/CsvWorkflowHeader.component';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import {
@@ -207,11 +210,6 @@ const getTestCaseBreadcrumbList = (
 
   return undefined;
 };
-
-// Fallback poll cadence for the import job status while the websocket completion frame is
-// awaited. The frame is delivered by whichever pod ran the background job, so on a multi-pod
-// deployment it is often lost; polling the job row (reachable from any node) recovers the result.
-const CSV_IMPORT_STATUS_POLL_INTERVAL_MS = 4000;
 
 // Extracted so this check doesn't add to the cyclomatic complexity of the
 // websocket-response handler that calls it.
@@ -1271,7 +1269,7 @@ const BulkEntityImportPage = () => {
     };
 
     poll();
-    const intervalId = setInterval(poll, CSV_IMPORT_STATUS_POLL_INTERVAL_MS);
+    const intervalId = setInterval(poll, CSV_JOBS_POLL_INTERVAL_MS);
 
     return () => {
       abortController.abort();
