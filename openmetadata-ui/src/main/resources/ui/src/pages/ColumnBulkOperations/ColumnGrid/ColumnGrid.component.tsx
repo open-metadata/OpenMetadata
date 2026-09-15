@@ -59,11 +59,11 @@ import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
+import GlossaryTag from '../../../components/common/atoms/Tag/GlossaryTag';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
-import GlossaryTag from '../../../components/common/atoms/Tag/GlossaryTag';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import {
   PAGE_SIZE_BASE,

@@ -53,12 +53,12 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import GlossaryTag from '../../../common/atoms/Tag/GlossaryTag';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
   PlusIconButton,
 } from '../../../common/IconButtons/EditIconButton';
-import GlossaryTag from '../../../common/atoms/Tag/GlossaryTag';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
@@ -69,7 +69,6 @@ import {
 } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
 const MAX_VISIBLE_BADGES = 5;
-const TERM_STYLE_BATCH_SIZE = 100;
 
 const BadgeList: React.FC<BadgeListProps> = ({ items, testId }) => {
   const { t } = useTranslation();
@@ -220,7 +219,7 @@ const RelatedTerms = () => {
 
     let cancelled = false;
 
-    getGlossaryTermsByIds(relatedTermIds.slice(0, TERM_STYLE_BATCH_SIZE))
+    getGlossaryTermsByIds(relatedTermIds)
       .then((terms) => {
         if (cancelled) {
           return;
@@ -499,10 +498,7 @@ const RelatedTerms = () => {
   // Whether the edit/add icons show in the header; isolated so its && chain
   // doesn't add to the component's own complexity.
   const canEditRelatedTerms = (() =>
-    canEditGlossaryTerms &&
-    !isVersionView &&
-    !isEditing &&
-    !isAdding)();
+    canEditGlossaryTerms && !isVersionView && !isEditing && !isAdding)();
 
   const renderHeader = () => (
     <div className="d-flex items-center justify-between w-full">
