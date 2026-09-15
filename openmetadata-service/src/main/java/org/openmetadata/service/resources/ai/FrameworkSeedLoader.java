@@ -78,8 +78,13 @@ final class FrameworkSeedLoader {
       framework.setFullyQualifiedName(frameworkFqn);
       framework.setUpdatedBy(ADMIN_USER_NAME);
       framework.setUpdatedAt(System.currentTimeMillis());
-      saved = frameworkRepository.create(null, framework);
-      LOG.info("Seeded AI governance framework '{}'", saved.getName());
+      try {
+        saved = frameworkRepository.create(null, framework);
+        LOG.info("Seeded AI governance framework '{}'", saved.getName());
+      } catch (Exception e) {
+        LOG.info("Framework entity already exists, skipping: {}", frameworkFqn);
+        return;
+      }
     } else {
       saved = existing;
       LOG.debug("Framework '{}' already initialized", saved.getName());
@@ -110,7 +115,11 @@ final class FrameworkSeedLoader {
       control.setId(UUID.randomUUID());
       control.setUpdatedBy(ADMIN_USER_NAME);
       control.setUpdatedAt(System.currentTimeMillis());
-      controlRepository.create(null, control);
+      try {
+        controlRepository.create(null, control);
+      } catch (Exception e) {
+        LOG.info("Control entity already exists, skipping: {}", fqn);
+      }
     }
   }
 
