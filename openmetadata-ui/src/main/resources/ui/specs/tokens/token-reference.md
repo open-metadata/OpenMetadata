@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **804**.
+Total project tokens: **807**.
 
 ## Spacing (62)
 
@@ -162,7 +162,7 @@ font-weight.
 | `--om-font-weight-semibold` | `600` |
 | `--om-font-weight-thin` | `100` |
 
-## Font family & line height (7)
+## Font family, line height & letter spacing (8)
 
 | Token | Value |
 | --- | --- |
@@ -170,6 +170,7 @@ font-weight.
     Consolas, 'Liberation Mono', 'Courier New', monospace` |
 | `--om-font-sans` | `'Inter', 'Poppins', -apple-system, 'Segoe UI', Roboto, Arial,
     sans-serif` |
+| `--om-letter-spacing-wide` | `0.08em` |
 | `--om-line-height-none` | `1` |
 | `--om-line-height-normal` | `1.5` |
 | `--om-line-height-relaxed` | `1.625` |
@@ -197,7 +198,7 @@ box-shadow. See foundations/elevation.md.
     0px 8px 8px -4px rgba(10, 13, 18, 0.03)` |
 | `--om-shadow-xs` | `0px 1px 2px rgba(10, 13, 18, 0.05)` |
 
-## z-index (31)
+## z-index (32)
 
 stacking. Prefer the semantic ladder for new work.
 
@@ -229,6 +230,7 @@ stacking. Prefer the semantic ladder for new work.
 | `--om-z-dropdown` | `1000` |
 | `--om-z-max` | `9999` |
 | `--om-z-modal` | `1500` |
+| `--om-z-n1` | `-1` |
 | `--om-z-overlay` | `1050` |
 | `--om-z-popover` | `2000` |
 | `--om-z-raised` | `1` |
@@ -268,7 +270,7 @@ transition / animation. See foundations/motion.md.
 | `--om-ease-out` | `cubic-bezier(0, 0, 0.2, 1)` |
 | `--om-ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` |
 
-## Semantic colors (52)
+## Semantic colors (53)
 
 Prefer these — they adapt to dark mode.
 
@@ -287,6 +289,7 @@ Prefer these — they adapt to dark mode.
 | `--om-color-bg-quaternary` | `#e9eaeb` |
 | `--om-color-bg-raised` | `#ffffff` |
 | `--om-color-bg-secondary` | `#fafafa` |
+| `--om-color-bg-secondary-hover` | `#f5f5f5` |
 | `--om-color-bg-success` | `#ecfdf3` |
 | `--om-color-bg-surface` | `#ffffff` |
 | `--om-color-bg-tertiary` | `#f5f5f5` |
