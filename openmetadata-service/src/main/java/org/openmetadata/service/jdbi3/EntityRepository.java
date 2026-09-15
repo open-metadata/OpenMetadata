@@ -3877,33 +3877,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return entities;
     }
 
-    // 1. Batch lock manager check
     if (lockManager != null) {
       lockManager.checkModificationsAllowed(entities);
     }
-
-    // 2. Set impersonatedBy for each entity
     for (T entity : entities) {
       entity.setImpersonatedBy(impersonatedBy);
     }
-
-    // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
-    // storeRelationshipsInternal are recorded and drained post-commit (no Redis round trip while
-    // the
-    // handle is held).
-    flushInOneTransaction(
-        () -> {
-          storeEntities(entities);
-          storeExtensions(entities);
-          storeRelationshipsInternal(entities);
-        });
-    setInheritedFields(entities, new Fields(allowedFields));
-    postCreate(entities);
-
-    // 4. Batch cache writes
-    writeThroughCacheMany(entities, false);
-
-    return entities;
+    return createEntities(entities, CreateMode.IMPORT);
   }
 
   @Transaction
@@ -5131,39 +5111,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
-    try {
-      createNewEntityFlush(entity);
-      try (var ignored = phase("createPostCreate")) {
-        postCreate(entity);
-      }
-
-      // Write-through cache: store entity in cache after creation
-      try (var ignored = phase("createWriteThroughCache")) {
-        writeThroughCache(entity, false);
-      }
-
-      return entity;
-    } finally {
-      storedEntityJson.remove();
-    }
-  }
-
-  private void createNewEntityFlush(T entity) {
-    flushInOneTransaction(() -> createNewEntityFlushBody(entity));
-    try (var ignored = phase("createSetInheritedFields")) {
-      setInheritedFields(entity, new Fields(allowedFields));
-    }
-  }
-
-  private void createNewEntityFlushBody(T entity) {
-    try (var ignored = phase("createStoreEntity")) {
-      storeEntityAndCaptureJson(entity, false);
-      storeExtension(entity);
-      storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
-    }
-    try (var ignored = phase("createStoreRelationships")) {
-      storeRelationshipsInternal(entity);
-    }
+    createEntities(List.of(entity), CreateMode.SINGLE);
+    return entity;
   }
 
   /**
@@ -5426,32 +5375,72 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
-    createManyEntitiesFlush(entities);
-    try (var ignored = phase("postCreate")) {
-      postCreate(entities);
-    }
-
-    return entities;
+    return createEntities(entities, CreateMode.BULK);
   }
 
-  private void createManyEntitiesFlush(List<T> entities) {
-    for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
-      int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
-      List<T> chunk = entities.subList(start, end);
-      flushInOneTransaction(() -> createManyEntitiesFlushBody(chunk));
-    }
-    try (var ignored = phase("setInheritedFields")) {
-      setInheritedFields(entities, new Fields(allowedFields));
+  private enum CreateMode {
+    SINGLE,
+    BULK,
+    IMPORT
+  }
+
+  private List<T> createEntities(List<T> entities, CreateMode mode) {
+    final boolean single = mode == CreateMode.SINGLE;
+    // Import retains one owning transaction; ordinary bulk retains its bounded transaction chunks.
+    final int chunkSize = mode == CreateMode.IMPORT ? entities.size() : BULK_CREATE_TXN_CHUNK_SIZE;
+    try {
+      for (int start = 0; start < entities.size(); start += chunkSize) {
+        final var chunk = entities.subList(start, Math.min(start + chunkSize, entities.size()));
+        flushInOneTransaction(() -> storeCreatedEntities(chunk, single));
+      }
+      try (var ignored = phase(single ? "createSetInheritedFields" : "setInheritedFields")) {
+        if (single) {
+          setInheritedFields(entities.getFirst(), new Fields(allowedFields));
+        } else {
+          setInheritedFields(entities, new Fields(allowedFields));
+        }
+      }
+      try (var ignored = phase(single ? "createPostCreate" : "postCreate")) {
+        if (single) {
+          postCreate(entities.getFirst());
+        } else {
+          postCreate(entities);
+        }
+      }
+      try (var ignored = phase(single ? "createWriteThroughCache" : "writeThroughCache")) {
+        if (single) {
+          writeThroughCache(entities.getFirst(), false);
+        } else {
+          writeThroughCacheMany(entities, false);
+        }
+      }
+      return entities;
+    } finally {
+      if (single) {
+        storedEntityJson.remove();
+      }
     }
   }
 
-  private void createManyEntitiesFlushBody(List<T> entities) {
-    try (var ignored = phase("storeEntities")) {
-      storeEntities(entities);
-      storeExtensions(entities);
+  private void storeCreatedEntities(List<T> entities, boolean single) {
+    try (var ignored = phase(single ? "createStoreEntity" : "storeEntities")) {
+      if (single) {
+        storeEntityAndCaptureJson(entities.getFirst(), false);
+        storeExtension(entities.getFirst());
+      } else {
+        storeEntities(entities);
+        storeExtensions(entities);
+      }
+      for (T entity : entities) {
+        storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
+      }
     }
-    try (var ignored = phase("storeRelationships")) {
-      storeRelationshipsInternal(entities);
+    try (var ignored = phase(single ? "createStoreRelationships" : "storeRelationships")) {
+      if (single) {
+        storeRelationshipsInternal(entities.getFirst());
+      } else {
+        storeRelationshipsInternal(entities);
+      }
     }
   }
 
