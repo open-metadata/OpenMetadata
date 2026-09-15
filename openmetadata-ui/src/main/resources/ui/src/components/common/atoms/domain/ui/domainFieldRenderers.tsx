@@ -26,6 +26,7 @@ import { EntityReference } from '../../../../../generated/entity/type';
 import { TagLabel } from '../../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
+import { stopPropagationIfInteractive } from '../../../../../utils/InteractiveTargetUtils';
 import {
   getClassificationTags,
   getGlossaryTags,
@@ -109,31 +110,61 @@ export const renderDomainTypeCell = (entity: Domain): ReactNode =>
     <Typography size="text-sm">{NO_DATA}</Typography>
   );
 
-export const renderDomainOwnersCell = (
-  entity: OwnedEntity,
-  toOwnersWithHref: (refs: EntityReference[] | undefined) => OwnerRef[],
+type OwnerRenderers = {
+  toOwnersWithHref: (refs: EntityReference[] | undefined) => OwnerRef[];
   renderOwnerContent: (
     owner: { name?: string; type?: string },
     chip: ReactNode
-  ) => ReactNode,
-  options?: { showDashPlaceholder?: boolean }
-): ReactNode => (
-  <Owner
-    isCompactView={false}
-    maxVisibleOwners={4}
-    owners={toOwnersWithHref(entity.owners)}
-    renderOwnerContent={renderOwnerContent}
-    showDashPlaceholder={options?.showDashPlaceholder}
-    showLabel={false}
-  />
+  ) => ReactNode;
+};
+
+// Owner links and tag chips navigate to their own entity, while the row or card underneath
+// navigates to the domain. The guard withholds only what an inner control will handle - a blanket
+// stopPropagation would also swallow clicks on the cell's padding and its "--" placeholder.
+const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
+  <div role="presentation" onClick={stopPropagationIfInteractive}>
+    {cell}
+  </div>
 );
 
-export const renderDomainGlossaryTagsCell = (
-  entity: TaggedEntity
-): ReactNode => <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
+export const renderDomainOwnersCell = (
+  entity: OwnedEntity,
+  toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
+  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
+  options?: { showDashPlaceholder?: boolean }
+): ReactNode =>
+  withNestedLinkGuard(
+    <Owner
+      isCompactView={false}
+      maxVisibleOwners={4}
+      owners={toOwnersWithHref(entity.owners)}
+      renderOwnerContent={renderOwnerContent}
+      showDashPlaceholder={options?.showDashPlaceholder}
+      showLabel={false}
+    />
+  );
+
+export const renderDomainExpertsCell = (
+  entity: { experts?: EntityReference[] },
+  toOwnersWithHref: OwnerRenderers['toOwnersWithHref'],
+  renderOwnerContent: OwnerRenderers['renderOwnerContent'],
+  options?: { showDashPlaceholder?: boolean }
+): ReactNode =>
+  renderDomainOwnersCell(
+    { owners: entity.experts },
+    toOwnersWithHref,
+    renderOwnerContent,
+    options
+  );
+
+export const renderDomainGlossaryTagsCell = (entity: TaggedEntity): ReactNode =>
+  withNestedLinkGuard(
+    <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />
+  );
 
 export const renderDomainClassificationTagsCell = (
   entity: TaggedEntity
-): ReactNode => (
-  <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
-);
+): ReactNode =>
+  withNestedLinkGuard(
+    <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
+  );
