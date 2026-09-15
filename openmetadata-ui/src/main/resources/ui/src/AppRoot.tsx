@@ -34,28 +34,54 @@ import { getThemeConfig } from './utils/ThemeUtils';
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
 
-  const { applicationConfig, setApplicationConfig, setRdfEnabled } =
-    useApplicationStore(
-      useShallow((state) => ({
-        applicationConfig: state.applicationConfig,
-        setApplicationConfig: state.setApplicationConfig,
-        setRdfEnabled: state.setRdfEnabled,
-      }))
-    );
+  const {
+    applicationConfig,
+    setApplicationConfig,
+    setRdfEnabled,
+    setTimeFormat,
+  } = useApplicationStore(
+    useShallow((state) => ({
+      applicationConfig: state.applicationConfig,
+      setApplicationConfig: state.setApplicationConfig,
+      setRdfEnabled: state.setRdfEnabled,
+      setTimeFormat: state.setTimeFormat,
+    }))
+  );
 
   const fetchApplicationConfig = async () => {
     try {
-      const [themeData, systemConfig] = await Promise.all([
-        getCustomUiThemePreference(),
-        getSystemConfig(),
-      ]);
+      // Handle promises independently so a theme fetch failure doesn't
+      // drop the successfully fetched tenant timeFormat default.
+      const themeDataPromise = getCustomUiThemePreference().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch theme data:', err);
 
-      setApplicationConfig({
-        ...themeData,
-        customTheme: getThemeConfig(themeData.customTheme),
+        return null;
       });
 
-      setRdfEnabled(systemConfig.rdfEnabled || false);
+      const systemConfigPromise = getSystemConfig().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch system config:', err);
+
+        return null;
+      });
+
+      const [themeData, systemConfig] = await Promise.all([
+        themeDataPromise,
+        systemConfigPromise,
+      ]);
+
+      if (themeData) {
+        setApplicationConfig({
+          ...themeData,
+          customTheme: getThemeConfig(themeData.customTheme),
+        });
+      }
+
+      if (systemConfig) {
+        setRdfEnabled(systemConfig.rdfEnabled || false);
+        setTimeFormat(systemConfig.timeFormat || '12h');
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);
