@@ -991,35 +991,35 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await sidebarClick(page, SidebarItem.EXPLORE);
           await showAdvancedSearchDialog(page);
 
-          const ruleLocator = page.locator('.rule').nth(0);
+          const ruleLocator = page.getByTestId('query-builder-rule-0');
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select'),
             'Custom Properties',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-1'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-2'),
             durationPropertyName,
             true
           );
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             CONDITIONS_MUST.equalTo.name
           );
 
           const inputElement = ruleLocator.locator(
-            '.rule--widget--TEXT input[type="text"]'
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
           );
           await inputElement.fill(durationPropertyValue);
 
@@ -1037,7 +1037,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             'Contains'
           );
           await inputElement.fill(partialSearchValue);
@@ -1285,37 +1285,39 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await showAdvancedSearchDialog(page);
 
-            const ruleLocator = page.locator('.rule').nth(0);
+            const ruleLocator = page.getByTestId('query-builder-rule-0');
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select'),
               'Custom Properties',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-1'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-2'),
               propertyName,
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--operator'),
+              ruleLocator.getByTestId('advanced-search-operator-select'),
               CONDITIONS_MUST.equalTo.name
             );
 
             await ruleLocator
-              .locator('.rule--widget--TEXT input[type="text"]')
+              .locator(
+                '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+              )
               .fill('updated value');
 
             await advanceSearchSaveFilter(page, 'updated value');
@@ -3459,26 +3461,24 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(dashboardCard).toBeVisible();
         });
-      });
 
-      test('Verify Dashboard custom property persists in search settings', async ({
-        page,
-      }) => {
-        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await test.step('Verify Dashboard custom property persists in search settings', async () => {
+          await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-        const dashboardCard = page.getByTestId(
-          'preferences.search-settings.dashboards'
-        );
-        await dashboardCard.click();
+          const dashboardCard = page.getByTestId(
+            'preferences.search-settings.dashboards'
+          );
+          await dashboardCard.click();
 
-        await waitForAllLoadersToDisappear(page);
+          await waitForAllLoadersToDisappear(page);
 
-        await openMatchingFieldsPanel(page);
+          await openMatchingFieldsPanel(page);
 
-        const customPropertyField = page.getByTestId(
-          `field-configuration-panel-extension.${dashboardSearchPropertyName}`
-        );
-        await expect(customPropertyField).toBeVisible();
+          const customPropertyField = page.getByTestId(
+            `field-configuration-panel-extension.${dashboardSearchPropertyName}`
+          );
+          await expect(customPropertyField).toBeVisible();
+        });
       });
     }
 
@@ -3588,26 +3588,24 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
           await expect(pipelineCard).toBeVisible();
         });
-      });
 
-      test('Verify Pipeline custom property persists in search settings', async ({
-        page,
-      }) => {
-        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await test.step('Verify Pipeline custom property persists in search settings', async () => {
+          await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-        const pipelineCard = page.getByTestId(
-          'preferences.search-settings.pipelines'
-        );
-        await pipelineCard.click();
+          const pipelineCard = page.getByTestId(
+            'preferences.search-settings.pipelines'
+          );
+          await pipelineCard.click();
 
-        await waitForAllLoadersToDisappear(page);
+          await waitForAllLoadersToDisappear(page);
 
-        await openMatchingFieldsPanel(page);
+          await openMatchingFieldsPanel(page);
 
-        const customPropertyField = page.getByTestId(
-          `field-configuration-panel-extension.${pipelineSearchPropertyName}`
-        );
-        await expect(customPropertyField).toBeVisible();
+          const customPropertyField = page.getByTestId(
+            `field-configuration-panel-extension.${pipelineSearchPropertyName}`
+          );
+          await expect(customPropertyField).toBeVisible();
+        });
       });
     }
 

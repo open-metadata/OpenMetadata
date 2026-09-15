@@ -209,6 +209,8 @@ interface ColumnContentProps {
   summary?: ColumnTestSummaryDefinition;
   depth?: number;
   className?: string;
+  onColumnHover?: (columnFqn?: string) => void;
+  onColumnSelect?: (columnFqn?: string) => void;
 }
 
 const ColumnContentInner = ({
@@ -219,6 +221,8 @@ const ColumnContentInner = ({
   summary,
   depth = 0,
   className = '',
+  onColumnHover,
+  onColumnSelect,
 }: ColumnContentProps) => {
   const { onColumnMouseEnter } = useLineageProvider();
   const {
@@ -237,23 +241,26 @@ const ColumnContentInner = ({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setSelectedColumn(fullyQualifiedName ?? '');
+      onColumnSelect?.(fullyQualifiedName);
     },
-    [fullyQualifiedName, setSelectedColumn]
+    [fullyQualifiedName, onColumnSelect, setSelectedColumn]
   );
 
   const handleMouseEnter = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(fullyQualifiedName);
     onColumnMouseEnter(fullyQualifiedName ?? '');
-  }, [selectedColumn, fullyQualifiedName, onColumnMouseEnter]);
+  }, [fullyQualifiedName, onColumnHover, onColumnMouseEnter, selectedColumn]);
 
   const handleMouseLeave = useCallback(() => {
     if (selectedColumn) {
       return;
     }
+    onColumnHover?.(undefined);
     setTracedColumns(new Set());
-  }, [selectedColumn, setTracedColumns]);
+  }, [onColumnHover, selectedColumn, setTracedColumns]);
 
   const columnNameContentRender = useMemo(
     () => getColumnNameContent(column, isLoading),
@@ -323,14 +330,37 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
     prev.isConnectable === next.isConnectable &&
     prev.isLoading === next.isLoading &&
     prev.showDataObservabilitySummary === next.showDataObservabilitySummary;
-
-  return (
-    coreColumnPropsEqual &&
+  const renderPropsEqual =
     prev.summary === next.summary &&
     prev.depth === next.depth &&
-    prev.className === next.className
-  );
+    prev.className === next.className;
+  const columnCallbacksEqual =
+    prev.onColumnHover === next.onColumnHover &&
+    prev.onColumnSelect === next.onColumnSelect;
+
+  return coreColumnPropsEqual && renderPropsEqual && columnCallbacksEqual;
 });
+
+/**
+ * Split across two named booleans so neither expression exceeds
+ * sonarjs/expression-complexity, and kept out of CustomNodeV1 so its operators
+ * do not count against that component's cyclomatic-complexity budget.
+ */
+export function shouldShowNodeRemoveButton({
+  isSelected,
+  isEditMode,
+  isRootNode,
+  isNodeRemovable,
+}: {
+  isSelected: boolean;
+  isEditMode: boolean;
+  isRootNode: boolean;
+  isNodeRemovable: boolean;
+}) {
+  const isRemovableSelection = isSelected && isEditMode;
+
+  return isRemovableSelection && !isRootNode && isNodeRemovable;
+}
 
 export function getNodeClassNames({
   isSelected,

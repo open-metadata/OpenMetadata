@@ -44,6 +44,8 @@ const NodeChildren = ({
   isConnectable,
   isChildrenListExpanded,
   isOnlyShowColumnsWithLineageFilterActive,
+  onColumnHover,
+  onColumnSelect,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const {
@@ -214,6 +216,8 @@ const NodeChildren = ({
                 pageSize={pageSize}
                 showDataObservabilitySummary={showDataObservabilitySummary}
                 summary={summary}
+                onColumnHover={onColumnHover}
+                onColumnSelect={onColumnSelect}
               />
             </div>
           </section>
