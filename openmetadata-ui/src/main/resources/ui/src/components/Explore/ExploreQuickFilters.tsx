@@ -446,6 +446,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           <FilterSelect
             commitMode={immediateApply ? 'immediate' : 'staged'}
             data-testid={`search-dropdown-${field.key}`}
+            // Keep the legacy empty-state copy: specs and users know this
+            // surface as "No data available.", not the library default.
+            emptyState={t('message.no-data-available')}
             helperText={helperText}
             hideCounts={field.hideCounts ?? false}
             isLoading={isOptionsLoading}
