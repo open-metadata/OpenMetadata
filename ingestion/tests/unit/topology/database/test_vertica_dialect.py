@@ -63,14 +63,18 @@ def initializing_engine_fixture():
     reproduces on any engine. Registering the functions lets them execute, which
     covers the version parsing too rather than only the call.
     """
-    engine = create_engine("sqlite://")
 
-    @event.listens_for(engine, "connect")
-    def _register(dbapi_connection, _):  # pyright: ignore[reportUnusedFunction]
-        dbapi_connection.create_function("version", 0, lambda: "Vertica Analytic Database v9.2.0-7")
-        dbapi_connection.create_function("current_schema", 0, lambda: "omd_test")
+    def _build(reported_version: str = "Vertica Analytic Database v9.2.0-7"):
+        engine = create_engine("sqlite://")
 
-    return engine
+        @event.listens_for(engine, "connect")
+        def _register(dbapi_connection, _):  # pyright: ignore[reportUnusedFunction]
+            dbapi_connection.create_function("version", 0, lambda: reported_version)
+            dbapi_connection.create_function("current_schema", 0, lambda: "omd_test")
+
+        return engine
+
+    return _build
 
 
 @pytest.fixture(name="catalog_engine")
@@ -97,12 +101,27 @@ def catalog_engine_fixture():
 class TestVerticaDialectInitialization:
     """The two statements DefaultDialect.initialize() issues on first connect."""
 
-    def test_server_version_is_executable(self, initializing_engine):
-        with initializing_engine.connect() as connection:
-            assert VerticaDialect()._get_server_version_info(connection) == (9, 2, 0)
+    @pytest.mark.parametrize(
+        ("reported_version", "expected"),
+        [
+            ("Vertica Analytic Database v9.2.0-7", (9, 2, 0)),
+            ("Vertica Analytic Database v25.4.0-0", (25, 4, 0)),
+            # A patch level of two or more digits must survive intact. Written as
+            # (\d)+ the quantifier sits outside the group and keeps only the last
+            # digit, reporting 12.0.5 for a 12.0.15 server.
+            ("Vertica Analytic Database v12.0.15-0", (12, 0, 15)),
+        ],
+    )
+    def test_server_version_is_executable_and_parsed(self, initializing_engine, reported_version, expected):
+        engine = initializing_engine(reported_version)
+
+        with engine.connect() as connection:
+            assert VerticaDialect()._get_server_version_info(connection) == expected
 
     def test_default_schema_is_executable(self, initializing_engine):
-        with initializing_engine.connect() as connection:
+        engine = initializing_engine()
+
+        with engine.connect() as connection:
             assert VerticaDialect()._get_default_schema_name(connection) == "omd_test"
 
 

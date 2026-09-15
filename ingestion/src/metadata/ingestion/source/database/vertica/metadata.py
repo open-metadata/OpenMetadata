@@ -19,7 +19,7 @@ from collections.abc import Iterable
 from textwrap import dedent
 
 from sqlalchemy import sql, text, util
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Inspector, reflection
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_vertica.base import VerticaDialect, ischema_names
@@ -53,13 +53,15 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_schema_descriptions,
     get_table_comment_wrapper,
+    get_table_ddl,
 )
 
 logger = ingestion_logger()
 
-VERTICA_VERSION_PATTERN = re.compile(r".*Vertica Analytic Database v(\d+)\.(\d+)\.(\d)+.*")
+VERTICA_VERSION_PATTERN = re.compile(r".*Vertica Analytic Database v(\d+)\.(\d+)\.(\d+).*")
 
 ischema_names.update(
     {
@@ -322,6 +324,13 @@ VerticaDialect.get_all_table_comments = get_all_table_comments
 VerticaDialect.get_table_comment = get_table_comment  # pyright: ignore[reportAttributeAccessIssue]
 VerticaDialect._get_server_version_info = _get_server_version_info  # pylint: disable=protected-access
 VerticaDialect._get_default_schema_name = _get_default_schema_name  # pylint: disable=protected-access
+
+# get_schema_definition only reaches for table DDL when the inspector carries
+# these, and they are registered globally rather than per dialect. Vertica does
+# import a connector that installs them, but only as a side effect of sharing
+# Postgres helpers, so declare them here rather than depend on that chain.
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
 # sqlalchemy-vertica predates SQLAlchemy 2.0 and overrides only the singular
 # get_* reflection methods. The batched get_multi_* API that MetaData.reflect()
