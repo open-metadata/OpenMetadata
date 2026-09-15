@@ -381,7 +381,13 @@ test.describe('Column Level Lineage', () => {
 
       await test.step('Add column lineage from table column to metric', async () => {
         await addPipelineBetweenNodes(page, table, metric);
+        // The layer control is pointer-events:none inside edit mode, so leave
+        // edit mode to switch to the FIELD band, then re-enter it to draw the
+        // column edge. Same sequence the entity matrix above uses.
+        await editLineageClick(page);
         await activateColumnLayer(page);
+        await editLineage(page);
+
         await addColumnLineage(page, tableCol, metricCol);
       });
 
