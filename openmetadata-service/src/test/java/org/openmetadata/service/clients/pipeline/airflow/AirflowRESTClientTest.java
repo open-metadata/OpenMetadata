@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -30,6 +31,7 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
+import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -41,6 +43,7 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
@@ -66,6 +69,78 @@ import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 
 class AirflowRESTClientTest {
+
+  @ParameterizedTest
+  @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+  void deploymentTimesOutForStalledResponsesIncludingCsrfRetries(boolean retry, boolean partialBody)
+      throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      final String prefix = "/pluginsv2/api/v2/openmetadata";
+      server.enqueue("GET", prefix + "/health-auth", 200, "{\"version\":\"3.0.0\"}");
+      server.enqueue("GET", prefix + "/csrf-token", 200, "{\"csrf_token\":\"test-token\"}");
+      if (retry) {
+        server.enqueue("POST", prefix + "/deploy", 400, "CSRF token has expired");
+        server.enqueue("GET", prefix + "/csrf-token", 200, "{\"csrf_token\":\"new-token\"}");
+      }
+      server.enqueueStalled("POST", prefix + "/deploy", partialBody);
+      final AirflowRESTClient client = newClient(server, "", 1);
+      final IngestionPipeline pipeline = ingestionPipeline("test_timeout", true);
+
+      final IngestionPipelineDeploymentException failure =
+          assertTimeoutPreemptively(
+              Duration.ofSeconds(5),
+              () ->
+                  assertThrows(
+                      IngestionPipelineDeploymentException.class,
+                      () -> client.deployPipeline(pipeline, null)));
+      assertTrue(failure.getMessage().contains("timed out"));
+      assertFalse(Boolean.TRUE.equals(pipeline.getDeployed()));
+      assertEquals(retry ? 2 : 1, server.requests("POST", prefix + "/deploy").size());
+      server.enqueue("POST", prefix + "/deploy", 200, "{}");
+      assertEquals(200, client.deployPipeline(pipeline, null).getCode());
+      assertTrue(pipeline.getDeployed());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void stalledCsrfResponseFallsBackAndAllowsDeployment(boolean partialBody) throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      final String prefix = "/pluginsv2/api/v2/openmetadata";
+      server.enqueue("GET", prefix + "/health-auth", 200, "{\"version\":\"3.0.0\"}");
+      server.enqueueStalled("GET", prefix + "/csrf-token", partialBody);
+      server.enqueue(
+          "GET", prefix + "/health", 200, "{}", cookieHeaders("csrf_token=fallback-token; Path=/"));
+      server.enqueue("POST", prefix + "/deploy", 200, "{}");
+      final AirflowRESTClient client = newClient(server, "", 1);
+      final IngestionPipeline pipeline = ingestionPipeline("test_csrf_timeout", true);
+
+      assertTimeoutPreemptively(
+          Duration.ofSeconds(5),
+          () -> assertEquals(200, client.deployPipeline(pipeline, null).getCode()));
+      assertTrue(pipeline.getDeployed());
+      assertEquals(
+          "fallback-token",
+          server.requests("POST", prefix + "/deploy").getFirst().header("x-csrftoken"));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void stalledVersionProbeFallsBackToNextApiVersion(boolean partialBody) throws Exception {
+    try (AirflowTestServer server = new AirflowTestServer()) {
+      server.enqueueStalled("GET", "/pluginsv2/api/v2/openmetadata/health-auth", partialBody);
+      server.enqueue("GET", "/api/v2/openmetadata/health-auth", 200, "{\"version\":\"2.0.0\"}");
+      final AirflowRESTClient client = newClient(server, "", 1);
+
+      assertTimeoutPreemptively(
+          Duration.ofSeconds(8),
+          () ->
+              assertEquals(
+                  server.url("/api/v2/openmetadata/deploy"),
+                  client.buildURI("deploy").build().toString()));
+    }
+  }
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
@@ -692,7 +767,16 @@ class AirflowRESTClientTest {
     }
   }
 
-  private record ResponseSpec(int statusCode, String body, Map<String, List<String>> headers) {}
+  private record ResponseSpec(
+      int statusCode,
+      String body,
+      Map<String, List<String>> headers,
+      boolean stalled,
+      boolean partialBody) {
+    private ResponseSpec(int statusCode, String body, Map<String, List<String>> headers) {
+      this(statusCode, body, headers, false, false);
+    }
+  }
 
   private static final class AirflowTestServer implements AutoCloseable {
     private final HttpServer server;
@@ -726,6 +810,12 @@ class AirflowRESTClientTest {
           .toList();
     }
 
+    private void enqueueStalled(String method, String path, boolean partialBody) {
+      responses
+          .computeIfAbsent(method + " " + path, ignored -> new ArrayDeque<>())
+          .addLast(new ResponseSpec(200, "", Map.of(), true, partialBody));
+    }
+
     private String url(String path) {
       String normalizedPath = path == null || path.isBlank() ? "" : path;
       return "http://localhost:" + server.getAddress().getPort() + normalizedPath;
@@ -752,6 +842,15 @@ class AirflowRESTClientTest {
           responses.getOrDefault(method + " " + path, new ArrayDeque<>()).pollFirst();
       if (response == null) {
         response = new ResponseSpec(404, "", Map.of());
+      }
+
+      if (response.stalled()) {
+        if (response.partialBody()) {
+          exchange.sendResponseHeaders(200, 100);
+          exchange.getResponseBody().write('{');
+          exchange.getResponseBody().flush();
+        }
+        return;
       }
 
       Headers responseHeaders = exchange.getResponseHeaders();

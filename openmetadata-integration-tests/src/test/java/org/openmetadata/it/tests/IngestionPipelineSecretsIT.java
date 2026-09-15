@@ -3,14 +3,18 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.sun.net.httpserver.HttpServer;
 import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.List;
@@ -37,6 +41,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -115,6 +121,57 @@ class IngestionPipelineSecretsIT {
     assertEquals(400, patch(pipeline, SECRET_PATH, REJECTED_SECRET, null).statusCode());
     assertEquals(before, stored(pipeline));
     assertMaskedHistory(pipeline);
+  }
+
+  @Test
+  void timedOutDeploymentReleasesLockWithoutPersistingSecrets(TestNamespace namespace)
+      throws Exception {
+    final IngestionPipeline pipeline = createPipeline(namespace, INITIAL_SECRET);
+    patchSuccessfully(pipeline, "/deployed", true);
+    final JsonNode before = stored(pipeline);
+    final HttpServer runner = stalledRunner();
+    try {
+      final PipelineServiceClientConfiguration config =
+          capturingClientConfig()
+              .withApiEndpoint("http://localhost:" + runner.getAddress().getPort());
+      config.getParameters().setAdditionalProperty("timeout", 1);
+      repository.setPipelineServiceClient(new AirflowRESTClient(config));
+      assertTimeoutPreemptively(
+          Duration.ofSeconds(10),
+          () ->
+              assertEquals(400, patch(pipeline, SECRET_PATH, REJECTED_SECRET, null).statusCode()));
+      assertEquals(before, stored(pipeline));
+    } finally {
+      runner.stop(0);
+      repository.setPipelineServiceClient(new CapturingPipelineClient());
+    }
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(10), () -> patchSuccessfully(pipeline, SECRET_PATH, ACCEPTED_SECRET));
+    assertEncrypted(pipeline);
+    assertMaskedHistory(pipeline);
+  }
+
+  private static HttpServer stalledRunner() throws Exception {
+    final HttpServer runner = HttpServer.create(new InetSocketAddress(0), 0);
+    runner.createContext(
+        "/",
+        exchange -> {
+          exchange.getRequestBody().readAllBytes();
+          if (exchange.getRequestURI().getPath().endsWith("/deploy")) {
+            exchange.sendResponseHeaders(200, 100);
+            exchange.getResponseBody().write('{');
+            exchange.getResponseBody().flush();
+            return;
+          }
+          final byte[] body =
+              "{\"version\":\"3.0.0\",\"csrf_token\":\"test\"}".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          try (var output = exchange.getResponseBody()) {
+            output.write(body);
+          }
+        });
+    runner.start();
+    return runner;
   }
 
   @Test
@@ -294,7 +351,7 @@ class IngestionPipelineSecretsIT {
 
   private class CapturingPipelineClient extends AirflowRESTClient {
     CapturingPipelineClient() throws KeyStoreException {
-      super(repository.getOpenMetadataApplicationConfig().getPipelineServiceClientConfiguration());
+      super(capturingClientConfig());
     }
 
     @Override
@@ -310,6 +367,16 @@ class IngestionPipelineSecretsIT {
     public PipelineServiceClientResponse deletePipeline(IngestionPipeline pipeline) {
       return new PipelineServiceClientResponse().withCode(200);
     }
+  }
+
+  private static PipelineServiceClientConfiguration capturingClientConfig() {
+    final Parameters parameters = new Parameters();
+    parameters.setAdditionalProperty("username", "test");
+    parameters.setAdditionalProperty("password", "test");
+    return new PipelineServiceClientConfiguration()
+        .withEnabled(false)
+        .withApiEndpoint("http://localhost:1")
+        .withParameters(parameters);
   }
 
   private static class ControlledSecretsManager extends InMemorySecretsManager {
