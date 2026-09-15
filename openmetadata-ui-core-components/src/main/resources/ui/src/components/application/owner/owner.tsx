@@ -43,6 +43,7 @@ export const Owner = ({
   hasPermission,
   selectorContent,
   onEditClick,
+  showOverflowHeadings,
   'data-testid': dataTestId = 'owner-label',
 }: OwnerProps) => {
   const { t } = useCoreTranslation();
@@ -138,6 +139,7 @@ export const Owner = ({
             owners={owners}
             placement={placement}
             renderOwnerContent={renderOwnerContent}
+            showOverflowHeadings={showOverflowHeadings}
           />
           {isAssignee && hasPermission && onEditClick && (
             <button

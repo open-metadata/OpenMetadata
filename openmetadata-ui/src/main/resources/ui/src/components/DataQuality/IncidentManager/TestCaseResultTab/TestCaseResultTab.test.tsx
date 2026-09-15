@@ -193,6 +193,7 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.testCase.useDynamicAssertion = undefined;
     mockUseTestCaseStore.testCase.computePassedFailedRowCount = undefined;
     mockUseTestCaseStore.testCase.deleted = undefined;
+    mockUseTestCaseStore.testCase.dataQualityDimension = undefined;
     mockUseTestCaseStore.isTabExpanded = true;
     mockShouldRenderDefaultGraph.mockReturnValue(true);
   });
@@ -355,6 +356,41 @@ describe('TestCaseResultTab', () => {
     expect(screen.getByTestId('dynamic-assertion')).toBeInTheDocument();
     expect(screen.getByText('label.compute-row-count')).toBeInTheDocument();
     expect(screen.queryByText('columnCount')).not.toBeInTheDocument();
+  });
+
+  it('shows the test case data quality dimension in the configuration card', async () => {
+    mockUseTestCaseStore.testCase.dataQualityDimension = {
+      id: 'dim-1',
+      type: 'dataQualityDimension',
+      name: 'Timeliness',
+      displayName: 'Timeliness of data',
+    };
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('test-case-configuration-card');
+
+    expect(
+      screen.getByText('label.data-quality-dimension')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Timeliness of data')).toBeInTheDocument();
+  });
+
+  it('does not fall back to the test definition dimension', async () => {
+    mockGetTestDefinitionById.mockResolvedValue({
+      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+      name: 'tableColumnCountToEqual',
+      dataQualityDimension: 'Accuracy',
+    });
+
+    render(<TestCaseResultTab />);
+
+    await screen.findByTestId('test-case-configuration-card');
+
+    expect(
+      screen.queryByText('label.data-quality-dimension')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Accuracy')).not.toBeInTheDocument();
   });
 
   it('Should show edit button, for useDynamicAssertion', async () => {

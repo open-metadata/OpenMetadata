@@ -7850,6 +7850,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/TestLibrary/TestDefinitionForm/TestDefinitionFormBody.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
       ]
     },
@@ -9349,6 +9350,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/enums/DataQuality.enum.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/enums/common.enum.ts"
       ],
       "specs": [
@@ -10272,14 +10281,6 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/tests/testCaseResolutionStatus.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/tests/testDefinition.ts"
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
