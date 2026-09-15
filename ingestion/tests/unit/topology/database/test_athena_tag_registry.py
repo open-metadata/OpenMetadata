@@ -66,45 +66,46 @@ def fqns(labels):
 
 
 def test_schema_table_column_tags_keep_their_resource_boundaries(source):
-    with source._node_scope(source.topology.databaseSchema, "schema"):
-        response(source, {"LFTagOnDatabase": [tag("Environment", "Shared")]})
-        definitions = schema_stage(source)
-        response(
-            source,
-            {
-                "LFTagsOnTable": [tag("Environment", "Shared"), tag("Case", "Mixed", "MIXED")],
-                "LFTagsOnColumns": [{"Name": "value", "LFTags": [tag("ColumnClass", "Private", "Restricted")]}],
-            },
+    source.context.get().upsert("database_schema", "schema")
+    response(source, {"LFTagOnDatabase": [tag("Environment", "Shared")]})
+    definitions = schema_stage(source)
+    response(
+        source,
+        {
+            "LFTagsOnTable": [tag("Environment", "Shared"), tag("Case", "Mixed", "MIXED")],
+            "LFTagsOnColumns": [{"Name": "value", "LFTags": [tag("ColumnClass", "Private", "Restricted")]}],
+        },
+    )
+    definitions += table_stage(source)
+    assert all(item.left is None for item in definitions)
+    assert [item.right.tag_request.name.root for item in definitions] == [
+        "Shared",
+        "Mixed",
+        "MIXED",
+        "Private",
+        "Restricted",
+    ]
+    assert fqns(source.get_schema_tag_labels("schema")) == ["Environment.Shared"]
+    assert fqns(source.get_tag_labels("table")) == ["Environment.Shared", "Case.Mixed", "Case.MIXED"]
+    assert fqns(source.get_column_tag_labels("table", {"name": "value"})) == [
+        "ColumnClass.Private",
+        "ColumnClass.Restricted",
+    ]
+    assert source.get_column_tag_labels("table", {"name": "untagged"}) is None
+    assert source.get_tag_labels("other") is None
+    assert source.get_database_tag_labels("catalog") is None
+    assert getattr(source.context.get(), "tags", None) is None
+    for label in source.get_tag_labels("table"):
+        assert (label.labelType.value, label.state.value, label.source.value) == (
+            "Automated",
+            "Suggested",
+            "Classification",
         )
-        definitions += table_stage(source)
-        assert all(item.left is None for item in definitions)
-        assert [item.right.tag_request.name.root for item in definitions] == [
-            "Shared",
-            "Mixed",
-            "MIXED",
-            "Private",
-            "Restricted",
-        ]
-        assert fqns(source.get_schema_tag_labels("schema")) == ["Environment.Shared"]
-        assert fqns(source.get_tag_labels("table")) == ["Environment.Shared", "Case.Mixed", "Case.MIXED"]
-        assert fqns(source.get_column_tag_labels("table", {"name": "value"})) == [
-            "ColumnClass.Private",
-            "ColumnClass.Restricted",
-        ]
-        assert source.get_column_tag_labels("table", {"name": "untagged"}) is None
-        assert source.get_tag_labels("other") is None
-        assert source.get_database_tag_labels("catalog") is None
-        assert getattr(source.context.get(), "tags", None) is None
-        for label in source.get_tag_labels("table"):
-            assert (label.labelType.value, label.state.value, label.source.value) == (
-                "Automated",
-                "Suggested",
-                "Classification",
-            )
+    list(source.clear_schema_tag_scope())
     assert source.get_schema_tag_labels("schema") is None
     assert source.get_tag_labels("table") is None
     assert source.get_column_tag_labels("table", {"name": "value"}) is None
-    assert source.tags_registry.stats()["active_scopes"] == 0
+    assert source.tags_registry.stats()["live_entities"] == 0
 
 
 @pytest.mark.parametrize("level", ["schema", "table", "column"])
@@ -179,19 +180,19 @@ def test_unavailable_lake_formation_keeps_existing_skip_behavior(source):
 def test_quoted_names_and_repeated_tags_survive_schema_cleanup(source):
     for schema in ("schema.a", "schema.b"):
         source.context.get().upsert("database_schema", schema)
-        with source._node_scope(source.topology.databaseSchema, schema):
-            response(
-                source,
-                {
-                    "LFTagsOnTable": [tag("Class.Name", "Value.Name")],
-                    "LFTagsOnColumns": [{"Name": "column.name", "LFTags": [tag("Class.Name", "Value.Name")]}],
-                },
-            )
-            table_stage(source, "table.name")
-            assert fqns(source.get_tag_labels("table.name")) == ['"Class.Name"."Value.Name"']
-            assert fqns(source.get_column_tag_labels("table.name", {"name": "column.name"})) == [
-                '"Class.Name"."Value.Name"'
-            ]
+        response(
+            source,
+            {
+                "LFTagsOnTable": [tag("Class.Name", "Value.Name")],
+                "LFTagsOnColumns": [{"Name": "column.name", "LFTags": [tag("Class.Name", "Value.Name")]}],
+            },
+        )
+        table_stage(source, "table.name")
+        assert fqns(source.get_tag_labels("table.name")) == ['"Class.Name"."Value.Name"']
+        assert fqns(source.get_column_tag_labels("table.name", {"name": "column.name"})) == [
+            '"Class.Name"."Value.Name"'
+        ]
+        list(source.clear_schema_tag_scope())
         assert source.get_tag_labels("table.name") is None
         assert source.get_column_tag_labels("table.name", {"name": "column.name"}) is None
     assert source.tags_registry.stats()["live_labels"] == 0

@@ -64,7 +64,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -72,7 +71,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -248,8 +246,6 @@ class SnowflakeSource(
     """
 
     service_connection: SnowflakeConnection
-    topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
 
     def __init__(
         self,

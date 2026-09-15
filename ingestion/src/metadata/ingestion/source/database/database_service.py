@@ -15,13 +15,13 @@ Base class for ingesting database services
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from contextlib import AbstractContextManager, closing
-from typing import Annotated, Any, cast
+from contextlib import closing
+from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
 
-from metadata.domain.tags import TagCanonicalizer, TagDefinition, TagRegistry, TagScope
+from metadata.domain.tags import TagCanonicalizer, TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -50,6 +50,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -154,6 +155,7 @@ class DatabaseServiceTopology(ServiceTopology):
             "mark_schemas_as_deleted",
             "mark_tables_as_deleted",
             "mark_stored_procedures_as_deleted",
+            "clear_database_tag_scope",
         ],
         threads=True,
     )
@@ -186,6 +188,7 @@ class DatabaseServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+        post_process=["clear_schema_tag_scope"],
     )
     stored_procedure: Annotated[TopologyNode, Field(description="Stored Procedure Node")] = TopologyNode(
         producer="get_stored_procedures",
@@ -268,36 +271,32 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         return tag
 
     def attach_tag(self, *, entity_fqn: str, tag: TagDefinition) -> None:
-        """Attach a resolved tag to its owning database or schema scope."""
-        scope = self._tag_scope_for_entity(entity_fqn)
-        self.tags_registry.attach(scope=scope, entity_fqn=entity_fqn, tag=tag)
+        """Attach a resolved tag to an entity."""
+        self.tags_registry.attach(entity_fqn=entity_fqn, tag=tag)
 
-    def _tag_scope_for_entity(self, entity_fqn: str) -> TagScope:
-        parts = fqn.split(entity_fqn)
-        service = fqn.quote_name(self.context.get().database_service)  # pyright: ignore[reportAttributeAccessIssue]
-        if len(parts) < 2 or parts[0] != service:
-            raise ValueError("Tag entity must belong to the source service")
-        scope_fqn = fqn._build(*parts[:3])
-        return self.tags_registry.open_scope(scope_fqn)
-
-    def _node_scope(self, node: TopologyNode, node_entity: Any) -> AbstractContextManager:
-        if self.source_config.includeTags:
-            entity_type = self._get_entity_type_for_node(node)
-            if entity_type in ("Database", "DatabaseSchema"):
-                context = self.context.get()
-                names = {
-                    "service_name": context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                    "database_name": node_entity if entity_type == "Database" else context.database,  # pyright: ignore[reportAttributeAccessIssue]
-                }
-                if entity_type == "DatabaseSchema":
-                    names["schema_name"] = node_entity
-                scope_fqn = fqn.build(
-                    None,
-                    entity_type=Database if entity_type == "Database" else DatabaseSchema,
-                    **names,
+    def register_tag(
+        self, *, entity_fqn: str, definition: TagDefinition | None
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Resolve and attach a definition, yielding individual registration failures."""
+        if definition is None:
+            return
+        try:
+            tag = self.define_tag(
+                classification_name=definition.classification_name,
+                tag_name=definition.tag_name,
+                classification_description=definition.classification_description,
+                tag_description=definition.tag_description,
+            )
+            if tag is not None:
+                self.attach_tag(entity_fqn=entity_fqn, tag=tag)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
                 )
-                return self.tags_registry.open_scope(cast("str", scope_fqn))
-        return super()._node_scope(node, node_entity)
+            )
 
     @property
     def name(self) -> str:
@@ -901,6 +900,24 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         semantic layer. No-op by default -- the stage is in the shared topology, so a
         source that does not override this must still resolve the processor.
         """
+        yield from ()
+
+    def clear_schema_tag_scope(self) -> Iterable[Either]:
+        """Release tag attachments under the current schema."""
+        context = self.context.get()
+        if context.database_schema:  # pyright: ignore[reportAttributeAccessIssue]
+            self.tags_registry.clear_scope(
+                fqn._build(context.database_service, context.database, context.database_schema)  # pyright: ignore[reportAttributeAccessIssue]
+            )
+        yield from ()
+
+    def clear_database_tag_scope(self) -> Iterable[Either]:
+        """Release tag attachments under the current database."""
+        context = self.context.get()
+        if context.database:  # pyright: ignore[reportAttributeAccessIssue]
+            self.tags_registry.clear_scope(
+                fqn._build(context.database_service, context.database)  # pyright: ignore[reportAttributeAccessIssue]
+            )
         yield from ()
 
     def yield_external_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:

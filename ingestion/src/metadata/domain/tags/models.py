@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class TagDefinition:
-    """Resolved classification and tag names with their descriptions."""
+    """Classification and tag names with their descriptions."""
 
     classification_name: str
     tag_name: str

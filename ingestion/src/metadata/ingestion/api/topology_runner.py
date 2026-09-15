@@ -17,7 +17,7 @@ import math
 import time
 import traceback
 from collections.abc import Generator, Iterable
-from contextlib import AbstractContextManager, closing, nullcontext
+from contextlib import closing
 from functools import singledispatchmethod
 from time import perf_counter
 from typing import Any, ClassVar, Generic, TypeVar, cast
@@ -236,26 +236,21 @@ class TopologyRunnerMixin(Generic[C]):
         for node_entity in node_entities:
             yield from self._process_node_entity(node, node_entity, child_nodes, node_progress)
 
-    def _node_scope(self, node: TopologyNode, node_entity: Any) -> AbstractContextManager:
-        """Own resources needed by one producer item and its children."""
-        return nullcontext()
-
     def _process_node_entity(
         self, node: TopologyNode, node_entity: Any, child_nodes: list[TopologyNode], node_progress: Any
     ) -> Generator[Entity, None, None]:
         """Process one producer item through its stages and children."""
-        with self._node_scope(node, node_entity):
-            for stage in node.stages:
-                yield from self._process_stage(stage=stage, node_entity=node_entity)
+        for stage in node.stages:
+            yield from self._process_stage(stage=stage, node_entity=node_entity)
 
-            for stage in node.stages:
-                if stage.clear_context:
-                    self.context.get().clear_stage(stage=stage)
+        for stage in node.stages:
+            if stage.clear_context:
+                self.context.get().clear_stage(stage=stage)
 
-            node_progress.advance_leaf()
+        node_progress.advance_leaf()
 
-            with node_progress.enter_scope():
-                yield from self.process_nodes(child_nodes)
+        with node_progress.enter_scope():
+            yield from self.process_nodes(child_nodes)
 
     def process_nodes(self, nodes: list[TopologyNode]) -> Iterable[Entity]:
         """

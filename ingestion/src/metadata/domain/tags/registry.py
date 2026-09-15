@@ -61,35 +61,6 @@ class _TagLabelKey(NamedTuple):
     state: State
 
 
-class ScopeAlreadyClearedError(RuntimeError):
-    """Raised when 'attach' is called for a previously cleared scope.
-
-    Surfaces topology lifecycle bug loudly rather than silently re-creating a cleared scope.
-    """
-
-
-class TagScope:
-    """Tag attachments owned by one active source scope."""
-
-    def __init__(self, registry: "TagRegistry", scope_fqn: str) -> None:
-        self._registry = registry
-        self.fqn = scope_fqn
-        self.closed = False
-        self._labels_by_entity: dict[str, list[TagLabel]] = {}
-
-    def __enter__(self) -> "TagScope":
-        if self.closed:
-            raise ScopeAlreadyClearedError(f"Tag scope {self.fqn!r} is closed")
-        return self
-
-    def __exit__(self, *_) -> None:
-        self.close()
-
-    def close(self) -> None:
-        """Release this scope and its descendants."""
-        self._registry.close_scope(self)
-
-
 class TagRegistry:
     """Registry for Tag and Classification ingestion bookkeeping."""
 
@@ -99,17 +70,10 @@ class TagRegistry:
         self._known_tag_fqns: LRUCache[str, bool] = LRUCache(maxsize=cache_size)
         self._tag_label_cache: LRUCache[_TagLabelKey, TagLabel] = LRUCache(maxsize=cache_size)
         self._pending: dict[str, OMetaTagAndClassification] = {}
-        self._scopes: dict[str, TagScope] = {}
+        self._labels_by_entity: dict[str, list[TagLabel]] = {}
 
         self._lock = threading.Lock()
         self._drain_lock = threading.Lock()
-
-    def open_scope(self, scope_fqn: str) -> TagScope:
-        """Return an active scope, creating a new handle after a previous close."""
-        with self._lock:
-            if scope_fqn not in self._scopes:
-                self._scopes[scope_fqn] = TagScope(self, scope_fqn)
-            return self._scopes[scope_fqn]
 
     def _intern_tag_label_locked(
         self, *, classification_name: str, tag_name: str, label_type: LabelType, state: State
@@ -148,7 +112,6 @@ class TagRegistry:
     def attach(
         self,
         *,
-        scope: TagScope,
         entity_fqn: str,
         tag: TagDefinition,
         label_type: LabelType = LabelType.Automated,
@@ -160,26 +123,18 @@ class TagRegistry:
             return
 
         with self._lock:
-            if scope._registry is not self:
-                raise ValueError("Tag scope belongs to another registry")
-            if scope.closed:
-                raise ScopeAlreadyClearedError(
-                    f"Tag attach called for closed scope {scope.fqn!r} for entity {entity_fqn!r}"
-                )
-            if entity_fqn != scope.fqn and not entity_fqn.startswith(scope.fqn + fqn.FQN_SEPARATOR):
-                raise ValueError("Tag entity must belong to its scope")
             tag_label = self._intern_tag_label_locked(
                 classification_name=tag.classification_name,
                 tag_name=tag.tag_name,
                 label_type=label_type,
                 state=state,
             )
-            scope._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
+            self._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
 
     def labels_for(self, entity_fqn: str) -> list[TagLabel]:
         """Return tag labels attached to ``entity_fqn`` (idempotent; returns a copy)."""
         with self._lock:
-            return [label for scope in self._scopes.values() for label in scope._labels_by_entity.get(entity_fqn, [])]
+            return list(self._labels_by_entity.get(entity_fqn, []))
 
     def drain(self) -> Generator[OMetaTagAndClassification, None, None]:
         """Yield pending definitions; publish each before advancing and close on interruption."""
@@ -198,25 +153,14 @@ class TagRegistry:
                 logger.debug("TagRegistry: drained %d pending tag payloads.", len(pending))
 
     def clear_scope(self, scope_fqn: str) -> None:
-        """Close active scopes at or below ``scope_fqn``."""
-        with self._lock:
-            self._clear_scope_locked(scope_fqn)
-
-    def close_scope(self, scope: TagScope) -> None:
-        """Close a handle without affecting a newer scope with the same FQN."""
-        with self._lock:
-            if scope._registry is not self:
-                raise ValueError("Tag scope belongs to another registry")
-            if not scope.closed:
-                self._clear_scope_locked(scope.fqn)
-
-    def _clear_scope_locked(self, scope_fqn: str) -> None:
+        """Drop attachments at or below ``scope_fqn``; later attachments are allowed."""
         prefix = scope_fqn + fqn.FQN_SEPARATOR
-        for name in list(self._scopes):
-            if name == scope_fqn or name.startswith(prefix):
-                scope = self._scopes.pop(name)
-                scope.closed = True
-                scope._labels_by_entity.clear()
+        with self._lock:
+            self._labels_by_entity = {
+                entity: labels
+                for entity, labels in self._labels_by_entity.items()
+                if entity != scope_fqn and not entity.startswith(prefix)
+            }
 
     def stats(self) -> dict[str, int]:
         """Return current state counts for instrumentation."""
@@ -225,11 +169,8 @@ class TagRegistry:
                 "known_tag_fqns": len(self._known_tag_fqns),
                 "tag_label_cache": len(self._tag_label_cache),
                 "pending": len(self._pending),
-                "active_scopes": len(self._scopes),
-                "live_entities": sum(len(scope._labels_by_entity) for scope in self._scopes.values()),
-                "live_labels": sum(
-                    len(labels) for scope in self._scopes.values() for labels in scope._labels_by_entity.values()
-                ),
+                "live_entities": len(self._labels_by_entity),
+                "live_labels": sum(len(labels) for labels in self._labels_by_entity.values()),
             }
 
     @staticmethod

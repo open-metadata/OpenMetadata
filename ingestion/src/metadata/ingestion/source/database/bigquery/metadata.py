@@ -72,7 +72,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_test_connection_fn
@@ -106,7 +105,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
@@ -230,9 +228,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
     """
-
-    topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
 
     @retry_with_docker_host()
     def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):

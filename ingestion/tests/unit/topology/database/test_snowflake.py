@@ -17,7 +17,6 @@ snowflake unit tests
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
-import pytest
 import sqlalchemy.types as sqltypes
 
 from metadata.core.connections.lifetime import Borrowed
@@ -167,36 +166,25 @@ EXPECTED_SNOW_URL_UDF = "https://app.snowflake.com/random_org/random_account/#/d
 EXPECTED_SNOW_URL_UDF_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/user-function/TEST_UDF(NUMBER)"
 
 
-def test_tag_scope_tracks_database_and_schema_items():
+def test_tag_post_processing_releases_schema_before_database():
     source = get_snowflake_sources()["not_incremental"]
     source.source_config.includeTags = True
     source.context = TopologyContextManager(source.topology)
     source.context.get().upsert("database_service", "svc")
     source.context.get().upsert("database", "my_db")
-    with source._node_scope(source.topology.database, "my_db") as database:
-        assert database.fqn == "svc.my_db"
-        source.tags_registry.attach(
-            scope=database,
-            entity_fqn=database.fqn,
-            tag=TagDefinition("Class", "parent", "", ""),
-        )
-        with (
-            pytest.raises(RuntimeError, match="failed child"),
-            source._node_scope(source.topology.databaseSchema, "my_schema") as schema,
-        ):
-            assert schema.fqn == "svc.my_db.my_schema"
-            source.tags_registry.attach(
-                scope=schema,
-                entity_fqn=schema.fqn,
-                tag=TagDefinition("Class", "child", "", ""),
-            )
-            raise RuntimeError("failed child")
-        assert schema.closed
-        assert not database.closed
-        assert [label.tagFQN.root for label in source.tags_registry.labels_for(database.fqn)] == ["Class.parent"]
-        assert source.tags_registry.labels_for(schema.fqn) == []
-    assert database.closed
-    assert source.tags_registry.stats()["active_scopes"] == 0
+    source.context.get().upsert("database_schema", "my_schema")
+    database = "svc.my_db"
+    schema = "svc.my_db.my_schema"
+    source.attach_tag(entity_fqn=database, tag=TagDefinition("Class", "parent", "", ""))
+    source.attach_tag(entity_fqn=schema, tag=TagDefinition("Class", "child", "", ""))
+
+    list(source._run_node_post_process(source.topology.table))
+    assert [label.tagFQN.root for label in source.tags_registry.labels_for(database)] == ["Class.parent"]
+    assert source.tags_registry.labels_for(schema) == []
+
+    list(source.clear_database_tag_scope())
+    assert source.tags_registry.labels_for(database) == []
+    assert source.tags_registry.stats()["live_entities"] == 0
 
 
 def get_snowflake_sources():
@@ -576,12 +564,10 @@ class SnowflakeUnitTest(TestCase):
             _, schema_fqn, table_fqn = self._setup_tag_context(source)
 
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(schema_fqn),
                 entity_fqn=schema_fqn,
                 tag=TagDefinition("SCHEMA_CLASSIFICATION", "SCHEMA_TAG", "", ""),
             )
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(schema_fqn),
                 entity_fqn=table_fqn,
                 tag=TagDefinition("TABLE_CLASSIFICATION", "TABLE_TAG", "", ""),
             )
@@ -682,17 +668,14 @@ class SnowflakeUnitTest(TestCase):
             database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
 
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(database_fqn),
                 entity_fqn=database_fqn,
                 tag=TagDefinition("DATABASE_TAG", "DB_VALUE", "", ""),
             )
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(schema_fqn),
                 entity_fqn=schema_fqn,
                 tag=TagDefinition("SCHEMA_TAG", "SCHEMA_VALUE", "", ""),
             )
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(schema_fqn),
                 entity_fqn=table_fqn,
                 tag=TagDefinition("TABLE_TAG", "TABLE_VALUE", "", ""),
             )
@@ -721,17 +704,14 @@ class SnowflakeUnitTest(TestCase):
             database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
 
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(database_fqn),
                 entity_fqn=database_fqn,
                 tag=TagDefinition("ENV", "dev", "", ""),
             )
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(schema_fqn),
                 entity_fqn=schema_fqn,
                 tag=TagDefinition("ENV", "staging", "", ""),
             )
             source.tags_registry.attach(
-                scope=source.tags_registry.open_scope(schema_fqn),
                 entity_fqn=table_fqn,
                 tag=TagDefinition("ENV", "production", "env classification", "production tag"),
             )

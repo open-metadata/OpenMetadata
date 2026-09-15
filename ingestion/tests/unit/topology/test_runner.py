@@ -13,8 +13,7 @@
 Check that we are properly running nodes and stages
 """
 
-from contextlib import contextmanager
-from threading import Event
+from threading import Barrier
 from typing import Annotated
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -22,7 +21,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import BaseModel, Field
 
-from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
@@ -322,116 +320,54 @@ class TopologyRunnerTest(TestCase):
         )
 
 
-class ScopedSource(MockSource):
+class IsolatedSource(MockSource):
     def __init__(self, threads=0):
+        self.topology = MockTopology()
         self.queue = Queue()
         self.context = TopologyContextManager(self.topology)
         self.context.set_threads(threads)
-        self.registry = TagRegistry()
-        self.child_labels = []
-
-    @contextmanager
-    def _node_scope(self, node, node_entity):
-        if node.producer == "get_schemas":
-            with self.registry.open_scope(f"svc.{node_entity}") as scope:
-                self.registry.attach(
-                    scope=scope,
-                    entity_fqn=scope.fqn,
-                    tag=TagDefinition("Class", node_entity, "", ""),
-                )
-                yield
-        else:
-            yield
+        self.child_schemas = []
 
     def yield_tables(self, name):
-        labels = self.registry.labels_for(f"svc.{self.context.get().schemas}")
-        self.child_labels.append([label.tagFQN.root for label in labels])
+        self.child_schemas.append(self.context.get().schemas)
         yield from super().yield_tables(name)
 
 
 @pytest.mark.parametrize("threads", [0, 2])
-def test_item_scope_remains_open_through_children(threads):
-    source = ScopedSource(threads)
+def test_child_stages_keep_parent_context(threads):
+    source = IsolatedSource(threads)
     records = list(source._iter())
     assert len(records) == 7
-    assert source.child_labels == [["Class.schema1"], ["Class.schema1"], ["Class.schema2"], ["Class.schema2"]]
-    assert source.registry.stats()["active_scopes"] == 0
-    assert source.registry.stats()["live_labels"] == 0
+    assert source.child_schemas == ["schema1", "schema1", "schema2", "schema2"]
     assert len(source.context.contexts) == 1
 
 
-@pytest.mark.parametrize("threads,close_during_children", [(0, False), (2, True)])
-def test_closing_walk_releases_active_item_scope(threads, close_during_children):
-    source = ScopedSource(threads)
-    walk = source._iter()
-    assert next(walk).right.name == "schema1"
-    if close_during_children:
-        assert next(walk).right.name in ("table1", "table2")
-    assert source.registry.stats()["active_scopes"] == 1
-    assert [label.tagFQN.root for label in source.registry.labels_for("svc.schema1")] == ["Class.schema1"]
-    walk.close()
-    assert source.registry.stats()["active_scopes"] == 0
-    assert source.registry.stats()["live_labels"] == 0
-    assert len(source.context.contexts) == 1
-
-
-@pytest.mark.parametrize("fail_first", [False, True])
-def test_parallel_scope_close_preserves_other_worker_labels(fail_first):
-    class ConcurrentSource(ScopedSource):
+def test_parallel_schemas_keep_independent_parent_context():
+    class ConcurrentSource(IsolatedSource):
         def __init__(self):
-            self.topology = MockTopology()
+            super().__init__(threads=2)
             self.topology.root.threads = True
             self.topology.tables.threads = False
-            super().__init__(threads=2)
-            self.first_open = Event()
-            self.second_open = Event()
-            self.first_closed = Event()
+            self.schemas_ready = Barrier(2)
 
-        @contextmanager
-        def _node_scope(self, node, node_entity):
-            try:
-                with super()._node_scope(node, node_entity):
-                    if node.producer == "get_schemas":
-                        if node_entity == "schema1":
-                            self.first_open.set()
-                            assert self.second_open.wait(timeout=10)
-                        else:
-                            self.second_open.set()
-                            assert self.first_open.wait(timeout=10)
-                            assert self.first_closed.wait(timeout=10)
-                            assert self.registry.labels_for("svc.schema1") == []
-                    yield
-            finally:
-                if node.producer == "get_schemas" and node_entity == "schema1":
-                    self.first_closed.set()
-
-        def sink_request(self, stage, entity_request):
-            if fail_first and isinstance(entity_request.right, MockSchema) and entity_request.right.name == "schema1":
-                raise RuntimeError("first worker failed")
-            yield from super().sink_request(stage, entity_request)
+        def yield_schemas(self, name):
+            yield from super().yield_schemas(name)
+            self.schemas_ready.wait(timeout=10)
 
     source = ConcurrentSource()
-    if fail_first:
-        with pytest.raises(RuntimeError, match="first worker failed"):
-            list(source._iter())
-        assert source.child_labels == [["Class.schema2"], ["Class.schema2"]]
-    else:
-        assert len(list(source._iter())) == 7
-        assert source.child_labels == [["Class.schema1"], ["Class.schema1"], ["Class.schema2"], ["Class.schema2"]]
-    assert source.registry.stats()["active_scopes"] == source.registry.stats()["live_labels"] == 0
+    assert len(list(source._iter())) == 7
+    assert sorted(source.child_schemas) == ["schema1", "schema1", "schema2", "schema2"]
     assert len(source.context.contexts) == 1
 
 
 @pytest.mark.parametrize("threads", [0, 2])
-def test_failed_item_releases_scope_and_worker_context(threads):
-    class FailingSource(ScopedSource):
+def test_failed_item_releases_worker_context(threads):
+    class FailingSource(IsolatedSource):
         def sink_request(self, stage, entity_request):
             raise RuntimeError("sink failed")
 
     source = FailingSource(threads)
-    source.topology = MockTopology()
     source.topology.root.threads = True
     with pytest.raises(RuntimeError, match="sink failed"):
         list(source._iter())
-    assert source.registry.stats()["active_scopes"] == source.registry.stats()["live_labels"] == 0
     assert len(source.context.contexts) == 1

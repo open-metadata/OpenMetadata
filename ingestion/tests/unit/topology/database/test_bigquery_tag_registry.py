@@ -286,12 +286,13 @@ def test_schema_scope_cleanup_does_not_drop_later_attachments(source):
     source.client.get_table.return_value.labels = {"env": "prod"}
     emitted = []
     for name in ("first", "second"):
-        with source._node_scope(source.topology.databaseSchema, name):
-            emitted += schema_stage(source, name) + table_stage(source)
-            assert fqns(source.get_schema_tag_labels(name)) == ["env.prod"]
-            assert fqns(source.get_tag_labels("my_table")) == ["env.prod"]
-            assert source.get_tag_by_fqn("svc.project.filtered.my_table") is None
+        source.context.get().upsert("database_schema", name)
+        emitted += schema_stage(source, name) + table_stage(source)
+        assert fqns(source.get_schema_tag_labels(name)) == ["env.prod"]
+        assert fqns(source.get_tag_labels("my_table")) == ["env.prod"]
+        assert source.get_tag_by_fqn("svc.project.filtered.my_table") is None
+        list(source.clear_schema_tag_scope())
         assert source.get_schema_tag_labels(name) is None
         assert source.get_tag_labels("my_table") is None
     assert len(emitted) == 1
-    assert source.tags_registry.stats()["active_scopes"] == 0
+    assert source.tags_registry.stats()["live_entities"] == 0

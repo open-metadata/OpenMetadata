@@ -42,7 +42,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_connection
@@ -51,7 +50,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.databricks.models import (
     ColumnDescriptions,
     DescribeJsonPayload,
@@ -76,7 +74,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_TYPES,
     DATABRICKS_VIEW_DEFINITIONS,
 )
-from metadata.ingestion.source.database.databricks.tags import DatabricksTagsMixin
+from metadata.ingestion.source.database.databricks.tags import TagMappingConfig, map_databricks_tag
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -106,6 +104,12 @@ DATABRICKS_TAG = "DATABRICKS TAG"
 DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
 DATABRICKS_VALUELESS_CLASSIFICATION = "DATABRICKS_TAGS"
 DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION = "Databricks tags ingested as key-only (no associated value)."
+DATABRICKS_TAG_MAPPING = TagMappingConfig(
+    classification_description=DATABRICKS_TAG_CLASSIFICATION,
+    tag_description=DATABRICKS_TAG,
+    valueless_classification=DATABRICKS_VALUELESS_CLASSIFICATION,
+    valueless_description=DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
+)
 
 # Keys for the bounded, per-connection caches stored on ``connection.info``.
 # Scoping to the connection (one per thread, see CommonDbSourceService.connection)
@@ -882,19 +886,12 @@ reflection.Inspector.get_view_names = get_view_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
 
 
-class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, DatabricksTagsMixin, MultiDBSource):
+class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
     the legacy hive metastore method
     """
-
-    topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
-    tag_description = DATABRICKS_TAG
-    tag_classification_description = DATABRICKS_TAG_CLASSIFICATION
-    valueless_tag_classification = DATABRICKS_VALUELESS_CLASSIFICATION
-    valueless_tag_description = DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
@@ -1158,7 +1155,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
             for tag_name, tag_value in catalog_tags:
                 if not tag_name:
                     continue
-                yield from self._register_tag(
+                yield from self.register_tag(
                     entity_fqn=cast(
                         "str",
                         fqn.build(
@@ -1169,8 +1166,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
                             skip_es_search=True,
                         ),
                     ),
-                    tag_name=tag_name,
-                    tag_value=tag_value,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
         except Exception as exc:
@@ -1191,7 +1187,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
             for tag_name, tag_value in schema_tags:
                 if not tag_name:
                     continue
-                yield from self._register_tag(
+                yield from self.register_tag(
                     entity_fqn=cast(
                         "str",
                         fqn.build(
@@ -1203,8 +1199,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
                             skip_es_search=True,
                         ),
                     ),
-                    tag_name=tag_name,
-                    tag_value=tag_value,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
         except Exception as exc:
@@ -1233,7 +1228,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
             for tag_name, tag_value in table_tags:
                 if not tag_name:
                     continue
-                yield from self._register_tag(
+                yield from self.register_tag(
                     entity_fqn=cast(
                         "str",
                         fqn.build(
@@ -1246,8 +1241,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
                             skip_es_search=True,
                         ),
                     ),
-                    tag_name=tag_name,
-                    tag_value=tag_value,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
             column_tags = self.column_tags.get(
@@ -1262,7 +1256,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
                 for tag_name, tag_value in tags or []:
                     if not tag_name:
                         continue
-                    yield from self._register_tag(
+                    yield from self.register_tag(
                         entity_fqn=cast(
                             "str",
                             fqn.build(
@@ -1275,8 +1269,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, Databri
                                 column_name=column_name,
                             ),
                         ),
-                        tag_name=tag_name,
-                        tag_value=tag_value,
+                        definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                     )
 
         except Exception as exc:

@@ -56,25 +56,26 @@ def test_policy_stage_deduplicates_definitions_and_keeps_all_table_attachments(s
             (2, "MIXED", "db", "schema", "second"),
         ],
     )
-    with source._node_scope(source.topology.databaseSchema, "schema"):
-        records = list(source._process_stage(source.topology.databaseSchema.stages[0], "schema"))
-        assert all(record.left is None for record in records)
-        assert [record.right.tag_request.name.root for record in records] == ["Mixed", "MIXED"]
-        assert all(record.right.classification_request.name.root == "PostgresPolicyTags" for record in records)
-        assert labels(source, "first") == ["PostgresPolicyTags.Mixed"]
-        assert labels(source, "second") == ["PostgresPolicyTags.Mixed", "PostgresPolicyTags.MIXED"]
-        assert labels(source, "untagged") == []
-        assert source.get_schema_tag_labels("schema") is None
-        assert source.get_database_tag_labels("db") is None
-        for label in source.get_tag_labels("second"):
-            assert (label.labelType.value, label.state.value, label.source.value) == (
-                "Automated",
-                "Suggested",
-                "Classification",
-            )
-        assert getattr(source.context.get(), "tags", None) is None
+    source.context.get().upsert("database_schema", "schema")
+    records = list(source._process_stage(source.topology.databaseSchema.stages[0], "schema"))
+    assert all(record.left is None for record in records)
+    assert [record.right.tag_request.name.root for record in records] == ["Mixed", "MIXED"]
+    assert all(record.right.classification_request.name.root == "PostgresPolicyTags" for record in records)
+    assert labels(source, "first") == ["PostgresPolicyTags.Mixed"]
+    assert labels(source, "second") == ["PostgresPolicyTags.Mixed", "PostgresPolicyTags.MIXED"]
+    assert labels(source, "untagged") == []
+    assert source.get_schema_tag_labels("schema") is None
+    assert source.get_database_tag_labels("db") is None
+    for label in source.get_tag_labels("second"):
+        assert (label.labelType.value, label.state.value, label.source.value) == (
+            "Automated",
+            "Suggested",
+            "Classification",
+        )
+    assert getattr(source.context.get(), "tags", None) is None
+    list(source.clear_schema_tag_scope())
     assert labels(source, "first") == []
-    assert source.tags_registry.stats()["active_scopes"] == 0
+    assert source.tags_registry.stats()["live_entities"] == 0
 
 
 def test_policy_names_resolve_to_existing_system_tags(source):
@@ -125,8 +126,8 @@ def test_quoted_entity_names_and_repeated_policy_across_schemas(source):
     for schema in ("schema.a", "schema.b"):
         source.context.get().upsert("database_schema", schema)
         set_rows(source, [(1, "policy.value", "my.db", schema, "my.table")])
-        with source._node_scope(source.topology.databaseSchema, schema):
-            list(source._process_stage(source.topology.databaseSchema.stages[0], schema))
-            assert labels(source, "my.table") == ['PostgresPolicyTags."policy.value"']
+        list(source._process_stage(source.topology.databaseSchema.stages[0], schema))
+        assert labels(source, "my.table") == ['PostgresPolicyTags."policy.value"']
+        list(source.clear_schema_tag_scope())
         assert labels(source, "my.table") == []
     assert source.tags_registry.stats()["live_labels"] == 0

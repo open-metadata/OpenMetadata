@@ -52,7 +52,6 @@ from metadata.ingestion.models.custom_properties import (
 )
 from metadata.ingestion.models.lf_tags_model import TagItem
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.athena.client import AthenaLakeFormationClient
 from metadata.ingestion.source.database.athena.utils import (
@@ -65,7 +64,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -108,9 +106,6 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from Athena Source
     """
-
-    topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):

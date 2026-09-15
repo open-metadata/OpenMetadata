@@ -107,11 +107,15 @@ class PausingQueue(Queue):
 class TaggedDatabaseSource(MysqlSource):
     def __init__(self, metadata, shared_tag, fail_publication):
         self.metadata = metadata
-        self.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
+        self.source_config = DatabaseServiceMetadataPipeline(
+            includeTags=True,
+            markDeletedSchemas=False,
+            markDeletedTables=False,
+            markDeletedStoredProcedures=False,
+        )
         self.status = Status()
         self.topology = DatabaseServiceTopology()
         self.topology.databaseSchema.children = ["table"]
-        self.topology.databaseSchema.post_process = []
         self.topology.table.stages = self.topology.table.stages[:2]
         self.queue = PausingQueue(fail_publication)
         self.second_discovered = Event()
@@ -213,7 +217,8 @@ def test_parallel_schema_tables_reach_sink_after_their_definitions(monkeypatch, 
             fqn: [label["tagFQN"] for label in table["tags"]] for fqn, table in catalog.tables.items()
         } == expected_tables
         assert catalog.tags == set(expected)
-        assert source.tags_registry.stats()["pending"] == source.tags_registry.stats()["active_scopes"] == 0
+        assert source.tags_registry.stats()["pending"] == 0
+        assert source.tags_registry.stats()["live_entities"] == int(fail_publication)
         assert len(source.context.contexts) == 1
     finally:
         metadata.close()

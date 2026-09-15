@@ -63,7 +63,6 @@ from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import (
@@ -71,11 +70,11 @@ from metadata.ingestion.source.connections import (
     create_connection,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource, DatabaseServiceTopology
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.databricks.ownership import (
     DatabricksOwnerResolver,
 )
-from metadata.ingestion.source.database.databricks.tags import DatabricksTagsMixin
+from metadata.ingestion.source.database.databricks.tags import TagMappingConfig, map_databricks_tag
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -119,22 +118,21 @@ UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
 UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
 UNITY_CATALOG_VALUELESS_CLASSIFICATION = "UNITY_CATALOG_TAGS"
 UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION = "Unity Catalog tags ingested as key-only (no associated value)."
+UNITY_CATALOG_TAG_MAPPING = TagMappingConfig(
+    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+    tag_description=UNITY_CATALOG_TAG,
+    valueless_classification=UNITY_CATALOG_VALUELESS_CLASSIFICATION,
+    valueless_description=UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
+)
 
 
 # pylint: disable=protected-access
-class UnitycatalogSource(ExternalTableLineageMixin, DatabricksTagsMixin, DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
     the unity catalog source
     """
-
-    topology = DatabaseServiceTopology()
-    context = TopologyContextManager(topology)
-    tag_description = UNITY_CATALOG_TAG
-    tag_classification_description = UNITY_CATALOG_TAG_CLASSIFICATION
-    valueless_tag_classification = UNITY_CATALOG_VALUELESS_CLASSIFICATION
-    valueless_tag_description = UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION
 
     @retry_with_docker_host()
     def __init__(
@@ -855,10 +853,9 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabricksTagsMixin, Databas
                 for tag in self.sql_connection.execute(text(query)):
                     if not tag.tag_name:
                         continue
-                    yield from self._register_tag(
+                    yield from self.register_tag(
                         entity_fqn=fqn._build(*tag_fqn_builder(tag)),
-                        tag_name=tag.tag_name,
-                        tag_value=tag.tag_value,
+                        definition=map_databricks_tag(tag.tag_name, tag.tag_value, UNITY_CATALOG_TAG_MAPPING),
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())

@@ -20,7 +20,7 @@ from contextlib import closing
 
 import pytest
 
-from metadata.domain.tags import ScopeAlreadyClearedError, TagDefinition, TagRegistry
+from metadata.domain.tags import TagDefinition, TagRegistry
 from metadata.generated.schema.type.tagLabel import LabelType, State
 
 
@@ -31,7 +31,6 @@ def registry() -> TagRegistry:
 
 def _attach_kwargs(
     registry: TagRegistry,
-    scope: str,
     entity: str,
     classification: str = "TestClass",
     tag: str = "TestTag",
@@ -39,7 +38,6 @@ def _attach_kwargs(
     definition = TagDefinition(classification, tag, "test classification", "test tag")
     registry.define(definition)
     return {
-        "scope": registry.open_scope(scope),
         "entity_fqn": entity,
         "tag": definition,
     }
@@ -47,13 +45,13 @@ def _attach_kwargs(
 
 class TestAttachAndLabelsFor:
     def test_attach_then_labels_for_returns_one_label(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.table"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.table"))
         labels = registry.labels_for("svc.db.schema.table")
         assert len(labels) == 1
 
     def test_attach_multiple_tags_same_entity_returns_all(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.table", tag="Tag1"))
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.table", tag="Tag2"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.table", tag="Tag1"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.table", tag="Tag2"))
         labels = registry.labels_for("svc.db.schema.table")
         assert len(labels) == 2
 
@@ -61,7 +59,7 @@ class TestAttachAndLabelsFor:
         assert registry.labels_for("svc.db.schema.unknown") == []
 
     def test_labels_for_is_idempotent(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.table"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.table"))
         first = registry.labels_for("svc.db.schema.table")
         second = registry.labels_for("svc.db.schema.table")
         # Read-and-leave: both reads return the same labels.
@@ -71,7 +69,7 @@ class TestAttachAndLabelsFor:
 
     def test_labels_for_returns_copy_not_internal_list(self, registry: TagRegistry):
         # Mutating the returned list must not affect registry state.
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.table"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.table"))
         first = registry.labels_for("svc.db.schema.table")
         first.clear()
         second = registry.labels_for("svc.db.schema.table")
@@ -105,9 +103,10 @@ class TestDrain:
             def discover():
                 registry.define(first)
                 registry.define(third)
-                with registry.open_scope("svc.db.schema") as scope:
-                    registry.attach(scope=scope, entity_fqn="svc.db.schema.table", tag=third)
-                    return registry.labels_for("svc.db.schema.table")
+                registry.attach(entity_fqn="svc.db.schema.table", tag=third)
+                labels = registry.labels_for("svc.db.schema.table")
+                registry.clear_scope("svc.db.schema")
+                return labels
 
             with ThreadPoolExecutor(max_workers=1) as pool:
                 labels = pool.submit(discover).result(timeout=5)
@@ -138,7 +137,7 @@ class TestDrain:
         ]
 
     def test_drain_yields_pending_then_clears(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_a"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_a"))
         first = list(registry.drain())
         second = list(registry.drain())
         assert len(first) == 1
@@ -146,20 +145,20 @@ class TestDrain:
 
     def test_drain_dedupes_same_tag_across_entities(self, registry: TagRegistry):
         for i in range(100):
-            registry.attach(**_attach_kwargs(registry, "svc.db", f"svc.db.schema.tbl_{i}"))
+            registry.attach(**_attach_kwargs(registry, f"svc.db.schema.tbl_{i}"))
         pending = list(registry.drain())
         assert len(pending) == 1
 
     def test_drain_yields_distinct_payloads_for_distinct_tags(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_1", tag="TagA"))
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_2", tag="TagB"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_1", tag="TagA"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_2", tag="TagB"))
         pending = list(registry.drain())
         assert len(pending) == 2
 
     def test_drain_does_not_dedup_across_case_variants(self, registry: TagRegistry):
         # OM stores tags case-sensitively; our dedup must follow that rule.
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.t1", tag="Sensitive"))
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.t2", tag="sensitive"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.t1", tag="Sensitive"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.t2", tag="sensitive"))
         pending = list(registry.drain())
         assert len(pending) == 2  # both must PUT — they're distinct tags server-side
 
@@ -167,11 +166,11 @@ class TestDrain:
         # Different cache keys (label_type varies) but identical tag_fqn → ONE PUT.
         # Cache key is (class, tag, label_type, state); tag_fqn is class.tag.
         registry.attach(
-            **_attach_kwargs(registry, "svc.db", "svc.db.t1"),
+            **_attach_kwargs(registry, "svc.db.t1"),
             label_type=LabelType.Manual,
         )
         registry.attach(
-            **_attach_kwargs(registry, "svc.db", "svc.db.t2"),
+            **_attach_kwargs(registry, "svc.db.t2"),
             label_type=LabelType.Automated,
         )
         pending = list(registry.drain())
@@ -180,20 +179,20 @@ class TestDrain:
 
 class TestClearScope:
     def test_clear_scope_drops_descendant_labels(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema", "svc.db.schema.tbl_1"))
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema", "svc.db.schema.tbl_2"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_1"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_2"))
         registry.clear_scope("svc.db.schema")
         assert registry.labels_for("svc.db.schema.tbl_1") == []
         assert registry.labels_for("svc.db.schema.tbl_2") == []
 
     def test_clear_scope_drops_scope_itself(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema", "svc.db.schema"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema"))
         registry.clear_scope("svc.db.schema")
         assert registry.labels_for("svc.db.schema") == []
 
     def test_clear_scope_preserves_other_scopes(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema_a", "svc.db.schema_a.tbl"))
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema_b", "svc.db.schema_b.tbl"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema_a.tbl"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema_b.tbl"))
         registry.clear_scope("svc.db.schema_a")
         assert registry.labels_for("svc.db.schema_a.tbl") == []
         assert len(registry.labels_for("svc.db.schema_b.tbl")) == 1
@@ -201,18 +200,23 @@ class TestClearScope:
     def test_clear_scope_no_false_prefix_match(self, registry: TagRegistry):
         # 'schema_a' is NOT a prefix of 'schema_alpha' once the FQN
         # separator is taken into account.
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema_alpha", "svc.db.schema_alpha.tbl"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema_alpha.tbl"))
         registry.clear_scope("svc.db.schema_a")
         assert len(registry.labels_for("svc.db.schema_alpha.tbl")) == 1
 
     def test_clear_scope_idempotent_on_unattached_scope(self, registry: TagRegistry):
         registry.clear_scope("svc.db.never_attached")  # must not raise
 
-    def test_attach_after_clear_raises(self, registry: TagRegistry):
-        kwargs = _attach_kwargs(registry, "svc.db.schema", "svc.db.schema.tbl")
-        registry.clear_scope("svc.db.schema")
-        with pytest.raises(ScopeAlreadyClearedError):
-            registry.attach(**kwargs)
+    @pytest.mark.parametrize("scope_fqn", ["svc.db", "svc.db.schema"])
+    def test_attach_after_clear_starts_with_fresh_labels(self, registry: TagRegistry, scope_fqn):
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl", tag="First"))
+        registry.clear_scope(scope_fqn)
+        assert registry.labels_for("svc.db.schema.tbl") == []
+
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl", tag="Second"))
+        assert [label.tagFQN.root for label in registry.labels_for("svc.db.schema.tbl")] == ["TestClass.Second"]
+        registry.clear_scope(scope_fqn)
+        assert registry.labels_for("svc.db.schema.tbl") == []
 
 
 class TestThreadSafety:
@@ -222,7 +226,6 @@ class TestThreadSafety:
                 registry.attach(
                     **_attach_kwargs(
                         registry,
-                        "svc.db",
                         f"svc.db.schema.tbl_{thread_idx}_{i}",
                     )
                 )
@@ -240,7 +243,6 @@ class TestThreadSafety:
                 registry.attach(
                     **_attach_kwargs(
                         registry,
-                        scope,
                         f"{scope}.tbl_{i}",
                         tag=f"Tag_{scope_idx}_{i}",
                     )
@@ -263,14 +265,13 @@ class TestStats:
             "known_tag_fqns": 0,
             "tag_label_cache": 0,
             "pending": 0,
-            "active_scopes": 0,
             "live_entities": 0,
             "live_labels": 0,
         }
 
     def test_stats_reflect_attach(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_1"))
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_2"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_1"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_2"))
         s = registry.stats()
         # The pending definition is not yet part of emission history.
         assert s["known_tag_fqns"] == 0
@@ -282,7 +283,7 @@ class TestStats:
     def test_labels_for_does_not_decrease_live_state(self, registry: TagRegistry):
         # labels_for is idempotent (read-and-leave); clear_scope is the
         # only mechanism that reduces live state.
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl"))
         registry.labels_for("svc.db.schema.tbl")
         s = registry.stats()
         assert s["live_entities"] == 1
@@ -291,7 +292,7 @@ class TestStats:
         assert s["pending"] == 1
 
     def test_drain_decreases_pending_only(self, registry: TagRegistry):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl"))
         list(registry.drain())
         s = registry.stats()
         assert s["pending"] == 0
@@ -300,14 +301,13 @@ class TestStats:
     def test_clear_scope_zeroes_live_state_for_scope(self, registry: TagRegistry):
         # Critical invariant: after clear_scope, no live_entities for that scope.
         for i in range(50):
-            registry.attach(**_attach_kwargs(registry, "svc.db.schema", f"svc.db.schema.tbl_{i}"))
+            registry.attach(**_attach_kwargs(registry, f"svc.db.schema.tbl_{i}"))
         assert registry.stats()["live_entities"] == 50
 
         registry.clear_scope("svc.db.schema")
         s = registry.stats()
         assert s["live_entities"] == 0
         assert s["live_labels"] == 0
-        assert s["active_scopes"] == 0
 
 
 class TestInterning:
@@ -318,8 +318,8 @@ class TestInterning:
     def test_attach_interns_identical_tag_labels(self, registry: TagRegistry):
         # Same (classification, tag, label_type, state) across two entities
         # must return the exact same TagLabel object — not just an equal one.
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_1"))
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_2"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_1"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema.tbl_2"))
 
         label_1 = registry.labels_for("svc.db.schema.tbl_1")[0]
         label_2 = registry.labels_for("svc.db.schema.tbl_2")[0]
@@ -329,11 +329,11 @@ class TestInterning:
     def test_attach_does_not_intern_across_label_types(self, registry: TagRegistry):
         # Cache key includes label_type — non-default values must not collide.
         registry.attach(
-            **_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_1"),
+            **_attach_kwargs(registry, "svc.db.schema.tbl_1"),
             label_type=LabelType.Manual,
         )
         registry.attach(
-            **_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_2"),
+            **_attach_kwargs(registry, "svc.db.schema.tbl_2"),
             label_type=LabelType.Automated,
         )
 
@@ -346,11 +346,11 @@ class TestInterning:
 
     def test_attach_does_not_intern_across_states(self, registry: TagRegistry):
         registry.attach(
-            **_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_1"),
+            **_attach_kwargs(registry, "svc.db.schema.tbl_1"),
             state=State.Suggested,
         )
         registry.attach(
-            **_attach_kwargs(registry, "svc.db", "svc.db.schema.tbl_2"),
+            **_attach_kwargs(registry, "svc.db.schema.tbl_2"),
             state=State.Confirmed,
         )
 
@@ -362,12 +362,12 @@ class TestInterning:
     def test_intern_cache_survives_clear_scope(self, registry: TagRegistry):
         # Cache lifetime is registry lifetime, NOT scope lifetime — next scope
         # reuses the same TagLabel instance for the same (class, tag, ...) key.
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema_1", "svc.db.schema_1.tbl"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema_1.tbl"))
         label_first = registry.labels_for("svc.db.schema_1.tbl")[0]
 
         registry.clear_scope("svc.db.schema_1")
 
-        registry.attach(**_attach_kwargs(registry, "svc.db.schema_2", "svc.db.schema_2.tbl"))
+        registry.attach(**_attach_kwargs(registry, "svc.db.schema_2.tbl"))
         label_second = registry.labels_for("svc.db.schema_2.tbl")[0]
 
         assert label_first is label_second, "intern cache should survive clear_scope"
@@ -376,7 +376,7 @@ class TestInterning:
 def test_pending_definitions_survive_history_eviction():
     registry = TagRegistry(cache_size=2)
     for tag in ("A", "B", "C", "A"):
-        registry.attach(**_attach_kwargs(registry, "svc.db", f"svc.db.{tag}", tag=tag))
+        registry.attach(**_attach_kwargs(registry, f"svc.db.{tag}", tag=tag))
     assert registry.stats()["pending"] == 3
     assert [record.tag_request.name.root for record in registry.drain()] == ["A", "B", "C"]
     assert registry.stats()["known_tag_fqns"] == 2
@@ -387,9 +387,9 @@ def test_pending_definitions_survive_history_eviction():
 def test_evicted_definition_is_reemitted_without_losing_live_labels():
     registry = TagRegistry(cache_size=2)
     for tag in ("A", "B", "C"):
-        registry.attach(**_attach_kwargs(registry, "svc.db", f"svc.db.{tag}", tag=tag))
+        registry.attach(**_attach_kwargs(registry, f"svc.db.{tag}", tag=tag))
         assert [record.tag_request.name.root for record in registry.drain()] == [tag]
-    registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.another", tag="A"))
+    registry.attach(**_attach_kwargs(registry, "svc.db.another", tag="A"))
     assert [record.tag_request.name.root for record in registry.drain()] == ["A"]
     for tag in ("A", "B", "C"):
         assert [label.tagFQN.root for label in registry.labels_for(f"svc.db.{tag}")] == [f"TestClass.{tag}"]
@@ -398,14 +398,14 @@ def test_evicted_definition_is_reemitted_without_losing_live_labels():
 def test_recently_used_definition_is_retained():
     registry = TagRegistry(cache_size=2)
     for tag, expected in (("A", ["A"]), ("B", ["B"]), ("A", []), ("C", ["C"]), ("A", []), ("B", ["B"])):
-        registry.attach(**_attach_kwargs(registry, "svc.db", "svc.db.table", tag=tag))
+        registry.attach(**_attach_kwargs(registry, "svc.db.table", tag=tag))
         assert [record.tag_request.name.root for record in registry.drain()] == expected
 
 
 def test_recently_used_label_stays_interned_after_eviction():
     registry = TagRegistry(cache_size=2)
     for index, name in enumerate(("First", "Second", "First", "Third", "First", "Second")):
-        registry.attach(**_attach_kwargs(registry, "svc.db", f"svc.db.schema.table_{index}", tag=name))
+        registry.attach(**_attach_kwargs(registry, f"svc.db.schema.table_{index}", tag=name))
 
     labels = [registry.labels_for(f"svc.db.schema.table_{index}")[0] for index in range(6)]
     assert [label.tagFQN.root for label in labels] == [
@@ -420,56 +420,38 @@ def test_recently_used_label_stays_interned_after_eviction():
     assert labels[1] is not labels[5]
 
 
-def test_stale_scope_cannot_attach_or_close_replacement(registry):
-    kwargs = _attach_kwargs(registry, "svc.db.schema", "svc.db.schema.table")
-    old = kwargs["scope"]
-    old.close()
-    replacement = registry.open_scope("svc.db.schema")
-    registry.attach(**{**kwargs, "scope": replacement})
-    old.close()
-    with pytest.raises(ScopeAlreadyClearedError):
-        registry.attach(**kwargs)
-    assert not replacement.closed
-    assert len(registry.labels_for("svc.db.schema.table")) == 1
-
-
-def test_schema_close_preserves_parent_and_sibling(registry):
-    for scope, entity in (
-        ("svc.db", "svc.db"),
-        ("svc.db.a", "svc.db.a.table"),
-        ("svc.db.b", "svc.db.b.table"),
-    ):
-        registry.attach(**_attach_kwargs(registry, scope, entity))
-    registry.open_scope("svc.db.a").close()
+def test_schema_clear_preserves_parent_and_sibling(registry):
+    for entity in ("svc.db", "svc.db.a.table", "svc.db.b.table"):
+        registry.attach(**_attach_kwargs(registry, entity))
+    registry.clear_scope("svc.db.a")
     assert registry.labels_for("svc.db.a.table") == []
     assert len(registry.labels_for("svc.db")) == 1
     assert len(registry.labels_for("svc.db.b.table")) == 1
-    registry.open_scope("svc.db").close()
-    assert registry.stats()["active_scopes"] == 0
+    registry.clear_scope("svc.db")
+    assert registry.stats()["live_entities"] == 0
     assert registry.stats()["live_labels"] == 0
 
 
-def test_completed_scope_history_is_released():
+def test_completed_scopes_release_labels():
     registry = TagRegistry(cache_size=2)
     references = []
     for number in range(30):
-        with registry.open_scope(f"svc.db.schema_{number}") as scope:
-            references.append(weakref.ref(scope))
-            registry.attach(**_attach_kwargs(registry, scope.fqn, scope.fqn, tag=str(number)))
-            list(registry.drain())
-        assert registry.stats()["active_scopes"] == 0
+        entity_fqn = f"svc.db.schema_{number}"
+        registry.attach(**_attach_kwargs(registry, entity_fqn, tag=str(number)))
+        references.append(weakref.ref(registry.labels_for(entity_fqn)[0]))
+        list(registry.drain())
+        registry.clear_scope(entity_fqn)
+        assert registry.stats()["live_entities"] == 0
         assert registry.stats()["live_labels"] == 0
-    del scope
-    assert all(reference() is None for reference in references)
+    assert all(reference() is None for reference in references[:-2])
+    assert all(reference() is not None for reference in references[-2:])
     assert registry.stats()["known_tag_fqns"] == 2
     assert registry.stats()["tag_label_cache"] == 2
 
 
-def test_scope_cleanup_on_failure_preserves_pending_definition(registry):
-    with pytest.raises(RuntimeError, match="source failed"), registry.open_scope("svc.db.schema") as scope:
-        registry.attach(**_attach_kwargs(registry, scope.fqn, scope.fqn))
-        raise RuntimeError("source failed")
-    assert scope.closed
+def test_scope_cleanup_preserves_pending_definition(registry):
+    registry.attach(**_attach_kwargs(registry, "svc.db.schema.table"))
+    registry.clear_scope("svc.db")
     assert registry.stats()["live_labels"] == 0
     assert [record.tag_request.name.root for record in registry.drain()] == ["TestTag"]
 
@@ -490,15 +472,15 @@ def test_definition_without_entity_is_emitted(registry):
     assert records[0].tag_request.name.root == "Restricted"
     assert records[0].tag_request.description.root == "Restricted data"
     assert registry.labels_for("svc.db.schema.table") == []
-    assert registry.stats()["active_scopes"] == 0
+    assert registry.stats()["live_entities"] == 0
 
 
 def test_attachment_does_not_queue_a_definition(registry):
     tag = TagDefinition("Sensitivity", "Restricted", "Sensitivity levels", "Restricted data")
-    with registry.open_scope("svc.db.schema") as scope:
-        registry.attach(scope=scope, entity_fqn="svc.db.schema.table", tag=tag)
-        assert [label.tagFQN.root for label in registry.labels_for("svc.db.schema.table")] == ["Sensitivity.Restricted"]
-        assert list(registry.drain()) == []
+    registry.attach(entity_fqn="svc.db.schema.table", tag=tag)
+    assert [label.tagFQN.root for label in registry.labels_for("svc.db.schema.table")] == ["Sensitivity.Restricted"]
+    assert list(registry.drain()) == []
+    registry.clear_scope("svc.db.schema")
     assert registry.labels_for("svc.db.schema.table") == []
 
 
