@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, request } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { suppressWelcomeScreen } from './common';
 import { setToken } from './tokenStorage';
 
@@ -56,57 +56,55 @@ export const signInViaApi = async (
     suppressWelcome?: boolean;
   }
 ): Promise<string> => {
-  const isH2Mode = process.env.PW_PROTOCOL === 'h2';
-  const loginContext = await request.newContext({
-    baseURL:
-      process.env.PLAYWRIGHT_TEST_BASE_URL ??
-      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
-    ignoreHTTPSErrors: isH2Mode,
-    timeout: 90000,
+  // Post through the page's own context, not a standalone `request.newContext()`.
+  // The server sets `OM_SESSION` on the login response, and `context.request`
+  // shares its cookie jar with the browser — a throwaway context would swallow
+  // that cookie, leaving a storage state that authenticates through the token in
+  // IndexedDB but carries no session cookie. The app itself does not mind, which
+  // is what makes the omission easy to miss locally, but
+  // `.github/scripts/rotate_playwright_auth_state.py` rotates the cached
+  // preseeded state by replacing that cookie and fails the whole CI job with
+  // "Playwright auth state has no OM_SESSION cookie" when it is absent.
+  const loginContext = page.context().request;
+
+  const response = await loginContext.post('/api/v1/auth/login', {
+    data: {
+      email: credentials.email,
+      password: Buffer.from(credentials.password).toString('base64'),
+    },
   });
 
-  try {
-    const response = await loginContext.post('/api/v1/auth/login', {
-      data: {
-        email: credentials.email,
-        password: Buffer.from(credentials.password).toString('base64'),
-      },
-    });
-
-    if (!response.ok()) {
-      throw new Error(
-        `API sign-in failed for "${
-          credentials.email
-        }" (${response.status()}): ${await response.text()}`
-      );
-    }
-
-    const { accessToken } = (await response.json()) as { accessToken: string };
-
-    if (!accessToken) {
-      throw new Error(
-        `API sign-in for "${credentials.email}" returned no accessToken.`
-      );
-    }
-
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-
-    if (credentials.suppressWelcome ?? true) {
-      await suppressWelcomeScreen(
-        page,
-        credentials.userName ?? credentials.email
-      );
-    }
-    await setToken(page, accessToken);
-    await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
-
-    await expect(
-      page.getByTestId('left-sidebar'),
-      `API sign-in as "${credentials.email}" did not produce a signed-in session — the app shell never rendered. The token was accepted by /api/v1/auth/login but the app did not pick it up from app_state.primary; check utils/tokenStorage.ts against the app's SwTokenStorageUtils.`
-    ).toBeAttached({ timeout: 30_000 });
-
-    return accessToken;
-  } finally {
-    await loginContext.dispose();
+  if (!response.ok()) {
+    throw new Error(
+      `API sign-in failed for "${
+        credentials.email
+      }" (${response.status()}): ${await response.text()}`
+    );
   }
+
+  const { accessToken } = (await response.json()) as { accessToken: string };
+
+  if (!accessToken) {
+    throw new Error(
+      `API sign-in for "${credentials.email}" returned no accessToken.`
+    );
+  }
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  if (credentials.suppressWelcome ?? true) {
+    await suppressWelcomeScreen(
+      page,
+      credentials.userName ?? credentials.email
+    );
+  }
+  await setToken(page, accessToken);
+  await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+
+  await expect(
+    page.getByTestId('left-sidebar'),
+    `API sign-in as "${credentials.email}" did not produce a signed-in session — the app shell never rendered. The token was accepted by /api/v1/auth/login but the app did not pick it up from app_state.primary; check utils/tokenStorage.ts against the app's SwTokenStorageUtils.`
+  ).toBeAttached({ timeout: 30_000 });
+
+  return accessToken;
 };
