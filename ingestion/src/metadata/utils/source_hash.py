@@ -26,7 +26,7 @@ import hashlib
 import json
 import re
 import traceback
-from typing import Any
+from typing import Any, cast
 
 from metadata.ingestion.ometa.ometa_api import C
 from metadata.utils.logger import utils_logger
@@ -39,6 +39,7 @@ SOURCE_HASH_EXCLUDE_FIELDS = {
 }
 
 VOLATILE_ENTITY_REFERENCE_FIELDS = {"href", "deleted", "inherited"}
+VOLATILE_CERTIFICATION_FIELDS = {"appliedDate", "expiryDate"}
 
 
 def _normalize_whitespace(text: str | None) -> str | None:
@@ -124,6 +125,22 @@ def _sort_columns(columns: list[Any]) -> list[Any]:
     return sorted_columns
 
 
+def _strip_volatile_certification_fields(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Return a shallow copy of data with certification.appliedDate/expiryDate removed.
+
+    Kept separate from _normalize_for_hash so it operates on the typed create-request
+    dict rather than on the loosely-typed output of _remove_volatile_fields.
+    """
+    certification = data.get("certification")
+    if not isinstance(certification, dict):
+        return data
+    return {
+        **data,
+        "certification": {k: v for k, v in certification.items() if k not in VOLATILE_CERTIFICATION_FIELDS},
+    }
+
+
 def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     """
     Normalize a create request dict to ensure deterministic hashing.
@@ -133,10 +150,19 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     2. Sorts tags by tagFQN
     3. Sorts tableConstraints by type and columns
     4. Sorts owners by FQN/name/id
-    5. Removes volatile EntityReference fields (href, deleted, inherited)
-    6. Normalizes schemaDefinition whitespace
+    5. Sorts aliases lexicographically
+    6. Removes volatile EntityReference fields (href, deleted, inherited)
+    7. Normalizes schemaDefinition whitespace
+    8. Drops certification.appliedDate/expiryDate, which the backend always
+       recomputes server-side from AssetCertificationSettings and never takes
+       from the request, so they carry no change-detection signal and would
+       otherwise destabilize the hash if a connector ever populates them with
+       a run-time-relative value
     """
-    result = _remove_volatile_fields(data)
+    # _remove_volatile_fields is `dict | list | Any` because it recurses into nested
+    # lists, but called here on a top-level create-request dict it always returns a dict
+    # (see its `isinstance(obj, dict)` branch); cast narrows for the string-keyed lookups below.
+    result = cast("dict[str, Any]", _remove_volatile_fields(_strip_volatile_certification_fields(data)))
 
     if "columns" in result and isinstance(result["columns"], list):
         result["columns"] = _sort_columns(result["columns"])
@@ -150,6 +176,9 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     if "owners" in result and isinstance(result["owners"], list):
         result["owners"] = sorted(result["owners"], key=_get_entity_reference_sort_key)
 
+    if "aliases" in result and isinstance(result["aliases"], list):
+        result["aliases"] = sorted(result["aliases"], key=str)
+
     if "schemaDefinition" in result and result["schemaDefinition"]:  # noqa: RUF019
         result["schemaDefinition"] = _normalize_whitespace(result["schemaDefinition"])
 
@@ -162,7 +191,7 @@ def generate_source_hash(create_request: C, exclude_fields: dict | None = None) 
     and generate a stable hash value.
 
     The normalization process ensures hash stability by:
-    - Sorting lists (columns, tags, constraints, owners) by deterministic keys
+    - Sorting lists (columns, tags, constraints, owners, aliases) by deterministic keys
     - Removing volatile fields (href, deleted, inherited) from entity references
     - Normalizing whitespace in DDL/SQL definitions
     """

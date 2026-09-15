@@ -13,7 +13,7 @@
 Airbyte Source Model module
 """
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class AirbyteWorkspace(BaseModel):
@@ -47,6 +47,18 @@ class AirbyteConnectionConfigurations(BaseModel):
 
     streams: list[AirbyteStream] | None = None
 
+    @field_validator("streams", mode="before")
+    @classmethod
+    def _drop_streams_without_name(cls, value):
+        """Drop malformed entries before validation instead of failing the whole connection.
+
+        The public API is not guaranteed to omit a stray nameless entry; one bad stream
+        must not block lineage for every other stream on the connection.
+        """
+        if not isinstance(value, list):
+            return value
+        return [item for item in value if isinstance(item, dict) and item.get("name")]
+
 
 class AirbyteConnectionModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -62,7 +74,7 @@ class AirbyteConnectionModel(BaseModel):
 
     @property
     def resolved_streams(self) -> list[AirbyteStream]:
-        """Streams from whichever API responded."""
+        """Streams from whichever API responded (cf. resolved_type/resolved_configuration)."""
         if self.syncCatalog and self.syncCatalog.streams:
             return [entry.stream for entry in self.syncCatalog.streams if entry.stream]
         if self.configurations and self.configurations.streams:

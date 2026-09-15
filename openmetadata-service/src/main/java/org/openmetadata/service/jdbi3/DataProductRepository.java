@@ -652,7 +652,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       refsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(ref);
     }
 
-    // Bulk fetch entities by type and collect in order
+    // Bulk fetch entities by type, keyed by each entity's own id. NON_DELETED filtering and the
+    // absence of an ORDER BY mean getEntities may return fewer entities than requested and in a
+    // different order, so keying by request-list index would misattribute or drop rows.
     // Use empty string if fields is null to avoid NPE
     String fieldsToFetch = fields != null ? fields : "";
     Map<UUID, EntityWithType> entitiesById = new HashMap<>();
@@ -660,9 +662,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String entityType = entry.getKey();
       List<EntityInterface> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (int i = 0; i < entitiesOfType.size(); i++) {
-        entitiesById.put(
-            entry.getValue().get(i).getId(), new EntityWithType(entitiesOfType.get(i), entityType));
+      for (EntityInterface entity : entitiesOfType) {
+        entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
 
@@ -759,8 +760,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
         List<EntityInterface> entitiesOfType =
             Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
-        for (int i = 0; i < entitiesOfType.size(); i++) {
-          assetEntitiesMap.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
+        // Key by each entity's own id; getEntities may reorder or drop rows relative to the
+        // request list, so request-index zipping would validate the wrong asset.
+        for (EntityInterface entity : entitiesOfType) {
+          assetEntitiesMap.put(entity.getId(), entity);
         }
       }
     }
@@ -947,16 +950,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       domainChangeProcessed = false;
       capturedOriginalDomains = null;
       capturedUpdatedDomains = null;
-    }
-
-    @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
     }
 
     public List<EntityReference> getCapturedOriginalDomains() {
@@ -1257,20 +1250,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     taskRepository.closeApprovalTaskForEntity(
         entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(DataProduct dataProduct) {
-    dataProduct =
-        Entity.getEntityByName(
-            Entity.DATA_PRODUCT,
-            dataProduct.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        dataProduct.getFullyQualifiedName(),
-        new ArrayList<>(dataProduct.getReviewers()),
-        dataProduct.getUpdatedBy());
   }
 
   public org.openmetadata.schema.entity.data.DataContract getDataProductContract(

@@ -89,6 +89,8 @@ import org.slf4j.LoggerFactory;
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  // The `fields` example documented on the testCaseResults search endpoints
+  private static final String TEST_CASE_RESULT_FIELDS = "testCase,testDefinition";
   private static final RetryConfig DEADLOCK_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(3)
@@ -2632,6 +2634,70 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             "/v1/dataQuality/testCases/testCaseResults" + path,
             null,
             RequestOptions.builder().queryParam("q", query).queryParam("limit", "10").build());
+  }
+
+  /**
+   * {@code testCaseResults/search/latest} validated its {@code fields} param against a placeholder
+   * allowed-fields set, so every real field name — including the endpoint's own documented example
+   * {@code testCase,testDefinition} — came back as HTTP 400. Pins the parity with the sibling
+   * {@code /search/list}, which resolves the allowed fields from the repository.
+   */
+  @Test
+  void test_testCaseResultSearchLatestWithFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("result_latest_fields"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResult result = new CreateTestCaseResult();
+    result.setTimestamp(System.currentTimeMillis());
+    result.setTestCaseStatus(TestCaseStatus.Failed);
+    result.setResult("failed");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+
+    String testCaseFQN = testCase.getFullyQualifiedName();
+    // Independent of search convergence: the documented `fields` example must not be rejected.
+    assertDoesNotThrow(
+        () -> searchLatestTestCaseResult(testCaseFQN, TEST_CASE_RESULT_FIELDS),
+        "testCaseResults/search/latest must accept fields=" + TEST_CASE_RESULT_FIELDS);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response = searchLatestTestCaseResult(testCaseFQN, TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              JsonNode latest = JsonUtils.readTree(response);
+              assertEquals(testCaseFQN, latest.path("testCaseFQN").asText());
+              assertEquals(
+                  testCase.getId().toString(),
+                  latest.path("testCase").path("id").asText(),
+                  "the requested `testCase` field must be resolved, got: " + response);
+              assertFalse(
+                  latest.path("testDefinition").path("id").asText().isEmpty(),
+                  "the requested `testDefinition` field must be resolved, got: " + response);
+            });
+  }
+
+  private String searchLatestTestCaseResult(String testCaseFQN, String fields) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/dataQuality/testCases/testCaseResults/search/latest",
+            null,
+            RequestOptions.builder()
+                .queryParam("testCaseFQN", testCaseFQN)
+                .queryParam("fields", fields)
+                .build());
   }
 
   /**

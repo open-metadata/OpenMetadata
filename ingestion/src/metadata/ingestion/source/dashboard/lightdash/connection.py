@@ -42,7 +42,7 @@ class LightdashConnection(BaseConnection[LightdashConnectionConfig, LightdashApi
             logger.debug("creating a new Lightdash connection")
             return LightdashApiClient(connection)
         except Exception as exc:
-            msg = "Unknown error connecting with {connection}: {exc}."
+            msg = f"Unknown error connecting with {connection}: {exc}."
             raise SourceConnectionException(msg) from exc
 
     def test_connection(

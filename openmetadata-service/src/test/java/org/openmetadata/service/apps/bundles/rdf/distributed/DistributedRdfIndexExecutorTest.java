@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,7 +28,9 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,93 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.rdf.RdfRepository;
 
 class DistributedRdfIndexExecutorTest {
+
+  @Test
+  void coordinatorIsReservedBeforePartitionsBecomeVisible() throws Exception {
+    final CreationFixture fixture = creationFixture();
+    when(fixture.coordinator().initializePartitions(fixture.job().getId()))
+        .thenAnswer(
+            invocation -> {
+              assertTrue(
+                  DistributedRdfIndexExecutor.isCoordinatingJob(fixture.job().getId()),
+                  "Local participants must not join while partition cursors are being prepared");
+              return fixture.job();
+            });
+    try {
+      fixture.executor().createJob(Set.of("table"), fixture.configuration(), "admin");
+    } finally {
+      invokeCleanupCoordinatorExecution(fixture.executor());
+    }
+    assertFalse(DistributedRdfIndexExecutor.isCoordinatingJob(fixture.job().getId()));
+  }
+
+  @Test
+  void failedPartitionInitializationReleasesCoordinatorReservation() {
+    final CreationFixture fixture = creationFixture();
+    final AtomicBoolean reservedDuringInitialization = new AtomicBoolean();
+    when(fixture.coordinator().initializePartitions(fixture.job().getId()))
+        .thenAnswer(
+            invocation -> {
+              reservedDuringInitialization.set(
+                  DistributedRdfIndexExecutor.isCoordinatingJob(fixture.job().getId()));
+              throw new IllegalStateException("Partition initialization failed");
+            });
+    assertThrows(
+        IllegalStateException.class,
+        () -> fixture.executor().createJob(Set.of("table"), fixture.configuration(), "admin"));
+    assertTrue(reservedDuringInitialization.get());
+    assertFalse(DistributedRdfIndexExecutor.isCoordinatingJob(fixture.job().getId()));
+  }
+
+  @Test
+  void stopInterruptsWorkersThatAreShuttingDownButStillRunning() throws Exception {
+    final ExecutorService workers = Executors.newSingleThreadExecutor();
+    final CountDownLatch started = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    workers.submit(
+        () -> {
+          started.countDown();
+          release.await();
+          return null;
+        });
+    try {
+      assertTrue(started.await(5, TimeUnit.SECONDS));
+      workers.shutdown();
+      final var executor = new DistributedRdfIndexExecutor(null, null, "rdf-test-server");
+      setField(executor, "workerExecutor", workers);
+      getField(executor, "localExecutionCleaned", AtomicBoolean.class).set(false);
+
+      executor.stop();
+
+      assertTrue(workers.isTerminated(), "Stop must interrupt active workers after shutdown()");
+    } finally {
+      release.countDown();
+      workers.shutdownNow();
+      assertTrue(workers.awaitTermination(5, TimeUnit.SECONDS));
+    }
+  }
+
+  private record CreationFixture(
+      DistributedRdfIndexExecutor executor,
+      DistributedRdfIndexCoordinator coordinator,
+      RdfIndexJob job,
+      EventPublisherJob configuration) {}
+
+  private static CreationFixture creationFixture() {
+    final var coordinator = mock(DistributedRdfIndexCoordinator.class);
+    final var configuration = new EventPublisherJob().withEntities(Set.of("table"));
+    final var job =
+        RdfIndexJob.builder().id(UUID.randomUUID()).jobConfiguration(configuration).build();
+    when(coordinator.getBlockingJob()).thenReturn(Optional.empty());
+    when(coordinator.tryAcquireReindexLock(any(UUID.class))).thenReturn(true);
+    when(coordinator.createJob(Set.of("table"), configuration, "admin")).thenReturn(job);
+    when(coordinator.transferReindexLock(any(UUID.class), any(UUID.class))).thenReturn(true);
+    return new CreationFixture(
+        new DistributedRdfIndexExecutor(mock(CollectionDAO.class), coordinator, "rdf-test-server"),
+        coordinator,
+        job,
+        configuration);
+  }
 
   @Test
   void executeReleasesCoordinatorStateWhenWorkerStartupFails() {
