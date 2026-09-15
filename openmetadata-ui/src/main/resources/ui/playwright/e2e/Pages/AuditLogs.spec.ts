@@ -1577,9 +1577,7 @@ test.describe(
             glossaryEntry.first().getByTestId('entity-type-badge')
           ).toContainText('Glossary');
 
-          await expect(
-            glossaryEntry.first().locator('.description-content')
-          ).toContainText(glossaryName);
+          await expect(glossaryEntry.first()).toContainText(glossaryName);
 
           await expect(
             glossaryEntry.first().getByTestId('timestamp')

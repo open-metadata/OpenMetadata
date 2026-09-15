@@ -1,0 +1,347 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Box } from '@openmetadata/ui-core-components';
+import { debounce, startCase } from 'lodash';
+import { DateTime } from 'luxon';
+import { FC, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { AuditLogFiltersProps } from '../../../../../../components/AuditLog/AuditLogFilters.interface';
+import DatePickerMenu from '../../../../../../components/common/DatePickerMenu/DatePickerMenu.component';
+import QuickFilterDropdown from '../../../../../../components/Explore/QuickFilterDropdown';
+import { SearchDropdownOption } from '../../../../../../components/SearchDropdown/SearchDropdown.interface';
+import { AUDIT_LOG_TIME_FILTER_RANGE } from '../../../../../../constants/auditLog.constant';
+import { SearchIndex } from '../../../../../../enums/search.enum';
+import { User } from '../../../../../../generated/entity/teams/user';
+import { searchQuery } from '../../../../../../rest/searchAPI';
+import {
+  AuditLogActiveFilter,
+  AuditLogFilterCategoryType,
+} from '../../../../../../types/auditLogs.interface';
+import { formatUsersResponse } from '../../../../../../utils/APIUtils';
+import {
+  buildParamsFromFilters,
+  getAuditLogCategoryLabel,
+} from '../../../../../../utils/AuditLogUtils';
+import { CUSTOM_DATE_RANGE_KEY } from '../../../../../../utils/DatePickerMenuUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { translateWithNestedKeys } from '../../../../../../utils/i18next/LocalUtil';
+import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
+import { ENTITY_TYPE_SEARCH_OPTIONS } from './AccessControl.constants';
+
+const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
+  activeFilters,
+  onFiltersChange,
+}) => {
+  const { t } = useTranslation();
+
+  const botDisplayNameMap = useMemo<Record<string, string>>(
+    () => ({
+      aiautomationapplicationbot: t('label.ai-automation-application-bot'),
+      'autoclassification-bot': t('label.auto-classification-bot'),
+      automatorapplicationbot: t('label.automator-application-bot'),
+    }),
+    [t]
+  );
+
+  const auditTimeFilterRange = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(AUDIT_LOG_TIME_FILTER_RANGE).map(([key, value]) => [
+          key,
+          {
+            ...value,
+            title: translateWithNestedKeys(value.title, value.titleData),
+          },
+        ])
+      ),
+    [t]
+  );
+
+  const [userOptions, setUserOptions] = useState<SearchDropdownOption[]>([]);
+  const [botOptions, setBotOptions] = useState<SearchDropdownOption[]>([]);
+  const [filteredEntityTypeOptions, setFilteredEntityTypeOptions] = useState<
+    SearchDropdownOption[]
+  >(ENTITY_TYPE_SEARCH_OPTIONS);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingBots, setIsLoadingBots] = useState(false);
+
+  const getSelectedKeys = useCallback(
+    (category: AuditLogFilterCategoryType): SearchDropdownOption[] => {
+      const filter = activeFilters.find((f) => f.category === category);
+
+      return filter
+        ? [{ key: filter.value.key, label: filter.value.label }]
+        : [];
+    },
+    [activeFilters]
+  );
+
+  const timeFilter = useMemo(
+    () => activeFilters.find((f) => f.category === 'time'),
+    [activeFilters]
+  );
+
+  const timeDefaultDateRange = useMemo(() => {
+    if (!timeFilter) {
+      return undefined;
+    }
+
+    const timeValue = timeFilter.value as {
+      key: string;
+      label: string;
+      startTs?: number;
+      endTs?: number;
+    };
+
+    return {
+      key: timeValue.key,
+      title: timeValue.label,
+      startTs: timeValue.startTs,
+      endTs: timeValue.endTs,
+    };
+  }, [timeFilter]);
+
+  const handleTimeFilterChange = useCallback(
+    (dateRange: {
+      key?: string;
+      title?: string;
+      startTs?: number;
+      endTs?: number;
+    }) => {
+      let label = dateRange.title ?? '';
+      if (
+        dateRange.key === CUSTOM_DATE_RANGE_KEY &&
+        dateRange.startTs &&
+        dateRange.endTs
+      ) {
+        label = `${DateTime.fromMillis(dateRange.startTs).toFormat(
+          'yyyy-MM-dd'
+        )} -> ${DateTime.fromMillis(dateRange.endTs).toFormat('yyyy-MM-dd')}`;
+      }
+
+      const newFilter: AuditLogActiveFilter = {
+        category: 'time',
+        categoryLabel: getAuditLogCategoryLabel('time', t),
+        value: {
+          key: dateRange.key ?? 'custom',
+          label,
+          value: dateRange.key ?? 'custom',
+          startTs: dateRange.startTs,
+          endTs: dateRange.endTs,
+        } as AuditLogActiveFilter['value'],
+      };
+
+      const existingIndex = activeFilters.findIndex(
+        (f) => f.category === 'time'
+      );
+      const newFilters =
+        existingIndex >= 0
+          ? activeFilters.map((f, i) => (i === existingIndex ? newFilter : f))
+          : [...activeFilters, newFilter];
+
+      const params = buildParamsFromFilters(newFilters);
+      onFiltersChange(newFilters, params);
+    },
+    [activeFilters, onFiltersChange, t]
+  );
+
+  const handleDropdownChange = useCallback(
+    (values: SearchDropdownOption[], searchKey: string) => {
+      const category = searchKey as AuditLogFilterCategoryType;
+      let newFilters: AuditLogActiveFilter[];
+
+      if (values.length === 0) {
+        newFilters = activeFilters.filter((f) => f.category !== category);
+      } else {
+        const option = values[0];
+        const existingIndex = activeFilters.findIndex(
+          (f) => f.category === category
+        );
+        const newFilter: AuditLogActiveFilter = {
+          category,
+          categoryLabel: getAuditLogCategoryLabel(category, t),
+          value: {
+            key: option.key,
+            label: option.label,
+            value: option.key,
+          },
+        };
+
+        if (existingIndex >= 0) {
+          newFilters = [...activeFilters];
+          newFilters[existingIndex] = newFilter;
+        } else {
+          newFilters = [...activeFilters, newFilter];
+        }
+      }
+
+      const params = buildParamsFromFilters(newFilters);
+      onFiltersChange(newFilters, params);
+    },
+    [activeFilters, onFiltersChange, t]
+  );
+
+  const fetchUsers = useCallback(async (search: string) => {
+    setIsLoadingUsers(true);
+    try {
+      const response = await searchQuery({
+        query: search,
+        pageNumber: 1,
+        pageSize: 10,
+        queryFilter: getTermQuery({ isBot: 'false' }),
+        searchIndex: SearchIndex.USER,
+      });
+      const users: User[] = formatUsersResponse(response.hits.hits);
+      setUserOptions(
+        users.map((user) => ({
+          key: user.name,
+          label: getEntityName(user) || user.name,
+        }))
+      );
+    } catch {
+      setUserOptions([]);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, []);
+
+  const fetchBots = useCallback(
+    async (search: string) => {
+      setIsLoadingBots(true);
+      try {
+        const response = await searchQuery({
+          query: search,
+          pageNumber: 1,
+          pageSize: 10,
+          queryFilter: getTermQuery({ isBot: 'true' }),
+          searchIndex: SearchIndex.USER,
+        });
+        const bots: User[] = formatUsersResponse(response.hits.hits);
+        setBotOptions(
+          bots.map((bot) => ({
+            key: bot.name,
+            label:
+              botDisplayNameMap[
+                (getEntityName(bot) || bot.name).toLowerCase()
+              ] ?? startCase(getEntityName(bot) || bot.name),
+          }))
+        );
+      } catch {
+        setBotOptions([]);
+      } finally {
+        setIsLoadingBots(false);
+      }
+    },
+    [botDisplayNameMap]
+  );
+
+  const debouncedFetchUsers = useMemo(
+    () => debounce(fetchUsers, 300),
+    [fetchUsers]
+  );
+
+  const debouncedFetchBots = useMemo(
+    () => debounce(fetchBots, 300),
+    [fetchBots]
+  );
+
+  const handleSearch = useCallback(
+    (searchText: string, searchKey: string) => {
+      if (searchKey === 'user') {
+        debouncedFetchUsers(searchText);
+      } else if (searchKey === 'bot') {
+        debouncedFetchBots(searchText);
+      } else if (searchKey === 'entityType') {
+        const filtered = searchText
+          ? ENTITY_TYPE_SEARCH_OPTIONS.filter((option) =>
+              option.label.toLowerCase().includes(searchText.toLowerCase())
+            )
+          : ENTITY_TYPE_SEARCH_OPTIONS;
+        setFilteredEntityTypeOptions(filtered);
+      }
+    },
+    [debouncedFetchUsers, debouncedFetchBots]
+  );
+
+  const handleGetInitialOptions = useCallback(
+    (searchKey: string) => {
+      if (searchKey === 'user') {
+        fetchUsers('');
+      } else if (searchKey === 'bot') {
+        fetchBots('');
+      } else if (searchKey === 'entityType') {
+        setFilteredEntityTypeOptions(ENTITY_TYPE_SEARCH_OPTIONS);
+      }
+    },
+    [fetchUsers, fetchBots]
+  );
+
+  return (
+    <Box
+      align="center"
+      data-testid="audit-log-filters"
+      direction="row"
+      gap={2}
+      wrap="wrap">
+      <DatePickerMenu
+        showSelectedCustomRange
+        defaultDateRange={timeDefaultDateRange}
+        handleDateRangeChange={handleTimeFilterChange}
+        key={timeFilter?.value.key ?? 'no-time-filter'}
+        options={auditTimeFilterRange}
+      />
+      <QuickFilterDropdown
+        hideCounts
+        showSelectedCounts
+        singleSelect
+        isSuggestionsLoading={isLoadingUsers}
+        label={t('label.user')}
+        options={userOptions}
+        searchKey="user"
+        selectedKeys={getSelectedKeys('user')}
+        onChange={handleDropdownChange}
+        onGetInitialOptions={handleGetInitialOptions}
+        onSearch={handleSearch}
+      />
+      <QuickFilterDropdown
+        hideCounts
+        showSelectedCounts
+        singleSelect
+        isSuggestionsLoading={isLoadingBots}
+        label={t('label.bot')}
+        options={botOptions}
+        searchKey="bot"
+        selectedKeys={getSelectedKeys('bot')}
+        onChange={handleDropdownChange}
+        onGetInitialOptions={handleGetInitialOptions}
+        onSearch={handleSearch}
+      />
+      <QuickFilterDropdown
+        hideCounts
+        showSelectedCounts
+        singleSelect
+        isSuggestionsLoading={false}
+        label={t('label.entity-type')}
+        options={filteredEntityTypeOptions}
+        searchKey="entityType"
+        selectedKeys={getSelectedKeys('entityType')}
+        onChange={handleDropdownChange}
+        onGetInitialOptions={handleGetInitialOptions}
+        onSearch={handleSearch}
+      />
+    </Box>
+  );
+};
+
+export default AccessControlAuditLogFilters;

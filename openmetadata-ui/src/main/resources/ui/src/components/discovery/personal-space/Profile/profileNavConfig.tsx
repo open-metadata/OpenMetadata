@@ -12,6 +12,7 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-components/icons';
 import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
@@ -19,6 +20,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
+import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
 export type ProfileNavId =
@@ -26,14 +28,20 @@ export type ProfileNavId =
   | 'permissions'
   | 'access-token'
   | 'my-connections'
+  | 'access-control'
   | 'custom-properties';
 
 /** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
-export type ProfileNavGroup = 'account' | 'workspace' | 'credentials';
+export type ProfileNavGroup =
+  | 'account'
+  | 'administration'
+  | 'workspace'
+  | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
 export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   account: 'label.account',
+  administration: 'label.administration',
   workspace: 'label.workspace',
   credentials: 'label.credential-plural',
 };
@@ -41,22 +49,31 @@ export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
 /** Group render order in the sidebar. */
 export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'account',
+  'administration',
   'workspace',
   'credentials',
 ];
 
 /**
  * Dynamic overrides a panel can push up to ProfilePage so ProfileContentHeader
- * can reflect the panel's internal state (e.g. multi-level breadcrumbs).
+ * can reflect the panel's internal state (e.g. multi-level breadcrumbs, entity icon).
+ * All fields are optional — panels provide only what they need to override.
  */
-export type HeaderOverride = {
+export interface ProfileHeaderOverride {
+  breadcrumbs?: BreadcrumbItemType[];
   title?: string;
   description?: string;
-  breadcrumbs?: BreadcrumbItemType[];
-  onBreadcrumbAction?: (id: Key) => void;
+  icon?: FC<{ className?: string }>;
+  /** Pre-rendered icon node; takes precedence over `icon` in ProfileContentHeader. */
   iconNode?: React.ReactNode;
+  onBreadcrumbAction?: (id: Key) => void;
+  /** Action buttons rendered on the right of the header title row. */
   actions?: React.ReactNode;
-};
+  /** When set, renders in place of the title text (e.g. an inline rename input). */
+  titleInput?: React.ReactNode;
+  /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
+  titleSuffix?: React.ReactNode;
+}
 
 /**
  * Context handed to each nav item's `render`. Mirrors the data ProfilePage
@@ -67,12 +84,8 @@ export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
-  /**
-   * Call this to push dynamic header state (breadcrumbs, icon, actions) up to
-   * ProfilePage so it can update ProfileContentHeader without the panel needing
-   * to render its own header.
-   */
-  onHeaderChange: (overrides: HeaderOverride) => void;
+  /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
+  onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
 export interface ProfileNavItem {
@@ -130,6 +143,17 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     description: 'message.access-token-page-description',
     icon: Key01,
     render: () => <AccessTokenPanel />,
+  },
+  {
+    id: 'access-control',
+    group: 'administration',
+    label: 'label.access-control',
+    description: 'message.access-control-description',
+    icon: AccessControlIcon,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <AccessControlPanel onHeaderChange={onHeaderChange} />
+    ),
   },
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode

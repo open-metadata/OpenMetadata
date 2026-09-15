@@ -35,7 +35,7 @@ import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
-  HeaderOverride,
+  ProfileHeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
   ProfileNavItem,
@@ -62,7 +62,11 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     DEFAULT_PROFILE_NAV_ID
   );
-  const [headerOverride, setHeaderOverride] = useState<HeaderOverride>({});
+  const [contentKey, setContentKey] = useState(0);
+  // Allows panels (e.g. Access Control) to override the header breadcrumbs
+  // and title without needing a separate route.
+  const [headerOverride, setHeaderOverride] =
+    useState<ProfileHeaderOverride | null>(null);
 
   const fetchUser = useCallback(async () => {
     if (!currentUser?.name) {
@@ -94,11 +98,6 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
-
-  // Reset dynamic header overrides whenever the user switches to a different tab.
-  useEffect(() => {
-    setHeaderOverride({});
-  }, [selectedId]);
 
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
@@ -169,18 +168,24 @@ const ProfilePage: React.FC = () => {
     return [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...contributed];
   }, [extensionRegistry, userData]);
 
+  // Clear header override whenever the user switches nav items.
+  const handleNavSelect = useCallback((id: ProfileNavId) => {
+    setSelectedId(id);
+    setHeaderOverride(null);
+    setContentKey((k) => k + 1);
+  }, []);
+
   const activeItem =
     navItems.find((item) => item.id === selectedId) ?? navItems[0];
 
-  const baseHeaderProps = useMemo(
-    () => ({
-      title: t(activeItem.label),
-      description: t(activeItem.description),
-      icon: activeItem.icon,
-      breadcrumbRoot: t(PROFILE_NAV_GROUP_LABEL[activeItem.group]),
-    }),
-    [activeItem, t]
-  );
+  // Resolve header props — prefer panel-supplied override, fall back to defaults.
+  const headerIcon = headerOverride?.icon ?? activeItem.icon;
+  const headerTitle = headerOverride?.title ?? t(activeItem.label);
+  const headerDescription =
+    headerOverride?.description ?? t(activeItem.description);
+  const headerBreadcrumbs = headerOverride?.breadcrumbs;
+  const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
+  const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
 
   return (
     <Box
@@ -194,12 +199,23 @@ const ProfilePage: React.FC = () => {
           <ProfileSideNav
             items={navItems}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleNavSelect}
           />
           <Box
             className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
             direction="col">
-            <ProfileContentHeader {...baseHeaderProps} {...headerOverride} />
+            <ProfileContentHeader
+              actions={headerOverride?.actions}
+              breadcrumbRoot={headerBreadcrumbRoot}
+              breadcrumbs={headerBreadcrumbs}
+              description={headerDescription}
+              icon={headerIcon}
+              iconNode={headerOverride?.iconNode}
+              title={headerTitle}
+              titleInput={headerOverride?.titleInput}
+              titleSuffix={headerOverride?.titleSuffix}
+              onBreadcrumbAction={headerBreadcrumbAction}
+            />
             {activeItem.selfContainedLayout ? (
               activeItem.render({
                 userData,
@@ -210,7 +226,8 @@ const ProfilePage: React.FC = () => {
             ) : (
               <div
                 className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
-                data-testid="profile-content-body">
+                data-testid="profile-content-body"
+                key={`${selectedId}-${contentKey}`}>
                 {activeItem.render({
                   userData,
                   isProfileLoading,
