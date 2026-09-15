@@ -316,28 +316,9 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         required: false,
         id: 'root/supportedDataTypes',
         doc: resolveDoc('supportedDataTypes'),
-        placeholder: t('label.select-field', {
-          field: t('label.supported-data-type-plural'),
-        }),
-        rules: {
-          validate: (value?: FormSelectItem[]) => {
-            const platforms = (form.getValues('testPlatforms') ??
-              []) as FormSelectItem[];
-            const hasOpenMetadata = platforms.some(
-              (platform) =>
-                (typeof platform === 'object' ? platform?.id : platform) ===
-                TestPlatform.OpenMetadata
-            );
-            let result: string | boolean = true;
-            if (hasOpenMetadata && (value ?? []).length === 0) {
-              result = t('message.field-text-is-required', {
-                fieldText: t('label.supported-data-type-plural'),
-              });
-            }
-
-            return result;
-          },
-        },
+        helperText: t('message.supported-data-types-help'),
+        helperTextType: HelperTextType.TOOLTIP,
+        placeholder: t('message.empty-means-all-data-types'),
         props: {
           'data-testid': 'supported-data-types',
           isDisabled: isReadOnlyField,
@@ -345,7 +326,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         } as FieldProp['props'],
       },
     ],
-    [t, resolveDoc, isReadOnlyField, form]
+    [t, resolveDoc, isReadOnlyField]
   );
 
   const enabledField: FieldProp = {

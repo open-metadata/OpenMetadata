@@ -46,7 +46,11 @@ export interface CreateTestDefinition {
      * paramName }} for user-defined parameters. Single-brace placeholders are not substituted
      * and will produce invalid SQL.
      */
-    sqlExpression?:      string;
+    sqlExpression?: string;
+    /**
+     * List of column data types that this test definition supports. When empty, it implies all
+     * data types are supported.
+     */
     supportedDataTypes?: DataType[];
     /**
      * List of services that this test definition supports. When empty, it implies all services

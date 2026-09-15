@@ -152,6 +152,7 @@
       }
     },
     "supportedDataTypes": {
+      "description": "List of column data types that this test definition supports. When empty, it implies all data types are supported.",
       "type": "array",
       "items": {
         "$ref": "../entity/data/table.json#/definitions/dataType"
