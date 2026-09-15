@@ -152,10 +152,14 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     // Safe to seed lazily: both pages gate rendering on their own `isLoading`,
     // so this never mounts before `data`/`serviceData` have resolved.
     const [owners, setOwners] = useState<EntityReference[]>(() => {
-      // Edit shows exactly what is saved; only create pre-fills from the
-      // service, falling back to the current user as it did before.
-      if (data) {
-        return data.owners ?? [];
+      // Prefer what is saved, then the service's owners, then the current user.
+      // Edit has to fall back too, not just create: pipelines created through
+      // the API carry no owners, and a mandatory field starting empty would
+      // make those impossible to save at all.
+      const savedOwners = data?.owners ?? [];
+
+      if (!isEmpty(savedOwners)) {
+        return savedOwners;
       }
 
       const serviceOwners = serviceData?.owners ?? [];

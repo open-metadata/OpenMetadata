@@ -266,6 +266,33 @@ describe('Test AddIngestion component', () => {
     );
   });
 
+  // A pipeline created through the API carries no owners. The mandatory gate
+  // must not make those impossible to edit and save.
+  it('should let an agent with no saved owners still be edited', async () => {
+    const setActiveIngestionStep = jest.fn();
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        data={
+          {
+            id: 'pipeline-id',
+            name: 'pipeline',
+            airflowConfig: {},
+            sourceConfig: { config: {} },
+          } as AddIngestionProps['data']
+        }
+        serviceData={{ name: 'serviceName' }}
+        setActiveIngestionStep={setActiveIngestionStep}
+        status={FormSubmitType.EDIT}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-form-submit'));
+
+    expect(setActiveIngestionStep).toHaveBeenCalledWith(2);
+    expect(screen.queryByTestId('owners-error')).not.toBeInTheDocument();
+  });
+
   it('should not require owners for a settings pipeline', async () => {
     const setActiveIngestionStep = jest.fn();
     render(
