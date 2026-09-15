@@ -63,9 +63,7 @@ const CustomPropertiesLandingPage: React.FC<
         m.key === GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
     );
 
-    return (customPropsCategory?.items ?? []).filter(
-      (item) => item.isProtected
-    );
+    return customPropsCategory?.items ?? [];
   }, [permissions, hasTypeViewPermission]);
 
   const grouped = useMemo(() => {

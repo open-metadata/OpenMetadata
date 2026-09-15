@@ -38,11 +38,6 @@ const mockPipelineItem = {
   isProtected: true,
 };
 
-const mockUnprotectedItem = {
-  key: 'customProperties.dashboard',
-  label: 'Dashboards',
-  isProtected: false,
-};
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn(),
@@ -162,13 +157,13 @@ describe('CustomPropertiesLandingPage', () => {
       [
         {
           key: 'customProperties',
-          items: [mockTableItem, mockPipelineItem, mockUnprotectedItem],
+          items: [mockTableItem, mockPipelineItem],
         },
       ]
     );
   });
 
-  it('renders entity type cards for protected items', () => {
+  it('renders entity type cards', () => {
     render(
       <CustomPropertiesLandingPage
         onSelectEntityType={mockOnSelectEntityType}
@@ -177,18 +172,6 @@ describe('CustomPropertiesLandingPage', () => {
 
     expect(screen.getByTestId('entity-type-card-table')).toBeInTheDocument();
     expect(screen.getByTestId('entity-type-card-pipeline')).toBeInTheDocument();
-  });
-
-  it('does not render cards for unprotected items', () => {
-    render(
-      <CustomPropertiesLandingPage
-        onSelectEntityType={mockOnSelectEntityType}
-      />
-    );
-
-    expect(
-      screen.queryByTestId('entity-type-card-dashboard')
-    ).not.toBeInTheDocument();
   });
 
   it('renders the entity label for each card', () => {
@@ -252,23 +235,6 @@ describe('CustomPropertiesLandingPage', () => {
     });
 
     expect(mockOnSelectEntityType).not.toHaveBeenCalled();
-  });
-
-  it('renders empty placeholder when no protected items exist', () => {
-    const { default: globalSettingsClassBase } = jest.requireMock(
-      '../../../../../../utils/GlobalSettingsClassBase'
-    );
-    globalSettingsClassBase.getGlobalSettingsMenuWithPermission.mockReturnValueOnce(
-      [{ key: 'customProperties', items: [mockUnprotectedItem] }]
-    );
-
-    render(
-      <CustomPropertiesLandingPage
-        onSelectEntityType={mockOnSelectEntityType}
-      />
-    );
-
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
   });
 
   it('renders empty placeholder when category has no items', () => {
