@@ -389,7 +389,7 @@ class OmniSource(DashboardServiceSource):
                     metadata=self.metadata,
                     tags=document.label_names,
                     classification_name=OMNI_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
+                    include_tags=bool(self.source_config.includeTags),
                 ),
             )
             yield Either(right=dashboard_request)
@@ -535,7 +535,8 @@ class OmniSource(DashboardServiceSource):
                             name=f"{dashboard_details.document.identifier} Lineage",
                             error=f"Error yielding lineage for topic {topic.name}: {exc}",
                             stackTrace=traceback.format_exc(),
-                        )
+                        ),
+                        right=None,
                     )
 
     def _tile_topics(self, tile: QueryPresentation) -> Iterable[OmniTopic]:
