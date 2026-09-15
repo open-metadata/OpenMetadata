@@ -392,12 +392,15 @@ test.describe('Column Level Lineage', () => {
       });
 
       await test.step('Verify column lineage survives a reload', async () => {
-        // The graph fetches /lineage/scene now, not /lineage/getLineage.
-        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
-        await page.reload();
-        await lineageRes;
-        await waitForAllLoadersToDisappear(page);
+        // Re-navigate instead of page.reload(): visitLineageTab waits on a
+        // fresh /lineage/scene response (which is what proves the edge
+        // persisted server-side) and handles the onboarding dialog and full
+        // screen view. fitToScreen matters because the canvas only draws
+        // edges for nodes inside the viewport.
+        await table.visitEntityPage(page);
+        await visitLineageTab(page);
         await activateColumnLayer(page);
+        await fitToScreen(page);
 
         await expect(
           page.getByTestId(`column-edge-${tableCol}-${metricCol}`)
@@ -432,6 +435,7 @@ test.describe('Column Level Lineage', () => {
         await table.visitEntityPage(page);
         await visitLineageTab(page);
         await activateColumnLayer(page);
+        await fitToScreen(page);
         await editLineageClick(page);
 
         await removeColumnLineage(page, tableCol, metricCol);
