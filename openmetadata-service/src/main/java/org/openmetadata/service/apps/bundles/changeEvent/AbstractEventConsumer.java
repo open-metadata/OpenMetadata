@@ -572,6 +572,31 @@ public abstract class AbstractEventConsumer
     metricsChanged = true;
   }
 
+  /**
+   * Records a delivery failure that has no change event behind it.
+   *
+   * <p>{@link #handleFailedEvent} returns early unless the exception carries one, because it keys
+   * the row by that event's id. A consumer producing its own events has none, so a bounced email or
+   * a dead channel would leave nothing on the subscription for the UI to show, however often it
+   * happened. The row written here is keyed by the subscription alone, so it holds the most recent
+   * such failure rather than growing without bound.
+   */
+  protected void recordFailure(String reason) {
+    FailedEvent failedEvent =
+        new FailedEvent()
+            .withFailingSubscriptionId(eventSubscription.getId())
+            .withReason(reason)
+            .withRetriesLeft(0)
+            .withTimestamp(System.currentTimeMillis());
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertFailedEvent(
+            eventSubscription.getId().toString(),
+            String.format("%s-self", FAILED_EVENT_EXTENSION),
+            JsonUtils.pojoToJson(failedEvent),
+            FailureTowards.SUBSCRIBER.toString());
+  }
+
   private void persistPendingGapState(JobExecutionContext jobExecutionContext) {
     jobExecutionContext
         .getJobDetail()

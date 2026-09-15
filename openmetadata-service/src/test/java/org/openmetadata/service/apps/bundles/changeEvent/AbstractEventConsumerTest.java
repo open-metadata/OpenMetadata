@@ -29,13 +29,18 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EventSubscriptionDAOs;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -720,6 +725,40 @@ class AbstractEventConsumerTest {
     persistTick(consumer);
 
     assertEquals(0, consumer.commits);
+  }
+
+  // handleFailedEvent keys its row by the change event's id and returns early without one, so a
+  // consumer producing its own events could never surface a failure at all.
+  @Test
+  void testRecordFailureWritesARowThatCarriesNoChangeEvent() throws Exception {
+    CommitCountingConsumer consumer = newCommitCountingConsumer();
+    when(eventSubscription.getId()).thenReturn(subscriptionId);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    EventSubscriptionDAOs.EventSubscriptionDAO subscriptionDAO =
+        mock(EventSubscriptionDAOs.EventSubscriptionDAO.class);
+    when(collectionDAO.eventSubscriptionDAO()).thenReturn(subscriptionDAO);
+    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> extension = ArgumentCaptor.forClass(String.class);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      consumer.recordFailure("smtp refused the message");
+      consumer.recordFailure("smtp refused it again");
+    }
+
+    verify(subscriptionDAO, times(2))
+        .upsertFailedEvent(
+            eq(subscriptionId.toString()), extension.capture(), json.capture(), anyString());
+    FailedEvent written = JsonUtils.readValue(json.getAllValues().getFirst(), FailedEvent.class);
+    assertNull(written.getChangeEvent(), "there is no change event behind this failure");
+    assertEquals("smtp refused the message", written.getReason());
+    assertEquals(subscriptionId, written.getFailingSubscriptionId());
+    assertNotNull(written.getTimestamp(), "the row has to date itself");
+    assertEquals(
+        extension.getAllValues().getFirst(),
+        extension.getAllValues().getLast(),
+        "one key per subscription, so repeated failures replace rather than accumulate");
   }
 
   private CommitCountingConsumer newCommitCountingConsumer() throws Exception {
