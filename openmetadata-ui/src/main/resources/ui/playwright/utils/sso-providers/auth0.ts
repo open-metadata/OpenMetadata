@@ -113,6 +113,17 @@ export const auth0ProviderFixture: SsoProviderFixture = {
   // (OidcAuthenticator/keycloak-oidc-public only).
   supportsSilentCallback: false,
   usesBackendRefresh: false,
+  // false because @auth0/auth0-react's default `cacheLocation: "memory"`
+  // (the setting OM ships in AuthProvider.tsx, `renderAzureAuthenticator`
+  // sibling) is wiped by a page reload — after `forceTokenExpiry` mangles
+  // the app's own stored token, `getAccessTokenSilently()` has nothing in
+  // memory to work from and would need a silent /authorize iframe against
+  // the IdP session cookie to recover. That's Auth0's designed cold-load
+  // path in production, but under Playwright the mock IdP's session
+  // cookie is a cross-site cookie the browser blocks; the scenario is
+  // architecturally out of scope for this fixture. Real Auth0 tenants
+  // using `cacheLocation: "localstorage"` would set this true.
+  supportsColdLoadRefresh: false,
 
   isAvailable: () => Boolean(process.env.MOCK_OIDC_URL),
   unavailableReason: () =>

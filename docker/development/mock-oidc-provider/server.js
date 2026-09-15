@@ -321,15 +321,22 @@ async function init() {
   app.use(express.json());
 
   // Server-facing base URL for endpoints that the OM server calls from
-  // inside Docker (token exchange, JWKS, userinfo). Defaults to ISSUER
-  // so that outside-Docker usage (tests hitting localhost) works unchanged.
+  // inside Docker (token exchange, JWKS, userinfo). Defaults to
+  // `ISSUER_BASE` (the no-trailing-slash form) — falling back to `ISSUER`
+  // would emit `//token`-style double-slash URLs once ISSUER started
+  // carrying its mandatory trailing slash for the Auth0 SDK's `iss`
+  // check. Outside-Docker usage (tests hitting localhost:9090) works
+  // unchanged because ISSUER_BASE matches the browser-facing origin.
   const INTERNAL_BASE = (
     process.env.INTERNAL_BASE_URL || ISSUER_BASE
   ).replace(/\/+$/, '');
 
   // Custom discovery endpoint returning hybrid URLs:
-  //   - Browser-facing (authorization, end_session): ISSUER (localhost:9090)
+  //   - Browser-facing (authorization, end_session): ISSUER_BASE (localhost:9090)
   //   - Server-facing (token, jwks, userinfo): INTERNAL_BASE (mock-oidc-provider:9090 in Docker)
+  //   - The `issuer` identity string itself: ISSUER (WITH trailing slash;
+  //     matches what oidc-provider stamps into every `iss` claim and what
+  //     @auth0/auth0-spa-js's ID-token validator expects, byte for byte).
   // This is mounted before oidc-provider so it takes precedence.
   app.get('/.well-known/openid-configuration', (_req, res) => {
     res.json({

@@ -488,24 +488,37 @@ for (const fixture of FIXTURES) {
       // authenticated shell within budget. Real IdPs vary, so the ceiling is
       // 15s soft (the coordinator's own timeouts sit well under this); regress
       // means someone added a synchronous roundtrip to the boot path.
-      test('cold-load with an expired stored token renders authenticated within budget', async ({
-        page,
-      }) => {
-        test.slow();
+      //
+      // Gated at registration time on `supportsColdLoadRefresh`. Providers
+      // whose SDK caches the refresh_token durably (Basic/LDAP/SAML via
+      // /auth/refresh, keycloak-oidc-public via oidc-client's IndexedDB
+      // store, Okta via localStorage, msal-mock via the pre-seeded shim)
+      // recover cleanly. The auth0-mock fixture is opt-out because
+      // @auth0/auth0-react ships with `cacheLocation: "memory"` (OM's
+      // production default) — the reload wipes the SDK's refresh_token
+      // and its silent-authorize fallback needs an IdP session cookie
+      // that Playwright's cross-site-cookie blocking eats. Documented on
+      // the fixture where the flag is set.
+      if (fixture.supportsColdLoadRefresh) {
+        test('cold-load with an expired stored token renders authenticated within budget', async ({
+          page,
+        }) => {
+          test.slow();
 
-        await fixture.performLogin(page);
-        await fixture.forceTokenExpiry(page);
+          await fixture.performLogin(page);
+          await fixture.forceTokenExpiry(page);
 
-        const start = Date.now();
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-          timeout: 15_000,
+          const start = Date.now();
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
+            timeout: 15_000,
+          });
+          const elapsed = Date.now() - start;
+
+          expect(elapsed).toBeLessThan(15_000);
+          expect(page.url()).not.toContain('/signin');
         });
-        const elapsed = Date.now() - start;
-
-        expect(elapsed).toBeLessThan(15_000);
-        expect(page.url()).not.toContain('/signin');
-      });
+      }
 
       // Scenario 7 — the /silent-callback iframe route is a bare oidc-client
       // handoff and MUST NOT boot the full app. If AppRoot ever mounted here
