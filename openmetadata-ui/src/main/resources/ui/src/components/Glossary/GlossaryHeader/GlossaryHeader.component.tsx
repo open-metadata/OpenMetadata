@@ -64,6 +64,7 @@ import {
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
@@ -89,6 +90,7 @@ import './glossery-header.less';
 type TranslateFunction = ReturnType<typeof useTranslation>['t'];
 
 const buildManageButtonContent = ({
+  canEditAll,
   t,
   isGlossary,
   importExportPermissions,
@@ -108,6 +110,8 @@ const buildManageButtonContent = ({
   importExportPermissions: boolean;
   editDisplayNamePermission: boolean;
   permissions: OperationPermission;
+  /** Derived EditAll flag; the raw object is still needed for the Delete key below. */
+  canEditAll: boolean;
   handleGlossaryExportClick: () => void;
   handleGlossaryImport: () => void;
   setShowActions: (value: boolean) => void;
@@ -197,7 +201,7 @@ const buildManageButtonContent = ({
         },
       ] as ItemType[])
     : []),
-  ...(permissions?.EditAll && !isGlossary
+  ...(canEditAll && !isGlossary
     ? ([
         {
           label: (
@@ -573,9 +577,17 @@ const GlossaryHeader = ({
     return null;
   }, [isGlossary, selectedData]);
 
-  const editDisplayNamePermission = useMemo(() => {
-    return permissions.EditAll || permissions.EditDisplayName;
-  }, [permissions]);
+  // Consumer via useGenericContext(). No `deleted` argument: neither call site here
+  // (editDisplayNamePermission, the style/change-parent menu items below) ever
+  // referenced selectedData.deleted in the old code, so getDerivedPermissionFlags
+  // defaults to its `deleted = false` — nothing to gate. Status-based gating
+  // (glossaryTermStatus / EntityStatus.Approved, used for createButtons) is a
+  // separate, unrelated concept and is left untouched per the batch's guidance not to
+  // fold status logic into permission flags.
+  const { canEditAll, canEditDisplayName } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const voteStatus = useMemo(
     () => getEntityVoteStatus(currentUser?.id ?? '', selectedData.votes),
@@ -702,8 +714,9 @@ const GlossaryHeader = ({
     t,
     isGlossary,
     importExportPermissions,
-    editDisplayNamePermission,
+    editDisplayNamePermission: canEditDisplayName,
     permissions,
+    canEditAll,
     handleGlossaryExportClick,
     handleGlossaryImport,
     setShowActions,

@@ -17,11 +17,12 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import { createAdminApiContext } from '../../utils/admin';
 import {
-  authenticateAdminPage,
-  createAdminApiContext,
-} from '../../utils/admin';
-import { fillDescriptionBox, getDescriptionBox } from '../../utils/common';
+  fillDescriptionBox,
+  getDescriptionBox,
+  redirectToHomePage,
+} from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
   waitForTaskCreateResponse,
@@ -38,38 +39,12 @@ import {
 const adminFile = 'playwright/.auth/admin.json';
 test.use({ storageState: adminFile });
 
-interface EntityConfig {
-  name: string;
-  entityTypeName: string;
-  createEntity: () => TableClass | DashboardClass | TopicClass | PipelineClass;
-}
+const entityClasses = [TableClass, DashboardClass, TopicClass, PipelineClass];
 
-const ENTITY_CONFIGS: EntityConfig[] = [
-  {
-    name: 'Table',
-    entityTypeName: 'table',
-    createEntity: () => new TableClass(),
-  },
-  {
-    name: 'Dashboard',
-    entityTypeName: 'dashboard',
-    createEntity: () => new DashboardClass(),
-  },
-  {
-    name: 'Topic',
-    entityTypeName: 'topic',
-    createEntity: () => new TopicClass(),
-  },
-  {
-    name: 'Pipeline',
-    entityTypeName: 'pipeline',
-    createEntity: () => new PipelineClass(),
-  },
-];
+let entities: InstanceType<(typeof entityClasses)[number]>[];
 
 const createDescriptionTaskViaUI = async (
   page: Page,
-  entityName: string,
   entityType: string,
   assigneeName: string,
   description: string
@@ -97,7 +72,6 @@ const createDescriptionTaskViaUI = async (
 
 const createTagTaskViaUI = async (
   page: Page,
-  entityName: string,
   entityType: string,
   assigneeName: string,
   tagFQN: string
@@ -157,7 +131,7 @@ const resolveTaskWithApproval = async (page: Page) => {
   await approveTaskFromDetails(page);
 };
 
-const resolveTaskWithRejection = async (page: Page, comment: string) => {
+const resolveTaskWithRejection = async (page: Page) => {
   await openFirstTaskCard(page);
 
   await closeTaskFromDetails(page);
@@ -184,9 +158,6 @@ const switchToClosedTaskFilter = async (page: Page) => {
 
 test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   const user = new UserClass();
-  const entities: Array<
-    TableClass | DashboardClass | TopicClass | PipelineClass
-  > = [];
 
   test.beforeAll(async () => {
     const { apiContext, afterAction } = await createAdminApiContext();
@@ -194,10 +165,10 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
     try {
       await user.create(apiContext);
 
-      for (const config of ENTITY_CONFIGS) {
-        const entity = config.createEntity();
+      entities = entityClasses.map((EntityClass) => new EntityClass());
+
+      for (const entity of entities) {
         await entity.create(apiContext);
-        entities.push(entity);
       }
     } finally {
       await afterAction();
@@ -218,18 +189,20 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
-  for (let i = 0; i < ENTITY_CONFIGS.length; i++) {
-    const config = ENTITY_CONFIGS[i];
+  entityClasses.forEach((EntityClass) => {
+    const entityName = new EntityClass().getType();
 
-    test(`Create and resolve description task for ${config.name} via UI`, async ({
+    test(`Create and resolve description task for ${entityName} via UI`, async ({
       page,
     }) => {
-      const entity = entities[i];
+      const entity = entities.find(
+        (e) => e instanceof EntityClass
+      ) as InstanceType<typeof EntityClass>;
       const userName = user.responseData?.name ?? '';
-      const description = `Test description for ${config.name} task`;
+      const description = `Test description for ${entityName} task`;
 
       await test.step('Navigate to entity page', async () => {
         await entity.visitEntityPage(page);
@@ -239,8 +212,7 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       await test.step('Create description task via UI', async () => {
         await createDescriptionTaskViaUI(
           page,
-          entity.entityResponseData?.['name'],
-          config.entityTypeName,
+          entityName.toLowerCase(),
           userName,
           description
         );
@@ -261,10 +233,12 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       });
     });
 
-    test(`Create and reject tag task for ${config.name} via UI`, async ({
+    test(`Create and reject tag task for ${entityName} via UI`, async ({
       page,
     }) => {
-      const entity = entities[i];
+      const entity = entities.find(
+        (e) => e instanceof EntityClass
+      ) as InstanceType<typeof EntityClass>;
       const userName = user.responseData?.name ?? '';
       const tagFQN = 'PII.None';
 
@@ -276,8 +250,7 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       await test.step('Create tag task via UI', async () => {
         await createTagTaskViaUI(
           page,
-          entity.entityResponseData?.['name'],
-          config.entityTypeName,
+          entityName.toLowerCase(),
           userName,
           tagFQN
         );
@@ -294,13 +267,10 @@ test.describe('Tasks UI Flow - Multi Entity Tests', () => {
       });
 
       await test.step('Reject task with comment', async () => {
-        await resolveTaskWithRejection(
-          page,
-          'Tag not appropriate for this entity'
-        );
+        await resolveTaskWithRejection(page);
       });
     });
-  }
+  });
 });
 
 test.describe('Task Workflow - Table Column Tasks', () => {
@@ -331,7 +301,7 @@ test.describe('Task Workflow - Table Column Tasks', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
   test('Create description task for table column via UI', async ({ page }) => {
@@ -461,7 +431,7 @@ test.describe('Task Activity Feed Integration', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await authenticateAdminPage(page);
+    await redirectToHomePage(page);
   });
 
   test('Verify task lifecycle in activity feed', async ({ page }) => {
@@ -473,7 +443,6 @@ test.describe('Task Activity Feed Integration', () => {
 
       await createDescriptionTaskViaUI(
         page,
-        table.entityResponseData?.['name'],
         'table',
         userName,
         'Activity feed test description'
@@ -517,7 +486,6 @@ test.describe('Task Activity Feed Integration', () => {
 
       await createDescriptionTaskViaUI(
         page,
-        table.entityResponseData?.['name'],
         'table',
         userName,
         taskDescription
