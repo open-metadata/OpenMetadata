@@ -231,7 +231,7 @@ public final class Pipelines {
     }
 
     public PipelineFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 
