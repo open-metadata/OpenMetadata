@@ -146,8 +146,8 @@ class IngestionPipelinePersistenceSecretsTest {
   @Test
   void historyEncryptionDoesNotOverwriteActiveManagedCredential() {
     final InMemorySecretsManager manager =
-        InMemorySecretsManager.getInstance(
-            new SecretsManager.SecretsConfig("test", "test", List.of(), null));
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig("test", "test", List.of(), null)) {};
     SecretsManagerFactory.setSecretsManager(manager);
     final IngestionPipeline active = pipeline();
     manager.encryptIngestionPipeline(active);
