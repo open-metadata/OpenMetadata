@@ -112,7 +112,9 @@ const IngestionNameCard = ({
         <Owner
           className="tw:mt-2"
           data-testid="ingestion-owners"
+          isCompactView={false}
           owners={toOwnerRefs(owners)}
+          showLabel={false}
         />
         {showOwnersError && (
           <HintText
