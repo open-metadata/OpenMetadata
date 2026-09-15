@@ -17,27 +17,27 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import {
-    CERTIFICATION_CATEGORY,
-    TIER_CATEGORY
+  CERTIFICATION_CATEGORY,
+  TIER_CATEGORY,
 } from '../../../../constants/constants';
 import {
-    FieldOptions,
-    FIELD_OPTIONS_DROPDOWN
+  FieldOptions,
+  FIELD_OPTIONS_DROPDOWN,
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { EntityStatus } from '../../../../generated/entity/data/glossaryTerm';
 import {
-    LabelType,
-    State,
-    TagLabel
+  LabelType,
+  State,
+  TagLabel,
 } from '../../../../generated/type/tagLabel';
 import { getTags } from '../../../../rest/tagAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
-    createNodeConfig,
-    isValidString
+  createNodeConfig,
+  isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 

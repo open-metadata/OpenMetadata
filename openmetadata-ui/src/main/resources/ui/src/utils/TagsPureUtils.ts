@@ -15,16 +15,16 @@ import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
 import {
-    ResourceEntity,
-    type UIPermission
+  ResourceEntity,
+  type UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import type { Tag } from '../generated/entity/classification/tag';
 import type {
-    AssetCertification,
-    Column
+  AssetCertification,
+  Column,
 } from '../generated/entity/data/table';
 import { TagSource } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
@@ -34,9 +34,9 @@ import { getEntityName } from './EntityNameUtils';
 import i18n from './i18next/LocalUtil';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import {
-    getClassificationTagPath,
-    getExplorePath,
-    getGlossaryPath
+  getClassificationTagPath,
+  getExplorePath,
+  getGlossaryPath,
 } from './RouterUtils';
 import { getTermQuery } from './SearchPureUtils';
 import { getTagsWithoutTier } from './TablePureUtils';

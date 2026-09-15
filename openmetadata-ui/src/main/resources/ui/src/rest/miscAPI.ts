@@ -26,8 +26,8 @@ import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import { SearchResponse } from '../interface/search.interface';
 import {
-    escapeESReservedCharacters,
-    getEncodedFqn
+  escapeESReservedCharacters,
+  getEncodedFqn,
 } from '../utils/StringUtils';
 import APIClient from './index';
 

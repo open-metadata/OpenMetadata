@@ -13,11 +13,11 @@
 import { render } from '@testing-library/react';
 import { getTermQuery } from './SearchPureUtils';
 import {
-    buildTagFqnIncludeRegex,
-    getTagAssetsQueryFilter,
-    getTagUsageAggregationField,
-    getUsageCountLink,
-    parseTagUsageBuckets
+  buildTagFqnIncludeRegex,
+  getTagAssetsQueryFilter,
+  getTagUsageAggregationField,
+  getUsageCountLink,
+  parseTagUsageBuckets,
 } from './TagsPureUtils';
 import { getDeleteIcon } from './TagsUtils';
 
