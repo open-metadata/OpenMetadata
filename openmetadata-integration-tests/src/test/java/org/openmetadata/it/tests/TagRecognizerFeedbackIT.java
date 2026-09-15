@@ -48,6 +48,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 
 @ExtendWith(TestNamespaceExtension.class)
@@ -63,11 +64,15 @@ public class TagRecognizerFeedbackIT {
     WorkflowDefinitionRepository workflowDefinitionRepository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
     org.openmetadata.schema.governance.workflows.WorkflowDefinition workflowDefinition =
-        workflowDefinitionRepository.findByName("RecognizerFeedbackReviewWorkflow", Include.ALL);
+        workflowDefinitionRepository
+            .lookup()
+            .byName("RecognizerFeedbackReviewWorkflow", Include.ALL);
 
     // Force redeploy to ensure latest approval listener wiring (Task entity cutover) is active,
     // even when the database already has an older deployed process definition.
-    workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, "admin");
+    workflowDefinitionRepository
+        .creates()
+        .upsert(null, workflowDefinition, new EntityCommandActor("admin", null), false);
     workflowHandler.resumeWorkflow("RecognizerFeedbackReviewWorkflow");
 
     Awaitility.await("Wait for workflow to be ready")

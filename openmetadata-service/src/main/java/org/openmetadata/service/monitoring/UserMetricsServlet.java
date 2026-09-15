@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -152,7 +153,11 @@ public class UserMetricsServlet extends HttpServlet {
 
     // Fallback: Get users and check their updatedAt times
     EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("lastActivityTime", "updatedAt"));
-    List<User> users = userRepository.listAfter(null, fields, filter, limit, null).getData();
+    List<User> users =
+        userRepository
+            .pages()
+            .after(new EntityPageReader.Projection(null, fields, filter), limit, null)
+            .getData();
 
     long maxActivityTime = 0;
     for (User user : users) {

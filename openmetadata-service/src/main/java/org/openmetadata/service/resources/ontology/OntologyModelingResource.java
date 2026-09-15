@@ -27,6 +27,7 @@ import java.util.Objects;
 import org.openmetadata.schema.api.data.OntologyIriPreview;
 import org.openmetadata.schema.api.data.OntologyIriPreviewRequest;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -62,7 +63,13 @@ public final class OntologyModelingResource {
       @Valid final OntologyIriPreviewRequest request) {
     final GlossaryRepository repository = glossaryRepository();
     final Glossary glossary =
-        repository.get(null, request.getGlossaryId(), repository.getFields(""));
+        repository
+            .reads()
+            .byId(
+                request.getGlossaryId(),
+                repository.fieldPolicy().parse(""),
+                Include.NON_DELETED,
+                false);
     authorizeView(securityContext, repository, glossary);
     return iriMinter.preview(glossary, request);
   }

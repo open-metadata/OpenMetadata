@@ -38,6 +38,8 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
@@ -45,7 +47,6 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -55,6 +56,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MigrationUtil {
+
   static final Map<String, List<String>> SERVICE_TYPE_ENTITY_MAP = new HashMap<>();
 
   static {
@@ -76,10 +78,13 @@ public class MigrationUtil {
 
   public static final String SERVICE_ENTITY_MIGRATION =
       "SELECT COUNT(*) FROM entity_relationship er JOIN %s f ON er.fromID = f.id JOIN %s t ON er.toID = t.id WHERE er.relation = 13 AND f.fqnHash LIKE '%s.%%' AND t.fqnHash LIKE '%s.%%'";
+
   private static final String UPDATE_NULL_JSON_MYSQL =
       "UPDATE entity_relationship SET json = :json WHERE json IS NULL AND relation = 13";
+
   private static final String UPDATE_NULL_JSON_POSTGRESQL =
       "UPDATE entity_relationship SET json = :json::jsonb WHERE json IS NULL AND relation = 13";
+
   private static final String UPDATE_NON_NULL_MYSQL_JSON =
       "UPDATE entity_relationship SET json = JSON_SET(json, '$.createdAt', IFNULL(CAST(json->>'$.createdAt' AS UNSIGNED), :currTime), '$.createdBy', IFNULL(JSON_UNQUOTE(json->>'$.createdBy'), 'admin'), '$.updatedAt', IFNULL(CAST(json->>'$.updatedAt' AS UNSIGNED), :currTime), '$.updatedBy', IFNULL(JSON_UNQUOTE(json->>'$.updatedBy'), 'admin')) WHERE "
           + "relation = 13 AND json IS NOT NULL AND (json->>'$.createdAt' IS NULL OR JSON_UNQUOTE(json->>'$.createdBy') IS NULL OR json->>'$.updatedAt' IS NULL OR JSON_UNQUOTE(json->>'$.updatedBy') IS NULL)";
@@ -140,22 +145,19 @@ public class MigrationUtil {
     try {
       // Delete DataInsightsApplication - It will be recreated on AppStart
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-
       try {
-        appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+        appRepository.deletes().byName("admin", "DataInsightsApplication", true, true);
       } catch (EntityNotFoundException ex) {
         LOG.debug("DataInsights Application not found.");
       } catch (UnableToExecuteStatementException ex) {
         // Note: Due to a change in the code this delete fails on a postDelete step that is not
         LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
       }
-
       // Update DataInsightsApplication MarketplaceDefinition - It will be recreated on AppStart
       AppMarketPlaceRepository marketPlaceRepository =
           (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
-
       try {
-        marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+        marketPlaceRepository.deletes().byName("admin", "DataInsightsApplication", true, true);
       } catch (EntityNotFoundException ex) {
         LOG.debug("DataInsights Application Marketplace Definition not found.");
       } catch (UnableToExecuteStatementException ex) {
@@ -172,20 +174,14 @@ public class MigrationUtil {
     try {
       Class<?> clazz = nodeDefinition.getClass();
       var field = clazz.getDeclaredField("inputNamespaceMap");
-
       field.setAccessible(true);
-
       Object fieldValue = field.get(nodeDefinition);
-
       if (fieldValue == null) {
         Class<?> fieldType = field.getType();
-
         Object newValue = fieldType.getDeclaredConstructor().newInstance();
-
         field.set(nodeDefinition, newValue);
       }
     } catch (NoSuchFieldException ignored) {
-
     }
   }
 
@@ -197,23 +193,18 @@ public class MigrationUtil {
       var field = clazz.getDeclaredField("inputNamespaceMap");
       field.setAccessible(true);
       Object inputNamespaceMapObj = field.get(nodeDefinition);
-
       if (inputNamespaceMapObj != null) {
         Class<?> fieldType = field.getType();
-
         Field[] inputNamespaceMapFields = fieldType.getDeclaredFields();
-
         for (Field inputNamespaceMapField : inputNamespaceMapFields) {
           inputNamespaceMapField.setAccessible(true);
           String fieldName = inputNamespaceMapField.getName();
-
           if (inputNamespaceMap.containsKey(fieldName)) {
             inputNamespaceMapField.set(inputNamespaceMapObj, inputNamespaceMap.get(fieldName));
           }
         }
       }
     } catch (NoSuchFieldException ignored) {
-
     }
   }
 
@@ -222,22 +213,17 @@ public class MigrationUtil {
       WorkflowDefinitionRepository repository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
       List<WorkflowDefinition> workflowDefinitions =
-          repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
-
+          repository.collections().all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
       for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
         MainWorkflow.WorkflowGraph graph = new MainWorkflow.WorkflowGraph(workflowDefinition);
-
         for (WorkflowNodeDefinitionInterface nodeDefinition : workflowDefinition.getNodes()) {
           setDefaultInputNamespaceMap(nodeDefinition);
-
           Map<String, String> nodeInputNamespaceMap =
               (Map<String, String>)
                   JsonUtils.readOrConvertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
-
           if (nodeInputNamespaceMap == null) {
             continue;
           }
-
           if (nodeDefinition.getInput().contains(UPDATED_BY_VARIABLE)
               && nodeInputNamespaceMap.get(UPDATED_BY_VARIABLE) == null) {
             if (graph.getIncomingEdgesMap().containsKey(nodeDefinition.getName())) {
@@ -254,7 +240,9 @@ public class MigrationUtil {
           }
         }
         workflowDefinition.withConfig(new WorkflowConfiguration());
-        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        repository
+            .creates()
+            .upsert(null, workflowDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
       }
     } catch (Exception ex) {
       LOG.error("Error while updating workflow definitions", ex);
@@ -281,7 +269,7 @@ public class MigrationUtil {
               .withDeleted(false)
               .withChartType(chartType)
               .withIsSystemChart(true);
-      dataInsightSystemChartRepository.prepareInternal(chart, false);
+      dataInsightSystemChartRepository.preparation().prepare(chart, false);
       dataInsightSystemChartRepository
           .getDao()
           .insert("fqnHash", chart, chart.getFullyQualifiedName());
@@ -300,7 +288,6 @@ public class MigrationUtil {
             .withIncludeXAxisFiled("PII.*")
             .withGroupBy("columns.tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
-
     createChart(
         "assets_with_tier_bar",
         new LineChart()
@@ -309,7 +296,6 @@ public class MigrationUtil {
             .withIncludeXAxisFiled("tier.*")
             .withGroupBy("tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
-
     createChart(
         "assets_with_description",
         new LineChart()
@@ -318,7 +304,6 @@ public class MigrationUtil {
                     new LineChartMetric()
                         .withFormula(
                             "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"))));
-
     createChart(
         "assets_with_owners",
         new LineChart()
@@ -327,7 +312,6 @@ public class MigrationUtil {
                     new LineChartMetric()
                         .withFormula(
                             "(count(k='id.keyword',q='ownerName: *')/count(k='id.keyword'))*100"))));
-
     createChart(
         "assets_with_pii",
         new LineChart()
@@ -336,7 +320,6 @@ public class MigrationUtil {
                     new LineChartMetric()
                         .withFormula(
                             "(count(q='columns.tags.tagFQN: pii.*')/count(k='id.keyword'))*100"))));
-
     createChart(
         "assets_with_tier",
         new LineChart()
@@ -345,7 +328,6 @@ public class MigrationUtil {
                     new LineChartMetric()
                         .withFormula(
                             "(count(q='tags.tagFQN: tier.*')/count(k='id.keyword'))*100"))));
-
     createChart(
         "description_source_breakdown",
         new LineChart()
@@ -361,7 +343,6 @@ public class MigrationUtil {
                     new LineChartMetric()
                         .withFormula("sum(k='descriptionSources.Suggested')")
                         .withName("ai"))));
-
     createChart(
         "tag_source_breakdown",
         new LineChart()
@@ -376,7 +357,6 @@ public class MigrationUtil {
                     new LineChartMetric()
                         .withFormula("sum(k='tagSources.Automated')")
                         .withName("ai"))));
-
     createChart(
         "tier_source_breakdown",
         new LineChart()
@@ -402,7 +382,6 @@ public class MigrationUtil {
               handle, fromDomain.getEntityReference(), toDomain.getEntityReference());
         }
       }
-
     } catch (Exception ex) {
       LOG.error(
           "Error while updating null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
@@ -419,7 +398,6 @@ public class MigrationUtil {
               handle, fromDataProduct.getEntityReference(), toDataProduct.getEntityReference());
         }
       }
-
     } catch (Exception ex) {
       LOG.error(
           "Error while updating null json rows with createdAt, createdBy, updatedAt and updatedBy for lineage.",
@@ -481,20 +459,23 @@ public class MigrationUtil {
     List<ServiceEntityInterface> allServices = new ArrayList<>();
     Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
     serviceTypes.remove(ServiceType.METADATA);
-    serviceTypes.remove(ServiceType.DRIVE); // Exclude DRIVE as it doesn't exist in v1.7.0
-    serviceTypes.remove(ServiceType.SECURITY); // Exclude SECURITY as it doesn't exist in v1.7.0
-    serviceTypes.remove(ServiceType.LLM); // Exclude LLM as it doesn't exist until v1.12.0
-    serviceTypes.remove(ServiceType.MCP); // Exclude MCP as it doesn't exist until v1.13.0
-
+    // Exclude DRIVE as it doesn't exist in v1.7.0
+    serviceTypes.remove(ServiceType.DRIVE);
+    // Exclude SECURITY as it doesn't exist in v1.7.0
+    serviceTypes.remove(ServiceType.SECURITY);
+    // Exclude LLM as it doesn't exist until v1.12.0
+    serviceTypes.remove(ServiceType.LLM);
+    // Exclude MCP as it doesn't exist until v1.13.0
+    serviceTypes.remove(ServiceType.MCP);
     for (ServiceType serviceType : serviceTypes) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityPolicy<? extends EntityInterface> repository =
           Entity.getServiceEntityRepository(serviceType);
       ListFilter filter = new ListFilter(Include.ALL);
       List<ServiceEntityInterface> services =
-          (List<ServiceEntityInterface>) repository.listAll(repository.getFields("id"), filter);
+          (List<ServiceEntityInterface>)
+              repository.collections().all(repository.fieldPolicy().parse("id"), filter);
       allServices.addAll(services);
     }
-
     return allServices;
   }
 
@@ -505,7 +486,6 @@ public class MigrationUtil {
           "MIGRATION 1.7.0 - STARTING MIGRATION FOR SERVICES LINEAGE , FROM: {} TO: {}",
           fromService.getFullyQualifiedName(),
           toService.getFullyQualifiedName());
-
       if (fromService.getId().equals(toService.getId())
           && fromService
               .getEntityReference()
@@ -513,7 +493,6 @@ public class MigrationUtil {
               .equals(toService.getEntityReference().getType())) {
         return;
       }
-
       String fromServiceHash =
           FullyQualifiedName.buildHash(
               EntityInterfaceUtil.quoteName(fromService.getFullyQualifiedName()));
@@ -535,7 +514,6 @@ public class MigrationUtil {
                     fromServiceHash,
                     toServiceHash);
             int count = handle.createQuery(sql).mapTo(Integer.class).one();
-
             if (count > 0) {
               LineageDetails serviceLineageDetails =
                   new LineageDetails()
@@ -558,7 +536,6 @@ public class MigrationUtil {
           }
         }
       }
-
     } catch (Exception ex) {
       LOG.error(
           "Found issue while updating lineage for service from {} , to: {}",
@@ -570,27 +547,33 @@ public class MigrationUtil {
 
   private static List<Domain> getAllDomains() {
     DomainRepository repository = (DomainRepository) Entity.getEntityRepository(Entity.DOMAIN);
-    return repository.listAll(repository.getFields("id"), new ListFilter(Include.ALL));
+    return repository
+        .collections()
+        .all(repository.fieldPolicy().parse("id"), new ListFilter(Include.ALL));
   }
 
   private static List<DataProduct> getAllDataProducts() {
     DataProductRepository repository =
         (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
-    return repository.listAll(repository.getFields("id"), new ListFilter(Include.ALL));
+    return repository
+        .collections()
+        .all(repository.fieldPolicy().parse("id"), new ListFilter(Include.ALL));
   }
 
   public static void updateLineageBotPolicy() {
     PolicyRepository policyRepository =
         (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     List<Policy> policies =
-        policyRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+        policyRepository.collections().all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
     for (Policy policy : policies) {
       if (policy.getName().equals("LineageBotPolicy")) {
         for (Rule rule : policy.getRules()) {
           if (rule.getName().equals("LineageBotRule-Allow")
               && !rule.getOperations().contains(MetadataOperation.EDIT_ALL)) {
             rule.getOperations().add(MetadataOperation.EDIT_ALL);
-            policyRepository.createOrUpdate(null, policy, ADMIN_USER_NAME);
+            policyRepository
+                .creates()
+                .upsert(null, policy, new EntityCommandActor(ADMIN_USER_NAME, null), false);
           }
         }
       }

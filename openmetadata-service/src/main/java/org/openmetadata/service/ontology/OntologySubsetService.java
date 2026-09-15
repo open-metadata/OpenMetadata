@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologySubsetDraftFactory.Draft;
@@ -45,8 +46,13 @@ public final class OntologySubsetService {
         new OntologySubsetTermSelector(new RepositoryOntologySubsetTermLookup(termRepository));
     final OntologySubsetDraftFactory factory =
         new OntologySubsetDraftFactory(new OntologyIriMinter(), relationshipTypes::require, clock);
+    final var creates = changeSetRepository.creates();
     return new OntologySubsetService(
-        new OntologySubsetValidator(), selector, factory, changeSetRepository::create);
+        new OntologySubsetValidator(),
+        selector,
+        factory,
+        (uri, entity, actor, impersonated) ->
+            creates.create(uri, entity, new EntityCommandActor(actor, impersonated)));
   }
 
   OntologySubsetService(

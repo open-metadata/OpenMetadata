@@ -19,8 +19,9 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -50,34 +51,33 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Slf4j
 public class MigrationUtil {
+
   private static final ObjectMapper MAPPER = new ObjectMapper();
+
   private static final String ADMIN_USER_NAME = "admin";
 
   public static void migrateWorkflowDefinitions() {
     LOG.info(
         "Starting v1122 migration: converting addReviewers to assigneeSources and removing reviewers from excludeFields");
-
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-
     List<WorkflowDefinition> allWorkflows =
-        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
-
+        repository.collections().all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
     int totalUpdated = 0;
     for (WorkflowDefinition workflow : allWorkflows) {
       try {
         String originalJson = JsonUtils.pojoToJson(workflow);
         JsonNode originalNode = MAPPER.readTree(originalJson);
-
         // First migrate exclude fields, then assignee sources
         JsonNode excludeFieldsMigrated = migrateExcludeFields(originalNode);
         JsonNode fullyMigrated = migrateNodes(excludeFieldsMigrated);
-
         if (fullyMigrated != originalNode) {
           WorkflowDefinition updated =
               JsonUtils.readValue(
                   MAPPER.writeValueAsString(fullyMigrated), WorkflowDefinition.class);
-          repository.createOrUpdate(null, updated, ADMIN_USER_NAME);
+          repository
+              .creates()
+              .upsert(null, updated, new EntityCommandActor(ADMIN_USER_NAME, null), false);
           totalUpdated++;
           LOG.debug("Migrated workflow definition: {}", workflow.getFullyQualifiedName());
         }
@@ -89,7 +89,6 @@ public class MigrationUtil {
             e);
       }
     }
-
     LOG.info(
         "Completed v1122 migration: {} workflow definitions updated with assignee sources and exclude fields changes",
         totalUpdated);
@@ -103,7 +102,6 @@ public class MigrationUtil {
     if (node == null || node.isNull()) {
       return node;
     }
-
     if (node.isObject()) {
       ObjectNode obj = (ObjectNode) node;
       if (needsMigration(obj)) {
@@ -122,7 +120,6 @@ public class MigrationUtil {
       }
       return changed ? result : node;
     }
-
     if (node.isArray()) {
       ArrayNode arr = (ArrayNode) node;
       boolean changed = false;
@@ -136,7 +133,6 @@ public class MigrationUtil {
       }
       return changed ? result : node;
     }
-
     return node;
   }
 
@@ -146,35 +142,29 @@ public class MigrationUtil {
     JsonNode assigneeSources = obj.get("assigneeSources");
     JsonNode addOwners = obj.get("addOwners");
     JsonNode candidates = obj.get("candidates");
-
     // Only migrate if we have old fields AND don't have the complete new structure
     boolean hasOldFields =
         (assigneeSource != null
             || assigneeSources != null
             || (addReviewers != null && addOwners == null && candidates == null));
     boolean hasNewStructure = (addReviewers != null && addOwners != null && candidates != null);
-
     return hasOldFields && !hasNewStructure;
   }
 
   private static ObjectNode migrateAssigneesNode(ObjectNode assigneesObj) {
     ObjectNode result = MAPPER.createObjectNode();
-
     // Set defaults
     boolean addReviewers = true;
     boolean addOwners = false;
     ArrayNode candidates = MAPPER.createArrayNode();
-
     // Handle old format conversions
     JsonNode addReviewersNode = assigneesObj.get("addReviewers");
     JsonNode assigneeSourceNode = assigneesObj.get("assigneeSource");
     JsonNode assigneeSourcesNode = assigneesObj.get("assigneeSources");
-
     // Process old addReviewers field
     if (addReviewersNode != null && addReviewersNode.isBoolean()) {
       addReviewers = addReviewersNode.asBoolean();
     }
-
     // Process assigneeSource (single source)
     if (assigneeSourceNode != null) {
       String source = assigneeSourceNode.asText();
@@ -184,7 +174,6 @@ public class MigrationUtil {
         addOwners = true;
       }
     }
-
     // Process assigneeSources (array)
     if (assigneeSourcesNode != null && assigneeSourcesNode.isArray()) {
       for (JsonNode sourceNode : assigneeSourcesNode) {
@@ -197,18 +186,17 @@ public class MigrationUtil {
           // It's an entity reference - add to candidates
           // For now, create a simple entity reference structure
           ObjectNode candidateRef = MAPPER.createObjectNode();
-          candidateRef.put("type", "user"); // Default assumption
+          // Default assumption
+          candidateRef.put("type", "user");
           candidateRef.put("fullyQualifiedName", source);
           candidates.add(candidateRef);
         }
       }
     }
-
     // Set the new structure
     result.put("addReviewers", addReviewers);
     result.put("addOwners", addOwners);
     result.set("candidates", candidates);
-
     return result;
   }
 
@@ -219,31 +207,27 @@ public class MigrationUtil {
     if (node == null || node.isNull()) {
       return node;
     }
-
     if (node.isObject()) {
       ObjectNode obj = (ObjectNode) node;
       boolean changed = false;
       ObjectNode result = MAPPER.createObjectNode();
-
       for (java.util.Iterator<java.util.Map.Entry<String, JsonNode>> it = obj.fields();
           it.hasNext(); ) {
         java.util.Map.Entry<String, JsonNode> entry = it.next();
         String fieldName = entry.getKey();
         JsonNode fieldValue = entry.getValue();
-
         if ("exclude".equals(fieldName) && fieldValue.isArray()) {
           ArrayNode excludeArray = (ArrayNode) fieldValue;
           ArrayNode newExcludeArray = MAPPER.createArrayNode();
           boolean excludeArrayChanged = false;
-
           for (JsonNode element : excludeArray) {
             if (element.isTextual() && "reviewers".equals(element.asText())) {
-              excludeArrayChanged = true; // Skip this element (remove "reviewers")
+              // Skip this element (remove "reviewers")
+              excludeArrayChanged = true;
             } else {
               newExcludeArray.add(element);
             }
           }
-
           if (excludeArrayChanged) {
             result.set(fieldName, newExcludeArray);
             changed = true;
@@ -260,7 +244,6 @@ public class MigrationUtil {
       }
       return changed ? result : node;
     }
-
     if (node.isArray()) {
       ArrayNode arr = (ArrayNode) node;
       boolean changed = false;
@@ -274,7 +257,6 @@ public class MigrationUtil {
       }
       return changed ? result : node;
     }
-
     return node;
   }
 
@@ -284,13 +266,12 @@ public class MigrationUtil {
     List<LoadTags> loadTagsList;
     try {
       loadTagsList =
-          EntityRepository.getEntitiesFromSeedData(
+          EntityPolicySupport.getEntitiesFromSeedData(
               CLASSIFICATION, ".*json/data/tags/piiTagsWithRecognizers.json$", LoadTags.class);
     } catch (IOException e) {
       LOG.error("Failed to load tag data");
       return result;
     }
-
     Map<String, List<Recognizer>> recognizersByTag = new HashMap<>();
     for (LoadTags loadTags : loadTagsList) {
       String classification = loadTags.getCreateClassification().getName();
@@ -300,7 +281,6 @@ public class MigrationUtil {
               classification + "." + createTag.getName(), createTag.getRecognizers());
       }
     }
-
     recognizersByTag.forEach(
         (tagFqn, recognizers) -> {
           try {
@@ -310,7 +290,6 @@ public class MigrationUtil {
             LOG.error("Failed to update recognizers for tag: {}", tagFqn, e);
           }
         });
-
     return result;
   }
 
@@ -323,12 +302,10 @@ public class MigrationUtil {
       boolean isForceMigration,
       String version) {
     String recognizersJson = JsonUtils.pojoToJson(recognizers);
-
     String truncatedQuery =
         String.format(
             "UPDATE tag SET recognizers = [ ... data truncated for %s ... ] WHERE fullyQualifiedName = %s",
             tagFqn, tagFqn);
-
     try {
       handle.attach(CollectionDAO.TagDAO.class).patchRecognizers(tagFqn, recognizersJson);
       migrationDAO.upsertServerMigrationSQL(version, truncatedQuery, hash(truncatedQuery));

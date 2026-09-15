@@ -30,8 +30,8 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
 
 /**
@@ -73,12 +73,10 @@ class EntityNameIndexIT {
         "Expected to inspect the indexed entity catalog but found only "
             + tables.size()
             + " tables");
-
     Jdbi jdbi = TestSuiteBootstrap.getJdbi();
     List<String> missing =
         jdbi.withHandle(
             handle -> findTablesMissingLeadingNameIndex(handle.getConnection(), tables));
-
     assertTrue(
         missing.isEmpty(),
         "Entity tables paginated by `ORDER BY name, id` during reindex must have a leading-`name` "
@@ -99,7 +97,7 @@ class EntityNameIndexIT {
         continue;
       }
       try {
-        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+        EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
         tables.add(repository.getDao().getTableName().toLowerCase(Locale.ROOT));
       } catch (EntityNotFoundException ignored) {
         // Index keys without a relational EntityRepository (sub-documents like tableColumn,
@@ -115,7 +113,6 @@ class EntityNameIndexIT {
     String catalog = mysql ? connection.getCatalog() : null;
     String schema = mysql ? null : "public";
     DatabaseMetaData metaData = connection.getMetaData();
-
     List<String> missing = new ArrayList<>();
     for (String table : tables) {
       boolean relevant =

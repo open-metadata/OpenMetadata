@@ -59,12 +59,13 @@ public class BotTokenCache {
     public String load(@CheckForNull String botName) {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =
-          userRepository.getByName(
-              null,
-              botName,
-              new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
-              NON_DELETED,
-              true);
+          userRepository
+              .reads()
+              .byName(
+                  botName,
+                  new Fields(Set.of(UserResource.USER_PROTECTED_FIELDS)),
+                  NON_DELETED,
+                  true);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
       SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
       secretsManager.decryptAuthenticationMechanism(user.getName(), authenticationMechanism);

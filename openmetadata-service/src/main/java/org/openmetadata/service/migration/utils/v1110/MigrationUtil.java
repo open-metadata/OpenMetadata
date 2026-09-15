@@ -13,7 +13,7 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
@@ -21,13 +21,18 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 public class MigrationUtil {
+
   private static final Map<String, String> PATH_BY_TAG =
       Map.of(
-          "PII.Sensitive", "data/tags/Sensitive.json",
-          "PII.NonSensitive", "data/tags/NonSensitive.json");
+          "PII.Sensitive",
+          "data/tags/Sensitive.json",
+          "PII.NonSensitive",
+          "data/tags/NonSensitive.json");
+
   private final MigrationFile migrationFile;
 
   private final ConnectionType connectionType;
+
   public static final String FLYWAY_TABLE_NAME = "DATABASE_CHANGE_LOG";
 
   public MigrationUtil(ConnectionType connectionType, MigrationFile migrationFile) {
@@ -41,13 +46,12 @@ public class MigrationUtil {
     List<LoadTags> loadTagsList;
     try {
       loadTagsList =
-          EntityRepository.getEntitiesFromSeedData(
+          EntityPolicySupport.getEntitiesFromSeedData(
               CLASSIFICATION, ".*json/data/tags/piiTagsWithRecognizers.json$", LoadTags.class);
     } catch (IOException e) {
       LOG.error("Failed to load tag data");
       return result;
     }
-
     Map<String, List<Recognizer>> recognizersByTag = new HashMap<>();
     for (LoadTags loadTags : loadTagsList) {
       String classification = loadTags.getCreateClassification().getName();
@@ -57,7 +61,6 @@ public class MigrationUtil {
               classification + "." + createTag.getName(), createTag.getRecognizers());
       }
     }
-
     recognizersByTag.forEach(
         (tagFqn, recognizers) -> {
           try {
@@ -67,7 +70,6 @@ public class MigrationUtil {
             LOG.error("Failed to update recognizers for tag: {}", tagFqn, e);
           }
         });
-
     return result;
   }
 
@@ -80,13 +82,10 @@ public class MigrationUtil {
       String queryTemplate,
       Boolean isForceMigration) {
     String jsonContent = JsonUtils.pojoToJson(recognizers);
-
     String updateQuery = String.format(queryTemplate, jsonContent, tagFqn);
-
     String truncatedQuery =
         String.format(
             queryTemplate, String.format("[ ... data truncated for %s ... ]", tagFqn), tagFqn);
-
     try {
       handle.execute(queryTemplate, jsonContent, tagFqn);
       migrationDAO.upsertServerMigrationSQL(
@@ -110,9 +109,7 @@ public class MigrationUtil {
           case POSTGRES -> "SELECT COUNT(*) FROM information_schema.tables "
               + "WHERE table_schema = current_schema() AND table_name = ?";
         };
-
     Integer count = handle.createQuery(query).bind(0, tableName).mapTo(Integer.class).one();
-
     return count > 0;
   }
 }

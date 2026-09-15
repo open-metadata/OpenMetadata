@@ -6,13 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -29,12 +25,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.attachments.Asset;
@@ -44,6 +39,11 @@ import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityCollectionFixture;
+import org.openmetadata.service.entity.read.EntityReadFixture;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
@@ -62,8 +62,10 @@ class ContextFileProcessingServiceTest {
   @Mock private ContextMemoryExtractor memoryExtractor;
   @Mock private FileContextProcessingEngine fileEngine;
 
-  @Captor private ArgumentCaptor<ContextFile> updatedFileCaptor;
-  @Captor private ArgumentCaptor<ContextFileContent> updatedContentCaptor;
+  private final List<ContextFile> fileUpdates = new ArrayList<>();
+  private final List<ContextFileContent> contentUpdates = new ArrayList<>();
+  private Consumer<ContextFile> fileWrite = entity -> {};
+  private Consumer<ContextFileContent> contentWrite = entity -> {};
 
   private UUID fileId;
   private UUID contentId;
@@ -73,7 +75,35 @@ class ContextFileProcessingServiceTest {
 
   @BeforeEach
   void setUp() {
+    lenient()
+        .when(repository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(ContextFile.class));
+    lenient()
+        .when(repository.puts())
+        .thenReturn(
+            (uri, original, updated, actor, mode) -> {
+              assertNull(uri);
+              assertEquals(file, original);
+              assertEquals(new EntityCommandActor(UPLOADER, null), actor);
+              assertEquals(EntityPutService.Mode.OPTIMISTIC, mode);
+              fileUpdates.add(updated);
+              fileWrite.accept(updated);
+              return null;
+            });
+    lenient()
+        .when(contentRepository.puts())
+        .thenReturn(
+            (uri, original, updated, actor, mode) -> {
+              assertNull(uri);
+              assertEquals(content, original);
+              assertEquals(new EntityCommandActor(UPLOADER, null), actor);
+              assertEquals(EntityPutService.Mode.OPTIMISTIC, mode);
+              contentUpdates.add(updated);
+              contentWrite.accept(updated);
+              return null;
+            });
     fileId = UUID.randomUUID();
+
     contentId = UUID.randomUUID();
 
     file =
@@ -101,8 +131,16 @@ class ContextFileProcessingServiceTest {
     lenient().when(repository.getContentRepository()).thenReturn(contentRepository);
     lenient().when(repository.getAssetRepository()).thenReturn(assetRepository);
     lenient()
-        .when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(file);
+        .when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(fileId, readId);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return file;
+                }));
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
   }
@@ -118,18 +156,14 @@ class ContextFileProcessingServiceTest {
 
     service(Runnable::run, () -> assetService).process(fileId, contentId);
 
-    verify(repository, times(2))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(UPLOADER));
-    verify(contentRepository, times(2))
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), eq(UPLOADER));
+    assertEquals(2, fileUpdates.size());
+    assertEquals(2, contentUpdates.size());
 
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(1).getProcessingStatus());
     assertEquals("Quarterly results", fileUpdates.get(1).getExtractedText());
     assertEquals(3, fileUpdates.get(1).getPageCount());
 
-    List<ContextFileContent> contentUpdates = updatedContentCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, contentUpdates.get(0).getProcessingStatus());
     assertNull(contentUpdates.get(0).getProcessingError());
     assertEquals(ProcessingStatus.Processed, contentUpdates.get(1).getProcessingStatus());
@@ -150,9 +184,7 @@ class ContextFileProcessingServiceTest {
     // The shared engine owns derive/reconcile/stat-stamping (covered by its own tests); the
     // service is responsible for driving the status machine around it.
     verify(fileEngine).runExtraction(fileId);
-    verify(repository, times(3))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(3, fileUpdates.size());
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
@@ -176,16 +208,13 @@ class ContextFileProcessingServiceTest {
     service(Runnable::run, () -> assetService, rejectingLlmExecutor, true)
         .process(fileId, contentId);
 
-    verify(repository, times(3))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(3, fileUpdates.size());
     assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
     assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
     assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
 
-    verify(contentRepository, times(3))
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
-    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
+    assertEquals(3, contentUpdates.size());
+    ContextFileContent failedContent = contentUpdates.get(2);
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
     assertEquals(
         "Knowledge pill extraction queue is full. Please retry later.",
@@ -209,16 +238,13 @@ class ContextFileProcessingServiceTest {
 
     service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
-    verify(repository, times(3))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
+    assertEquals(3, fileUpdates.size());
     assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
     assertEquals("provider exploded", fileUpdates.get(2).getProcessingError());
     assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
 
-    verify(contentRepository, times(3))
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
-    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
+    assertEquals(3, contentUpdates.size());
+    ContextFileContent failedContent = contentUpdates.get(2);
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
     assertEquals("provider exploded", failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
@@ -234,8 +260,12 @@ class ContextFileProcessingServiceTest {
         new ContextFile()
             .withId(UUID.randomUUID())
             .withProcessingStatus(ProcessingStatus.Analyzing);
-    when(repository.listAll(any(), any()))
-        .thenReturn(List.of(analyzing, extracting, uploaded, processed, noContent));
+    when(repository.collections())
+        .thenReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (fields, filter) ->
+                    List.of(analyzing, extracting, uploaded, processed, noContent)));
     List<Runnable> queued = new ArrayList<>();
 
     int resubmitted = service(queued::add, () -> assetService).recoverInterruptedProcessing();
@@ -286,8 +316,8 @@ class ContextFileProcessingServiceTest {
 
     service(Runnable::run, () -> assetService).process(fileId, contentId);
 
-    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
-    verify(contentRepository, never()).updateIfCurrent(any(), any(), any(), anyString());
+    assertTrue(fileUpdates.isEmpty());
+    assertTrue(contentUpdates.isEmpty());
     verify(assetService, never()).read(any());
   }
 
@@ -298,26 +328,35 @@ class ContextFileProcessingServiceTest {
     CountDownLatch finalWriteStarted = new CountDownLatch(1);
     CountDownLatch deleteCommitted = new CountDownLatch(1);
 
-    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenAnswer(ignored -> deleted.get() ? null : file);
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(fileId, readId);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return deleted.get() ? null : file;
+                }));
     when(assetService.read(asset))
         .thenReturn(
             CompletableFuture.completedFuture(
                 new ByteArrayInputStream("Quarterly results".getBytes())));
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
-    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
-        .thenAnswer(
-            invocation -> {
-              if (fileWriteAttempts.incrementAndGet() == 2) {
-                finalWriteStarted.countDown();
-                if (!deleteCommitted.await(5, TimeUnit.SECONDS)) {
-                  throw new IllegalStateException("Timed out waiting for simulated hard delete");
-                }
-                throw new PreconditionFailedException("Context file was deleted");
-              }
-              return null;
-            });
+    fileWrite =
+        updated -> {
+          if (fileWriteAttempts.incrementAndGet() == 2) {
+            finalWriteStarted.countDown();
+            try {
+              assertTrue(deleteCommitted.await(5, TimeUnit.SECONDS));
+            } catch (InterruptedException exception) {
+              Thread.currentThread().interrupt();
+              throw new IllegalStateException(exception);
+            }
+            throw new PreconditionFailedException("Context file was deleted");
+          }
+        };
 
     CompletableFuture<Void> processing =
         CompletableFuture.runAsync(
@@ -329,11 +368,10 @@ class ContextFileProcessingServiceTest {
     processing.get(5, TimeUnit.SECONDS);
 
     assertEquals(2, fileWriteAttempts.get());
-    verify(repository, times(2))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(2, fileUpdates.size());
     assertEquals(
         List.of(ProcessingStatus.Analyzing, ProcessingStatus.Processed),
-        updatedFileCaptor.getAllValues().stream().map(ContextFile::getProcessingStatus).toList());
+        fileUpdates.stream().map(ContextFile::getProcessingStatus).toList());
   }
 
   @Test
@@ -345,30 +383,21 @@ class ContextFileProcessingServiceTest {
                 new ByteArrayInputStream("Quarterly results".getBytes())));
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
-    when(contentRepository.updateIfCurrent(
-            isNull(), same(content), any(ContextFileContent.class), anyString()))
-        .thenAnswer(
-            invocation -> {
-              int attempt = contentWriteAttempts.incrementAndGet();
-              if (attempt >= 2 && attempt <= 4) {
-                throw new PreconditionFailedException("Concurrent content update");
-              }
-              return null;
-            });
+    contentWrite =
+        updated -> {
+          int attempt = contentWriteAttempts.incrementAndGet();
+          if (attempt >= 2 && attempt <= 4) {
+            throw new PreconditionFailedException("Concurrent content update");
+          }
+        };
 
     service(Runnable::run, () -> assetService).process(fileId, contentId);
 
     assertEquals(5, contentWriteAttempts.get());
-    verify(contentRepository, times(5))
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
-    assertEquals(
-        ProcessingStatus.Processed,
-        updatedContentCaptor.getAllValues().getLast().getProcessingStatus());
-    verify(repository, times(2))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    assertEquals(
-        ProcessingStatus.Processed,
-        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+    assertEquals(5, contentUpdates.size());
+    assertEquals(ProcessingStatus.Processed, contentUpdates.getLast().getProcessingStatus());
+    assertEquals(2, fileUpdates.size());
+    assertEquals(ProcessingStatus.Processed, fileUpdates.getLast().getProcessingStatus());
   }
 
   @Test
@@ -376,15 +405,13 @@ class ContextFileProcessingServiceTest {
     AtomicBoolean conflict = new AtomicBoolean(true);
     AtomicInteger fileWriteAttempts = new AtomicInteger();
     AtomicReference<Runnable> requeued = new AtomicReference<>();
-    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
-        .thenAnswer(
-            invocation -> {
-              fileWriteAttempts.incrementAndGet();
-              if (conflict.get()) {
-                throw new PreconditionFailedException("Concurrent file update");
-              }
-              return null;
-            });
+    fileWrite =
+        updated -> {
+          fileWriteAttempts.incrementAndGet();
+          if (conflict.get()) {
+            throw new PreconditionFailedException("Concurrent file update");
+          }
+        };
     when(assetService.read(asset))
         .thenReturn(
             CompletableFuture.completedFuture(
@@ -403,11 +430,8 @@ class ContextFileProcessingServiceTest {
 
     assertNull(requeued.get());
     assertEquals(12, fileWriteAttempts.get());
-    verify(contentRepository, times(2))
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
-    assertEquals(
-        ProcessingStatus.Processed,
-        updatedContentCaptor.getAllValues().getLast().getProcessingStatus());
+    assertEquals(2, contentUpdates.size());
+    assertEquals(ProcessingStatus.Processed, contentUpdates.getLast().getProcessingStatus());
   }
 
   @Test
@@ -424,19 +448,15 @@ class ContextFileProcessingServiceTest {
   }
 
   private void verifyFailedWith(String expectedReason) {
-    verify(repository, times(2))
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    verify(contentRepository, times(2))
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(2, fileUpdates.size());
+    assertEquals(2, contentUpdates.size());
 
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.Failed, fileUpdates.get(1).getProcessingStatus());
     assertEquals(expectedReason, fileUpdates.get(1).getProcessingError());
     assertNull(fileUpdates.get(1).getExtractedText());
     assertNull(fileUpdates.get(1).getPageCount());
 
-    List<ContextFileContent> contentUpdates = updatedContentCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, contentUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.Failed, contentUpdates.get(1).getProcessingStatus());
     assertEquals(expectedReason, contentUpdates.get(1).getProcessingError());
@@ -444,17 +464,15 @@ class ContextFileProcessingServiceTest {
   }
 
   private void verifyImmediateFailureWith(String expectedReason) {
-    verify(repository)
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    verify(contentRepository)
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(1, fileUpdates.size());
+    assertEquals(1, contentUpdates.size());
 
-    ContextFile fileUpdate = updatedFileCaptor.getValue();
+    ContextFile fileUpdate = fileUpdates.getFirst();
     assertEquals(ProcessingStatus.Failed, fileUpdate.getProcessingStatus());
     assertNull(fileUpdate.getExtractedText());
     assertNull(fileUpdate.getPageCount());
 
-    ContextFileContent contentUpdate = updatedContentCaptor.getValue();
+    ContextFileContent contentUpdate = contentUpdates.getFirst();
     assertEquals(ProcessingStatus.Failed, contentUpdate.getProcessingStatus());
     assertEquals(expectedReason, contentUpdate.getProcessingError());
     assertNull(contentUpdate.getExtractedText());

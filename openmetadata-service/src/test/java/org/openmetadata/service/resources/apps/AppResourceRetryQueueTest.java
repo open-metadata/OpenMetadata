@@ -40,6 +40,9 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityReadFixture;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.AuthorizationException;
@@ -103,7 +106,7 @@ class AppResourceRetryQueueTest {
     App nonSearchApp = new App().withId(UUID.randomUUID()).withName("DataInsightsApplication");
     when(repository.getByName(any(), eq("DataInsightsApplication"), any()))
         .thenReturn(nonSearchApp);
-    when(repository.getFields(eq("id"))).thenReturn(null);
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(App.class));
 
     try (MockedStatic<Entity> ignored = mockEntityRegistry()) {
       assertThrows(
@@ -118,7 +121,7 @@ class AppResourceRetryQueueTest {
   void listRetryQueue_returnsRecordsForSearchIndexingApplication() {
     App searchApp = new App().withId(UUID.randomUUID()).withName(SEARCH_INDEXING_APP);
     when(repository.getByName(any(), eq(SEARCH_INDEXING_APP), any())).thenReturn(searchApp);
-    when(repository.getFields(eq("id"))).thenReturn(null);
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(App.class));
 
     try (MockedStatic<Entity> ignored = mockEntityRegistry()) {
       stubRetryQueue();
@@ -137,7 +140,7 @@ class AppResourceRetryQueueTest {
   void listRetryQueue_authorizesViewAllBeforeReadingTheQueue() {
     App searchApp = new App().withId(UUID.randomUUID()).withName(SEARCH_INDEXING_APP);
     when(repository.getByName(any(), eq(SEARCH_INDEXING_APP), any())).thenReturn(searchApp);
-    when(repository.getFields(eq("id"))).thenReturn(null);
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(App.class));
 
     try (MockedStatic<Entity> ignored = mockEntityRegistry()) {
       stubRetryQueue();
@@ -181,6 +184,12 @@ class AppResourceRetryQueueTest {
     // The boundary check resolves the stored app to decide Create vs EditAll, which reads the
     // repository's PUT field set.
     when(repository.getPutFields()).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (name, query) -> {
+                  throw new EntityNotFoundException(name);
+                }));
     doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
 
     AppScheduler scheduler = mock(AppScheduler.class);
@@ -200,8 +209,14 @@ class AppResourceRetryQueueTest {
   void patchApplication_deniedRequestNeverUnschedulesTheApp() throws Exception {
     UUID appId = UUID.randomUUID();
     App app = new App().withId(appId).withName("DataInsightsApplication").withSystem(false);
-    when(repository.get(any(), eq(appId), any())).thenReturn(app);
-    when(repository.getFields(eq("bot,pipelines"))).thenReturn(null);
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(appId, readId);
+                  return app;
+                }));
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(App.class));
     doThrow(new AuthorizationException("denied")).when(authorizer).authorize(any(), any(), any());
 
     JsonArray operations =

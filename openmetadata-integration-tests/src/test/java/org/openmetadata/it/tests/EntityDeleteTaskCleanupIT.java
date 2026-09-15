@@ -96,6 +96,28 @@ public class EntityDeleteTaskCleanupIT {
     assertNotNull(afterSoftDelete, "A soft delete must not remove the task about the entity");
   }
 
+  @Test
+  void hardDelete_removesOpenTasksAboutContainedEntities(TestNamespace ns) {
+    final Glossary glossary = createGlossary(ns);
+    final GlossaryTerm first = createTermWithReviewer(glossary, "first_contained_target");
+    final GlossaryTerm second = createTermWithReviewer(glossary, "second_contained_target");
+    waitForOpenTaskAbout(first.getFullyQualifiedName());
+    waitForOpenTaskAbout(second.getFullyQualifiedName());
+
+    SdkClients.adminClient()
+        .glossaries()
+        .delete(glossary.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    Awaitility.await("tasks about hard-deleted descendants are removed")
+        .atMost(TASK_TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .untilAsserted(
+            () -> {
+              assertTrue(listOpenTasksAbout(first.getFullyQualifiedName()).isEmpty());
+              assertTrue(listOpenTasksAbout(second.getFullyQualifiedName()).isEmpty());
+            });
+  }
+
   private Glossary createGlossary(TestNamespace ns) {
     CreateGlossary create =
         new CreateGlossary()

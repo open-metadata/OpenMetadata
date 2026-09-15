@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -34,8 +33,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.cache.EntityCacheBypass;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
@@ -51,32 +50,51 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
  */
 @Slf4j
 public class PartitionWorker {
+
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
-  /** Context key for entity type */
+  /**
+   * Context key for entity type
+   */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key for staged index context. */
+  /**
+   * Context key for staged index context.
+   */
   private static final String STAGED_CONTEXT_KEY = "recreateContext";
 
-  /** Context key for target index */
+  /**
+   * Context key for target index
+   */
   private static final String TARGET_INDEX_KEY = "targetIndex";
 
-  /** Progress update interval (every N entities) */
+  /**
+   * Progress update interval (every N entities)
+   */
   private static final int PROGRESS_UPDATE_INTERVAL = 100;
 
-  /** Overall deadline for waiting on sink operations to complete */
+  /**
+   * Overall deadline for waiting on sink operations to complete
+   */
   private static final long SINK_WAIT_DEADLINE_MS = 300_000;
 
-  /** Timeout per flush cycle when retrying sink completion */
+  /**
+   * Timeout per flush cycle when retrying sink completion
+   */
   private static final int FLUSH_CYCLE_SECONDS = 30;
 
   private final DistributedSearchIndexCoordinator coordinator;
+
   private final BulkSink searchIndexSink;
+
   private final int batchSize;
+
   private final ReindexContext stagedIndexContext;
+
   private final AtomicBoolean stopped = new AtomicBoolean(false);
+
   private final IndexingFailureRecorder failureRecorder;
+
   private final ReindexingConfiguration reindexConfig;
 
   public PartitionWorker(
@@ -134,26 +152,22 @@ public class PartitionWorker {
     String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
     long rangeStart = partition.getRangeStart();
     long rangeEnd = partition.getRangeEnd();
-
     LOG.info(
         "Starting partition {} for entity type {} (range: {} - {})",
         partition.getId(),
         entityType,
         rangeStart,
         rangeEnd);
-
     if (stopped.get() || Thread.currentThread().isInterrupted()) {
       LOG.info("Skipping partition {} because worker is already stopped", partition.getId());
       return new PartitionResult(0, 0, true);
     }
-
     AtomicLong successCount = new AtomicLong(0);
     AtomicLong failedCount = new AtomicLong(0);
     AtomicLong readerFailedCount = new AtomicLong(0);
     AtomicLong warningsCount = new AtomicLong(0);
     AtomicLong processedCount = new AtomicLong(0);
     long currentOffset = rangeStart;
-
     // Create stats tracker for this partition
     StageStatsTracker statsTracker =
         new StageStatsTracker(
@@ -161,7 +175,6 @@ public class PartitionWorker {
             ServerIdentityResolver.getInstance().getServerId(),
             entityType,
             coordinator.getCollectionDAO().searchIndexServerStatsDAO());
-
     try {
       // Mark partition as started
       SearchIndexPartition processing =
@@ -170,7 +183,6 @@ public class PartitionWorker {
               .startedAt(System.currentTimeMillis())
               .build();
       coordinator.updatePartitionProgress(processing);
-
       // Initialize keyset cursor for efficient pagination (avoids OFFSET degradation)
       long cursorInitStart = System.currentTimeMillis();
       String keysetCursor = initializeKeysetCursor(partition, rangeStart);
@@ -179,7 +191,6 @@ public class PartitionWorker {
           entityType,
           rangeStart,
           System.currentTimeMillis() - cursorInitStart);
-
       // Process in batches
       while (currentOffset < rangeEnd
           && !stopped.get()
@@ -192,7 +203,6 @@ public class PartitionWorker {
         // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
         HeapBackpressure.awaitHeadroom();
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
-
         try {
           BatchResult batchResult =
               processBatch(entityType, keysetCursor, currentBatchSize, statsTracker);
@@ -205,10 +215,8 @@ public class PartitionWorker {
           warningsCount.addAndGet(batchResult.warningsCount());
           processedCount.addAndGet(
               batchResult.successCount() + batchResult.failedCount() + batchResult.warningsCount());
-
           currentOffset += currentBatchSize;
           keysetCursor = batchResult.nextCursor();
-
           // Update progress periodically
           if (processedCount.get() % PROGRESS_UPDATE_INTERVAL < batchSize) {
             updateProgress(
@@ -218,7 +226,6 @@ public class PartitionWorker {
                 successCount.get(),
                 failedCount.get());
           }
-
           // If keyset cursor exhausted, recompute or stop
           if (keysetCursor == null && currentOffset < rangeEnd) {
             keysetCursor = initializeKeysetCursor(partition, currentOffset);
@@ -235,20 +242,16 @@ public class PartitionWorker {
               break;
             }
           }
-
         } catch (SearchIndexException e) {
           LOG.error("Error processing batch at offset {} for {}", currentOffset, entityType, e);
-
           boolean isReaderFailure =
               e.getIndexingError() != null
                   && e.getIndexingError().getErrorSource()
                       == org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
-
           int batchFailedCount =
               e.getIndexingError() != null && e.getIndexingError().getFailedCount() != null
                   ? e.getIndexingError().getFailedCount()
                   : currentBatchSize;
-
           if (isReaderFailure) {
             if (statsTracker != null) {
               statsTracker.recordReaderBatch(0, batchFailedCount, 0);
@@ -271,11 +274,9 @@ public class PartitionWorker {
                   ExceptionUtils.getStackTrace(e));
             }
           }
-
           failedCount.addAndGet(batchFailedCount);
           processedCount.addAndGet(batchFailedCount);
           currentOffset += currentBatchSize;
-
           // Recompute keyset cursor after failure
           if (currentOffset < rangeEnd) {
             keysetCursor = initializeKeysetCursor(partition, currentOffset);
@@ -283,7 +284,6 @@ public class PartitionWorker {
               break;
             }
           }
-
           updateProgress(
               partition,
               currentOffset,
@@ -292,7 +292,6 @@ public class PartitionWorker {
               failedCount.get());
         }
       }
-
       if (stopped.get()) {
         LOG.info("Partition {} stopped by request", partition.getId());
         // Wait briefly for async sink operations to complete and update tracker
@@ -304,14 +303,12 @@ public class PartitionWorker {
             readerFailedCount.get(),
             warningsCount.get());
       }
-
       // Wait for async sink operations to complete and flush stats to DB
       // IMPORTANT: This must happen BEFORE marking partition complete, otherwise
       // the coordinator may aggregate stats before they're written to the database
       long waitStart = System.currentTimeMillis();
       waitForSinkOperations(statsTracker);
       LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
-
       // Adjust partition counts to include stage-level failures and warnings.
       // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
       // Process and sink results happen async and are tracked by StageStatsTracker.
@@ -339,11 +336,9 @@ public class PartitionWorker {
           warningsCount.addAndGet(adjustment);
         }
       }
-
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(
           partition.getId(), successCount.get(), failedCount.get(), warningsCount.get());
-
       long expectedRecords = rangeEnd - rangeStart;
       long actualProcessed = successCount.get() + failedCount.get() + warningsCount.get();
       LOG.info(
@@ -370,14 +365,12 @@ public class PartitionWorker {
             rangeStart,
             rangeEnd);
       }
-
       return new PartitionResult(
           successCount.get(),
           failedCount.get(),
           false,
           readerFailedCount.get(),
           warningsCount.get());
-
     } catch (Exception e) {
       LOG.error("Fatal error processing partition {}", partition.getId(), e);
       coordinator.failPartition(partition.getId(), e.getMessage());
@@ -407,17 +400,14 @@ public class PartitionWorker {
     // Flush the bulk processor to send any pending documents immediately
     // Without this, documents wait for the periodic flush interval (5 seconds)
     searchIndexSink.flushAndAwait(FLUSH_CYCLE_SECONDS);
-
     // Check if there are pending vector tasks - if so, we need a longer timeout
     int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
     boolean hasVectorTasks = pendingVectorTasks > 0;
-
     if (hasVectorTasks) {
       LOG.debug(
           "Waiting for {} pending vector tasks before completing partition for entity {}",
           pendingVectorTasks,
           statsTracker.getEntityType());
-
       boolean vectorComplete = searchIndexSink.awaitVectorCompletion(120);
       if (!vectorComplete) {
         LOG.warn(
@@ -426,7 +416,6 @@ public class PartitionWorker {
             statsTracker.getEntityType());
       }
     }
-
     // Wait for all sink callbacks with retries. The bulk processor is shared across
     // partition workers, so slow batches from other entity types (e.g. testCaseResult
     // writes taking 70+ seconds) can delay our callbacks. Instead of a single fixed
@@ -435,15 +424,12 @@ public class PartitionWorker {
     int retryCount = 0;
     long previousPending = statsTracker.getPendingSinkOps();
     int staleRetries = 0;
-
     while (statsTracker.getPendingSinkOps() > 0 && System.currentTimeMillis() < deadline) {
       long remainingMs = deadline - System.currentTimeMillis();
       long waitMs = Math.min(30_000, remainingMs);
-
       if (statsTracker.awaitSinkCompletion(waitMs)) {
         break;
       }
-
       if (statsTracker.getPendingSinkOps() > 0 && System.currentTimeMillis() < deadline) {
         retryCount++;
         long currentPending = statsTracker.getPendingSinkOps();
@@ -453,7 +439,6 @@ public class PartitionWorker {
             currentPending,
             statsTracker.getEntityType());
         searchIndexSink.flushAndAwait(FLUSH_CYCLE_SECONDS);
-
         if (currentPending == previousPending) {
           staleRetries++;
           if (staleRetries >= 3) {
@@ -471,7 +456,6 @@ public class PartitionWorker {
         previousPending = currentPending;
       }
     }
-
     if (statsTracker.getPendingSinkOps() > 0) {
       LOG.warn(
           "Reconciling {} pending sink operations after {} retries for entity {} "
@@ -481,7 +465,6 @@ public class PartitionWorker {
           statsTracker.getEntityType());
       statsTracker.reconcilePendingSinkOps();
     }
-
     statsTracker.flush();
   }
 
@@ -497,11 +480,9 @@ public class PartitionWorker {
   private BatchResult processBatch(
       String entityType, String keysetCursor, int batchSize, StageStatsTracker statsTracker)
       throws SearchIndexException {
-
     long readStartNanos = System.nanoTime();
     ResultList<?> resultList = readEntitiesKeyset(entityType, keysetCursor, batchSize);
     long readDurationNanos = System.nanoTime() - readStartNanos;
-
     int readSuccessCount = resultList != null ? listOrEmpty(resultList.getData()).size() : 0;
     int readErrorCount = resultList != null ? listOrEmpty(resultList.getErrors()).size() : 0;
     int warningsCount =
@@ -512,17 +493,14 @@ public class PartitionWorker {
         (resultList != null && resultList.getPaging() != null)
             ? resultList.getPaging().getAfter()
             : null;
-
     if (statsTracker != null) {
       // Reader timing = wall-clock time of the keyset DB read (listAfter + setFieldsInBulk
       // hydration). This isolates DB latency from downstream queue / process / sink work.
       statsTracker.recordReaderBatch(
           readSuccessCount, readErrorCount, warningsCount, readDurationNanos);
     }
-
     recordReaderFailures(entityType, resultList, readErrorCount);
     recordRelationshipWarnings(entityType, resultList);
-
     if (readSuccessCount == 0) {
       LOG.debug(
           "{} read={}ms returned no indexable rows (warnings={}, errors={})",
@@ -532,9 +510,7 @@ public class PartitionWorker {
           readErrorCount);
       return new BatchResult(0, readErrorCount, warningsCount, nextCursor);
     }
-
     Map<String, Object> contextData = createContextData(entityType, statsTracker);
-
     long readMs = readDurationNanos / 1_000_000L;
     try {
       long writeStartMs = System.currentTimeMillis();
@@ -631,11 +607,9 @@ public class PartitionWorker {
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
-
     // Selective fields avoid running expensive field fetchers that are stripped out before
     // indexing.
     List<String> fields = ReindexingUtil.getSearchIndexFields(normalizedEntityType);
-
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       PaginatedEntitiesSource source =
           new PaginatedEntitiesSource(normalizedEntityType, limit, fields, 0);
@@ -679,7 +653,7 @@ public class PartitionWorker {
       return precomputed;
     }
     int cursorOffset = toCursorOffset(entityType, offset);
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
     ListFilter filter = repository.getReindexFilter();
     String cursor = repository.getCursorAtOffset(filter, cursorOffset);
     if (cursor == null) {
@@ -715,7 +689,6 @@ public class PartitionWorker {
       String entityType, ResultList<?> resultList, Map<String, Object> contextData)
       throws Exception {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
-
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
       ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
@@ -738,16 +711,13 @@ public class PartitionWorker {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
-
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);
     }
-
     if (stagedIndexContext == null) {
       throw new IllegalStateException(
           "Staged index context is required for distributed reindexing");
     }
-
     String targetIndex =
         stagedIndexContext
             .getStagedIndex(normalizedEntityType)
@@ -757,7 +727,6 @@ public class PartitionWorker {
                         "No staged index configured for entity type: " + normalizedEntityType));
     contextData.put(STAGED_CONTEXT_KEY, stagedIndexContext);
     contextData.put(TARGET_INDEX_KEY, targetIndex);
-
     return contextData;
   }
 
@@ -772,7 +741,6 @@ public class PartitionWorker {
    */
   private void updateProgress(
       SearchIndexPartition partition, long cursor, long processed, long success, long failed) {
-
     SearchIndexPartition updated =
         partition.toBuilder()
             .status(PartitionStatus.PROCESSING)
@@ -781,7 +749,6 @@ public class PartitionWorker {
             .successCount(success)
             .failedCount(failed)
             .build();
-
     coordinator.updatePartitionProgress(updated);
   }
 
@@ -806,6 +773,7 @@ public class PartitionWorker {
       boolean wasStopped,
       long readerFailed,
       long readerWarnings) {
+
     public PartitionResult(long successCount, long failedCount, boolean wasStopped) {
       this(successCount, failedCount, wasStopped, 0, 0);
     }

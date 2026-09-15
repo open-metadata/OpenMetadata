@@ -94,6 +94,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -104,7 +106,6 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -168,19 +169,31 @@ import picocli.CommandLine.Option;
 public class OpenMetadataOperations implements Callable<Integer> {
 
   private static final String CATALOG_VERSION_RESOURCE = "/catalog/VERSION";
+
   private static final String UNKNOWN_VERSION = "unknown";
+
   private static final String DEFAULT_VERSION = "1.8.0-SNAPSHOT";
+
   private static final Duration DEPLOY_CONNECT_TIMEOUT = Duration.ofSeconds(30);
+
   private static final Duration MIN_DEPLOY_CHUNK_TIMEOUT = Duration.ofMinutes(2);
+
   private static final String STATUS_FAILED = "FAILED";
+
   private static final int STATUS_COLUMN_INDEX = 3;
 
   private OpenMetadataApplicationConfig config;
+
   private Jdbi jdbi;
+
   private SearchRepository searchRepository;
+
   private String nativeSQLScriptRootPath;
+
   private String extensionSQLScriptRootPath;
+
   private SecretsManager secretsManager;
+
   private CollectionDAO collectionDAO;
 
   @Option(
@@ -223,22 +236,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer info() {
     try {
       parseConfig();
-
       // Then get the native migration info from SERVER_CHANGE_LOG and SERVER_MIGRATION_SQL_LOGS
       LOG.info("Native System Data Migrations:");
       MigrationDAO migrationDAO = jdbi.onDemand(MigrationDAO.class);
       List<MigrationDAO.ServerChangeLog> serverChangeLogs =
           migrationDAO.listMetricsFromDBMigrations();
-
       // Create a formatted display for native migrations
       Set<String> columns = new LinkedHashSet<>(Set.of("version", "installedOn", "status"));
       List<List<String>> rows = new ArrayList<>();
-
       for (MigrationDAO.ServerChangeLog serverChangeLog : serverChangeLogs) {
         List<String> row = new ArrayList<>();
         row.add(serverChangeLog.getVersion());
         row.add(serverChangeLog.getInstalledOn());
-
         if (serverChangeLog.getMetrics() != null) {
           JsonNode metricsJson = new ObjectMapper().readTree(serverChangeLog.getMetrics());
           metricsJson
@@ -251,9 +260,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         }
         rows.add(row);
       }
-
       printToAsciiTable(columns.stream().toList(), rows, "No Native Migrations Found");
-
       return 0;
     } catch (Exception e) {
       LOG.error("Failed due to ", e);
@@ -428,7 +435,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Get the migration workflow to repair native migrations
       ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
       DatasourceConfig.initialize(connType.label);
-
       // Handle repair of SERVER_MIGRATION_SQL_LOGS and SERVER_CHANGE_LOG tables
       try {
         List<String> failedVersions =
@@ -439,17 +445,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
                             "SELECT version FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
                         .mapTo(String.class)
                         .list());
-
         if (!failedVersions.isEmpty()) {
           LOG.info("Found {} failed migrations in SERVER_CHANGE_LOG", failedVersions.size());
-
           // Remove failed migrations from SERVER_CHANGE_LOG
           jdbi.useHandle(
               handle ->
                   handle
                       .createUpdate("DELETE FROM SERVER_CHANGE_LOG WHERE status = 'FAILED'")
                       .execute());
-
           // Clean up related entries in SERVER_MIGRATION_SQL_LOGS
           for (String version : failedVersions) {
             jdbi.useHandle(
@@ -490,7 +493,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
               .withConfigValue(
                   new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(uri.toString()));
-
       Entity.getSystemRepository().createOrUpdate(updatedSettings);
       LOG.info("Updated OpenMetadata URL to: {}", openMetadataUrl);
       return 0;
@@ -565,19 +567,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String templates) {
     try {
       parseConfig();
-
       SmtpSettings smtpSettings = new SmtpSettings();
       smtpSettings.setEmailingEntity(emailingEntity);
       smtpSettings.setSupportUrl(supportUrl);
       smtpSettings.setEnableSmtpServer(enableSmtpServer);
       smtpSettings.setSenderMail(senderMail);
       smtpSettings.setServerEndpoint(serverEndpoint);
-
       smtpSettings.setServerPort(Integer.parseInt(serverPort));
-
       smtpSettings.setUsername(username);
       smtpSettings.setPassword(password != null ? new String(password) : "");
-
       try {
         smtpSettings.setTransportationStrategy(
             SmtpSettings.TransportationStrategy.valueOf(transportationStrategy.toUpperCase()));
@@ -587,30 +585,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
             transportationStrategy);
         smtpSettings.setTransportationStrategy(SmtpSettings.TransportationStrategy.SMTP_TLS);
       }
-
       smtpSettings.setTemplatePath(templatePath);
-
       try {
         smtpSettings.setTemplates(SmtpSettings.Templates.valueOf(templates.toUpperCase()));
       } catch (IllegalArgumentException e) {
         LOG.warn("Invalid template value '{}'. Falling back to OPENMETADATA.", templates);
         smtpSettings.setTemplates(SmtpSettings.Templates.OPENMETADATA);
       }
-
       Settings emailSettings =
           new Settings()
               .withConfigType(SettingsType.EMAIL_CONFIGURATION)
               .withConfigValue(smtpSettings);
-
       Entity.getSystemRepository().createOrUpdate(emailSettings);
-
       LOG.info(
           "Email settings updated. (Email Entity: {}, SMTP Enabled: {}, SMTP Host: {})",
           emailingEntity,
           enableSmtpServer,
           serverEndpoint);
       return 0;
-
     } catch (Exception e) {
       LOG.error("Failed to configure email settings due to: ", e);
       return 1;
@@ -632,33 +624,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String outputFile) {
     try {
       parseConfig();
-
       LOG.info("Retrieving security configuration from database...");
       SystemRepository systemRepository = Entity.getSystemRepository();
-
       Settings authenticationSettings =
           systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
       Settings authorizerSettings =
           systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
-
       if (authenticationSettings == null && authorizerSettings == null) {
         LOG.warn("No security configuration found in the database.");
         LOG.info("The system may not have security configured yet.");
         return 1;
       }
-
       SecurityConfiguration securityConfig = new SecurityConfiguration();
-
       if (authenticationSettings != null) {
         AuthenticationConfiguration authConfig =
             JsonUtils.convertValue(
                 authenticationSettings.getConfigValue(), AuthenticationConfiguration.class);
         securityConfig.setAuthenticationConfiguration(authConfig);
-
         LOG.info("Authentication Configuration:");
         LOG.info("  Provider: {}", authConfig.getProvider());
         LOG.info("  Provider Name: {}", authConfig.getProviderName());
-
         if (authConfig.getLdapConfiguration() != null) {
           LOG.info("  Type: LDAP");
           LOG.info("  LDAP Host: {}", authConfig.getLdapConfiguration().getHost());
@@ -670,35 +655,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } else {
         LOG.warn("No authentication configuration found.");
       }
-
       if (authorizerSettings != null) {
         AuthorizerConfiguration authzConfig =
             JsonUtils.convertValue(
                 authorizerSettings.getConfigValue(), AuthorizerConfiguration.class);
         securityConfig.setAuthorizerConfiguration(authzConfig);
-
         LOG.info("Authorization Configuration:");
         LOG.info("  Class Name: {}", authzConfig.getClassName());
         LOG.info("  Admin Principals: {}", authzConfig.getAdminPrincipals());
       } else {
         LOG.warn("No authorization configuration found.");
       }
-
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       String yamlContent =
           yamlMapper.writerWithDefaultPrettyPrinter().writeValueAsString(securityConfig);
-
       File file = new File(outputFile);
       try (FileWriter writer = new FileWriter(file)) {
         writer.write(yamlContent);
       }
-
       LOG.info("Security configuration successfully exported to: {}", outputFile);
       LOG.warn("");
       LOG.warn(
           "IMPORTANT: The exported file may contain sensitive information (passwords, secrets, certificates).");
       LOG.warn("Please ensure the file is stored securely and not committed to version control.");
-
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to export security configuration due to: ", e);
@@ -729,16 +708,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.error("Configuration file not found: {}", configFile);
         return 1;
       }
-
       LOG.info("Reading security configuration from file: {}", configFile);
       String yamlContent = Files.readString(file.toPath());
-
       ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
       SecurityConfiguration securityConfig =
           yamlMapper.readValue(yamlContent, SecurityConfiguration.class);
-
       LOG.info("Parsed security configuration:");
-
       if (securityConfig.getAuthenticationConfiguration() != null) {
         AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
         LOG.info("Authentication Configuration:");
@@ -747,7 +722,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.info("  Authority: {}", authConfig.getAuthority());
         LOG.info("  Client ID: {}", authConfig.getClientId());
         LOG.info("  Callback URL: {}", authConfig.getCallbackUrl());
-
         if (authConfig.getLdapConfiguration() != null) {
           LOG.info("  LDAP Host: {}", authConfig.getLdapConfiguration().getHost());
           LOG.info("  LDAP Port: {}", authConfig.getLdapConfiguration().getPort());
@@ -763,7 +737,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } else {
         LOG.warn("No authentication configuration in the file.");
       }
-
       if (securityConfig.getAuthorizerConfiguration() != null) {
         AuthorizerConfiguration authzConfig = securityConfig.getAuthorizerConfiguration();
         LOG.info("Authorization Configuration:");
@@ -772,7 +745,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } else {
         LOG.warn("No authorization configuration in the file.");
       }
-
       if (!force) {
         LOG.warn("");
         LOG.warn("========================================================================");
@@ -785,7 +757,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.warn("for the new configuration to take effect.");
         LOG.warn("========================================================================");
         LOG.warn("");
-
         // Scanner on System.in should not be closed as it would close System.in entirely
         @SuppressWarnings("resource")
         Scanner scanner = new Scanner(System.in);
@@ -796,11 +767,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           return 0;
         }
       }
-
       parseConfig();
-
       LOG.info("Updating security configuration in database...");
-
       if (securityConfig.getAuthenticationConfiguration() != null) {
         Settings authenticationSettings =
             new Settings()
@@ -809,7 +777,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         Entity.getSystemRepository().createOrUpdate(authenticationSettings);
         LOG.info("Authentication configuration updated.");
       }
-
       if (securityConfig.getAuthorizerConfiguration() != null) {
         Settings authorizerSettings =
             new Settings()
@@ -818,7 +785,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         Entity.getSystemRepository().createOrUpdate(authorizerSettings);
         LOG.info("Authorization configuration updated.");
       }
-
       LOG.info("Security configuration successfully updated in the database.");
       LOG.warn("");
       LOG.warn("========================================================================");
@@ -828,7 +794,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           "The new security configuration will NOT take effect until the service is restarted.");
       LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
       LOG.warn("========================================================================");
-
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration due to: ", e);
@@ -856,16 +821,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
       SettingsCache.initialize(config);
       initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-
       if (!force && isAppInstalled(appRepository, appName)) {
         LOG.info("App already installed.");
         return 0;
       }
-
       if (force && deleteApplication(appRepository, appName)) {
         LOG.info("App deleted.");
       }
-
       LOG.info("App not installed. Installing...");
       installApplication(appName, appRepository);
       LOG.info("App Installed.");
@@ -965,7 +927,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     ch.qos.logback.classic.Logger rootLogger =
         loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
     Level originalLevel = rootLogger.getLevel();
-
     try {
       rootLogger.setLevel(Level.ERROR);
       CollectionRegistry.initialize();
@@ -1000,7 +961,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private boolean isAppInstalled(AppRepository appRepository, String appName) {
     try {
-      appRepository.findByName(appName, Include.NON_DELETED);
+      appRepository.lookup().byName(appName, Include.NON_DELETED);
       return true;
     } catch (EntityNotFoundException e) {
       return false;
@@ -1009,7 +970,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private boolean deleteApplication(AppRepository appRepository, String appName) {
     try {
-      appRepository.deleteByName(ADMIN_USER_NAME, appName, true, true);
+      appRepository.deletes().byName(ADMIN_USER_NAME, appName, true, true);
       return true;
     } catch (EntityNotFoundException e) {
       return false;
@@ -1020,21 +981,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
     PipelineServiceClientInterface pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
-
     JWTTokenGenerator.getInstance()
         .init(
             SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
-
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
     AppMarketPlaceRepository appMarketRepository =
         (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
-
     AppMarketPlaceUtil.createAppMarketPlaceDefinitions(appMarketRepository, mapper);
-
     AppMarketPlaceDefinition definition =
-        appMarketRepository.getByName(null, appName, appMarketRepository.getFields("id"));
-
+        appMarketRepository.getByName(null, appName, appMarketRepository.fieldPolicy().parse("id"));
     CreateApp createApp =
         new CreateApp()
             .withName(definition.getName())
@@ -1043,11 +999,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
             .withAppConfiguration(Map.of())
             .withAllowBotImpersonation(Boolean.TRUE.equals(definition.getAllowBotImpersonation()));
-
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
-    appRepository.prepareInternal(entity, true);
-    appRepository.createOrUpdate(null, entity, ADMIN_USER_NAME);
+    appRepository.preparation().prepare(entity, true);
+    appRepository
+        .creates()
+        .upsert(null, entity, new EntityCommandActor(ADMIN_USER_NAME, null), false);
   }
 
   @Command(
@@ -1072,7 +1029,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
                 return false;
               }
             });
-
         // querying SERVER_MIGRATION_SQL_LOGS table
         jdbi.withHandle(
             handle -> {
@@ -1087,7 +1043,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
                 return false;
               }
             });
-
       } catch (Exception e) {
         LOG.warn("Error checking migration tables: {}", e.getMessage());
       }
@@ -1148,29 +1103,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.initialize();
       SettingsCache.initialize(config);
       initializeSecurityConfig();
-
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-
       // Only Basic Auth provider is supported for password reset
       if (!SecurityConfigurationManager.isNativePasswordProvider(authProvider)) {
         LOG.error(
             "Authentication provider {} does not support native password reset.", authProvider);
         return 1;
       }
-
       initOrganization();
-
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
       fieldList.add(AUTH_MECHANISM_FIELD);
       User originalUser = userRepository.getByEmail(null, email, new EntityUtil.Fields(fieldList));
-
       // Check if the user is a bot user
       if (Boolean.TRUE.equals(originalUser.getIsBot())) {
         LOG.error("Bot user : {} cannot have password.", originalUser.getName());
         return 1;
       }
-
       User updatedUser = JsonUtils.deepCopy(originalUser, User.class);
       String inputPwd = new String(password);
       updateUserWithHashedPwd(updatedUser, inputPwd);
@@ -1233,7 +1182,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private void runDataRecovery() {
     try (Handle handle = jdbi.open()) {
       ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
-
       org.openmetadata.service.migration.utils.v1114.MigrationUtil.checkAndLogDataLossSymptoms(
           handle);
       org.openmetadata.service.migration.utils.v1114.MigrationUtil.reseedRolesAndPoliciesIfMissing(
@@ -1244,7 +1192,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
           handle, connType);
       org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotUserRolesIfMissing(
           handle, connType);
-
       LOG.info("Data recovery completed.");
     } catch (Exception e) {
       LOG.error("Error during data recovery: {}", e.getMessage(), e);
@@ -1270,7 +1217,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Running a Database Service Hierarchy Cleanup");
       parseConfig();
-
       // Check Broken Tables
       List<String> brokenTables = Entity.getCollectionDAO().tableDAO().getBrokenTables();
       LOG.info("Following Tables seems to be Broken.");
@@ -1286,7 +1232,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       if (!brokenTables.isEmpty()) {
         Entity.getCollectionDAO().tableDAO().removeBrokenTables();
       }
-
       List<String> brokenSchemas =
           Entity.getCollectionDAO().databaseSchemaDAO().getBrokenDatabaseSchemas();
       LOG.info("Following DatabaseSchemas seems to be Broken.");
@@ -1302,7 +1247,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       if (!brokenSchemas.isEmpty()) {
         Entity.getCollectionDAO().databaseSchemaDAO().removeBrokenDatabaseSchemas();
       }
-
       List<String> brokenDatabases = Entity.getCollectionDAO().databaseDAO().getBrokenDatabase();
       LOG.info("Following Database seems to be Broken.");
       List<String> databaseColumns = List.of(String.format("Database(%d)", brokenSchemas.size()));
@@ -1317,7 +1261,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       if (!brokenDatabases.isEmpty()) {
         Entity.getCollectionDAO().databaseDAO().removeDatabase();
       }
-
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to Entity Cleanup due to ", e);
@@ -1356,17 +1299,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
           batchSize,
           skipHierarchyCleanup);
       parseConfig();
-
       if (skipHierarchyCleanup) {
         // Only perform relationship cleanup
         LOG.info("=== Entity Relationship Cleanup Only ===");
         EntityRelationshipCleanup cleanup = new EntityRelationshipCleanup(collectionDAO, dryRun);
         EntityRelationshipCleanup.EntityCleanupResult result = cleanup.performCleanup(batchSize);
-
         LOG.info("Total relationships scanned: {}", result.getTotalRelationshipsScanned());
         LOG.info("Orphaned relationships found: {}", result.getOrphanedRelationshipsFound());
         LOG.info("Relationships deleted: {}", result.getRelationshipsDeleted());
-
         if (dryRun && result.getOrphanedRelationshipsFound() > 0) {
           LOG.info("To actually delete these orphaned relationships, run with --delete");
           return 1;
@@ -1377,18 +1317,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
             dryRun
                 ? EntityRelationshipCleanupUtil.forDryRun(collectionDAO, batchSize)
                 : EntityRelationshipCleanupUtil.forActualCleanup(collectionDAO, batchSize);
-
         EntityRelationshipCleanupUtil.CleanupResult result =
             comprehensiveCleanup.performComprehensiveCleanup();
         comprehensiveCleanup.printComprehensiveResults(result);
-
         if (dryRun && result.getTotalEntitiesDeleted() > 0) {
           LOG.info(
               "To actually delete these orphaned relationships and broken entities, run with --delete");
           return 1;
         }
       }
-
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to cleanup orphaned relationships due to ", e);
@@ -1417,19 +1354,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
       boolean dryRun = !delete;
       LOG.info("Running Tag Usage Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
       parseConfig();
-
       TagUsageCleanup cleanup = new TagUsageCleanup(collectionDAO, dryRun);
       TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(batchSize);
-
       LOG.info("Total tag usages scanned: {}", result.getTotalTagUsagesScanned());
       LOG.info("Orphaned tag usages found: {}", result.getOrphanedTagUsagesFound());
       LOG.info("Tag usages deleted: {}", result.getTagUsagesDeleted());
-
       if (dryRun && result.getOrphanedTagUsagesFound() > 0) {
         LOG.info("To actually delete these orphaned tag usages, run with --delete");
         return 1;
       }
-
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to cleanup orphaned tag usages due to ", e);
@@ -1542,10 +1475,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       AppScheduler.getInstance().start();
-
       // Prepare search repository for reindexing (e.g., initialize vector services)
       searchRepository.prepareForReindex();
-
       String appName = "SearchIndexingApplication";
       // Handle entityStr with or without quotes
       String cleanEntityStr = entityStr;
@@ -1635,13 +1566,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
           .loadSeedData(Entity.getJdbi(), omConfig, null, null, null, true);
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
-
       SearchRepository repo = Entity.getSearchRepository();
       if (repo == null) {
         LOG.error("Search repository is not initialized; cannot run re-embedding");
         return 1;
       }
-
       repo.prepareForReindex();
       org.openmetadata.service.search.vector.OpenSearchVectorService vecService =
           org.openmetadata.service.search.vector.OpenSearchVectorService.getInstance();
@@ -1649,20 +1578,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.warn("Vector embeddings are disabled or not initialized. Skipping re-embedding.");
         return 1;
       }
-
       java.util.concurrent.ConcurrentHashMap<String, Integer> entityTotals =
           new java.util.concurrent.ConcurrentHashMap<>();
       int totalBatches = calculateReembedTotalBatches(batchSize, entityTotals);
       java.util.concurrent.CountDownLatch producerLatch =
           new java.util.concurrent.CountDownLatch(totalBatches);
-
       LOG.info(
           "Re-embedding with producers: {}, consumers: {}, queue size: {}, batch size: {}",
           finalProducerThreads,
           finalConsumerThreads,
           finalQueueSize,
           batchSize);
-
       java.util.concurrent.CountDownLatch consumerLatch =
           startReembedConsumers(
               finalConsumerThreads,
@@ -1672,7 +1598,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               vecService,
               processedCounts,
               failedCounts);
-
       for (String entityType :
           org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
         int totalRecords = entityTotals.getOrDefault(entityType, 0);
@@ -1681,17 +1606,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
           LOG.info("No entities found for type {}, skipping", entityType);
           continue;
         }
-
         org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource source =
             new org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource(
                 entityType, batchSize, List.of("*"));
-
         LOG.info(
             "Scheduling re-embedding for entity type {} with {} records ({} batches)",
             entityType,
             totalRecords,
             batches);
-
         for (int i = 0; i < batches; i++) {
           int offset = i * batchSize;
           producerExecutor.submit(
@@ -1720,12 +1642,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
               });
         }
       }
-
       awaitReembedProducers(producerLatch, producerExecutor);
       producersDone.set(true);
       signalReembedConsumersToStop(finalConsumerThreads, taskQueue);
       consumerLatch.await();
-
       for (String entityType :
           org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
         int processed =
@@ -1742,7 +1662,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             entityType,
             failed);
       }
-
       LOG.info("Re-embedding completed successfully");
       return 0;
     } catch (Exception e) {
@@ -1938,14 +1857,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       String slackBotToken,
       String slackChannel) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-    App app = appRepository.getByName(null, appName, appRepository.getFields("id"));
-
+    App app = appRepository.getByName(null, appName, appRepository.fieldPolicy().parse("id"));
     // Check for index mapping changes only when running from CLI
     IndexMappingVersionTracker versionTracker = null;
     boolean shouldUpdateVersions = false;
     ReindexingProgressMonitor progressMonitor = null;
     boolean shouldReindex = true;
-
     if (!force) {
       try {
         versionTracker =
@@ -1953,7 +1870,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         boolean upgradeRequiresFullReindex = versionTracker.requiresFullReindexForVersionUpgrade();
         List<String> changedMappings =
             upgradeRequiresFullReindex ? List.of() : versionTracker.getChangedMappings();
-
         SmartReindexPlan plan =
             planSmartReindex(entities, upgradeRequiresFullReindex, changedMappings);
         entities = plan.entities();
@@ -1965,18 +1881,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.info("🔄 Falling back to standard reindexing for all requested entities");
       }
     }
-
     // Initialize progress monitor for force mode as well to get clean output
     if (progressMonitor == null && force) {
       progressMonitor = startFullReindex("Force Reindexing", entities);
     }
-
     // If no mapping changes were detected, we should not proceed with reindexing
     if (!shouldReindex) {
       LOG.info("Reindexing skipped - no changes detected");
-      return 0; // Success - no reindexing needed
+      // Success - no reindexing needed
+      return 0;
     }
-
     EventPublisherJob config =
         (JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class))
             .withEntities(entities)
@@ -1993,7 +1907,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withForce(force)
             .withSlackBotToken(slackBotToken)
             .withSlackChannel(slackChannel);
-
     // Log auto-tune behavior
     if (autoTune) {
       LOG.info(
@@ -2004,15 +1917,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("  - Available cluster resources and capacity");
       LOG.info("  - Request compression benefits (JSON payloads will be gzip compressed)");
     }
-
     // Trigger Application. Clear any on-demand job left behind by a previous run that died
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
     AppScheduler.getInstance().deleteOnDemandJob(app);
     AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
-
     int result = waitAndReturnReindexingAppStatus(app, currentTime, progressMonitor);
-
     // Update mapping versions after successful reindexing
     if (result == 0 && shouldUpdateVersions && versionTracker != null) {
       try {
@@ -2024,7 +1934,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         // Don't fail the operation if version update fails
       }
     }
-
     return result;
   }
 
@@ -2054,6 +1963,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   record SmartReindexPlan(SmartReindexAction action, Set<String> entities, boolean updateVersions) {
+
     boolean shouldReindex() {
       return action == SmartReindexAction.REINDEX_CHANGED
           || action == SmartReindexAction.REINDEX_ALL_FOR_UPGRADE;
@@ -2194,7 +2104,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private BackfillConfiguration getBackfillConfiguration(String startDate, String endDate) {
     BackfillConfiguration backfillConfiguration = new BackfillConfiguration();
     backfillConfiguration.withEnabled(false);
-
     if (startDate != null) {
       backfillConfiguration.withEnabled(true);
       backfillConfiguration.withStartDate(startDate);
@@ -2209,14 +2118,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int batchSize, boolean recreateIndexes, BackfillConfiguration backfillConfiguration) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App app =
-        appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
-
+        appRepository.getByName(
+            null, "DataInsightsApplication", appRepository.fieldPolicy().parse("id"));
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class)
             .withBatchSize(batchSize)
             .withRecreateDataAssetsIndex(recreateIndexes)
             .withBackfillConfiguration(backfillConfiguration);
-
     // Trigger Application. Clear any on-demand job left behind by a previous run that died
     // before completing so this run is not rejected with "Job is already running".
     long currentTime = System.currentTimeMillis();
@@ -2255,7 +2163,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
                         "successContext",
                         "failureContext"));
             List<List<String>> rows = new ArrayList<>();
-
             String startTimeofJob =
                 nullOrEmpty(appRunRecord.getStartTime())
                     ? "Unavailable"
@@ -2281,7 +2188,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         }
       } catch (Exception ignored) {
       }
-
       if (!isRunCompleted(appRunRecord)) {
         // Show clean progress updates instead of verbose JSON
         if (progressMonitor != null) {
@@ -2294,7 +2200,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         Thread.sleep(10000);
       }
     } while (!isRunCompleted(appRunRecord));
-
     if (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
         || appRunRecord.getStatus().equals(AppRunRecord.Status.COMPLETED)) {
       if (progressMonitor == null) {
@@ -2314,7 +2219,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     if (appRunRecord == null) {
       return false;
     }
-
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
@@ -2338,14 +2242,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Starting RDF reindexing...");
       parseConfig();
-
       // Check if RDF is enabled
       if (config.getRdfConfiguration() == null
           || !Boolean.TRUE.equals(config.getRdfConfiguration().getEnabled())) {
         LOG.error("RDF is not enabled in configuration. Please set rdf.enabled=true");
         return 1;
       }
-
       // Get entities to process
       Set<String> entities = new HashSet<>();
       if (entityType == null || "all".equalsIgnoreCase(entityType)) {
@@ -2353,7 +2255,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } else {
         entities.add(entityType);
       }
-
       return executeRdfReindexApp(entities, batchSize, recreate);
     } catch (Exception e) {
       LOG.error("Failed to reindex RDF due to", e);
@@ -2364,23 +2265,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private int executeRdfReindexApp(Set<String> entities, int batchSize, boolean recreateIndexes) {
     try {
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-      App app = appRepository.getByName(null, "RdfIndexApp", appRepository.getFields("id"));
-
+      App app =
+          appRepository.getByName(null, "RdfIndexApp", appRepository.fieldPolicy().parse("id"));
       EventPublisherJob config =
           new EventPublisherJob()
               .withEntities(entities)
               .withBatchSize(batchSize)
               .withRecreateIndex(recreateIndexes);
-
       LOG.info("Triggering RDF reindex application");
       LOG.info("  Entities: {}", entities);
       LOG.info("  Batch size: {}", batchSize);
       LOG.info("  Recreate indexes: {}", recreateIndexes);
-
       // Trigger Application
       long currentTime = System.currentTimeMillis();
       AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
-
       // Wait for completion and return status
       return waitAndReturnReindexingAppStatus(app, currentTime, null);
     } catch (EntityNotFoundException e) {
@@ -2439,9 +2337,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
     final IngestionPipelineRepository pipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     final List<IngestionPipeline> pipelines =
-        pipelineRepository.listAll(
-            new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
-            new ListFilter(Include.NON_DELETED));
+        pipelineRepository
+            .collections()
+            .all(
+                new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
+                new ListFilter(Include.NON_DELETED));
     LOG.debug("Pipelines size {}", pipelines.size());
     final List<List<String>> pipelineStatuses = new ArrayList<>();
     if (!pipelines.isEmpty()) {
@@ -2482,7 +2382,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Dropping all indexes from search engine...");
       parseConfig();
-
       // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
@@ -2504,10 +2403,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           }
         }
       }
-
       // Drop data streams and data quality indexes created by DataInsightsApp
       dropDataInsightsIndexes();
-
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
@@ -2536,14 +2433,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private void dropDataInsightsIndexes() {
     try {
       LOG.info("Dropping Data Insights data streams and indexes...");
-
       // Create a DataInsightsApp instance to access its cleanup methods
       DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
-
       // Drop data assets data streams
       LOG.info("Dropping data assets data streams...");
       dataInsightsApp.deleteDataAssetsDataStream();
-
       LOG.info("Data Insights indexes and data streams dropped successfully.");
     } catch (Exception e) {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
@@ -2554,14 +2448,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private void createDataInsightsIndexes() {
     try {
       LOG.info("Create Data Insights data streams and indexes...");
-
       // Create a DataInsightsApp instance to access its cleanup methods
       DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
-
       // Drop data assets data streams
       LOG.info("Create/Update data assets data streams...");
       dataInsightsApp.createOrUpdateDataAssetsDataStream();
-
       LOG.info("Data Insights indexes and data streams created successfully.");
     } catch (Exception e) {
       LOG.warn("Failed to create some Data Insights indexes: {}", e.getMessage());
@@ -2573,7 +2464,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Set<String> indices = new HashSet<>();
     try {
       SearchClient searchClient = searchRepository.getSearchClient();
-
       if (searchClient instanceof ElasticSearchClient) {
         var request =
             new es.co.elastic.clients.transport.rest5_client.low_level.Request(
@@ -2586,7 +2476,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         try (var is = response.getEntity().getContent()) {
           responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
         }
-
         com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
         for (com.fasterxml.jackson.databind.JsonNode node : root) {
           String indexName = node.get("index").asText();
@@ -2614,7 +2503,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
                       }
                     })
                 .orElse("[]");
-
         com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
         for (com.fasterxml.jackson.databind.JsonNode node : root) {
           String indexName = node.get("index").asText();
@@ -2644,7 +2532,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             "WARNING: This will remove all authentication and authorization configuration from the database!");
         LOG.warn("This includes authenticationConfiguration and authorizerConfiguration settings.");
         LOG.info("Use --force to skip this confirmation.");
-
         // Scanner on System.in should not be closed as it would close System.in entirely
         @SuppressWarnings("resource")
         Scanner scanner = new Scanner(System.in);
@@ -2655,12 +2542,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
           return 0;
         }
       }
-
       LOG.info("Removing security configuration from database...");
       parseConfig();
-
       SystemRepository systemRepository = Entity.getSystemRepository();
-
       // Remove authentication configuration
       try {
         Settings authenticationSettings =
@@ -2674,7 +2558,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception e) {
         LOG.debug("Failed to remove authenticationConfiguration: {}", e.getMessage());
       }
-
       // Remove authorizer configuration
       try {
         Settings authorizerSettings =
@@ -2688,7 +2571,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception e) {
         LOG.debug("Failed to remove authorizerConfiguration: {}", e.getMessage());
       }
-
       LOG.info("Security configuration removal completed.");
       LOG.info(
           "Note: You will need to restart the OpenMetadata service for changes to take effect.");
@@ -2868,47 +2750,41 @@ public class OpenMetadataOperations implements Callable<Integer> {
       initializeCollectionRegistry();
       SettingsCache.initialize(config);
       initializeSecurityConfig();
-
       JWTTokenGenerator.getInstance()
           .init(
               SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
               config.getJwtTokenConfiguration());
-
       initOrganization();
-
       BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-
       List<Bot> bots =
-          botRepository.listAll(
-              botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
-
+          botRepository
+              .collections()
+              .all(
+                  botRepository.fieldPolicy().parse("botUser"),
+                  new ListFilter(Include.NON_DELETED));
       List<List<String>> rows = new ArrayList<>();
-
       for (Bot listedBot : bots) {
         String botName = listedBot.getName();
         try {
           // Fetch individually so that setFields populates the botUser relationship
-          Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
-
+          Bot bot =
+              botRepository.getByName(null, botName, botRepository.fieldPolicy().parse("botUser"));
           if (bot.getBotUser() == null) {
             rows.add(Arrays.asList(botName, "SKIPPED", "No bot user associated"));
             continue;
           }
-
           User botUser =
               userRepository.getByName(
                   null,
                   bot.getBotUser().getFullyQualifiedName(),
                   new EntityUtil.Fields(Set.of("authenticationMechanism", "roles")));
-
           if (botUser.getAuthenticationMechanism() == null
               || botUser.getAuthenticationMechanism().getAuthType()
                   != AuthenticationMechanism.AuthType.JWT) {
             rows.add(Arrays.asList(botName, "SKIPPED", "Not using JWT authentication"));
             continue;
           }
-
           JWTAuthMechanism newJwtAuth =
               JWTTokenGenerator.getInstance().generateJWTToken(botUser, expiry);
           botUser.setAuthenticationMechanism(
@@ -2916,14 +2792,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
                   .withAuthType(AuthenticationMechanism.AuthType.JWT)
                   .withConfig(newJwtAuth));
           UserUtil.addOrUpdateUser(botUser);
-
           rows.add(Arrays.asList(botName, "SUCCESS", "Token regenerated"));
         } catch (Exception e) {
           LOG.error("Failed to regenerate token for bot: {}", botName, e);
           rows.add(Arrays.asList(botName, "FAILED", e.getMessage()));
         }
       }
-
       boolean hasFailures = rows.stream().anyMatch(r -> "FAILED".equals(r.get(1)));
       printToAsciiTable(Arrays.asList("Bot", "Status", "Details"), rows, "No bots found");
       return hasFailures ? 1 : 0;
@@ -2960,23 +2834,19 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       boolean dryRun = !delete;
       LOG.info("Running Flowable workflow cleanup. Dry run: {}", dryRun);
-
       parseConfig();
       initializeCollectionRegistry();
       SettingsCache.initialize(config);
       initializeSecurityConfig();
       WorkflowHandler.initialize(config);
-
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       FlowableCleanup cleanup = new FlowableCleanup(workflowHandler, dryRun);
       FlowableCleanup.FlowableCleanupResult result =
           cleanup.performCleanup(historyBatchSize, runtimeBatchSize);
-
       if (dryRun && !result.getCleanedWorkflows().isEmpty()) {
         LOG.info("Dry run completed. To actually perform the cleanup, run with --delete");
         return 1;
       }
-
       LOG.info("Flowable cleanup completed successfully.");
       return 0;
     } catch (Exception e) {
@@ -2987,7 +2857,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void analyzeEntityTable(String entity) {
     try {
-      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
+      EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
       LOG.info("Analyzing table for [{}] Entity", entity);
       repository.getDao().analyzeTable();
     } catch (EntityNotFoundException e) {
@@ -3006,27 +2876,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
       if (jwtToken == null) {
         throw new RuntimeException("Failed to retrieve ingestion-bot JWT token");
       }
-
       // Get server API URL from config
       String serverUrl = getServerApiUrl();
       if (serverUrl == null) {
         throw new RuntimeException("SERVER_HOST_API_URL not configured");
       }
       LOG.info("Deploying pipelines to server URL: {}", serverUrl);
-
       HttpClient client = HttpClient.newBuilder().connectTimeout(DEPLOY_CONNECT_TIMEOUT).build();
       Duration chunkTimeout = deployChunkTimeout(chunkSize, secondsPerPipeline);
       DeployRequest deployRequest = new DeployRequest(client, jwtToken, serverUrl, chunkTimeout);
-
       int totalPipelines = pipelines.size();
       LOG.info(
           "Deploying {} pipelines via bulk API calls in chunks of {} with a {}s deadline per chunk",
           totalPipelines,
           chunkSize,
           chunkTimeout.toSeconds());
-
       List<List<IngestionPipeline>> pipelineChunks = chunkList(pipelines, chunkSize);
-
       for (int chunkIndex = 0; chunkIndex < pipelineChunks.size(); chunkIndex++) {
         List<IngestionPipeline> chunk = pipelineChunks.get(chunkIndex);
         LOG.info(
@@ -3035,10 +2900,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             pipelineChunks.size(),
             chunkIndex * chunkSize + 1,
             Math.min((chunkIndex + 1) * chunkSize, totalPipelines));
-
         deployPipelineChunk(deployRequest, chunk, pipelineStatuses);
       }
-
       LOG.info("Completed bulk deployment of {} pipelines", totalPipelines);
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines via API", e);
@@ -3063,14 +2926,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Collect pipeline IDs for this chunk
       List<UUID> pipelineIds =
           pipelineChunk.stream().map(IngestionPipeline::getId).collect(Collectors.toList());
-
       // Make bulk deploy API call for this chunk
       String jsonBody = JsonUtils.pojoToJson(pipelineIds);
       String normalizedServerUrl =
           serverUrl != null && serverUrl.endsWith("/")
               ? serverUrl.substring(0, serverUrl.length() - 1)
               : serverUrl;
-
       HttpRequest request =
           HttpRequest.newBuilder()
               .uri(URI.create(normalizedServerUrl + COLLECTION_PATH + "bulk/deploy"))
@@ -3079,10 +2940,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
               .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
               .timeout(deployRequest.chunkTimeout())
               .build();
-
       HttpResponse<String> response =
           deployRequest.client().send(request, HttpResponse.BodyHandlers.ofString());
-
       if (response.statusCode() == 200) {
         LOG.debug("Chunk deployment completed successfully");
         // Parse response and update status table for this chunk
@@ -3153,7 +3012,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Use the same pattern as OpenMetadataConnectionBuilder
       BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-
       // First get the bot entity
       Bot bot =
           botRepository.getByName(null, Entity.INGESTION_BOT_NAME, new EntityUtil.Fields(Set.of()));
@@ -3161,29 +3019,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
         LOG.error("Ingestion bot not found or bot has no associated user");
         return null;
       }
-
       // Get the bot user with authentication mechanism
       User botUser =
           userRepository.getByName(
               null,
               bot.getBotUser().getFullyQualifiedName(),
               new EntityUtil.Fields(Set.of("authenticationMechanism")));
-
       if (botUser == null || botUser.getAuthenticationMechanism() == null) {
         LOG.error("Bot user not found or missing authentication mechanism");
         return null;
       }
-
       // Extract and decrypt the JWT token
       AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
       if (authMechanism.getAuthType() != AuthenticationMechanism.AuthType.JWT) {
         LOG.error("Bot user does not have JWT authentication mechanism");
         return null;
       }
-
       JWTAuthMechanism jwtAuthMechanism =
           JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-
       // Decrypt the JWT token - this is the crucial step that was missing
       secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
       String token = jwtAuthMechanism.getJWTToken();
@@ -3213,7 +3066,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       List<PipelineServiceClientResponse> responses =
           JsonUtils.readValue(
               responseBody, new TypeReference<List<PipelineServiceClientResponse>>() {});
-
       // Log the parsed responses for debugging
       LOG.info("Received {} deployment responses", responses.size());
       for (int i = 0; i < responses.size(); i++) {
@@ -3226,17 +3078,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
             response.getPlatform(),
             response.getReason() != null ? response.getReason() : "N/A");
       }
-
       // Correlate responses with pipelines by position (assuming same order)
       for (int i = 0; i < pipelines.size(); i++) {
         IngestionPipeline pipeline = pipelines.get(i);
         String status;
-
         if (i < responses.size()) {
           PipelineServiceClientResponse response = responses.get(i);
           Integer code = response.getCode();
           String reason = response.getReason();
-
           if (code != null && (code == 200 || code == 201)) {
             status = "DEPLOYED";
           } else if (code != null) {
@@ -3247,7 +3096,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
         } else {
           status = "NO_RESPONSE";
         }
-
         pipelineStatuses.add(
             Arrays.asList(
                 pipeline.getName(),
@@ -3303,12 +3151,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
                       dataSourceFactory.getPassword());
               dataSourceFactory.setPassword(token);
             });
-
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
-
     jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
-
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), config);
     // Init repos
@@ -3317,16 +3162,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.setCollectionDAO(collectionDAO);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(collectionDAO));
     Entity.setSystemRepository(new SystemRepository());
-
     searchRepository =
         SearchRepositoryFactory.createSearchRepository(
             config.getElasticSearchConfiguration(), config.getDataSourceFactory().getMaxSize());
-
     // Initialize secrets manager
     secretsManager =
         SecretsManagerFactory.createSecretsManager(
             config.getSecretsManagerConfiguration(), config.getClusterName());
-
     Entity.setSearchRepository(searchRepository);
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
@@ -3374,10 +3216,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private void promptUserForDelete() {
     LOG.info(
         """
-                    You are about drop all the data in the database. ALL METADATA WILL BE DELETED.\s
-                    This is not recommended for a Production setup or any deployment where you have collected\s
-                    a lot of information from the users, such as descriptions, tags, etc.
-                    """);
+            You are about drop all the data in the database. ALL METADATA WILL BE DELETED.\s
+            This is not recommended for a Production setup or any deployment where you have collected\s
+            a lot of information from the users, such as descriptions, tags, etc.
+            """);
     String input = "";
     // Scanner on System.in should not be closed as it would close System.in entirely
     @SuppressWarnings("resource")

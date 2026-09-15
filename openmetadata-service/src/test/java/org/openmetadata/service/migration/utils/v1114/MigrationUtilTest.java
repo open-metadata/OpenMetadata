@@ -23,47 +23,48 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 class MigrationUtilTest {
+
   private static final String APPS_WITHOUT_BOT_POSTGRES =
       """
-          SELECT a.id, a.json->>'name' as name
-          FROM installed_apps a
-          WHERE NOT EXISTS (
-              SELECT 1 FROM entity_relationship er
-              WHERE er.fromId = a.id
-              AND er.toEntity = 'bot'
-              AND er.relation = 0
-          )
-          """;
+        SELECT a.id, a.json->>'name' as name
+        FROM installed_apps a
+        WHERE NOT EXISTS (
+            SELECT 1 FROM entity_relationship er
+            WHERE er.fromId = a.id
+            AND er.toEntity = 'bot'
+            AND er.relation = 0
+        )
+        """;
 
   private static final String FIND_BOT_BY_NAME_POSTGRES =
       """
-          SELECT id FROM bot_entity
-          WHERE json->>'name' = :botName
-          """;
+        SELECT id FROM bot_entity
+        WHERE json->>'name' = :botName
+        """;
 
   private static final String INSERT_APP_BOT_RELATIONSHIP_POSTGRES =
       """
-          INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-          VALUES (:appId, :botId, 'application', 'bot', :relation)
-          ON CONFLICT DO NOTHING
-          """;
+        INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+        VALUES (:appId, :botId, 'application', 'bot', :relation)
+        ON CONFLICT DO NOTHING
+        """;
 
   private static final String CHECK_POLICY_EXISTS_POSTGRES =
       """
-          SELECT COUNT(*) FROM policy_entity
-          WHERE json->>'name' = :name
-          """;
+        SELECT COUNT(*) FROM policy_entity
+        WHERE json->>'name' = :name
+        """;
 
   private static final String CHECK_ROLE_EXISTS_POSTGRES =
       """
-          SELECT COUNT(*) FROM role_entity
-          WHERE json->>'name' = :name
-          """;
+        SELECT COUNT(*) FROM role_entity
+        WHERE json->>'name' = :name
+        """;
 
   private static final List<String> SYSTEM_POLICIES =
       List.of(
@@ -104,7 +105,6 @@ class MigrationUtilTest {
     Settings storedSettings = new Settings();
     SearchSettings currentSettings = searchSettings(0.05);
     SearchSettings defaultSettings = searchSettings(1.0);
-
     try (MockedStatic<SearchSettingsMergeUtil> mergeUtil =
         mockStatic(SearchSettingsMergeUtil.class, CALLS_REAL_METHODS)) {
       mergeUtil
@@ -119,9 +119,7 @@ class MigrationUtilTest {
       mergeUtil
           .when(() -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings))
           .thenAnswer(invocation -> null);
-
       MigrationUtil.updateSearchSettingsBoostConfiguration();
-
       mergeUtil.verify(
           () -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings));
     }
@@ -131,14 +129,11 @@ class MigrationUtilTest {
   void updateSearchSettingsBoostConfigurationSkipsMissingOrUnchangedSettings() {
     SearchSettings currentSettings = searchSettings(0.05);
     SearchSettings defaultSettings = searchSettings(1.0);
-
     try (MockedStatic<SearchSettingsMergeUtil> mergeUtil =
         mockStatic(SearchSettingsMergeUtil.class, CALLS_REAL_METHODS)) {
       mergeUtil.when(SearchSettingsMergeUtil::getSearchSettingsFromDatabase).thenReturn(null);
-
       assertDoesNotThrow(MigrationUtil::updateSearchSettingsBoostConfiguration);
     }
-
     Settings storedSettings = new Settings();
     try (MockedStatic<SearchSettingsMergeUtil> mergeUtil =
         mockStatic(SearchSettingsMergeUtil.class, CALLS_REAL_METHODS)) {
@@ -154,11 +149,8 @@ class MigrationUtilTest {
       mergeUtil
           .when(() -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings))
           .thenAnswer(invocation -> null);
-
       currentSettings.getGlobalSettings().getFieldValueBoosts().getFirst().setFactor(0.25);
-
       MigrationUtil.updateSearchSettingsBoostConfiguration();
-
       mergeUtil.verify(
           () -> SearchSettingsMergeUtil.saveSearchSettings(storedSettings, currentSettings),
           never());
@@ -172,7 +164,6 @@ class MigrationUtilTest {
       mergeUtil
           .when(SearchSettingsMergeUtil::getSearchSettingsFromDatabase)
           .thenThrow(new IllegalStateException("settings repository unavailable"));
-
       RuntimeException exception =
           assertThrows(
               RuntimeException.class, MigrationUtil::updateSearchSettingsBoostConfiguration);
@@ -201,9 +192,7 @@ class MigrationUtilTest {
             .mapToMap()
             .list())
         .thenReturn(List.of());
-
     MigrationUtil.restoreBotRelationshipsIfMissing(handle, ConnectionType.POSTGRES);
-
     verify(
             handle
                 .createUpdate(INSERT_APP_BOT_RELATIONSHIP_POSTGRES)
@@ -232,13 +221,10 @@ class MigrationUtilTest {
         .thenReturn(2);
     when(handle.createQuery("SELECT COUNT(*) FROM bot_entity").mapTo(Integer.class).one())
         .thenReturn(0);
-
     assertDoesNotThrow(() -> MigrationUtil.checkAndLogDataLossSymptoms(handle));
-
     Handle brokenHandle = mock(Handle.class, RETURNS_DEEP_STUBS);
     when(brokenHandle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one())
         .thenThrow(new IllegalStateException("count failed"));
-
     assertDoesNotThrow(() -> MigrationUtil.checkAndLogDataLossSymptoms(brokenHandle));
   }
 
@@ -247,26 +233,21 @@ class MigrationUtilTest {
     Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
     stubSystemCounts(handle, SYSTEM_POLICIES, CHECK_POLICY_EXISTS_POSTGRES, 0);
     stubSystemCounts(handle, SYSTEM_ROLES, CHECK_ROLE_EXISTS_POSTGRES, 0);
-
     @SuppressWarnings("unchecked")
-    EntityRepository<org.openmetadata.schema.entity.policies.Policy> policyRepository =
-        mock(EntityRepository.class);
+    EntityPolicy<org.openmetadata.schema.entity.policies.Policy> policyRepository =
+        mock(EntityPolicy.class);
     @SuppressWarnings("unchecked")
-    EntityRepository<Role> roleRepository = mock(EntityRepository.class);
-
+    EntityPolicy<Role> roleRepository = mock(EntityPolicy.class);
     var policyA = new org.openmetadata.schema.entity.policies.Policy().withName("PolicyA");
     var policyB = new org.openmetadata.schema.entity.policies.Policy().withName("PolicyB");
     var roleA = new Role().withName("RoleA");
     var roleB = new Role().withName("RoleB");
     when(policyRepository.getEntitiesFromSeedData()).thenReturn(List.of(policyA, policyB));
     when(roleRepository.getEntitiesFromSeedData()).thenReturn(List.of(roleA, roleB));
-
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(policyRepository);
       entity.when(() -> Entity.getEntityRepository(Entity.ROLE)).thenReturn(roleRepository);
-
       MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, ConnectionType.POSTGRES);
-
       verify(policyRepository).initializeEntity(policyA);
       verify(policyRepository).initializeEntity(policyB);
       verify(roleRepository).initializeEntity(roleA);
@@ -291,19 +272,15 @@ class MigrationUtilTest {
             .mapTo(Integer.class)
             .one())
         .thenReturn(0);
-
     @SuppressWarnings("unchecked")
-    EntityRepository<org.openmetadata.schema.entity.policies.Policy> policyRepository =
-        mock(EntityRepository.class);
+    EntityPolicy<org.openmetadata.schema.entity.policies.Policy> policyRepository =
+        mock(EntityPolicy.class);
     @SuppressWarnings("unchecked")
-    EntityRepository<Role> roleRepository = mock(EntityRepository.class);
-
+    EntityPolicy<Role> roleRepository = mock(EntityPolicy.class);
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.POLICY)).thenReturn(policyRepository);
       entity.when(() -> Entity.getEntityRepository(Entity.ROLE)).thenReturn(roleRepository);
-
       MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, ConnectionType.POSTGRES);
-
       verify(policyRepository, never()).initializeEntity(any());
       verify(roleRepository, never()).initializeEntity(any());
     }

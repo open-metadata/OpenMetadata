@@ -28,11 +28,11 @@ final class RepositoryOntologyStructuralTermReader implements TermReader {
 
   RepositoryOntologyStructuralTermReader(final GlossaryTermRepository repository) {
     this.repository = repository;
-    fields = repository.getFields(STRUCTURAL_FIELDS);
+    fields = repository.fieldPolicy().parse(STRUCTURAL_FIELDS);
   }
 
   @Override
   public GlossaryTerm read(final UUID termId) {
-    return repository.get(null, termId, fields, Include.NON_DELETED, false);
+    return repository.reads().byId(termId, fields, Include.NON_DELETED, false);
   }
 }

@@ -53,6 +53,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -84,8 +85,15 @@ public class SubscriptionUtil {
     try {
       do {
         result =
-            userEntityRepository.listAfter(
-                null, userEntityRepository.getFields("email,profile"), listFilter, 50, after);
+            userEntityRepository
+                .pages()
+                .after(
+                    new EntityPageReader.Projection(
+                        null,
+                        userEntityRepository.fieldPolicy().parse("email,profile"),
+                        listFilter),
+                    50,
+                    after);
         data.addAll(getEmailOrWebhookEndpointForUsers(result.getData(), type));
         after = result.getPaging().getAfter();
       } while (after != null);

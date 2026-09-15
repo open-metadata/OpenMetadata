@@ -1,17 +1,18 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.ai.McpServer;
@@ -19,6 +20,8 @@ import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTransportType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 class McpServerRepositoryTest {
@@ -91,10 +94,7 @@ class McpServerRepositoryTest {
   void testConstructorSetsSupportsSearch() throws Exception {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
-
-      Field supportsSearchField = EntityRepository.class.getDeclaredField("supportsSearch");
-      supportsSearchField.setAccessible(true);
-      assertTrue((boolean) supportsSearchField.get(repo));
+      assertTrue(repo.context().options().isSupportsSearch());
     }
   }
 
@@ -104,7 +104,6 @@ class McpServerRepositoryTest {
       McpServerRepository repo = createRepo(entityMock);
       McpServer server = new McpServer().withId(UUID.randomUUID()).withName("s1");
       Fields fields = Fields.EMPTY_FIELDS;
-
       assertDoesNotThrow(() -> repo.clearFields(server, fields));
     }
   }
@@ -114,7 +113,6 @@ class McpServerRepositoryTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
       McpServer server = new McpServer().withId(UUID.randomUUID()).withName("s1");
-
       assertDoesNotThrow(() -> repo.prepare(server, false));
       assertDoesNotThrow(() -> repo.prepare(server, true));
     }
@@ -125,22 +123,21 @@ class McpServerRepositoryTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
       McpServer server = new McpServer().withId(UUID.randomUUID()).withName("s1");
-
       assertDoesNotThrow(() -> repo.storeRelationships(server));
     }
   }
 
   @Test
-  void testGetUpdaterReturnsMcpServerUpdater() {
+  void testGetUpdaterAppliesMcpServerFields() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
-
       McpServer original =
           new McpServer()
               .withId(UUID.randomUUID())
               .withName("server")
               .withFullyQualifiedName("server")
               .withUpdatedBy("admin")
+              .withUpdatedAt(10L)
               .withVersion(0.1);
       McpServer updated =
           new McpServer()
@@ -148,13 +145,18 @@ class McpServerRepositoryTest {
               .withName("server")
               .withFullyQualifiedName("server")
               .withUpdatedBy("admin")
+              .withUpdatedAt(10L)
               .withVersion(0.1);
-
-      EntityRepository<McpServer>.EntityUpdater updater =
-          repo.getUpdater(original, updated, EntityRepository.Operation.PUT, null);
-
-      assertNotNull(updater);
-      assertTrue(updater instanceof McpServerRepository.McpServerUpdater);
+      EntityUpdater<McpServer> updater =
+          repo.getUpdater(original, updated, EntityOperation.PUT, null);
+      updated.setProtocolVersion("2025-01-01");
+      updater.setPatchedFields(Set.of("protocolVersion"));
+      updater.updateWithDeferredStore();
+      assertEquals(original.getId(), updated.getId());
+      assertEquals(0.2, updated.getVersion());
+      assertEquals(
+          "protocolVersion",
+          updater.getIncrementalChangeDescription().getFieldsAdded().getFirst().getName());
     }
   }
 
@@ -162,13 +164,13 @@ class McpServerRepositoryTest {
   void testMcpServerUpdaterEntitySpecificUpdateRecordsChanges() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
-
       McpServer original =
           new McpServer()
               .withId(UUID.randomUUID())
               .withName("server")
               .withFullyQualifiedName("server")
               .withUpdatedBy("admin")
+              .withUpdatedAt(10L)
               .withVersion(0.1)
               .withServerType(McpServerType.Database)
               .withTransportType(McpTransportType.Stdio)
@@ -182,6 +184,7 @@ class McpServerRepositoryTest {
               .withName("server")
               .withFullyQualifiedName("server")
               .withUpdatedBy("admin")
+              .withUpdatedAt(10L)
               .withVersion(0.1)
               .withServerType(McpServerType.Custom)
               .withTransportType(McpTransportType.SSE)
@@ -189,11 +192,25 @@ class McpServerRepositoryTest {
               .withSourceCode("https://github.com/new/server")
               .withDeploymentUrl("http://new.example.com")
               .withDocumentation("https://new-docs.example.com");
-
-      McpServerRepository.McpServerUpdater updater =
-          repo.new McpServerUpdater(original, updated, EntityRepository.Operation.PUT);
-
-      assertDoesNotThrow(() -> updater.entitySpecificUpdate(false));
+      EntityUpdater<McpServer> updater =
+          repo.getUpdater(original, updated, EntityOperation.PUT, null);
+      Set<String> fields =
+          Set.of(
+              "serverType",
+              "transportType",
+              "protocolVersion",
+              "sourceCode",
+              "deploymentUrl",
+              "documentation");
+      updater.setPatchedFields(fields);
+      updater.updateWithDeferredStore();
+      assertEquals(0.2, updated.getVersion());
+      assertEquals(
+          fields,
+          updater.getIncrementalChangeDescription().getFieldsUpdated().stream()
+              .map(change -> change.getName())
+              .collect(Collectors.toSet()));
+      assertEquals("2025-01-01", updated.getProtocolVersion());
     }
   }
 
@@ -201,13 +218,13 @@ class McpServerRepositoryTest {
   void testMcpServerUpdaterEntitySpecificUpdateWithNoChanges() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       McpServerRepository repo = createRepo(entityMock);
-
       McpServer original =
           new McpServer()
               .withId(UUID.randomUUID())
               .withName("server")
               .withFullyQualifiedName("server")
               .withUpdatedBy("admin")
+              .withUpdatedAt(10L)
               .withVersion(0.1)
               .withServerType(McpServerType.Database)
               .withTransportType(McpTransportType.Stdio);
@@ -217,14 +234,16 @@ class McpServerRepositoryTest {
               .withName("server")
               .withFullyQualifiedName("server")
               .withUpdatedBy("admin")
+              .withUpdatedAt(10L)
               .withVersion(0.1)
               .withServerType(McpServerType.Database)
               .withTransportType(McpTransportType.Stdio);
-
-      McpServerRepository.McpServerUpdater updater =
-          repo.new McpServerUpdater(original, updated, EntityRepository.Operation.PATCH);
-
-      assertDoesNotThrow(() -> updater.entitySpecificUpdate(false));
+      EntityUpdater<McpServer> updater =
+          repo.getUpdater(original, updated, EntityOperation.PATCH, null);
+      updater.setPatchedFields(Set.of("serverType", "transportType"));
+      updater.updateWithDeferredStore();
+      assertFalse(updater.incrementalFieldsChanged());
+      assertEquals(0.1, updated.getVersion());
     }
   }
 
@@ -234,10 +253,9 @@ class McpServerRepositoryTest {
       McpServerRepository repo = createRepo(entityMock);
       McpServer original = mcpServerForConsolidation().withChangeDescription(null);
       McpServer updated = mcpServerForConsolidation().withUpdatedAt(original.getUpdatedAt() + 1);
-      McpServerRepository.McpServerUpdater updater =
-          repo.new McpServerUpdater(original, updated, EntityRepository.Operation.PATCH);
-
-      assertFalse(updater.consolidateChanges(original, updated, EntityRepository.Operation.PATCH));
+      EntityUpdater<McpServer> updater =
+          repo.getUpdater(original, updated, EntityOperation.PATCH, null);
+      assertFalse(updater.canConsolidateChanges());
     }
   }
 
@@ -248,10 +266,9 @@ class McpServerRepositoryTest {
       ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(null);
       McpServer original = mcpServerForConsolidation().withChangeDescription(changeDescription);
       McpServer updated = mcpServerForConsolidation().withUpdatedAt(original.getUpdatedAt() + 1);
-      McpServerRepository.McpServerUpdater updater =
-          repo.new McpServerUpdater(original, updated, EntityRepository.Operation.PATCH);
-
-      assertFalse(updater.consolidateChanges(original, updated, EntityRepository.Operation.PATCH));
+      EntityUpdater<McpServer> updater =
+          repo.getUpdater(original, updated, EntityOperation.PATCH, null);
+      assertFalse(updater.canConsolidateChanges());
     }
   }
 

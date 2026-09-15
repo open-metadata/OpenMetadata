@@ -7,9 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -17,7 +14,6 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
-import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -40,8 +36,11 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchFixture;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 class EntityFieldUtilsTest {
@@ -49,28 +48,28 @@ class EntityFieldUtilsTest {
   @Test
   void setEntityFieldCreatesPatchAndChangeEventWhenEntityChanges() {
     TestEntity entity = entity();
-    EntityRepository<?> repository = mock(EntityRepository.class);
+    @SuppressWarnings("unchecked")
+    EntityPolicy<TestEntity> repository = mock(EntityPolicy.class);
+    final var patches = new EntityPatchFixture<TestEntity>(request -> null);
+    when(repository.patches()).thenReturn(patches);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
-
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-
       EntityFieldUtils.setEntityField(
           entity, "table", "alice", "description", "fresh description", true, "workflow-bot");
-
-      verify(repository)
-          .patch(
-              isNull(),
-              eq(entity.getId()),
-              eq("alice"),
-              any(JsonPatch.class),
-              isNull(),
-              eq("workflow-bot"));
-
+      assertEquals(1, patches.requests().size());
+      final var request = patches.requests().getFirst();
+      assertEquals(new EntityPatchService.Target.Id(entity.getId()), request.target());
+      assertEquals(new EntityCommandActor("alice", "workflow-bot"), request.actor());
+      assertEquals(new EntityPatchService.Options(null, null), request.options());
+      assertNull(request.uri());
+      assertEquals(
+          "/description", request.patch().toJsonArray().getJsonObject(0).getString("path"));
+      assertEquals(
+          "fresh description", request.patch().toJsonArray().getJsonObject(0).getString("value"));
       ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
       verify(changeEventDAO).insert(jsonCaptor.capture());
       ChangeEvent changeEvent = JsonUtils.readValue(jsonCaptor.getValue(), ChangeEvent.class);
@@ -88,18 +87,15 @@ class EntityFieldUtilsTest {
   void setEntityFieldSkipsPatchWhenEntityIsUnchanged() {
     TestEntity entity = entity();
     entity.setDescription("same description");
-    EntityRepository<?> repository = mock(EntityRepository.class);
+    EntityPolicy<?> repository = mock(EntityPolicy.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
-
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
       mockedEntity
           .when(Entity::getCollectionDAO)
           .thenThrow(new AssertionError("Should not be called"));
-
       EntityFieldUtils.setEntityField(
           entity, "table", "alice", "description", "same description", true);
-
       verifyNoInteractions(repository, changeEventDAO);
     }
   }
@@ -109,7 +105,6 @@ class EntityFieldUtilsTest {
     TestEntity entity = entity();
     User alice = user("alice");
     Team dataTeam = team("data");
-
     try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class);
         MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       stubTagLabelUtilities(mockedTagLabelUtil);
@@ -125,14 +120,12 @@ class EntityFieldUtilsTest {
       mockedTagLabelUtil
           .when(() -> TagLabelUtil.getTag("Tier.Tier1"))
           .thenReturn(tag("Tier.Tier1"));
-
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.USER, "alice", "", NON_DELETED))
           .thenReturn(alice);
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.TEAM, "data", "", NON_DELETED))
           .thenReturn(dataTeam);
-
       EntityFieldUtils.setEntityField(entity, "table", "alice", "tags", "PII.Sensitive", false);
       EntityFieldUtils.setEntityField(
           entity, "table", "alice", "glossaryTerms", "Business.Critical", false);
@@ -147,7 +140,6 @@ class EntityFieldUtilsTest {
           entity, "table", "alice", "entityStatus", EntityStatus.APPROVED.value(), false);
       EntityFieldUtils.setEntityField(
           entity, "table", "alice", "customField", "manual override", false);
-
       assertTrue(
           entity.getTags().stream()
               .anyMatch(
@@ -171,10 +163,8 @@ class EntityFieldUtilsTest {
   @Test
   void setSimpleStringFieldUsesReflectionFallbackForCustomFields() {
     TestEntity entity = entity();
-
     EntityFieldUtils.setSimpleStringField(entity, "customField", "assigned via reflection");
     EntityFieldUtils.setSimpleStringField(entity, "missingField", "ignored");
-
     assertEquals("assigned via reflection", entity.getCustomField());
   }
 
@@ -182,7 +172,6 @@ class EntityFieldUtilsTest {
   void appendTagsAddsResolvedTagsSkipsDuplicatesAndLookupFailures() {
     TestEntity entity = entity();
     entity.setTags(List.of(tagLabel("PII.Existing", TagSource.CLASSIFICATION)));
-
     try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
       stubTagLabelUtilities(mockedTagLabelUtil);
       mockedTagLabelUtil
@@ -191,9 +180,7 @@ class EntityFieldUtilsTest {
       mockedTagLabelUtil
           .when(() -> TagLabelUtil.getTag("broken"))
           .thenThrow(new IllegalArgumentException("missing"));
-
       EntityFieldUtils.appendTags(entity, "PII.Existing, PII.Sensitive, broken");
-
       assertEquals(2, entity.getTags().size());
       assertTrue(entity.getTags().stream().anyMatch(tag -> "PII.Existing".equals(tag.getTagFQN())));
       TagLabel addedTag =
@@ -214,7 +201,6 @@ class EntityFieldUtilsTest {
         List.of(
             tagLabel("PII.Restricted", TagSource.CLASSIFICATION),
             tagLabel("Business.Legacy", TagSource.GLOSSARY)));
-
     try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
       mockedTagLabelUtil
           .when(() -> TagLabelUtil.getTag("PII.Sensitive"))
@@ -234,9 +220,7 @@ class EntityFieldUtilsTest {
                 }
                 return null;
               });
-
       EntityFieldUtils.appendTags(entity, "PII.Sensitive");
-
       assertEquals(2, entity.getTags().size());
       assertTrue(
           entity.getTags().stream()
@@ -255,15 +239,12 @@ class EntityFieldUtilsTest {
   void appendGlossaryTermsAddsResolvedTermsAndSkipsDuplicates() {
     TestEntity entity = entity();
     entity.setTags(List.of(tagLabel("Business.Legacy", TagSource.GLOSSARY)));
-
     try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
       stubTagLabelUtilities(mockedTagLabelUtil);
       mockedTagLabelUtil
           .when(() -> TagLabelUtil.getGlossaryTerm("Business.Critical"))
           .thenReturn(glossaryTerm("Business.Critical"));
-
       EntityFieldUtils.appendGlossaryTerms(entity, "Business.Legacy, Business.Critical");
-
       assertEquals(2, entity.getTags().size());
       assertTrue(
           entity.getTags().stream()
@@ -281,7 +262,6 @@ class EntityFieldUtilsTest {
         List.of(
             tagLabel("PII.Sensitive", TagSource.CLASSIFICATION),
             tagLabel("Business.Legacy", TagSource.GLOSSARY)));
-
     try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
       mockedTagLabelUtil
           .when(() -> TagLabelUtil.getGlossaryTerm("Business.Critical"))
@@ -301,9 +281,7 @@ class EntityFieldUtilsTest {
                 }
                 return null;
               });
-
       EntityFieldUtils.appendGlossaryTerms(entity, "Business.Critical");
-
       assertEquals(2, entity.getTags().size());
       assertTrue(
           entity.getTags().stream().anyMatch(tag -> "PII.Sensitive".equals(tag.getTagFQN())));
@@ -317,18 +295,15 @@ class EntityFieldUtilsTest {
   @Test
   void setCertificationSetsAndClearsCertification() {
     TestEntity entity = entity();
-
     try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
       mockedTagLabelUtil
           .when(() -> TagLabelUtil.getTag("Certification.Gold"))
           .thenReturn(tag("Certification.Gold"));
-
       EntityFieldUtils.setCertification(entity, "Certification.Gold");
       assertNotNull(entity.getCertification());
       assertEquals("Certification.Gold", entity.getCertification().getTagLabel().getTagFQN());
       assertEquals(
           TagLabel.LabelType.AUTOMATED, entity.getCertification().getTagLabel().getLabelType());
-
       EntityFieldUtils.setCertification(entity, null);
       assertNull(entity.getCertification());
     }
@@ -341,14 +316,11 @@ class EntityFieldUtilsTest {
         List.of(
             tagLabel("Tier.Tier2", TagSource.CLASSIFICATION),
             tagLabel("PII.Sensitive", TagSource.CLASSIFICATION)));
-
     try (MockedStatic<TagLabelUtil> mockedTagLabelUtil = mockStatic(TagLabelUtil.class)) {
       mockedTagLabelUtil
           .when(() -> TagLabelUtil.getTag("Tier.Tier1"))
           .thenReturn(tag("Tier.Tier1"));
-
       assertDoesNotThrow(() -> EntityFieldUtils.setTier(entity, "Tier.Tier1"));
-
       assertEquals(2, entity.getTags().size());
       assertTrue(
           entity.getTags().stream().anyMatch(tag -> "PII.Sensitive".equals(tag.getTagFQN())));
@@ -361,10 +333,8 @@ class EntityFieldUtilsTest {
   void setOwnersResolvesUsersAndTeamsAndClearsWhenEmpty() {
     TestEntity entity = entity();
     entity.setOwners(List.of(new EntityReference().withName("legacyOwner")));
-
     EntityFieldUtils.setOwners(entity, null);
     assertNull(entity.getOwners());
-
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.USER, "alice", "", NON_DELETED))
@@ -375,10 +345,8 @@ class EntityFieldUtilsTest {
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.USER, "missing", "", NON_DELETED))
           .thenThrow(new IllegalArgumentException("missing"));
-
       EntityFieldUtils.setOwners(
           entity, "user:alice, team:data, invalid, bot:daemon, user:missing");
-
       assertEquals(2, entity.getOwners().size());
       assertTrue(entity.getOwners().stream().anyMatch(ref -> "alice".equals(ref.getName())));
       assertTrue(entity.getOwners().stream().anyMatch(ref -> "data".equals(ref.getName())));
@@ -389,10 +357,8 @@ class EntityFieldUtilsTest {
   void setReviewersResolvesUsersAndTeamsAndClearsWhenEmpty() {
     TestEntity entity = entity();
     entity.setReviewers(List.of(new EntityReference().withName("legacyReviewer")));
-
     EntityFieldUtils.setReviewers(entity, "");
     assertNull(entity.getReviewers());
-
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.USER, "alice", "", NON_DELETED))
@@ -403,10 +369,8 @@ class EntityFieldUtilsTest {
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.USER, "missing", "", NON_DELETED))
           .thenThrow(new IllegalArgumentException("missing"));
-
       EntityFieldUtils.setReviewers(
           entity, "user:alice, team:governance, invalid, bot:daemon, user:missing");
-
       assertEquals(2, entity.getReviewers().size());
       assertTrue(entity.getReviewers().stream().anyMatch(ref -> "alice".equals(ref.getName())));
       assertTrue(
@@ -453,11 +417,9 @@ class EntityFieldUtilsTest {
     TestEntity entity = entity();
     LegacyStatusEntity legacyEntity = new LegacyStatusEntity();
     String approvedValue = EntityStatus.APPROVED.value();
-
     EntityFieldUtils.setEntityStatus(entity, approvedValue);
     EntityFieldUtils.setEntityStatus(entity, "legacy-state");
     EntityFieldUtils.setEntityStatus(legacyEntity, approvedValue);
-
     assertEquals(EntityStatus.APPROVED, entity.getEntityStatus());
     assertEquals("legacy-state", entity.getStatus());
     assertEquals(approvedValue, legacyEntity.getStatus());
@@ -506,6 +468,7 @@ class EntityFieldUtilsTest {
   }
 
   private static class LegacyStatusEntity extends TestEntity {
+
     @Override
     public void setEntityStatus(EntityStatus approvalStatus) {
       throw new UnsupportedOperationException("Legacy status only");
@@ -513,23 +476,41 @@ class EntityFieldUtilsTest {
   }
 
   private static class TestEntity implements EntityInterface {
+
     private UUID id;
+
     private String description;
+
     private String displayName;
+
     private String name;
+
     private Double version;
+
     private String updatedBy;
+
     private Long updatedAt;
+
     private URI href;
+
     private ChangeDescription changeDescription;
+
     private ChangeDescription incrementalChangeDescription;
+
     private String fullyQualifiedName;
+
     private List<TagLabel> tags;
+
     private AssetCertification certification;
+
     private List<EntityReference> owners;
+
     private List<EntityReference> reviewers;
+
     private EntityStatus entityStatus;
+
     private String status;
+
     private String customField;
 
     @Override

@@ -13,6 +13,7 @@ import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -107,7 +108,10 @@ public class MigrationUtil {
 
           // Use createOrUpdate to update the workflow
           // This will handle the deployment to Flowable as well
-          repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+          repository
+              .creates()
+              .upsert(
+                  null, workflowDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
 
           LOG.info(
               "Successfully updated workflow '{}' with thresholds and version-based routing",

@@ -1838,9 +1838,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
               assertTrue(
                   afterDelete1.getPersonas() == null || afterDelete1.getPersonas().isEmpty(),
                   "Personas should be cleaned up after persona deletion");
+              final EntityReference defaultPersona = afterDelete1.getDefaultPersona();
+              // A configured system default remains the fallback after a personal default is
+              // deleted.
               assertTrue(
-                  afterDelete1.getDefaultPersona() == null,
-                  "Default persona should be cleaned up after persona deletion");
+                  defaultPersona == null || !persona.getId().equals(defaultPersona.getId()),
+                  "Deleted persona must not remain the user's default persona");
+              if (defaultPersona != null) {
+                assertFalse(
+                    Boolean.TRUE.equals(defaultPersona.getDeleted()),
+                    "Fallback persona must not be deleted");
+              }
             });
 
     Awaitility.await("Wait for persona cleanup on user2")

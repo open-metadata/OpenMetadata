@@ -18,7 +18,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 
 /**
  * Walks an entity's version history and slices the backfill window into one {@link
@@ -53,7 +53,6 @@ public final class VersionResolver {
   public List<VersionedWindow> resolve(EntityInterface latest, EnrichmentContext context) {
     long startTs = context.workflowWindowStartTimestamp();
     long endTs = context.workflowWindowEndTimestamp();
-
     // N+1 optimization: if the latest entity wasn't touched within the window, one hydrated
     // window covers all days. Skip the listVersionsWithOffset query entirely.
     Long latestUpdatedAt = latest.getUpdatedAt();
@@ -61,48 +60,41 @@ public final class VersionResolver {
         && TimestampUtils.getStartOfDayTimestamp(latestUpdatedAt) < startTs) {
       return List.of(new VersionedWindow(latest, startTs, endTs, VersionShape.LATEST_HYDRATED));
     }
-
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(context.entityType());
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(context.entityType());
     Class<? extends EntityInterface> entityClass =
         ENTITY_TYPE_TO_CLASS_MAP.get(context.entityType().toLowerCase());
-
     List<VersionedWindow> windows = new ArrayList<>();
     long pointerTimestamp = endTs;
     boolean isFirst = true;
     int nextOffset = 0;
-
     while (true) {
-      EntityRepository.EntityHistoryWithOffset page =
-          entityRepository.listVersionsWithOffset(latest.getId(), VERSION_PAGE_SIZE, nextOffset);
+      var page = entityRepository.versions().page(latest.getId(), VERSION_PAGE_SIZE, nextOffset);
       List<Object> versions = page.entityHistory().getVersions();
       if (versions.isEmpty()) {
         return windows;
       }
       nextOffset = page.nextOffset();
-
       for (Object version : versions) {
         EntityInterface versionEntity = JsonUtils.readOrConvertValue(version, entityClass);
         // Consume isFirst up front: every continue/return below leaves it correctly false.
         boolean wasFirst = isFirst;
         isFirst = false;
-
         Long versionUpdatedAt = versionEntity.getUpdatedAt();
         if (versionUpdatedAt == null) {
-          continue; // degenerate row: no timestamp to slice on
+          // degenerate row: no timestamp to slice on
+          continue;
         }
         long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionUpdatedAt);
         if (versionTimestamp > pointerTimestamp) {
-          continue; // later same-day update; the pointer already covers this row's day
+          // later same-day update; the pointer already covers this row's day
+          continue;
         }
-
         VersionShape shape = wasFirst ? VersionShape.LATEST_HYDRATED : VersionShape.HISTORICAL_RAW;
-
         if (versionTimestamp < startTs) {
           // Version older than the window start: covers the remaining days from startTs to pointer.
           windows.add(new VersionedWindow(versionEntity, startTs, pointerTimestamp, shape));
           return windows;
         }
-
         // In-window version: covers [endOfDay(versionTs), pointer]; advance pointer past its day.
         long windowSliceStart = TimestampUtils.getEndOfDayTimestamp(versionTimestamp);
         windows.add(new VersionedWindow(versionEntity, windowSliceStart, pointerTimestamp, shape));

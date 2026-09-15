@@ -70,6 +70,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
@@ -1077,11 +1078,16 @@ public class WorkflowHandler {
 
       TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
       org.openmetadata.schema.entity.tasks.Task taskEntity =
-          taskRepository.get(
-              null,
-              customTaskId,
-              taskRepository.getFields(
-                  "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution"));
+          taskRepository
+              .reads()
+              .byId(
+                  customTaskId,
+                  taskRepository
+                      .fieldPolicy()
+                      .parse(
+                          "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution"),
+                  Include.NON_DELETED,
+                  false);
 
       if (taskEntity != null && taskEntity.getAssignees() != null) {
         List<EntityReference> currentAssignees = new ArrayList<>(taskEntity.getAssignees());
@@ -1109,7 +1115,9 @@ public class WorkflowHandler {
           taskEntity.setUpdatedBy(currentUser);
           taskEntity.setUpdatedAt(System.currentTimeMillis());
 
-          taskRepository.createOrUpdate(null, taskEntity, currentUser);
+          taskRepository
+              .creates()
+              .upsert(null, taskEntity, new EntityCommandActor(currentUser, null), false);
 
           LOG.info(
               "[WorkflowTask] Successfully removed user '{}' from Task '{}' assignees. "
@@ -1769,8 +1777,13 @@ public class WorkflowHandler {
       WorkflowDefinitionRepository repository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
       WorkflowDefinition workflowDefinition =
-          repository.getByName(
-              null, workflowName, repository.getFields("trigger"), Include.NON_DELETED, true);
+          repository
+              .reads()
+              .byName(
+                  workflowName,
+                  repository.fieldPolicy().parse("trigger"),
+                  Include.NON_DELETED,
+                  true);
       WorkflowTriggerInterface trigger = workflowDefinition.getTrigger();
       if (trigger == null || !"periodicBatchEntity".equals(trigger.getType())) {
         return List.of();

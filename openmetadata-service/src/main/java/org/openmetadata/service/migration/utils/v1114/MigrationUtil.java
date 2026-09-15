@@ -13,8 +13,8 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.BotRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
@@ -32,20 +32,29 @@ import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 public class MigrationUtil {
 
   private static final int CONTAINS_RELATIONSHIP = 0;
+
   private static final int HAS_RELATIONSHIP = 10;
 
   private static final String APP_ROLE_NAME = "ApplicationBotRole";
 
   private static final Map<String, String> BOT_USER_ROLE_MAPPING =
       Map.of(
-          "ingestion-bot", "IngestionBotRole",
-          "profiler-bot", "ProfilerBotRole",
-          "lineage-bot", "LineageBotRole",
-          "usage-bot", "UsageBotRole",
-          "testsuite-bot", "QualityBotRole",
-          "governance-bot", "GovernanceBotRole",
-          "autoClassification-bot", "AutoClassificationBotRole",
-          "scim-bot", "ScimBotRole");
+          "ingestion-bot",
+          "IngestionBotRole",
+          "profiler-bot",
+          "ProfilerBotRole",
+          "lineage-bot",
+          "LineageBotRole",
+          "usage-bot",
+          "UsageBotRole",
+          "testsuite-bot",
+          "QualityBotRole",
+          "governance-bot",
+          "GovernanceBotRole",
+          "autoClassification-bot",
+          "AutoClassificationBotRole",
+          "scim-bot",
+          "ScimBotRole");
 
   private static final Map<String, List<String>> ROLE_POLICY_MAPPING =
       Map.ofEntries(
@@ -106,36 +115,28 @@ public class MigrationUtil {
     try {
       LOG.info(
           "Updating search settings: merging percentileRank factors from default configuration");
-
       Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
-
       if (searchSettings == null) {
         LOG.warn("Search settings not found, skipping migration");
         return;
       }
-
       SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
       SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
-
       if (defaultSettings == null) {
         LOG.error("Failed to load default search settings, skipping migration");
         return;
       }
-
       BiPredicate<String, Double> shouldMerge =
           (field, factor) -> field.contains("percentileRank") && (factor == 0.05 || factor == 0.1);
-
       boolean updated =
           SearchSettingsMergeUtil.mergeFieldValueBoosts(
               currentSettings, defaultSettings, shouldMerge, "percentileRank");
-
       if (updated) {
         SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
         LOG.info("Search settings percentileRank factors merged successfully from defaults");
       } else {
         LOG.info("No updates needed for search settings percentileRank factors");
       }
-
     } catch (Exception e) {
       LOG.error("Error updating search settings percentileRank factors", e);
       throw new RuntimeException("Failed to update search settings percentileRank factors", e);
@@ -153,36 +154,28 @@ public class MigrationUtil {
       Handle handle, ConnectionType connectionType) {
     try {
       LOG.info("Checking for apps with missing bot relationships...");
-
       String findAppsWithoutBotQuery = getAppsWithoutBotRelationshipQuery(connectionType);
       List<Map<String, Object>> appsWithoutBot =
           handle.createQuery(findAppsWithoutBotQuery).mapToMap().list();
-
       if (appsWithoutBot.isEmpty()) {
         LOG.info("All apps have proper bot relationships, no restoration needed");
         return;
       }
-
       LOG.info(
           "Found {} apps without bot relationships, attempting restoration", appsWithoutBot.size());
-
       int restoredCount = 0;
       for (Map<String, Object> app : appsWithoutBot) {
         String appId = app.get("id").toString();
         String appName = app.get("name").toString();
         String expectedBotName = appName + "Bot";
-
         String findBotQuery = getFindBotByNameQuery(connectionType);
         List<Map<String, Object>> bots =
             handle.createQuery(findBotQuery).bind("botName", expectedBotName).mapToMap().list();
-
         if (bots.isEmpty()) {
           LOG.debug("No bot found with name {} for app {}", expectedBotName, appName);
           continue;
         }
-
         String botId = bots.get(0).get("id").toString();
-
         // Create the relationship (INSERT IGNORE / ON CONFLICT DO NOTHING for idempotency)
         String insertRelationshipQuery = getInsertRelationshipQuery(connectionType);
         handle
@@ -191,13 +184,10 @@ public class MigrationUtil {
             .bind("botId", botId)
             .bind("relation", CONTAINS_RELATIONSHIP)
             .execute();
-
         LOG.info("Restored bot relationship for app: {} -> bot: {}", appName, expectedBotName);
         restoredCount++;
       }
-
       LOG.info("Restored {} app-bot relationships", restoredCount);
-
     } catch (Exception e) {
       LOG.error("Error restoring bot relationships: {}", e.getMessage(), e);
     }
@@ -211,11 +201,11 @@ public class MigrationUtil {
   public static void restoreBotUserRolesIfMissing(Handle handle, ConnectionType connectionType) {
     try {
       LOG.info("Checking for bot users with missing role relationships...");
-
       BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
       List<Bot> allBots =
-          botRepository.listAll(botRepository.getFields("*"), new ListFilter(Include.ALL));
-
+          botRepository
+              .collections()
+              .all(botRepository.fieldPolicy().parse("*"), new ListFilter(Include.ALL));
       int restoredCount = 0;
       for (Bot bot : allBots) {
         String roleName = BOT_USER_ROLE_MAPPING.getOrDefault(bot.getName(), APP_ROLE_NAME);
@@ -224,18 +214,15 @@ public class MigrationUtil {
           LOG.debug("Bot user {} not found, skipping", bot.getName());
           continue;
         }
-
         String roleId = findRoleId(handle, connectionType, roleName);
         if (roleId == null) {
           LOG.debug("Role {} not found, skipping", roleName);
           continue;
         }
-
         if (hasUserRoleRelationship(handle, userId, roleId)) {
           LOG.debug("Bot user {} already has role {}", bot.getName(), roleName);
           continue;
         }
-
         String insertQuery = getInsertUserRoleRelationshipQuery(connectionType);
         handle
             .createUpdate(insertQuery)
@@ -243,17 +230,14 @@ public class MigrationUtil {
             .bind("roleId", roleId)
             .bind("relation", HAS_RELATIONSHIP)
             .execute();
-
         LOG.info("Restored role {} for bot user {}", roleName, bot.getName());
         restoredCount++;
       }
-
       if (restoredCount > 0) {
         LOG.info("Restored {} bot user role relationships", restoredCount);
       } else {
         LOG.info("All bot users have proper role relationships");
       }
-
     } catch (Exception e) {
       LOG.error("Error restoring bot user roles: {}", e.getMessage(), e);
     }
@@ -267,29 +251,24 @@ public class MigrationUtil {
       Handle handle, ConnectionType connectionType) {
     try {
       LOG.info("Checking for roles with missing policy relationships...");
-
       int restoredCount = 0;
       for (Map.Entry<String, List<String>> entry : ROLE_POLICY_MAPPING.entrySet()) {
         String roleName = entry.getKey();
         List<String> policyNames = entry.getValue();
-
         String roleId = findRoleId(handle, connectionType, roleName);
         if (roleId == null) {
           LOG.debug("Role {} not found, skipping", roleName);
           continue;
         }
-
         for (String policyName : policyNames) {
           String policyId = findPolicyId(handle, connectionType, policyName);
           if (policyId == null) {
             LOG.debug("Policy {} not found, skipping", policyName);
             continue;
           }
-
           if (hasRolePolicyRelationship(handle, roleId, policyId)) {
             continue;
           }
-
           String insertQuery = getInsertRolePolicyRelationshipQuery(connectionType);
           handle
               .createUpdate(insertQuery)
@@ -297,18 +276,15 @@ public class MigrationUtil {
               .bind("policyId", policyId)
               .bind("relation", HAS_RELATIONSHIP)
               .execute();
-
           LOG.info("Restored policy {} for role {}", policyName, roleName);
           restoredCount++;
         }
       }
-
       if (restoredCount > 0) {
         LOG.info("Restored {} role-policy relationships", restoredCount);
       } else {
         LOG.info("All roles have proper policy relationships");
       }
-
     } catch (Exception e) {
       LOG.error("Error restoring role-policy relationships: {}", e.getMessage(), e);
     }
@@ -325,10 +301,10 @@ public class MigrationUtil {
   private static boolean hasRolePolicyRelationship(Handle handle, String roleId, String policyId) {
     String query =
         """
-        SELECT COUNT(*) as cnt FROM entity_relationship
-        WHERE fromId = :roleId AND toId = :policyId
-        AND fromEntity = 'role' AND toEntity = 'policy' AND relation = :relation
-        """;
+            SELECT COUNT(*) as cnt FROM entity_relationship
+            WHERE fromId = :roleId AND toId = :policyId
+            AND fromEntity = 'role' AND toEntity = 'policy' AND relation = :relation
+            """;
     Integer count =
         handle
             .createQuery(query)
@@ -343,14 +319,14 @@ public class MigrationUtil {
   private static String getInsertRolePolicyRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
       case MYSQL -> """
-          INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-          VALUES (:roleId, :policyId, 'role', 'policy', :relation)
-          """;
+                    INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+                    VALUES (:roleId, :policyId, 'role', 'policy', :relation)
+                    """;
       case POSTGRES -> """
-          INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-          VALUES (:roleId, :policyId, 'role', 'policy', :relation)
-          ON CONFLICT DO NOTHING
-          """;
+                    INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+                    VALUES (:roleId, :policyId, 'role', 'policy', :relation)
+                    ON CONFLICT DO NOTHING
+                    """;
     };
   }
 
@@ -359,15 +335,15 @@ public class MigrationUtil {
     String query =
         switch (connectionType) {
           case MYSQL -> """
-          SELECT id FROM user_entity
-          WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
-          AND JSON_EXTRACT(json, '$.isBot') = true
-          """;
+                    SELECT id FROM user_entity
+                    WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
+                    AND JSON_EXTRACT(json, '$.isBot') = true
+                    """;
           case POSTGRES -> """
-          SELECT id FROM user_entity
-          WHERE json->>'name' = :name
-          AND (json->>'isBot')::boolean = true
-          """;
+                    SELECT id FROM user_entity
+                    WHERE json->>'name' = :name
+                    AND (json->>'isBot')::boolean = true
+                    """;
         };
     List<Map<String, Object>> results =
         handle.createQuery(query).bind("name", userName).mapToMap().list();
@@ -384,10 +360,10 @@ public class MigrationUtil {
   private static boolean hasUserRoleRelationship(Handle handle, String userId, String roleId) {
     String query =
         """
-        SELECT COUNT(*) as cnt FROM entity_relationship
-        WHERE fromId = :userId AND toId = :roleId
-        AND fromEntity = 'user' AND toEntity = 'role' AND relation = :relation
-        """;
+            SELECT COUNT(*) as cnt FROM entity_relationship
+            WHERE fromId = :userId AND toId = :roleId
+            AND fromEntity = 'user' AND toEntity = 'role' AND relation = :relation
+            """;
     Integer count =
         handle
             .createQuery(query)
@@ -402,14 +378,14 @@ public class MigrationUtil {
   private static String getInsertUserRoleRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
       case MYSQL -> """
-          INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-          VALUES (:userId, :roleId, 'user', 'role', :relation)
-          """;
+                    INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+                    VALUES (:userId, :roleId, 'user', 'role', :relation)
+                    """;
       case POSTGRES -> """
-          INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-          VALUES (:userId, :roleId, 'user', 'role', :relation)
-          ON CONFLICT DO NOTHING
-          """;
+                    INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+                    VALUES (:userId, :roleId, 'user', 'role', :relation)
+                    ON CONFLICT DO NOTHING
+                    """;
     };
   }
 
@@ -420,57 +396,50 @@ public class MigrationUtil {
   public static void checkAndLogDataLossSymptoms(Handle handle) {
     try {
       LOG.info("Checking for symptoms of Flyway migration data loss...");
-
       int roleCount = countTable(handle, "role_entity");
       int policyCount = countTable(handle, "policy_entity");
       int appCount = countTable(handle, "installed_apps");
       int botCount = countTable(handle, "bot_entity");
-
       boolean potentialDataLoss = false;
       StringBuilder warnings = new StringBuilder();
-
       if (roleCount == 0) {
         potentialDataLoss = true;
         warnings.append("\n  - role_entity table is EMPTY. Default roles may have been deleted.");
       }
-
       if (policyCount == 0) {
         potentialDataLoss = true;
         warnings.append(
             "\n  - policy_entity table is EMPTY. Default policies may have been deleted.");
       }
-
       if (appCount > 0 && botCount == 0) {
         potentialDataLoss = true;
         warnings.append("\n  - Apps exist but no bots found. App bots may have been deleted.");
       }
-
       if (potentialDataLoss) {
         LOG.warn(
             """
 
-            ============================================================
-            POTENTIAL DATA LOSS DETECTED FROM FLYWAY MIGRATION ISSUE
-            ============================================================
-            Symptoms found:{}
+                    ============================================================
+                    POTENTIAL DATA LOSS DETECTED FROM FLYWAY MIGRATION ISSUE
+                    ============================================================
+                    Symptoms found:{}
 
-            This may have occurred if you ran migrations with --force flag
-            after upgrading from a pre-1.11.0 version.
+                    This may have occurred if you ran migrations with --force flag
+                    after upgrading from a pre-1.11.0 version.
 
-            RECOVERY OPTIONS:
-            1. Restore from database backup (recommended if you have one)
-            2. Restart the OpenMetadata server - this will re-seed default
-               roles and policies from the built-in seed data
-            3. Custom roles/policies will need to be recreated manually
+                    RECOVERY OPTIONS:
+                    1. Restore from database backup (recommended if you have one)
+                    2. Restart the OpenMetadata server - this will re-seed default
+                       roles and policies from the built-in seed data
+                    3. Custom roles/policies will need to be recreated manually
 
-            For more information, see the OpenMetadata documentation.
-            ============================================================
-            """,
+                    For more information, see the OpenMetadata documentation.
+                    ============================================================
+                    """,
             warnings);
       } else {
         LOG.info("No data loss symptoms detected.");
       }
-
     } catch (Exception e) {
       LOG.debug("Could not check for data loss symptoms: {}", e.getMessage());
     }
@@ -487,52 +456,52 @@ public class MigrationUtil {
   private static String getAppsWithoutBotRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
       case MYSQL -> """
-          SELECT a.id, JSON_UNQUOTE(JSON_EXTRACT(a.json, '$.name')) as name
-          FROM installed_apps a
-          WHERE NOT EXISTS (
-              SELECT 1 FROM entity_relationship er
-              WHERE er.fromId = a.id
-              AND er.toEntity = 'bot'
-              AND er.relation = 0
-          )
-          """;
+                    SELECT a.id, JSON_UNQUOTE(JSON_EXTRACT(a.json, '$.name')) as name
+                    FROM installed_apps a
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM entity_relationship er
+                        WHERE er.fromId = a.id
+                        AND er.toEntity = 'bot'
+                        AND er.relation = 0
+                    )
+                    """;
       case POSTGRES -> """
-          SELECT a.id, a.json->>'name' as name
-          FROM installed_apps a
-          WHERE NOT EXISTS (
-              SELECT 1 FROM entity_relationship er
-              WHERE er.fromId = a.id
-              AND er.toEntity = 'bot'
-              AND er.relation = 0
-          )
-          """;
+                    SELECT a.id, a.json->>'name' as name
+                    FROM installed_apps a
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM entity_relationship er
+                        WHERE er.fromId = a.id
+                        AND er.toEntity = 'bot'
+                        AND er.relation = 0
+                    )
+                    """;
     };
   }
 
   private static String getFindBotByNameQuery(ConnectionType connectionType) {
     return switch (connectionType) {
       case MYSQL -> """
-          SELECT id FROM bot_entity
-          WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :botName
-          """;
+                    SELECT id FROM bot_entity
+                    WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :botName
+                    """;
       case POSTGRES -> """
-          SELECT id FROM bot_entity
-          WHERE json->>'name' = :botName
-          """;
+                    SELECT id FROM bot_entity
+                    WHERE json->>'name' = :botName
+                    """;
     };
   }
 
   private static String getInsertRelationshipQuery(ConnectionType connectionType) {
     return switch (connectionType) {
       case MYSQL -> """
-          INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-          VALUES (:appId, :botId, 'application', 'bot', :relation)
-          """;
+                    INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+                    VALUES (:appId, :botId, 'application', 'bot', :relation)
+                    """;
       case POSTGRES -> """
-          INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
-          VALUES (:appId, :botId, 'application', 'bot', :relation)
-          ON CONFLICT DO NOTHING
-          """;
+                    INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+                    VALUES (:appId, :botId, 'application', 'bot', :relation)
+                    ON CONFLICT DO NOTHING
+                    """;
     };
   }
 
@@ -545,10 +514,8 @@ public class MigrationUtil {
     try {
       List<String> missingPolicies = findMissingSystemPolicies(handle, connectionType);
       List<String> missingRoles = findMissingSystemRoles(handle, connectionType);
-
       int missingPolicyPercent = (missingPolicies.size() * 100) / SYSTEM_POLICIES.size();
       int missingRolePercent = (missingRoles.size() * 100) / SYSTEM_ROLES.size();
-
       if (missingPolicyPercent >= RESEED_THRESHOLD_PERCENT) {
         LOG.info(
             "Missing {}% of system policies ({}). Re-seeding default policies...",
@@ -559,7 +526,6 @@ public class MigrationUtil {
             "Some system policies missing ({}) but below threshold, skipping re-seed",
             missingPolicies);
       }
-
       if (missingRolePercent >= RESEED_THRESHOLD_PERCENT) {
         LOG.info(
             "Missing {}% of system roles ({}). Re-seeding default roles...",
@@ -569,7 +535,6 @@ public class MigrationUtil {
         LOG.info(
             "Some system roles missing ({}) but below threshold, skipping re-seed", missingRoles);
       }
-
       if (missingPolicies.isEmpty() && missingRoles.isEmpty()) {
         LOG.info("All system roles and policies exist, skipping re-seed");
       }
@@ -606,33 +571,33 @@ public class MigrationUtil {
   private static String getCheckPolicyExistsQuery(ConnectionType connectionType) {
     return switch (connectionType) {
       case MYSQL -> """
-          SELECT COUNT(*) FROM policy_entity
-          WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
-          """;
+                    SELECT COUNT(*) FROM policy_entity
+                    WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
+                    """;
       case POSTGRES -> """
-          SELECT COUNT(*) FROM policy_entity
-          WHERE json->>'name' = :name
-          """;
+                    SELECT COUNT(*) FROM policy_entity
+                    WHERE json->>'name' = :name
+                    """;
     };
   }
 
   private static String getCheckRoleExistsQuery(ConnectionType connectionType) {
     return switch (connectionType) {
       case MYSQL -> """
-          SELECT COUNT(*) FROM role_entity
-          WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
-          """;
+                    SELECT COUNT(*) FROM role_entity
+                    WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
+                    """;
       case POSTGRES -> """
-          SELECT COUNT(*) FROM role_entity
-          WHERE json->>'name' = :name
-          """;
+                    SELECT COUNT(*) FROM role_entity
+                    WHERE json->>'name' = :name
+                    """;
     };
   }
 
   private static void reseedPolicies() {
     try {
-      EntityRepository<Policy> policyRepository =
-          (EntityRepository<Policy>) Entity.getEntityRepository(Entity.POLICY);
+      EntityPolicy<Policy> policyRepository =
+          (EntityPolicy<Policy>) Entity.getEntityRepository(Entity.POLICY);
       List<Policy> policies = policyRepository.getEntitiesFromSeedData();
       int seeded = 0;
       for (Policy policy : policies) {
@@ -651,8 +616,8 @@ public class MigrationUtil {
 
   private static void reseedRoles() {
     try {
-      EntityRepository<Role> roleRepository =
-          (EntityRepository<Role>) Entity.getEntityRepository(Entity.ROLE);
+      EntityPolicy<Role> roleRepository =
+          (EntityPolicy<Role>) Entity.getEntityRepository(Entity.ROLE);
       List<Role> roles = roleRepository.getEntitiesFromSeedData();
       int seeded = 0;
       for (Role role : roles) {

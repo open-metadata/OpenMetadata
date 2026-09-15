@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.OntologyStructuralField;
 import org.openmetadata.schema.type.OntologyTermStructure;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyStructuralDiffService.TermReader;
@@ -60,12 +61,14 @@ public final class OntologyStructuralMergeService {
       final RelationshipTypeResolver relationshipTypes,
       final Clock clock) {
     final TermReader termReader = new RepositoryOntologyStructuralTermReader(termRepository);
+    final var creates = changeSetRepository.creates();
     return new OntologyStructuralMergeService(
         new OntologyStructuralDiffService(termReader),
         termReader,
         new OntologyStructuralRelationshipMerger(relationshipTypes, clock),
         clock,
-        changeSetRepository::create);
+        (uri, entity, actor, impersonated) ->
+            creates.create(uri, entity, new EntityCommandActor(actor, impersonated)));
   }
 
   OntologyStructuralMergeService(

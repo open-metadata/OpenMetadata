@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -54,6 +55,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/governance/workflowDefinitions")
 @Tag(
@@ -225,12 +227,15 @@ public class WorkflowDefinitionResource
           UUID id,
       @Context SecurityContext securityContext) {
     WorkflowDefinition wd =
-        repository.get(
-            uriInfo,
-            id,
-            new EntityUtil.Fields(repository.getAllowedFields()),
-            Include.NON_DELETED,
-            false);
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    new EntityUtil.Fields(repository.getAllowedFields()),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
     WorkflowHandler.getInstance().deploy(new Workflow(wd));
     return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
@@ -609,7 +614,7 @@ public class WorkflowDefinitionResource
           String fqn) {
     try {
       WorkflowDefinition workflow =
-          repository.getByName(uriInfo, fqn, repository.getFields("suspended"));
+          repository.getByName(uriInfo, fqn, repository.fieldPolicy().parse("suspended"));
       if (workflow.getSuspended() != null && workflow.getSuspended()) {
         return Response.status(Response.Status.BAD_REQUEST)
             .entity(
@@ -681,7 +686,8 @@ public class WorkflowDefinitionResource
           @PathParam("fqn")
           String fqn) {
     // Check if workflow exists
-    WorkflowDefinition workflow = repository.getByName(uriInfo, fqn, repository.getFields("id"));
+    WorkflowDefinition workflow =
+        repository.getByName(uriInfo, fqn, repository.fieldPolicy().parse("id"));
 
     // Authorize the operation
     OperationContext operationContext =
@@ -729,7 +735,8 @@ public class WorkflowDefinitionResource
           @PathParam("fqn")
           String fqn) {
     // Check if workflow exists
-    WorkflowDefinition workflow = repository.getByName(uriInfo, fqn, repository.getFields("id"));
+    WorkflowDefinition workflow =
+        repository.getByName(uriInfo, fqn, repository.fieldPolicy().parse("id"));
 
     // Authorize the operation
     OperationContext operationContext =

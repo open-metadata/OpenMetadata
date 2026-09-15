@@ -37,6 +37,7 @@ import org.openmetadata.schema.api.data.OntologyBulkResultArtifact;
 import org.openmetadata.schema.api.data.OntologyBulkSubmission;
 import org.openmetadata.schema.api.data.OntologyBulkTemplate;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -146,7 +147,13 @@ public final class OntologyBulkResource {
   }
 
   private Glossary glossary(final OntologyBulkRequest request) {
-    return glossaryRepository.get(null, request.getGlossaryId(), glossaryRepository.getFields(""));
+    return glossaryRepository
+        .reads()
+        .byId(
+            request.getGlossaryId(),
+            glossaryRepository.fieldPolicy().parse(""),
+            Include.NON_DELETED,
+            false);
   }
 
   private void authorizeEdit(final SecurityContext securityContext, final Glossary glossary) {

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.data.CreateGlossary;
@@ -387,7 +388,7 @@ public class GlossaryTermRelationIT {
   }
 
   @AfterAll
-  static void disableRdf() {
-    RdfUpdater.disable();
+  static void restoreRdf() {
+    RdfTestUtils.restoreSuiteConfiguration();
   }
 }

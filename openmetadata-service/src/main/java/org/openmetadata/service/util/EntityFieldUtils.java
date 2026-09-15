@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.util;
 
 import jakarta.json.JsonPatch;
@@ -33,7 +32,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 
 @Slf4j
@@ -68,10 +69,8 @@ public class EntityFieldUtils {
       String fieldValue,
       boolean applyPatch,
       String impersonatedBy) {
-
     // Store original state for patch creation
     String originalJson = applyPatch ? JsonUtils.pojoToJson(entity) : null;
-
     switch (fieldName) {
       case "description":
       case "displayName":
@@ -108,8 +107,15 @@ public class EntityFieldUtils {
       String updatedJson = JsonUtils.pojoToJson(entity);
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
       if (!originalJson.equals(updatedJson)) {
-        EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-        entityRepository.patch(null, entity.getId(), user, patch, null, impersonatedBy);
+        EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
+        entityRepository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Id(entity.getId()),
+                patch,
+                new EntityCommandActor(user, impersonatedBy),
+                null,
+                new EntityPatchService.Options(null, null));
         ChangeEvent changeEvent =
             new ChangeEvent()
                 .withId(UUID.randomUUID())
@@ -121,7 +127,6 @@ public class EntityFieldUtils {
                 .withImpersonatedBy(impersonatedBy)
                 .withTimestamp(System.currentTimeMillis())
                 .withEntity(entity);
-
         Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
       }
     }
@@ -142,12 +147,10 @@ public class EntityFieldUtils {
           }
         }
       }
-
       // Fallback to direct field access
       java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
       field.setAccessible(true);
       field.set(entity, fieldValue);
-
     } catch (Exception e) {
       LOG.debug("Could not set field {} on entity: {}", fieldName, e.getMessage());
     }
@@ -161,18 +164,15 @@ public class EntityFieldUtils {
     if (tagFQNs == null || tagFQNs.isEmpty()) {
       return;
     }
-
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTagsToAdd = new ArrayList<>();
     String[] fqns = tagFQNs.contains(",") ? tagFQNs.split(",") : new String[] {tagFQNs};
-
     // First, collect all new tags to add
     for (String fqn : fqns) {
       String trimmedFQN = fqn.trim();
       if (!trimmedFQN.isEmpty()) {
         // Check if tag already exists
         boolean exists = existingTags.stream().anyMatch(tag -> trimmedFQN.equals(tag.getTagFQN()));
-
         if (!exists) {
           try {
             // Fetch the actual Tag entity
@@ -190,11 +190,9 @@ public class EntityFieldUtils {
         }
       }
     }
-
     // Try to append first
     List<TagLabel> combinedTags = new ArrayList<>(existingTags);
     combinedTags.addAll(newTagsToAdd);
-
     // Check for mutual exclusivity
     try {
       TagLabelUtil.checkMutuallyExclusive(combinedTags);
@@ -204,7 +202,6 @@ public class EntityFieldUtils {
       // Mutual exclusivity conflict detected - remove conflicting tags and add new ones
       LOG.debug(
           "Mutual exclusivity conflict detected. Replacing conflicting tags: {}", e.getMessage());
-
       // Keep only non-glossary tags that don't conflict with new tags
       List<TagLabel> filteredTags = new ArrayList<>();
       for (TagLabel existingTag : existingTags) {
@@ -213,7 +210,6 @@ public class EntityFieldUtils {
           filteredTags.add(existingTag);
           continue;
         }
-
         // Check if this existing tag conflicts with any new tag
         boolean conflicts = false;
         for (TagLabel newTag : newTagsToAdd) {
@@ -225,15 +221,12 @@ public class EntityFieldUtils {
             break;
           }
         }
-
         if (!conflicts) {
           filteredTags.add(existingTag);
         }
       }
-
       // Add the new tags
       filteredTags.addAll(newTagsToAdd);
-
       // Final validation
       try {
         TagLabelUtil.checkMutuallyExclusive(filteredTags);
@@ -255,7 +248,6 @@ public class EntityFieldUtils {
     List<TagLabel> existingTags = entity.getTags() != null ? entity.getTags() : new ArrayList<>();
     List<TagLabel> newTermsToAdd = new ArrayList<>();
     String[] fqns = termFQNs.contains(",") ? termFQNs.split(",") : new String[] {termFQNs};
-
     // First, collect all new glossary terms to add
     for (String fqn : fqns) {
       String trimmedFQN = fqn.trim();
@@ -267,7 +259,6 @@ public class EntityFieldUtils {
                     tag ->
                         trimmedFQN.equals(tag.getTagFQN())
                             && TagLabel.TagSource.GLOSSARY.equals(tag.getSource()));
-
         if (!exists) {
           try {
             // Fetch the actual GlossaryTerm entity
@@ -285,11 +276,9 @@ public class EntityFieldUtils {
         }
       }
     }
-
     // Try to append first
     List<TagLabel> combinedTags = new ArrayList<>(existingTags);
     combinedTags.addAll(newTermsToAdd);
-
     // Check for mutual exclusivity
     try {
       TagLabelUtil.checkMutuallyExclusive(combinedTags);
@@ -298,7 +287,6 @@ public class EntityFieldUtils {
       LOG.debug(
           "Mutual exclusivity conflict detected. Replacing conflicting glossary terms: {}",
           e.getMessage());
-
       // Keep only tags/terms that don't conflict with new terms
       List<TagLabel> filteredTags = new ArrayList<>();
       for (TagLabel existingTag : existingTags) {
@@ -313,7 +301,6 @@ public class EntityFieldUtils {
             break;
           }
         }
-
         if (!conflicts) {
           filteredTags.add(existingTag);
         }
@@ -337,7 +324,6 @@ public class EntityFieldUtils {
       entity.setCertification(null);
       return;
     }
-
     try {
       // Fetch the certification tag
       Tag certTag = TagLabelUtil.getTag(certificationFQN);
@@ -345,7 +331,6 @@ public class EntityFieldUtils {
         TagLabel tagLabel = EntityUtil.toTagLabel(certTag);
         tagLabel.setLabelType(TagLabel.LabelType.AUTOMATED);
         tagLabel.setState(TagLabel.State.CONFIRMED);
-
         AssetCertification certification = new AssetCertification();
         certification.setTagLabel(tagLabel);
         entity.setCertification(certification);
@@ -362,13 +347,10 @@ public class EntityFieldUtils {
     if (tierFQN == null || tierFQN.isEmpty()) {
       return;
     }
-
     List<TagLabel> tags =
         entity.getTags() != null ? new ArrayList<>(entity.getTags()) : new ArrayList<>();
-
     // Remove existing Tier.* tags
     tags.removeIf(tag -> tag.getTagFQN() != null && tag.getTagFQN().startsWith("Tier."));
-
     // Add new tier tag
     try {
       Tag tierTag = TagLabelUtil.getTag(tierFQN);
@@ -381,7 +363,6 @@ public class EntityFieldUtils {
     } catch (Exception e) {
       LOG.warn("Could not set tier {}: {}", tierFQN, e.getMessage());
     }
-
     entity.setTags(tags);
   }
 
@@ -394,10 +375,8 @@ public class EntityFieldUtils {
       entity.setOwners(null);
       return;
     }
-
     List<EntityReference> owners = new ArrayList<>();
     String[] names = ownerNames.contains(",") ? ownerNames.split(",") : new String[] {ownerNames};
-
     for (String ownerSpec : names) {
       String trimmedSpec = ownerSpec.trim();
       if (!trimmedSpec.isEmpty()) {
@@ -407,10 +386,8 @@ public class EntityFieldUtils {
           LOG.warn("Invalid owner format: {}. Expected 'user:name' or 'team:name'", trimmedSpec);
           continue;
         }
-
         String type = parts[0].trim().toLowerCase();
         String name = parts[1].trim();
-
         try {
           if ("user".equals(type)) {
             User user = Entity.getEntityByName(Entity.USER, name, "", Include.NON_DELETED);
@@ -430,7 +407,6 @@ public class EntityFieldUtils {
         }
       }
     }
-
     if (!owners.isEmpty()) {
       entity.setOwners(owners);
     }
@@ -445,11 +421,9 @@ public class EntityFieldUtils {
       entity.setReviewers(null);
       return;
     }
-
     List<EntityReference> reviewers = new ArrayList<>();
     String[] names =
         reviewerNames.contains(",") ? reviewerNames.split(",") : new String[] {reviewerNames};
-
     for (String reviewerSpec : names) {
       String trimmedSpec = reviewerSpec.trim();
       if (!trimmedSpec.isEmpty()) {
@@ -459,10 +433,8 @@ public class EntityFieldUtils {
           LOG.warn("Invalid reviewer format: {}. Expected 'user:name' or 'team:name'", trimmedSpec);
           continue;
         }
-
         String type = parts[0].trim().toLowerCase();
         String name = parts[1].trim();
-
         try {
           if ("user".equals(type)) {
             User user = Entity.getEntityByName(Entity.USER, name, "", Include.NON_DELETED);
@@ -482,7 +454,6 @@ public class EntityFieldUtils {
         }
       }
     }
-
     if (!reviewers.isEmpty()) {
       entity.setReviewers(reviewers);
     }
@@ -543,7 +514,6 @@ public class EntityFieldUtils {
             "Entity type {} doesn't have a legacy status field either",
             entity.getClass().getSimpleName());
       }
-
     } catch (Exception e) {
       LOG.error(
           "Failed to set status field to '{}' on entity type: {}",

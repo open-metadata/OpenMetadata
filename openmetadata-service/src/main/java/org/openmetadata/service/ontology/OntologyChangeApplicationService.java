@@ -36,7 +36,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.cache.EntityCaches;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
@@ -230,12 +230,13 @@ public final class OntologyChangeApplicationService {
 
   private OntologyChangeSet requireApplicable(final UUID changeSetId) {
     final OntologyChangeSet changeSet =
-        changeSetRepository.get(
-            null,
-            changeSetId,
-            changeSetRepository.getFields(APPLICATION_FIELDS),
-            Include.NON_DELETED,
-            false);
+        changeSetRepository
+            .reads()
+            .byId(
+                changeSetId,
+                changeSetRepository.fieldPolicy().parse(APPLICATION_FIELDS),
+                Include.NON_DELETED,
+                false);
     if (!APPLICABLE_STATES.contains(changeSet.getState())) {
       throw new BadRequestException(
           "Ontology change set '"
@@ -311,8 +312,8 @@ public final class OntologyChangeApplicationService {
   }
 
   private static void invalidateEntityCache(final EntityReference entity) {
-    EntityRepository.invalidateCacheForEntity(
-        entity.getType(), entity.getId(), entity.getFullyQualifiedName());
+    EntityCaches.invalidations()
+        .referencesChanged(entity.getType(), entity.getId(), entity.getFullyQualifiedName());
   }
 
   private static OntologyChangePreflight productionPreflight() {

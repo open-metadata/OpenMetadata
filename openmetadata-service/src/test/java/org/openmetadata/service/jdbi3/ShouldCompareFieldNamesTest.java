@@ -1,10 +1,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.entity.write.PatchFieldSelection.shouldCompare;
 
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -18,31 +18,6 @@ import org.openmetadata.service.util.EntityUtil;
  * without the wrapper prefix.
  */
 class ShouldCompareFieldNamesTest {
-
-  /**
-   * Simulates the shouldCompare logic from EntityRepository.EntityUpdater. This is extracted here
-   * so we can test field name patterns without needing a full EntityUpdater instance.
-   */
-  private boolean shouldCompare(Set<String> patchedFields, String fieldName) {
-    if (patchedFields == null || fieldName == null) {
-      return true;
-    }
-    if (patchedFields.contains(fieldName)) {
-      return true;
-    }
-    int fieldPathSeparator = fieldName.indexOf(Entity.SEPARATOR);
-    if (fieldPathSeparator > 0
-        && patchedFields.contains(fieldName.substring(0, fieldPathSeparator))) {
-      return true;
-    }
-    for (String patchedField : patchedFields) {
-      if (fieldName.startsWith(patchedField + Entity.SEPARATOR)
-          || patchedField.startsWith(fieldName + Entity.SEPARATOR)) {
-        return true;
-      }
-    }
-    return false;
-  }
 
   // ===================================================================
   // Table: columns is top-level → patchedField = "columns"

@@ -29,11 +29,14 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture.Deletion;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository.ForcedDeleteResult;
 import org.openmetadata.service.limits.Limits;
@@ -132,8 +135,9 @@ class IngestionPipelineResourceDeleteTest {
     UUID pipelineId = UUID.randomUUID();
     IngestionPipeline pipeline = pipeline(pipelineId);
     IngestionPipelineRepository repository = mock(IngestionPipelineRepository.class);
-    when(repository.delete("operator", pipelineId, false, false))
-        .thenReturn(new DeleteResponse<>(pipeline, ENTITY_DELETED));
+    final var deletions =
+        EntityDeleteFixture.attach(repository)
+            .onDelete(request -> new DeleteResponse<>(pipeline, ENTITY_DELETED));
     Authorizer authorizer = mock(Authorizer.class);
 
     try (MockedStatic<Entity> entityMock = mockEntityRepository(repository)) {
@@ -142,6 +146,8 @@ class IngestionPipelineResourceDeleteTest {
 
       resource.delete(null, securityContext("operator"), false, false, pipelineId);
 
+      assertEquals(
+          List.of(new Deletion("operator", pipelineId, false, false)), deletions.deletions());
       verify(authorizer, never()).authorizeAdmin(any(SecurityContext.class));
       verify(repository, never()).forceDelete(any(), any());
     }

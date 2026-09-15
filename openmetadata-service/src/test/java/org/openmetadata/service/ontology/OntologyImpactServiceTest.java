@@ -18,11 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,10 +44,15 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture.Deletion;
+import org.openmetadata.service.entity.read.EntityReadFixture;
+import org.openmetadata.service.entity.read.EntityRelationshipFixture;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner.Claims;
-import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,15 +65,16 @@ class OntologyImpactServiceTest {
 
   @Mock private GlossaryTermRepository repository;
   @Mock private InternalActionTokenSigner tokenSigner;
-  @Mock private Fields fields;
 
   private final AtomicReference<Claims> signedClaims = new AtomicReference<>();
   private GlossaryTerm term;
   private EntityReference child;
   private OntologyImpactService service;
+  private EntityDeleteFixture<GlossaryTerm> deletions;
 
   @BeforeEach
   void setUp() {
+    deletions = EntityDeleteFixture.attach(repository);
     term = term();
     child = reference(Entity.GLOSSARY_TERM, CHILD_ID, "Risk.Child");
     service =
@@ -104,7 +106,7 @@ class OntologyImpactServiceTest {
     final DeleteOntologyResource request = request(token);
 
     assertThrows(IllegalArgumentException.class, () -> service.delete(TERM_ID, request, PRINCIPAL));
-    verify(repository, never()).delete(anyString(), any(), anyBoolean(), anyBoolean());
+    assertTrue(deletions.deletions().isEmpty());
   }
 
   @Test
@@ -114,8 +116,7 @@ class OntologyImpactServiceTest {
     stubTokenVerification();
     final EntityReference target = reference(Entity.GLOSSARY, UUID.randomUUID(), "Risk");
     final DeleteOntologyResource request = request(token).withReassignChildrenTo(target);
-    when(repository.delete(PRINCIPAL, TERM_ID, false, false))
-        .thenReturn(new DeleteResponse<>(term, null));
+    deletions.onDelete(requested -> new DeleteResponse<>(term, null));
 
     final OntologyDeleteResult result = service.delete(TERM_ID, request, PRINCIPAL);
 
@@ -123,7 +124,7 @@ class OntologyImpactServiceTest {
     assertFalse(result.getCascaded());
     verify(repository).validateMoveOperation(eq(CHILD_ID), any());
     verify(repository).moveGlossaryTerm(eq(CHILD_ID), any(), eq(PRINCIPAL));
-    verify(repository).delete(PRINCIPAL, TERM_ID, false, false);
+    assertEquals(List.of(new Deletion(PRINCIPAL, TERM_ID, false, false)), deletions.deletions());
   }
 
   @Test
@@ -134,19 +135,30 @@ class OntologyImpactServiceTest {
 
     assertThrows(
         IllegalArgumentException.class, () -> service.delete(TERM_ID, request(token), PRINCIPAL));
-    verify(repository, never()).delete(anyString(), any(), anyBoolean(), anyBoolean());
+    assertTrue(deletions.deletions().isEmpty());
   }
 
   private void stubSnapshot(
       final List<EntityReference> children,
       final Integer firstAssetCount,
       final Integer... remainingAssetCounts) {
-    when(repository.getFields(anyString())).thenReturn(fields);
-    when(repository.get(isNull(), eq(TERM_ID), eq(fields), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(term);
-    when(repository.findTo(
-            TERM_ID, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM))
-        .thenReturn(children);
+    when(repository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(GlossaryTerm.class));
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(TERM_ID, readId);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return term;
+                }));
+    EntityRelationshipFixture.outgoing(
+        repository,
+        new EntityRelationshipReader.Selection(
+            TERM_ID, Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM),
+        children);
     when(repository.getGlossaryTermAssets(TERM_ID, OntologyImpactService.ASSET_PREVIEW_LIMIT, 0))
         .thenReturn(
             new ResultList<>(List.of(reference(Entity.TABLE, ASSET_ID, "service.db.table"))));

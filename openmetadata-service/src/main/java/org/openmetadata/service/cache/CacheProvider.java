@@ -11,6 +11,16 @@ public interface CacheProvider extends AutoCloseable {
 
   boolean setIfAbsent(String key, String value, Duration ttl);
 
+  /** Atomic replacement; providers without conditional writes must decline publication. */
+  default boolean replaceIfValue(String key, String expectedValue, String value, Duration ttl) {
+    return false;
+  }
+
+  /** Refreshes an existing key's expiry without recreating a key removed by invalidation. */
+  default boolean expire(String key, Duration ttl) {
+    return false;
+  }
+
   void del(String... keys);
 
   /** Deletes {@code key} only when its current value is {@code expectedValue}. */

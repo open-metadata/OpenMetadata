@@ -63,7 +63,9 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -101,11 +103,16 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
+
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
+
   private final TestCaseMapper mapper = new TestCaseMapper();
+
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
+
   static final String FIELDS =
       "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,incidentStatus,domains,tags,followers,dataProducts";
+
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN,followers";
 
@@ -254,7 +261,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_BASIC);
     authRequests.add(new AuthRequest(testCaseOperationContext, testCaseRC));
-
     if (!nullOrEmpty(entityLink)) {
       ResourceContextInterface tableRC = getResourceContext(entityLink, filter);
       OperationContext tableOperationContext =
@@ -278,7 +284,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       authRequests.add(new AuthRequest(operationContext, testSuiteRC));
     }
     Fields fields = getFields(fieldsParam);
-
     ResultList<TestCase> tests =
         super.listInternal(
             uriInfo, securityContext, fields, filter, limitParam, before, after, authRequests);
@@ -473,7 +478,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String dataProductFqn)
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
-
     String searchTerm = q;
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
@@ -499,7 +503,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             endTimestamp,
             columnName,
             dataProductFqn);
-
     // Execute search
     return executeTestCaseSearch(
         uriInfo,
@@ -537,7 +540,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @PathParam("id")
           UUID id) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
     // VIEW_TESTS
     OperationContext operationContext =
@@ -703,14 +705,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
-
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     limits.enforceLimits(
         securityContext,
         new CreateResourceContext<>(entityType, test),
         new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE_TESTS));
-
     OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS);
     ResourceContextInterface tableResourceContext =
@@ -720,13 +720,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface testCaseResourceContext =
         new CreateResourceContext<>(entityType, test);
     TestCaseResourceContext.builder().name(test.getName()).build();
-
     List<AuthRequest> requests =
         List.of(
             new AuthRequest(tableOpContext, tableResourceContext),
             new AuthRequest(testCaseOpContext, testCaseResourceContext));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-    test = addHref(uriInfo, repository.create(uriInfo, test));
+    test =
+        addHref(
+            uriInfo,
+            repository.creates().create(uriInfo, test, new EntityCommandActor(null, null)));
     return Response.created(test.getHref()).entity(test).build();
   }
 
@@ -756,11 +758,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     List<TestCase> testCases = new ArrayList<>();
     Set<String> entityLinks =
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
-
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.CREATE_TESTS);
-
     entityLinks.forEach(
         link -> {
           EntityLink entityLink = EntityLink.parse(link);
@@ -775,9 +775,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                   new AuthRequest(operationContext, resourceContext)),
               AuthorizationLogic.ANY);
         });
-
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
-
     createTestCases.forEach(
         create -> {
           TestCase test =
@@ -821,18 +819,23 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext tableOpContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface tableRC = TestCaseResourceContext.builder().id(id).build();
-
     OperationContext testCaseOpContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
     ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().id(id).build();
-
     List<AuthRequest> requests =
         List.of(
             new AuthRequest(tableOpContext, tableRC),
             new AuthRequest(testCaseOpContext, testCaseRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     PatchResponse<TestCase> response =
-        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+        repository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Id(id),
+                patch,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                uriInfo,
+                new EntityPatchService.Options(null, null));
     if (response.entity().getTestCaseResult() != null
         && response.entity().getTestCaseResult().getTestCaseStatus() == TestCaseStatus.Success) {
       repository.deleteTestCaseFailedRowsSample(id);
@@ -872,7 +875,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             .build();
     OperationContext testCaseOpUpdate =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
-
     List<AuthRequest> requests =
         List.of(
             new AuthRequest(tableOpContext, tableResourceContext),
@@ -880,9 +882,15 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             new AuthRequest(testCaseOpUpdate, testCaseRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(test, true);
+    repository.preparation().prepare(test, true);
     PutResponse<TestCase> response =
-        repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
+        repository
+            .creates()
+            .upsert(
+                uriInfo,
+                test,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                false);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -994,25 +1002,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @PathParam("testSuiteId") UUID testSuiteId,
       @PathParam("id") UUID id) {
-
     TestSuite testSuite =
         Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "domains,owners", null, false);
-
     ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().id(id).build();
     OperationContext testCaseDeleteOpContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
-
     ResourceContextInterface testSuiteRC =
         TestCaseResourceContext.builder().entity(testSuite).build();
     OperationContext testSuiteEditAllOpContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
-
     List<AuthRequest> requests =
         List.of(
             new AuthRequest(testCaseDeleteOpContext, testCaseRC),
             new AuthRequest(testSuiteEditAllOpContext, testSuiteRC));
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-
     DeleteResponse<TestCase> response =
         repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
     return response.toResponse();
@@ -1069,7 +1072,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    TestCase testCase = repository.find(id, Include.NON_DELETED);
+    TestCase testCase = repository.lookup().byId(id, Include.NON_DELETED);
     repository.setFields(
         testCase, new Fields(Set.of("testCaseResult")), RelationIncludes.fromInclude(ALL));
     if (testCase.getTestCaseResult() == null
@@ -1130,7 +1133,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_TEST_CASE_FAILED_ROWS_SAMPLE);
     ResourceContext<?> resourceContext = getResourceContextById(id);
-    TestCase testCase = repository.find(id, Include.NON_DELETED);
+    TestCase testCase = repository.lookup().byId(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
     return repository.getSampleData(testCase, authorizePII);
@@ -1180,7 +1183,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateLogicalTestCases createLogicalTestCases) {
-
     // don't get entity from cache as test result summary may be stale
     // Fetch with domains and owners fields to ensure proper authorization
     TestSuite testSuite =
@@ -1190,15 +1192,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             "domains,owners",
             null,
             false);
-
     validateTestSuiteOps(testSuite, securityContext);
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
-
     if (testCaseIds == null || testCaseIds.isEmpty()) {
       return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE)
           .toResponse();
     }
-
     int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
     if (existingTestCaseCount != testCaseIds.size()) {
       throw new IllegalArgumentException(
@@ -1233,7 +1232,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid BundleSuiteBulkAddRequest bundleSuiteBulkAddRequest) {
-
     TestSuite testSuite =
         Entity.getEntity(
             Entity.TEST_SUITE,
@@ -1241,7 +1239,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             "domains,owners",
             null,
             false);
-
     validateTestSuiteOps(testSuite, securityContext);
     BundleSuiteBulkAddRequest.Mode mode = bundleSuiteBulkAddRequest.getMode();
     if (mode.equals(BundleSuiteBulkAddRequest.Mode.IDS)) {
@@ -1260,7 +1257,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       }
       return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
     }
-
     BundleSuiteBulkAddRequestBulkAll bulkAll =
         JsonUtils.convertValue(
             bundleSuiteBulkAddRequest.getSelection(), BundleSuiteBulkAddRequestBulkAll.class);
@@ -1439,7 +1435,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     if (nullOrEmpty(userOrTeamName)) {
       return null;
     }
-
     StringBuilder ids = new StringBuilder();
     try {
       // Try to resolve as a user first
@@ -1447,7 +1442,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           Entity.getEntityByName(
               Entity.USER, userOrTeamName, includeTeamMembers ? "teams" : "", ALL);
       ids.append(user.getId().toString());
-
       // If includeTeamMembers is true and user has teams, add team IDs
       if (includeTeamMembers && !nullOrEmpty(user.getTeams())) {
         ids.append(",")
@@ -1461,7 +1455,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       EntityInterface entity = Entity.getEntityByName(Entity.TEAM, userOrTeamName, "", ALL);
       ids.append(entity.getId().toString());
     }
-
     return ids.toString();
   }
 
@@ -1497,7 +1490,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return joinedStatuses;
   }
 
-  /** Matching is case insensitive, the status is normalized to its canonical enum value. */
+  /**
+   * Matching is case insensitive, the status is normalized to its canonical enum value.
+   */
   private static TestCaseStatus toTestCaseStatus(String status) {
     return Arrays.stream(TestCaseStatus.values())
         .filter(candidate -> candidate.value().equalsIgnoreCase(status))
@@ -1531,9 +1526,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       Long endTimestamp,
       String columnName,
       String dataProductFqn) {
-
     SearchListFilter searchListFilter = new SearchListFilter(include);
-
     // Add basic parameters
     searchListFilter.addQueryParam("testSuiteId", testSuiteId);
     searchListFilter.addQueryParam("includeAllTests", includeAllTests.toString());
@@ -1551,23 +1544,22 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("createdBy", createdBy);
     searchListFilter.addQueryParam("columnName", columnName);
     searchListFilter.addQueryParam("dataProductFqn", dataProductFqn);
-
     // Handle owner and followedBy parameters
     if (!nullOrEmpty(owner)) {
-      String ownerIds = resolveUserOrTeamIds(owner, true); // include team members
+      // include team members
+      String ownerIds = resolveUserOrTeamIds(owner, true);
       searchListFilter.addQueryParam("owners", ownerIds);
     }
     if (!nullOrEmpty(followedBy)) {
-      String followerIds = resolveUserOrTeamIds(followedBy, false); // don't include team members
+      // don't include team members
+      String followerIds = resolveUserOrTeamIds(followedBy, false);
       searchListFilter.addQueryParam("followedBy", followerIds);
     }
-
     // Add timestamp parameters
     if (startTimestamp != null) {
       searchListFilter.addQueryParam("startTimestamp", startTimestamp.toString());
       searchListFilter.addQueryParam("endTimestamp", endTimestamp.toString());
     }
-
     return searchListFilter;
   }
 
@@ -1596,7 +1588,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
       authRequests.add(new AuthRequest(testSuiteOpContext, testSuiteRC));
     }
-
     if (!nullOrEmpty(entityLink)) {
       ResourceContextInterface tableRC = getResourceContext(entityLink, searchListFilter);
       OperationContext tableOperationContext =
@@ -1604,7 +1595,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       authRequests.add(new AuthRequest(tableOperationContext, tableRC));
     }
     Fields fields = getFields(fieldsParam);
-
     ResultList<TestCase> tests =
         super.listInternalFromSearch(
             uriInfo,
@@ -1617,7 +1607,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             q,
             queryString,
             authRequests);
-
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 
@@ -1626,10 +1615,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface testSuiteRC =
         TestCaseResourceContext.builder().entity(testSuite).build();
-
     OperationContext editAllOpContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
-
     List<AuthRequest> requests =
         List.of(
             new AuthRequest(editTestsOpContext, testSuiteRC),
@@ -1644,14 +1631,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     if (bulkAll == null || bulkAll.getFilter() == null) {
       return List.of();
     }
-
     org.openmetadata.schema.api.tests.Filter filter = bulkAll.getFilter();
     return filter.getExcludeIds();
   }
 
   @Override
   protected void processChangeEventForBulkImport(
-      EntityRepository<EntityInterface> versioningRepo,
+      EntityPolicy<EntityInterface> versioningRepo,
       UriInfo uriInfo,
       SecurityContext securityContext,
       String name,

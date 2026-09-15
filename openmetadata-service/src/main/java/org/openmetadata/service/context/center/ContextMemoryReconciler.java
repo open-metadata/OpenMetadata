@@ -16,6 +16,8 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 /**
@@ -99,7 +101,9 @@ public class ContextMemoryReconciler {
       if (duplicateElsewhere(pill, thisSourcePillIds)) {
         counts.skippedDuplicates++;
       } else {
-        memoryRepository.create(null, pill);
+        memoryRepository
+            .creates()
+            .create(null, pill, new EntityCommandActor(pill.getUpdatedBy(), null));
         counts.created++;
       }
     }
@@ -123,7 +127,7 @@ public class ContextMemoryReconciler {
    * ARCHIVED tombstone that would still pollute retrieval and counts.
    */
   private void deleteRetired(ContextMemory pill) {
-    memoryRepository.delete(Entity.ADMIN_USER_NAME, pill.getId(), false, true);
+    memoryRepository.deletes().byId(Entity.ADMIN_USER_NAME, pill.getId(), false, true);
   }
 
   private Map<String, ContextMemory> indexByQuestion(List<ContextMemory> derived) {
@@ -202,7 +206,14 @@ public class ContextMemoryReconciler {
       updated.setStatus(ContextMemoryStatus.ACTIVE);
       updated.setUpdatedBy(Entity.ADMIN_USER_NAME);
       updated.setUpdatedAt(System.currentTimeMillis());
-      memoryRepository.update(null, existing, updated, Entity.ADMIN_USER_NAME);
+      memoryRepository
+          .puts()
+          .update(
+              null,
+              existing,
+              updated,
+              new EntityCommandActor(Entity.ADMIN_USER_NAME, null),
+              EntityPutService.Mode.NORMAL);
     }
     return changed;
   }

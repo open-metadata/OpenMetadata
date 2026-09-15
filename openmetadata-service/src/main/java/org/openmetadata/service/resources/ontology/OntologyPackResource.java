@@ -105,7 +105,7 @@ public final class OntologyPackResource {
       final SecurityContext securityContext, final String targetGlossaryName) {
     final GlossaryRepository repository =
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
-    final Glossary existing = repository.findByNameOrNull(targetGlossaryName, Include.ALL);
+    final Glossary existing = repository.lookup().byNameOrNull(targetGlossaryName, Include.ALL);
     if (existing == null) {
       authorizeCreate(securityContext, targetGlossaryName);
     } else {

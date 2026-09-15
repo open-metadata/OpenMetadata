@@ -80,7 +80,7 @@ public class MigrationUtil {
               org.openmetadata.schema.utils.JsonUtils.readValue(
                   updatedJson, chart.getChartDetails().getClass());
           chart.setChartDetails(updatedDetails);
-          repository.prepareInternal(chart, false);
+          repository.preparation().prepare(chart, false);
           repository.getDao().update(chart);
           LOG.info(
               "Updated chart formula for '{}': replaced '{}' with '{}'",

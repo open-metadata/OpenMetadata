@@ -31,6 +31,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -217,7 +218,8 @@ public class RunAppImpl {
 
     OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
 
-    IngestionPipeline ingestionPipeline = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
+    IngestionPipeline ingestionPipeline =
+        repository.reads().byId(pipelineRef.getId(), EMPTY_FIELDS, Include.NON_DELETED, false);
     ingestionPipeline.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config).build());
 
@@ -234,9 +236,12 @@ public class RunAppImpl {
     if (status.getCode() == 200) {
       // Persist only the runner-derived flag; the deploy-time appConfig injected above
       // must not leak into the stored pipeline, so re-read the clean entity first.
-      IngestionPipeline stored = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
+      IngestionPipeline stored =
+          repository.reads().byId(pipelineRef.getId(), EMPTY_FIELDS, Include.NON_DELETED, false);
       stored.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
-      repository.createOrUpdate(null, stored, stored.getUpdatedBy());
+      repository
+          .creates()
+          .upsert(null, stored, new EntityCommandActor(stored.getUpdatedBy(), null), false);
     }
 
     return ingestionPipeline;

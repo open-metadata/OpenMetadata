@@ -11,6 +11,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.metadata.EntityRelationshipWriter;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
@@ -148,24 +149,35 @@ public class MigrationUtil {
                   collectionDAO.glossaryTermDAO().update(term);
                 }
                 EntityReference glossaryRef =
-                    glossaryTermRepository.getFromEntityRef(
-                        term.getId(), Relationship.CONTAINS, Entity.GLOSSARY, false);
+                    glossaryTermRepository
+                        .relationships()
+                        .singleFrom(term.getId(), Relationship.CONTAINS, Entity.GLOSSARY, false);
                 EntityReference glossaryTermRef =
-                    glossaryTermRepository.getFromEntityRef(
-                        term.getId(), Relationship.CONTAINS, Entity.GLOSSARY_TERM, false);
+                    glossaryTermRepository
+                        .relationships()
+                        .singleFrom(
+                            term.getId(), Relationship.CONTAINS, Entity.GLOSSARY_TERM, false);
                 if (glossaryTermRef != null && glossaryRef != null) {
-                  glossaryTermRepository.deleteRelationship(
-                      glossaryRef.getId(),
-                      Entity.GLOSSARY,
-                      term.getId(),
-                      Entity.GLOSSARY_TERM,
-                      Relationship.CONTAINS);
-                  glossaryTermRepository.addRelationship(
-                      glossaryRef.getId(),
-                      term.getId(),
-                      Entity.GLOSSARY,
-                      Entity.GLOSSARY_TERM,
-                      Relationship.HAS);
+                  glossaryTermRepository
+                      .relationshipWrites()
+                      .delete(
+                          new EntityRelationshipWriter.Edge(
+                              glossaryRef.getId(),
+                              term.getId(),
+                              Entity.GLOSSARY,
+                              Entity.GLOSSARY_TERM,
+                              Relationship.CONTAINS));
+                  glossaryTermRepository
+                      .relationshipWrites()
+                      .add(
+                          new EntityRelationshipWriter.Edge(
+                              glossaryRef.getId(),
+                              term.getId(),
+                              Entity.GLOSSARY,
+                              Entity.GLOSSARY_TERM,
+                              Relationship.HAS),
+                          EntityRelationshipWriter.Value.EMPTY,
+                          false);
                 }
               });
     } catch (Exception ex) {

@@ -80,11 +80,13 @@ import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -133,7 +135,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       LOG.info("Trying to register new user [{}]", newRegistrationRequestEmail);
       User newUser = getUserFromRegistrationRequest(newRegistrationRequest);
       // remove auth mechanism from the user
-      User registeredUser = userRepository.create(null, newUser);
+      User registeredUser =
+          userRepository.creates().create(null, newUser, new EntityCommandActor(null, null));
       registeredUser.setAuthenticationMechanism(null);
       return registeredUser;
     } else {
@@ -147,8 +150,13 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     EmailVerificationToken emailVerificationToken =
         (EmailVerificationToken) tokenRepository.findByToken(emailToken);
     User registeredUser =
-        userRepository.get(
-            null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
+        userRepository
+            .reads()
+            .byId(
+                emailVerificationToken.getUserId(),
+                userRepository.getFieldsWithUserAuth("*"),
+                Include.NON_DELETED,
+                false);
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
       LOG.info("User [{}] already registered.", emailToken);
       return;
@@ -164,7 +172,10 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // Update the user
     registeredUser.setIsEmailVerified(true);
-    userRepository.createOrUpdate(uriInfo, registeredUser, registeredUser.getName());
+    userRepository
+        .creates()
+        .upsert(
+            uriInfo, registeredUser, new EntityCommandActor(registeredUser.getName(), null), false);
 
     // deleting the entry for the token from the Database
     tokenRepository.deleteTokenByUserAndType(registeredUser.getId(), EMAIL_VERIFICATION.toString());
@@ -230,7 +241,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String tokenID = request.getToken();
     PasswordResetToken passwordResetToken =
         (PasswordResetToken) tokenRepository.findByToken(tokenID);
-    Set<String> fields = userRepository.getAllowedFieldsCopy();
+    Set<String> fields = userRepository.fieldPolicy().allowedCopy();
     fields.add(USER_PROTECTED_FIELDS);
     User storedUser =
         userRepository.getByName(
@@ -255,7 +266,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedUser.setAuthenticationMechanism(
         new AuthenticationMechanism().withAuthType(BASIC).withConfig(newAuthForUser));
 
-    userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
+    userRepository
+        .creates()
+        .upsert(uriInfo, storedUser, new EntityCommandActor(storedUser.getName(), null), false);
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
@@ -312,7 +325,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedBasicAuthMechanism.setPassword(newHashedPassword);
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
     PutResponse<User> response =
-        userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
+        userRepository
+            .creates()
+            .upsert(uriInfo, storedUser, new EntityCommandActor(storedUser.getName(), null), false);
     // remove login/details from cache
     LoginAttemptCache.getInstance().recordSuccessfulLogin(userName);
 
@@ -378,8 +393,13 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
-        userRepository.get(
-            null, tokenInterface.getUserId(), userRepository.getFieldsWithUserAuth("*"));
+        userRepository
+            .reads()
+            .byId(
+                tokenInterface.getUserId(),
+                userRepository.getFieldsWithUserAuth("*"),
+                Include.NON_DELETED,
+                false);
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
       throw new IllegalArgumentException("User are only allowed to login");
     }

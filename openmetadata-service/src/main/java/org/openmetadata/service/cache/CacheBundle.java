@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.cache.EntityCaches;
 
 @Slf4j
 public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConfig> {
@@ -118,8 +119,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
               // entity). Evicting entity caches for them would bump a write epoch and force a
               // needless reload of an entity that did not change.
               if (!CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT.equals(msg.type())) {
-                org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
-                    msg.type(), msg.id(), msg.fqn());
+                EntityCaches.invalidations().remotelyChanged(msg.type(), msg.id(), msg.fqn());
                 if (msg.id() != null && cachedReadBundle != null) {
                   cachedReadBundle.invalidate(msg.type(), msg.id());
                 }
@@ -230,8 +230,8 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   /**
    * Fan an entity-write invalidation out to every registered {@link Invalidatable}. Today
-   * this is invoked from {@code EntityRepository.invalidateCacheForEntity(type, id, fqn)}
-   * (the static helper called from {@code postCreate} and other mutation paths), from the
+   * this is invoked from {@code EntityCaches.invalidations().referencesChanged(type, id, fqn)}
+   * during {@code postCreate} and other mutation paths, from the
    * pub-sub handler above when a remote pod publishes a write, and from the admin
    * {@code POST /system/cache/invalidate} endpoint.
    *

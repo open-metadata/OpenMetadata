@@ -21,8 +21,12 @@ operator, MCP server, integration tests, and distribution all depend on it; it d
 
 **Path A — an API request** (e.g. `POST /v1/tables`). Enters `openmetadata-service` at
 `OpenMetadataApplication.java` (Jersey). A JAX-RS resource in `service/resources/**` (e.g.
-`resources/databases/…`) delegates to a repository in `service/jdbi3/**` (extends `EntityRepository`),
-which persists via `jdbi3/CollectionDAO` / `EntityDAO` (JDBI SQL-objects; 129 sub-DAOs) → the SQL DB.
+`resources/databases/…`) invokes the native services of an `entity/EntityModule`. Entity policies
+in `service/jdbi3/**` implement `entity/policy/EntityPolicy`; `EntityModuleFactory` composes their
+query, command, metadata and deletion services once at startup. Service families implement
+`entity/service/EntityServicePolicy`. Entity-specific mutations compose the final `EntityUpdater`;
+column and service policies share its transaction and retry state. Persistence uses the retained
+`jdbi3/CollectionDAO` / `EntityDAO` graph (JDBI SQL-objects; 129 sub-DAOs) → the SQL DB.
 A non-GET response also fans out to `service/events/` (change events) and `service/search/` (index
 update). **Exit:** JSON response + a persisted row + an async index write. *A "create/update returns the
 wrong field" bug lives in `resources/` or `jdbi3/` — or in the schema that typed it.*
@@ -76,7 +80,7 @@ Intended flow (sampled, 08a Pass 2): **`resources/*Resource` → `jdbi3/*Reposit
 | 233 | `resources/` | JAX-RS entry points; largest domains `ai/` (34, flat, grew its own seed/service tier) and `services/` (32, sub-packaged) |
 | 160 | `apps/` | pluggable applications / schedulers (incl. reindex) |
 | 157 | `migration/` | migration runner (`MigrationWorkflow`) |
-| 147 | `jdbi3/` | repositories (`EntityRepository`) + DAOs (`CollectionDAO`, 129 sub-DAOs) |
+| 146 | `jdbi3/` | entity policies + DAOs (`CollectionDAO`, 129 sub-DAOs); shared application services live in `entity/` |
 | 128 | `util/` · 98 `security/` · 93 `governance/` · 27 `events/` | shared utils · authN/Z · workflow engine · change events |
 
 ### `openmetadata-ui` internals (`SRC = …/ui/src`; 4,725 ts/tsx, 23 dirs; layering is convention-only — no path aliases)

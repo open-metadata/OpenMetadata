@@ -265,7 +265,9 @@ public class OntologyChangeSetResource
   }
 
   private OntologyChangeSet scopedChangeSet(final UUID id) {
-    return repository.get(null, id, repository.getFields(FIELDS), Include.NON_DELETED, false);
+    return repository
+        .reads()
+        .byId(id, repository.fieldPolicy().parse(FIELDS), Include.NON_DELETED, false);
   }
 
   private void authorizeChangeSet(final SecurityContext securityContext, final UUID changeSetId) {

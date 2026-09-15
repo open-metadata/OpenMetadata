@@ -42,6 +42,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -115,8 +116,8 @@ public class RdfGlossaryGraphIT {
   }
 
   @AfterAll
-  static void disableRdf() {
-    RdfUpdater.disable();
+  static void restoreRdf() {
+    RdfTestUtils.restoreSuiteConfiguration();
     if (localFusekiContainer != null) {
       localFusekiContainer.stop();
       localFusekiContainer = null;
@@ -280,13 +281,15 @@ public class RdfGlossaryGraphIT {
 
     Glossary emptyGlossary = GlossaryTestFactory.createWithName(ns, "empty");
 
+    // A limited catalog-wide graph page can omit this fixture when other tests publish terms.
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
             () ->
                 assertTrue(
-                    nodeIds(fetchGlossaryGraph(null)).contains(populatedTerm.getId()),
+                    nodeIds(fetchGlossaryGraph(populatedGlossary.getId()))
+                        .contains(populatedTerm.getId()),
                     "Populated glossary's term should be projected to RDF"));
 
     JsonNode scoped = fetchGlossaryGraph(emptyGlossary.getId());

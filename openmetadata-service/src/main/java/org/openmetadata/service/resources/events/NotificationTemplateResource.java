@@ -415,7 +415,10 @@ public class NotificationTemplateResource
                             "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new description\"}]")
                       }))
           JsonPatch patch) {
-    NotificationTemplate existing = repository.get(null, id, repository.getFields("*"));
+    NotificationTemplate existing =
+        repository
+            .reads()
+            .byId(id, repository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
 
     if (!isTemplateFieldPatch(patch)) {
       return patchInternal(uriInfo, securityContext, id, patch, ChangeSource.MANUAL);
@@ -488,7 +491,8 @@ public class NotificationTemplateResource
                             "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new description\"}]")
                       }))
           JsonPatch patch) {
-    NotificationTemplate existing = repository.getByName(null, fqn, repository.getFields("*"));
+    NotificationTemplate existing =
+        repository.getByName(null, fqn, repository.fieldPolicy().parse("*"));
 
     if (!isTemplateFieldPatch(patch)) {
       return patchInternal(uriInfo, securityContext, existing.getId(), patch, ChangeSource.MANUAL);
@@ -540,7 +544,7 @@ public class NotificationTemplateResource
     final String principal = securityContext.getUserPrincipal().getName();
     final ResourceContext<NotificationTemplate> ctx = getResourceContextByName(create.getName());
     final NotificationTemplate existing =
-        repository.findByNameOrNull(create.getName(), Include.ALL);
+        repository.lookup().byNameOrNull(create.getName(), Include.ALL);
 
     final List<AuthRequest> authRequests;
     final AuthorizationLogic authorizationLogic;
@@ -710,7 +714,9 @@ public class NotificationTemplateResource
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
 
     RestUtil.PutResponse<NotificationTemplate> put =
-        repository.restoreEntity(securityContext.getUserPrincipal().getName(), existing.getId());
+        repository
+            .restores()
+            .restore(securityContext.getUserPrincipal().getName(), existing.getId());
     repository.restoreFromSearch(put.getEntity());
     addHref(uriInfo, put.getEntity());
     LOG.info(
@@ -744,7 +750,10 @@ public class NotificationTemplateResource
           @PathParam("id")
           UUID id) {
 
-    NotificationTemplate template = repository.get(null, id, repository.getFields("*"));
+    NotificationTemplate template =
+        repository
+            .reads()
+            .byId(id, repository.fieldPolicy().parse("*"), Include.NON_DELETED, false);
     if (!ProviderType.SYSTEM.equals(template.getProvider())) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity("Cannot reset template: only SYSTEM templates can be reset to default")
@@ -788,7 +797,8 @@ public class NotificationTemplateResource
           @PathParam("fqn")
           String fqn) {
 
-    NotificationTemplate template = repository.getByName(null, fqn, repository.getFields("*"));
+    NotificationTemplate template =
+        repository.getByName(null, fqn, repository.fieldPolicy().parse("*"));
     if (!ProviderType.SYSTEM.equals(template.getProvider())) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity("Cannot reset template: only SYSTEM templates can be reset to default")

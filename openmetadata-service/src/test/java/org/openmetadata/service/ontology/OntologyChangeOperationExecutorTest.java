@@ -15,12 +15,7 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
@@ -33,7 +28,6 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
@@ -42,6 +36,14 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture.Deletion;
+import org.openmetadata.service.entity.read.EntityReadFixture;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
+import org.openmetadata.service.entity.write.EntityPreparationFixture;
+import org.openmetadata.service.entity.write.EntityPreparationFixture.Preparation;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
@@ -61,9 +63,20 @@ class OntologyChangeOperationExecutorTest {
   private final OntologyAxiomRepository axiomRepository = mock(OntologyAxiomRepository.class);
   private final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
   private OntologyChangeOperationExecutor executor;
+  private EntityDeleteFixture<GlossaryTerm> termDeletions;
+  private EntityDeleteFixture<OntologyAxiom> axiomDeletions;
+  private EntityPreparationFixture<OntologyAxiom> axiomPreparation;
 
   @BeforeEach
   void setUp() {
+    EntityPreparationFixture.attach(termRepository);
+    axiomPreparation = EntityPreparationFixture.attach(axiomRepository);
+    termDeletions = EntityDeleteFixture.attach(termRepository);
+    axiomDeletions = EntityDeleteFixture.attach(axiomRepository);
+    when(termRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(GlossaryTerm.class));
+    when(axiomRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(OntologyAxiom.class));
     executor = new OntologyChangeOperationExecutor(termRepository, axiomRepository, clock);
   }
 
@@ -178,14 +191,22 @@ class OntologyChangeOperationExecutorTest {
   void deleteTermOnAlreadyDeletedTermSkipsRepositoryDelete() {
     final UUID termId = UUID.randomUUID();
     final GlossaryTerm alreadyDeleted = term(termId).withDeleted(true);
-    when(termRepository.get(isNull(), eq(termId), any(), eq(Include.ALL), eq(false)))
-        .thenReturn(alreadyDeleted);
+    when(termRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(termId, readId);
+                  assertEquals(Include.ALL, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return alreadyDeleted;
+                }));
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.DELETE_TERM, termId);
 
     final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
 
-    verify(termRepository, never()).delete(any(), any(), eq(false), eq(false));
+    assertTrue(termDeletions.deletions().isEmpty());
     assertEquals(termId, outcome.entity().getId());
     assertTrue(outcome.entity().getDeleted());
   }
@@ -195,16 +216,23 @@ class OntologyChangeOperationExecutorTest {
     final UUID termId = UUID.randomUUID();
     final GlossaryTerm active = term(termId).withDeleted(false);
     final GlossaryTerm deleted = term(termId).withDeleted(true);
-    when(termRepository.get(isNull(), eq(termId), any(), eq(Include.ALL), eq(false)))
-        .thenReturn(active);
-    when(termRepository.delete(eq(USER), eq(termId), eq(false), eq(false)))
-        .thenReturn(new DeleteResponse<>(deleted, EventType.ENTITY_DELETED));
+    when(termRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(termId, readId);
+                  assertEquals(Include.ALL, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return active;
+                }));
+    termDeletions.onDelete(request -> new DeleteResponse<>(deleted, EventType.ENTITY_DELETED));
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.DELETE_TERM, termId);
 
     final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
 
-    verify(termRepository).delete(USER, termId, false, false);
+    assertEquals(List.of(new Deletion(USER, termId, false, false)), termDeletions.deletions());
     assertEquals(termId, outcome.entity().getId());
     assertTrue(outcome.entity().getDeleted());
   }
@@ -213,14 +241,22 @@ class OntologyChangeOperationExecutorTest {
   void deleteAxiomOnAlreadyDeletedAxiomSkipsRepositoryDelete() {
     final UUID axiomId = UUID.randomUUID();
     final OntologyAxiom alreadyDeleted = axiom(axiomId).withDeleted(true);
-    when(axiomRepository.get(isNull(), eq(axiomId), any(), eq(Include.ALL), eq(false)))
-        .thenReturn(alreadyDeleted);
+    when(axiomRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(axiomId, readId);
+                  assertEquals(Include.ALL, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return alreadyDeleted;
+                }));
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.DELETE_AXIOM, axiomId);
 
     final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
 
-    verify(axiomRepository, never()).delete(any(), any(), eq(false), eq(false));
+    assertTrue(axiomDeletions.deletions().isEmpty());
     assertEquals(axiomId, outcome.entity().getId());
   }
 
@@ -229,16 +265,23 @@ class OntologyChangeOperationExecutorTest {
     final UUID axiomId = UUID.randomUUID();
     final OntologyAxiom active = axiom(axiomId).withDeleted(false);
     final OntologyAxiom deleted = axiom(axiomId).withDeleted(true);
-    when(axiomRepository.get(isNull(), eq(axiomId), any(), eq(Include.ALL), eq(false)))
-        .thenReturn(active);
-    when(axiomRepository.delete(eq(USER), eq(axiomId), eq(false), eq(false)))
-        .thenReturn(new DeleteResponse<>(deleted, EventType.ENTITY_DELETED));
+    when(axiomRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(axiomId, readId);
+                  assertEquals(Include.ALL, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return active;
+                }));
+    axiomDeletions.onDelete(request -> new DeleteResponse<>(deleted, EventType.ENTITY_DELETED));
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.DELETE_AXIOM, axiomId);
 
     final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
 
-    verify(axiomRepository).delete(USER, axiomId, false, false);
+    assertEquals(List.of(new Deletion(USER, axiomId, false, false)), axiomDeletions.deletions());
     assertEquals(axiomId, outcome.entity().getId());
   }
 
@@ -251,8 +294,10 @@ class OntologyChangeOperationExecutorTest {
 
     executor.execute(uriInfo, USER, operation);
 
-    verify(axiomRepository).prepareInternal(any(OntologyAxiom.class), eq(true));
-    verify(axiomRepository, never()).prepareInternal(any(OntologyAxiom.class), eq(false));
+    assertEquals(
+        List.of(new Preparation<>(axiomWrites.upserts().getFirst().entity(), true)),
+        axiomPreparation.preparations());
+    assertEquals(axiomId, axiomWrites.upserts().getFirst().entity().getId());
   }
 
   @Test
@@ -264,8 +309,10 @@ class OntologyChangeOperationExecutorTest {
 
     executor.execute(uriInfo, USER, operation);
 
-    verify(axiomRepository).prepareInternal(any(OntologyAxiom.class), eq(false));
-    verify(axiomRepository, never()).prepareInternal(any(OntologyAxiom.class), eq(true));
+    assertEquals(
+        List.of(new Preparation<>(axiomWrites.upserts().getFirst().entity(), false)),
+        axiomPreparation.preparations());
+    assertEquals(axiomId, axiomWrites.upserts().getFirst().entity().getId());
   }
 
   @Test
@@ -277,41 +324,57 @@ class OntologyChangeOperationExecutorTest {
 
     executor.execute(uriInfo, USER, operation);
 
-    final ArgumentCaptor<OntologyAxiom> captor = ArgumentCaptor.forClass(OntologyAxiom.class);
-    verify(axiomRepository).createOrUpdate(eq(uriInfo), captor.capture(), eq(USER));
-    assertEquals(USER, captor.getValue().getUpdatedBy());
-    assertEquals(NOW, captor.getValue().getUpdatedAt());
+    assertEquals(1, axiomWrites.upserts().size());
+    final OntologyAxiom persisted = axiomWrites.upserts().getFirst().entity();
+    assertEquals(USER, persisted.getUpdatedBy());
+    assertEquals(NOW, persisted.getUpdatedAt());
   }
 
   private void stubEditableTerm(final UUID termId, final GlossaryTerm term) {
-    when(termRepository.get(isNull(), eq(termId), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(term);
+    when(termRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(termId, readId);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return term;
+                }));
   }
 
+  private EntityCreationFixture<GlossaryTerm> termWrites;
+  private EntityCreationFixture<OntologyAxiom> axiomWrites;
+
   private void stubTermUpsertEchoesEntity() {
-    when(termRepository.createOrUpdate(eq(uriInfo), any(GlossaryTerm.class), eq(USER)))
-        .thenAnswer(
-            invocation ->
-                new PutResponse<>(
-                    Response.Status.OK,
-                    invocation.getArgument(1, GlossaryTerm.class),
-                    EventType.ENTITY_UPDATED));
+    termWrites =
+        EntityCreationFixture.attach(termRepository)
+            .onUpsert(
+                request -> {
+                  assertEquals(uriInfo, request.uri());
+                  assertEquals(new EntityCommandActor(USER, null), request.actor());
+                  assertEquals(false, request.importMode());
+                  return new PutResponse<>(
+                      Response.Status.OK, request.entity(), EventType.ENTITY_UPDATED);
+                });
   }
 
   private void stubAxiomUpsertEchoesEntity() {
-    when(axiomRepository.createOrUpdate(eq(uriInfo), any(OntologyAxiom.class), eq(USER)))
-        .thenAnswer(
-            invocation ->
-                new PutResponse<>(
-                    Response.Status.OK,
-                    invocation.getArgument(1, OntologyAxiom.class),
-                    EventType.ENTITY_UPDATED));
+    axiomWrites =
+        EntityCreationFixture.attach(axiomRepository)
+            .onUpsert(
+                request -> {
+                  assertEquals(uriInfo, request.uri());
+                  assertEquals(new EntityCommandActor(USER, null), request.actor());
+                  assertEquals(false, request.importMode());
+                  return new PutResponse<>(
+                      Response.Status.OK, request.entity(), EventType.ENTITY_UPDATED);
+                });
   }
 
   private GlossaryTerm capturePersistedTerm() {
-    final ArgumentCaptor<GlossaryTerm> captor = ArgumentCaptor.forClass(GlossaryTerm.class);
-    verify(termRepository).createOrUpdate(eq(uriInfo), captor.capture(), eq(USER));
-    return captor.getValue();
+    assertEquals(1, termWrites.upserts().size());
+    return termWrites.upserts().getFirst().entity();
   }
 
   private static long countMappingsForConcept(final GlossaryTerm term, final URI conceptIri) {

@@ -193,7 +193,7 @@ Entity.FIELD_FULLY_QUALIFIED_NAME
 Entity.SEPARATOR       // "."
 
 // Access repositories by entity type
-EntityRepository<?> repo = Entity.getRepository(entityType);
+EntityModule<?> module = Entity.getEntityModule(entityType);
 
 // Build href for entity references
 Entity.withHref(uriInfo, entityReference);
@@ -209,11 +209,11 @@ dashboardService.dashboard
 pipelineService.pipeline
 ```
 
-Each `EntityRepository` must implement `setFullyQualifiedName()` to build the FQN from parent FQN + entity name.
+Each hierarchical entity policy overrides `setFullyQualifiedName()` to build the FQN from parent FQN + entity name.
 
 ### REST Resource Pattern
 
-All entity REST resources extend `EntityResource<E, R extends EntityRepository<E>>`.
+Entity REST resources extend `EntityResource<E, R extends EntityPolicy<E>>` and invoke the module's native services.
 
 **Creating a new resource:**
 
@@ -255,27 +255,31 @@ public class MyEntityResource extends EntityResource<MyEntity, MyEntityRepositor
 
 ### JDBI3 Data Access Layer
 
-OpenMetadata uses JDBI3 (not JPA/Hibernate) for database access. All repositories extend `EntityRepository<E>`.
+OpenMetadata uses JDBI3 for database access. Entity families implement `EntityPolicy<E>`;
+`EntityModuleFactory` constructs the shared services using their policy and retained dependencies.
 
 **Creating a new repository:**
 
 ```java
 @Slf4j
-public class MyEntityRepository extends EntityRepository<MyEntity> {
+@Repository
+public class MyEntityRepository implements EntityPolicy<MyEntity> {
+    private final EntityPolicyContext<MyEntity> context;
 
     public MyEntityRepository() {
-        super(
-            MyEntityResource.COLLECTION_PATH,
-            Entity.MY_ENTITY,
-            MyEntity.class,
-            Entity.getCollectionDAO().myEntityDAO(),  // DAO interface
-            "",    // patch fields
-            ""     // put fields
-        );
-        supportsSearch = true;  // enable ES indexing
+        context = new EntityPolicyContext<>(
+            new EntityPolicyContext.Schema<>(MyEntityResource.COLLECTION_PATH,
+                Entity.MY_ENTITY, MyEntity.class, Entity.getCollectionDAO().myEntityDAO()),
+            new EntityPolicyContext.WriteFields("", "", Set.of()),
+            EntityModuleDependencies.standard());
+        EntityModuleFactory.initialize(this, true);
+        context.options().setSupportsSearch(true);
     }
 
-    // Required overrides:
+    @Override
+    public EntityPolicyContext<MyEntity> context() {
+        return context;
+    }
 
     @Override
     public void setFullyQualifiedName(MyEntity entity) {
@@ -292,7 +296,7 @@ public class MyEntityRepository extends EntityRepository<MyEntity> {
 
     @Override
     public void storeEntity(MyEntity entity, boolean update) {
-        store(entity, update);
+        persistence().store(entity, update);
     }
 
     @Override
@@ -302,9 +306,13 @@ public class MyEntityRepository extends EntityRepository<MyEntity> {
 }
 ```
 
+Also implement `setFields` and `clearFields` for the entity's own projections. The shared query
+services hydrate common metadata and apply the field policy in the established order.
+
 **Key patterns:**
-- `@Transaction` annotation for multi-step writes
-- `Entity.getCollectionDAO()` provides type-safe DAO access
+- Normal commands own their flush through `EntityUnitOfWork`; hooks participate in that flush
+- Use `persistence().execute(...)` for operations spanning module DAOs, preserving the retained transaction
+- `context().dependencies().daos()` supplies the same DAO graph to every component
 - Override `getFieldsStrippedFromStorageJson()` to exclude computed fields from JSON storage
 - Bulk operations: override `storeEntities()`, `clearEntitySpecificRelationshipsForMany()`, `storeEntitySpecificRelationshipsForMany()`
 
@@ -558,7 +566,7 @@ Always import from `generated/` for API response types. Never hand-write interfa
 3. **Generate code**: `mvn clean install -pl openmetadata-spec` + `make generate`
 4. **Entity constant**: Add `Entity.MY_ENTITY = "myEntity"` in `Entity.java`
 5. **DAO**: Add `myEntityDAO()` method to `CollectionDAO`
-6. **Repository**: Create `MyEntityRepository extends EntityRepository<MyEntity>`
+6. **Entity policy**: Create `MyEntityRepository implements EntityPolicy<MyEntity>`, annotate it with `@Repository`, and initialize its module once
 7. **Mapper**: Create `MyEntityMapper`
 8. **Resource**: Create `MyEntityResource extends EntityResource<MyEntity, MyEntityRepository>`
 9. **Migration**: Create `bootstrap/sql/migrations/native/{version}/mysql/schemaChanges.sql` + postgres variant

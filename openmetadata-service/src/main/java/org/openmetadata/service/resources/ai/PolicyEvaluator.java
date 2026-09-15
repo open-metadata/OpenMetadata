@@ -33,8 +33,9 @@ import org.openmetadata.schema.type.AIEvidence;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -51,6 +52,7 @@ import org.openmetadata.service.util.EntityUtil;
 final class PolicyEvaluator {
 
   private static final long FAIRNESS_FRESHNESS_MS = 90L * 24 * 60 * 60 * 1000;
+
   private static final int PAGE_SIZE = 500;
 
   private PolicyEvaluator() {}
@@ -68,7 +70,6 @@ final class PolicyEvaluator {
     rules.add(humanOversight(entity));
     rules.add(auditLogRetention(entity));
     rules.add(driftThreshold());
-
     return rules;
   }
 
@@ -90,7 +91,6 @@ final class PolicyEvaluator {
     } else {
       status = Status.BREACHED;
     }
-
     return rule(
         "PII access requires DPIA",
         "When an asset accesses Personally Identifiable Information, a DPIA must be on file.",
@@ -121,7 +121,6 @@ final class PolicyEvaluator {
         value = "Last evaluated " + relativeDays(age) + " days ago";
       }
     }
-
     return rule(
         "Subgroup fairness quarterly",
         "High-risk systems require a documented subgroup fairness evaluation every 90 days.",
@@ -144,7 +143,6 @@ final class PolicyEvaluator {
       status = Status.BREACHED;
       value = "Disabled";
     }
-
     return rule(
         "Human oversight",
         "Material decisions require human-in-the-loop oversight (Article 14).",
@@ -162,7 +160,6 @@ final class PolicyEvaluator {
             ? classification.dataRetentionPeriod()
             : null;
     Status status = value == null ? Status.BREACHED : Status.PASSING;
-
     return rule(
         "Audit log retention",
         "AI assets must declare an audit-log retention period (Article 12).",
@@ -175,7 +172,6 @@ final class PolicyEvaluator {
     // adds runtime drift metrics; until then this rule is N/A.
     Status status = Status.NOT_APPLICABLE;
     String value = "Drift telemetry not configured";
-
     return rule(
         "Drift threshold",
         "Asset is auto-flagged for review when 7-day drift exceeds 0.2.",
@@ -299,7 +295,6 @@ final class PolicyEvaluator {
     String ruleNamePattern = ruleNameForPolicy(policyId);
     long sinceMs = since == null ? 0 : since;
     int effectiveLimit = Math.max(1, Math.min(limit, 500));
-
     List<AIGovernancePolicyViolation> rows = new ArrayList<>();
     scanAssets(Entity.AI_APPLICATION, ruleNamePattern, sinceMs, effectiveLimit, rows);
     if (rows.size() < effectiveLimit) {
@@ -308,7 +303,6 @@ final class PolicyEvaluator {
     if (rows.size() < effectiveLimit) {
       scanAssets(Entity.MCP_SERVER, ruleNamePattern, sinceMs, effectiveLimit, rows);
     }
-
     return rows;
   }
 
@@ -358,12 +352,16 @@ final class PolicyEvaluator {
     List<EntityInterface> result = new ArrayList<>();
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
-      EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+      EntityPolicy<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
       String after = null;
       do {
         int pageSize = Math.min(PAGE_SIZE, Math.max(1, limit - result.size()));
         ResultList<? extends EntityInterface> page =
-            repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, pageSize, after);
+            repo.pages()
+                .after(
+                    new EntityPageReader.Projection(null, EntityUtil.Fields.EMPTY_FIELDS, filter),
+                    pageSize,
+                    after);
         result.addAll(page.getData());
         after = page.getPaging() == null ? null : page.getPaging().getAfter();
       } while (after != null && result.size() < limit);
@@ -387,7 +385,9 @@ final class PolicyEvaluator {
     try {
       AIGovernancePolicyRepository repo =
           (AIGovernancePolicyRepository) Entity.getEntityRepository(Entity.AI_GOVERNANCE_POLICY);
-      AIGovernancePolicy policy = repo.get(null, policyId, repo.getFields("id,name"));
+      AIGovernancePolicy policy =
+          repo.reads()
+              .byId(policyId, repo.fieldPolicy().parse("id,name"), Include.NON_DELETED, false);
       String name =
           policy == null || policy.getName() == null
               ? ""
@@ -417,6 +417,7 @@ final class PolicyEvaluator {
       AICompliance aiCompliance,
       AIEvidence evidence,
       DataClassificationSnapshot dataClassification) {
+
     private static final GovernanceSnapshot EMPTY = new GovernanceSnapshot(null, null, null);
   }
 

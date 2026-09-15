@@ -12,7 +12,6 @@ import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -28,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -48,9 +48,15 @@ import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
+import org.openmetadata.service.entity.write.EntityPatchFixture;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -60,6 +66,7 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.email.EmailUtil;
 
 class UserUtilTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
 
   @Test
   void updateUserWithHashedPwdStoresBCryptPassword() {
@@ -128,6 +135,8 @@ class UserUtilTest {
   @Test
   void createOrUpdateUserPromotesExistingRegularUserAndAddsMissingBasicAuth() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     SystemRepository systemRepository = mock(SystemRepository.class);
@@ -143,9 +152,12 @@ class UserUtilTest {
 
     when(userRepository.getPatchFields()).thenReturn(patchFields());
     when(userRepository.getByName(any(), eq("alice"), any(Fields.class))).thenReturn(existingUser);
-    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(existingUser);
-    when(userRepository.createOrUpdate(null, existingUser, ADMIN_USER_NAME))
-        .thenReturn(new PutResponse<>(Response.Status.OK, existingUser, EventType.ENTITY_UPDATED));
+    when(userRows.findEntityByName("alice", NON_DELETED)).thenReturn(existingUser);
+    creations.onUpsert(
+        request -> {
+          assertEquals(existingUser, request.entity());
+          return userWriteResponse(request, Response.Status.OK, EventType.ENTITY_UPDATED);
+        });
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
     when(systemRepository.getEmailConfigInternal()).thenReturn(null);
 
@@ -171,22 +183,18 @@ class UserUtilTest {
   @Test
   void createOrUpdateUserCreatesMissingBasicAdminUser() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     SystemRepository systemRepository = mock(SystemRepository.class);
-    ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
 
     when(userRepository.getPatchFields()).thenReturn(patchFields());
     when(userRepository.getByName(any(), eq("bob"), any(Fields.class)))
         .thenThrow(new EntityNotFoundException("user"));
-    when(userRepository.findByNameOrNull("bob", NON_DELETED)).thenReturn(null);
-    when(userRepository.createOrUpdate(eq(null), any(User.class), eq(ADMIN_USER_NAME)))
-        .thenAnswer(
-            invocation ->
-                new PutResponse<User>(
-                    Response.Status.CREATED,
-                    invocation.getArgument(1, User.class),
-                    EventType.ENTITY_CREATED));
+    when(userRows.findEntityByName("bob", NON_DELETED)).thenReturn(null);
+    creations.onUpsert(
+        request -> userWriteResponse(request, Response.Status.CREATED, EventType.ENTITY_CREATED));
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
     when(systemRepository.getEmailConfigInternal()).thenReturn(null);
 
@@ -197,8 +205,8 @@ class UserUtilTest {
       try (MockedStatic<EmailUtil> mockedEmailUtil = mockStatic(EmailUtil.class)) {
         UserUtil.createOrUpdateUser(AuthProvider.BASIC, "bob", "TempPass1!", "example.com", true);
 
-        verify(userRepository).createOrUpdate(eq(null), userCaptor.capture(), eq(ADMIN_USER_NAME));
-        User createdUser = userCaptor.getValue();
+        assertEquals(1, creations.upserts().size());
+        User createdUser = creations.upserts().getFirst().entity();
         assertEquals("bob", createdUser.getName());
         assertEquals("bob@example.com", createdUser.getEmail());
         assertTrue(createdUser.getIsAdmin());
@@ -214,6 +222,7 @@ class UserUtilTest {
   @Test
   void createOrUpdateUserSkipsConfiguredBotUsers() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
     User botUser =
         new User()
             .withId(UUID.randomUUID())
@@ -233,8 +242,7 @@ class UserUtilTest {
       UserUtil.createOrUpdateUser(
           AuthProvider.BASIC, "ingestion-bot", "ignored", "example.com", true);
 
-      verify(userRepository, never())
-          .createOrUpdate(eq(null), any(User.class), eq(ADMIN_USER_NAME));
+      assertTrue(creations.upserts().isEmpty());
       mockedEmailUtil.verifyNoInteractions();
     }
   }
@@ -242,6 +250,8 @@ class UserUtilTest {
   @Test
   void addOrUpdateUserCreatesUpdateChangeEventWithDomainsAndPreviousVersion() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     UUID domainId = UUID.randomUUID();
@@ -256,9 +266,12 @@ class UserUtilTest {
             .withChangeDescription(new ChangeDescription().withPreviousVersion(1.0));
 
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(user);
-    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
-        .thenReturn(new PutResponse<>(Response.Status.OK, user, EventType.ENTITY_UPDATED));
+    when(userRows.findEntityByName("alice", NON_DELETED)).thenReturn(user);
+    creations.onUpsert(
+        request -> {
+          assertEquals(user, request.entity());
+          return userWriteResponse(request, Response.Status.OK, EventType.ENTITY_UPDATED);
+        });
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
@@ -280,6 +293,8 @@ class UserUtilTest {
   @Test
   void addOrUpdateUserReturnsUserWhenChangeEventInsertFails() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     User user =
@@ -292,9 +307,12 @@ class UserUtilTest {
 
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
     doThrow(new RuntimeException("change-event down")).when(changeEventDAO).insert(any());
-    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(null);
-    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
-        .thenReturn(new PutResponse<>(Response.Status.CREATED, user, EventType.ENTITY_CREATED));
+    when(userRows.findEntityByName("alice", NON_DELETED)).thenReturn(null);
+    creations.onUpsert(
+        request -> {
+          assertEquals(user, request.entity());
+          return userWriteResponse(request, Response.Status.CREATED, EventType.ENTITY_CREATED);
+        });
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
@@ -307,6 +325,8 @@ class UserUtilTest {
   @Test
   void addOrUpdateBotUserReusesExistingAuthenticationMechanism() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     AuthenticationMechanism existingMechanism =
@@ -330,9 +350,12 @@ class UserUtilTest {
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
     when(userRepository.getByName(any(), eq("bot-user"), any(Fields.class)))
         .thenReturn(originalUser);
-    when(userRepository.findByNameOrNull("bot-user", NON_DELETED)).thenReturn(originalUser);
-    when(userRepository.createOrUpdate(eq(null), eq(botUser), eq(ADMIN_USER_NAME)))
-        .thenReturn(new PutResponse<>(Response.Status.OK, botUser, EventType.ENTITY_UPDATED));
+    when(userRows.findEntityByName("bot-user", NON_DELETED)).thenReturn(originalUser);
+    creations.onUpsert(
+        request -> {
+          assertEquals(botUser, request.entity());
+          return userWriteResponse(request, Response.Status.OK, EventType.ENTITY_UPDATED);
+        });
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
@@ -347,6 +370,8 @@ class UserUtilTest {
   @Test
   void addOrUpdateBotUserGeneratesJwtWhenBotDoesNotExist() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     JWTTokenGenerator tokenGenerator = mock(JWTTokenGenerator.class);
@@ -365,9 +390,12 @@ class UserUtilTest {
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
     when(userRepository.getByName(any(), eq("fresh-bot"), any(Fields.class)))
         .thenThrow(new EntityNotFoundException("bot"));
-    when(userRepository.findByNameOrNull("fresh-bot", NON_DELETED)).thenReturn(null);
-    when(userRepository.createOrUpdate(eq(null), eq(botUser), eq(ADMIN_USER_NAME)))
-        .thenReturn(new PutResponse<>(Response.Status.CREATED, botUser, EventType.ENTITY_CREATED));
+    when(userRows.findEntityByName("fresh-bot", NON_DELETED)).thenReturn(null);
+    creations.onUpsert(
+        request -> {
+          assertEquals(botUser, request.entity());
+          return userWriteResponse(request, Response.Status.CREATED, EventType.ENTITY_CREATED);
+        });
     when(tokenGenerator.generateJWTToken(botUser, JWTTokenExpiry.Unlimited))
         .thenReturn(jwtAuthMechanism);
 
@@ -520,7 +548,11 @@ class UserUtilTest {
             .withName("DataConsumer")
             .withFullyQualifiedName("DataConsumer");
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
     UriInfo uriInfo = mock(UriInfo.class);
+    final var patches = new EntityPatchFixture<User>(request -> null);
+    when(userRepository.patches()).thenReturn(patches);
+
     User user =
         new User()
             .withId(userId)
@@ -542,13 +574,20 @@ class UserUtilTest {
       assertTrue(user.getIsAdmin());
       assertEquals(1, user.getRoles().size());
       assertEquals("DataConsumer", user.getRoles().get(0).getName());
-      verify(userRepository).patch(eq(uriInfo), eq(userId), eq("alice"), any());
+      assertEquals(1, patches.requests().size());
+      final var request = patches.requests().getFirst();
+      assertEquals(new EntityPatchService.Target.Id(userId), request.target());
+      assertEquals(new EntityCommandActor("alice", null), request.actor());
+      assertEquals(uriInfo, request.uri());
+      assertEquals(
+          Set.of("roles", "isAdmin", "isBot"), JsonUtils.extractPatchedFields(request.patch()));
     }
   }
 
   @Test
   void reSyncUserRolesFromTokenSkipsPatchWhenNothingChanges() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
     User user =
         new User()
             .withId(UUID.randomUUID())
@@ -601,6 +640,8 @@ class UserUtilTest {
   void reSyncUserRolesFromTokenRevokesEveryRoleWhenProviderSendsAnEmptyClaim() {
     UUID userId = UUID.randomUUID();
     UserRepository userRepository = mock(UserRepository.class);
+    final var patches = new EntityPatchFixture<User>(request -> null);
+    when(userRepository.patches()).thenReturn(patches);
     User user = userWithRoles("alice", "DataSteward").withId(userId);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
@@ -609,7 +650,11 @@ class UserUtilTest {
       assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of()));
 
       assertEquals(List.of(), roleNames(user));
-      verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
+      assertEquals(1, patches.requests().size());
+      assertEquals(
+          new EntityPatchService.Target.Id(userId), patches.requests().getFirst().target());
+      assertTrue(
+          JsonUtils.extractPatchedFields(patches.requests().getFirst().patch()).contains("roles"));
     }
   }
 
@@ -631,6 +676,8 @@ class UserUtilTest {
   void reSyncUserRolesFromTokenDropsNonAdminRolesWhenProviderSendsOnlyAdmin() {
     UUID userId = UUID.randomUUID();
     UserRepository userRepository = mock(UserRepository.class);
+    final var patches = new EntityPatchFixture<User>(request -> null);
+    when(userRepository.patches()).thenReturn(patches);
     User user = userWithRoles("alice", "DataSteward").withId(userId);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
@@ -640,7 +687,11 @@ class UserUtilTest {
 
       assertTrue(user.getIsAdmin());
       assertEquals(List.of(), roleNames(user));
-      verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
+      assertEquals(1, patches.requests().size());
+      assertEquals(
+          new EntityPatchService.Target.Id(userId), patches.requests().getFirst().target());
+      assertTrue(
+          JsonUtils.extractPatchedFields(patches.requests().getFirst().patch()).contains("roles"));
     }
   }
 
@@ -655,6 +706,8 @@ class UserUtilTest {
             .withName("DataConsumer")
             .withFullyQualifiedName("DataConsumer");
     UserRepository userRepository = mock(UserRepository.class);
+    final var patches = new EntityPatchFixture<User>(request -> null);
+    when(userRepository.patches()).thenReturn(patches);
     User user = userWithRoles("alice").withId(userId).withIsAdmin(true);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
@@ -679,6 +732,8 @@ class UserUtilTest {
             .withName("DataConsumer")
             .withFullyQualifiedName("DataConsumer");
     UserRepository userRepository = mock(UserRepository.class);
+    final var patches = new EntityPatchFixture<User>(request -> null);
+    when(userRepository.patches()).thenReturn(patches);
     User user = userWithRoles("alice", "OldRole").withId(userId);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
@@ -794,6 +849,8 @@ class UserUtilTest {
   @Test
   void addOrUpdateUserCreatesChangeEventForCreatedUsers() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
     User user =
@@ -805,9 +862,12 @@ class UserUtilTest {
             .withVersion(1.0);
 
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
-    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(null);
-    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
-        .thenReturn(new PutResponse<>(Response.Status.CREATED, user, EventType.ENTITY_CREATED));
+    when(userRows.findEntityByName("alice", NON_DELETED)).thenReturn(null);
+    creations.onUpsert(
+        request -> {
+          assertEquals(user, request.entity());
+          return userWriteResponse(request, Response.Status.CREATED, EventType.ENTITY_CREATED);
+        });
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
@@ -828,6 +888,8 @@ class UserUtilTest {
   @Test
   void addOrUpdateUserClearsAuthMechanismWhenRepositoryWriteFails() {
     UserRepository userRepository = mock(UserRepository.class);
+    final var creations = EntityCreationFixture.attach(userRepository);
+    EntityDAO<User> userRows = lookups.attach(userRepository, Entity.USER, User.class);
     User user =
         new User()
             .withId(UUID.randomUUID())
@@ -835,9 +897,12 @@ class UserUtilTest {
             .withFullyQualifiedName("alice")
             .withAuthenticationMechanism(new AuthenticationMechanism());
 
-    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(null);
-    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
-        .thenThrow(new RuntimeException("duplicate request"));
+    when(userRows.findEntityByName("alice", NON_DELETED)).thenReturn(null);
+    creations.onUpsert(
+        request -> {
+          assertUserWrite(request);
+          throw new RuntimeException("duplicate request");
+        });
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
@@ -848,6 +913,18 @@ class UserUtilTest {
       assertTrue(exception.getMessage().contains("duplicate request"));
       assertNull(user.getAuthenticationMechanism());
     }
+  }
+
+  private PutResponse<User> userWriteResponse(
+      EntityCreationFixture.Upsert<User> request, Response.Status status, EventType event) {
+    assertUserWrite(request);
+    return new PutResponse<>(status, request.entity(), event);
+  }
+
+  private void assertUserWrite(EntityCreationFixture.Upsert<User> request) {
+    assertNull(request.uri());
+    assertEquals(new EntityCommandActor(ADMIN_USER_NAME, null), request.actor());
+    assertFalse(request.importMode());
   }
 
   private static Fields patchFields() {

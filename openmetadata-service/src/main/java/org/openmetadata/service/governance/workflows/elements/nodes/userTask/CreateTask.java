@@ -66,6 +66,8 @@ import org.openmetadata.schema.type.TaskExternalReference;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
@@ -497,7 +499,13 @@ public class CreateTask implements TaskListener {
               ? requestedAssignees.stream().map(EntityReference::getName).toList()
               : null);
       Task currentTask =
-          taskRepository.get(null, existingTask.getId(), taskRepository.getFields("*"));
+          taskRepository
+              .reads()
+              .byId(
+                  existingTask.getId(),
+                  taskRepository.fieldPolicy().parse("*"),
+                  Include.NON_DELETED,
+                  false);
       Task updatedTask = JsonUtils.deepCopy(currentTask, Task.class);
       UUID effectiveWorkflowDefinitionId =
           resolvedWorkflowDefinitionId != null
@@ -594,8 +602,22 @@ public class CreateTask implements TaskListener {
             // entity
             // stays one stage behind the (already committed) Flowable runtime and self-heals on the
             // next stage advance, which re-reads the current task.
-            Task latest = taskRepository.get(null, persistTaskId, taskRepository.getFields("*"));
-            taskRepository.update(null, latest, desired, updatedBy);
+            Task latest =
+                taskRepository
+                    .reads()
+                    .byId(
+                        persistTaskId,
+                        taskRepository.fieldPolicy().parse("*"),
+                        Include.NON_DELETED,
+                        false);
+            taskRepository
+                .puts()
+                .update(
+                    null,
+                    latest,
+                    desired,
+                    new EntityCommandActor(updatedBy, null),
+                    EntityPutService.Mode.NORMAL);
           });
       return updatedTask;
     }
@@ -667,7 +689,7 @@ public class CreateTask implements TaskListener {
     }
 
     // Use the repository to create (handles taskId generation, FQN, relationships)
-    task = taskRepository.create(null, task);
+    task = taskRepository.creates().create(null, task, new EntityCommandActor(null, null));
 
     // Create and publish ChangeEvent for notification system
     ChangeEvent changeEvent =
@@ -905,7 +927,7 @@ public class CreateTask implements TaskListener {
     Supplier<Task> lookupTask =
         () -> {
           try {
-            return taskRepository.find(requestedTaskId, Include.ALL);
+            return taskRepository.lookup().byId(requestedTaskId, Include.ALL);
           } catch (EntityNotFoundException ignored) {
             LOG.debug(
                 "[CreateTask] Task '{}' not visible yet during workflow callback", requestedTaskId);

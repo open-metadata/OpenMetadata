@@ -4,20 +4,16 @@ import io.dropwizard.core.server.DefaultServerFactory;
 import io.dropwizard.jetty.ConnectorFactory;
 import io.dropwizard.jetty.HttpConnectorFactory;
 import io.dropwizard.jetty.HttpsConnectorFactory;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import java.util.concurrent.atomic.AtomicReference;
-import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public final class SessionMultiNodeCluster {
   private static final AtomicReference<SessionMultiNodeCluster> INSTANCE = new AtomicReference<>();
 
-  private final DropwizardAppExtension<OpenMetadataApplicationConfig> nodeA;
-  private final DropwizardAppExtension<OpenMetadataApplicationConfig> nodeB;
+  private final ForkedTestNode nodeA;
+  private final ForkedTestNode nodeB;
 
-  private SessionMultiNodeCluster(
-      DropwizardAppExtension<OpenMetadataApplicationConfig> nodeA,
-      DropwizardAppExtension<OpenMetadataApplicationConfig> nodeB) {
+  private SessionMultiNodeCluster(ForkedTestNode nodeA, ForkedTestNode nodeB) {
     this.nodeA = nodeA;
     this.nodeB = nodeB;
   }
@@ -34,8 +30,8 @@ public final class SessionMultiNodeCluster {
         return existing;
       }
 
-      DropwizardAppExtension<OpenMetadataApplicationConfig> nodeA = startNode();
-      DropwizardAppExtension<OpenMetadataApplicationConfig> nodeB = startNode();
+      ForkedTestNode nodeA = startNode();
+      ForkedTestNode nodeB = startNode();
       SessionMultiNodeCluster cluster = new SessionMultiNodeCluster(nodeA, nodeB);
       INSTANCE.set(cluster);
       return cluster;
@@ -43,25 +39,19 @@ public final class SessionMultiNodeCluster {
   }
 
   public String nodeABaseUrl() {
-    return "http://localhost:" + nodeA.getLocalPort();
+    return nodeA.baseUrl();
   }
 
   public String nodeBBaseUrl() {
-    return "http://localhost:" + nodeB.getLocalPort();
+    return nodeB.baseUrl();
   }
 
-  private static DropwizardAppExtension<OpenMetadataApplicationConfig> startNode() {
+  private static ForkedTestNode startNode() {
     OpenMetadataApplicationConfig config = TestSuiteBootstrap.createApplicationConfigCopy();
     resetPorts(config);
-    DropwizardAppExtension<OpenMetadataApplicationConfig> app =
-        new DropwizardAppExtension<>(OpenMetadataApplication.class, config);
-    try {
-      app.before();
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to start additional OpenMetadata node", e);
-    }
-    TestSuiteBootstrap.registerAdditionalApp(app);
-    return app;
+    final ForkedTestNode node = ForkedTestNode.start(config);
+    TestSuiteBootstrap.registerAdditionalNode(node);
+    return node;
   }
 
   private static void resetPorts(OpenMetadataApplicationConfig config) {

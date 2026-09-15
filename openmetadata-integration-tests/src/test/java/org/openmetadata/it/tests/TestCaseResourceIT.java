@@ -5063,6 +5063,53 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_testCaseSearchIndexUpdatedWhenTableTagIsReplaced(TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final SharedEntities shared = SharedEntities.get();
+    final Table table = createTable(ns);
+    table.setTags(List.of(shared.PII_SENSITIVE_TAG_LABEL));
+    client.tables().update(table.getId().toString(), table);
+    final TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("search_tag_replacement"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    assertSearchTags(client, testCase, shared.PII_SENSITIVE_TAG_LABEL);
+
+    final Table updatedTable = client.tables().get(table.getId().toString(), "tags");
+    updatedTable.setTags(List.of(shared.PERSONAL_DATA_TAG_LABEL));
+    client.tables().update(updatedTable.getId().toString(), updatedTable);
+    assertSearchTags(client, testCase, shared.PERSONAL_DATA_TAG_LABEL);
+  }
+
+  private static void assertSearchTags(
+      final OpenMetadataClient client, final TestCase testCase, final TagLabel expectedTag) {
+    Awaitility.await("Inherited tags and classification facets match the table")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              final String response =
+                  client
+                      .search()
+                      .query("id:" + testCase.getId())
+                      .index("test_case_search_index")
+                      .size(1)
+                      .execute();
+              final JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+              assertEquals(1, hits.size());
+              final JsonNode source = hits.get(0).path("_source");
+              assertEquals(1, source.path("tags").size());
+              assertEquals(
+                  expectedTag.getTagFQN(), source.path("tags").get(0).path("tagFQN").asText());
+              assertEquals(
+                  MAPPER.valueToTree(List.of(expectedTag.getTagFQN())),
+                  source.path("classificationTags"));
+            });
+  }
+
+  @Test
   void test_testCaseSearchIndexUpdatedWhenTableOwnerChanges(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     SharedEntities shared = SharedEntities.get();

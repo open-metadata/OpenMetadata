@@ -23,7 +23,6 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -93,8 +92,7 @@ class TableIndexTest {
     List<String> jsonDataFiles =
         EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
     String json =
-        CommonUtil.getResourceAsStream(
-            EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+        CommonUtil.getResourceAsStream(TableIndex.class.getClassLoader(), jsonDataFiles.get(0));
     return JsonUtils.readValue(json, SearchSettings.class);
   }
 

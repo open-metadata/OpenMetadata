@@ -5,9 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -25,13 +22,13 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityCollectionFixture;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * The filter's decision paths, asserted through what survives in the graph rather than through
@@ -59,15 +56,16 @@ class LineagePermissionFilterTest {
     when(tableRepository.isSearchIndexable(any())).thenReturn(true);
     when(tableRepository.isVectorEmbeddable(any())).thenReturn(true);
     when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
-    when(tableRepository.getFields(anyString())).thenReturn(Fields.EMPTY_FIELDS);
-    when(tableRepository.get(isNull(), anyList(), any(Fields.class), any(Include.class)))
-        .thenAnswer(
-            invocation -> {
-              List<UUID> ids = invocation.getArgument(1);
-              List<Table> tables = new ArrayList<>();
-              ids.forEach(id -> tables.add(table(id)));
-              return tables;
-            });
+    when(tableRepository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(Table.class));
+    when(tableRepository.collections())
+        .thenReturn(
+            new EntityCollectionFixture<>(
+                (ids, projection) -> {
+                  List<Table> tables = new ArrayList<>();
+                  ids.forEach(id -> tables.add(table(id)));
+                  return tables;
+                },
+                null));
     Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
   }
 

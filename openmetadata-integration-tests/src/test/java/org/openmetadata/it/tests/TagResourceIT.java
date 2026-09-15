@@ -1035,7 +1035,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             org.openmetadata.service.Entity.getEntityRepository(
                 org.openmetadata.service.Entity.TAG);
     Tag updatedTag =
-        tagRepo.getByName(null, emailTag.getFullyQualifiedName(), tagRepo.getFields("recognizers"));
+        tagRepo.getByName(
+            null, emailTag.getFullyQualifiedName(), tagRepo.fieldPolicy().parse("recognizers"));
 
     assertNotNull(updatedTag.getRecognizers());
     org.openmetadata.schema.type.Recognizer emailRecognizer = null;
@@ -1135,7 +1136,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             org.openmetadata.service.Entity.getEntityRepository(
                 org.openmetadata.service.Entity.TAG);
     Tag updatedTag =
-        tagRepo.getByName(null, emailTag.getFullyQualifiedName(), tagRepo.getFields("recognizers"));
+        tagRepo.getByName(
+            null, emailTag.getFullyQualifiedName(), tagRepo.fieldPolicy().parse("recognizers"));
 
     for (org.openmetadata.schema.type.Recognizer r : updatedTag.getRecognizers()) {
       assertNotNull(r.getExceptionList());
@@ -1238,7 +1240,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             org.openmetadata.service.Entity.getEntityRepository(
                 org.openmetadata.service.Entity.TAG);
     Tag updatedTag =
-        tagRepo.getByName(null, emailTag.getFullyQualifiedName(), tagRepo.getFields("recognizers"));
+        tagRepo.getByName(
+            null, emailTag.getFullyQualifiedName(), tagRepo.fieldPolicy().parse("recognizers"));
 
     for (org.openmetadata.schema.type.Recognizer r : updatedTag.getRecognizers()) {
       boolean hasException =

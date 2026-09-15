@@ -111,6 +111,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
@@ -4333,7 +4334,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy(botWithUser.user().getName());
-    task = taskRepository.create(null, task);
+    task = taskRepository.creates().create(null, task, new EntityCommandActor(null, null));
 
     assertNotNull(task.getId(), "Suggestion task should be created");
     Task storedTask = SdkClients.adminClient().tasks().get(task.getId().toString(), "createdBy");

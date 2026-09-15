@@ -41,7 +41,8 @@ import org.openmetadata.schema.type.AIDetection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -62,8 +63,11 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 final class DashboardRollup {
 
   private static final int PAGE_SIZE = 1000;
+
   private static final int TOP_N = 5;
+
   private static final String COMPLIANT = "Compliant";
+
   private static final String[] RISK_SEVERITY = {"Unacceptable", "High", "Limited", "Minimal"};
 
   private DashboardRollup() {}
@@ -73,7 +77,6 @@ final class DashboardRollup {
     collectAssets(Entity.AI_APPLICATION, "owners,domains,governanceMetadata", assets);
     collectAssets(Entity.MCP_SERVER, "owners,domains,governanceMetadata", assets);
     collectAssets(Entity.LLM_MODEL, "owners,domains,governanceStatus,detection", assets);
-
     return new AIGovernanceDashboardResponse()
         .withEstateStats(estateStats(assets))
         .withFrameworkReadiness(frameworkReadiness(assets))
@@ -85,14 +88,16 @@ final class DashboardRollup {
 
   private static void collectAssets(String entityType, String fields, List<RolledAsset> out) {
     try {
-      EntityRepository<? extends EntityInterface> repository =
-          Entity.getEntityRepository(entityType);
-      Fields parsedFields = repository.getFields(fields);
+      EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+      Fields parsedFields = repository.fieldPolicy().parse(fields);
       ListFilter filter = new ListFilter();
       String after = null;
       do {
         ResultList<? extends EntityInterface> page =
-            repository.listAfter(null, parsedFields, filter, PAGE_SIZE, after);
+            repository
+                .pages()
+                .after(
+                    new EntityPageReader.Projection(null, parsedFields, filter), PAGE_SIZE, after);
         for (EntityInterface entity : page.getData()) {
           out.add(RolledAsset.from(entityType, entity));
         }
@@ -190,17 +195,24 @@ final class DashboardRollup {
     return result;
   }
 
-  /** Map of enabled framework identifier (upper-cased) to its next deadline (nullable). */
+  /**
+   * Map of enabled framework identifier (upper-cased) to its next deadline (nullable).
+   */
   private static Map<String, Long> enabledFrameworkDeadlines() {
     Map<String, Long> result = new LinkedHashMap<>();
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityPolicy<? extends EntityInterface> repository =
           Entity.getEntityRepository(Entity.AI_GOVERNANCE_FRAMEWORK);
       ListFilter filter = new ListFilter();
       String after = null;
       do {
         ResultList<? extends EntityInterface> page =
-            repository.listAfter(null, Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+            repository
+                .pages()
+                .after(
+                    new EntityPageReader.Projection(null, Fields.EMPTY_FIELDS, filter),
+                    PAGE_SIZE,
+                    after);
         for (EntityInterface entity : page.getData()) {
           collectEnabledFramework(entity, result);
         }
@@ -253,7 +265,6 @@ final class DashboardRollup {
     String[] bucketLabels = {"<1k", "1k–10k", "10k–100k", ">100k"};
     int[][] counts = new int[risks.length][bucketCaps.length];
     RolledAsset[][] top = new RolledAsset[risks.length][bucketCaps.length];
-
     for (RolledAsset asset : assets) {
       int riskIdx = indexOf(risks, asset.euRisk());
       if (riskIdx >= 0) {
@@ -262,7 +273,6 @@ final class DashboardRollup {
         top[riskIdx][bucketIdx] = pickTop(top[riskIdx][bucketIdx], asset);
       }
     }
-
     List<AIGovernanceRiskMatrixCell> cells = new ArrayList<>();
     for (int r = 0; r < risks.length; r++) {
       for (int c = 0; c < bucketCaps.length; c++) {
@@ -358,32 +368,52 @@ final class DashboardRollup {
     return index >= 0 ? index : RISK_SEVERITY.length;
   }
 
-  /** Sort key that surfaces the most recently detected asset first (nulls last). */
+  /**
+   * Sort key that surfaces the most recently detected asset first (nulls last).
+   */
   private static long recencyKey(Long timestamp) {
     return timestamp == null ? Long.MAX_VALUE : -timestamp;
   }
 
-  /** Sort key that surfaces the longest-waiting submission first (nulls last). */
+  /**
+   * Sort key that surfaces the longest-waiting submission first (nulls last).
+   */
   private static long waitingKey(Long timestamp) {
     return timestamp == null ? Long.MAX_VALUE : timestamp;
   }
 
-  /** Normalized rolled-up view of an AI asset for rollup math. */
+  /**
+   * Normalized rolled-up view of an AI asset for rollup math.
+   */
   @Builder
   static final class RolledAsset {
+
     private final String entityType;
+
     private final String id;
+
     private final String name;
+
     private final String displayName;
+
     private final String fqn;
+
     private final String registrationStatus;
+
     private final String euRisk;
+
     private final int affectedUsers;
+
     private final List<FrameworkStatusSnapshot> frameworkStatuses;
+
     private final Long registeredAt;
+
     private final String detectedVia;
+
     private final Long detectedAt;
+
     private final String submittedBy;
+
     private final String team;
 
     String name() {
@@ -446,7 +476,6 @@ final class DashboardRollup {
       String euRisk = extractCompliance(governance.aiCompliance(), frameworks);
       int users = affectedUsers(governance.aiCompliance());
       AIDetection detection = governance.detection();
-
       return RolledAsset.builder()
           .entityType(entityType)
           .id(entity.getId() == null ? null : entity.getId().toString())
@@ -579,6 +608,7 @@ final class DashboardRollup {
   }
 
   private record FrameworkReadinessCounts(int compliant, int inScope) {
+
     private FrameworkReadinessCounts plus(FrameworkReadinessCounts other) {
       return new FrameworkReadinessCounts(compliant + other.compliant(), inScope + other.inScope());
     }
@@ -596,6 +626,7 @@ final class DashboardRollup {
       Long registeredAt,
       AIDetection detection,
       AICompliance aiCompliance) {
+
     private static final GovernanceSnapshot EMPTY =
         new GovernanceSnapshot("Registered", null, null, null, null);
   }

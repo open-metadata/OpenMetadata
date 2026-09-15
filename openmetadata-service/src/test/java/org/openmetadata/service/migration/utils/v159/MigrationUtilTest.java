@@ -26,18 +26,22 @@ import org.jdbi.v3.core.statement.Query;
 import org.jdbi.v3.core.statement.Update;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 class MigrationUtilTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
 
   private Handle handle;
   private Query query;
@@ -45,6 +49,7 @@ class MigrationUtilTest {
   private CollectionDAO collectionDAO;
   private AppExtensionTimeSeries appExtensionTimeSeriesDao;
   private AppRepository appRepository;
+  private EntityDAO<App> appRows;
   private Update update;
 
   @BeforeEach
@@ -57,6 +62,7 @@ class MigrationUtilTest {
     collectionDAO = mock(CollectionDAO.class, RETURNS_DEEP_STUBS);
     appExtensionTimeSeriesDao = collectionDAO.appExtensionTimeSeriesDao();
     appRepository = mock(AppRepository.class);
+    appRows = lookups.attach(appRepository, Entity.APPLICATION, App.class);
     update = mock(Update.class);
 
     when(handle.createQuery(anyString())).thenReturn(query);
@@ -79,7 +85,7 @@ class MigrationUtilTest {
   }
 
   /**
-   * The core fix: a non-{@link EntityNotFoundException} from {@code appRepository.find(...)} (e.g. a
+   * The core fix: a non-{@link EntityNotFoundException} from {@code appRows.findEntityById(...)} (e.g. a
    * transient DB error rethrown by the cached find path) must propagate so the migration step is
    * recorded as FAILED and the workflow stops before the post-DDL
    * {@code ALTER ... appName ... GENERATED ... NOT NULL}, which would otherwise fail for a row left
@@ -89,7 +95,7 @@ class MigrationUtilTest {
   void addAppExtensionNamePropagatesNonEntityNotFoundExceptionFromFind() {
     UUID appId = UUID.randomUUID();
     emitRows(List.of(Map.of("appid", appId.toString(), "json", "{\"foo\":\"bar\"}")));
-    when(appRepository.find(eq(appId), eq(Include.ALL)))
+    when(appRows.findEntityById(eq(appId), eq(Include.ALL)))
         .thenThrow(new RuntimeException("transient DB error during find"));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
@@ -102,7 +108,7 @@ class MigrationUtilTest {
       assertInstanceOf(RuntimeException.class, ex.getCause());
     }
 
-    verify(appRepository).find(eq(appId), eq(Include.ALL));
+    verify(appRows).findEntityById(eq(appId), eq(Include.ALL));
     verify(update, never()).execute();
     verify(appExtensionTimeSeriesDao, never())
         .delete(anyString(), eq(AppExtension.ExtensionType.STATUS.toString()));
@@ -116,7 +122,7 @@ class MigrationUtilTest {
   void addAppExtensionNameDeletesOrphanWhenEntityNotFound() {
     UUID appId = UUID.randomUUID();
     emitRows(List.of(Map.of("appid", appId.toString(), "json", "{\"foo\":\"bar\"}")));
-    when(appRepository.find(eq(appId), eq(Include.ALL)))
+    when(appRows.findEntityById(eq(appId), eq(Include.ALL)))
         .thenThrow(EntityNotFoundException.byName("App " + appId + " not found"));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
@@ -125,7 +131,7 @@ class MigrationUtilTest {
           () -> MigrationUtil.addAppExtensionName(handle, collectionDAO, null, true));
     }
 
-    verify(appRepository).find(eq(appId), eq(Include.ALL));
+    verify(appRows).findEntityById(eq(appId), eq(Include.ALL));
     verify(appExtensionTimeSeriesDao)
         .delete(eq(appId.toString()), eq(AppExtension.ExtensionType.STATUS.toString()));
     verify(update, never()).execute();
@@ -137,7 +143,7 @@ class MigrationUtilTest {
     UUID appId = UUID.randomUUID();
     App app = new App().withId(appId).withName("MyApp");
     emitRows(List.of(Map.of("appid", appId.toString(), "json", "{\"status\":\"running\"}")));
-    when(appRepository.find(eq(appId), eq(Include.ALL))).thenReturn(app);
+    when(appRows.findEntityById(eq(appId), eq(Include.ALL))).thenReturn(app);
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.APPLICATION)).thenReturn(appRepository);
@@ -162,7 +168,7 @@ class MigrationUtilTest {
     UUID appId = UUID.randomUUID();
     App app = new App().withId(appId).withName("MyApp");
     emitRows(List.of(Map.of("appid", appId.toString(), "json", "{\"status\":\"running\"}")));
-    when(appRepository.find(eq(appId), eq(Include.ALL))).thenReturn(app);
+    when(appRows.findEntityById(eq(appId), eq(Include.ALL))).thenReturn(app);
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.APPLICATION)).thenReturn(appRepository);
@@ -199,7 +205,7 @@ class MigrationUtilTest {
           () -> MigrationUtil.addAppExtensionName(handle, collectionDAO, null, true));
     }
 
-    verify(appRepository, never()).find(any(UUID.class), any(Include.class));
+    verify(appRows, never()).findEntityById(any(UUID.class), any(Include.class));
     verify(update, never()).execute();
     verify(appExtensionTimeSeriesDao, never())
         .delete(anyString(), eq(AppExtension.ExtensionType.STATUS.toString()));
@@ -214,7 +220,7 @@ class MigrationUtilTest {
     UUID appId = UUID.randomUUID();
     App app = new App().withId(appId).withName("MyApp");
     emitRows(List.of(Map.of("appid", appId.toString(), "json", "{\"status\":\"running\"}")));
-    when(appRepository.find(eq(appId), eq(Include.ALL))).thenReturn(app);
+    when(appRows.findEntityById(eq(appId), eq(Include.ALL))).thenReturn(app);
     when(update.execute()).thenThrow(new RuntimeException("deadlock during update"));
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
@@ -226,7 +232,7 @@ class MigrationUtilTest {
       assertTrue(ex.getMessage().contains(appId.toString()));
     }
 
-    verify(appRepository).find(eq(appId), eq(Include.ALL));
+    verify(appRows).findEntityById(eq(appId), eq(Include.ALL));
     verify(update).execute();
     verify(appExtensionTimeSeriesDao, never())
         .delete(anyString(), eq(AppExtension.ExtensionType.STATUS.toString()));
@@ -252,7 +258,7 @@ class MigrationUtilTest {
       assertTrue(ex.getMessage().contains("connection reset mid-stream"));
     }
 
-    verify(appRepository, never()).find(any(UUID.class), any(Include.class));
+    verify(appRows, never()).findEntityById(any(UUID.class), any(Include.class));
     verify(update, never()).execute();
   }
 }

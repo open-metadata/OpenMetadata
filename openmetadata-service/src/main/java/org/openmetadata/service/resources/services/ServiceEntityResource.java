@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources.services;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -26,9 +25,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.service.EntityServicePolicy;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -39,11 +38,11 @@ import org.openmetadata.service.security.Authorizer;
 
 public abstract class ServiceEntityResource<
         T extends ServiceEntityInterface,
-        R extends ServiceEntityRepository<T, S>,
+        R extends EntityServicePolicy<T, S>,
         S extends ServiceConnectionEntityInterface>
     extends EntityResource<T, R> {
 
-  @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
+  @Getter private final EntityServicePolicy<T, S> serviceEntityRepository;
 
   private final ServiceType serviceType;
 
@@ -52,7 +51,7 @@ public abstract class ServiceEntityResource<
     super(entityType, authorizer, limits);
     this.serviceType = serviceType;
     serviceEntityRepository =
-        (ServiceEntityRepository<T, S>) Entity.getServiceEntityRepository(serviceType);
+        (EntityServicePolicy<T, S>) Entity.getServiceEntityRepository(serviceType);
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
@@ -89,7 +88,7 @@ public abstract class ServiceEntityResource<
     // TODO move this functionality to repository
     repository.setFullyQualifiedName(service);
     T originalService =
-        repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
+        repository.lookup().byNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
     String connectionType = extractServiceType(service);
     try {
       if (originalService != null && originalService.getConnection() != null) {

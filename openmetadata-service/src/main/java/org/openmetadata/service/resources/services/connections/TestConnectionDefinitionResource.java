@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
@@ -66,11 +67,14 @@ public class TestConnectionDefinitionResource
         repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
 
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      repository.prepareInternal(testConnectionDefinition, true);
+      repository.preparation().prepare(testConnectionDefinition, true);
       testConnectionDefinition.setId(UUID.randomUUID());
       testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
       testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
-      repository.createOrUpdate(null, testConnectionDefinition, ADMIN_USER_NAME);
+      repository
+          .creates()
+          .upsert(
+              null, testConnectionDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
     }
   }
 

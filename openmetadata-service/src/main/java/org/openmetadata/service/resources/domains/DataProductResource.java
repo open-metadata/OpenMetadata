@@ -1870,7 +1870,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       // owners/domains/experts/reviewers/certification/tags from the existing
       // product; these are lazy fields that come back null unless requested, so
       // a sparse load would wipe them (and drop the required domain) on merge.
-      return repository.getByName(null, name, repository.getFields(EXPORT_FIELDS));
+      return repository.getByName(null, name, repository.fieldPolicy().parse(EXPORT_FIELDS));
     } catch (EntityNotFoundException ignored) {
       return null;
     }

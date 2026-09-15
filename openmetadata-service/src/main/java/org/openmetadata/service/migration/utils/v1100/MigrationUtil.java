@@ -323,8 +323,11 @@ public class MigrationUtil {
           (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
 
       List<DataContract> allDataContracts =
-          dataContractRepository.listAll(
-              dataContractRepository.getFields("id,entity"), new ListFilter(Include.ALL));
+          dataContractRepository
+              .collections()
+              .all(
+                  dataContractRepository.fieldPolicy().parse("id,entity"),
+                  new ListFilter(Include.ALL));
 
       if (allDataContracts.isEmpty()) {
         LOG.info("✓ No data contracts found - cleanup complete");
@@ -352,7 +355,9 @@ public class MigrationUtil {
               dataContract.getEntity().getId());
 
           try {
-            dataContractRepository.delete(Entity.ADMIN_USER_NAME, dataContract.getId(), true, true);
+            dataContractRepository
+                .deletes()
+                .byId(Entity.ADMIN_USER_NAME, dataContract.getId(), true, true);
             deletedCount++;
           } catch (Exception deleteException) {
             LOG.warn(

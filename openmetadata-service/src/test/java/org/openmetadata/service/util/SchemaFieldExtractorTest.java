@@ -6,9 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +35,7 @@ import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SchemaProcessingException;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.jdbi3.TypeRepository;
 
 class SchemaFieldExtractorTest {
@@ -184,9 +182,15 @@ class SchemaFieldExtractorTest {
             .withCustomProperties(
                 List.of(customProperty("extraField", "Extra Field", "string", null)));
 
-    when(repository.getByName(eq(uriInfo), anyString(), any(), eq(Include.ALL), eq(false)))
-        .thenAnswer(
-            invocation -> "table".equals(invocation.getArgument(1)) ? entityType : new Type());
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (readName, readQuery) -> {
+                  assertEquals(uriInfo, readQuery.uri());
+                  assertEquals(Include.ALL, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return "table".equals(readName) ? entityType : new Type();
+                }));
 
     Map<String, List<SchemaFieldExtractor.FieldDefinition>> customProperties =
         extractor.extractAllCustomProperties(uriInfo, repository);
@@ -205,9 +209,15 @@ class SchemaFieldExtractorTest {
             .withCustomProperties(
                 List.of(customProperty("extraField", "Extra Field", "string", null)));
 
-    when(repository.getByName(eq(uriInfo), anyString(), any(), eq(Include.ALL), eq(false)))
-        .thenAnswer(
-            invocation -> "table".equals(invocation.getArgument(1)) ? tableType : new Type());
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (readName, readQuery) -> {
+                  assertEquals(uriInfo, readQuery.uri());
+                  assertEquals(Include.ALL, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return "table".equals(readName) ? tableType : new Type();
+                }));
 
     Map<String, List<SchemaFieldExtractor.FieldDefinition>> customProperties =
         extractor.extractAllCustomProperties(uriInfo, repository);

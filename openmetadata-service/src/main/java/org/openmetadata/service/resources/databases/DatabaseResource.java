@@ -891,7 +891,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Database database = repository.find(id, Include.NON_DELETED);
+    Database database = repository.lookup().byId(id, Include.NON_DELETED);
     return addHref(
         uriInfo,
         database.withDatabaseProfilerConfig(repository.getDatabaseProfilerConfig(database)));

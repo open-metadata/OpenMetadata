@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.security.policyevaluator;
 
 import java.util.ArrayList;
@@ -27,8 +26,10 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.cache.EntityCaches;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -41,12 +42,15 @@ public final class PolicyConditionUpdater {
 
   public static final Set<String> TAG_FUNCTIONS =
       Set.of("matchAnyTag", "matchAllTags", "matchAnyCertification");
+
   public static final Set<String> ROLE_FUNCTIONS = Set.of("hasAnyRole");
+
   public static final Set<String> TEAM_FUNCTIONS = Set.of("inAnyTeam");
 
   private static final Pattern SINGLE_QUOTED_ARG = Pattern.compile("'([^']*)'");
 
   private static final int MAX_REWRITE_RETRIES = 5;
+
   private static final int POLICY_PAGE_SIZE = 1000;
 
   private PolicyConditionUpdater() {}
@@ -134,8 +138,8 @@ public final class PolicyConditionUpdater {
   public static void updateAllPolicyConditions(UnaryOperator<String> conditionRewriter) {
     try {
       @SuppressWarnings("unchecked")
-      EntityRepository<Policy> policyRepo =
-          (EntityRepository<Policy>) Entity.getEntityRepository(Entity.POLICY);
+      EntityPolicy<Policy> policyRepo =
+          (EntityPolicy<Policy>) Entity.getEntityRepository(Entity.POLICY);
       boolean anyChanged = rewriteMatchingPolicies(policyRepo, conditionRewriter);
       if (anyChanged) {
         SubjectCache.invalidateAll();
@@ -150,13 +154,18 @@ public final class PolicyConditionUpdater {
    * reference the renamed/deleted entity.
    */
   private static boolean rewriteMatchingPolicies(
-      EntityRepository<Policy> policyRepo, UnaryOperator<String> conditionRewriter) {
+      EntityPolicy<Policy> policyRepo, UnaryOperator<String> conditionRewriter) {
     ListFilter filter = new ListFilter(Include.NON_DELETED);
     boolean anyChanged = false;
     String after = null;
     do {
       ResultList<Policy> page =
-          policyRepo.listAfter(null, Fields.EMPTY_FIELDS, filter, POLICY_PAGE_SIZE, after);
+          policyRepo
+              .pages()
+              .after(
+                  new EntityPageReader.Projection(null, Fields.EMPTY_FIELDS, filter),
+                  POLICY_PAGE_SIZE,
+                  after);
       for (Policy policy : page.getData()) {
         if (conditionsWouldChange(policy, conditionRewriter)
             && rewriteSinglePolicy(policyRepo, policy.getId(), conditionRewriter)) {
@@ -168,7 +177,9 @@ public final class PolicyConditionUpdater {
     return anyChanged;
   }
 
-  /** Cheap, non-mutating pre-check: would the rewriter change any of this policy's conditions? */
+  /**
+   * Cheap, non-mutating pre-check: would the rewriter change any of this policy's conditions?
+   */
   private static boolean conditionsWouldChange(
       Policy policy, UnaryOperator<String> conditionRewriter) {
     boolean wouldChange = false;
@@ -193,7 +204,7 @@ public final class PolicyConditionUpdater {
    * history.
    */
   private static boolean rewriteSinglePolicy(
-      EntityRepository<Policy> policyRepo, UUID policyId, UnaryOperator<String> conditionRewriter) {
+      EntityPolicy<Policy> policyRepo, UUID policyId, UnaryOperator<String> conditionRewriter) {
     EntityDAO<Policy> dao = policyRepo.getDao();
     boolean changed = false;
     boolean retryable = true;
@@ -225,8 +236,8 @@ public final class PolicyConditionUpdater {
   private static boolean casWritePolicy(EntityDAO<Policy> dao, Policy policy, String expectedJson) {
     boolean written = dao.updateIfMatches(policy, expectedJson) == 1;
     if (written) {
-      EntityRepository.invalidateCacheForEntity(
-          Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
+      EntityCaches.invalidations()
+          .referencesChanged(Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
       LOG.info("Updated policy conditions for '{}'", policy.getFullyQualifiedName());
     }
     return written;
@@ -265,12 +276,10 @@ public final class PolicyConditionUpdater {
         Pattern.compile("(" + Pattern.quote(functionName) + "\\s*\\()([^)]*)(\\))");
     Matcher matcher = functionPattern.matcher(condition);
     StringBuilder result = new StringBuilder();
-
     while (matcher.find()) {
       String prefix = matcher.group(1);
       String argsStr = matcher.group(2);
       String suffix = matcher.group(3);
-
       List<String> rewrittenArgs = new ArrayList<>();
       Matcher argMatcher = SINGLE_QUOTED_ARG.matcher(argsStr);
       while (argMatcher.find()) {
@@ -292,12 +301,10 @@ public final class PolicyConditionUpdater {
     Pattern functionPattern = Pattern.compile(Pattern.quote(functionName) + "\\s*\\([^)]*\\)");
     Matcher matcher = functionPattern.matcher(condition);
     StringBuilder result = new StringBuilder();
-
     while (matcher.find()) {
       String functionCall = matcher.group();
       List<String> args = extractArgs(functionCall);
       args.removeIf(arg -> arg.equals(argToRemove));
-
       String replacement;
       if (args.isEmpty()) {
         replacement = "";
@@ -319,12 +326,10 @@ public final class PolicyConditionUpdater {
     Pattern functionPattern = Pattern.compile(Pattern.quote(functionName) + "\\s*\\([^)]*\\)");
     Matcher matcher = functionPattern.matcher(condition);
     StringBuilder result = new StringBuilder();
-
     while (matcher.find()) {
       String functionCall = matcher.group();
       List<String> args = extractArgs(functionCall);
       args.removeIf(arg -> arg.equals(prefix) || arg.startsWith(prefix + "."));
-
       String replacement;
       if (args.isEmpty()) {
         replacement = "";
@@ -339,7 +344,9 @@ public final class PolicyConditionUpdater {
     return cleanupDanglingOperators(result.toString());
   }
 
-  /** Extract unquoted argument values from a function call string. */
+  /**
+   * Extract unquoted argument values from a function call string.
+   */
   static List<String> extractArgs(String functionCall) {
     List<String> args = new ArrayList<>();
     Matcher argMatcher = SINGLE_QUOTED_ARG.matcher(functionCall);

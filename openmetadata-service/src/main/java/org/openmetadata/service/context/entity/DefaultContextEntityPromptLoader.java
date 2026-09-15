@@ -94,12 +94,13 @@ class DefaultContextEntityPromptLoader implements ContextEntityPromptLoader {
     authorizeView(securityContext, reference);
 
     ContextFile file =
-        contextFileRepository.get(
-            null,
-            reference.getId(),
-            contextFileRepository.getFields("folder"),
-            Include.NON_DELETED,
-            false);
+        contextFileRepository
+            .reads()
+            .byId(
+                reference.getId(),
+                contextFileRepository.fieldPolicy().parse("folder"),
+                Include.NON_DELETED,
+                false);
 
     String extractedText = resolveExtractedText(file);
     String summary = normalize(file.getDescription());
@@ -122,8 +123,9 @@ class DefaultContextEntityPromptLoader implements ContextEntityPromptLoader {
     authorizeView(securityContext, reference);
 
     Page page =
-        knowledgeCenterRepository.get(
-            null, reference.getId(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED, false);
+        knowledgeCenterRepository
+            .reads()
+            .byId(reference.getId(), EntityUtil.Fields.EMPTY_FIELDS, Include.NON_DELETED, false);
 
     StringBuilder body = new StringBuilder();
     String description = normalize(page.getDescription());

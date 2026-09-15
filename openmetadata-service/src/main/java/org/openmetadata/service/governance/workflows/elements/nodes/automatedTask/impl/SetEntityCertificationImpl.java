@@ -20,15 +20,19 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Deprecated
 @Slf4j
 public class SetEntityCertificationImpl implements JavaDelegate {
+
   private Expression certificationExpr;
+
   private Expression inputNamespaceMapExpr;
 
   @Override
@@ -44,7 +48,6 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                       RELATED_ENTITY_VARIABLE));
       String entityType = entityLink.getEntityType();
       EntityInterface entity = Entity.getEntity(entityLink, "certification", Include.ALL);
-
       String certification =
           Optional.ofNullable(certificationExpr)
               .map(certificationExpr -> (String) certificationExpr.getValue(execution))
@@ -55,7 +58,6 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                       varHandler.getNamespacedVariable(
                           inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
-
       setStatus(entity, entityType, user, certification);
     } catch (Exception exc) {
       LOG.error(
@@ -68,15 +70,12 @@ public class SetEntityCertificationImpl implements JavaDelegate {
   private void setStatus(
       EntityInterface entity, String entityType, String user, String certification) {
     String originalJson = JsonUtils.pojoToJson(entity);
-
     Optional<String> oCertification = Optional.ofNullable(certification);
     Optional<AssetCertification> oEntityCertification =
         Optional.ofNullable(entity.getCertification());
-
     if (oCertification.isEmpty() && oEntityCertification.isEmpty()) {
       return;
     }
-
     if (oCertification.isEmpty()) {
       entity.setCertification(null);
     } else {
@@ -84,7 +83,6 @@ public class SetEntityCertificationImpl implements JavaDelegate {
           && oCertification.get().equals(oEntityCertification.get().getTagLabel().getTagFQN())) {
         return;
       }
-
       AssetCertification assetCertification =
           new AssetCertification()
               .withTagLabel(
@@ -95,11 +93,16 @@ public class SetEntityCertificationImpl implements JavaDelegate {
                       .withState(TagLabel.State.CONFIRMED));
       entity.setCertification(assetCertification);
     }
-
     String updatedJson = JsonUtils.pojoToJson(entity);
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    entityRepository.patch(null, entity.getId(), user, patch);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
+    entityRepository
+        .patches()
+        .patch(
+            new EntityPatchService.Target.Id(entity.getId()),
+            patch,
+            new EntityCommandActor(user, null),
+            null,
+            new EntityPatchService.Options(null, null));
   }
 }

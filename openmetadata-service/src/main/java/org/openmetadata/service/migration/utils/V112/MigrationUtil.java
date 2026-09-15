@@ -22,8 +22,9 @@ public class MigrationUtil {
     TestSuiteRepository testSuiteRepository =
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     List<TestSuite> testSuites =
-        testSuiteRepository.listAll(
-            new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+        testSuiteRepository
+            .collections()
+            .all(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {
       if (Boolean.TRUE.equals(suite.getExecutable())
           && suite.getExecutableEntityReference() != null) {

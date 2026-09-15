@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.util;
 
 import static org.openmetadata.service.util.OpenMetadataOperations.printToAsciiTable;
@@ -28,10 +27,10 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.util.relationshipcleanup.BatchEntityExistenceResolver;
 import org.openmetadata.service.util.relationshipcleanup.DefaultRelationshipValidator;
@@ -46,12 +45,16 @@ public class EntityRelationshipCleanup {
   // broken catalog the orphan count can reach the millions; holding every one in memory is what
   // used to OOM the DataRetention pod. Counts stay exact; only the displayed detail is capped.
   private static final int MAX_SAMPLED_ORPHANS = 1000;
+
   private static final int PROGRESS_LOG_EVERY_BATCHES = 10;
 
   private final CollectionDAO collectionDAO;
-  private final Map<String, EntityRepository<?>> entityRepositories = new HashMap<>();
+
+  private final Map<String, EntityPolicy<?>> entityRepositories = new HashMap<>();
+
   private final Map<String, EntityTimeSeriesRepository<?>> entityTimeSeriesRepositoy =
       new HashMap<>();
+
   private final boolean dryRun;
 
   public EntityRelationshipCleanup(CollectionDAO collectionDAO, boolean dryRun) {
@@ -66,12 +69,19 @@ public class EntityRelationshipCleanup {
   @NoArgsConstructor
   @AllArgsConstructor
   public static class OrphanedRelationship {
+
     private String fromId;
+
     private String toId;
+
     private String fromEntity;
+
     private String toEntity;
+
     private int relation;
+
     private String reason;
+
     private String relationshipName;
   }
 
@@ -80,11 +90,17 @@ public class EntityRelationshipCleanup {
   @NoArgsConstructor
   @AllArgsConstructor
   public static class EntityCleanupResult {
+
     private int totalRelationshipsScanned;
+
     private int orphanedRelationshipsFound;
+
     private int relationshipsDeleted;
+
     private List<OrphanedRelationship> orphanedRelationships;
+
     private Map<String, Integer> orphansByEntityType;
+
     private Map<String, Integer> orphansByRelationType;
   }
 
@@ -96,6 +112,7 @@ public class EntityRelationshipCleanup {
    * behind the cursor, and there is no growing OFFSET to scan past.
    */
   private record RelationshipCursor(String fromId, String toId, int relation, String relationType) {
+
     private static RelationshipCursor start() {
       return new RelationshipCursor("", "", -1, "");
     }
@@ -112,7 +129,7 @@ public class EntityRelationshipCleanup {
   private void initializeEntityRepositories() {
     for (String entityType : Entity.getEntityList()) {
       try {
-        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+        EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
         entityRepositories.put(entityType, repository);
       } catch (EntityNotFoundException e) {
         LOG.debug("No repository found for entity type: {}", entityType);
@@ -134,7 +151,6 @@ public class EntityRelationshipCleanup {
   public EntityCleanupResult performCleanup(int batchSize) {
     LOG.info(
         "Starting entity relationship cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
-
     EntityCleanupResult result = newResult();
     try {
       scanAndClean(batchSize, result);
@@ -142,7 +158,6 @@ public class EntityRelationshipCleanup {
       LOG.error("Error during entity relationship cleanup", e);
       throw new RuntimeException("Entity relationship cleanup failed", e);
     }
-
     displayOrphanedRelationships(result);
     LOG.info(
         "Entity relationship cleanup completed. Scanned: {}, Found: {}, Deleted: {}",
@@ -168,7 +183,6 @@ public class EntityRelationshipCleanup {
         "Found {} total relationships to scan. Processing in batches of {}",
         totalRelationships,
         batchSize);
-
     RelationshipCursor cursor = RelationshipCursor.start();
     int batchNumber = 1;
     boolean hasMore = true;
@@ -198,7 +212,6 @@ public class EntityRelationshipCleanup {
       BatchEntityExistenceResolver resolver,
       EntityCleanupResult result) {
     resolver.prefetch(batch);
-
     List<OrphanedRelationship> orphans = new ArrayList<>();
     for (EntityRelationshipObject relationship : batch) {
       OrphanedRelationship orphan = validateRelationship(relationship, resolver);
@@ -206,10 +219,8 @@ public class EntityRelationshipCleanup {
         orphans.add(orphan);
       }
     }
-
     result.setTotalRelationshipsScanned(result.getTotalRelationshipsScanned() + batch.size());
     recordOrphans(orphans, result);
-
     if (!dryRun && !orphans.isEmpty()) {
       result.setRelationshipsDeleted(
           result.getRelationshipsDeleted() + deleteOrphanedRelationships(orphans));
@@ -316,12 +327,10 @@ public class EntityRelationshipCleanup {
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
     LOG.info("Deleting {} orphaned relationships", orphanedRelationships.size());
     int deletedCount = 0;
-
     for (OrphanedRelationship orphan : orphanedRelationships) {
       try {
         UUID fromId = UUID.fromString(orphan.getFromId());
         UUID toId = UUID.fromString(orphan.getToId());
-
         int deleted =
             collectionDAO
                 .relationshipDAO()
@@ -331,7 +340,6 @@ public class EntityRelationshipCleanup {
                     toId,
                     orphan.getToEntity(),
                     orphan.getRelation());
-
         if (deleted > 0) {
           deletedCount++;
           LOG.debug(
@@ -351,7 +359,6 @@ public class EntityRelationshipCleanup {
             e.getMessage());
       }
     }
-
     LOG.info(
         "Successfully deleted {} out of {} orphaned relationships",
         deletedCount,
@@ -364,15 +371,12 @@ public class EntityRelationshipCleanup {
       LOG.info("No orphaned relationships found. All entity relationships are valid.");
       return;
     }
-
     LOG.info(
         "Found {} orphaned relationships (showing up to {})",
         result.getOrphanedRelationshipsFound(),
         MAX_SAMPLED_ORPHANS);
-
     List<String> columns =
         Arrays.asList("From Entity", "From ID", "To Entity", "To ID", "Relation", "Reason");
-
     List<List<String>> rows = new ArrayList<>();
     for (OrphanedRelationship orphan : result.getOrphanedRelationships()) {
       rows.add(
@@ -384,7 +388,6 @@ public class EntityRelationshipCleanup {
               orphan.getRelationshipName(),
               orphan.getReason()));
     }
-
     printToAsciiTable(columns, rows, "No orphaned relationships found");
     displaySummaryStatistics(result);
   }
@@ -394,26 +397,21 @@ public class EntityRelationshipCleanup {
       LOG.info("Orphaned relationships by entity type:");
       List<String> entityColumns = Arrays.asList("Entity Type Pair", "Count");
       List<List<String>> entityRows = new ArrayList<>();
-
       result.getOrphansByEntityType().entrySet().stream()
           .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
           .forEach(
               entry -> entityRows.add(Arrays.asList(entry.getKey(), entry.getValue().toString())));
-
       printToAsciiTable(entityColumns, entityRows, "No entity type statistics");
     }
-
     if (!result.getOrphansByRelationType().isEmpty()) {
       LOG.info("Orphaned relationships by relation type:");
       List<String> relationColumns = Arrays.asList("Relation Type", "Count");
       List<List<String>> relationRows = new ArrayList<>();
-
       result.getOrphansByRelationType().entrySet().stream()
           .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
           .forEach(
               entry ->
                   relationRows.add(Arrays.asList(entry.getKey(), entry.getValue().toString())));
-
       printToAsciiTable(relationColumns, relationRows, "No relation type statistics");
     }
   }

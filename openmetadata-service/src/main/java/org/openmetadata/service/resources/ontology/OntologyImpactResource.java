@@ -32,6 +32,7 @@ import org.openmetadata.schema.api.data.OntologyDeleteResult;
 import org.openmetadata.schema.api.data.OntologyImpactReport;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -96,7 +97,8 @@ public final class OntologyImpactResource {
 
   private void authorizeTerm(
       final SecurityContext securityContext, final UUID id, final MetadataOperation operation) {
-    final GlossaryTerm term = repository.get(null, id, repository.getFields(""));
+    final GlossaryTerm term =
+        repository.reads().byId(id, repository.fieldPolicy().parse(""), Include.NON_DELETED, false);
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY_TERM, operation),

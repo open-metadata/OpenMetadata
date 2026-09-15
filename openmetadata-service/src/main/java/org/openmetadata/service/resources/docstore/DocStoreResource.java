@@ -489,11 +489,11 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   private void requirePublicDocument(UUID id) {
-    PrivateDocumentType.requirePublic(repository.find(id, Include.ALL));
+    PrivateDocumentType.requirePublic(repository.lookup().byId(id, Include.ALL));
   }
 
   private void requirePublicDocument(String fullyQualifiedName) {
-    PrivateDocumentType.requirePublic(repository.findByName(fullyQualifiedName, Include.ALL));
+    PrivateDocumentType.requirePublic(repository.lookup().byName(fullyQualifiedName, Include.ALL));
   }
 
   @POST

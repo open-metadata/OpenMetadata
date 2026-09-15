@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineObservability;
@@ -104,6 +105,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
 public class TableResource extends EntityResource<Table, TableRepository> {
+  private static final String COLUMN_PROFILE_FIELD = "profile";
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "/v1/tables/";
   public static final String FIELDS =
@@ -1270,7 +1272,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    Table table = repository.find(id, Include.NON_DELETED);
+    Table table = repository.lookup().byId(id, Include.NON_DELETED);
     return addHref(
         uriInfo, table.withTableProfilerConfig(repository.getTableProfilerConfig(table)));
   }
@@ -1788,7 +1790,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
-            resourceContext.getOwners(),
+            getColumnProfileOwners(resourceContext, fieldsParam),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
@@ -1877,13 +1879,20 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
-            resourceContext.getOwners(),
+            getColumnProfileOwners(resourceContext, fieldsParam),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
     return tableColumnList;
+  }
+
+  private List<EntityReference> getColumnProfileOwners(
+      final ResourceContext<Table> resourceContext, final String fields) {
+    return fields != null && fields.contains(COLUMN_PROFILE_FIELD)
+        ? resourceContext.getOwners()
+        : null;
   }
 
   @GET

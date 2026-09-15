@@ -18,18 +18,24 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 public final class RdfIndexingFields {
+  // Dedicated RDF mappers still need fields omitted from generic JSON-literal mapping.
+  private static final Set<String> DEDICATED_MAPPER_FIELDS =
+      Set.of("tableConstraints", "profile", "pipelineStatus", "usageSummary");
 
   private RdfIndexingFields() {}
 
   public static List<String> forEntityType(String entityType) {
-    return forSupportedFields(Entity.getEntityRepository(entityType).getAllowedFieldsCopy());
+    return forSupportedFields(Entity.getEntityRepository(entityType).fieldPolicy().allowedCopy());
   }
 
   static List<String> forSupportedFields(Set<String> supportedFields) {
     // The RDF mapper emits even fields absent from its JSON-LD contexts, so a search-index field
     // subset can silently remove triples. Start from the repository's complete field contract.
     return supportedFields.stream()
-        .filter(field -> !RdfPropertyMapper.isIgnoredEntityField(field))
+        .filter(
+            field ->
+                DEDICATED_MAPPER_FIELDS.contains(field)
+                    || !RdfPropertyMapper.isIgnoredEntityField(field))
         .sorted()
         .toList();
   }

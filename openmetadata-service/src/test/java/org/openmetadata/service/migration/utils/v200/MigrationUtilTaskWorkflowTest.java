@@ -23,7 +23,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -45,6 +47,7 @@ import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -60,13 +63,22 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityCollectionFixture;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 class MigrationUtilTaskWorkflowTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
   private Handle handle;
   private Connection connection;
   private DatabaseMetaData metadata;
@@ -75,7 +87,10 @@ class MigrationUtilTaskWorkflowTest {
   private TaskRepository taskRepository;
   private TaskFormSchemaRepository taskFormSchemaRepository;
   private WorkflowDefinitionRepository workflowDefinitionRepository;
+  private EntityDAO<WorkflowDefinition> workflowRows;
   private WorkflowHandler workflowHandler;
+  private EntityCreationFixture<WorkflowDefinition> workflowWrites;
+  private EntityCreationFixture<Task> taskCreates;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -85,15 +100,36 @@ class MigrationUtilTaskWorkflowTest {
     collectionDAO = mock(CollectionDAO.class);
     taskDAO = mock(CollectionDAO.TaskDAO.class);
     taskRepository = mock(TaskRepository.class);
+    lenient()
+        .when(taskRepository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(Task.class));
     taskFormSchemaRepository = mock(TaskFormSchemaRepository.class);
     workflowDefinitionRepository = mock(WorkflowDefinitionRepository.class);
+    taskCreates = EntityCreationFixture.attach(taskRepository);
+    workflowWrites =
+        EntityCreationFixture.attach(workflowDefinitionRepository)
+            .onUpsert(
+                request -> {
+                  assertNull(request.uri());
+                  assertEquals(new EntityCommandActor("admin", null), request.actor());
+                  assertEquals(false, request.importMode());
+                  return null;
+                });
+
+    workflowRows =
+        lookups.attach(
+            workflowDefinitionRepository, Entity.WORKFLOW_DEFINITION, WorkflowDefinition.class);
     workflowHandler = mock(WorkflowHandler.class);
 
     when(handle.attach(CollectionDAO.class)).thenReturn(collectionDAO);
     when(collectionDAO.taskDAO()).thenReturn(taskDAO);
     when(handle.getConnection()).thenReturn(connection);
     when(connection.getMetaData()).thenReturn(metadata);
-    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of());
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of()))
+        .when(workflowDefinitionRepository)
+        .collections();
     when(taskFormSchemaRepository.resolve(anyString(), any(), any())).thenReturn(Optional.empty());
   }
 
@@ -123,7 +159,7 @@ class MigrationUtilTaskWorkflowTest {
 
     assertDoesNotThrow(migrationUtil::runTaskWorkflowCutoverMigration);
     verify(handle, never()).createQuery(anyString());
-    verify(taskRepository, never()).create(any(), any());
+    assertTrue(taskCreates.creations().isEmpty());
   }
 
   @Test
@@ -133,14 +169,18 @@ class MigrationUtilTaskWorkflowTest {
     when(approvalNode.getSubType()).thenReturn("userApprovalTask");
     WorkflowDefinition workflowDefinition =
         new WorkflowDefinition().withName("ApprovalWorkflow").withNodes(List.of(approvalNode));
-    when(workflowDefinitionRepository.listAll(any(), any()))
-        .thenReturn(List.of(workflowDefinition));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) -> List.of(workflowDefinition)))
+        .when(workflowDefinitionRepository)
+        .collections();
 
     MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
 
     migrationUtil.runTaskWorkflowCutoverMigration();
 
-    verify(workflowDefinitionRepository).createOrUpdate(null, workflowDefinition, "admin");
+    assertWorkflowWritten(workflowDefinition);
     verify(handle, never()).createQuery(anyString());
   }
 
@@ -158,15 +198,18 @@ class MigrationUtilTaskWorkflowTest {
                 {"approvalThreshold":1,"rejectionThreshold":1,
                  "assignees":{"addReviewers":false,"addOwners":false,"candidates":[]}}
                 """);
-    when(workflowDefinitionRepository.listAll(any(), any()))
-        .thenReturn(List.of(workflowDefinition));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) -> List.of(workflowDefinition)))
+        .when(workflowDefinitionRepository)
+        .collections();
 
     newMigrationUtil().runTaskWorkflowCutoverMigration();
 
-    org.mockito.ArgumentCaptor<WorkflowDefinition> captor =
-        org.mockito.ArgumentCaptor.forClass(WorkflowDefinition.class);
-    verify(workflowDefinitionRepository).createOrUpdate(eq(null), captor.capture(), eq("admin"));
-    WorkflowDefinition persisted = captor.getValue();
+    assertEquals(1, workflowWrites.upserts().size());
+    WorkflowDefinition persisted = workflowWrites.upserts().getFirst().entity();
+
     Map<String, Object> persistedJson =
         org.openmetadata.schema.utils.JsonUtils.convertValue(persisted, Map.class);
     @SuppressWarnings("unchecked")
@@ -207,13 +250,17 @@ class MigrationUtilTaskWorkflowTest {
                     "targetStageId":"customApproved","targetTaskStatus":"Approved"}
                  ]}
                 """);
-    when(workflowDefinitionRepository.listAll(any(), any()))
-        .thenReturn(List.of(workflowDefinition));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) -> List.of(workflowDefinition)))
+        .when(workflowDefinitionRepository)
+        .collections();
 
     newMigrationUtil().runTaskWorkflowCutoverMigration();
 
     // Populated transitionMetadata is untouched — the same instance flows through createOrUpdate.
-    verify(workflowDefinitionRepository).createOrUpdate(null, workflowDefinition, "admin");
+    assertWorkflowWritten(workflowDefinition);
   }
 
   /**
@@ -265,11 +312,15 @@ class MigrationUtilTaskWorkflowTest {
 
     migrationUtil.runTaskWorkflowCutoverMigration();
 
-    verify(workflowDefinitionRepository).createOrUpdate(null, descriptionWorkflow, "admin");
-    verify(workflowDefinitionRepository).createOrUpdate(null, incidentWorkflow, "admin");
-    verify(workflowDefinitionRepository).createOrUpdate(null, dataQualityWorkflow, "admin");
-    verify(workflowDefinitionRepository).createOrUpdate(null, recognizerWorkflow, "admin");
-    verify(workflowDefinitionRepository, never()).createOrUpdate(null, unrelatedWorkflow, "admin");
+    assertWorkflowWritten(descriptionWorkflow);
+    assertWorkflowWritten(incidentWorkflow);
+    assertWorkflowWritten(dataQualityWorkflow);
+    assertWorkflowWritten(recognizerWorkflow);
+    assertEquals(
+        0,
+        workflowWrites.upserts().stream()
+            .filter(request -> request.entity().equals(unrelatedWorkflow))
+            .count());
   }
 
   @Test
@@ -294,8 +345,12 @@ class MigrationUtilTaskWorkflowTest {
             .withName("DescriptionUpdateTaskWorkflow")
             .withFullyQualifiedName("DescriptionUpdateTaskWorkflow");
 
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of(openTask));
-    when(workflowDefinitionRepository.findByNameOrNull(
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(openTask)))
+        .when(taskRepository)
+        .collections();
+    when(workflowRows.findEntityByName(
             eq("DescriptionUpdateTaskWorkflow"), eq(Include.NON_DELETED)))
         .thenReturn(workflowDefinition);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -355,15 +410,18 @@ class MigrationUtilTaskWorkflowTest {
             .withStatus(TaskEntityStatus.Open)
             .withWorkflowInstanceId(UUID.randomUUID());
 
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(stranded)))
+        .when(taskRepository)
+        .collections();
     // Pre-check: no active approval task. Post-restart re-query: the fresh
     // GlossaryTermApprovalWorkflow
     // task now exists, so the stranded row is confirmed superseded and gets closed.
     when(taskRepository.listNonTerminalTasksByEntityAndCategory(
             "Glossary.Term", TaskCategory.Approval))
         .thenReturn(List.of(), List.of(freshBoundTask));
-    when(workflowDefinitionRepository.findByNameOrNull(
-            eq("GlossaryTermApprovalWorkflow"), eq(Include.NON_DELETED)))
+    when(workflowRows.findEntityByName(eq("GlossaryTermApprovalWorkflow"), eq(Include.NON_DELETED)))
         .thenReturn(gtaw);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -413,7 +471,11 @@ class MigrationUtilTaskWorkflowTest {
             .withFullyQualifiedName("Glossary.DraftTerm")
             .withEntityStatus(EntityStatus.DRAFT);
 
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(stranded)))
+        .when(taskRepository)
+        .collections();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
@@ -462,7 +524,11 @@ class MigrationUtilTaskWorkflowTest {
             .withFullyQualifiedName("Glossary.Term")
             .withEntityStatus(EntityStatus.IN_REVIEW);
 
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(stranded)))
+        .when(taskRepository)
+        .collections();
     when(taskRepository.listNonTerminalTasksByEntityAndCategory(
             "Glossary.Term", TaskCategory.Approval))
         .thenReturn(List.of());
@@ -510,7 +576,11 @@ class MigrationUtilTaskWorkflowTest {
                     .withFullyQualifiedName("Glossary.Term"))
             .withUpdatedBy("alice");
 
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of(stranded));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(stranded)))
+        .when(taskRepository)
+        .collections();
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<WorkflowHandler> workflowMock = mockStatic(WorkflowHandler.class)) {
@@ -550,8 +620,12 @@ class MigrationUtilTaskWorkflowTest {
             .withName("RecognizerFeedbackReviewWorkflow")
             .withFullyQualifiedName("RecognizerFeedbackReviewWorkflow");
 
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of(openTask));
-    when(workflowDefinitionRepository.findByNameOrNull(
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(openTask)))
+        .when(taskRepository)
+        .collections();
+    when(workflowRows.findEntityByName(
             eq("RecognizerFeedbackReviewWorkflow"), eq(Include.NON_DELETED)))
         .thenReturn(workflowDefinition);
 
@@ -586,7 +660,13 @@ class MigrationUtilTaskWorkflowTest {
     Task rewrittenTask = recognizerFeedbackDataQualityTask(rewrittenTaskId, "PII.Phone");
 
     when(workflowDefinitionRepository.getEntitiesFromSeedData()).thenReturn(List.of());
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of(failingTask, rewrittenTask));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) ->
+                    List.of(failingTask, rewrittenTask)))
+        .when(taskRepository)
+        .collections();
     doThrow(new RuntimeException("update failed"))
         .when(taskDAO)
         .updateTask(eq(failingTaskId.toString()), anyString());
@@ -614,15 +694,23 @@ class MigrationUtilTaskWorkflowTest {
     WorkflowDefinition unrelatedWorkflow = new WorkflowDefinition().withName("SomeOtherWorkflow");
     when(workflowDefinitionRepository.getEntitiesFromSeedData())
         .thenReturn(List.of(dataQualityWorkflow, recognizerWorkflow, unrelatedWorkflow));
-    when(taskRepository.listAll(any(), any())).thenReturn(List.of());
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of()))
+        .when(taskRepository)
+        .collections();
 
     MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
 
     migrationUtil.runRecognizerFeedbackTaskTypeMigration();
 
-    verify(workflowDefinitionRepository).createOrUpdate(null, dataQualityWorkflow, "admin");
-    verify(workflowDefinitionRepository).createOrUpdate(null, recognizerWorkflow, "admin");
-    verify(workflowDefinitionRepository, never()).createOrUpdate(null, unrelatedWorkflow, "admin");
+    assertWorkflowWritten(dataQualityWorkflow);
+    assertWorkflowWritten(recognizerWorkflow);
+    assertEquals(
+        0,
+        workflowWrites.upserts().stream()
+            .filter(request -> request.entity().equals(unrelatedWorkflow))
+            .count());
   }
 
   @Test
@@ -631,13 +719,18 @@ class MigrationUtilTaskWorkflowTest {
     stubTables(Set.of());
     WorkflowDefinition glossaryWorkflow =
         glossaryTermApprovalWorkflowWithExclude(new ArrayList<>());
-    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(glossaryWorkflow));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) -> List.of(glossaryWorkflow)))
+        .when(workflowDefinitionRepository)
+        .collections();
 
     MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
     migrationUtil.runTaskWorkflowCutoverMigration();
 
     assertEquals(List.of("entityStatus"), triggerExclude(glossaryWorkflow));
-    verify(workflowDefinitionRepository).createOrUpdate(null, glossaryWorkflow, "admin");
+    assertWorkflowWritten(glossaryWorkflow);
   }
 
   @Test
@@ -646,7 +739,12 @@ class MigrationUtilTaskWorkflowTest {
     stubTables(Set.of());
     WorkflowDefinition glossaryWorkflow =
         glossaryTermApprovalWorkflowWithExclude(new ArrayList<>(List.of("reviewers")));
-    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(glossaryWorkflow));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) -> List.of(glossaryWorkflow)))
+        .when(workflowDefinitionRepository)
+        .collections();
 
     MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
     migrationUtil.runTaskWorkflowCutoverMigration();
@@ -660,7 +758,12 @@ class MigrationUtilTaskWorkflowTest {
     stubTables(Set.of());
     WorkflowDefinition glossaryWorkflow =
         glossaryTermApprovalWorkflowWithExclude(new ArrayList<>(List.of("entityStatus")));
-    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(glossaryWorkflow));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) -> List.of(glossaryWorkflow)))
+        .when(workflowDefinitionRepository)
+        .collections();
 
     MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
     migrationUtil.runTaskWorkflowCutoverMigration();
@@ -681,13 +784,17 @@ class MigrationUtilTaskWorkflowTest {
             .withName("SomeOtherApprovalWorkflow")
             .withNodes(List.of(approvalNode))
             .withTrigger(trigger);
-    when(workflowDefinitionRepository.listAll(any(), any())).thenReturn(List.of(workflow));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of(workflow)))
+        .when(workflowDefinitionRepository)
+        .collections();
 
     MigrationUtil.TaskWorkflow migrationUtil = newMigrationUtil();
     migrationUtil.runTaskWorkflowCutoverMigration();
 
     assertEquals(List.of(), config.getExclude());
-    verify(workflowDefinitionRepository).createOrUpdate(null, workflow, "admin");
+    assertWorkflowWritten(workflow);
   }
 
   /**
@@ -795,5 +902,13 @@ class MigrationUtilTaskWorkflowTest {
 
               return resultSet;
             });
+  }
+
+  private void assertWorkflowWritten(WorkflowDefinition expected) {
+    assertEquals(
+        1L,
+        workflowWrites.upserts().stream()
+            .filter(request -> request.entity().equals(expected))
+            .count());
   }
 }

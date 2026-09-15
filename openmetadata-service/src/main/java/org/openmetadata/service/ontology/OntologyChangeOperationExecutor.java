@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 
@@ -76,8 +77,12 @@ public final class OntologyChangeOperationExecutor {
     prepareTerm(term, user);
     final boolean isUpdate =
         operation.getOperationType() == OntologyChangeOperationType.UPDATE_TERM;
-    termRepository.prepareInternal(term, isUpdate);
-    return outcome(termRepository.createOrUpdate(uriInfo, term, user).getEntity());
+    termRepository.preparation().prepare(term, isUpdate);
+    return outcome(
+        termRepository
+            .creates()
+            .upsert(uriInfo, term, new EntityCommandActor(user, null), false)
+            .getEntity());
   }
 
   private OperationOutcome deleteTerm(final String user, final OntologyChangeOperation operation) {
@@ -85,7 +90,7 @@ public final class OntologyChangeOperationExecutor {
     final GlossaryTerm deleted =
         Boolean.TRUE.equals(term.getDeleted())
             ? term
-            : termRepository.delete(user, operation.getTargetId(), false, false).entity();
+            : termRepository.deletes().byId(user, operation.getTargetId(), false, false).entity();
     return outcome(deleted);
   }
 
@@ -189,20 +194,31 @@ public final class OntologyChangeOperationExecutor {
 
   private GlossaryTerm editableTerm(final UUID termId) {
     final GlossaryTerm term =
-        termRepository.get(
-            null, termId, termRepository.getFields(TERM_EDIT_FIELDS), Include.NON_DELETED, false);
+        termRepository
+            .reads()
+            .byId(
+                termId,
+                termRepository.fieldPolicy().parse(TERM_EDIT_FIELDS),
+                Include.NON_DELETED,
+                false);
     return JsonUtils.deepCopy(term, GlossaryTerm.class);
   }
 
   private GlossaryTerm term(final UUID termId, final Include include) {
-    return termRepository.get(null, termId, termRepository.getFields(""), include, false);
+    return termRepository
+        .reads()
+        .byId(termId, termRepository.fieldPolicy().parse(""), include, false);
   }
 
   private OperationOutcome persistTerm(
       final UriInfo uriInfo, final String user, final GlossaryTerm term) {
     prepareTerm(term, user);
-    termRepository.prepareInternal(term, true);
-    return outcome(termRepository.createOrUpdate(uriInfo, term, user).getEntity());
+    termRepository.preparation().prepare(term, true);
+    return outcome(
+        termRepository
+            .creates()
+            .upsert(uriInfo, term, new EntityCommandActor(user, null), false)
+            .getEntity());
   }
 
   private void prepareTerm(final GlossaryTerm term, final String user) {
@@ -215,18 +231,27 @@ public final class OntologyChangeOperationExecutor {
     final OntologyAxiom axiom = JsonUtils.deepCopy(operation.getAxiom(), OntologyAxiom.class);
     axiom.setUpdatedBy(user);
     axiom.setUpdatedAt(clock.millis());
-    axiomRepository.prepareInternal(axiom, operation.getTargetId() != null);
-    return outcome(axiomRepository.createOrUpdate(uriInfo, axiom, user).getEntity());
+    axiomRepository.preparation().prepare(axiom, operation.getTargetId() != null);
+    return outcome(
+        axiomRepository
+            .creates()
+            .upsert(uriInfo, axiom, new EntityCommandActor(user, null), false)
+            .getEntity());
   }
 
   private OperationOutcome deleteAxiom(final String user, final OntologyChangeOperation operation) {
     final OntologyAxiom axiom =
-        axiomRepository.get(
-            null, operation.getTargetId(), axiomRepository.getFields(""), Include.ALL, false);
+        axiomRepository
+            .reads()
+            .byId(
+                operation.getTargetId(),
+                axiomRepository.fieldPolicy().parse(""),
+                Include.ALL,
+                false);
     final OntologyAxiom deleted =
         Boolean.TRUE.equals(axiom.getDeleted())
             ? axiom
-            : axiomRepository.delete(user, operation.getTargetId(), false, false).entity();
+            : axiomRepository.deletes().byId(user, operation.getTargetId(), false, false).entity();
     return outcome(deleted);
   }
 

@@ -35,7 +35,9 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SchemaProcessingException;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class SchemaFieldExtractor {
@@ -122,7 +124,13 @@ public class SchemaFieldExtractor {
     Map<String, List<FieldDefinition>> entityTypeToFields = new HashMap<>();
     EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
     for (String entityType : entityFieldsCache.keySet()) {
-      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, Include.ALL, false);
+      Type typeEntity =
+          repository
+              .reads()
+              .byName(
+                  entityType,
+                  new EntityReadService.Query(
+                      uriInfo, fieldsParam, RelationIncludes.fromInclude(Include.ALL), false));
       Map<String, FieldDefinition> fieldTypesMap = new LinkedHashMap<>();
       addCustomProperties(typeEntity, fieldTypesMap);
       entityTypeToFields.put(entityType, convertMapToFieldList(fieldTypesMap));

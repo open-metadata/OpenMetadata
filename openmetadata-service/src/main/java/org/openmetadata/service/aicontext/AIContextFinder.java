@@ -27,10 +27,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -218,9 +220,16 @@ public class AIContextFinder {
       try {
         refs =
             toSide
-                ? Entity.getEntityRepository(entityType).findTo(id, entityType, relationship, null)
+                ? Entity.getEntityRepository(entityType)
+                    .relationships()
+                    .to(
+                        new EntityRelationshipReader.Selection(id, entityType, relationship, null),
+                        Include.NON_DELETED)
                 : Entity.getEntityRepository(entityType)
-                    .findFrom(id, entityType, relationship, null);
+                    .relationships()
+                    .from(
+                        new EntityRelationshipReader.Selection(id, entityType, relationship, null),
+                        Include.NON_DELETED);
       } catch (Exception e) {
         LOG.warn("AIContext find: relationship lookup failed for {}: {}", id, e.getMessage());
       }

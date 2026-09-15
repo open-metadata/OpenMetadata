@@ -13,6 +13,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
 import org.openmetadata.service.limits.Limits;
@@ -121,7 +122,12 @@ public class TestDefinitionsTool implements McpTool {
   private static Map<String, Object> listPage(
       TestDefinitionRepository repository, ListFilter filter, int limit, String after) {
     return JsonUtils.getMap(
-        repository.listAfter(null, repository.getFields("*"), filter, limit, after));
+        repository
+            .pages()
+            .after(
+                new EntityPageReader.Projection(null, repository.fieldPolicy().parse("*"), filter),
+                limit,
+                after));
   }
 
   @Override

@@ -61,6 +61,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
@@ -72,6 +74,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.SchemaFieldExtractor;
 
@@ -132,7 +135,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                   "Type '{}' not found. Proceeding to add new type entity in database.",
                   type.getName());
             }
-            this.repository.createOrUpdate(null, type, ADMIN_USER_NAME);
+            this.repository
+                .creates()
+                .upsert(null, type, new EntityCommandActor(ADMIN_USER_NAME, null), false);
             this.repository.addToRegistry(type);
           } catch (Exception e) {
             SeedDataGate.getInstance().recordSeedFailure();
@@ -281,7 +286,14 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
           ResourceContext<?> resourceContext = new ResourceContext<>(name);
           authorizer.authorize(securityContext, operationContext, resourceContext);
-          return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+          return addHref(
+              uriInfo,
+              repository
+                  .reads()
+                  .byName(
+                      name,
+                      new EntityReadService.Query(
+                          uriInfo, fields, RelationIncludes.fromInclude(include), false)));
         }
       } catch (EntityNotFoundException e) {
         // Not a valid entity type supporting customProperties, fall through to standard Type
@@ -545,7 +557,13 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
-      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
+      Type typeEntity =
+          repository
+              .reads()
+              .byName(
+                  entityType,
+                  new EntityReadService.Query(
+                      uriInfo, fieldsParam, RelationIncludes.fromInclude(include), false));
       List<SchemaFieldExtractor.FieldDefinition> fieldsList =
           extractor.extractFields(typeEntity, entityType);
       return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
@@ -615,7 +633,13 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           Include include) {
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
-      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
+      Type typeEntity =
+          repository
+              .reads()
+              .byName(
+                  entityType,
+                  new EntityReadService.Query(
+                      uriInfo, fieldsParam, RelationIncludes.fromInclude(include), false));
       List<CustomProperty> customProperties = listOrEmpty(typeEntity.getCustomProperties());
       return Response.ok(customProperties).type(MediaType.APPLICATION_JSON).build();
     } catch (Exception e) {

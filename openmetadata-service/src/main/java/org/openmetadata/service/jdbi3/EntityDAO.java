@@ -589,6 +589,46 @@ public interface EntityDAO<T extends EntityInterface> {
   String findByIdForUpdate(
       @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
+  @ConnectionAwareSqlQuery(
+      value =
+          """
+          SELECT CASE WHEN JSON_TYPE(json) = 'NULL' THEN NULL ELSE JSON_OBJECT(
+            'fullyQualifiedName', JSON_EXTRACT(json, '$.fullyQualifiedName'),
+            'version', CAST(COALESCE(JSON_EXTRACT(json, '$.version'), '0.1') AS JSON),
+            'changeDescription', JSON_EXTRACT(json, '$.changeDescription')) END
+          FROM <table> WHERE id = :id <cond> FOR UPDATE
+          """,
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          """
+          SELECT CASE WHEN json = 'null'::jsonb THEN NULL ELSE jsonb_build_object(
+            'fullyQualifiedName', json->'fullyQualifiedName',
+            'version', COALESCE(json->'version', '0.1'::jsonb),
+            'changeDescription', json->'changeDescription') END
+          FROM <table> WHERE id = :id <cond> FOR UPDATE
+          """,
+      connectionType = POSTGRES)
+  String findSummaryForUpdate(
+      @Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
+
+  @ConnectionAwareSqlUpdate(
+      value =
+          """
+          UPDATE <table> SET json = JSON_SET(json, '$.changeDescription', CAST(:changes AS JSON))
+          WHERE id = :id
+          """,
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          """
+          UPDATE <table> SET json = jsonb_set(json, '{changeDescription}', :changes::jsonb)
+          WHERE id = :id
+          """,
+      connectionType = POSTGRES)
+  void updateChangeDescription(
+      @Define("table") String table, @BindUUID("id") UUID id, @BindJson("changes") String changes);
+
   @SqlQuery("SELECT id, json FROM <table> WHERE id IN (<ids>) <cond>")
   @RegisterRowMapper(EntityIdJsonPairMapper.class)
   List<EntityIdJsonPair> findByIds(
@@ -1078,6 +1118,15 @@ public interface EntityDAO<T extends EntityInterface> {
    */
   default String findJsonByIdForUpdate(UUID id, Include include) {
     return findByIdForUpdate(getTableName(), id, getCondition(include));
+  }
+
+  /** Attribution updates lock only the needed metadata projection, independent of column count. */
+  default String findSummaryForUpdate(UUID id, Include include) {
+    return findSummaryForUpdate(getTableName(), id, getCondition(include));
+  }
+
+  default void updateChangeDescription(UUID id, String changes) {
+    updateChangeDescription(getTableName(), id, changes);
   }
 
   default T findEntityById(UUID id, Include include) {

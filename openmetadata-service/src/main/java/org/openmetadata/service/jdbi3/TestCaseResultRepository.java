@@ -31,6 +31,8 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityOperation;
+import org.openmetadata.service.entity.write.EntityUpdater;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
@@ -140,7 +142,14 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     // Rehydrate the full task before resolving it so workflow transitions are available.
     // The lightweight lookup path is enough to find the row, but not enough to advance the
     // workflow stage to `resolved`, which is what drives legacy TCRS mirroring.
-    incidentTask = taskRepository.get(null, incidentTask.getId(), taskRepository.getFields("*"));
+    incidentTask =
+        taskRepository
+            .reads()
+            .byId(
+                incidentTask.getId(),
+                taskRepository.fieldPolicy().parse("*"),
+                Include.NON_DELETED,
+                false);
 
     TaskWorkflowHandler.getInstance()
         .resolveTask(
@@ -318,8 +327,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     updated.setTestCaseStatus(
         testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
 
-    EntityRepository.EntityUpdater entityUpdater =
-        testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
+    EntityUpdater<TestCase> entityUpdater =
+        testCaseRepository.getUpdater(original, updated, EntityOperation.PATCH, null);
     entityUpdater.update();
   }
 

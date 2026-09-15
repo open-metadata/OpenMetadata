@@ -351,20 +351,24 @@ public class RdfInferenceMaterializationIT {
   }
 
   private static void insertSourceTriple(final MaterializationFixture fixture) throws Exception {
+    // Fuseki's union default graph exposes named graphs, matching persisted entity projections.
     update(
-        "INSERT DATA { <%s> <%s> <%s> }"
-            .formatted(fixture.subject(), SOURCE_PREDICATE, fixture.object()));
+        "INSERT DATA { GRAPH <%s> { <%s> <%s> <%s> } }"
+            .formatted(KNOWLEDGE_GRAPH, fixture.subject(), SOURCE_PREDICATE, fixture.object()));
   }
 
   private static void insertInvalidatingTriple(final MaterializationFixture fixture)
       throws Exception {
     update(
-        "INSERT DATA { <%s> <%s> <%s> }"
-            .formatted(fixture.subject(), INVALIDATION_PREDICATE, fixture.object()));
+        "INSERT DATA { GRAPH <%s> { <%s> <%s> <%s> } }"
+            .formatted(
+                KNOWLEDGE_GRAPH, fixture.subject(), INVALIDATION_PREDICATE, fixture.object()));
   }
 
   private static void deleteSourceTriples(final MaterializationFixture fixture) throws Exception {
-    update("DELETE WHERE { <%s> ?predicate <%s> }".formatted(fixture.subject(), fixture.object()));
+    update(
+        "DELETE WHERE { GRAPH <%s> { <%s> ?predicate <%s> } }"
+            .formatted(KNOWLEDGE_GRAPH, fixture.subject(), fixture.object()));
   }
 
   private static void insertScopedSource(

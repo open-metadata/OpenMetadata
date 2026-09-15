@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -66,12 +65,12 @@ import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -79,25 +78,34 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public final class EntityUtil {
+
   //
   // Comparators used for sorting list based on the given type
   //
   public static final Comparator<EntityReference> compareEntityReference =
       Comparator.comparing(EntityReference::getName);
+
   public static final Comparator<EntityReference> compareEntityReferenceById =
       Comparator.comparing(EntityReference::getId).thenComparing(EntityReference::getType);
+
   public static final Comparator<EntityVersionPair> compareVersion =
       Comparator.comparing(EntityVersionPair::getVersion);
+
   public static final Comparator<TagLabel> compareTagLabel =
       Comparator.comparing(TagLabel::getTagFQN);
+
   public static final Comparator<FieldChange> compareFieldChange =
       Comparator.comparing(FieldChange::getName);
+
   public static final Comparator<TableConstraint> compareTableConstraint =
       Comparator.comparing(TableConstraint::getConstraintType);
+
   public static final Comparator<ChangeEvent> compareChangeEvent =
       Comparator.comparing(ChangeEvent::getTimestamp);
+
   public static final Comparator<GlossaryTerm> compareGlossaryTerm =
       Comparator.comparing(GlossaryTerm::getName);
+
   public static final Comparator<CustomProperty> compareCustomProperty =
       Comparator.comparing(CustomProperty::getName);
 
@@ -108,6 +116,7 @@ public final class EntityUtil {
 
   public static final BiPredicate<EntityReference, EntityReference> entityReferenceMatch =
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
+
   public static final BiPredicate<List<EntityReference>, List<EntityReference>>
       entityReferenceListMatch =
           (list1, list2) -> {
@@ -126,6 +135,7 @@ public final class EntityUtil {
             }
             return true;
           };
+
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
       (tag1, tag2) ->
           tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
@@ -153,6 +163,7 @@ public final class EntityUtil {
                   || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
+
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
       MlHyperParameter::equals;
 
@@ -161,6 +172,7 @@ public final class EntityUtil {
 
   public static final BiPredicate<ContainerFileFormat, ContainerFileFormat>
       containerFileFormatMatch = Enum::equals;
+
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) ->
           ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
@@ -185,7 +197,9 @@ public final class EntityUtil {
 
   private EntityUtil() {}
 
-  /** Validate that JSON payload can be turned into POJO object */
+  /**
+   * Validate that JSON payload can be turned into POJO object
+   */
   public static <T> T validate(Object id, String json, Class<T> clz)
       throws WebApplicationException {
     T entity = null;
@@ -203,40 +217,32 @@ public final class EntityUtil {
     if (nullOrEmpty(list)) {
       return list;
     }
-
     long startTime = System.currentTimeMillis();
-
     // Create a mutable copy to avoid UnsupportedOperationException on immutable lists
     List<EntityReference> mutableList = new ArrayList<>(list);
-
     // Group references by type and whether they have ID or need name-based lookup
     Map<String, List<EntityReference>> byIdByType =
         mutableList.stream()
             .filter(ref -> ref.getId() != null)
             .collect(Collectors.groupingBy(EntityReference::getType));
-
     Map<String, List<EntityReference>> byNameByType =
         mutableList.stream()
             .filter(ref -> ref.getId() == null && ref.getFullyQualifiedName() != null)
             .collect(Collectors.groupingBy(EntityReference::getType));
-
     // Track which references were successfully populated (not orphaned)
     Set<EntityReference> populatedRefs = new HashSet<>();
     int queryCount = 0;
-
     // Batch fetch by ID (most common case) - one query per entity type
     for (Map.Entry<String, List<EntityReference>> entry : byIdByType.entrySet()) {
       String entityType = entry.getKey();
       List<UUID> ids =
           entry.getValue().stream().map(EntityReference::getId).collect(Collectors.toList());
       queryCount++;
-
       try {
         List<EntityReference> fetched = Entity.getEntityReferencesByIds(entityType, ids, ALL);
         Map<UUID, EntityReference> fetchedMap =
             fetched.stream()
                 .collect(Collectors.toMap(EntityReference::getId, ref -> ref, (a, b) -> a));
-
         for (EntityReference ref : entry.getValue()) {
           EntityReference fetched2 = fetchedMap.get(ref.getId());
           if (fetched2 != null) {
@@ -267,7 +273,6 @@ public final class EntityUtil {
         }
       }
     }
-
     // Fetch by name (less common path - still individual queries)
     for (Map.Entry<String, List<EntityReference>> entry : byNameByType.entrySet()) {
       for (EntityReference ref : entry.getValue()) {
@@ -286,18 +291,14 @@ public final class EntityUtil {
         }
       }
     }
-
     // Remove orphaned references (those that weren't successfully populated)
     mutableList.removeIf(ref -> !populatedRefs.contains(ref));
-
     mutableList.sort(compareEntityReference);
-
     LOG.debug(
         "populateEntityReferences: {} refs -> {} queries in {}ms",
         mutableList.size(),
         queryCount,
         System.currentTimeMillis() - startTime);
-
     return mutableList;
   }
 
@@ -317,9 +318,7 @@ public final class EntityUtil {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
-
     long startTime = System.currentTimeMillis();
-
     // Group by entity type for batch fetch - reduces N queries to M queries (where M = unique
     // types)
     Map<String, List<UUID>> idsByType =
@@ -328,15 +327,12 @@ public final class EntityUtil {
                 Collectors.groupingBy(
                     EntityRelationshipRecord::getType,
                     Collectors.mapping(EntityRelationshipRecord::getId, Collectors.toList())));
-
     List<EntityReference> refs = new ArrayList<>();
     int queryCount = 0;
-
     for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
       String entityType = entry.getKey();
       List<UUID> ids = entry.getValue();
       queryCount++;
-
       try {
         List<EntityReference> typeRefs = Entity.getEntityReferencesByIds(entityType, ids, ALL);
         refs.addAll(typeRefs);
@@ -356,16 +352,13 @@ public final class EntityUtil {
         }
       }
     }
-
     refs.sort(compareEntityReference);
-
     LOG.debug(
         "getEntityReferences: {} records -> {} types -> {} queries in {}ms",
         list.size(),
         idsByType.size(),
         queryCount,
         System.currentTimeMillis() - startTime);
-
     return refs;
   }
 
@@ -407,21 +400,17 @@ public final class EntityUtil {
     if (entityIds == null || entityIds.isEmpty()) {
       return usageMap;
     }
-
     // Convert UUIDs to strings for the batch query
     List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
-
     // Use the new batch query method for efficient bulk fetching
     List<UsageDAO.UsageDetailsWithId> usageDetailsList =
         usageDAO.getLatestUsageBatch(entityIdStrings);
-
     // Convert the list back to a map keyed by UUID
     for (UsageDAO.UsageDetailsWithId usageWithId : usageDetailsList) {
       if (usageWithId != null && usageWithId.getEntityId() != null) {
         usageMap.put(UUID.fromString(usageWithId.getEntityId()), usageWithId.getUsageDetails());
       }
     }
-
     // For entities without usage data, provide default usage details
     for (UUID entityId : entityIds) {
       if (!usageMap.containsKey(entityId)) {
@@ -435,11 +424,12 @@ public final class EntityUtil {
         usageMap.put(entityId, defaultUsage);
       }
     }
-
     return usageMap;
   }
 
-  /** Merge two sets of tags */
+  /**
+   * Merge two sets of tags
+   */
   public static void mergeTags(List<TagLabel> mergeTo, List<TagLabel> mergeFrom) {
     if (nullOrEmpty(mergeFrom)) {
       return;
@@ -447,7 +437,8 @@ public final class EntityUtil {
     for (TagLabel fromTag : mergeFrom) {
       TagLabel tag =
           mergeTo.stream().filter(t -> tagLabelMatch.test(t, fromTag)).findAny().orElse(null);
-      if (tag == null) { // The tag does not exist in the mergeTo list. Add it.
+      if (tag == null) {
+        // The tag does not exist in the mergeTo list. Add it.
         mergeTo.add(fromTag);
       }
     }
@@ -511,7 +502,9 @@ public final class EntityUtil {
   }
 
   public static class Fields implements Iterable<String> {
+
     public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
+
     @Getter private final Set<String> fieldList;
 
     public Fields(Set<String> fieldList) {
@@ -536,16 +529,13 @@ public final class EntityUtil {
         this.fieldList = new HashSet<>();
         return;
       }
-
       Set<String> parsedFields = parseFields(fieldsParam);
       this.fieldList = validateFields(parsedFields, allowedFields, ignoreExtra);
     }
 
     private Set<String> validateFields(
         Set<String> inputFields, Set<String> allowedFields, boolean ignoreExtra) {
-
       Set<String> result = new HashSet<>();
-
       for (String field : inputFields) {
         if (allowedFields.contains(field)) {
           result.add(field);
@@ -553,7 +543,6 @@ public final class EntityUtil {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
         }
       }
-
       return result;
     }
 
@@ -614,7 +603,8 @@ public final class EntityUtil {
     }
 
     @Override
-    public @org.jetbrains.annotations.NotNull Iterator<String> iterator() {
+    @org.jetbrains.annotations.NotNull
+    public Iterator<String> iterator() {
       return fieldList.iterator();
     }
   }
@@ -628,7 +618,9 @@ public final class EntityUtil {
    */
   @Getter
   public static class RelationIncludes {
+
     private final Include defaultInclude;
+
     private final Map<String, Include> fieldIncludes;
 
     public RelationIncludes(Include defaultInclude) {
@@ -718,7 +710,9 @@ public final class EntityUtil {
     return String.join(Entity.SEPARATOR, strings);
   }
 
-  /** Return column field name of format "columns".columnName.columnFieldName */
+  /**
+   * Return column field name of format "columns".columnName.columnFieldName
+   */
   public static String getColumnField(Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = column.getName();
@@ -727,7 +721,9 @@ public final class EntityUtil {
         : FullyQualifiedName.build("columns", localColumnName, columnField);
   }
 
-  /** Return schema field name of format "schemaFields".fieldName.fieldName */
+  /**
+   * Return schema field name of format "schemaFields".fieldName.fieldName
+   */
   public static String getSchemaField(Topic topic, Field field, String fieldName) {
     // Remove topic FQN from schemaField FQN to get the local name
     String localFieldName =
@@ -747,7 +743,9 @@ public final class EntityUtil {
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
   }
 
-  /** Return searchIndex field name of format "fields".fieldName.fieldName */
+  /**
+   * Return searchIndex field name of format "fields".fieldName.fieldName
+   */
   public static String getSearchIndexField(
       SearchIndex searchIndex, SearchIndexField field, String fieldName) {
     // Remove topic FQN from schemaField FQN to get the local name
@@ -759,21 +757,27 @@ public final class EntityUtil {
         : FullyQualifiedName.build("fields", localFieldName, fieldName);
   }
 
-  /** Return rule field name of format "rules".ruleName.ruleFieldName */
+  /**
+   * Return rule field name of format "rules".ruleName.ruleFieldName
+   */
   public static String getRuleField(Rule rule, String ruleField) {
     return ruleField == null
         ? FullyQualifiedName.build("rules", rule.getName())
         : FullyQualifiedName.build("rules", rule.getName(), ruleField);
   }
 
-  /** Return customer property field name of format "customProperties".propertyName */
+  /**
+   * Return customer property field name of format "customProperties".propertyName
+   */
   public static String getCustomField(CustomProperty property, String propertyFieldName) {
     return propertyFieldName == null
         ? FullyQualifiedName.build("customProperties", property.getName())
         : FullyQualifiedName.build("customProperties", property.getName(), propertyFieldName);
   }
 
-  /** Return extension field name of format "extension".fieldName */
+  /**
+   * Return extension field name of format "extension".fieldName
+   */
   public static String getExtensionField(String key) {
     return FullyQualifiedName.build("extension", key);
   }
@@ -966,15 +970,12 @@ public final class EntityUtil {
     if (fields == null || fields.isEmpty() || entityType == null) {
       return fields;
     }
-
-    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> repository = Entity.getEntityRepository(entityType);
     Set<String> allowed = new HashSet<>(repository.getAllowedFields());
-
     // Always allow these common fields
     allowed.add("owners");
     allowed.add("tags");
     allowed.add("domains");
-
     // Filter the requested fields to only include those supported by the entity's allowed list
     String[] requestedFields = fields.split(",");
     List<String> validFields = new ArrayList<>();
@@ -984,7 +985,6 @@ public final class EntityUtil {
         validFields.add(field);
       }
     }
-
     return String.join(",", validFields);
   }
 
@@ -1078,7 +1078,6 @@ public final class EntityUtil {
             .filter(parentReviewer -> !result.contains(parentReviewer))
             .collect(Collectors.toSet());
     uniqueEntityRefFromParent.forEach(reviewer -> reviewer.withInherited(true));
-
     result.addAll(uniqueEntityRefFromParent);
     return result.stream().toList();
   }
@@ -1203,29 +1202,64 @@ public final class EntityUtil {
     if (fqn == null || fqn.trim().isEmpty()) {
       return "";
     }
-
     // Only encode characters that are truly problematic in URLs
     // This reduces double-encoding issues with email security systems
     // Note: % must be encoded first to avoid double-encoding
     return fqn.trim()
-        .replace("%", "%25") // percent (must be first to avoid double-encoding)
-        .replace(" ", "%20") // spaces
-        .replace("#", "%23") // hash
-        .replace("?", "%3F") // question mark
-        .replace("&", "%26") // ampersand
-        .replace("+", "%2B") // plus sign
-        .replace("=", "%3D") // equals sign
-        .replace("/", "%2F") // forward slash (if needed in FQN context)
-        .replace("\\", "%5C") // backslash
-        .replace("|", "%7C") // pipe
-        .replace("\"", "%22") // double quote
-        .replace("'", "%27") // single quote
-        .replace("<", "%3C") // less than
-        .replace(">", "%3E") // greater than
-        .replace("[", "%5B") // left bracket
-        .replace("]", "%5D") // right bracket
-        .replace("{", "%7B") // left brace
-        .replace("}", "%7D"); // right brace
+        .replace(
+            "%", // percent (must be first to avoid double-encoding)
+            "%25")
+        .replace(
+            " ", // spaces
+            "%20")
+        .replace(
+            "#", // hash
+            "%23")
+        .replace(
+            "?", // question mark
+            "%3F")
+        .replace(
+            "&", // ampersand
+            "%26")
+        .replace(
+            "+", // plus sign
+            "%2B")
+        .replace(
+            "=", // equals sign
+            "%3D")
+        .replace(
+            "/", // forward slash (if needed in FQN context)
+            "%2F")
+        .replace(
+            "\\", // backslash
+            "%5C")
+        .replace(
+            "|", // pipe
+            "%7C")
+        .replace(
+            "\"", // double quote
+            "%22")
+        .replace(
+            "'", // single quote
+            "%27")
+        .replace(
+            "<", // less than
+            "%3C")
+        .replace(
+            ">", // greater than
+            "%3E")
+        .replace(
+            "[", // left bracket
+            "%5B")
+        .replace(
+            "]", // right bracket
+            "%5D")
+        .replace(
+            "{", // left brace
+            "%7B")
+        .replace(
+            "}", // right brace
+            "%7D");
   }
 
   /**
@@ -1237,10 +1271,8 @@ public final class EntityUtil {
     if (entity == null || fieldName == null || fieldName.isEmpty()) {
       return null;
     }
-
     // Convert field name to getter method name (e.g., "retentionPeriod" -> "getRetentionPeriod")
     String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-
     try {
       Method method = entity.getClass().getMethod(methodName);
       return method.invoke(entity);
@@ -1299,8 +1331,11 @@ public final class EntityUtil {
   // Field names of an EntityReference stored on a custom property, per the
   // EntityReference JSON Schema. Either ID or FQN is a valid lookup key alongside TYPE.
   private static final String REF_FIELD_TYPE = "type";
+
   private static final String REF_FIELD_ID = "id";
+
   private static final String REF_FIELD_FQN = Entity.FIELD_FULLY_QUALIFIED_NAME;
+
   private static final String CUSTOM_PROPERTY_ERROR_PREFIX = "Custom property '%s' %s";
 
   /**

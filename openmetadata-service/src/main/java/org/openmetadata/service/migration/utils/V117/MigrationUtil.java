@@ -32,8 +32,9 @@ public class MigrationUtil {
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     List<TestCase> testCases =
-        testCaseRepository.listAll(
-            new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
+        testCaseRepository
+            .collections()
+            .all(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
 
     List<String> fqnList;
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
@@ -51,7 +52,7 @@ public class MigrationUtil {
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(testCase.getEntityLink());
       String fqn = entityLink.getEntityFQN();
-      Table table = tableRepository.findByNameOrNull(fqn, Include.ALL);
+      Table table = tableRepository.lookup().byNameOrNull(fqn, Include.ALL);
       if (table == null) {
         String findTableFQN = tableMap.get(fqn.toLowerCase());
         MessageParser.EntityLink newEntityLink =

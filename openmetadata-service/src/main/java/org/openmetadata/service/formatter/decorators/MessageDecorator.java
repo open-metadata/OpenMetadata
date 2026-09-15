@@ -592,7 +592,7 @@ public interface MessageDecorator<T> {
   static TestCase fetchTestCase(String fqn) {
     TestCaseRepository testCaseRepository =
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    EntityUtil.Fields fields = testCaseRepository.getFields("*");
-    return testCaseRepository.getByName(null, fqn, fields, Include.NON_DELETED, false);
+    EntityUtil.Fields fields = testCaseRepository.fieldPolicy().parse("*");
+    return testCaseRepository.reads().byName(fqn, fields, Include.NON_DELETED, false);
   }
 }

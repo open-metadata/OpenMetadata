@@ -19,7 +19,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityCollectionReader;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -72,6 +73,7 @@ public class LineagePermissionFilter {
    * attributing every removal to the ceiling.
    */
   public record Result(EntityLineage lineage, int hiddenNodes, int uncheckedNodes) {
+
     static Result unchanged(EntityLineage lineage) {
       return new Result(lineage, 0, 0);
     }
@@ -144,13 +146,15 @@ public class LineagePermissionFilter {
     return visible;
   }
 
-  /** One batch load and one hydrator per entity type, so cost scales with types, not nodes. */
+  /**
+   * One batch load and one hydrator per entity type, so cost scales with types, not nodes.
+   */
   private <T extends EntityInterface> void addVisibleFromBucket(
       SecurityContext securityContext,
       String entityType,
       List<EntityReference> refs,
       Set<UUID> visible) {
-    EntityRepository<T> repository = repositoryOrNull(entityType);
+    EntityPolicy<T> repository = repositoryOrNull(entityType);
     if (repository == null) {
       return;
     }
@@ -165,16 +169,16 @@ public class LineagePermissionFilter {
   }
 
   private <T extends EntityInterface> BulkFieldHydrator tagHydrator(
-      EntityRepository<T> repository, List<T> entities) {
+      EntityPolicy<T> repository, List<T> entities) {
     return new BulkFieldHydrator(
         Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends EntityInterface> EntityRepository<T> repositoryOrNull(String entityType) {
-    EntityRepository<T> repository = null;
+  private <T extends EntityInterface> EntityPolicy<T> repositoryOrNull(String entityType) {
+    EntityPolicy<T> repository = null;
     try {
-      repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
+      repository = (EntityPolicy<T>) Entity.getEntityRepository(entityType);
     } catch (RuntimeException e) {
       // No repository means no decision for the whole bucket, so none of its nodes may be returned.
       LOG.warn("Hiding all '{}' lineage nodes: no repository: {}", entityType, e.getMessage());
@@ -183,14 +187,19 @@ public class LineagePermissionFilter {
   }
 
   private <T extends EntityInterface> List<T> loadForAuthorization(
-      EntityRepository<T> repository, String entityType, List<EntityReference> refs) {
+      EntityPolicy<T> repository, String entityType, List<EntityReference> refs) {
     List<T> entities = List.of();
     List<UUID> ids = refs.stream().map(EntityReference::getId).filter(Objects::nonNull).toList();
     try {
       // Include.ALL: a soft-deleted node still needs its policy evaluated rather than resolving to
       // nothing and re-entering the unloaded-attribute failure mode.
       List<T> loaded =
-          repository.get(null, ids, ResourceContext.authorizationFields(repository), Include.ALL);
+          repository
+              .collections()
+              .byIds(
+                  ids,
+                  new EntityCollectionReader.Projection(
+                      null, ResourceContext.authorizationFields(repository), Include.ALL));
       entities = loaded == null ? List.of() : loaded;
     } catch (RuntimeException e) {
       LOG.warn(
@@ -211,8 +220,8 @@ public class LineagePermissionFilter {
     boolean viewable = false;
     try {
       authorizer.authorize(
-          securityContext,
-          // OperationContext is stateful - it drops operations as they are satisfied - so each
+          securityContext, // OperationContext is stateful - it drops operations as they are
+          // satisfied - so each
           // decision needs its own.
           new OperationContext(reference.getType(), MetadataOperation.VIEW_BASIC),
           resolved != null ? resolved : lazyContext(reference));

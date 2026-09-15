@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -66,6 +65,7 @@ class CreateTestCaseToolTest {
     when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
 
     TestCaseRepository repo = mock(TestCaseRepository.class);
+    final var creations = EntityCreationFixture.attach(repo);
     TestCase testCase = new TestCase();
     testCase.setId(UUID.randomUUID());
     testCase.setName("TestCase_1");
@@ -73,8 +73,7 @@ class CreateTestCaseToolTest {
     RestUtil.PutResponse<TestCase> putResponse =
         new RestUtil.PutResponse<>(Response.Status.CREATED, testCase, EventType.ENTITY_CREATED);
 
-    when(repo.createOrUpdate(isNull(), any(TestCase.class), anyString(), any()))
-        .thenReturn(putResponse);
+    creations.onUpsert(request -> putResponse);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> eventMock = mockStatic(McpChangeEventUtil.class);
@@ -96,6 +95,10 @@ class CreateTestCaseToolTest {
       Map<String, Object> result = tool.execute(authorizer, limits, securityContext, params);
 
       assertThat(result).isNotNull();
+      assertThat(creations.upserts()).hasSize(1);
+      assertThat(creations.upserts().getFirst().entity()).isSameAs(testCase);
+      assertThat(creations.upserts().getFirst().importMode()).isFalse();
+
       verify(repo).setFullyQualifiedName(any(TestCase.class));
       verify(repo).prepare(any(TestCase.class), any(Boolean.class));
       verify(limits).enforceLimits(any(), any(), any());
@@ -113,13 +116,14 @@ class CreateTestCaseToolTest {
     when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
 
     TestCaseRepository repo = mock(TestCaseRepository.class);
+    final var creations = EntityCreationFixture.attach(repo);
     TestCase testCase = new TestCase();
     testCase.setId(UUID.randomUUID());
     testCase.setName("TestCase_1");
-    when(repo.createOrUpdate(isNull(), any(TestCase.class), anyString(), any()))
-        .thenReturn(
+    creations.onUpsert(
+        request ->
             new RestUtil.PutResponse<>(
-                Response.Status.CREATED, testCase, EventType.ENTITY_CREATED));
+                Response.Status.CREATED, request.entity(), EventType.ENTITY_CREATED));
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> eventMock = mockStatic(McpChangeEventUtil.class);
@@ -156,6 +160,7 @@ class CreateTestCaseToolTest {
     when(securityContext.getUserPrincipal()).thenReturn(mockPrincipal);
 
     TestCaseRepository repo = mock(TestCaseRepository.class);
+    final var creations = EntityCreationFixture.attach(repo);
     TestCase testCase = new TestCase();
     testCase.setId(UUID.randomUUID());
     testCase.setName("TestCase_1");
@@ -191,7 +196,7 @@ class CreateTestCaseToolTest {
 
       // Nothing may have been prepared or written once the overwrite check rejected the call.
       verify(repo, never()).prepare(any(TestCase.class), any(Boolean.class));
-      verify(repo, never()).createOrUpdate(isNull(), any(TestCase.class), anyString(), any());
+      assertThat(creations.upserts()).isEmpty();
     }
   }
 }

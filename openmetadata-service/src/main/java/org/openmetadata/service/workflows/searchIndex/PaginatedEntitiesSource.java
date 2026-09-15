@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
@@ -30,9 +29,10 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -40,23 +40,34 @@ import org.openmetadata.service.workflows.interfaces.Source;
 @Slf4j
 @Getter
 public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface>> {
+
   private String name = "PaginatedEntitiesSource";
+
   private final int batchSize;
+
   private final String entityType;
+
   private final List<String> fields;
+
   private final List<String> readerErrors = new ArrayList<>();
+
   private final StepStats stats = new StepStats();
+
   private final ListFilter filter;
+
   private final int cachedTotalCount;
+
   private String lastFailedCursor = null;
+
   private final AtomicReference<String> cursor = new AtomicReference<>(RestUtil.encodeCursor("0"));
+
   private final AtomicReference<Boolean> isDone = new AtomicReference<>(false);
 
   public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityPolicy<? extends EntityInterface> entityRepository =
         Entity.getEntityRepository(entityType);
     this.filter = entityRepository.getReindexFilter();
     this.cachedTotalCount = entityRepository.getDao().listCount(this.filter);
@@ -130,27 +141,15 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
 
   private ResultList<? extends EntityInterface> read(String cursor) throws SearchIndexException {
     LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
-      EntityDAO<?> entityDAO = entityRepository.getDao();
-      result =
-          entityRepository.listWithOffset(
-              entityDAO::listAfter,
-              f -> cachedTotalCount,
-              filter,
-              batchSize,
-              cursor,
-              true,
-              Entity.getOnlySupportedFields(entityType, fields),
-              null);
-
+      result = readPage(entityRepository, cursor);
       // Filter out EntityNotFoundExceptions from errors - these are expected when relationships
       // point to deleted entities and should be counted as warnings, not failures
       if (!result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
         List<EntityError> warningErrors = new ArrayList<>();
-
         for (EntityError error : result.getErrors()) {
           if (isStaleReferenceError(error)) {
             warningErrors.add(error);
@@ -158,36 +157,30 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
             realErrors.add(error);
           }
         }
-
         if (!realErrors.isEmpty()) {
           LOG.warn("[PaginatedEntitiesSource] Real errors found: {}", realErrors.size());
           realErrors.forEach(error -> LOG.warn("Error: {}", error.getMessage()));
           lastFailedCursor = this.cursor.get();
         }
-
         if (!warningErrors.isEmpty()) {
           LOG.debug(
               "[PaginatedEntitiesSource] {} 'entity not found' warnings for stale relationships",
               warningErrors.size());
         }
-
         if (result.getPaging().getAfter() == null) {
           this.cursor.set(null);
           this.isDone.set(true);
         } else {
           this.cursor.set(result.getPaging().getAfter());
         }
-
         // Update stats with real errors as failures and stale references as warnings
         updateStats(result.getData().size(), realErrors.size(), warningErrors.size());
-
         // Update the result to only include real errors, but carry warnings
         result.setErrors(realErrors);
         result.setWarnings(warningErrors);
         result.setWarningsCount(warningErrors.size());
         return result;
       }
-
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
@@ -228,24 +221,26 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     return result;
   }
 
+  private ResultList<? extends EntityInterface> readPage(
+      EntityPolicy<?> repository, String cursor) {
+    final EntityDAO<?> entityDAO = repository.getDao();
+    final var projection =
+        new EntityPageReader.Projection(
+            null, Entity.getOnlySupportedFields(entityType, fields), filter);
+    return repository
+        .pages()
+        .offset(
+            new EntityPageReader.OffsetPage(projection, batchSize, cursor, true),
+            new EntityPageReader.OffsetSource(entityDAO::listAfter, ignored -> cachedTotalCount));
+  }
+
   public ResultList<? extends EntityInterface> readWithCursor(String currentCursor)
       throws SearchIndexException {
     LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
-      EntityDAO<?> entityDAO = entityRepository.getDao();
-      result =
-          entityRepository.listWithOffset(
-              entityDAO::listAfter,
-              f -> cachedTotalCount,
-              filter,
-              batchSize,
-              currentCursor,
-              true,
-              Entity.getOnlySupportedFields(entityType, fields),
-              null);
-
+      result = readPage(entityRepository, currentCursor);
       // Filter out EntityNotFoundExceptions from errors - same as in read() method
       // These are counted as warnings, not failures
       int warningsCount = 0;
@@ -265,14 +260,12 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         result.setWarnings(warningErrors);
         result.setWarningsCount(warningsCount);
       }
-
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- Submitted: {} Success: {} Failed: {} Warnings: {}",
           batchSize,
           result.getData().size(),
           result.getErrors().size(),
           warningsCount);
-
     } catch (Exception e) {
       LOG.error(
           "Error reading batch for entityType: {} with cursor: {}", entityType, currentCursor, e);
@@ -294,18 +287,20 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   public ResultList<? extends EntityInterface> readNextKeyset(String keysetCursor)
       throws SearchIndexException {
     LOG.debug("[PaginatedEntitiesSource] Fetching keyset batch of size: {}", batchSize);
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
       result =
-          entityRepository.listAfterKeyset(
-              filter,
-              batchSize,
-              keysetCursor,
-              cachedTotalCount,
-              true,
-              Entity.getOnlySupportedFields(entityType, fields));
-
+          entityRepository
+              .pages()
+              .keyset(
+                  new EntityPageReader.KeysetPage(
+                      new EntityPageReader.Projection(
+                          null, Entity.getOnlySupportedFields(entityType, fields), filter),
+                      batchSize,
+                      keysetCursor,
+                      cachedTotalCount,
+                      true));
       int warningsCount = 0;
       if (result.getErrors() != null && !result.getErrors().isEmpty()) {
         List<EntityError> realErrors = new ArrayList<>();
@@ -323,14 +318,12 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         result.setWarnings(warningErrors);
         result.setWarningsCount(warningsCount);
       }
-
       LOG.debug(
           "[PaginatedEntitiesSource] Keyset batch stats — Submitted: {} Success: {} Failed: {} Warnings: {}",
           batchSize,
           result.getData().size(),
           result.getErrors() != null ? result.getErrors().size() : 0,
           warningsCount);
-
     } catch (Exception e) {
       LOG.error(
           "Error reading keyset batch for entityType: {} with cursor: {}",
@@ -356,7 +349,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     if (numReaders <= 1 || totalRecords <= 0) {
       return cursors;
     }
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    EntityPolicy<?> entityRepository = Entity.getEntityRepository(entityType);
     int recordsPerReader = totalRecords / numReaders;
     for (int i = 1; i < numReaders; i++) {
       int offset = i * recordsPerReader;

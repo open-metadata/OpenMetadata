@@ -14,13 +14,9 @@
 package org.openmetadata.service.resources.ai;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,29 +24,41 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityLookupTestContext;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
 import org.openmetadata.service.jdbi3.AIFrameworkControlRepository;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class FrameworkSeedLoaderTest {
+  @RegisterExtension private final EntityLookupTestContext lookups = new EntityLookupTestContext();
 
   @Test
   void sameControlNameIsSeededOncePerFramework() throws Exception {
     AIFrameworkControlRepository repository = mock(AIFrameworkControlRepository.class);
+    EntityDAO<AIFrameworkControl> controlRows =
+        lookups.attach(repository, Entity.AI_FRAMEWORK_CONTROL, AIFrameworkControl.class);
     Map<String, AIFrameworkControl> persistedControls = new HashMap<>();
-    when(repository.findByNameOrNull(anyString(), eq(Include.ALL)))
+    when(controlRows.findEntityByName(anyString(), eq(Include.ALL)))
         .thenAnswer(invocation -> persistedControls.get(invocation.getArgument(0)));
-    when(repository.create(isNull(), any(AIFrameworkControl.class)))
-        .thenAnswer(
-            invocation -> {
-              AIFrameworkControl control = invocation.getArgument(1);
-              persistedControls.put(control.getFullyQualifiedName(), control);
-              return control;
-            });
+    final var creations =
+        EntityCreationFixture.attach(repository)
+            .onCreate(
+                request -> {
+                  assertEquals(null, request.uri());
+                  assertEquals(new EntityCommandActor(null, null), request.actor());
+                  assertEquals(true, request.withHref());
+                  AIFrameworkControl control = request.entity();
+                  persistedControls.put(control.getFullyQualifiedName(), control);
+                  return control;
+                });
     JsonNode controls = JsonUtils.readTree("[{\"name\":\"shared-control\"}]");
     EntityReference firstFramework = framework("framework-one");
     EntityReference secondFramework = framework("framework-two");
@@ -69,7 +77,7 @@ class FrameworkSeedLoaderTest {
     assertEquals(
         dottedFramework,
         persistedControls.get("\"framework.with.dot\".shared-control").getFramework());
-    verify(repository, times(3)).create(isNull(), any(AIFrameworkControl.class));
+    assertEquals(3, creations.creations().size());
   }
 
   private EntityReference framework(String name) {

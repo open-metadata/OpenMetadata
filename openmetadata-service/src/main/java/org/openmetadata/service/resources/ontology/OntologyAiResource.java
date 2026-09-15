@@ -158,7 +158,7 @@ public final class OntologyAiResource {
       final MetadataOperation operation) {
     final GlossaryRepository repository = glossaryRepository();
     final Glossary glossary =
-        repository.getByName(null, fullyQualifiedName, repository.getFields(""));
+        repository.getByName(null, fullyQualifiedName, repository.fieldPolicy().parse(""));
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY, operation),

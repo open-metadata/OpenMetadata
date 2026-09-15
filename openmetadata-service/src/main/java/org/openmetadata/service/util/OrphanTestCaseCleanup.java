@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.util;
 
 import static org.openmetadata.schema.type.Include.ALL;
@@ -26,9 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 /**
@@ -43,6 +42,7 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 public class OrphanTestCaseCleanup {
 
   private final CollectionDAO collectionDAO;
+
   private final boolean dryRun;
 
   public OrphanTestCaseCleanup(CollectionDAO collectionDAO, boolean dryRun) {
@@ -55,16 +55,19 @@ public class OrphanTestCaseCleanup {
   @NoArgsConstructor
   @AllArgsConstructor
   public static class OrphanTestCaseResult {
+
     private int totalScanned;
+
     private int orphansFound;
+
     private int orphansDeleted;
+
     private int failures;
   }
 
   public OrphanTestCaseResult performCleanup(int batchSize) {
     LOG.info("Starting orphan test case cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
     OrphanTestCaseResult result = OrphanTestCaseResult.builder().build();
-
     int offset = 0;
     while (true) {
       List<String> jsonBatch =
@@ -76,10 +79,8 @@ public class OrphanTestCaseCleanup {
       }
       List<TestCase> testCases = parseTestCases(jsonBatch);
       result.setTotalScanned(result.getTotalScanned() + testCases.size());
-
       List<UUID> orphans = findOrphans(testCases);
       result.setOrphansFound(result.getOrphansFound() + orphans.size());
-
       int deletedInBatch = 0;
       if (!dryRun) {
         for (UUID id : orphans) {
@@ -91,7 +92,6 @@ public class OrphanTestCaseCleanup {
           }
         }
       }
-
       if (jsonBatch.size() < batchSize) {
         break;
       }
@@ -100,7 +100,6 @@ public class OrphanTestCaseCleanup {
       // we just made so the next read picks up where we actually stopped.
       offset += batchSize - deletedInBatch;
     }
-
     LOG.info(
         "Orphan test case cleanup done. Scanned: {}, Found: {}, Deleted: {}, Failed: {}",
         result.getTotalScanned(),
@@ -161,7 +160,7 @@ public class OrphanTestCaseCleanup {
           ex.getMessage());
       return false;
     }
-    EntityRepository<?> targetRepo;
+    EntityPolicy<?> targetRepo;
     try {
       targetRepo = Entity.getEntityRepository(link.getEntityType());
     } catch (EntityNotFoundException ex) {
@@ -172,7 +171,7 @@ public class OrphanTestCaseCleanup {
       return false;
     }
     try {
-      targetRepo.getByName(null, link.getEntityFQN(), EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
+      targetRepo.reads().byName(link.getEntityFQN(), EntityUtil.Fields.EMPTY_FIELDS, ALL, false);
       return false;
     } catch (EntityNotFoundException ex) {
       return true;

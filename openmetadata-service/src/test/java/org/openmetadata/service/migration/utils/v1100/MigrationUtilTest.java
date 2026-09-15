@@ -3,10 +3,9 @@ package org.openmetadata.service.migration.utils.v1100;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -17,7 +16,6 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.Update;
@@ -29,10 +27,15 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture;
+import org.openmetadata.service.entity.delete.EntityDeleteFixture.Deletion;
+import org.openmetadata.service.entity.read.EntityCollectionFixture;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 class MigrationUtilTest {
   private static final String GLOSSARY_TERM_COUNT_POSTGRES =
@@ -130,6 +133,7 @@ class MigrationUtilTest {
   @Test
   void cleanupOrphanedDataContractsDeletesMissingEntitiesAndContinuesOnDeleteFailure() {
     DataContractRepository repository = mock(DataContractRepository.class);
+    final var deletions = EntityDeleteFixture.attach(repository);
     UUID validEntityId = UUID.randomUUID();
     UUID orphanEntityId = UUID.randomUUID();
     UUID orphanDeleteFailureEntityId = UUID.randomUUID();
@@ -141,12 +145,22 @@ class MigrationUtilTest {
     DataContract orphanWithDeleteFailure =
         contract("service.schema.table.contractC", orphanDeleteFailureEntityId, UUID.randomUUID());
 
-    when(repository.getFields("id,entity"))
-        .thenReturn(new EntityUtil.Fields(Set.of("id", "entity")));
-    when(repository.listAll(any(EntityUtil.Fields.class), any()))
-        .thenReturn(List.of(valid, orphan, orphanWithDeleteFailure));
-    when(repository.delete(Entity.ADMIN_USER_NAME, orphanWithDeleteFailure.getId(), true, true))
-        .thenThrow(new IllegalStateException("cannot delete"));
+    when(repository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(DataContract.class));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null,
+                (Fields selectedFields, ListFilter selectedFilter) ->
+                    List.of(valid, orphan, orphanWithDeleteFailure)))
+        .when(repository)
+        .collections();
+    deletions.onDelete(
+        request -> {
+          if (request.id().equals(orphanWithDeleteFailure.getId())) {
+            throw new IllegalStateException("cannot delete");
+          }
+          return null;
+        });
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.DATA_CONTRACT)).thenReturn(repository);
@@ -170,17 +184,24 @@ class MigrationUtilTest {
       assertDoesNotThrow(migrationUtil::cleanupOrphanedDataContracts);
     }
 
-    verify(repository, never()).delete(Entity.ADMIN_USER_NAME, valid.getId(), true, true);
-    verify(repository).delete(Entity.ADMIN_USER_NAME, orphan.getId(), true, true);
-    verify(repository).delete(Entity.ADMIN_USER_NAME, orphanWithDeleteFailure.getId(), true, true);
+    assertEquals(
+        List.of(
+            new Deletion(Entity.ADMIN_USER_NAME, orphan.getId(), true, true),
+            new Deletion(Entity.ADMIN_USER_NAME, orphanWithDeleteFailure.getId(), true, true)),
+        deletions.deletions());
   }
 
   @Test
   void cleanupOrphanedDataContractsReturnsEarlyWhenNoContractsExist() {
     DataContractRepository repository = mock(DataContractRepository.class);
-    when(repository.getFields("id,entity"))
-        .thenReturn(new EntityUtil.Fields(Set.of("id", "entity")));
-    when(repository.listAll(any(EntityUtil.Fields.class), any())).thenReturn(List.of());
+    final var deletions = EntityDeleteFixture.attach(repository);
+    when(repository.fieldPolicy())
+        .thenReturn(EntityFieldPolicyFixture.forEntity(DataContract.class));
+    doReturn(
+            new EntityCollectionFixture<>(
+                null, (Fields selectedFields, ListFilter selectedFilter) -> List.of()))
+        .when(repository)
+        .collections();
 
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.DATA_CONTRACT)).thenReturn(repository);
@@ -189,7 +210,7 @@ class MigrationUtilTest {
       assertDoesNotThrow(migrationUtil::cleanupOrphanedDataContracts);
     }
 
-    verify(repository, never()).delete(anyString(), any(UUID.class), eq(true), eq(true));
+    assertTrue(deletions.deletions().isEmpty());
   }
 
   @Test

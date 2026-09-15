@@ -10,6 +10,7 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.dqtests.TestCaseMapper;
@@ -128,7 +129,9 @@ public class CreateTestCaseTool implements McpTool {
     // createOrUpdate silently overwrites an existing test case with this name — tools.json
     // marks this tool destructiveHint:true for that reason.
     RestUtil.PutResponse<TestCase> response =
-        repository.createOrUpdate(null, testCase, updatedBy, impersonatedBy);
+        repository
+            .creates()
+            .upsert(null, testCase, new EntityCommandActor(updatedBy, impersonatedBy), false);
     McpChangeEventUtil.publishChangeEvent(
         response.getEntity(), response.getChangeType(), updatedBy);
     return McpResponseUtils.compact(response.getEntity(), response.getChangeType());

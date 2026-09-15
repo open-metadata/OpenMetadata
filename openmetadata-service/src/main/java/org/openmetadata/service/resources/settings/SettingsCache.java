@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources.settings;
 
 import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
@@ -75,8 +74,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -84,7 +83,9 @@ import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 public class SettingsCache {
+
   private static volatile boolean initialized = false;
+
   protected static final LoadingCache<String, Settings> CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(1000)
@@ -111,12 +112,10 @@ public class SettingsCache {
       // Only in case a config doesn't exist in DB we insert it
       SmtpSettings emailConfig =
           applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings();
-
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     // Initialise OM base url setting
     Settings storedOpenMetadataBaseUrlConfiguration =
         Entity.getSystemRepository()
@@ -129,7 +128,6 @@ public class SettingsCache {
                   applicationConfig.getOperationalApplicationConfigProvider().getServerUrl());
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     // Initialise Theme Setting
     Settings storedCustomUiThemeConf =
         Entity.getSystemRepository().getConfigWithKey(CUSTOM_UI_THEME_PREFERENCE.toString());
@@ -154,7 +152,6 @@ public class SettingsCache {
                               .withInfoColor("")));
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     // Initialise Login Configuration
     // Initialise Logo Setting
     Settings storedLoginConf =
@@ -171,10 +168,8 @@ public class SettingsCache {
                       .withJwtTokenExpiryTime(3600));
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     // Initialise App Configuration (tenant-wide "first impression" default app mode)
     seedAppConfiguration(applicationConfig);
-
     // Initialise Search Settings
     Settings storedSearchSettings =
         Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS.toString());
@@ -184,7 +179,7 @@ public class SettingsCache {
       if (!jsonDataFiles.isEmpty()) {
         String json =
             CommonUtil.getResourceAsStream(
-                EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+                EntityPolicy.class.getClassLoader(), jsonDataFiles.get(0));
         SearchSettings defaultSearchSettings = JsonUtils.readValue(json, SearchSettings.class);
         if (storedSearchSettings == null) {
           Settings setting =
@@ -207,7 +202,6 @@ public class SettingsCache {
     } catch (IOException e) {
       LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
     }
-
     // Initialise Certification Settings
     Settings certificationSettings =
         Entity.getSystemRepository().getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
@@ -221,7 +215,6 @@ public class SettingsCache {
                       .withValidityPeriod("P30D"));
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     // Initialise Workflow Settings
     Settings workflowSettings =
         Entity.getSystemRepository().getConfigWithKey(WORKFLOW_SETTINGS.toString());
@@ -235,7 +228,6 @@ public class SettingsCache {
                       .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration()));
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     Settings lineageSettings =
         Entity.getSystemRepository().getConfigWithKey(LINEAGE_SETTINGS.toString());
     if (lineageSettings == null) {
@@ -266,7 +258,6 @@ public class SettingsCache {
                               .withScrollTimeoutMinutes(5)));
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     // Initialize Authentication Configuration
     Settings storedAuthConfig =
         Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.toString());
@@ -275,11 +266,9 @@ public class SettingsCache {
       if (authConfig != null) {
         Settings setting =
             new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
-
         Entity.getSystemRepository().createNewSetting(setting);
       }
     }
-
     // Initialize Authorizer Configuration
     Settings storedAuthzConfig =
         Entity.getSystemRepository().getConfigWithKey(AUTHORIZER_CONFIGURATION.toString());
@@ -288,11 +277,9 @@ public class SettingsCache {
       if (authzConfig != null) {
         Settings setting =
             new Settings().withConfigType(AUTHORIZER_CONFIGURATION).withConfigValue(authzConfig);
-
         Entity.getSystemRepository().createNewSetting(setting);
       }
     }
-
     // Initialize MCP Configuration
     Settings storedMcpConfig =
         Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
@@ -302,11 +289,9 @@ public class SettingsCache {
       if (mcpConfig != null) {
         Settings setting =
             new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
-
         Entity.getSystemRepository().createNewSetting(setting);
       }
     }
-
     Settings storedScimConfig =
         Entity.getSystemRepository().getConfigWithKey(SCIM_CONFIGURATION.toString());
     if (storedScimConfig == null) {
@@ -317,7 +302,6 @@ public class SettingsCache {
         Entity.getSystemRepository().createNewSetting(setting);
       }
     }
-
     Settings entityRulesSettings =
         Entity.getSystemRepository()
             .getConfigWithKey(SettingsType.ENTITY_RULES_SETTINGS.toString());
@@ -328,7 +312,7 @@ public class SettingsCache {
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
-                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+                  EntityPolicy.class.getClassLoader(), jsonDataFiles.get(0));
           Settings setting =
               new Settings()
                   .withConfigType(ENTITY_RULES_SETTINGS)
@@ -339,7 +323,6 @@ public class SettingsCache {
         LOG.error("Failed to read default Enitty Rules settings. Message: {}", e.getMessage(), e);
       }
     }
-
     // Initialize OpenLineage Settings
     Settings openLineageSettings =
         Entity.getSystemRepository().getConfigWithKey(OPEN_LINEAGE_SETTINGS.toString());
@@ -354,7 +337,6 @@ public class SettingsCache {
                       .withDefaultPipelineService("openlineage"));
       Entity.getSystemRepository().createNewSetting(setting);
     }
-
     // Initialize Glossary Term Relation Settings with default relation types
     Settings glossaryTermRelationSettings =
         Entity.getSystemRepository().getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.toString());
@@ -491,7 +473,6 @@ public class SettingsCache {
                   "#c11574",
                   null,
                   null));
-
       Settings setting =
           new Settings()
               .withConfigType(GLOSSARY_TERM_RELATION_SETTINGS)
@@ -508,7 +489,7 @@ public class SettingsCache {
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
-                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+                  EntityPolicy.class.getClassLoader(), jsonDataFiles.get(0));
           Settings setting =
               new Settings()
                   .withConfigType(SPARQL_QUERY_SETTINGS)
@@ -638,15 +619,12 @@ public class SettingsCache {
 
   private static Settings computeAggregatedSearchFields() {
     Map<String, Float> fields = new HashMap<>(SearchIndex.getDefaultFields());
-
     try {
       SearchSettings searchSettings = getSetting(SEARCH_SETTINGS, SearchSettings.class);
       if (searchSettings != null && searchSettings.getAssetTypeConfigurations() != null) {
         SearchRepository searchRepository = Entity.getSearchRepository();
-
         for (AssetTypeConfiguration assetConfig : searchSettings.getAssetTypeConfigurations()) {
           String entityType = assetConfig.getAssetType();
-
           // Check if this entity type's index has dataAsset as a parent alias
           IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
           if (indexMapping != null
@@ -664,7 +642,6 @@ public class SettingsCache {
     } catch (Exception ex) {
       LOG.error("Error computing aggregated search fields", ex);
     }
-
     // Create a dummy Settings object to store in cache
     return new Settings()
         .withConfigType(SettingsType.SEARCH_SETTINGS)
@@ -676,15 +653,15 @@ public class SettingsCache {
       "SEARCH_SETTINGS_AGGREGATED_FIELDS";
 
   static class SettingsLoader extends CacheLoader<String, Settings> {
-    @Override
-    public @NonNull Settings load(@CheckForNull String settingsName) {
-      Settings fetchedSettings;
 
+    @Override
+    @NonNull
+    public Settings load(@CheckForNull String settingsName) {
+      Settings fetchedSettings;
       // Handle special case for aggregated fields
       if (SEARCH_SETTINGS_AGGREGATED_FIELDS.equals(settingsName)) {
         return computeAggregatedSearchFields();
       }
-
       switch (SettingsType.fromValue(settingsName)) {
         case EMAIL_CONFIGURATION -> {
           fetchedSettings = Entity.getSystemRepository().getEmailConfigInternal();

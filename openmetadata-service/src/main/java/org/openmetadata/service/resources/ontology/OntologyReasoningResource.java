@@ -29,6 +29,7 @@ import java.util.function.Supplier;
 import org.openmetadata.schema.api.data.OntologyInferenceExplanation;
 import org.openmetadata.schema.api.data.OntologyInferenceExplanationRequest;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -84,8 +85,13 @@ public final class OntologyReasoningResource {
   }
 
   private Glossary glossary(final OntologyInferenceExplanationRequest request) {
-    return glossaryRepository.get(
-        null, request.getGlossaryId(), glossaryRepository.getFields("owners"));
+    return glossaryRepository
+        .reads()
+        .byId(
+            request.getGlossaryId(),
+            glossaryRepository.fieldPolicy().parse("owners"),
+            Include.NON_DELETED,
+            false);
   }
 
   private void authorizeView(final SecurityContext securityContext, final Glossary glossary) {

@@ -48,6 +48,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -203,7 +204,13 @@ public class CreateIngestionPipelineImpl {
       wasSuccessful = deployPipeline(repository, ingestionPipeline, service);
       if (wasSuccessful) {
         ingestionPipeline.setDeployed(true);
-        repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
+        repository
+            .creates()
+            .upsert(
+                null,
+                ingestionPipeline,
+                new EntityCommandActor(ingestionPipeline.getUpdatedBy(), null),
+                false);
       } else {
         LOG.warn(
             "[GovernanceWorkflows] '{}' deployment failed for '{}'",
@@ -280,7 +287,7 @@ public class CreateIngestionPipelineImpl {
                 new SourceConfig().withConfig(getSourceConfig(pipelineType, service)));
     IngestionPipeline ingestionPipeline = mapper.createToEntity(create, "governance-bot");
 
-    return repository.create(null, ingestionPipeline);
+    return repository.creates().create(null, ingestionPipeline, new EntityCommandActor(null, null));
   }
 
   private AirflowConfig getAirflowConfig(PipelineType pipelineType) {
@@ -304,7 +311,7 @@ public class CreateIngestionPipelineImpl {
       ServiceEntityInterface service,
       String displayName) {
     for (String ingestionPipelineStr :
-        repository.listAllByParentFqn(service.getFullyQualifiedName())) {
+        repository.collections().rowsUnder(service.getFullyQualifiedName())) {
       IngestionPipeline ingestionPipeline =
           JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
       if (ingestionPipeline.getPipelineType().equals(pipelineType)

@@ -1,6 +1,8 @@
 package org.openmetadata.service.cache;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,9 +12,59 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class CachedEntityDao {
+  public static final int WRITE_BATCH_SIZE = 100;
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final CacheConfig config;
+
+  public record Entry(UUID id, String fullyQualifiedName, String json) {}
+
+  public void putMany(final String entityType, final List<Entry> entries) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
+    for (int offset = 0; offset < entries.size(); offset += WRITE_BATCH_SIZE) {
+      publishBatch(
+          entityType, entries.subList(offset, Math.min(offset + WRITE_BATCH_SIZE, entries.size())));
+    }
+  }
+
+  private void publishBatch(final String entityType, final List<Entry> entries) {
+    final Map<String, Map<String, String>> bases = new LinkedHashMap<>();
+    final Map<String, String> names = new LinkedHashMap<>();
+    entries.stream()
+        .filter(CachedEntityDao::isCacheable)
+        .forEach(
+            entry -> {
+              bases.put(keys.entity(entityType, entry.id()), Map.of("base", entry.json()));
+              if (entry.fullyQualifiedName() != null) {
+                names.put(keys.entityByName(entityType, entry.fullyQualifiedName()), entry.json());
+              }
+            });
+    final Duration ttl = Duration.ofSeconds(config.entityTtlSeconds);
+    if (!bases.isEmpty()) {
+      publishBatch(entityType, () -> cache.pipelineHset(bases, ttl));
+    }
+    if (!names.isEmpty()) {
+      publishBatch(entityType, () -> cache.pipelineSet(names, ttl));
+    }
+  }
+
+  private static boolean isCacheable(final Entry entry) {
+    return entry != null
+        && entry.id() != null
+        && entry.json() != null
+        && !entry.json().isEmpty()
+        && !"{}".equals(entry.json());
+  }
+
+  private void publishBatch(final String entityType, final Runnable publication) {
+    try {
+      publication.run();
+    } catch (RuntimeException exception) {
+      LOG.debug("Bulk cache publication failed for {}", entityType, exception);
+    }
+  }
 
   public Optional<String> getBase(UUID entityId, String entityType) {
     if (EntityCacheBypass.isSkipped()) {
@@ -197,8 +249,7 @@ public class CachedEntityDao {
     }
     String cacheKeyEntity = keys.entityByName(entityType, fqn);
     String cacheKeyRef = keys.refByName(entityType, fqn);
-    cache.del(cacheKeyEntity);
-    cache.del(cacheKeyRef);
+    cache.del(cacheKeyEntity, cacheKeyRef);
     LOG.debug("Invalidated cache for entity by name: {} -> {}", entityType, fqn);
   }
 
@@ -238,8 +289,7 @@ public class CachedEntityDao {
     }
     String entityCacheKey = keys.entityByName(entityType, fqn);
     String refCacheKey = keys.refByName(entityType, fqn);
-    cache.del(entityCacheKey);
-    cache.del(refCacheKey);
+    cache.del(entityCacheKey, refCacheKey);
     LOG.debug("Deleted corrupted cache entries for entity by name: {} -> {}", entityType, fqn);
   }
 

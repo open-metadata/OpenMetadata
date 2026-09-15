@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.services.ServiceSummary;
 import org.openmetadata.schema.api.services.ServicesOverview;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -52,6 +53,7 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Slf4j
 public class ServicesOverviewRepository {
+
   /**
    * Only the fields the summary exposes. Notably not {@code pipelines}, which {@code
    * ServiceEntityRepository.setFieldsInBulk} would resolve with two extra queries for data this view
@@ -92,11 +94,12 @@ public class ServicesOverviewRepository {
         .withPaging(new Paging().withOffset(r.offset()).withLimit(r.limit()).withTotal(listTotal));
   }
 
-  /** A merged-page key. {@code name}/{@code id} mirror the DB's {@code ORDER BY name, id}. */
+  /**
+   * A merged-page key. {@code name}/{@code id} mirror the DB's {@code ORDER BY name, id}.
+   */
   record TypedKey(String entityType, String name, UUID id) {}
 
   // ---------------------------------------------------------------- counts
-
   private Map<String, Map<String, Integer>> countsByConnector(
       SecurityContext securityContext, ServicesOverviewRequest r) {
     Map<String, Map<String, Integer>> result = new LinkedHashMap<>();
@@ -150,7 +153,6 @@ public class ServicesOverviewRepository {
   }
 
   // ---------------------------------------------------------------- health
-
   /**
    * Whether health can be resolved for the whole counted universe.
    *
@@ -187,7 +189,9 @@ public class ServicesOverviewRepository {
             entityType -> counts.getOrDefault(entityType, 0) > ServicesOverviewRequest.MAX_WINDOW);
   }
 
-  /** Health for every service in the universe — needed only by the tally and the health filter. */
+  /**
+   * Health for every service in the universe — needed only by the tally and the health filter.
+   */
   private Map<UUID, ServiceHealth> universeHealth(Map<String, List<TypedKey>> universeKeys) {
     Map<UUID, ServiceHealth> health = Map.of();
     if (!universeKeys.isEmpty()) {
@@ -228,7 +232,6 @@ public class ServicesOverviewRepository {
   }
 
   // ---------------------------------------------------------------- listing
-
   /**
    * Keys for the listed types, health-filtered where asked.
    *
@@ -316,7 +319,6 @@ public class ServicesOverviewRepository {
   }
 
   // ---------------------------------------------------------------- hydration
-
   private List<ServiceSummary> hydrate(
       List<TypedKey> page, Map<UUID, ServiceHealth> health, ServicesOverviewRequest r) {
     Map<UUID, ServiceSummary> byId = new HashMap<>();
@@ -341,11 +343,11 @@ public class ServicesOverviewRepository {
   @SuppressWarnings("unchecked")
   private List<ServiceSummary> hydrateType(
       String entityType, List<UUID> ids, ServicesOverviewRequest r) {
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
+    EntityPolicy<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     List<EntityInterface> entities =
         (List<EntityInterface>) repository.getDao().findEntitiesByIds(ids, r.include());
-    ((EntityRepository<EntityInterface>) repository)
-        .setFieldsInBulk(repository.getFields(SUMMARY_FIELDS), entities);
+    ((EntityPolicy<EntityInterface>) repository)
+        .setFieldsInBulk(repository.fieldPolicy().parse(SUMMARY_FIELDS), entities);
     return entities.stream().map(entity -> toSummary(entity, entityType)).toList();
   }
 
@@ -388,8 +390,9 @@ public class ServicesOverviewRepository {
   }
 
   // ---------------------------------------------------------------- filters and totals
-
-  /** Filters that scope the counted universe. Deliberately excludes the list-only selectors. */
+  /**
+   * Filters that scope the counted universe. Deliberately excludes the list-only selectors.
+   */
   private ListFilter countFilter(
       SecurityContext securityContext, ServicesOverviewRequest r, String entityType) {
     ListFilter filter = new ListFilter(r.include());

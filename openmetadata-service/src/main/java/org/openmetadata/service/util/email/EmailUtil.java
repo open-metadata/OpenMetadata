@@ -60,9 +60,11 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
+import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
@@ -84,7 +86,12 @@ public class EmailUtil {
   }
 
   private static void initializeTemplateProvider() {
-    templateProvider = new DefaultTemplateProvider();
+    // URL helpers can initialize before repositories; only rendering requires stored templates.
+    templateProvider =
+        new DefaultTemplateProvider(
+            name ->
+                ((DocumentRepository) Entity.getEntityRepository(Entity.DOCUMENT))
+                    .fetchEmailTemplateByName(name));
   }
 
   private EmailUtil() {

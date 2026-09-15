@@ -137,7 +137,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       String userName = bot.getBotUser().getName();
       bot.withBotUser(
           userRepository
-              .getByName(null, userName, userRepository.getFields("id"))
+              .getByName(null, userName, userRepository.fieldPolicy().parse("id"))
               .getEntityReference());
       repository.initializeEntity(bot);
     }
@@ -592,12 +592,15 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
 
   private User findBotUser(String botUserName) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    return userRepository.findByNameOrNull(
-        EntityInterfaceUtil.quoteName(botUserName), Include.NON_DELETED);
+    return userRepository
+        .lookup()
+        .byNameOrNull(EntityInterfaceUtil.quoteName(botUserName), Include.NON_DELETED);
   }
 
   private boolean botExists(String botName) {
-    return repository.findByNameOrNull(EntityInterfaceUtil.quoteName(botName), Include.NON_DELETED)
+    return repository
+            .lookup()
+            .byNameOrNull(EntityInterfaceUtil.quoteName(botName), Include.NON_DELETED)
         != null;
   }
 }

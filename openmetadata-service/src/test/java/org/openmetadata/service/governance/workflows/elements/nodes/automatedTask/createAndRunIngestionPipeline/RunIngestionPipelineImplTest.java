@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -115,7 +116,12 @@ class RunIngestionPipelineImplTest {
   @Test
   void testExecuteSuccessFirstAttempt() {
     // Mock repository and entity setup
-    when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
+    when(mockRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  return testPipeline;
+                }));
     when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);
     when(mockPipelineServiceClient.runPipeline(any(), any()))
         .thenReturn(new PipelineServiceClientResponse().withCode(200));
@@ -131,7 +137,12 @@ class RunIngestionPipelineImplTest {
   @Test
   void testExecuteFailsAfterMaxRetries() {
     // Mock repository and entity setup
-    when(mockRepository.get(any(), any(UUID.class), any())).thenReturn(testPipeline);
+    when(mockRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  return testPipeline;
+                }));
     when(mockRepository.getOpenMetadataApplicationConfig()).thenReturn(null);
 
     // Mock 3 consecutive failures

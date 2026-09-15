@@ -1,0 +1,116 @@
+{
+  "recorded_utc": "2026-09-14",
+  "accepted": false,
+  "baseline_service_sha256": "306263df42c131d28daa4a5c189591e2f5563937501dddd105c8221ee1cdfdf5",
+  "candidate_service_sha256": "854c3d28e74c6284f768cda27801c78b164249500577a2969b495b3e32ca34ae",
+  "coverage": {
+    "native": {
+      "minimum_percent": 90,
+      "changed_sources": 512,
+      "executable_classes": 1115,
+      "below_threshold": 349,
+      "missing_sources": [],
+      "failed_executions": [],
+      "passed": false,
+      "report_sha256": "ba7f6b63d07844cf425350b811d60194440194465e090373a32ce0c9b8990ade",
+      "input_manifest_sha256": "e6c9c8145c7c1957145d3326d1ba31731388ef8ea50e70f61d8c4f14c45605e6"
+    },
+    "collate": {
+      "minimum_percent": 90,
+      "changed_sources": 105,
+      "executable_classes": 177,
+      "below_threshold": 118,
+      "missing_sources": [],
+      "failed_executions": [],
+      "passed": false,
+      "report_sha256": "b451e07a2ffccc323c7f6516e7a7350c27d8bf3867025984386c23be0503f6e0",
+      "input_manifest_sha256": "f73e57e7203a13a39f360c41ee73c69d6c84fb30fac74d620dea1831fcbb3357"
+    }
+  },
+  "native_core_components": {
+    "executable_classes": 455,
+    "below_threshold": 0
+  },
+  "native_canonical_mysql": {
+    "found": 16129,
+    "successful": 14731,
+    "failed": 0,
+    "skipped": 101,
+    "aborted": 1247,
+    "duration_ms": 1164457,
+    "runtime": "Microsoft ARM Java 21.0.11",
+    "database": "MySQL 8.3",
+    "search": "Elasticsearch 9.3",
+    "cache": "Redis"
+  },
+  "linux_baseline_calibration": {
+    "accepted": false,
+    "purpose": "Identical baseline artifacts; not a candidate comparison",
+    "runtime": "Temurin 21.0.12+8-LTS, Linux aarch64",
+    "java_image": "sha256:8a26c2cf90dbc972c645c7a87d227fedc689f3e0cc0f9cd1ca775c14623c92e7",
+    "database": "durable MySQL 8.3",
+    "search": "OpenSearch 3.4",
+    "cache": "Redis 7, warm",
+    "pairs": 5,
+    "samples_per_workload_per_side_per_pair": 5000,
+    "warmups_per_workload_per_side_per_pair": 1000,
+    "conditioning_per_workload_per_side": 20000,
+    "measured_requests": 100000,
+    "errors": 0,
+    "heap": "1 GiB, G1",
+    "sut_cpus": "2-5",
+    "client_cpus": "6,7",
+    "backend_cpus": "0,1,8,9",
+    "summaries": [
+      {
+        "workload": "get.columns.100",
+        "metric": "p50_ms",
+        "median_ratio": 1.0869773150684932,
+        "spread": 1.2576499987066783,
+        "directional_bias": 1.0869773150684932,
+        "repeatable": false
+      },
+      {
+        "workload": "get.columns.100",
+        "metric": "p95_ms",
+        "median_ratio": 1.0193173902644828,
+        "spread": 1.2541372936138562,
+        "directional_bias": 1.0193173902644828,
+        "repeatable": false
+      },
+      {
+        "workload": "get.columns.100",
+        "metric": "p99_ms",
+        "median_ratio": 1.0825141175543416,
+        "spread": 1.270976017104482,
+        "directional_bias": 1.0825141175543416,
+        "repeatable": false
+      },
+      {
+        "workload": "get.relationships.100",
+        "metric": "p50_ms",
+        "median_ratio": 1.0506470737765556,
+        "spread": 1.1215679124442346,
+        "directional_bias": 1.0506470737765556,
+        "repeatable": false
+      },
+      {
+        "workload": "get.relationships.100",
+        "metric": "p95_ms",
+        "median_ratio": 1.0532753516664821,
+        "spread": 1.132316193503386,
+        "directional_bias": 1.0532753516664821,
+        "repeatable": false
+      },
+      {
+        "workload": "get.relationships.100",
+        "metric": "p99_ms",
+        "median_ratio": 1.004523425271636,
+        "spread": 1.2128611503685127,
+        "directional_bias": 1.004523425271636,
+        "repeatable": false
+      }
+    ],
+    "notes": "The legacy client v11 traces failed their predeclared repeatability bounds. They are diagnostic inputs to the new analyzer because per-round cache-state files were not collected."
+  }
+}

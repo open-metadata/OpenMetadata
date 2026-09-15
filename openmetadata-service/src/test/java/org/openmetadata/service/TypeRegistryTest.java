@@ -31,8 +31,8 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
 import org.openmetadata.service.jdbi3.TypeRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Tests {@link TypeRegistry#getPropertyName(String)} and the self-healing custom-property lookup.
@@ -147,7 +147,7 @@ class TypeRegistryTest {
     seedBasePropertyType();
     String propertyName = "relationships";
     TypeRepository repository = mock(TypeRepository.class);
-    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(Type.class));
     when(repository.getByName(any(), eq(ENTITY_TYPE), any()))
         .thenThrow(new RuntimeException("transient database error"))
         .thenReturn(tableTypeWith(propertyName));
@@ -180,7 +180,7 @@ class TypeRegistryTest {
 
   private TypeRepository repositoryReturningTableWith(String propertyName) {
     TypeRepository repository = mock(TypeRepository.class);
-    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(Type.class));
     when(repository.getByName(any(), eq(ENTITY_TYPE), any()))
         .thenReturn(tableTypeWith(propertyName));
     Entity.setTypeRepository(repository);

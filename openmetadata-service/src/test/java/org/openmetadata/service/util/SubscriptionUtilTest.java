@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
@@ -44,7 +43,6 @@ import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
@@ -52,6 +50,8 @@ import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityPageFixture;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.fernet.Fernet;
@@ -64,20 +64,15 @@ class SubscriptionUtilTest {
   @Test
   void getAdminsDataAggregatesAdminEmailsAcrossPages() {
     UserRepository userRepository = mock(UserRepository.class);
-    ResultList<User> firstPage = mock(ResultList.class);
-    ResultList<User> secondPage = mock(ResultList.class);
-    Paging firstPaging = new Paging().withAfter("cursor-1");
-    Paging secondPaging = new Paging().withAfter(null);
-
-    when(firstPage.getData()).thenReturn(List.of(user("alice", "alice@example.com")));
-    when(firstPage.getPaging()).thenReturn(firstPaging);
-    when(secondPage.getData()).thenReturn(List.of(user("bob", "bob@example.com")));
-    when(secondPage.getPaging()).thenReturn(secondPaging);
-    when(userRepository.getFields("email,profile"))
-        .thenReturn(new EntityUtil.Fields(Set.of("email", "profile")));
-    when(userRepository.listAfter(isNull(), any(), any(), eq(50), isNull())).thenReturn(firstPage);
-    when(userRepository.listAfter(isNull(), any(), any(), eq(50), eq("cursor-1")))
-        .thenReturn(secondPage);
+    ResultList<User> firstPage =
+        new ResultList<>(List.of(user("alice", "alice@example.com")), null, "cursor-1", 2);
+    ResultList<User> secondPage =
+        new ResultList<>(List.of(user("bob", "bob@example.com")), null, null, 2);
+    when(userRepository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(User.class));
+    when(userRepository.pages())
+        .thenReturn(
+            new EntityPageFixture<>(
+                (projection, limit, cursor) -> cursor == null ? firstPage : secondPage));
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(USER)).thenReturn(userRepository);
@@ -256,7 +251,8 @@ class SubscriptionUtilTest {
     CollectionDAO.EntityRelationshipRecord followerTeamRecord =
         mock(CollectionDAO.EntityRelationshipRecord.class);
     UserRepository userRepository = mock(UserRepository.class);
-    ResultList<User> adminPage = mock(ResultList.class);
+    ResultList<User> adminPage =
+        new ResultList<>(List.of(user("admin", "admin@example.com")), null, null, 1);
 
     when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
     when(relationshipDAO.findFrom(entityId, "table", Relationship.OWNS.ordinal()))
@@ -267,11 +263,9 @@ class SubscriptionUtilTest {
     when(ownerRecord.getId()).thenReturn(ownerId);
     when(followerTeamRecord.getType()).thenReturn(TEAM);
     when(followerTeamRecord.getId()).thenReturn(followerTeamId);
-    when(userRepository.getFields("email,profile"))
-        .thenReturn(new EntityUtil.Fields(Set.of("email", "profile")));
-    when(adminPage.getData()).thenReturn(List.of(user("admin", "admin@example.com")));
-    when(adminPage.getPaging()).thenReturn(new Paging().withAfter(null));
-    when(userRepository.listAfter(isNull(), any(), any(), eq(50), isNull())).thenReturn(adminPage);
+    when(userRepository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(User.class));
+    when(userRepository.pages())
+        .thenReturn(new EntityPageFixture<>((projection, limit, cursor) -> adminPage));
 
     SubscriptionAction action =
         new Webhook()

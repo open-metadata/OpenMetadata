@@ -1171,10 +1171,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     try {
       if (!nullOrEmpty(session.getUserId())) {
         return Entity.getUserRepository()
-            .get(
-                null,
+            .reads()
+            .byId(
                 UUID.fromString(session.getUserId()),
-                Entity.getUserRepository().getFieldsWithUserAuth("id,name,email,roles,isAdmin"));
+                Entity.getUserRepository().getFieldsWithUserAuth("id,name,email,roles,isAdmin"),
+                Include.NON_DELETED,
+                false);
       }
       if (!nullOrEmpty(session.getUsername())) {
         return Entity.getEntityByName(

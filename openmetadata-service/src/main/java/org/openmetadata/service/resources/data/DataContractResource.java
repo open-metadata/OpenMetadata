@@ -69,6 +69,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
@@ -80,6 +81,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.ODCSConverter;
 import org.openmetadata.service.util.RestUtil;
 
@@ -740,7 +742,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    Fields.EMPTY_FIELDS,
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
     ResourceContext<DataContract> resourceContext =
@@ -789,7 +800,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    Fields.EMPTY_FIELDS,
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
     ResourceContext<DataContract> resourceContext =
@@ -828,7 +848,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Parameter(description = "Id of the data contract result", schema = @Schema(type = "UUID"))
           @PathParam("resultId")
           UUID resultId) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    Fields.EMPTY_FIELDS,
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.VIEW_BASIC);
     ResourceContext<DataContract> resourceContext =
@@ -860,7 +889,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @PathParam("id")
           UUID id,
       @Valid DataContractResult newResult) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    Fields.EMPTY_FIELDS,
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
     ResourceContext<DataContract> resourceContext =
@@ -891,7 +929,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "number"))
           @PathParam("timestamp")
           Long timestamp) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    Fields.EMPTY_FIELDS,
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
     ResourceContext<DataContract> resourceContext =
@@ -924,7 +971,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "number"))
           @PathParam("timestamp")
           Long timestamp) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    Fields.EMPTY_FIELDS,
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.DELETE);
     ResourceContext<DataContract> resourceContext =
@@ -960,7 +1016,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    DataContract dataContract = repository.get(uriInfo, id, Fields.EMPTY_FIELDS);
+    DataContract dataContract =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    Fields.EMPTY_FIELDS,
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     OperationContext operationContext =
         new OperationContext(Entity.DATA_CONTRACT, MetadataOperation.EDIT_ALL);
     ResourceContext<DataContract> resourceContext =

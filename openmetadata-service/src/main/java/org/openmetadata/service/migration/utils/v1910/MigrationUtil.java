@@ -18,7 +18,8 @@ public class MigrationUtil {
   public static void removeDuplicateViewAllRules(CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
+      Policy organizationPolicy =
+          repository.lookup().byName("OrganizationPolicy", Include.NON_DELETED);
       List<Rule> rules = organizationPolicy.getRules();
       if (rules == null) {
         LOG.info("OrganizationPolicy has no rules defined, skipping duplicate removal");

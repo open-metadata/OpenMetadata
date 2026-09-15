@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.lineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -40,8 +39,10 @@ import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityCollectionReader;
+import org.openmetadata.service.entity.read.EntityCollections;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -56,10 +57,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  *
  * <ol>
  *   <li>Bucket ids by entityType so each type goes through its own repository exactly once
- *       ({@link EntityRepository#get(UriInfo, List, Fields, Include)}).
+ *       ({@link EntityCollections#byIds}).
  *   <li>For each bucket, walk the loaded entities and drop the ones the caller can't
  *       {@link MetadataOperation#VIEW_BASIC}. Auth uses the entity-aware
- *       {@link ResourceContext#ResourceContext(String, EntityInterface, EntityRepository)
+ *       {@link ResourceContext#ResourceContext(String, EntityInterface, EntityPolicy)
  *       constructor} so {@code authorizer.getPermission} sees a pre-resolved entity — no second
  *       repository fetch (or parent lookup, for glossary terms / tags / data products) per id.
  *   <li>Drops are <i>silent</i>: not-found ids and denied entities both vanish from the response.
@@ -113,7 +114,7 @@ public class LineageHydrator {
               securityContext,
               entry.getKey(),
               entry.getValue(),
-              Entity.getEntityRepository(entry.getKey()).getFields(request.getFields()),
+              Entity.getEntityRepository(entry.getKey()).fieldPolicy().parse(request.getFields()),
               include,
               Entity.getEntityRepository(entry.getKey()));
       if (!hydrated.isEmpty()) {
@@ -199,9 +200,9 @@ public class LineageHydrator {
       Set<EntityKey> authorized,
       Map.Entry<String, List<UUID>> entry) {
     try {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityPolicy<? extends EntityInterface> repository =
           Entity.getEntityRepository(entry.getKey());
-      Fields fields = repository.getOnlySupportedFields(AUTHORIZATION_FIELDS);
+      Fields fields = repository.fieldPolicy().supported(AUTHORIZATION_FIELDS);
       List<? extends EntityInterface> entities =
           hydrateAndAuthorize(
               null, securityContext, entry.getKey(), entry.getValue(), fields, include, repository);
@@ -220,8 +221,10 @@ public class LineageHydrator {
       List<UUID> ids,
       Fields fields,
       Include include,
-      EntityRepository<T> repo) {
-    List<T> entities = repo.get(uriInfo, ids, fields, include);
+      EntityPolicy<T> repo) {
+    List<T> entities =
+        repo.collections()
+            .byIds(ids, new EntityCollectionReader.Projection(uriInfo, fields, include));
     String userName = securityContext.getUserPrincipal().getName();
     List<T> authorized = new ArrayList<>(entities.size());
     for (T entity : entities) {

@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.limits.Limits;
@@ -234,10 +235,17 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     ResultList<Role> roles;
     if (before != null) { // Reverse paging
       roles =
-          repository.listBefore(
-              uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
+          repository
+              .pages()
+              .before(
+                  new EntityPageReader.Projection(uriInfo, fields, filter),
+                  limitParam,
+                  before); // Ask for one extra entry
     } else { // Forward paging or first page
-      roles = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+      roles =
+          repository
+              .pages()
+              .after(new EntityPageReader.Projection(uriInfo, fields, filter), limitParam, after);
     }
     return addHref(uriInfo, roles);
   }

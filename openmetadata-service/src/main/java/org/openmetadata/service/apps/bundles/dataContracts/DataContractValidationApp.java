@@ -23,6 +23,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.DataProductRepository;
@@ -96,7 +97,12 @@ public class DataContractValidationApp extends AbstractNativeApplication {
 
     while (hasMore) {
       ResultList<DataContract> dataContracts =
-          repository.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, limit, after);
+          repository
+              .pages()
+              .after(
+                  new EntityPageReader.Projection(null, EntityUtil.Fields.EMPTY_FIELDS, filter),
+                  limit,
+                  after);
 
       List<DataContract> contractBatch = dataContracts.getData();
       LOG.info("Processing batch of {} data contracts", contractBatch.size());
@@ -151,8 +157,11 @@ public class DataContractValidationApp extends AbstractNativeApplication {
 
       // Use listAll with null filter since data_product_entity doesn't have a deleted column
       List<DataProduct> allDataProducts =
-          dataProductRepository.listAll(
-              dataProductRepository.getFields("id,fullyQualifiedName"), new ListFilter(null));
+          dataProductRepository
+              .collections()
+              .all(
+                  dataProductRepository.fieldPolicy().parse("id,fullyQualifiedName"),
+                  new ListFilter(null));
 
       LOG.info("Found {} Data Products to process", allDataProducts.size());
 

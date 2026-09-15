@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 
@@ -46,10 +47,10 @@ public class ApplicationContext {
     ListFilter listFilter = new ListFilter(Include.ALL);
     List<App> installedApps =
         appRepo
-            .listAfter(
-                null,
-                appRepo.getFields("pipelines"),
-                listFilter,
+            .pages()
+            .after(
+                new EntityPageReader.Projection(
+                    null, appRepo.fieldPolicy().parse("pipelines"), listFilter),
                 appRepo.getDao().listCount(listFilter),
                 "")
             .getData();

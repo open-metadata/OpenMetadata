@@ -33,6 +33,7 @@ import org.openmetadata.schema.api.data.InstantiateOntologyPattern;
 import org.openmetadata.schema.api.data.OntologyPatternInstantiationResult;
 import org.openmetadata.schema.api.data.OntologyPatternList;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -88,7 +89,13 @@ public final class OntologyPatternResource {
       @Context final SecurityContext securityContext,
       @Valid final InstantiateOntologyPattern request) {
     final Glossary glossary =
-        glossaryRepository.get(null, request.getGlossaryId(), glossaryRepository.getFields(""));
+        glossaryRepository
+            .reads()
+            .byId(
+                request.getGlossaryId(),
+                glossaryRepository.fieldPolicy().parse(""),
+                Include.NON_DELETED,
+                false);
     authorizeEdit(securityContext, glossary);
     return service.instantiate(uriInfo, glossary, request, requireUser(securityContext));
   }

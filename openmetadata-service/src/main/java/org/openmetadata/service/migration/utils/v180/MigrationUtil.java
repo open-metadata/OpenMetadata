@@ -48,7 +48,7 @@ public class MigrationUtil {
 
     for (String policyName : botPolicies) {
       try {
-        Policy policy = repository.findByName(policyName, Include.NON_DELETED);
+        Policy policy = repository.lookup().byName(policyName, Include.NON_DELETED);
         boolean hasDenyDisplayName =
             policy.getRules().stream()
                 .anyMatch(

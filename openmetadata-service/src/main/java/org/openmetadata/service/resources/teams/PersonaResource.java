@@ -54,6 +54,9 @@ import org.openmetadata.service.aicontext.AIContextMarkdown;
 import org.openmetadata.service.aicontext.PersonaContextAccess;
 import org.openmetadata.service.aicontext.PersonaContextBuilder;
 import org.openmetadata.service.aicontext.PersonaContextCache;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPutService;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PersonaRepository;
 import org.openmetadata.service.limits.Limits;
@@ -61,6 +64,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 @Path("/v1/personas")
@@ -559,7 +563,15 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   }
 
   private Persona getPersona(UriInfo uriInfo, UUID id) {
-    return repository.get(uriInfo, id, getFields(FIELDS), Include.NON_DELETED, false);
+    return repository
+        .reads()
+        .byId(
+            id,
+            new EntityReadService.Query(
+                uriInfo,
+                getFields(FIELDS),
+                RelationIncludes.fromInclude(Include.NON_DELETED),
+                false));
   }
 
   private PersonaContextDefinition storedDefinition(Persona persona) {
@@ -613,9 +625,15 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     definition.setLastError(null);
     Persona updated = JsonUtils.deepCopy(original, Persona.class);
     updated.setContextDefinition(definition);
-    repository.prepareInternal(updated, true);
+    repository.preparation().prepare(updated, true);
     return repository
-        .update(uriInfo, original, updated, securityContext.getUserPrincipal().getName())
+        .puts()
+        .update(
+            uriInfo,
+            original,
+            updated,
+            new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+            EntityPutService.Mode.NORMAL)
         .getEntity();
   }
 

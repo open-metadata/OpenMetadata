@@ -3,7 +3,6 @@ package org.openmetadata.service.context.entity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -19,6 +18,7 @@ import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
@@ -100,8 +100,16 @@ class DefaultContextEntityPromptLoaderTest {
             .withId(contentId)
             .withExtractedText("Use median and percentiles when the distribution is skewed.");
 
-    when(contextFileRepository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(file);
+    when(contextFileRepository.reads())
+        .thenReturn(
+            EntityReadFixture.byId(
+                (readId, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(fileId, readId);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return file;
+                }));
     when(contentRepository.getById(contentId)).thenReturn(content);
 
     DefaultContextEntityPromptLoader loader =

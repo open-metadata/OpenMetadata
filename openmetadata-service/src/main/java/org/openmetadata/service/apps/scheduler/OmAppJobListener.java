@@ -108,8 +108,9 @@ public class OmAppJobListener implements JobListener {
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp =
-          repository.getByName(
-              null, appName, repository.getFields("bot"), Include.NON_DELETED, true);
+          repository
+              .reads()
+              .byName(appName, repository.fieldPolicy().parse("bot"), Include.NON_DELETED, true);
 
       // Debug logging to check if App ID is present
       if (jobApp.getId() == null) {

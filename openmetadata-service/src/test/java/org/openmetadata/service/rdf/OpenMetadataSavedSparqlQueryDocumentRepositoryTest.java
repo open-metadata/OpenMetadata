@@ -16,15 +16,16 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 
 class OpenMetadataSavedSparqlQueryDocumentRepositoryTest {
@@ -38,12 +39,17 @@ class OpenMetadataSavedSparqlQueryDocumentRepositoryTest {
     final OpenMetadataSavedSparqlQueryDocumentRepository documentRepository =
         new OpenMetadataSavedSparqlQueryDocumentRepository(
             repository, Clock.fixed(NOW, ZoneOffset.UTC));
-    when(repository.create(uriInfo, document, "owner", null)).thenReturn(document);
+    final var creations =
+        EntityCreationFixture.attach(repository).onCreate(request -> request.entity());
 
     final Document persisted = documentRepository.save(uriInfo, null, document, "owner");
 
     assertNotNull(persisted.getId());
     assertEquals(NOW.toEpochMilli(), persisted.getUpdatedAt());
-    verify(repository).create(uriInfo, document, "owner", null);
+    assertEquals(
+        List.of(
+            new EntityCreationFixture.Creation<>(
+                uriInfo, document, new EntityCommandActor("owner", null), true)),
+        creations.creations());
   }
 }

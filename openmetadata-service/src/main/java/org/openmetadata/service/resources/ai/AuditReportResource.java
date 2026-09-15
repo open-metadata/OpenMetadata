@@ -39,12 +39,16 @@ import org.openmetadata.schema.entity.ai.AuditReportStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.jdbi3.AuditReportRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Path("/v1/auditReports")
 @Tag(
@@ -124,7 +128,15 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
     AuditReport inFlight = AuditPackGenerator.findActiveDuplicate(report);
     if (inFlight != null) {
       AuditReport existing =
-          repository.get(uriInfo, inFlight.getId(), repository.getFields(FIELDS));
+          repository
+              .reads()
+              .byId(
+                  inFlight.getId(),
+                  new EntityReadService.Query(
+                      uriInfo,
+                      repository.fieldPolicy().parse(FIELDS),
+                      RelationIncludes.fromInclude(Include.NON_DELETED),
+                      false));
       return Response.ok(existing).build();
     }
 
@@ -184,7 +196,16 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id) {
-    AuditReport report = repository.get(uriInfo, id, repository.getFields(FIELDS));
+    AuditReport report =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    repository.fieldPolicy().parse(FIELDS),
+                    RelationIncludes.fromInclude(Include.NON_DELETED),
+                    false));
     AuditReportStatus current = report.getStatus();
     if (current == AuditReportStatus.Completed
         || current == AuditReportStatus.Failed
@@ -197,7 +218,14 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
     String updatedJson = org.openmetadata.schema.utils.JsonUtils.pojoToJson(report);
     jakarta.json.JsonPatch patch =
         org.openmetadata.schema.utils.JsonUtils.getJsonPatch(json, updatedJson);
-    repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+    repository
+        .patches()
+        .patch(
+            new EntityPatchService.Target.Id(id),
+            patch,
+            new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+            uriInfo,
+            new EntityPatchService.Options(null, null));
 
     return Response.ok(report).build();
   }

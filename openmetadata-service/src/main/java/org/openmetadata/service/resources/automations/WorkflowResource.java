@@ -55,7 +55,8 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityReadService;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.limits.Limits;
@@ -72,6 +73,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
@@ -84,10 +86,15 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
+
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
+
   static final String FIELDS = "owners";
+
   private WorkflowMapper mapper;
+
   private PipelineServiceClientInterface pipelineServiceClient;
+
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
   public WorkflowResource(Authorizer authorizer, Limits limits) {
@@ -381,7 +388,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           UUID id,
       @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(FIELD_OWNERS);
-    Workflow workflow = repository.get(uriInfo, id, fields);
+    Workflow workflow =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     authorizeWorkflowTrigger(securityContext, workflow);
     workflow.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
@@ -530,7 +543,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -607,7 +619,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   private void authorizeTestConnection(
       SecurityContext securityContext, TestServiceConnectionRequest testRequest) {
     String serviceName = testRequest.getServiceName();
-
     if (serviceName != null && testRequest.getServiceType() != null) {
       String serviceEntityType =
           Entity.getServiceEntityRepository(testRequest.getServiceType()).getEntityType();
@@ -615,11 +626,9 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL);
       ResourceContext<?> serviceResourceCtx =
           new ResourceContext<>(serviceEntityType, null, serviceName);
-
       OperationContext pipelineOpCtx =
           new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.CREATE);
       ResourceContext<?> pipelineResourceCtx = new ResourceContext<>(Entity.INGESTION_PIPELINE);
-
       authorizer.authorizeRequests(
           securityContext,
           List.of(
@@ -643,7 +652,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       originalWorkflow = buildFromOriginalServiceConnection(workflow);
     } else {
       originalWorkflow =
-          repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
+          repository.lookup().byNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
   }
@@ -675,19 +684,20 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
     Workflow originalWorkflow =
-        repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
+        repository.lookup().byNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     if (originalWorkflow == null) {
       originalWorkflow =
           (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     }
     if (originalWorkflow.getRequest()
         instanceof TestServiceConnectionRequest testServiceConnection) {
-      EntityRepository<? extends EntityInterface> serviceRepository =
+      EntityPolicy<? extends EntityInterface> serviceRepository =
           Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
       ServiceEntityInterface originalService =
           (ServiceEntityInterface)
-              serviceRepository.findByNameOrNull(
-                  testServiceConnection.getServiceName(), Include.NON_DELETED);
+              serviceRepository
+                  .lookup()
+                  .byNameOrNull(testServiceConnection.getServiceName(), Include.NON_DELETED);
       if (originalService != null && originalService.getConnection() != null) {
         testServiceConnection.setConnection(originalService.getConnection());
         originalWorkflow.setRequest(testServiceConnection);

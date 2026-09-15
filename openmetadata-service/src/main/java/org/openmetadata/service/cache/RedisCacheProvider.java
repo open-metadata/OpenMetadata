@@ -336,6 +336,72 @@ public class RedisCacheProvider implements CacheProvider {
   }
 
   @Override
+  public boolean replaceIfValue(String key, String expectedValue, String value, Duration ttl) {
+    if (!available) {
+      return false;
+    }
+    CacheMetrics metrics = metrics();
+    Timer.Sample sample = startWriteTimer(metrics);
+    try {
+      Long replaced =
+          syncCommands.eval(
+              """
+              if redis.call('get', KEYS[1]) == ARGV[1] then
+                redis.call('set', KEYS[1], ARGV[2], 'EX', ARGV[3])
+                return 1
+              end
+              return 0
+              """,
+              ScriptOutputType.INTEGER,
+              new String[] {key},
+              expectedValue,
+              value,
+              Long.toString(ttl.getSeconds()));
+      boolean changed = Long.valueOf(1).equals(replaced);
+      if (metrics != null && changed) {
+        metrics.recordWrite();
+      }
+      recordSuccess();
+      return changed;
+    } catch (RuntimeException exception) {
+      if (metrics != null) {
+        metrics.recordError();
+      }
+      recordFailure(exception);
+      LOG.debug("Conditional cache publication failed for key={}", key, exception);
+      return false;
+    } finally {
+      stopWriteTimer(metrics, sample);
+    }
+  }
+
+  @Override
+  public boolean expire(String key, Duration ttl) {
+    if (!available) {
+      return false;
+    }
+    CacheMetrics metrics = metrics();
+    Timer.Sample sample = startWriteTimer(metrics);
+    try {
+      boolean refreshed = Boolean.TRUE.equals(syncCommands.expire(key, ttl.getSeconds()));
+      if (metrics != null && refreshed) {
+        metrics.recordWrite();
+      }
+      recordSuccess();
+      return refreshed;
+    } catch (RuntimeException exception) {
+      if (metrics != null) {
+        metrics.recordError();
+      }
+      recordFailure(exception);
+      LOG.debug("Cache expiry refresh failed for key={}", key, exception);
+      return false;
+    } finally {
+      stopWriteTimer(metrics, sample);
+    }
+  }
+
+  @Override
   public void del(String... keys) {
     if (!available || keys.length == 0) return;
 

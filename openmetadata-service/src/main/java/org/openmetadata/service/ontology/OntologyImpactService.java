@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityRelationshipReader;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner;
 import org.openmetadata.service.security.jwt.InternalActionTokenSigner.Claims;
@@ -92,25 +93,33 @@ public final class OntologyImpactService {
     final DeletionPlan plan = deletionPlan(request, snapshot);
     final int reassignedChildren = reassignChildren(snapshot, plan.target(), principal);
     final DeleteResponse<GlossaryTerm> response =
-        repository.delete(principal, termId, plan.cascade(), plan.hardDelete());
+        repository.deletes().byId(principal, termId, plan.cascade(), plan.hardDelete());
     return result(response.entity(), reassignedChildren, plan);
   }
 
   private ImpactSnapshot loadSnapshot(final UUID termId) {
     final GlossaryTerm term =
-        repository.get(
-            null,
-            termId,
-            repository.getFields("relatedTerms,conceptMappings"),
-            Include.NON_DELETED,
-            false);
+        repository
+            .reads()
+            .byId(
+                termId,
+                repository.fieldPolicy().parse("relatedTerms,conceptMappings"),
+                Include.NON_DELETED,
+                false);
     return new ImpactSnapshot(term, dependencies(term));
   }
 
   private Dependencies dependencies(final GlossaryTerm term) {
     final List<EntityReference> children =
-        repository.findTo(
-            term.getId(), Entity.GLOSSARY_TERM, Relationship.CONTAINS, Entity.GLOSSARY_TERM);
+        repository
+            .relationships()
+            .to(
+                new EntityRelationshipReader.Selection(
+                    term.getId(),
+                    Entity.GLOSSARY_TERM,
+                    Relationship.CONTAINS,
+                    Entity.GLOSSARY_TERM),
+                Include.NON_DELETED);
     final ResultList<EntityReference> assetPage =
         repository.getGlossaryTermAssets(term.getId(), ASSET_PREVIEW_LIMIT, 0);
     final int assetCount = repository.getGlossaryTermAssetCount(term.getFullyQualifiedName());

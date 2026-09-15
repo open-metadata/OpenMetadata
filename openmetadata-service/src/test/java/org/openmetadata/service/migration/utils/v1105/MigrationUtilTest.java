@@ -7,13 +7,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -23,6 +22,8 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityCreationFixture;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -32,6 +33,7 @@ class MigrationUtilTest {
   @Test
   void updateGlossaryTermApprovalWorkflowMigratesLegacyWorkflowDefinition() throws Exception {
     WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    final var creations = EntityCreationFixture.attach(repository);
     WorkflowDefinition workflow = readWorkflowDefinition(legacyWorkflowJson());
 
     when(repository.getByName(
@@ -45,7 +47,11 @@ class MigrationUtilTest {
 
       MigrationUtil.updateGlossaryTermApprovalWorkflow();
 
-      verify(repository).createOrUpdate(isNull(), eq(workflow), eq("admin"));
+      assertEquals(
+          List.of(
+              new EntityCreationFixture.Upsert<>(
+                  null, workflow, new EntityCommandActor("admin", null), false)),
+          creations.upserts());
     }
 
     WorkflowNodeDefinitionInterface migratedStatusNode =
@@ -103,6 +109,7 @@ class MigrationUtilTest {
   @Test
   void updateGlossaryTermApprovalWorkflowSkipsAlreadyMigratedDefinitions() {
     WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    final var creations = EntityCreationFixture.attach(repository);
     WorkflowDefinition workflow = readWorkflowDefinition(migratedWorkflowJson());
 
     when(repository.getByName(
@@ -116,13 +123,14 @@ class MigrationUtilTest {
 
       MigrationUtil.updateGlossaryTermApprovalWorkflow();
 
-      verify(repository, never()).createOrUpdate(isNull(), eq(workflow), eq("admin"));
+      assertTrue(creations.upserts().isEmpty());
     }
   }
 
   @Test
   void updateGlossaryTermApprovalWorkflowHandlesMissingWorkflowDefinitions() {
     WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    final var creations = EntityCreationFixture.attach(repository);
     when(repository.getByName(
             isNull(), eq("GlossaryTermApprovalWorkflow"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
         .thenThrow(new IllegalArgumentException("missing"));
@@ -134,8 +142,7 @@ class MigrationUtilTest {
 
       MigrationUtil.updateGlossaryTermApprovalWorkflow();
 
-      verify(repository, never())
-          .createOrUpdate(isNull(), org.mockito.ArgumentMatchers.any(), eq("admin"));
+      assertTrue(creations.upserts().isEmpty());
     }
   }
 
@@ -174,6 +181,7 @@ class MigrationUtilTest {
   void updateGlossaryTermApprovalWorkflowReplacesApprovalNodeWhenThresholdsAreAdded()
       throws Exception {
     WorkflowDefinitionRepository repository = mock(WorkflowDefinitionRepository.class);
+    final var creations = EntityCreationFixture.attach(repository);
     WorkflowDefinition workflow = readWorkflowDefinition(legacyWorkflowJson());
     WorkflowNodeDefinitionInterface approvalNode = nodeByName(workflow, "ApproveGlossaryTerm");
     String approvalNodeJson =
@@ -210,7 +218,11 @@ class MigrationUtilTest {
 
       MigrationUtil.updateGlossaryTermApprovalWorkflow();
 
-      verify(repository).createOrUpdate(isNull(), eq(workflow), eq("admin"));
+      assertEquals(
+          List.of(
+              new EntityCreationFixture.Upsert<>(
+                  null, workflow, new EntityCommandActor("admin", null), false)),
+          creations.upserts());
     }
 
     JsonNode migratedApprovalNodeJson =

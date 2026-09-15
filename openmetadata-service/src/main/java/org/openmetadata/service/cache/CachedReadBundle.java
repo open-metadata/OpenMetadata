@@ -2,6 +2,7 @@ package org.openmetadata.service.cache;
 
 import com.google.common.util.concurrent.Striped;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,10 +23,8 @@ import org.openmetadata.schema.utils.JsonUtils;
  * {@code ALL} requests are rare and fall through to the DB path.
  *
  * <p>Single-flight uses an in-process {@link Striped} lock keyed by (type, id). Waiters block
- * briefly on the lock instead of busy-polling Redis, and the holder's populate happens under the
- * lock so re-checkers see it immediately on acquire. Cross-instance coordination is skipped on
- * purpose — Redis {@code SET} is idempotent, so independent instances racing on a cold miss each
- * produce the same bundle and write converges.
+ * briefly on the lock instead of busy-polling Redis. Conditional publication retains broader
+ * coverage and rejects a fill when another writer changed or invalidated its observed snapshot.
  */
 @Slf4j
 public class CachedReadBundle {
@@ -41,7 +40,7 @@ public class CachedReadBundle {
     this.loadLocks = Striped.lazyWeakLock(Math.max(16, config.bundleLoadLockStripes));
   }
 
-  /** Serializable view of the fraction of {@link org.openmetadata.service.jdbi3.ReadBundle} we cache. */
+  /** Serializable view of the fraction of {@link org.openmetadata.service.entity.read.ReadBundle} we cache. */
   public static class Dto {
     public Map<String, List<EntityReference>> relations;
     public List<TagLabel> tags;
@@ -49,6 +48,9 @@ public class CachedReadBundle {
     public AssetCertification certification;
     public boolean certificationLoaded;
   }
+
+  /** The observed bytes are the comparison token; they never become part of the stored JSON. */
+  public record Snapshot(String json, Dto value) {}
 
   /**
    * Batch fetch — pipelined Redis GETs aligned 1:1 with the input ids. Useful for prefetch
@@ -110,6 +112,11 @@ public class CachedReadBundle {
   }
 
   public Dto get(String entityType, UUID entityId) {
+    Snapshot snapshot = getSnapshot(entityType, entityId);
+    return snapshot == null ? null : snapshot.value();
+  }
+
+  public Snapshot getSnapshot(String entityType, UUID entityId) {
     if (EntityCacheBypass.isSkipped()) {
       return null;
     }
@@ -124,7 +131,7 @@ public class CachedReadBundle {
       }
       Dto dto = JsonUtils.readValue(json.get(), Dto.class);
       if (m != null) m.recordLayerHit(layerType);
-      return dto;
+      return new Snapshot(json.get(), dto);
     } catch (Exception e) {
       LOG.warn("Bad bundle cache entry, evicting: {} {}", entityType, entityId, e);
       cache.del(key);
@@ -146,6 +153,67 @@ public class CachedReadBundle {
     } catch (Exception e) {
       LOG.warn("Failed to cache read bundle: {} {}", entityType, entityId, e);
     }
+  }
+
+  public void publish(String entityType, UUID entityId, Snapshot observed, Dto loaded) {
+    if (loaded == null || EntityCacheBypass.isSkipped()) {
+      return;
+    }
+    String key = keys.bundle(entityType, entityId);
+    try {
+      String json = JsonUtils.pojoToJson(merge(observed == null ? null : observed.value(), loaded));
+      Duration ttl = Duration.ofSeconds(config.entityTtlSeconds);
+      boolean published =
+          observed == null
+              ? cache.setIfAbsent(key, json, ttl)
+              : cache.replaceIfValue(key, observed.json(), json, ttl);
+      if (published) {
+        recordWrite(entityType);
+      }
+    } catch (RuntimeException exception) {
+      LOG.warn("Failed to publish read bundle: {} {}", entityType, entityId, exception);
+    }
+  }
+
+  public void refresh(String entityType, UUID entityId) {
+    if (EntityCacheBypass.isSkipped()) {
+      return;
+    }
+    try {
+      if (cache.expire(
+          keys.bundle(entityType, entityId), Duration.ofSeconds(config.entityTtlSeconds))) {
+        recordWrite(entityType);
+      }
+    } catch (RuntimeException exception) {
+      LOG.debug("Failed to refresh read bundle expiry: {} {}", entityType, entityId, exception);
+    }
+  }
+
+  private void recordWrite(String entityType) {
+    CacheMetrics metrics = CacheMetrics.getInstance();
+    if (metrics != null) {
+      metrics.recordLayerWrite(bundleType(entityType));
+    }
+  }
+
+  private Dto merge(Dto observed, Dto loaded) {
+    if (observed == null) {
+      return loaded;
+    }
+    Dto merged = new Dto();
+    merged.relations = new HashMap<>();
+    if (observed.relations != null) {
+      merged.relations.putAll(observed.relations);
+    }
+    if (loaded.relations != null) {
+      merged.relations.putAll(loaded.relations);
+    }
+    merged.tagsLoaded = observed.tagsLoaded || loaded.tagsLoaded;
+    merged.tags = loaded.tagsLoaded ? loaded.tags : observed.tags;
+    merged.certificationLoaded = observed.certificationLoaded || loaded.certificationLoaded;
+    merged.certification =
+        loaded.certificationLoaded ? loaded.certification : observed.certification;
+    return merged;
   }
 
   /**

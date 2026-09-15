@@ -22,8 +22,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.DefaultRecreateHandler;
@@ -34,22 +34,33 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DistributedIndexingStrategy {
+
   private static final long MONITOR_POLL_INTERVAL_MS = 2000;
 
   private final CollectionDAO collectionDAO;
+
   private final SearchRepository searchRepository;
+
   private final EventPublisherJob jobData;
+
   private final UUID appId;
+
   private final Long appStartTime;
+
   private final String createdBy;
+
   private final DistributedReindexStatsMapper statsMapper;
 
   private final CompositeProgressListener listeners = new CompositeProgressListener();
+
   private final AtomicBoolean stopped = new AtomicBoolean(false);
+
   private final AtomicReference<Stats> currentStats = new AtomicReference<>();
 
   private volatile DistributedSearchIndexExecutor distributedExecutor;
+
   private volatile BulkSink searchIndexSink;
+
   private volatile ReindexingConfiguration config;
 
   public DistributedIndexingStrategy(
@@ -93,32 +104,24 @@ public class DistributedIndexingStrategy {
 
   private ExecutionResult doExecute(
       ReindexingConfiguration config, ReindexingJobContext context, long startTime) {
-
     this.config = config;
     Set<String> entityTypes = SearchIndexEntityTypes.normalizeEntityTypes(config.entities());
     LOG.info("Starting distributed reindexing for entities: {}", entityTypes);
-
     Stats stats = initializeTotalRecords(entityTypes);
     currentStats.set(stats);
-
     int partitionSize = jobData.getPartitionSize() != null ? jobData.getPartitionSize() : 10000;
     distributedExecutor = new DistributedSearchIndexExecutor(collectionDAO, partitionSize);
     distributedExecutor.performStartupRecovery();
-
     distributedExecutor.addListener(listeners);
-
     SearchIndexJob distributedJob =
         distributedExecutor.createJob(entityTypes, jobData, createdBy, config);
-
     LOG.info(
         "Created distributed job {} with {} total records",
         distributedJob.getId(),
         distributedJob.getTotalRecords());
-
     searchIndexSink =
         searchRepository.createBulkSink(
             config.batchSize(), config.maxConcurrentRequests(), config.payloadSize());
-
     RecreateIndexHandler stagedIndexHandler = searchRepository.createReindexHandler();
     if (stagedIndexHandler instanceof DefaultRecreateHandler defaultHandler) {
       defaultHandler.withJobData(jobData);
@@ -129,47 +132,36 @@ public class DistributedIndexingStrategy {
           "Staged index preparation did not produce any target indexes");
     }
     distributedExecutor.updateStagedIndexMapping(stagedIndexContext.getStagedIndexMapping());
-
     distributedExecutor.setAppContext(appId, appStartTime);
     distributedExecutor.execute(searchIndexSink, stagedIndexContext, config);
-
     monitorDistributedJob(distributedJob.getId());
-
     flushAndAwaitSink();
-
     SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
     Map<String, Object> metadata = new HashMap<>();
-
     if (finalJob != null) {
       StepStats sinkStats = searchIndexSink != null ? searchIndexSink.getStats() : null;
       updateStatsFromDistributedJob(stats, finalJob, sinkStats);
-
       if (searchIndexSink != null) {
         StepStats sinkVectorStats = searchIndexSink.getVectorStats();
         if (sinkVectorStats != null && sinkVectorStats.getTotalRecords() > 0) {
           stats.setVectorStats(sinkVectorStats);
         }
       }
-
       if (finalJob.getServerStats() != null && !finalJob.getServerStats().isEmpty()) {
         metadata.put("serverStats", finalJob.getServerStats());
         metadata.put("serverCount", finalJob.getServerStats().size());
         metadata.put("distributedJobId", finalJob.getId().toString());
       }
     }
-
     currentStats.set(stats);
-
     boolean allPromoted =
         finalizeAllEntityReindex(
             stagedIndexHandler,
             stagedIndexContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
-
     // Promotion sweep is done; flip the job from PROMOTING to its terminal status. The job stayed
     // non-terminal until now, so the pod was not torn down mid-promotion.
     distributedExecutor.markPromotionComplete(distributedJob.getId(), allPromoted);
-
     ExecutionResult.Status resultStatus = determineStatus(stats);
     if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
       LOG.error(
@@ -177,9 +169,7 @@ public class DistributedIndexingStrategy {
               + "COMPLETED_WITH_ERRORS so the stale indexes are not treated as a clean rebuild");
       resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
     }
-
     StatsReconciler.reconcile(stats);
-
     return ExecutionResult.builder()
         .status(resultStatus)
         .totalRecords(stats.getJobStats().getTotalRecords())
@@ -196,7 +186,6 @@ public class DistributedIndexingStrategy {
     if (searchIndexSink == null) {
       return;
     }
-
     int pendingVectorTasks = searchIndexSink.getPendingVectorTaskCount();
     if (pendingVectorTasks > 0) {
       LOG.info("Waiting for {} pending vector embedding tasks to complete", pendingVectorTasks);
@@ -205,13 +194,11 @@ public class DistributedIndexingStrategy {
         LOG.warn("Vector embedding wait timed out - some tasks may not be reflected in stats");
       }
     }
-
     LOG.info("Flushing sink and waiting for pending bulk requests");
     boolean flushComplete = searchIndexSink.flushAndAwait(60);
     if (!flushComplete) {
       LOG.warn("Sink flush timed out - some requests may not be reflected in stats");
     }
-
     try {
       searchIndexSink.close();
     } catch (Exception e) {
@@ -226,7 +213,6 @@ public class DistributedIndexingStrategy {
             Thread.ofPlatform()
                 .name("reindex-distributed-monitor-" + jobId.toString().substring(0, 8))
                 .factory());
-
     try {
       monitor.scheduleAtFixedRate(
           () -> {
@@ -237,13 +223,11 @@ public class DistributedIndexingStrategy {
                 completionLatch.countDown();
                 return;
               }
-
               SearchIndexJob job = distributedExecutor.getJobWithFreshStats();
               if (job == null) {
                 completionLatch.countDown();
                 return;
               }
-
               // PROMOTING counts as processing-complete: stop monitoring and let the strategy run
               // the
               // promotion sweep, then flip the job terminal via markPromotionComplete().
@@ -252,7 +236,6 @@ public class DistributedIndexingStrategy {
                 completionLatch.countDown();
                 return;
               }
-
               updateStatsFromDistributedJob(currentStats.get(), job, null);
             } catch (Exception e) {
               LOG.error("Error in distributed job monitor task for job {}", jobId, e);
@@ -261,7 +244,6 @@ public class DistributedIndexingStrategy {
           0,
           MONITOR_POLL_INTERVAL_MS,
           TimeUnit.MILLISECONDS);
-
       completionLatch.await();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -319,7 +301,6 @@ public class DistributedIndexingStrategy {
     if (indexPromotionHandler == null || stagedIndexContext == null) {
       return finalSuccess;
     }
-
     double minRatio =
         config != null ? config.minSuccessRatio() : RatioPromotionPolicy.DEFAULT_MIN_SUCCESS_RATIO;
     return new DistributedReindexFinalizer(
@@ -360,7 +341,6 @@ public class DistributedIndexingStrategy {
         || stats.getEntityStats().getAdditionalProperties() == null) {
       return;
     }
-
     stats
         .getEntityStats()
         .getAdditionalProperties()
@@ -398,7 +378,6 @@ public class DistributedIndexingStrategy {
   public void stop() {
     if (stopped.compareAndSet(false, true)) {
       LOG.info("Stopping distributed indexing strategy");
-
       if (distributedExecutor != null) {
         try {
           distributedExecutor.stop();
@@ -424,20 +403,17 @@ public class DistributedIndexingStrategy {
     stats.setProcessStats(new StepStats());
     stats.setSinkStats(new StepStats());
     stats.setVectorStats(new StepStats());
-
     List<String> ordered = EntityPriority.sortByPriority(entities);
     int total = 0;
     for (String entityType : ordered) {
       int entityTotal = getEntityTotal(entityType);
       total += entityTotal;
-
       StepStats entityStats = new StepStats();
       entityStats.setTotalRecords(entityTotal);
       entityStats.setSuccessRecords(0);
       entityStats.setFailedRecords(0);
       stats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
     }
-
     if (entities.contains(Entity.TABLE) && !entities.contains(Entity.TABLE_COLUMN)) {
       StepStats columnEntityStats = new StepStats();
       columnEntityStats.setTotalRecords(0);
@@ -446,50 +422,41 @@ public class DistributedIndexingStrategy {
       stats.getEntityStats().getAdditionalProperties().put(Entity.TABLE_COLUMN, columnEntityStats);
       LOG.info("Added TABLE_COLUMN stats slot for column indexing tracking");
     }
-
     stats.getJobStats().setTotalRecords(total);
     stats.getJobStats().setSuccessRecords(0);
     stats.getJobStats().setFailedRecords(0);
-
     stats.getReaderStats().setTotalRecords(total);
     stats.getReaderStats().setSuccessRecords(0);
     stats.getReaderStats().setFailedRecords(0);
-
     stats.getProcessStats().setTotalRecords(0);
     stats.getProcessStats().setSuccessRecords(0);
     stats.getProcessStats().setFailedRecords(0);
-
     stats.getSinkStats().setTotalRecords(0);
     stats.getSinkStats().setSuccessRecords(0);
     stats.getSinkStats().setFailedRecords(0);
-
     stats.getVectorStats().setTotalRecords(0);
     stats.getVectorStats().setSuccessRecords(0);
     stats.getVectorStats().setFailedRecords(0);
-
     return stats;
   }
 
   private int getEntityTotal(String entityType) {
     try {
       String correctedType = SearchIndexEntityTypes.normalizeEntityType(entityType);
-
       if (!SearchIndexEntityTypes.isTimeSeriesEntity(correctedType)) {
-        EntityRepository<?> repository = Entity.getEntityRepository(correctedType);
+        EntityPolicy<?> repository = Entity.getEntityRepository(correctedType);
         return repository.getDao().listCount(repository.getReindexFilter());
       } else {
         // Include.ALL to match PartitionCalculator.getTimeSeriesEntityCount — the two counts
         // must use identical filters or the job total and the partition plan drift apart.
         ListFilter listFilter = new ListFilter(Include.ALL);
         EntityTimeSeriesRepository<?> repository;
-
         if (SearchIndexEntityTypes.isDataInsightEntity(correctedType)) {
           listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(correctedType));
           repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
         } else {
           repository = Entity.getEntityTimeSeriesRepository(correctedType);
         }
-
         if (config != null) {
           long startTs = config.getTimeSeriesStartTs(correctedType);
           if (startTs > 0) {

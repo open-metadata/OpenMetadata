@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -48,6 +47,8 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityFieldPolicyFixture;
+import org.openmetadata.service.entity.read.EntityReadFixture;
 import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.formatter.util.ActivityMessageFormatter;
 import org.openmetadata.service.formatter.util.FormattedMessage;
@@ -276,9 +277,17 @@ class MessageDecoratorTest {
                 new TestCaseResult().withResult("Row count failed").withSampleData("sample rows"))
             .withTestCaseStatus(TestCaseStatus.Failed);
 
-    when(repository.getFields("*")).thenReturn(null);
-    when(repository.getByName(isNull(), eq(fqn), any(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(testCase);
+    when(repository.fieldPolicy()).thenReturn(EntityFieldPolicyFixture.forEntity(TestCase.class));
+    when(repository.reads())
+        .thenReturn(
+            EntityReadFixture.byName(
+                (readName, readQuery) -> {
+                  assertEquals(null, readQuery.uri());
+                  assertEquals(fqn, readName);
+                  assertEquals(Include.NON_DELETED, readQuery.includes().getDefaultInclude());
+                  assertEquals(false, readQuery.fromCache());
+                  return testCase;
+                }));
 
     ChangeEvent event =
         new ChangeEvent()

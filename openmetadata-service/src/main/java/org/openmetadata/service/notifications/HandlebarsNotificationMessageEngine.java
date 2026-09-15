@@ -169,7 +169,7 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
         String.format(
             "system-notification-%s-%s", event.getEntityType().toLowerCase(), eventTypeKebab);
     NotificationTemplate entitySpecificTemplate =
-        templateRepository.findByNameOrNull(entitySpecificTemplateName, Include.ALL);
+        templateRepository.lookup().byNameOrNull(entitySpecificTemplateName, Include.ALL);
     if (entitySpecificTemplate != null) {
       return entitySpecificTemplate;
     }
@@ -177,14 +177,14 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     // Try generic event template: system-notification-{eventType}
     String genericTemplateName = String.format("system-notification-%s", eventTypeKebab);
     NotificationTemplate genericTemplate =
-        templateRepository.findByNameOrNull(genericTemplateName, Include.ALL);
+        templateRepository.lookup().byNameOrNull(genericTemplateName, Include.ALL);
     if (genericTemplate != null) {
       return genericTemplate;
     }
 
     // Guaranteed fallback to default template
     NotificationTemplate defaultTemplate =
-        templateRepository.findByNameOrNull("system-notification-entity-default", Include.ALL);
+        templateRepository.lookup().byNameOrNull("system-notification-entity-default", Include.ALL);
 
     if (defaultTemplate == null) {
       throw new IllegalStateException(

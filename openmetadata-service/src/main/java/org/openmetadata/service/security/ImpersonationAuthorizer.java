@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -25,6 +25,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  */
 @Slf4j
 public final class ImpersonationAuthorizer {
+
   private static final String BOT_FIELDS = "id,name,isBot,allowImpersonation";
 
   private ImpersonationAuthorizer() {}
@@ -52,7 +53,8 @@ public final class ImpersonationAuthorizer {
     User bot;
     try {
       bot = Entity.getEntityByName(Entity.USER, botName, BOT_FIELDS, ALL);
-    } catch (Exception e) { // deliberately broad: any failure to resolve the bot denies the swap
+    } catch (Exception e) {
+      // deliberately broad: any failure to resolve the bot denies the swap
       LOG.error("Failed to get bot user: {}", botName, e);
       throw new AuthorizationException("Bot user not found: " + botName);
     }
@@ -87,8 +89,8 @@ public final class ImpersonationAuthorizer {
 
   @SuppressWarnings("unchecked")
   private static ResourceContextInterface targetUserResourceContext(User targetUser) {
-    EntityRepository<User> userRepository =
-        (EntityRepository<User>) Entity.getEntityRepository(Entity.USER);
+    EntityPolicy<User> userRepository =
+        (EntityPolicy<User>) Entity.getEntityRepository(Entity.USER);
     return new ResourceContext<>(Entity.USER, targetUser, userRepository);
   }
 }

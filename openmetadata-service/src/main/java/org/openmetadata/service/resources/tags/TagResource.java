@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources.tags;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -65,8 +64,8 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.entity.policy.EntityPolicySupport;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.jdbi3.TagRepository;
@@ -93,13 +92,18 @@ import org.openmetadata.service.util.EntityUtil;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
-    name = "tags",
-    order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
+    name = "tags", // initialize after Classification, and before Glossary and GlossaryTerm
+    order = 5)
 public class TagResource extends EntityResource<Tag, TagRepository> {
+
   private final ClassificationMapper classificationMapper = new ClassificationMapper();
+
   private final TagMapper mapper = new TagMapper();
+
   private final RecognizerFeedbackRepository feedbackRepository;
+
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
+
   static final String FIELDS =
       "owners,reviewers,domains,children,usageCount,recognizers,autoClassificationEnabled,autoClassificationPriority";
 
@@ -132,29 +136,26 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     ClassificationRepository classificationRepository =
         (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
     List<LoadTags> loadTagsList =
-        EntityRepository.getEntitiesFromSeedData(
+        EntityPolicySupport.getEntitiesFromSeedData(
             CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
       Classification classification =
           classificationMapper.createToEntity(loadTags.getCreateClassification(), ADMIN_USER_NAME);
       classificationRepository.initializeEntity(classification);
-
       List<Tag> tagsToCreate = new ArrayList<>();
       for (CreateTag createTag : loadTags.getCreateTags()) {
         createTag.withClassification(classification.getName());
         createTag.withProvider(classification.getProvider());
         Tag tag = mapper.createToEntity(createTag, ADMIN_USER_NAME);
-        repository.setFullyQualifiedName(tag); // FQN required for ordering tags based on hierarchy
+        // FQN required for ordering tags based on hierarchy
+        repository.setFullyQualifiedName(tag);
         tagsToCreate.add(tag);
       }
-
       // Sort tags based on tag hierarchy
       EntityUtil.sortByFQN(tagsToCreate);
-
       for (Tag tag : tagsToCreate) {
         repository.initializeEntity(tag);
       }
-
       // initializeEntity() is create-only, so an existing Tag that drifted from the seed - or one
       // predating a newly seeded recognizer - is reconciled separately
       repository.reconcileSeededTags(tagsToCreate);
@@ -728,7 +729,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @PathParam("fqn")
           String fqn,
       @Valid RecognizerFeedback feedback) {
-    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("recognizers"));
+    Tag tag = repository.getByName(uriInfo, fqn, repository.fieldPolicy().parse("recognizers"));
     feedback.setTagFQN(tag.getFullyQualifiedName());
     String userName = securityContext.getUserPrincipal().getName();
     feedback.setCreatedBy(Entity.getEntityReferenceByName(Entity.USER, userName, null));
@@ -755,7 +756,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "ID of the feedback", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-
     return feedbackRepository.get(id);
   }
 
@@ -774,10 +774,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "Fully qualified name of the tag", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-
     // Verify the tag exists
-    Tag tag = repository.getByName(uriInfo, fqn, repository.getFields("id"));
-
+    Tag tag = repository.getByName(uriInfo, fqn, repository.fieldPolicy().parse("id"));
     // Get feedback for this tag
     return feedbackRepository.getFeedbackByTagFQN(tag.getFullyQualifiedName());
   }
@@ -795,7 +793,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       })
   public List<RecognizerFeedback> getPendingFeedback(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-
     return feedbackRepository.getPendingFeedback();
   }
 
@@ -855,14 +852,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-
     ResourceContextInterface resourceContext = getResourceContextById(id);
     OperationContext operationContext =
         new OperationContext(entityType, getViewOperations(getFields("recognizers")));
-
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
     return repository.getRecognizersOfTagById(id, before, after, limitParam);
   }
 
@@ -905,11 +899,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-
     ResourceContextInterface resourceContext = getResourceContextByName(fqn);
     OperationContext operationContext =
         new OperationContext(entityType, getViewOperations(getFields("recognizers")));
-
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.getRecognizersOfTagByFQN(fqn, before, after, limitParam);

@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.data.OntologyStructuralDiff;
 import org.openmetadata.schema.api.data.OntologyStructuralDiffRequest;
 import org.openmetadata.schema.api.data.OntologyStructuralMergeResult;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -112,7 +113,9 @@ public final class OntologyStructureResource {
   }
 
   private Glossary glossary(final UUID id) {
-    return glossaryRepository.get(null, id, glossaryRepository.getFields(""));
+    return glossaryRepository
+        .reads()
+        .byId(id, glossaryRepository.fieldPolicy().parse(""), Include.NON_DELETED, false);
   }
 
   private void authorize(

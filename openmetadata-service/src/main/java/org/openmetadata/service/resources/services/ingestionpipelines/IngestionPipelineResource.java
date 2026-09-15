@@ -90,6 +90,8 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository.ForcedDeleteResult;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -114,6 +116,7 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 
@@ -239,7 +242,10 @@ public class IngestionPipelineResource
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    entity =
+        addHref(
+            uriInfo,
+            repository.creates().create(uriInfo, entity, new EntityCommandActor(null, null)));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -869,7 +875,13 @@ public class IngestionPipelineResource
     authorizePipelineOperation(
         securityContext, id, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
+    IngestionPipeline pipeline =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     // This call updates the state in Airflow as well as the `enabled` field on the
     // IngestionPipeline
     if (pipelineServiceClient == null) {
@@ -1503,7 +1515,9 @@ public class IngestionPipelineResource
   private void unmask(IngestionPipeline ingestionPipeline) {
     repository.setFullyQualifiedName(ingestionPipeline);
     IngestionPipeline originalIngestionPipeline =
-        repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
+        repository
+            .lookup()
+            .byNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
     EntityMaskerFactory.getEntityMasker()
         .unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
   }
@@ -1516,7 +1530,13 @@ public class IngestionPipelineResource
           .withReason("Pipeline Client Disabled");
     }
     Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    IngestionPipeline ingestionPipeline =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     CreateResourceContext<IngestionPipeline> createResourceContext =
         new CreateResourceContext<>(entityType, ingestionPipeline);
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DEPLOY);
@@ -1571,7 +1591,13 @@ public class IngestionPipelineResource
           .withReason("Pipeline Client Disabled");
     }
     Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    IngestionPipeline ingestionPipeline =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo, fields, RelationIncludes.fromInclude(Include.NON_DELETED), false));
     CreateResourceContext<IngestionPipeline> createResourceContext =
         new CreateResourceContext<>(entityType, ingestionPipeline);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);

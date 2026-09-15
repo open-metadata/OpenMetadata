@@ -15,6 +15,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -153,12 +154,15 @@ public class MigrationUtil {
       WorkflowDefinitionRepository repository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
       List<WorkflowDefinition> workflowDefinitions =
-          repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+          repository.collections().all(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
       for (WorkflowDefinition workflowDefinition : listOrEmpty(workflowDefinitions)) {
         scanned++;
         if (dropPoisonedFilterEntries(workflowDefinition)) {
           try {
-            repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+            repository
+                .creates()
+                .upsert(
+                    null, workflowDefinition, new EntityCommandActor(ADMIN_USER_NAME, null), false);
             fixed++;
             LOG.info(
                 "v1133: sanitized poisoned trigger filter on '{}'", workflowDefinition.getName());

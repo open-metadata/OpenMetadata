@@ -32,6 +32,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.data.BuildOntologySubset;
 import org.openmetadata.schema.api.data.OntologySubsetResult;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -83,7 +84,9 @@ public final class OntologySubsetResource {
   }
 
   private Glossary glossary(final UUID id) {
-    return glossaryRepository.get(null, id, glossaryRepository.getFields(""));
+    return glossaryRepository
+        .reads()
+        .byId(id, glossaryRepository.fieldPolicy().parse(""), Include.NON_DELETED, false);
   }
 
   private void authorize(

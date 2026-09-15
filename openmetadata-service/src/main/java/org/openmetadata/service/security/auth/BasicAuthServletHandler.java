@@ -20,6 +20,7 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -305,10 +306,13 @@ public class BasicAuthServletHandler implements AuthServeletHandler {
   private User getSessionUser(UserSession session) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     if (session.getUserId() != null) {
-      return userRepository.get(
-          null,
-          UUID.fromString(session.getUserId()),
-          userRepository.getFieldsWithUserAuth("id,name,email,roles,isAdmin"));
+      return userRepository
+          .reads()
+          .byId(
+              UUID.fromString(session.getUserId()),
+              userRepository.getFieldsWithUserAuth("id,name,email,roles,isAdmin"),
+              Include.NON_DELETED,
+              false);
     }
     if (session.getUsername() != null) {
       return userRepository.getByName(

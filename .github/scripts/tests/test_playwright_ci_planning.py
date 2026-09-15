@@ -65,6 +65,24 @@ def test_full_common_shard_count_is_capped_at_the_common_max():
     assert planner.shard_count(units, "chromium", "full") == cap
 
 
+def test_full_common_lane_fits_1410_worker_minutes_without_relaxing_its_budget():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit("chromium", f"{index}.spec.ts", str(index), weight_ms=70_500)
+        for index in range(1_200)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "chromium", "full")
+
+    assert 28 < len(shards) <= 32
+    assert all(
+        planner.predicted_execution_ms(shard, 3) <= 19 * 60 * 1000 for shard in shards
+    )
+    assert sorted(unit.key for shard in shards for unit in shard) == sorted(
+        unit.key for unit in units
+    )
+
+
 def test_common_lane_carries_its_own_shard_budget():
     # Chromium's budget is a minute UNDER the other lanes' TARGET_MS, derived
     # from the predicted→actual execution tail: actuals run up to 1.23× the
@@ -146,7 +164,7 @@ def test_full_mode_chromium_reports_a_lane_the_ceiling_cannot_hold():
         for index in range(120)
     ]
 
-    with pytest.raises(SystemExit, match=r"needs more than 28 shards"):
+    with pytest.raises(SystemExit, match=r"needs more than 32 shards"):
         planner.assign_lane_within_budget(units, "chromium", "full")
 
 

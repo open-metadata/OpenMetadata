@@ -81,7 +81,8 @@ public class WebAnalyticsUserActivityProcessor
         User userDetails =
             (User)
                 Entity.getEntityRepository(Entity.USER)
-                    .get(null, userId, new EntityUtil.Fields(Set.of("teams")), Include.ALL, false);
+                    .reads()
+                    .byId(userId, new EntityUtil.Fields(Set.of("teams")), Include.ALL, false);
 
         Map<UUID, List<Long>> sessions = new HashMap<>();
         sessions.put(sessionId, List.of(timestamp));

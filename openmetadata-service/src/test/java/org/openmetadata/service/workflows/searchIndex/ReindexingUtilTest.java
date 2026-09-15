@@ -15,7 +15,6 @@ package org.openmetadata.service.workflows.searchIndex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -33,12 +32,12 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.EntityFieldPolicy;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Unit tests for {@link ReindexingUtil#getSearchIndexFields(String)}. The interesting
@@ -51,7 +50,9 @@ import org.openmetadata.service.util.EntityUtil;
 class ReindexingUtilTest {
 
   private SearchRepository searchRepository;
+
   private SearchIndexFactory searchIndexFactory;
+
   private SearchRepository previousSearchRepository;
 
   @BeforeEach
@@ -88,9 +89,7 @@ class ReindexingUtilTest {
     Set<String> required = Set.of("owners", "domains", "reviewers", "extension", "tags");
     Set<String> allowed = Set.of("owners", "domains", "tags", "id", "name");
     when(searchIndexFactory.getReindexFieldsFor(entityType)).thenReturn(required);
-
     List<String> fields = withAllowedFields(entityType, allowed);
-
     assertTrue(fields.contains("owners"));
     assertTrue(fields.contains("domains"));
     assertTrue(fields.contains("tags"));
@@ -106,9 +105,7 @@ class ReindexingUtilTest {
     Set<String> required = Set.of("owners", "domains", "tags");
     Set<String> allowed = Set.of("owners", "domains", "tags", "id", "name", "description");
     when(searchIndexFactory.getReindexFieldsFor(entityType)).thenReturn(required);
-
     List<String> fields = withAllowedFields(entityType, allowed);
-
     assertEquals(new HashSet<>(required), new HashSet<>(fields));
   }
 
@@ -117,7 +114,6 @@ class ReindexingUtilTest {
     String entityType = "unregisteredEntityType";
     Set<String> required = Set.of("owners", "domains", "reviewers");
     when(searchIndexFactory.getReindexFieldsFor(entityType)).thenReturn(required);
-
     List<String> fields;
     try (MockedStatic<Entity> entityMock =
         mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
@@ -126,7 +122,6 @@ class ReindexingUtilTest {
           .thenThrow(EntityNotFoundException.byMessage("not registered: " + entityType));
       fields = ReindexingUtil.getSearchIndexFields(entityType);
     }
-
     // No EntityRepository registered → degrades to the unfiltered required set so reindex
     // still attempts the work; the JSON-schema-driven validation will surface any drift at the
     // PaginatedEntitiesSource boundary, but the helper itself stays defensive.
@@ -149,16 +144,13 @@ class ReindexingUtilTest {
     // output to flow through, not a stubbed one.
     when(searchRepository.getSearchIndexFactory()).thenReturn(new SearchIndexFactory());
     Set<String> declared = Entity.getEntityFields(entityClass);
-
-    EntityRepository<?> repo = mockRepoWithAllowedFields(declared);
-
+    EntityPolicy<?> repo = mockRepoWithAllowedFields(declared);
     List<String> filtered;
     try (MockedStatic<Entity> entityMock =
         mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
       entityMock.when(() -> Entity.getEntityRepository(eq(entityType))).thenReturn(repo);
       filtered = ReindexingUtil.getSearchIndexFields(entityType);
     }
-
     Set<String> leak = new HashSet<>(filtered);
     leak.removeAll(declared);
     assertTrue(
@@ -227,8 +219,11 @@ class ReindexingUtilTest {
         Arguments.of(Entity.QUERY, org.openmetadata.schema.entity.data.Query.class),
         Arguments.of(Entity.METRIC, org.openmetadata.schema.entity.data.Metric.class),
         Arguments.of(Entity.DOMAIN, org.openmetadata.schema.entity.domains.Domain.class),
-        Arguments.of(Entity.DATA_PRODUCT, org.openmetadata.schema.entity.domains.DataProduct.class),
-        // Mid-tree assets that share the DataAsset shape — same risk surface as the entries
+        Arguments.of(
+            Entity.DATA_PRODUCT,
+            org.openmetadata.schema.entity.domains.DataProduct
+                .class), // Mid-tree assets that share the DataAsset shape — same risk surface as
+        // the entries
         // above, included so the parametrized contract spans every category buildIndex covers.
         Arguments.of(
             Entity.API_COLLECTION, org.openmetadata.schema.entity.data.APICollection.class),
@@ -241,8 +236,10 @@ class ReindexingUtilTest {
         Arguments.of(Entity.SPREADSHEET, org.openmetadata.schema.entity.data.Spreadsheet.class),
         Arguments.of(Entity.WORKSHEET, org.openmetadata.schema.entity.data.Worksheet.class),
         Arguments.of(Entity.TEST_CASE, org.openmetadata.schema.tests.TestCase.class),
-        Arguments.of(Entity.TEST_SUITE, org.openmetadata.schema.tests.TestSuite.class),
-        // AI/LLM/MCP types — newer additions that need the same parity guarantee.
+        Arguments.of(
+            Entity.TEST_SUITE,
+            org.openmetadata.schema.tests.TestSuite
+                .class), // AI/LLM/MCP types — newer additions that need the same parity guarantee.
         Arguments.of(Entity.AI_APPLICATION, org.openmetadata.schema.entity.ai.AIApplication.class),
         Arguments.of(
             Entity.AI_GOVERNANCE_POLICY,
@@ -268,7 +265,7 @@ class ReindexingUtilTest {
   }
 
   private List<String> withAllowedFields(String entityType, Set<String> allowed) {
-    EntityRepository<?> repo = mockRepoWithAllowedFields(allowed);
+    EntityPolicy<?> repo = mockRepoWithAllowedFields(allowed);
     try (MockedStatic<Entity> entityMock =
         mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
       entityMock.when(() -> Entity.getEntityRepository(eq(entityType))).thenReturn(repo);
@@ -276,19 +273,9 @@ class ReindexingUtilTest {
     }
   }
 
-  /**
-   * Build a mock EntityRepository whose {@code getOnlySupportedFields(...)} returns a real
-   * {@link EntityUtil.Fields} built against {@code allowed} with extras silently dropped — the
-   * same contract as the production method (see {@code EntityRepository#getOnlySupportedFields}).
-   * {@code ReindexingUtil.getSearchIndexFields} reaches into the repository through {@code
-   * Entity.getOnlySupportedFields(...)}, so this is the method that has to be stubbed.
-   */
-  private static EntityRepository<?> mockRepoWithAllowedFields(Set<String> allowed) {
-    EntityRepository<?> repo = mock(EntityRepository.class);
-    Set<String> allowedCopy = new HashSet<>(allowed);
-    when(repo.getAllowedFieldsCopy()).thenReturn(allowedCopy);
-    when(repo.getOnlySupportedFields(anyString()))
-        .thenAnswer(inv -> new EntityUtil.Fields(allowedCopy, inv.getArgument(0), true));
+  private static EntityPolicy<?> mockRepoWithAllowedFields(Set<String> allowed) {
+    EntityPolicy<?> repo = mock(EntityPolicy.class);
+    when(repo.fieldPolicy()).thenReturn(new EntityFieldPolicy(new HashSet<>(allowed)));
     return repo;
   }
 }

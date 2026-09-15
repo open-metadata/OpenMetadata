@@ -21,6 +21,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
 import org.openmetadata.service.seeding.SeedDataGate;
 
@@ -48,7 +49,8 @@ final class PolicySeedLoader {
     String json = CommonUtil.getResourceAsStream(PolicySeedLoader.class.getClassLoader(), seedFile);
     AIGovernancePolicy policy = JsonUtils.readValue(json, AIGovernancePolicy.class);
 
-    AIGovernancePolicy existing = policyRepository.findByNameOrNull(policy.getName(), Include.ALL);
+    AIGovernancePolicy existing =
+        policyRepository.lookup().byNameOrNull(policy.getName(), Include.ALL);
     if (existing != null) {
       LOG.debug("Policy '{}' already initialized", existing.getName());
       return;
@@ -57,7 +59,7 @@ final class PolicySeedLoader {
     policy.setFullyQualifiedName(policy.getName());
     policy.setUpdatedBy(ADMIN_USER_NAME);
     policy.setUpdatedAt(System.currentTimeMillis());
-    policyRepository.create(null, policy);
+    policyRepository.creates().create(null, policy, new EntityCommandActor(null, null));
     LOG.info("Seeded AI governance policy '{}'", policy.getName());
   }
 }

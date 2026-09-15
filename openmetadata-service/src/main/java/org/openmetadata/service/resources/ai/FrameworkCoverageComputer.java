@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.RemediationStatus;
 import org.openmetadata.schema.type.ScopeAndDeployment;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.read.EntityPageReader;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
 import org.openmetadata.service.jdbi3.LLMModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -288,15 +289,27 @@ public final class FrameworkCoverageComputer {
     if (Entity.AI_APPLICATION.equals(entityType)) {
       AIApplicationRepository repo =
           (AIApplicationRepository) Entity.getEntityRepository(entityType);
-      return repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+      return repo.pages()
+          .after(
+              new EntityPageReader.Projection(null, EntityUtil.Fields.EMPTY_FIELDS, filter),
+              PAGE_SIZE,
+              after);
     }
     if (Entity.LLM_MODEL.equals(entityType)) {
       LLMModelRepository repo = (LLMModelRepository) Entity.getEntityRepository(entityType);
-      return repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+      return repo.pages()
+          .after(
+              new EntityPageReader.Projection(null, EntityUtil.Fields.EMPTY_FIELDS, filter),
+              PAGE_SIZE,
+              after);
     }
     if (Entity.MCP_SERVER.equals(entityType)) {
       McpServerRepository repo = (McpServerRepository) Entity.getEntityRepository(entityType);
-      return repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+      return repo.pages()
+          .after(
+              new EntityPageReader.Projection(null, EntityUtil.Fields.EMPTY_FIELDS, filter),
+              PAGE_SIZE,
+              after);
     }
     return new ResultList<>(List.of(), null, null, 0);
   }

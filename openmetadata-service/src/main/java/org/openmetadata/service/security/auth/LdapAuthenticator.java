@@ -60,10 +60,12 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.RoleRepository;
@@ -164,12 +166,19 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     // Check if the user exists in OM Database
     try {
       User omUser =
-          userRepository.getByEmail(null, email, userRepository.getFields("id,name,email,roles"));
+          userRepository.getByEmail(
+              null, email, userRepository.fieldPolicy().parse("id,name,email,roles"));
       getRoleForLdap(userDn, omUser, Boolean.TRUE);
       finalUser = omUser;
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
-        finalUser = userRepository.create(null, getUserForLdap(userDn, email, userName));
+        finalUser =
+            userRepository
+                .creates()
+                .create(
+                    null,
+                    getUserForLdap(userDn, email, userName),
+                    new EntityCommandActor(null, null));
       } else {
         throw new CustomExceptionMessage(
             INTERNAL_SERVER_ERROR, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_DISABLED_MESSAGE);
@@ -437,7 +446,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               // Check if the role exists in OM Database
               try {
                 Role roleOm =
-                    roleRepository.getByName(null, roleName, roleRepository.getFields("id,name"));
+                    roleRepository.getByName(
+                        null, roleName, roleRepository.fieldPolicy().parse("id,name"));
                 EntityReference entityReference = new EntityReference();
                 BeanUtils.copyProperties(roleOm, entityReference);
                 entityReference.setType(Entity.ROLE);
@@ -574,8 +584,13 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
-        userRepository.get(
-            null, tokenInterface.getUserId(), userRepository.getFieldsWithUserAuth("*"));
+        userRepository
+            .reads()
+            .byId(
+                tokenInterface.getUserId(),
+                userRepository.getFieldsWithUserAuth("*"),
+                Include.NON_DELETED,
+                false);
     if (storedUser.getIsBot() != null && storedUser.getIsBot()) {
       throw new IllegalArgumentException("User are only allowed to login");
     }

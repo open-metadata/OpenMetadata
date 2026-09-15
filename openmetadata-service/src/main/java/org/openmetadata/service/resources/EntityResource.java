@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package org.openmetadata.service.resources;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -80,10 +79,18 @@ import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.csv.BulkImportVersioning;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.entity.bulk.EntityBulkJobs;
+import org.openmetadata.service.entity.bulk.EntityBulkOperations;
+import org.openmetadata.service.entity.bulk.EntityBulkService;
+import org.openmetadata.service.entity.history.EntityHistoryQuery;
+import org.openmetadata.service.entity.policy.EntityPolicy;
+import org.openmetadata.service.entity.read.EntityPageReader;
+import org.openmetadata.service.entity.read.EntityReadService;
+import org.openmetadata.service.entity.write.EntityCommandActor;
+import org.openmetadata.service.entity.write.EntityPatchService;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mapper.EntityMapper;
@@ -121,13 +128,20 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 @LatencyPhase
-public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
+public abstract class EntityResource<T extends EntityInterface, K extends EntityPolicy<T>> {
+
   protected final Class<T> entityClass;
+
   protected final String entityType;
+
   protected final Set<String> allowedFields;
+
   @Getter protected final K repository;
+
   protected final Authorizer authorizer;
+
   protected final Limits limits;
+
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
   protected EntityResource(String entityType, Authorizer authorizer, Limits limits) {
@@ -143,7 +157,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
 
-  /** Method used for initializing a resource, such as creating default policies, roles, etc. */
+  /**
+   * Method used for initializing a resource, such as creating default policies, roles, etc.
+   */
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {}
 
   /**
@@ -155,7 +171,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public final Fields getFields(String fields) {
-    return repository.getFields(fields);
+    return repository.fieldPolicy().parse(fields);
   }
 
   protected T addHref(UriInfo uriInfo, T entity) {
@@ -244,16 +260,22 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       ResourceContextInterface resourceContext) {
     RestUtil.validateCursors(before, after);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
-
     // List
     ResultList<T> resultList;
-    if (before != null) { // Reverse paging
-      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else { // Forward paging or first page
-      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+    if (before != null) {
+      // Reverse paging
+      resultList =
+          repository
+              .pages()
+              .before(new EntityPageReader.Projection(uriInfo, fields, filter), limitParam, before);
+    } else {
+      // Forward paging or first page
+      resultList =
+          repository
+              .pages()
+              .after(new EntityPageReader.Projection(uriInfo, fields, filter), limitParam, after);
     }
     return addHref(uriInfo, resultList);
   }
@@ -269,16 +291,22 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<AuthRequest> authRequests) {
     RestUtil.validateCursors(before, after);
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
-
     // List
     ResultList<T> resultList;
-    if (before != null) { // Reverse paging
-      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else { // Forward paging or first page
-      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
+    if (before != null) {
+      // Reverse paging
+      resultList =
+          repository
+              .pages()
+              .before(new EntityPageReader.Projection(uriInfo, fields, filter), limitParam, before);
+    } else {
+      // Forward paging or first page
+      resultList =
+          repository
+              .pages()
+              .after(new EntityPageReader.Projection(uriInfo, fields, filter), limitParam, after);
     }
     return addHref(uriInfo, resultList);
   }
@@ -295,15 +323,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
-
     if (!nullOrEmpty(query)) {
       filter.addQueryParam("nameFilter", query);
     }
-
     ResultList<T> resultList =
-        repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
+        repository
+            .pages()
+            .offset(new EntityPageReader.Projection(uriInfo, fields, filter), limit, offset);
     return addHref(uriInfo, resultList);
   }
 
@@ -394,7 +421,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         uriInfo,
         authorized != null
             ? authorized
-            : repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+            : repository
+                .reads()
+                .byId(
+                    id,
+                    new EntityReadService.Query(
+                        uriInfo, fields, relationIncludes, isDistributedCacheEnabled())));
   }
 
   /**
@@ -460,7 +492,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getVersion(id, version);
+    return repository.versions().getVersion(id, version);
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
@@ -474,7 +506,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listVersions(id);
+    return repository.versions().listVersions(id);
   }
 
   protected ResultList<T> listEntityHistoryByTimestampInternal(
@@ -484,11 +516,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String before,
       String after,
       int limit) {
-
     ResourceContext resourceContext = getResourceContext();
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    return repository
+        .history()
+        .list(new EntityHistoryQuery.Window(startTs, endTs, after, before, limit));
   }
 
   public T getByNameInternal(
@@ -553,8 +586,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         uriInfo,
         authorized != null
             ? authorized
-            : repository.getByName(
-                uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
+            : repository
+                .reads()
+                .byName(
+                    name,
+                    new EntityReadService.Query(
+                        uriInfo, fields, relationIncludes, isDistributedCacheEnabled())));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -567,8 +604,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     T createdEntity =
         addHref(
             uriInfo,
-            repository.create(
-                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+            repository
+                .creates()
+                .create(
+                    uriInfo,
+                    entity,
+                    new EntityCommandActor(
+                        securityContext.getUserPrincipal().getName(), impersonatedBy)));
     return Response.created(createdEntity.getHref()).entity(createdEntity).build();
   }
 
@@ -587,13 +629,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     T createdEntity =
         addHref(
             uriInfo,
-            repository.create(
-                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+            repository
+                .creates()
+                .create(
+                    uriInfo,
+                    entity,
+                    new EntityCommandActor(
+                        securityContext.getUserPrincipal().getName(), impersonatedBy)));
     return Response.created(createdEntity.getHref()).entity(createdEntity).build();
   }
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
-    repository.prepareInternal(entity, true);
+    repository.preparation().prepare(entity, true);
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
@@ -607,8 +654,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       T createdEntity =
           addHref(
               uriInfo,
-              repository.create(
-                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+              repository
+                  .creates()
+                  .create(
+                      uriInfo,
+                      entity,
+                      new EntityCommandActor(
+                          securityContext.getUserPrincipal().getName(), impersonatedBy)));
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     resourceContext =
@@ -616,7 +668,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response =
-        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
+        repository
+            .creates()
+            .upsert(
+                uriInfo,
+                entity,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                false);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -627,7 +685,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<AuthRequest> authRequests,
       AuthorizationLogic authorizationLogic,
       T entity) {
-    repository.prepareInternal(entity, true);
+    repository.preparation().prepare(entity, true);
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
@@ -641,23 +699,35 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       T createdEntity =
           addHref(
               uriInfo,
-              repository.create(
-                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
+              repository
+                  .creates()
+                  .create(
+                      uriInfo,
+                      entity,
+                      new EntityCommandActor(
+                          securityContext.getUserPrincipal().getName(), impersonatedBy)));
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
     PutResponse<T> response =
-        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
+        repository
+            .creates()
+            .upsert(
+                uriInfo,
+                entity,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                false);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
 
-  /** Deprecated: use method with changeContext
+  /**
+   * Deprecated: use method with changeContext
    * Example:
    * ```
    * patchInternal(uriInfo, securityContext, id, patch, changeContext);
    * ```
-   * */
+   */
   @Deprecated
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
@@ -690,14 +760,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
-        repository.patch(
-            uriInfo,
-            id,
-            securityContext.getUserPrincipal().getName(),
-            patch,
-            changeSource,
-            ifMatchHeader,
-            impersonatedBy);
+        repository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Id(id),
+                patch,
+                new EntityCommandActor(
+                    securityContext.getUserPrincipal().getName(), impersonatedBy),
+                uriInfo,
+                new EntityPatchService.Options(changeSource, ifMatchHeader));
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -711,7 +782,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
     PatchResponse<T> response =
-        repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
+        repository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Id(id),
+                patch,
+                new EntityCommandActor(securityContext.getUserPrincipal().getName(), null),
+                uriInfo,
+                new EntityPatchService.Options(null, null));
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -747,14 +825,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
-        repository.patch(
-            uriInfo,
-            fqn,
-            securityContext.getUserPrincipal().getName(),
-            patch,
-            changeSource,
-            ifMatchHeader,
-            impersonatedBy);
+        repository
+            .patches()
+            .patch(
+                new EntityPatchService.Target.Name(fqn),
+                patch,
+                new EntityCommandActor(
+                    securityContext.getUserPrincipal().getName(), impersonatedBy),
+                uriInfo,
+                new EntityPatchService.Options(changeSource, ifMatchHeader));
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -771,7 +850,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
     DeleteResponse<T> response =
-        repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
+        repository
+            .deletes()
+            .byId(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     if (hardDelete) {
       limits.invalidateCache(entityType);
     }
@@ -788,15 +869,22 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     String jobId = UUID.randomUUID().toString();
     T entity;
     Response response;
-
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.DELETE));
-    entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
+    entity =
+        repository
+            .reads()
+            .byId(
+                id,
+                new EntityReadService.Query(
+                    uriInfo,
+                    repository.fieldPolicy().parse("name"),
+                    RelationIncludes.fromInclude(Include.ALL),
+                    false));
     String userName = securityContext.getUserPrincipal().getName();
-
     AsyncService.getInstance()
         .executeDatabaseTask(
             DatabaseOperation.ENTITY_DELETE_RESTORE,
@@ -805,7 +893,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 () -> {
                   try {
                     DeleteResponse<T> deleteResponse =
-                        repository.delete(userName, id, recursive, hardDelete);
+                        repository.deletes().byId(userName, id, recursive, hardDelete);
                     if (hardDelete) {
                       limits.invalidateCache(entityType);
                     }
@@ -836,7 +924,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                         e.getMessage() == null ? e.toString() : e.getMessage());
                   }
                 }));
-
     response =
         Response.accepted()
             .entity(
@@ -847,7 +934,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                     hardDelete,
                     recursive))
             .build();
-
     return response;
   }
 
@@ -863,8 +949,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         operationContext,
         getResourceContextByName(name, ResourceContextInterface.Operation.DELETE));
     DeleteResponse<T> response =
-        repository.deleteByName(
-            securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
+        repository
+            .deletes()
+            .byName(securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -887,7 +974,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
-        repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
+        repository.restores().restore(securityContext.getUserPrincipal().getName(), id);
     if (response == null) {
       // EntityRepository.restoreEntity now calls find(id, Include.ALL) up front, so a truly
       // missing id has already propagated EntityNotFoundException (→ 404) before we got
@@ -924,14 +1011,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // notification.
     T preCheck;
     try {
-      preCheck = repository.find(id, Include.DELETED);
+      preCheck = repository.lookup().byId(id, Include.DELETED);
     } catch (EntityNotFoundException notDeleted) {
       // Probe with Include.ALL to distinguish 404-missing from 400-not-deleted. Narrow
       // catch so unrelated failures (DB connectivity, auth) propagate naturally rather
       // than being mis-mapped to 400 "not in deleted state".
       boolean entityExists;
       try {
-        repository.find(id, Include.ALL);
+        repository.lookup().byId(id, Include.ALL);
         entityExists = true;
       } catch (EntityNotFoundException missing) {
         entityExists = false;
@@ -958,7 +1045,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             RequestLatencyContext.wrapWithContext(
                 () -> {
                   try {
-                    PutResponse<T> response = repository.restoreEntity(userName, id);
+                    PutResponse<T> response = repository.restores().restore(userName, id);
                     if (response == null) {
                       // Pre-check saw the entity in DELETED state; a null response now means a
                       // concurrent restore won the race. Treat as idempotent success — the
@@ -998,7 +1085,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   private void handleAlreadyRestored(String jobId, UUID id, String entityName, UUID notifyUserId) {
     try {
-      T restored = repository.find(id, Include.NON_DELETED);
+      T restored = repository.lookup().byId(id, Include.NON_DELETED);
       LOG.info(
           "[AsyncRestore] {} {} was already restored by another request (jobId={})",
           entityType,
@@ -1044,7 +1131,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     String user = subjectContext.user().getName();
-
     Set<String> editPermissibleResources =
         authorizer.listPermissions(securityContext, user).stream()
             .filter(
@@ -1056,7 +1142,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                                     && Permission.Access.ALLOW.equals(perm.getAccess())))
             .map(ResourcePermission::getResource)
             .collect(Collectors.toSet());
-
     // Validate if all entity types in the request are in the permissible resources
     List<String> unauthorizedEntityTypes =
         assets.stream()
@@ -1064,7 +1149,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             .filter(entityType -> !editPermissibleResources.contains(entityType))
             .distinct()
             .toList();
-
     if (!unauthorizedEntityTypes.isEmpty()
         && !subjectContext.isAdmin()
         && !subjectContext.isBot()) {
@@ -1078,7 +1162,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
     authorizeBulkAssetsPermission(
         securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
-
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1232,17 +1315,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 recursive,
                 versioningEntityType,
                 progressCallback);
-
     // Create version history for bulk import (same logic as async import)
     String effectiveVersioningEntityType =
         nullOrEmpty(versioningEntityType) ? entityType : versioningEntityType;
     if (result.getStatus() != ApiStatus.ABORTED
         && result.getNumberOfRowsProcessed() > 1
         && !dryRun) {
-      EntityRepository<EntityInterface> versioningRepo =
-          (EntityRepository<EntityInterface>)
-              Entity.getEntityRepository(effectiveVersioningEntityType);
-
+      EntityPolicy<EntityInterface> versioningRepo =
+          (EntityPolicy<EntityInterface>) Entity.getEntityRepository(effectiveVersioningEntityType);
       if (versioningRepo.supportsBulkImportVersioning()) {
         processChangeEventForBulkImport(versioningRepo, uriInfo, securityContext, name, result);
       }
@@ -1251,7 +1331,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected void processChangeEventForBulkImport(
-      EntityRepository<EntityInterface> versioningRepo,
+      EntityPolicy<EntityInterface> versioningRepo,
       UriInfo uriInfo,
       SecurityContext securityContext,
       String name,
@@ -1303,6 +1383,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
+
   protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
@@ -1340,14 +1421,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
     repository
-        .submitAsyncBulkOperation(
-            uriInfo,
-            entities,
-            userName,
-            existingByFqn,
-            overrideMetadata,
-            authFailedResponses,
-            totalRequests)
+        .bulk()
+        .submit(
+            new EntityBulkService.Request<>(
+                uriInfo, entities, userName, existingByFqn, overrideMetadata),
+            new EntityBulkJobs.Authorization(authFailedResponses, totalRequests))
+        .result()
         .thenAccept(
             result ->
                 LOG.info(
@@ -1356,7 +1435,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                     entityType,
                     result.getNumberOfRowsPassed(),
                     result.getNumberOfRowsFailed()));
-
     BulkOperationResult result = new BulkOperationResult();
     result.setNumberOfRowsProcessed(totalRequests);
     result.setNumberOfRowsPassed(0);
@@ -1375,7 +1453,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     } else {
       result.setStatus(ApiStatus.SUCCESS);
     }
-
     return Response.accepted().entity(result).build();
   }
 
@@ -1386,8 +1463,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       Map<String, T> existingByFqn,
       boolean overrideMetadata) {
     BulkOperationResult result =
-        repository.bulkCreateOrUpdateEntities(
-            uriInfo, entities, userName, existingByFqn, overrideMetadata);
+        repository
+            .bulk()
+            .upsert(
+                new EntityBulkService.Request<>(
+                    uriInfo, entities, userName, existingByFqn, overrideMetadata));
     return Response.ok(result).build();
   }
 
@@ -1406,14 +1486,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
    * Deletes entities of this type within the request scope that the ingestion connector did not
    * report in the current run. By default the deletion is soft; set {@code hardDelete=true} on the
    * request to hard-delete. Requires {@code DELETE} permission on this entity type. See {@link
-   * EntityRepository#bulkDeleteStaleEntities} for the stale-detection semantics.
+   * EntityBulkOperations#deleteStale} for the stale-detection semantics.
    */
   protected Response deleteStaleEntities(
       SecurityContext securityContext, BulkDeleteStaleRequest request) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     BulkOperationResult result =
-        repository.bulkDeleteStaleEntities(request, securityContext.getUserPrincipal().getName());
+        repository.bulk().deleteStale(request, securityContext.getUserPrincipal().getName());
     return Response.ok(result).build();
   }
 
@@ -1423,11 +1503,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<C> createRequests,
       EntityMapper<T, C> mapper,
       boolean async) {
-
     boolean overrideMetadata = isOverrideMetadata(uriInfo);
     List<T> validEntities = new ArrayList<>();
     List<BulkResponse> failedResponses = new ArrayList<>();
-
     // Phase 1a: Validate and map all requests to entities
     List<T> mappedEntities = new ArrayList<>();
     Map<T, C> entityToCreateRequest = new IdentityHashMap<>();
@@ -1449,33 +1527,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         failedResponses.add(failedResponse);
       }
     }
-
-    // Phase 1b: Preload shared parent entities for all mapped entities (1 batch query per type)
-    repository.preloadParentsForBulk(mappedEntities);
-
-    // Phase 1c: Prepare each entity (uses preloaded parent cache)
-    List<T> preparedEntities = new ArrayList<>();
+    final var preparation = repository.bulkPreparation().prepare(mappedEntities);
+    final List<T> preparedEntities = preparation.prepared();
     Map<String, C> entityToRequest = new HashMap<>();
-    try {
-      for (T entity : mappedEntities) {
-        try {
-          repository.prepareInternal(entity, false);
-          repository.setFullyQualifiedName(entity);
-          preparedEntities.add(entity);
-          entityToRequest.put(entity.getFullyQualifiedName(), entityToCreateRequest.get(entity));
-        } catch (Exception e) {
-          C createRequest = entityToCreateRequest.get(entity);
-          BulkResponse failedResponse = new BulkResponse();
-          failedResponse.setRequest(createRequest);
-          failedResponse.setMessage(e.getMessage());
-          failedResponse.setStatus(400);
-          failedResponses.add(failedResponse);
-        }
-      }
-    } finally {
-      repository.clearParentCache();
+    for (final T entity : preparedEntities) {
+      entityToRequest.put(entity.getFullyQualifiedName(), entityToCreateRequest.get(entity));
     }
-
+    for (final var failure : preparation.failures()) {
+      failedResponses.add(
+          new BulkResponse()
+              .withRequest(entityToCreateRequest.get(failure.entity()))
+              .withMessage(failure.message())
+              .withStatus(400));
+    }
     // Phase 2: Batch fetch existing entities (1 DB query instead of N)
     Map<String, T> existingByFqn = new HashMap<>();
     if (!preparedEntities.isEmpty()) {
@@ -1489,7 +1553,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         repository.enrichEntitiesForAuth(existingEntities);
       }
     }
-
     // On-demand policy fields are batch-loaded once for the whole request rather than per entity:
     // the first policy that reads tags hydrates them for every existing entity in a single query,
     // avoiding an N+1. A field no policy inspects is never loaded. New on-demand fields are added
@@ -1499,12 +1562,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             Map.of(
                 Entity.FIELD_TAGS,
                 () -> repository.batchLoadTags(new ArrayList<>(existingByFqn.values()))));
-
     // Phase 3: Auth check using batch results
     for (T entity : preparedEntities) {
       try {
         boolean entityExists = existingByFqn.containsKey(entity.getFullyQualifiedName());
-
         if (!entityExists) {
           OperationContext operationContext = new OperationContext(entityType, CREATE);
           CreateResourceContext<T> createResourceContext =
@@ -1519,7 +1580,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               new ResourceContext<>(entityType, existingEntity, repository, bulkFieldHydrator);
           authorizer.authorize(securityContext, operationContext, resourceContext);
         }
-
         validEntities.add(entity);
       } catch (AuthorizationException e) {
         BulkResponse failedResponse = new BulkResponse();
@@ -1535,7 +1595,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         failedResponses.add(failedResponse);
       }
     }
-
     if (validEntities.isEmpty()) {
       BulkOperationResult result = new BulkOperationResult();
       result.setStatus(ApiStatus.FAILURE);
@@ -1545,7 +1604,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       result.setFailedRequest(failedResponses);
       return Response.ok(result).build();
     }
-
     String userName = securityContext.getUserPrincipal().getName();
     Response response;
     if (async) {
@@ -1560,9 +1618,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               createRequests.size());
     } else {
       BulkOperationResult result =
-          repository.bulkCreateOrUpdateEntities(
-              uriInfo, validEntities, userName, existingByFqn, overrideMetadata);
-
+          repository
+              .bulk()
+              .upsert(
+                  new EntityBulkService.Request<>(
+                      uriInfo, validEntities, userName, existingByFqn, overrideMetadata));
       if (!failedResponses.isEmpty()) {
         result.setStatus(ApiStatus.PARTIAL_SUCCESS);
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + failedResponses.size());
@@ -1575,7 +1635,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       }
       response = Response.ok(result).build();
     }
-
     return response;
   }
 

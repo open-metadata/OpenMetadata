@@ -97,7 +97,7 @@ public class TypeRegistry {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
           LOG.debug("Loading type {}", type.getName());
           try {
-            EntityUtil.Fields fields = repository.getFields(PROPERTIES_FIELD);
+            EntityUtil.Fields fields = repository.fieldPolicy().parse(PROPERTIES_FIELD);
             try {
               Type storedType = repository.getByName(null, type.getName(), fields);
               type.setId(storedType.getId());
@@ -216,7 +216,7 @@ public class TypeRegistry {
     TypeRepository repository = Entity.getTypeRepository();
     if (repository != null) {
       try {
-        EntityUtil.Fields fields = repository.getFields(PROPERTIES_FIELD);
+        EntityUtil.Fields fields = repository.fieldPolicy().parse(PROPERTIES_FIELD);
         Type type = repository.getByName(null, entityType, fields);
         addType(type);
         refreshed = true;

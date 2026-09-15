@@ -161,7 +161,8 @@ class RecognizerFeedbackRepositoryTest {
     assertNotNull(result.getResolution());
     assertEquals(Resolution.Action.ADDED_TO_EXCEPTION_LIST, result.getResolution().getAction());
 
-    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag updatedTag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
     assertNotNull(updatedTag.getRecognizers());
     assertTrue(updatedTag.getRecognizers().size() > 0);
     Recognizer recognizer = updatedTag.getRecognizers().get(0);
@@ -281,7 +282,8 @@ class RecognizerFeedbackRepositoryTest {
                 .withCreatedBy(createUserReference("admin")));
     repository.applyFeedback(feedback, "reviewer");
 
-    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag updatedTag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
     assertEquals(1, updatedTag.getRecognizers().getFirst().getExceptionList().size());
   }
 
@@ -374,7 +376,8 @@ class RecognizerFeedbackRepositoryTest {
 
     repository.applyFeedback(feedback, "admin");
 
-    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag updatedTag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
     Recognizer recognizer = updatedTag.getRecognizers().get(0);
     RecognizerException exception = recognizer.getExceptionList().get(0);
 
@@ -385,7 +388,8 @@ class RecognizerFeedbackRepositoryTest {
   @Test
   void testApplyFeedback_withRecognizerMetadata_shouldTargetSpecificRecognizer(TestNamespace ns) {
     String tagFqn = createTagWithMultipleRecognizers(ns);
-    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag tag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
 
     UUID recognizer1Id = tag.getRecognizers().get(0).getId();
     UUID recognizer2Id = tag.getRecognizers().get(1).getId();
@@ -420,7 +424,8 @@ class RecognizerFeedbackRepositoryTest {
 
     assertEquals(RecognizerFeedback.Status.APPLIED, result.getStatus());
 
-    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag updatedTag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
     Recognizer targetRecognizer = findRecognizerById(updatedTag, recognizer1Id);
     Recognizer otherRecognizer = findRecognizerById(updatedTag, recognizer2Id);
 
@@ -456,7 +461,8 @@ class RecognizerFeedbackRepositoryTest {
 
     assertEquals(RecognizerFeedback.Status.APPLIED, result.getStatus());
 
-    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag updatedTag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
 
     for (Recognizer recognizer : updatedTag.getRecognizers()) {
       assertNotNull(recognizer.getExceptionList());
@@ -492,7 +498,8 @@ class RecognizerFeedbackRepositoryTest {
 
     assertEquals(RecognizerFeedback.Status.APPLIED, result.getStatus());
 
-    Tag updatedTag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag updatedTag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
 
     for (Recognizer recognizer : updatedTag.getRecognizers()) {
       assertNotNull(recognizer.getExceptionList());
@@ -504,7 +511,8 @@ class RecognizerFeedbackRepositoryTest {
   @Test
   void testGetRecognizerIdFromTagLabel_withMetadata_shouldReturnRecognizerId(TestNamespace ns) {
     String tagFqn = createTagWithRecognizer(ns);
-    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag tag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
     UUID recognizerId = tag.getRecognizers().get(0).getId();
 
     Table table = createTableWithTagAndRecognizerMetadata(ns, tagFqn, recognizerId, "recognizer_1");
@@ -537,7 +545,8 @@ class RecognizerFeedbackRepositoryTest {
   @Test
   void testFindRecognizerById_found_shouldReturnRecognizer(TestNamespace ns) {
     String tagFqn = createTagWithRecognizer(ns);
-    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag tag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
     UUID recognizerId = tag.getRecognizers().get(0).getId();
 
     Recognizer found = repository.findRecognizerById(tag, recognizerId);
@@ -549,7 +558,8 @@ class RecognizerFeedbackRepositoryTest {
   @Test
   void testFindRecognizerById_notFound_shouldReturnNull(TestNamespace ns) {
     String tagFqn = createTagWithRecognizer(ns);
-    Tag tag = tagRepository.getByName(null, tagFqn, tagRepository.getFields("recognizers"));
+    Tag tag =
+        tagRepository.getByName(null, tagFqn, tagRepository.fieldPolicy().parse("recognizers"));
     UUID differentId = UUID.randomUUID();
 
     Recognizer found = repository.findRecognizerById(tag, differentId);

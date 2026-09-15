@@ -27,14 +27,15 @@ import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.entity.policy.EntityPolicy;
 import org.openmetadata.service.exception.SystemSettingsException;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.HighlightFieldClassifier;
 import org.openmetadata.service.util.EntityUtil;
 
 class SearchSettingsHandlerTest {
 
   private SearchSettingsHandler searchSettingsHandler;
+
   private SearchSettings defaultSearchSettings;
 
   @BeforeAll
@@ -54,8 +55,7 @@ class SearchSettingsHandlerTest {
     List<String> jsonDataFiles =
         EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
     String json =
-        CommonUtil.getResourceAsStream(
-            EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+        CommonUtil.getResourceAsStream(EntityPolicy.class.getClassLoader(), jsonDataFiles.get(0));
     return JsonUtils.readValue(json, SearchSettings.class);
   }
 
@@ -67,7 +67,6 @@ class SearchSettingsHandlerTest {
     assertFalse(
         metricConfig.getSearchFields().isEmpty(),
         "Metric config must have at least one search field");
-
     Set<String> fieldNames =
         metricConfig.getSearchFields().stream()
             .map(FieldBoost::getField)
@@ -99,12 +98,10 @@ class SearchSettingsHandlerTest {
         defaultSearchSettings.getAssetTypeConfigurations().stream()
             .map(AssetTypeConfiguration::getAssetType)
             .collect(Collectors.toSet());
-
     Set<String> allowedFieldEntityTypes =
         defaultSearchSettings.getAllowedFields().stream()
             .map(AllowedSearchFields::getEntityType)
             .collect(Collectors.toSet());
-
     for (String assetType : assetTypes) {
       assertTrue(
           allowedFieldEntityTypes.contains(assetType),
@@ -123,7 +120,6 @@ class SearchSettingsHandlerTest {
   @Test
   void annotateMarksHighlightabilityFromTheIndexMapping() {
     searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
-
     assertEquals(
         Boolean.TRUE,
         allowedField("table", "description").getHighlight(),
@@ -141,7 +137,6 @@ class SearchSettingsHandlerTest {
     // renders a row per search field and reads the verdict from allowedFields, so a missing entry
     // silently disabled those toggles.
     searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
-
     List<String> withoutVerdict = new ArrayList<>();
     for (AssetTypeConfiguration assetConfig : defaultSearchSettings.getAssetTypeConfigurations()) {
       Set<String> annotated =
@@ -156,7 +151,6 @@ class SearchSettingsHandlerTest {
           .filter(field -> !annotated.contains(field))
           .forEach(field -> withoutVerdict.add(assetConfig.getAssetType() + ":" + field));
     }
-
     assertTrue(
         withoutVerdict.isEmpty(),
         "every configured search field must carry a highlight verdict: " + withoutVerdict);
@@ -171,7 +165,6 @@ class SearchSettingsHandlerTest {
     // The UI decides what to offer from this flag while the API decides what to accept from the
     // classifier. If they ever disagreed, the UI would offer a toggle whose save 400s.
     searchSettingsHandler.annotateHighlightableFields(defaultSearchSettings);
-
     List<String> disagreements = new ArrayList<>();
     for (AllowedSearchFields allowed : defaultSearchSettings.getAllowedFields()) {
       for (Field field : allowed.getFields()) {
@@ -181,7 +174,6 @@ class SearchSettingsHandlerTest {
         }
       }
     }
-
     assertTrue(
         disagreements.isEmpty(),
         "highlight flag disagrees with what validateHighlightFields accepts: " + disagreements);
@@ -230,7 +222,6 @@ class SearchSettingsHandlerTest {
             .distinct()
             .filter(HighlightFieldClassifier::isHighlightUnsafeField)
             .toList();
-
     assertTrue(
         dropped.isEmpty(), "Shipped highlight fields dropped by the query-time guard: " + dropped);
   }
@@ -238,12 +229,10 @@ class SearchSettingsHandlerTest {
   @Test
   void saveIsRejectedForNonIndexedHighlightField() {
     SearchSettings settings = highlightSettings("table", "extension.someCustomProperty");
-
     SystemSettingsException exception =
         assertThrows(
             SystemSettingsException.class,
             () -> searchSettingsHandler.validateHighlightFields(settings));
-
     assertTrue(
         exception.getMessage().contains("extension.someCustomProperty"),
         "Message must name the offending field: " + exception.getMessage());
@@ -255,12 +244,10 @@ class SearchSettingsHandlerTest {
   @Test
   void saveIsRejectedForFlattenedHighlightField() {
     SearchSettings settings = highlightSettings("aiApplication", "aiGovernance.complianceStatus");
-
     SystemSettingsException exception =
         assertThrows(
             SystemSettingsException.class,
             () -> searchSettingsHandler.validateHighlightFields(settings));
-
     assertTrue(
         exception.getMessage().contains("flattened"),
         "Message must explain why: " + exception.getMessage());
@@ -275,9 +262,7 @@ class SearchSettingsHandlerTest {
     SearchSettings stored = highlightSettings("table", "extension.someCustomProperty");
     SearchSettings incoming = highlightSettings("table", "extension.someCustomProperty");
     incoming.getAssetTypeConfigurations().get(0).getHighlightFields().add("description");
-
     searchSettingsHandler.validateHighlightFields(incoming, stored);
-
     assertEquals(
         List.of("description"),
         incoming.getAssetTypeConfigurations().get(0).getHighlightFields(),
@@ -291,12 +276,10 @@ class SearchSettingsHandlerTest {
     SearchSettings stored = highlightSettings("table", "extension.alreadyThere");
     SearchSettings incoming = highlightSettings("table", "extension.alreadyThere");
     incoming.getAssetTypeConfigurations().get(0).getHighlightFields().add("extension.brandNew");
-
     SystemSettingsException exception =
         assertThrows(
             SystemSettingsException.class,
             () -> searchSettingsHandler.validateHighlightFields(incoming, stored));
-
     assertTrue(
         exception.getMessage().contains("extension.brandNew"),
         "the newly added field must be the one rejected: " + exception.getMessage());
@@ -345,7 +328,6 @@ class SearchSettingsHandlerTest {
                         allowed.getFields().stream()
                             .map(Field::getName)
                             .collect(Collectors.toSet())));
-
     List<String> missing = new ArrayList<>();
     for (AssetTypeConfiguration config : defaultSearchSettings.getAssetTypeConfigurations()) {
       Set<String> allowed = allowedByEntity.getOrDefault(config.getAssetType(), Set.of());
@@ -368,13 +350,10 @@ class SearchSettingsHandlerTest {
             List.of(
                 createAssetConfig("table", "name", 10.0),
                 createAssetConfig("metric", "name", 10.0))));
-
     SearchSettings existing = createBaseSettings(8000);
     existing.setAssetTypeConfigurations(
         new ArrayList<>(List.of(createAssetConfig("table", "name", 15.0))));
-
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
-
     assertNotNull(
         findAssetConfig(merged, "metric"),
         "Metric asset type from defaults should be added to merged settings");
@@ -389,13 +368,10 @@ class SearchSettingsHandlerTest {
     SearchSettings defaults = createBaseSettings(5000);
     defaults.setAssetTypeConfigurations(
         new ArrayList<>(List.of(createAssetConfig("metric", "name", 10.0))));
-
     SearchSettings existing = createBaseSettings(8000);
     existing.setAssetTypeConfigurations(
         new ArrayList<>(List.of(createAssetConfig("metric", "name", 20.0))));
-
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
-
     long metricCount =
         merged.getAssetTypeConfigurations().stream()
             .filter(config -> "metric".equals(config.getAssetType()))
@@ -412,13 +388,10 @@ class SearchSettingsHandlerTest {
     SearchSettings defaults = createBaseSettings(5000);
     defaults.setAssetTypeConfigurations(
         new ArrayList<>(List.of(createAssetConfig("Metric", "name", 10.0))));
-
     SearchSettings existing = createBaseSettings(8000);
     existing.setAssetTypeConfigurations(
         new ArrayList<>(List.of(createAssetConfig("metric", "name", 20.0))));
-
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
-
     long count =
         merged.getAssetTypeConfigurations().stream()
             .filter(config -> config.getAssetType().equalsIgnoreCase("metric"))
@@ -431,12 +404,9 @@ class SearchSettingsHandlerTest {
     SearchSettings defaults = createBaseSettings(5000);
     defaults.setAssetTypeConfigurations(
         new ArrayList<>(List.of(createAssetConfig("metric", "name", 10.0))));
-
     SearchSettings existing = createBaseSettings(8000);
     existing.setAssetTypeConfigurations(null);
-
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
-
     assertNotNull(merged.getAssetTypeConfigurations());
     assertNotNull(
         findAssetConfig(merged, "metric"),
@@ -462,30 +432,23 @@ class SearchSettingsHandlerTest {
   void testMergeAlwaysOverwritesAllowedFieldsFromDefaults() {
     SearchSettings defaults = createBaseSettings(5000);
     defaults.setAssetTypeConfigurations(new ArrayList<>());
-
     Field nameField = new Field();
     nameField.setName("name");
     nameField.setDescription("Default description");
-
     AllowedSearchFields metricAllowed = new AllowedSearchFields();
     metricAllowed.setEntityType("metric");
     metricAllowed.setFields(List.of(nameField));
     defaults.setAllowedFields(List.of(metricAllowed));
-
     SearchSettings existing = createBaseSettings(8000);
     existing.setAssetTypeConfigurations(new ArrayList<>());
-
     Field customField = new Field();
     customField.setName("customField");
     customField.setDescription("User added field");
-
     AllowedSearchFields existingAllowed = new AllowedSearchFields();
     existingAllowed.setEntityType("metric");
     existingAllowed.setFields(List.of(customField));
     existing.setAllowedFields(List.of(existingAllowed));
-
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
-
     AllowedSearchFields mergedMetric =
         merged.getAllowedFields().stream()
             .filter(f -> "metric".equals(f.getEntityType()))
@@ -512,12 +475,10 @@ class SearchSettingsHandlerTest {
                         .withFields(List.of("name"))
                         .withWeight(1.0)))
             .withSignals(new RankingSignals().withMaxBoost(0.0)));
-
     SystemSettingsException exception =
         assertThrows(
             SystemSettingsException.class,
             () -> searchSettingsHandler.validateAssetTypeConfiguration(config));
-
     assertTrue(exception.getMessage().contains("maxBoost must be positive"));
   }
 
@@ -531,16 +492,13 @@ class SearchSettingsHandlerTest {
                 createAssetConfig("metric", "name", 10.0),
                 createAssetConfig("dashboard", "name", 10.0),
                 createAssetConfig("topic", "name", 10.0))));
-
     SearchSettings existing = createBaseSettings(8000);
     existing.setAssetTypeConfigurations(
         new ArrayList<>(
             List.of(
                 createAssetConfig("table", "name", 15.0),
                 createAssetConfig("dashboard", "name", 25.0))));
-
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
-
     assertEquals(4, merged.getAssetTypeConfigurations().size());
     assertNotNull(findAssetConfig(merged, "metric"), "metric should be added from defaults");
     assertNotNull(findAssetConfig(merged, "topic"), "topic should be added from defaults");
@@ -554,13 +512,10 @@ class SearchSettingsHandlerTest {
     AssetTypeConfiguration defaultConfig = createAssetConfig("default", "name", 5.0);
     defaults.setDefaultConfiguration(defaultConfig);
     defaults.setAssetTypeConfigurations(new ArrayList<>());
-
     SearchSettings existing = createBaseSettings(8000);
     existing.setDefaultConfiguration(null);
     existing.setAssetTypeConfigurations(new ArrayList<>());
-
     SearchSettings merged = searchSettingsHandler.mergeSearchSettings(defaults, existing);
-
     assertNotNull(merged.getDefaultConfiguration());
     assertEquals("default", merged.getDefaultConfiguration().getAssetType());
   }

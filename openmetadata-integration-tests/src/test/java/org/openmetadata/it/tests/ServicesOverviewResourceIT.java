@@ -516,8 +516,7 @@ public class ServicesOverviewResourceIT {
   void aNonAdminSeesTheServiceTypesTheyArePermitted(TestNamespace ns) throws Exception {
     postgres(ns, "authz-postgres");
 
-    JsonNode asConsumer =
-        overviewAs(SdkClients.dataConsumerClient(), "limit=500&excludeProvider=system");
+    JsonNode asConsumer = overviewAs(dataConsumer(ns), "limit=500&excludeProvider=system");
 
     JsonNode counts = asConsumer.get("counts");
     assertTrue(counts.has(DATABASE_SERVICE), "a data consumer should still see database services");
@@ -528,6 +527,20 @@ public class ServicesOverviewResourceIT {
         sumOf(counts),
         asConsumer.get("total").asInt(),
         "total must stay consistent with the authorized counts");
+  }
+
+  private OpenMetadataClient dataConsumer(TestNamespace ns) {
+    final var admin = SdkClients.adminClient();
+    final String name = ns.shortPrefix() + "_service_consumer";
+    final String email = name + "@test.openmetadata.org";
+    final Role role = admin.roles().getByName("DataConsumer");
+    ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId()))));
+    return SdkClients.createClient(email, email, new String[] {});
   }
 
   /**

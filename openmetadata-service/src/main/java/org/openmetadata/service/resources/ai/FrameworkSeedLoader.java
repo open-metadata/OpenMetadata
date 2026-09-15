@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.entity.write.EntityCommandActor;
 import org.openmetadata.service.jdbi3.AIFrameworkControlRepository;
 import org.openmetadata.service.jdbi3.AIGovernanceFrameworkRepository;
 import org.openmetadata.service.seeding.SeedDataGate;
@@ -71,14 +72,15 @@ final class FrameworkSeedLoader {
     String frameworkFqn = FullyQualifiedName.build(framework.getName());
 
     AIGovernanceFramework existing =
-        frameworkRepository.findByNameOrNull(frameworkFqn, Include.ALL);
+        frameworkRepository.lookup().byNameOrNull(frameworkFqn, Include.ALL);
     AIGovernanceFramework saved;
     if (existing == null) {
       framework.setId(UUID.randomUUID());
       framework.setFullyQualifiedName(frameworkFqn);
       framework.setUpdatedBy(ADMIN_USER_NAME);
       framework.setUpdatedAt(System.currentTimeMillis());
-      saved = frameworkRepository.create(null, framework);
+      saved =
+          frameworkRepository.creates().create(null, framework, new EntityCommandActor(null, null));
       LOG.info("Seeded AI governance framework '{}'", saved.getName());
     } else {
       saved = existing;
@@ -101,7 +103,8 @@ final class FrameworkSeedLoader {
     for (JsonNode controlNode : controlsNode) {
       AIFrameworkControl control = JsonUtils.treeToValue(controlNode, AIFrameworkControl.class);
       String fqn = FullyQualifiedName.add(frameworkRef.getFullyQualifiedName(), control.getName());
-      AIFrameworkControl existingControl = controlRepository.findByNameOrNull(fqn, Include.ALL);
+      AIFrameworkControl existingControl =
+          controlRepository.lookup().byNameOrNull(fqn, Include.ALL);
       if (existingControl != null) {
         continue;
       }
@@ -110,7 +113,7 @@ final class FrameworkSeedLoader {
       control.setId(UUID.randomUUID());
       control.setUpdatedBy(ADMIN_USER_NAME);
       control.setUpdatedAt(System.currentTimeMillis());
-      controlRepository.create(null, control);
+      controlRepository.creates().create(null, control, new EntityCommandActor(null, null));
     }
   }
 

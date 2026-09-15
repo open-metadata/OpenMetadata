@@ -49,7 +49,8 @@ public class RunIngestionPipelineImpl {
       IngestionPipelineRepository repository, UUID ingestionPipelineId) {
     OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
 
-    IngestionPipeline ingestionPipeline = repository.get(null, ingestionPipelineId, EMPTY_FIELDS);
+    IngestionPipeline ingestionPipeline =
+        repository.reads().byId(ingestionPipelineId, EMPTY_FIELDS, Include.NON_DELETED, false);
     // Build the connection from the pipeline so the run authenticates as the bot that owns it,
     // which is the identity the metadata it writes is attributed to.
     ingestionPipeline.setOpenMetadataServerConnection(
