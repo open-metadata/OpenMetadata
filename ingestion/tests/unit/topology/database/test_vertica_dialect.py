@@ -113,9 +113,9 @@ class TestVerticaDialectInitialization:
         [
             ("Vertica Analytic Database v9.2.0-7", (9, 2, 0)),
             ("Vertica Analytic Database v25.4.0-0", (25, 4, 0)),
-            # A patch level of two or more digits must survive intact. Written as
-            # (\d)+ the quantifier sits outside the group and keeps only the last
-            # digit, reporting 12.0.5 for a 12.0.15 server.
+            # A patch level of two or more digits has to survive intact. It
+            # was previously truncated to its final digit, so a 12.0.15 server
+            # reported itself as 12.0.5.
             ("Vertica Analytic Database v12.0.15-0", (12, 0, 15)),
         ],
     )
