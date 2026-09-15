@@ -770,7 +770,7 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
       // User has Create → Add button visible.
       await expect(page.getByTestId('add-custom-property-btn')).not.toBeVisible();
 
-      // User has EditAll + Delete → Edit and Delete buttons visible on the seeded row.
+      // User has ViewAll policy only, buttons are not visible on the seeded row.
       const row = page.locator('tr').filter({ hasText: customPropertyName });
       await expect(row).toBeVisible();
       await expect(row.getByRole('button', { name: 'Edit' })).not.toBeVisible();

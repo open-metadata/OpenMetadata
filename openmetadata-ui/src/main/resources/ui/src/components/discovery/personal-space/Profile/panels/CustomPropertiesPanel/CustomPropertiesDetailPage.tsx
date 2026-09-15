@@ -262,7 +262,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
         </Table.Row>
       );
     },
-    [canEditAll, onEditProperty, t]
+    [canEditAll, canDelete, onEditProperty, t]
   );
 
   const addButton = canCreate ? (
