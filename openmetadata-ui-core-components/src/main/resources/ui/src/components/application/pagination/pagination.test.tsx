@@ -16,14 +16,14 @@ import { describe, expect, it } from 'vitest';
 import { PaginationCardWithControls } from './pagination';
 
 describe('PaginationCardWithControls theme roles', () => {
-  it('uses shared card surface, border, and shadow roles', () => {
+  it('uses shared card surface and border roles with an upward separator shadow', () => {
     const { container } = render(<PaginationCardWithControls />);
     const pagination = container.firstElementChild;
 
-    expect(pagination).toHaveClass(
-      'tw:bg-surface',
-      'tw:border-subtle',
-      'tw:shadow-card'
-    );
+    expect(pagination).toHaveClass('tw:bg-surface', 'tw:border-subtle');
+    // The bar sits at the card bottom; its shadow must cast upward (negative
+    // y) to separate it from the rows above. shadow-card/shadow-xs cast
+    // downward and would be a no-op here, so this keeps the purpose-built value.
+    expect(pagination?.className).toMatch(/tw:shadow-\[0_-1px_4px/);
   });
 });

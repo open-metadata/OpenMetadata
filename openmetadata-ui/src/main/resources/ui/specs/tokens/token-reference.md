@@ -4,7 +4,7 @@
 
 Master map of every **project (`--om-*`) token** — the tokens components reference. Each references the matching upstream `globals.css` token (or holds a raw value) and resolves to the value shown. Full layering: [../README.md](../README.md).
 
-Total project tokens: **806**.
+Total project tokens: **804**.
 
 ## Spacing (62)
 
@@ -671,11 +671,11 @@ Fixed swatches; do NOT adapt to dark mode. Prefer semantic tokens.
 
 </details>
 
-## Legacy colors (230)
+## Legacy colors (228)
 
 Exact migrated one-offs (migration debt). Do not use in new code; re-express with a semantic token.
 
-<details><summary>Show all 230</summary>
+<details><summary>Show all 228</summary>
 
 | Token | Value |
 | --- | --- |
@@ -737,7 +737,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-37-99-235-0-12` | `rgba(37, 99, 235, 0.12)` |
 | `--om-legacy-color-40-167-69-0-059` | `#28a7450f` |
 | `--om-legacy-color-40-167-69-0-302` | `#28a7454d` |
-| `--om-legacy-color-40a9ff` | `#40a9ff` |
 | `--om-legacy-color-41-41-41-0-1` | `rgba(41, 41, 41, 0.1)` |
 | `--om-legacy-color-43a047` | `#43a047` |
 | `--om-legacy-color-46-170-220-0-15` | `rgba(46, 170, 220, 0.15)` |
@@ -843,7 +842,6 @@ Exact migrated one-offs (migration debt). Do not use in new code; re-express wit
 | `--om-legacy-color-e1e4e8` | `#e1e4e8` |
 | `--om-legacy-color-e2dfd4` | `#e2dfd4` |
 | `--om-legacy-color-e2e2e2` | `#e2e2e2` |
-| `--om-legacy-color-e3e8f0` | `#e3e8f0` |
 | `--om-legacy-color-e4e4e4` | `#e4e4e4` |
 | `--om-legacy-color-e5ebff` | `#e5ebff` |
 | `--om-legacy-color-e6f1fe` | `#e6f1fe` |

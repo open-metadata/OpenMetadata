@@ -89,9 +89,9 @@
     0px 4px 4px -2px rgba(10, 13, 18, 0.04);
   --shadow-3xl: 0px 32px 64px -12px rgba(10, 13, 18, 0.14),
     0px 5px 5px -2.5px rgba(10, 13, 18, 0.04);
-  --shadow-card: var(--shadow-xs);
-  --shadow-raised: var(--shadow-lg);
-  --shadow-overlay: var(--shadow-xl);
+  --shadow-card: theme(--shadow-xs);
+  --shadow-raised: theme(--shadow-lg);
+  --shadow-overlay: theme(--shadow-xl);
 
   --shadow-skeumorphic: 0px 0px 0px 1px rgba(10, 13, 18, 0.18) inset,
     0px -2px 0px 0px rgba(10, 13, 18, 0.05) inset;
@@ -1192,18 +1192,18 @@
     /* BORDER COLORS */
     --color-border-primary: theme(--color-gray-700);
     --color-border-secondary: theme(--color-gray-800);
-    --color-border-secondary_alt: --alpha(var(--color-white) / 8%);
-    --color-border-subtle: --alpha(var(--color-white) / 8%);
+    --color-border-secondary_alt: --alpha(theme(--color-white) / 8%);
+    --color-border-subtle: --alpha(theme(--color-white) / 8%);
     --color-border-hover: theme(--color-gray-600);
     --color-border-tertiary: theme(--color-gray-800);
     --color-border-brand: theme(--color-brand-400);
-    --color-border-brand-subtle: --alpha(var(--color-brand-400) / 35%);
+    --color-border-brand-subtle: --alpha(theme(--color-brand-400) / 35%);
     --color-border-brand_alt: theme(--color-gray-700);
     --color-border-error: theme(--color-error-400);
-    --color-border-error-subtle: --alpha(var(--color-error-400) / 35%);
+    --color-border-error-subtle: --alpha(theme(--color-error-400) / 35%);
     --color-border-error_subtle: var(--color-border-error-subtle);
-    --color-border-warning-subtle: --alpha(var(--color-warning-400) / 35%);
-    --color-border-success-subtle: --alpha(var(--color-success-400) / 35%);
+    --color-border-warning-subtle: --alpha(theme(--color-warning-400) / 35%);
+    --color-border-success-subtle: --alpha(theme(--color-success-400) / 35%);
     --color-border-disabled: theme(--color-gray-700);
     --color-border-disabled_subtle: theme(--color-gray-800);
 
@@ -1234,28 +1234,28 @@
     --color-bg-primary: theme(--color-gray-950);
     --color-bg-primary-solid: theme(--color-bg-secondary);
     --color-bg-primary_alt: theme(--color-bg-secondary);
-    --color-bg-primary_hover: --alpha(var(--color-white) / 6%);
+    --color-bg-primary_hover: --alpha(theme(--color-white) / 6%);
     --color-bg-secondary: theme(--color-gray-900);
     --color-bg-secondary-solid: theme(--color-gray-600);
     --color-bg-secondary_subtle: theme(--color-gray-900);
-    --color-bg-secondary_hover: --alpha(var(--color-white) / 6%);
+    --color-bg-secondary_hover: --alpha(theme(--color-white) / 6%);
     --color-bg-tertiary: theme(--color-gray-800);
     --color-bg-quaternary: theme(--color-gray-700);
     /* Translucent feedback roles preserve the owning page, canvas, or surface elevation. */
-    --color-bg-error-primary: --alpha(var(--color-error-500) / 16%);
+    --color-bg-error-primary: --alpha(theme(--color-error-500) / 16%);
     --color-bg-error-secondary: theme(--color-error-600);
     --color-bg-error-solid: theme(--color-error-600);
     --color-bg-error-solid_hover: theme(--color-error-500);
-    --color-bg-warning-primary: --alpha(var(--color-warning-500) / 16%);
+    --color-bg-warning-primary: --alpha(theme(--color-warning-500) / 16%);
     --color-bg-warning-secondary: theme(--color-warning-600);
     --color-bg-warning-solid: theme(--color-warning-600);
-    --color-bg-success-primary: --alpha(var(--color-success-500) / 16%);
+    --color-bg-success-primary: --alpha(theme(--color-success-500) / 16%);
     --color-bg-success-secondary: theme(--color-success-600);
     --color-bg-success-solid: theme(--color-success-600);
-    --color-bg-active: --alpha(var(--color-white) / 10%);
+    --color-bg-active: --alpha(theme(--color-white) / 10%);
     --color-bg-disabled: theme(--color-gray-800);
     --color-bg-disabled_subtle: theme(--color-gray-900);
-    --color-bg-brand-primary: --alpha(var(--color-brand-500) / 16%);
+    --color-bg-brand-primary: --alpha(theme(--color-brand-500) / 16%);
     --color-bg-brand-primary_alt: theme(--color-bg-secondary);
     --color-bg-brand-secondary: theme(--color-brand-600);
     --color-bg-secondary_alt: theme(--color-bg-primary);
