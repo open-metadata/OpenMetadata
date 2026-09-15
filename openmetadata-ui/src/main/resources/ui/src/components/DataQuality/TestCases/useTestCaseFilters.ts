@@ -14,10 +14,11 @@ import { FormProps } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
-import { entries, isEmpty, isUndefined, uniq, values } from 'lodash';
+import { entries, isEmpty, isEqual, isUndefined, uniq, values } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import {
   TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
@@ -129,7 +130,17 @@ export const useTestCaseFilters = ({
     ) => {
       navigate({
         search: QueryString.stringify(
-          { ...params, [key]: value ?? undefined },
+          {
+            // `params` is the whole query string, so it also carries usePaging's
+            // `currentPage`. A changed value yields a different result set, and
+            // keeping the old page would request an offset past its end. An
+            // unchanged one (e.g. adding an empty filter chip) keeps the page.
+            ...params,
+            [key]: value ?? undefined,
+            ...(isEqual(params[key], value)
+              ? {}
+              : { currentPage: INITIAL_PAGING_VALUE }),
+          },
           { arrayFormat: 'brackets' }
         ),
       });
