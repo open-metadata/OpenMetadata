@@ -108,6 +108,11 @@ AUDITED_PARALLEL_SUITES = {
     # (module-scoped entity constructors generate unique names), so each
     # parallel unit brings its own state without cross-worker collision.
     ("Features/BulkImport.spec.ts", "Bulk Import Export"),
+    # Breached the 20-minute ceiling after the timing-baseline refresh that
+    # landed in main — split into per-spec units to stay within budget.
+    ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
+    ("Features/CuratedAssets.spec.ts", "Curated Assets Widget"),
+    ("Pages/CustomProperties.spec.ts", "Add update and delete custom properties for dashboard"),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
     ("Pages/ExplorePageRightPanel.spec.ts", "Right Panel Test Suite"),
     ("Pages/Glossary.spec.ts", "Glossary tests"),

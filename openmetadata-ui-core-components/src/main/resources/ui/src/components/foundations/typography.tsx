@@ -181,7 +181,9 @@ export const Typography = (props: TypographyProps) => {
     return (
       <Tooltip
         title={ellipsisTooltip}
-        triggerClassName="tw:block tw:w-full tw:min-w-0"
+        // cursor-[inherit] overrides the UA `cursor: default` the wrapper gets
+        // for being a button, which would beat a clickable ancestor's pointer.
+        triggerClassName="tw:block tw:w-full tw:min-w-0 tw:cursor-[inherit]"
         onTriggerPress={allowEllipsisTooltipPressToPropagate}>
         {content}
       </Tooltip>
