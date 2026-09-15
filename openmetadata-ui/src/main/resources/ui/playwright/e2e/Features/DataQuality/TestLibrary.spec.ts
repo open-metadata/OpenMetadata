@@ -13,9 +13,9 @@
 import test, { expect, Locator, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
+  chooseSelectOption,
   getApiContext,
   redirectToHomePage,
-  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../../utils/common';
@@ -29,7 +29,7 @@ const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
 
 // Only for the multi-select combobox — its popup is typing-driven, so
-// selectOptionWithRetry's aria-expanded guard does not apply.
+// chooseSelectOption's aria-expanded guard does not apply.
 const selectOptionWithMouse = async (page: Page, option: Locator) => {
   await expect(option).toBeVisible();
 
@@ -52,12 +52,17 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
 const selectEntityType = async (page: Page, entityType: string) => {
   const entityTypeTrigger = page.getByTestId('entity-type').getByRole('button');
 
-  await selectOptionWithRetry(
-    entityTypeTrigger,
-    page.getByRole('option', { name: entityType, exact: true })
-  );
+  await entityTypeTrigger.focus();
+  await expect(entityTypeTrigger).toBeFocused();
+  await entityTypeTrigger.click();
+  const entityTypeOption = page.getByRole('option', {
+    name: entityType,
+    exact: true,
+  });
+  await expect(entityTypeOption).toBeVisible();
+  await entityTypeOption.click();
 
-  await expect(entityTypeTrigger).toContainText(entityType);
+  await expect(entityTypeTrigger).toHaveText(entityType);
 };
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -72,7 +77,7 @@ test.describe(
 
     test('should navigate to Test Library page', async ({ page }) => {
       // Navigate directly to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
@@ -94,7 +99,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify table is displayed
@@ -109,7 +114,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify at least one test definition is displayed
@@ -125,7 +130,7 @@ test.describe(
     }) => {
       await test.step('Create a new test definition', async () => {
         // Navigate to Test Library
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         const testDefinitionFormDoc = page.waitForResponse(
           '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
@@ -340,7 +345,7 @@ test.describe(
 
     test('should validate required fields in create form', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -365,7 +370,7 @@ test.describe(
 
       try {
         await test.step('Open create form', async () => {
-          await page.goto('/test-library');
+          await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
           await page.getByTestId('add-test-definition-button').click();
           await page
             .getByTestId('test-definition-form-body')
@@ -404,7 +409,7 @@ test.describe(
           ).toHaveCount(0);
 
           // Add dbt
-          await selectOptionWithRetry(
+          await chooseSelectOption(
             page.getByTestId('test-platforms'),
             page.getByRole('option', { name: 'dbt', exact: true })
           );
@@ -442,7 +447,7 @@ test.describe(
 
     test('should cancel form and close drawer', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -477,7 +482,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -496,7 +501,7 @@ test.describe(
 
     test('should display test platform badges correctly', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for table to load
       await page.getByTestId('test-definition-table').waitFor({
@@ -586,7 +591,7 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testDefinitions') &&
           response.request().method() === 'GET'
       );
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -619,7 +624,7 @@ test.describe(
       let createdTestDisplayName = EXTERNAL_TEST_DISPLAY_NAME;
 
       await test.step('Create external test definition', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -765,9 +770,14 @@ test.describe(
           exact: true,
         });
 
-        await selectOptionWithRetry(dimensionTrigger, accuracyOption);
-
-        await expect(dimensionTrigger).toContainText('Accuracy');
+        await dimensionTrigger.focus();
+        await expect(dimensionTrigger).toBeFocused();
+        await dimensionTrigger.click();
+        await expect(accuracyOption).toBeVisible();
+        await accuracyOption.click();
+        // The field's hidden native select contains every option's text even
+        // when empty, so only the visible trigger proves selection succeeded.
+        await expect(dimensionTrigger).toHaveText('Accuracy');
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(
@@ -830,7 +840,7 @@ test.describe(
       let createdTestId: string;
 
       await test.step('Create test definition with specific supported services', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -1170,7 +1180,7 @@ test.describe(
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
 
       await test.step('Create a test definition starting with "z"', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('add-test-definition-button').click();
         await expect(
           page.getByTestId('test-definition-form-body')

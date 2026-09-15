@@ -37,6 +37,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   connectEdgeBetweenNodesViaAPI,
+  expectLineageNodeVisible,
   fitToScreen,
   openImpactAnalysisTab,
   rearrangeNodes,
@@ -360,7 +361,7 @@ test.describe('Lineage Filters', () => {
         }
 
         await test.step('Verify filters working for Lineage tab', async () => {
-          await page.reload();
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
           await setLineageDepthAndVerify(page, 2, 2);
           await waitForAllLoadersToDisappear(page);
@@ -472,6 +473,14 @@ test.describe('Lineage Filters', () => {
   });
 
   test('Verify Impact Analysis service filter selection', async ({ page }) => {
+    // One filter round-trip per entity type in allEntities — open the dropdown,
+    // wait out the aggregation, Update, wait for getLineageByEntityCount, then
+    // assert one row shown and the rest hidden. That is well over a dozen
+    // iterations, which does not fit the 60s default: this failed at 1.1m with
+    // the clock stopping mid-assertion rather than on a missing row. Two
+    // siblings in this file already carry the same allowance.
+    test.slow();
+
     await openImpactAnalysisTab(page);
     await page.locator('[aria-label="Filters"]').click();
 
@@ -1037,7 +1046,7 @@ test.describe('Lineage Filters', () => {
       .fill(topicEntity.entity.name);
 
     const topicFqn = get(topicEntity, 'entityResponseData.fullyQualifiedName');
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+    await expectLineageNodeVisible(page, topicFqn);
     await page.getByTestId(`option-${topicFqn}`).click();
 
     await page.locator('.lineage-entity-panel').waitFor();

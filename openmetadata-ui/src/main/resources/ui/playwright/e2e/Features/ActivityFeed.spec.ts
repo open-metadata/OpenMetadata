@@ -21,7 +21,11 @@ import {
   FEED_ITEM_TIMEOUT,
   insertActivityEventForTest,
 } from '../../utils/activityAPI';
-import { REACTION_EMOJIS, reactOnFeedCard } from '../../utils/activityFeed';
+import {
+  clickFeedReaction,
+  REACTION_EMOJIS,
+  reactOnFeedCard,
+} from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
@@ -64,7 +68,9 @@ const waitForConversationMaterialization = async ({
         });
 
         if (!response.ok()) {
-          return false;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const payload = await response.json();
@@ -369,7 +375,9 @@ test.describe('FeedWidget on landing page', () => {
     await expect(viewMoreLink).toHaveAttribute('href', expectedLink);
 
     await viewMoreLink.click();
-    await page.waitForURL(`**${expectedLink}`);
+    await page.waitForURL(`**${expectedLink}`, {
+      waitUntil: 'domcontentloaded',
+    });
   });
 
   test('feed cards render header text and timestamp', async ({ page }) => {
@@ -432,6 +440,7 @@ test.describe('FeedWidget on landing page', () => {
     await reactOnFeedCard(page, seededCard);
 
     await expect(reactionContainer).toBeVisible();
+    await expect(reactionContainer.getByTestId('emoji-button')).toHaveCount(0);
   });
 
   test('activity cards open a reply drawer on the landing widget', async ({
@@ -655,7 +664,7 @@ test.describe('Mention notifications in Notification Box', () => {
     });
 
     await test.step('Admin user checks notification for correct user and timestamp', async () => {
-      await adminPage.reload();
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(adminPage);
       const notificationBell = adminPage.getByTestId('task-notifications');
 
@@ -707,7 +716,9 @@ test.describe('Mention notifications in Notification Box', () => {
         '[data-testid^="notification-link-"]'
       );
 
-      const navigationPromise = adminPage.waitForURL(/activity_feed/);
+      const navigationPromise = adminPage.waitForURL(/activity_feed/, {
+        waitUntil: 'domcontentloaded',
+      });
       await mentionNotificationLink.click();
       await navigationPromise;
 
@@ -747,7 +758,7 @@ test.describe('Mention notifications in Notification Box', () => {
         .filter({ has: user1Page.locator('[data-testid="reply-button"]') })
         .locator('[data-testid="add-reactions"]')
         .click();
-      await user1Page.locator('[title="rocket"]').click();
+      await clickFeedReaction(user1Page, 'rocket');
       await reactionResponse;
 
       const emojiButton = message
@@ -844,7 +855,9 @@ test.describe('Mentions: Chinese character encoding in activity feed', () => {
       );
     });
 
-    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/mentions`);
+    await page.goto(`/databaseSchema/${schemaFqn}/activity_feed/mentions`, {
+      waitUntil: 'domcontentloaded',
+    });
     await feedPromise;
     await waitForAllLoadersToDisappear(page);
 
@@ -1202,7 +1215,7 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     });
 
     // Reload with Tasks active so every request below belongs to this tab.
-    await adminPage.reload();
+    await adminPage.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(adminPage);
 
     // Landing back on ALL would fetch activity legitimately and fail the
@@ -1281,18 +1294,13 @@ test.describe('ActivityFeed: activity + conversation merge (regression #25894)',
     await expect(panel).toBeVisible();
 
     await panel.locator('[data-testid="add-reactions"]').first().click();
-    await adminPage
-      .locator('.ant-popover-feed-reactions .ant-popover-inner-content')
-      .waitFor({ state: 'visible' });
 
     // The picker button's title is the ReactionType value (🎉 == "hooray"); it
     // fires PUT /api/v1/activity/{id}/reaction/hooray.
     const reactionResponse = adminPage.waitForResponse((response) =>
       /\/api\/v1\/activity\/[^/]+\/reaction\//.test(response.url())
     );
-    await adminPage
-      .locator('[data-testid="reaction-button"][title="hooray"]')
-      .click();
+    await clickFeedReaction(adminPage, 'hooray');
     await reactionResponse;
 
     // The right panel must reflect the toggled reaction immediately (the fix:

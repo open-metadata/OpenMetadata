@@ -20,9 +20,10 @@ import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
-import { selectOptionWithRetry, uuid } from '../../utils/common';
+import { chooseSelectOption, uuid } from '../../utils/common';
 import {
   navigateToOntologyStudio,
+  QUERY_RESULT_GRAPH_CONTAINER,
   readGraphEdges,
 } from '../../utils/ontologyStudio';
 
@@ -221,7 +222,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
         page.getByTestId('ontology-visual-query-builder')
       ).toBeVisible();
 
-      await selectOptionWithRetry(
+      await chooseSelectOption(
         page.getByTestId('ontology-builder-relation'),
         page.getByRole('option', { name: 'Related To' })
       );
@@ -296,7 +297,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
         page.getByTestId('ontology-sparql-result-graph')
       ).toBeVisible();
 
-      const edges = await readGraphEdges(page);
+      // Read the results graph explicitly: the studio's own graph is still
+      // mounted behind the Graph tab, and both carry .ontology-g6-container.
+      const edges = await readGraphEdges(page, 1, QUERY_RESULT_GRAPH_CONTAINER);
       expect(edges).toContainEqual(
         expect.objectContaining({
           from: sourceIri,

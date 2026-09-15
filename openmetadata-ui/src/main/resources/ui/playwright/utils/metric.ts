@@ -13,7 +13,12 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
-import { clickOutside, descriptionBox, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  uuid,
+  waitForAntdPopupToSettle,
+} from './common';
 import { hardDeleteEntity, waitForAllLoadersToDisappear } from './entity';
 
 export const updateMetricType = async (page: Page, metric: string) => {
@@ -243,8 +248,13 @@ export const addMetric = async (page: Page) => {
       .locator('.ant-select-dropdown:visible')
       .getByTitle(title, { exact: true });
     await expect(option).toBeVisible();
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await option.click({ force: true });
+    // Settle, then click for real. `force` only skipped the actionability
+    // check — it still needs a box, and this failed with "Element is not
+    // visible" when the press landed while the filtered list was re-rendering.
+    // MetricCustomUnitFlow carried a byte-identical copy of this helper and the
+    // same failure.
+    await waitForAntdPopupToSettle(page);
+    await option.click();
     await expect(field).toContainText(title);
   };
 

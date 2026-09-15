@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { TeamType } from '../../generated/entity/teams/team';
+import { Team, TeamType } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
 import { MOCK_CURRENT_TEAM, MOCK_TABLE_DATA } from '../../mocks/Teams.mock';
@@ -42,11 +42,23 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
 const mockOnShowDeletedTeamChange = jest.fn();
 
 jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
-  return jest.fn().mockImplementation(({ onShowDeletedTeamChange }) => {
-    mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
+  return jest
+    .fn()
+    .mockImplementation(({ onShowDeletedTeamChange, currentTeam }) => {
+      mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
 
-    return <p>TeamDetailsV1</p>;
-  });
+      return (
+        <div>
+          <p>TeamDetailsV1</p>
+          <span aria-label="Default persona">
+            {currentTeam.defaultPersona?.displayName ?? 'No persona assigned'}
+          </span>
+          <span aria-label="Team owner">
+            {currentTeam.owners?.[0]?.displayName ?? 'No owner assigned'}
+          </span>
+        </div>
+      );
+    });
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -223,6 +235,59 @@ describe('Test Teams Page', () => {
 
     expect(screen.getByText('TeamDetailsV1')).toBeInTheDocument();
   });
+
+  it.each(['basic', 'advanced'] as const)(
+    'retains team fields when the %s response finishes last',
+    async (lastResponse) => {
+      setMockPermissions({ ViewBasic: true });
+      let resolveBasic!: (team: Team) => void;
+      let resolveAdvanced!: (team: Team) => void;
+      const basicResponse = new Promise<Team>((resolve) => {
+        resolveBasic = resolve;
+      });
+      const advancedResponse = new Promise<Team>((resolve) => {
+        resolveAdvanced = resolve;
+      });
+      const basicTeam: Team = {
+        ...MOCK_CURRENT_TEAM,
+        parents: [],
+        owners: [{ id: 'owner', type: 'user', displayName: 'Team owner' }],
+      };
+      delete basicTeam.defaultPersona;
+      const advancedTeam: Team = {
+        ...MOCK_CURRENT_TEAM,
+        defaultPersona: {
+          id: 'persona',
+          type: 'persona',
+          displayName: 'Assigned persona',
+        },
+      };
+      delete advancedTeam.owners;
+      (getTeamByName as jest.Mock).mockImplementation((_name, { fields }) =>
+        fields.includes('defaultPersona') ? advancedResponse : basicResponse
+      );
+
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+      const finishBasic = () => resolveBasic(basicTeam);
+      const finishAdvanced = () => resolveAdvanced(advancedTeam);
+      const completions =
+        lastResponse === 'basic'
+          ? [finishAdvanced, finishBasic]
+          : [finishBasic, finishAdvanced];
+      for (const complete of completions) {
+        await act(async () => complete());
+      }
+
+      expect(screen.getByLabelText('Default persona')).toHaveTextContent(
+        'Assigned persona'
+      );
+      expect(screen.getByLabelText('Team owner')).toHaveTextContent(
+        'Team owner'
+      );
+    }
+  );
 
   it('should render errorPlaceholder if getTeamByName api failed', async () => {
     setMockPermissions({ ViewBasic: true });

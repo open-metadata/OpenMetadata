@@ -435,8 +435,14 @@ test.describe('Search Settings', () => {
       );
 
       const searchInput = page.getByTestId('searchbar');
+      const searchPreviewResponse = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/v1/search/preview') &&
+          response.request().method() === 'POST' &&
+          response.request().postDataJSON()?.query === table1.entity.name
+      );
       await searchInput.fill(table1.entity.name);
-      await previewResponse;
+      expect((await searchPreviewResponse).status()).toBe(200);
 
       await waitForAllLoadersToDisappear(page);
 
@@ -532,13 +538,15 @@ test.describe('Search Settings', () => {
         // Change n-gram weight to 5 and save.
         await setSliderValue(page, 'field-weight-slider', 5);
 
+        await expect(page.getByTestId('save-btn')).toBeEnabled();
+
         const saveResponse = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/system/settings') &&
             r.request().method() === 'PUT'
         );
         await page.getByTestId('save-btn').click();
-        await saveResponse;
+        expect((await saveResponse).status()).toBe(200);
         await toastNotification(page, /Search Settings updated successfully/);
 
         // Scope the predicate to the reverted boost value so a stale post-save
@@ -583,7 +591,7 @@ test.describe('Search Settings', () => {
 
         // Reload so the page re-fetches the restored config and triggers preview.
         const previewPromise = page.waitForResponse('/api/v1/search/preview');
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         const previewResponse = await previewPromise;
         await waitForAllLoadersToDisappear(page);
 
@@ -744,7 +752,7 @@ test.describe('Search Settings', () => {
       await saveSettings;
 
       const previewResponse = page.waitForResponse('/api/v1/search/preview');
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
       await openMatchingFieldsPanel(page);
@@ -780,10 +788,14 @@ test.describe('Search Settings', () => {
         await columnCard.click();
 
         const searchInput = page.getByTestId('searchbar');
+        const previewResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/search/preview') &&
+            response.request().method() === 'POST' &&
+            response.request().postDataJSON()?.query === uniqueColumnName
+        );
         await searchInput.fill(uniqueColumnName);
-
-        const previewResponse = page.waitForResponse('/api/v1/search/preview');
-        await previewResponse;
+        expect((await previewResponse).status()).toBe(200);
 
         const searchResultsContainer = page.locator(
           '.search-results-container'

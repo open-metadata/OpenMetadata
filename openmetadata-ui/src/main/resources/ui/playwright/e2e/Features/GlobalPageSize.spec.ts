@@ -13,6 +13,10 @@
 import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import {
+  chooseSelectOption,
+  waitForAntdPopupToSettle,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -22,7 +26,8 @@ test.describe('Table & Data Model columns table pagination', () => {
     dataConsumerPage: page,
   }) => {
     await page.goto(
-      '/table/sample_data.ecommerce_db.shopify.performance_test_table'
+      '/table/sample_data.ecommerce_db.shopify.performance_test_table',
+      { waitUntil: 'domcontentloaded' }
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -34,32 +39,25 @@ test.describe('Table & Data Model columns table pagination', () => {
     await tablePageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(tablePageSizeDropdown).toBeVisible();
     const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
-    await expect(async () => {
-      await tablePageSizeDropdown.hover();
-      if (!(await menuItem.isVisible())) {
-        await tablePageSizeDropdown.click();
-      }
-      await expect(menuItem).toBeVisible({ timeout: 2_000 });
-      await menuItem.click();
-      await expect(tablePageSizeDropdown).toHaveText('25 / Page');
-    }).toPass({
-      timeout: 30_000,
-      intervals: [500, 1_000, 2_000],
-    });
+    await tablePageSizeDropdown.hover();
+    await expect(menuItem).toBeVisible();
+    await waitForAntdPopupToSettle(page);
+    await menuItem.click();
+    await expect(tablePageSizeDropdown).toHaveText('25 / Page');
 
     await waitForAllLoadersToDisappear(page);
 
-    // Go to Explore Page — its first search runs at the persisted page size,
-    // so wait for that size=25 response to settle before reading the value
-    // back off the dropdown, otherwise the assertion can race the search and
-    // read the pre-hydration default.
-    const exploreSearchAt25 = page.waitForResponse(
-      (res) =>
-        res.url().includes('/search/query') &&
-        new URL(res.url()).searchParams.get('size') === '25'
-    );
+    const exploreSearchAt25 = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/v1/search/query' &&
+        url.searchParams.get('size') === '25'
+      );
+    });
     await sidebarClick(page, SidebarItem.EXPLORE);
-    await exploreSearchAt25;
+    expect((await exploreSearchAt25).ok()).toBe(true);
 
     await waitForAllLoadersToDisappear(page);
     await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
@@ -67,21 +65,23 @@ test.describe('Table & Data Model columns table pagination', () => {
     );
 
     // Change page size to 50
-    const menuItem1 = page.getByTestId('rows-per-page-option-50');
+    const option50 = page.getByTestId('rows-per-page-option-50');
     const pageSizeRecordBtn = page.getByRole('button', { name: 'Records' });
-    await expect(async () => {
-      await pageSizeRecordBtn.click();
-      await expect(menuItem1).toBeVisible({ timeout: 2_000 });
-      await menuItem1.click();
-      await expect(page.getByRole('button', { name: 'Records' })).toHaveText(
-        '50'
+    const exploreSearchAt50 = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        response.request().method() === 'GET' &&
+        url.pathname === '/api/v1/search/query' &&
+        url.searchParams.get('size') === '50'
       );
-    }).toPass({
-      timeout: 30_000,
-      intervals: [500, 1_000, 2_000],
     });
+    await chooseSelectOption(pageSizeRecordBtn, option50);
+    await expect(pageSizeRecordBtn).toHaveText('50');
 
     await waitForAllLoadersToDisappear(page);
+
+    expect((await exploreSearchAt50).ok()).toBe(true);
 
     // Go to Users Page
     await settingClick(page, GlobalSettingOptions.USERS);

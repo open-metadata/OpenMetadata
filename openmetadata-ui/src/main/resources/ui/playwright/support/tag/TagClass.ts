@@ -13,7 +13,8 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { okJson } from '../../utils/apiResponse';
 import { getRandomLastName } from '../../utils/common';
-import { visitClassificationPage } from '../../utils/tag';
+import { getEncodedFqn } from '../../utils/entity';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 type ResponseDataType = {
   style?: {
@@ -75,45 +76,25 @@ export class TagClass {
   }
 
   async visitPage(page: Page) {
-    const openClassificationPage = async () => {
-      await visitClassificationPage(
-        page,
-        this.responseData.classification.name,
-        this.responseData.classification.displayName
-      );
-    };
+    const fqn = this.responseData.fullyQualifiedName;
+    const tagResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/tags/name/${getEncodedFqn(fqn)}`,
+      200
+    );
 
-    await openClassificationPage();
-
-    await expect
-      .poll(
-        async () => {
-          const tagRow = page.getByTestId(this.data.name);
-          const visible = await tagRow.isVisible().catch(() => false);
-
-          if (visible) {
-            return true;
-          }
-
-          await openClassificationPage();
-
-          return false;
-        },
-        {
-          timeout: 120000,
-          intervals: [1000, 2000, 5000],
-          message: `Timed out waiting for tag ${this.data.name} to become visible`,
-        }
-      )
-      .toBe(true);
-
-    const tagLink = page.getByTestId(this.data.name);
-    const href = await tagLink.getAttribute('href');
-    if (href) {
-      await page.goto(href);
-    } else {
-      await tagLink.click();
-    }
+    await page.goto(`/tag/${getEncodedFqn(fqn)}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    expect((await (await tagResponse).json()).id).toBe(this.responseData.id);
+    await expect(
+      page
+        .getByTestId('data-classification')
+        .or(page.getByTestId('tag-detail-header'))
+    ).toBeVisible();
   }
 
   async create(apiContext: APIRequestContext) {
@@ -131,7 +112,8 @@ export class TagClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/tags/${this.responseData.id}?recursive=true&hardDelete=true`
     );
 
@@ -142,3 +124,5 @@ export class TagClass {
     return this.responseData.displayName;
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

@@ -590,7 +590,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) and edit-domain/edit-owner actions are hidden', async () => {
         await viewOnlyPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(viewOnlyPage);
 
@@ -755,7 +756,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is hidden', async () => {
         await createAllPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(createAllPage);
 
@@ -905,7 +907,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is hidden, but edit-domain/edit-owner actions are visible', async () => {
         await editAllPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(editAllPage);
 
@@ -1073,7 +1076,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is visible', async () => {
         await deleteAllPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(deleteAllPage);
 
@@ -1097,7 +1101,8 @@ test.describe('Context Center Permissions', () => {
         await afterAction();
 
         await deleteAllPage.goto(
-          `/context-center/articles/${disposableArticle.fullyQualifiedName}`
+          `/context-center/articles/${disposableArticle.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(deleteAllPage);
 
@@ -1128,7 +1133,8 @@ test.describe('Context Center Permissions', () => {
 
       await test.step('article detail manage (delete) action is visible', async () => {
         await allPermissionPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
+          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await waitForAllLoadersToDisappear(allPermissionPage);
 
@@ -1263,7 +1269,7 @@ test.describe('Context Center Permissions', () => {
 
         await waitForDocumentProcessingComplete(apiContext, uploadedData.id);
 
-        await createAllPage.reload();
+        await createAllPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(createAllPage);
         await navigateToDocuments(createAllPage);
 

@@ -82,17 +82,12 @@ export const addAndTriggerAutoClassificationPipeline = async (
     )
     .then((res) => res.json());
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-  await page.waitForTimeout(3000);
-
+  const startedAfter = Date.now();
   await page
     .getByTestId(`agent-card-${response.data[0].fullyQualifiedName}`)
     .getByTestId('run-agent-button')
     .click();
   await toastNotification(page, `Pipeline triggered successfully!`);
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
-  await page.waitForTimeout(2000);
-
-  await mysqlService.handleIngestionRetry('autoClassification', page);
+  await mysqlService.waitForIngestion(page, startedAfter, 'autoClassification');
 };

@@ -13,11 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
-import {
-  createOrFetch,
-  okJson,
-  withNotFoundRetry,
-} from '../../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
@@ -61,16 +57,14 @@ export class MessagingServiceClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const serviceResponse = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/services/messagingServices/${this.entityResponseData?.['id']}`,
-        {
-          data: payload,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/services/messagingServices/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     const service = await okJson(
@@ -103,7 +97,8 @@ export class MessagingServiceClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/messagingServices/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
@@ -112,3 +107,5 @@ export class MessagingServiceClass extends EntityClass {
     return await serviceResponse.json();
   }
 }
+
+import { deleteFixtureEntity } from '../../../utils/apiResponse';

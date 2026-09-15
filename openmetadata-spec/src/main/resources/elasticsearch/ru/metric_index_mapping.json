@@ -547,6 +547,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "deleted": {
         "type": "boolean"
       },

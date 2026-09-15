@@ -97,25 +97,23 @@ base.afterAll('Cleanup', async ({ browser }) => {
 
 test.describe.serial('Domain and Data Product Asset Counts', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await redirectToHomePage(page, false);
-    await waitForAllLoadersToDisappear(page).catch(() => undefined);
-
     if (testInfo.title !== 'Assign Widgets') {
-      await waitForEntitySearchable(
-        page,
-        'domain',
-        domain.responseData.name ?? domain.data.name,
-        domain.responseData.id ?? ''
-      );
-      await waitForEntitySearchable(
-        page,
-        'dataProduct',
-        dataProduct.responseData.name ?? dataProduct.data.name,
-        dataProduct.responseData.id ?? ''
-      );
-      await redirectToHomePage(page, false);
-      await waitForAllLoadersToDisappear(page).catch(() => undefined);
+      await Promise.all([
+        waitForEntitySearchable(
+          page,
+          'domain',
+          domain.responseData.name ?? domain.data.name,
+          domain.responseData.id ?? ''
+        ),
+        waitForEntitySearchable(
+          page,
+          'dataProduct',
+          dataProduct.responseData.name ?? dataProduct.data.name,
+          dataProduct.responseData.id ?? ''
+        ),
+      ]);
     }
+    await redirectToHomePage(page);
   });
 
   test('Assign Widgets', async ({ page }) => {
@@ -135,8 +133,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
 
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
     test.slow();
-    await redirectToHomePage(page, false);
-    await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
     await verifyWidgetCountOnCurrentPage(
       page,
@@ -165,14 +161,11 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     page,
   }) => {
     test.slow();
-    await redirectToHomePage(page);
-    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
 
     await addAssetsToDomain(page, domain, [table, topic]);
     await checkAssetsCount(page, 2);
 
-    await redirectToHomePage(page);
     await verifyDomainCountInDomainWidget(
       page,
       domain.responseData.id ?? '',
@@ -184,8 +177,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     page,
   }) => {
     test.slow(true);
-    await redirectToHomePage(page);
-    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
 
@@ -195,7 +186,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       [table, topic]
     );
 
-    await redirectToHomePage(page);
     await verifyDataProductCountInDataProductWidget(
       page,
       dataProduct.responseData.id ?? '',
@@ -207,8 +197,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     page,
   }) => {
     test.slow();
-    await redirectToHomePage(page);
-    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
 
@@ -249,10 +237,9 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
       1
     );
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await checkAssetsCount(page, 1);
 
-    await redirectToHomePage(page);
     await verifyDomainCountInDomainWidget(
       page,
       domain.responseData.id ?? '',
@@ -263,8 +250,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
   test('Data Product asset count should update when assets are removed', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
     await waitForAllLoadersToDisappear(page);
@@ -295,11 +280,10 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page.getByTestId('delete-all-button').click();
     await removeRes;
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
     await checkAssetsCount(page, 0);
 
-    await redirectToHomePage(page);
     await verifyDataProductCountInDataProductWidget(
       page,
       dataProduct.responseData.id ?? '',

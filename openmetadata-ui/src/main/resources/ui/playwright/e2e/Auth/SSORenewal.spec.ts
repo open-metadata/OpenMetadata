@@ -30,6 +30,7 @@ import {
 } from '../../utils/ssoAuth';
 import { loginViaSso, SSO_LOGIN_HOOK_TIMEOUT_MS } from '../../utils/ssoLogin';
 import { getToken } from '../../utils/tokenStorage';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const providerType = process.env[SSO_ENV.PROVIDER_TYPE] ?? '';
 const username = process.env[SSO_ENV.USERNAME] ?? '';
@@ -119,8 +120,12 @@ for (const scenario of SCENARIOS) {
         await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
         // 200 only: a concurrent refresh answers 503 + Retry-After.
-        const refreshResponsePromise = page.waitForResponse(
-          (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
+        const refreshResponsePromise = waitForResponseWithStatus(
+          page,
+          (r) =>
+            r.request().method() === 'POST' &&
+            r.url().includes(AUTH_REFRESH_PATH),
+          200,
           { timeout: 15_000 }
         );
 
@@ -145,7 +150,7 @@ for (const scenario of SCENARIOS) {
         await expect(page.getByTestId('dropdown-profile')).toBeVisible();
 
         await page.getByTestId('app-bar-item-my-data').click();
-        await page.waitForURL('**/my-data');
+        await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
 
         await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
@@ -159,8 +164,12 @@ for (const scenario of SCENARIOS) {
         page.on('response', trackRefresh);
 
         try {
-          const refreshResponsePromise = page.waitForResponse(
-            (r) => r.url().includes(AUTH_REFRESH_PATH) && r.status() === 200,
+          const refreshResponsePromise = waitForResponseWithStatus(
+            page,
+            (r) =>
+              r.request().method() === 'POST' &&
+              r.url().includes(AUTH_REFRESH_PATH),
+            200,
             { timeout: 15_000 }
           );
 
@@ -182,9 +191,12 @@ for (const scenario of SCENARIOS) {
         await clearServerSessionCookie(userContext!);
         await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
-        await page.waitForURL('**/signin', { timeout: 30_000 });
+        await page.waitForURL('**/signin', {
+          waitUntil: 'domcontentloaded',
+          timeout: 30_000,
+        });
         await expect(page.getByText(/session has timed out/i)).toBeVisible();
         await expect(page.locator('button.signin-button')).toBeVisible();
       });

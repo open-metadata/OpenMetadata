@@ -23,8 +23,14 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  uuid,
+  waitForAntdPopupToSettle,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -96,27 +102,67 @@ test.describe('Service Listing', () => {
   });
 
   test('should render the service listing page', async ({ page }) => {
-    await page.getByTestId('filter-icon').click();
+    const serviceTypes = [
+      databaseService1.entity.serviceType,
+      databaseService2.entity.serviceType,
+    ];
+    const waitForFilteredServices = (
+      selectedTypes: string[],
+      searchTerm = ''
+    ) =>
+      waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          const filter = url.searchParams.get('query_filter') ?? '';
 
-    const searchService1Response = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=databaseService&*'
-    );
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            url.searchParams.get('index') === 'databaseService' &&
+            serviceTypes.every(
+              (type) =>
+                filter.includes(JSON.stringify({ serviceType: type })) ===
+                selectedTypes.includes(type)
+            ) &&
+            (searchTerm
+              ? filter.includes(
+                  JSON.stringify({ 'name.keyword': `*${searchTerm}*` })
+                )
+              : !filter.includes('"wildcard":'))
+          );
+        },
+        200
+      );
+
+    await page.getByTestId('filter-icon').click();
+    await waitForAntdPopupToSettle(page);
+
+    const searchService1Response = waitForFilteredServices([
+      databaseService1.entity.serviceType,
+    ]);
     await page.getByLabel(databaseService1.entity.serviceType).check();
     await searchService1Response;
 
     await page.getByTestId('filter-icon').click();
+    await waitForAntdPopupToSettle(page);
 
+    const bothServicesResponse = waitForFilteredServices(serviceTypes);
     await page.getByLabel(databaseService2.entity.serviceType).check();
-    const searchService2Response = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=databaseService&*'
+    await bothServicesResponse;
+    const searchService2Response = waitForFilteredServices(
+      serviceTypes,
+      databaseService2.entity.name
     );
 
     await page.getByTestId('searchbar').fill(databaseService2.entity.name);
     await searchService2Response;
 
     await page.getByTestId('filter-icon').click();
-    const searchService2Response2 = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=databaseService&*'
+    await waitForAntdPopupToSettle(page);
+    const searchService2Response2 = waitForFilteredServices(
+      [databaseService2.entity.serviceType],
+      databaseService2.entity.name
     );
     await page.getByLabel(databaseService1.entity.serviceType).uncheck();
     await searchService2Response2;

@@ -19,9 +19,11 @@ import {
   descriptionBox,
   fillDescriptionBox,
   redirectToHomePage,
+  waitForAntdModalToSettle,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { createQueryByTableName, queryFilters } from '../../utils/query';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -62,6 +64,7 @@ test.beforeAll(async ({ browser }) => {
 
 test('Query Entity', async ({ page }) => {
   test.slow(true);
+  let queryId = '';
 
   await redirectToHomePage(page);
   await table1.visitEntityPage(page);
@@ -105,8 +108,13 @@ test('Query Entity', async ({ page }) => {
 
     const createQueryResponse = page.waitForResponse('/api/v1/queries');
     await page.click('[data-testid="save-btn"]');
-    await createQueryResponse;
-    await page.waitForURL('**/table_queries**');
+    const createdQuery = await createQueryResponse;
+    expect(createdQuery.ok()).toBe(true);
+    queryId = (await createdQuery.json()).id;
+    expect(queryId).toBeTruthy();
+    await page.waitForURL('**/table_queries**', {
+      waitUntil: 'domcontentloaded',
+    });
 
     await page.locator(`text=${queryData.query}`).waitFor({
       state: 'visible',
@@ -168,19 +176,49 @@ test('Query Entity', async ({ page }) => {
     await page.locator('.ant-modal-body').waitFor({
       state: 'detached',
     });
+    await waitForAntdModalToSettle(page);
 
     // Update Tags
     await page.getByTestId('add-tag').click();
     await page.locator('#tagsForm_tags').click();
-    await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
-    await page.getByTestId(`tag-${queryData.tagFqn}`).first().click();
-    const updateTagResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/queries/') &&
-        response.request().method() === 'PATCH'
+    const tagSearch = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === 'tag' &&
+          url.searchParams.get('q') === `*${queryData.tagFqn}*`
+        );
+      },
+      200
     );
-    await page.getByTestId('saveAssociatedTag').click();
-    await updateTagResponse;
+    await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
+    await tagSearch;
+    const dropdown = page.locator('.async-select-list-dropdown:visible');
+    await dropdown.getByTestId(`tag-${queryData.tagFqn}`).click();
+    await expect(
+      page
+        .getByTestId('tag-form')
+        .getByTestId(`selected-tag-${queryData.tagFqn}`)
+    ).toBeVisible();
+    const updateTagResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        new URL(response.url()).pathname === `/api/v1/queries/${queryId}` &&
+        response.request().method() === 'PATCH',
+      200
+    );
+    await dropdown.getByTestId('saveAssociatedTag').click();
+    const updatedQuery = await (await updateTagResponse).json();
+    expect(updatedQuery.tags).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tagFQN: queryData.tagFqn }),
+      ])
+    );
+    await expect(dropdown).toBeHidden();
   });
 
   await test.step('Update query and QueryUsedIn', async () => {
@@ -274,7 +312,7 @@ test('Query Entity', async ({ page }) => {
 
     expect(upVoteResponse.status()).toBe(200);
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -286,7 +324,7 @@ test('Query Entity', async ({ page }) => {
       .getByTestId('down-vote-btn')
       .click();
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(

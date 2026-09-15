@@ -16,10 +16,12 @@ import {
   descriptionBox,
   fillDescriptionBox,
   getDescriptionBox,
+  waitForAntdPopupToSettle,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { waitForPageLoaded } from './polling';
 import {
+  getTaskCard as findTaskCard,
   waitForTaskActionResponse,
   waitForTaskCommentResponse,
   waitForTaskCreateResponse,
@@ -39,7 +41,6 @@ export interface CreatedTask {
   status?: string;
 }
 
-const TASK_CARD_SELECTOR = '[data-testid="task-feed-card"]';
 const TASK_TAB_SELECTOR = '[data-testid="task-tab"]';
 const TASK_PANEL_SELECTOR = '#task-panel';
 const VISIBLE_TASK_MODAL_SELECTOR = '.ant-modal-wrap:visible';
@@ -49,12 +50,6 @@ const logTaskDebug = (...messages: Array<string | number | boolean>) => {
     console.log('[PW_TASK_DEBUG]', ...messages);
   }
 };
-
-const getDropdownTrigger = (dropdown: Locator) =>
-  dropdown.getByRole('button', { name: /down/i }).first();
-
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const selectTagSuggestion = async ({
   page,
@@ -67,42 +62,19 @@ const selectTagSuggestion = async ({
   searchText: string;
   tagTestId: string;
 }) => {
-  const tagSelector = root.locator('[data-testid="tag-selector"]').first();
-  const tagsInput = tagSelector
-    .locator(
-      '.ant-select-selection-search-input, input[type="search"], .ant-select-selection-search input'
-    )
-    .first();
-  const tagOption = page.getByTestId(tagTestId).first();
-  const tagSearchResponse = page
-    .waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('tag_search_index'),
-      { timeout: 5000 }
-    )
-    .catch(() => null);
-
-  logTaskDebug('selectTagSuggestion:start', searchText, tagTestId);
-  if (!(await tagsInput.isVisible().catch(() => false))) {
-    await tagSelector.click().catch(() => undefined);
-  }
-
-  await expect(tagsInput).toBeVisible({ timeout: 5000 });
-  await tagsInput.click().catch(() => undefined);
+  const tagSelector = root.getByTestId('tag-selector');
+  const tagsInput = tagSelector.getByRole('combobox');
+  const tagOption = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId(tagTestId);
+  await tagsInput.focus();
+  await tagsInput.press('ArrowDown');
   await tagsInput.fill(searchText);
-  logTaskDebug('selectTagSuggestion:filled', searchText);
-
-  await Promise.race([
-    tagSearchResponse,
-    tagOption.waitFor({ state: 'visible', timeout: 5000 }),
-  ]).catch(() => undefined);
-
-  await expect(tagOption).toBeVisible({ timeout: 5000 });
-  logTaskDebug('selectTagSuggestion:optionVisible', tagTestId);
+  await expect(tagOption).toBeVisible();
+  await waitForAntdPopupToSettle(page);
   await tagOption.click();
-  await page.keyboard.press('Escape');
-  logTaskDebug('selectTagSuggestion:done', tagTestId);
+  await tagsInput.press('Escape');
+  await expect(tagSelector.getByTestId(`selected-${tagTestId}`)).toBeVisible();
 };
 
 const clickDropdownMenuItem = async ({
@@ -114,117 +86,18 @@ const clickDropdownMenuItem = async ({
   page: Page;
   menuPattern: RegExp;
 }) => {
-  const dropdownTrigger = getDropdownTrigger(dropdown);
-  const fallbackTrigger = dropdown.locator('button').last();
-  const taskCtaFallbackTrigger = page
-    .locator('#task-panel [data-testid="task-cta-buttons"] button')
-    .last();
-  const plainDownButtonFallbackTrigger = page
-    .locator('#task-panel')
-    .getByRole('button', { name: /down/i })
-    .last();
-  const visibleDropdownMenu = page.locator('.task-action-dropdown').last();
-  const roleMenuItem = page
-    .getByRole('menuitem', { name: menuPattern })
-    .first();
-  const cssMenuItem = visibleDropdownMenu
-    .locator('.ant-dropdown-menu-item')
-    .filter({ hasText: menuPattern })
-    .first();
-
-  const isMenuItemVisible = async () =>
-    (await roleMenuItem.isVisible().catch(() => false)) ||
-    (await cssMenuItem.isVisible().catch(() => false));
-
-  const waitForMenuItem = async () => {
-    await Promise.race([
-      roleMenuItem.waitFor({ state: 'visible', timeout: 1500 }),
-      cssMenuItem.waitFor({ state: 'visible', timeout: 1500 }),
-    ]).catch(() => undefined);
-
-    return isMenuItemVisible();
-  };
-
-  if (await isMenuItemVisible()) {
-    if (await roleMenuItem.isVisible().catch(() => false)) {
-      await roleMenuItem.click();
-
-      return;
-    }
-
-    await cssMenuItem.click();
-
-    return;
-  }
-
-  const triggerCandidates = [
-    dropdownTrigger,
-    fallbackTrigger,
-    taskCtaFallbackTrigger,
-    plainDownButtonFallbackTrigger,
-  ];
-  let resolvedTrigger = dropdownTrigger;
-
-  for (const candidate of triggerCandidates) {
-    if (await candidate.isVisible().catch(() => false)) {
-      resolvedTrigger = candidate;
-      break;
-    }
-  }
-
-  await expect(resolvedTrigger).toBeVisible();
-  await resolvedTrigger.scrollIntoViewIfNeeded().catch(() => undefined);
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    logTaskDebug('clickDropdownMenuItem:openAttempt', attempt + 1);
-    await resolvedTrigger.click().catch(() => undefined);
-
-    if (await waitForMenuItem()) {
-      break;
-    }
-
-    await resolvedTrigger.focus().catch(() => undefined);
-    await resolvedTrigger.press('ArrowDown').catch(() => undefined);
-
-    if (await waitForMenuItem()) {
-      break;
-    }
-
-    await resolvedTrigger.press('Enter').catch(() => undefined);
-
-    if (await waitForMenuItem()) {
-      break;
-    }
-
-    await fallbackTrigger.click().catch(() => undefined);
-
-    if (await waitForMenuItem()) {
-      break;
-    }
-  }
-
-  if (await roleMenuItem.isVisible().catch(() => false)) {
-    await roleMenuItem.click();
-
-    return;
-  }
-
-  await expect(cssMenuItem).toBeVisible();
-  await cssMenuItem.click();
+  const trigger = dropdown.locator('button[data-testid$="-trigger"]');
+  await expect(trigger).toBeVisible();
+  await trigger.hover();
+  await trigger.click();
+  const menu = page.locator('.task-action-dropdown:visible');
+  await expect(menu).toBeVisible();
+  await waitForAntdPopupToSettle(page);
+  await menu.getByRole('menuitem', { name: menuPattern }).click();
 };
 
 export const formatTaskFieldValue = (value: string) => {
   return value;
-};
-
-export const getTaskDisplayId = (taskId?: string) => {
-  if (!taskId) {
-    return '';
-  }
-
-  const matchedTaskId = /^TASK-0*([0-9]+)$/.exec(taskId);
-
-  return matchedTaskId?.[1] ?? taskId;
 };
 
 export const buildTaskRoute = ({
@@ -255,36 +128,28 @@ export const buildTaskRoute = ({
 };
 
 export const openTaskForm = async (page: Page, route: string) => {
-  await page.goto(route);
-  await page.waitForSelector('[data-testid="form-container"]', {
-    state: 'visible',
-  });
+  await page.goto(route, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('form-container')).toBeVisible();
 };
 
 export const selectAssignee = async (page: Page, assigneeName: string) => {
-  const assigneeInput = page.locator(
-    '[data-testid="select-assignee"] .ant-select-selection-search input'
-  );
-  const assigneeOption = page.getByTestId(assigneeName).first();
-  const assigneeSearchResponse = page
-    .waitForResponse(
-      (response) =>
-        response.request().method() === 'GET' &&
-        response.url().includes('/api/v1/search/query') &&
-        response.url().includes('user'),
-      { timeout: 5000 }
-    )
-    .catch(() => null);
-
-  await assigneeInput.click();
+  const assigneeField = page.getByTestId('select-assignee');
+  const assigneeInput = assigneeField.getByRole('combobox');
+  const assigneeOption = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTestId(assigneeName);
+  await assigneeInput.focus();
+  await assigneeInput.press('ArrowDown');
   await assigneeInput.fill(assigneeName);
-  await Promise.race([
-    assigneeSearchResponse,
-    assigneeOption.waitFor({ state: 'visible', timeout: 5000 }),
-  ]).catch(() => undefined);
   await expect(assigneeOption).toBeVisible();
+  await waitForAntdPopupToSettle(page);
   await assigneeOption.click();
   await clickOutside(page);
+  await expect(
+    assigneeField
+      .locator('.ant-select-selection-item')
+      .getByTestId(assigneeName)
+  ).toBeVisible();
 };
 
 export const createDescriptionTaskFromForm = async ({
@@ -378,12 +243,7 @@ export const openEntityTasksTab = async (page: Page) => {
 };
 
 export const getTaskCard = (page: Page, task: CreatedTask) => {
-  const taskDisplayId = getTaskDisplayId(task.taskId);
-
-  return page
-    .locator(TASK_CARD_SELECTOR)
-    .filter({ hasText: `#${taskDisplayId}` })
-    .first();
+  return findTaskCard(page, task.taskId);
 };
 
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
@@ -401,155 +261,34 @@ export const openTaskDetails = async (page: Page, task: CreatedTask) => {
 };
 
 export const openTaskEditModal = async (page: Page) => {
-  logTaskDebug('openTaskEditModal:start');
-  const editTransitionPattern =
-    /edit suggestion|edit|update description|update tags|add description|add tags/i;
-  const visibleTaskModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
-  const workflowTaskActionPrimary = page
-    .locator('#task-panel [data-testid="workflow-task-action-primary"]')
-    .first();
-  const workflowTaskActionDropdown = page
-    .locator('#task-panel [data-testid="workflow-task-action-dropdown"]')
-    .first();
-  const genericTaskActionPanel = page.locator('#task-panel').first();
-  const addSuggestionDropdown = page
-    .locator('#task-panel [data-testid="add-close-task-dropdown"]')
-    .first();
-  const editSuggestionDropdown = page
-    .locator('#task-panel [data-testid="edit-accept-task-dropdown"]')
-    .first();
-
-  const waitForVisibleTaskModal = async () => {
-    await visibleTaskModal
-      .waitFor({ state: 'visible', timeout: 5000 })
-      .catch(() => undefined);
-
-    return visibleTaskModal.isVisible().catch(() => false);
-  };
-
-  if (await visibleTaskModal.isVisible().catch(() => false)) {
-    logTaskDebug('openTaskEditModal:alreadyVisible');
+  const modal = page.locator(VISIBLE_TASK_MODAL_SELECTOR);
+  if (await modal.isVisible()) {
     return;
   }
-
-  if (await workflowTaskActionDropdown.isVisible().catch(() => false)) {
-    logTaskDebug('openTaskEditModal:workflowDropdown');
-    const dropdownPrimaryButton = workflowTaskActionDropdown
-      .locator('[data-testid="workflow-task-action-primary"]')
-      .first();
-    const dropdownPrimaryLabel = (
-      await dropdownPrimaryButton.textContent().catch(() => '')
-    )
-      ?.trim()
-      .replace(/\s+/g, ' ');
-    const isPrimaryEditAction = Boolean(
-      dropdownPrimaryLabel?.match(/edit|resolve|update|add/i)
+  const panel = page.locator(TASK_PANEL_SELECTOR);
+  await expect(panel.getByTestId('task-cta-buttons')).toBeVisible();
+  // Workflow approval opens the transition form for editing the suggested fields.
+  // Legacy Accept submits directly, so it must use its separate Edit menu item.
+  const workflow = panel.locator(
+    '[data-testid="workflow-task-action-primary"]'
+  );
+  const workflowAction = /approve|accept|resolve/i;
+  const editAction =
+    /edit suggestion|edit|resolve|update description|update tags|add description|add tags|add suggestion/i;
+  const primary = panel
+    .locator('button[data-testid$="-primary"]:visible')
+    .filter({ hasText: editAction });
+  if (await workflow.filter({ hasText: workflowAction }).count()) {
+    await workflow.click();
+  } else if (await primary.count()) {
+    await primary.click();
+  } else {
+    const dropdown = panel.locator(
+      '[data-testid="workflow-task-action-dropdown"]:visible, [data-testid="add-close-task-dropdown"]:visible, [data-testid="edit-accept-task-dropdown"]:visible'
     );
-
-    await dropdownPrimaryButton.scrollIntoViewIfNeeded().catch(() => undefined);
-    await dropdownPrimaryButton.click().catch(() => undefined);
-
-    if (!(await waitForVisibleTaskModal()) && isPrimaryEditAction) {
-      await waitForPageLoaded(page).catch(() => undefined);
-    }
-
-    if (!(await waitForVisibleTaskModal()) && !isPrimaryEditAction) {
-      await clickDropdownMenuItem({
-        dropdown: workflowTaskActionDropdown,
-        page,
-        menuPattern: editTransitionPattern,
-      });
-    }
-
-    if (!(await waitForVisibleTaskModal()) && isPrimaryEditAction) {
-      await dropdownPrimaryButton
-        .scrollIntoViewIfNeeded()
-        .catch(() => undefined);
-      await dropdownPrimaryButton.click().catch(() => undefined);
-    }
-
-    if (!(await waitForVisibleTaskModal()) && !isPrimaryEditAction) {
-      await waitForPageLoaded(page).catch(() => undefined);
-    }
-
-    if (!(await waitForVisibleTaskModal()) && isPrimaryEditAction) {
-      const menuPattern = dropdownPrimaryLabel
-        ? new RegExp(escapeRegExp(dropdownPrimaryLabel), 'i')
-        : editTransitionPattern;
-
-      await clickDropdownMenuItem({
-        dropdown: workflowTaskActionDropdown,
-        page,
-        menuPattern,
-      });
-    }
-  } else if (await workflowTaskActionPrimary.isVisible().catch(() => false)) {
-    logTaskDebug('openTaskEditModal:workflowPrimary');
-    await workflowTaskActionPrimary
-      .scrollIntoViewIfNeeded()
-      .catch(() => undefined);
-    await workflowTaskActionPrimary.click().catch(() => undefined);
-
-    if (!(await waitForVisibleTaskModal())) {
-      await waitForPageLoaded(page).catch(() => undefined);
-      await workflowTaskActionPrimary.click().catch(() => undefined);
-    }
-  } else if (await addSuggestionDropdown.isVisible().catch(() => false)) {
-    logTaskDebug('openTaskEditModal:addSuggestionDropdown');
-    const primaryActionButton = addSuggestionDropdown.locator('button').first();
-
-    await primaryActionButton.scrollIntoViewIfNeeded().catch(() => undefined);
-    await primaryActionButton.click().catch(() => undefined);
-
-    if (!(await waitForVisibleTaskModal())) {
-      await clickDropdownMenuItem({
-        dropdown: addSuggestionDropdown,
-        page,
-        menuPattern: /add description|add tags/i,
-      });
-    }
-  } else if (await editSuggestionDropdown.isVisible().catch(() => false)) {
-    logTaskDebug('openTaskEditModal:editSuggestionDropdown');
-    await clickDropdownMenuItem({
-      dropdown: editSuggestionDropdown,
-      page,
-      menuPattern: editTransitionPattern,
-    });
-  } else if (
-    await genericTaskActionPanel
-      .getByRole('button', { name: /approve|resolve|edit|update|add|down/i })
-      .first()
-      .isVisible()
-      .catch(() => false)
-  ) {
-    logTaskDebug('openTaskEditModal:genericTaskActionPanel');
-    const genericPrimaryAction = genericTaskActionPanel
-      .getByRole('button', { name: /edit suggestion|edit|resolve|update|add/i })
-      .first();
-    const genericDropdownTrigger = genericTaskActionPanel
-      .getByRole('button', { name: /down/i })
-      .first();
-    if (await genericPrimaryAction.isVisible().catch(() => false)) {
-      await genericPrimaryAction
-        .scrollIntoViewIfNeeded()
-        .catch(() => undefined);
-      await genericPrimaryAction.click().catch(() => undefined);
-    }
-
-    if (
-      !(await waitForVisibleTaskModal()) &&
-      (await genericDropdownTrigger.isVisible().catch(() => false))
-    ) {
-      await clickDropdownMenuItem({
-        dropdown: genericTaskActionPanel,
-        page,
-        menuPattern: editTransitionPattern,
-      });
-    }
+    await clickDropdownMenuItem({ dropdown, page, menuPattern: editAction });
   }
-
-  await expect(visibleTaskModal).toBeVisible();
-  logTaskDebug('openTaskEditModal:done');
+  await expect(modal).toBeVisible();
 };
 
 export const saveTaskEditModal = async (page: Page) => {

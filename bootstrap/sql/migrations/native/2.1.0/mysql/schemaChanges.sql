@@ -343,3 +343,28 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- audit_log_event.entity_fqn stores the raw FQN. For lineage events that FQN is two
+-- entity FQNs joined by the relationship marker, so ordinary deeply-nested entities
+-- push it past 768 characters; the insert then fails and AuditLogRepository drops the
+-- row with only a WARN, losing audit history silently. Nothing indexes entity_fqn --
+-- lookups go through entity_fqn_hash (idx_audit_log_event_entity_hash_ts), an
+-- MD5-per-segment digest that stays far inside its own bound -- so the column has no
+-- reason to be length-capped.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_log_event'
+        AND column_name = 'entity_fqn'
+        AND data_type = 'text'
+    ),
+    'SELECT 1',
+    'ALTER TABLE audit_log_event MODIFY COLUMN entity_fqn TEXT NULL'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;

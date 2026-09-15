@@ -36,10 +36,11 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
-import { waitForAllLoadersToDisappear } from './entity';
+import { getEncodedFqn, waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const visitUserListPage = async (page: Page) => {
   const fetchUsers = page.waitForResponse('/api/v1/users?*');
@@ -118,25 +119,20 @@ export const deletedUserChecks = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
-  await settingClick(page, GlobalSettingOptions.USERS);
-
-  const listLoader = page
-    .getByTestId('user-list-v1-component')
-    .getByTestId('loader');
-  const userRow = page.getByTestId(userName);
-
-  await listLoader.waitFor({ state: 'detached' });
-
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=user&from=0&size=*'
+  const profileResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/users/name/${getEncodedFqn(userName)}`,
+    200
   );
-  await page.getByTestId('searchbar').fill(userName);
-  await searchResponse;
-  await listLoader.waitFor({ state: 'detached' });
 
-  await expect(userRow).toBeVisible();
-
-  await userRow.click();
+  await page.goto(`/users/${getEncodedFqn(userName)}`, {
+    waitUntil: 'domcontentloaded',
+  });
+  expect((await (await profileResponse).json()).name).toBe(userName);
+  await expect(page.getByTestId('user-email-value')).toBeVisible();
 };
 
 export const softDeleteUserProfilePage = async (

@@ -10,15 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import {
-  createOrFetch,
-  okJson,
-  withNotFoundRetry,
-} from '../../utils/apiResponse';
+import { createOrFetch, okJson } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -232,16 +228,14 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async patch(apiContext: APIRequestContext, payload: Operation[]) {
-    const apiCollectionResponse = await withNotFoundRetry(() =>
-      apiContext.patch(
-        `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
-        {
-          data: payload,
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      )
+    const apiCollectionResponse = await apiContext.patch(
+      `/api/v1/apiCollections/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
     );
 
     const apiCollection = await okJson(
@@ -290,7 +284,8 @@ export class ApiCollectionClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/apiServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
@@ -309,7 +304,9 @@ export class ApiCollectionClass extends EntityClass {
       searchTerm: this.apiEndpointResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.apiEndpoint.name}`,
     });
-    await page.getByRole('link', { name: owner }).isVisible();
+    await expect(page.getByRole('link', { name: owner })).toBeVisible();
     await this.visitEntityPage(page);
   }
 }
+
+import { deleteFixtureEntity } from '../../utils/apiResponse';

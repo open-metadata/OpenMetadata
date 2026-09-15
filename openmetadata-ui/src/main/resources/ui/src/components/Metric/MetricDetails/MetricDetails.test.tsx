@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
 import { Metric, MetricType } from '../../../generated/entity/data/metric';
+import { restoreMetric } from '../../../rest/metricsAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import MetricDetails from './MetricDetails';
 import { MetricDetailsProps } from './MetricDetails.interface';
@@ -46,13 +56,17 @@ const mockProps: MetricDetailsProps = {
   onUpdateVote: jest.fn(),
 };
 
+jest.mock('../../../rest/metricsAPI', () => ({ restoreMetric: jest.fn() }));
+
+jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
+  useAsyncDeleteProvider: () => ({
+    handleOnAsyncEntityDeleteConfirm: jest.fn(),
+  }),
+}));
+
 jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-
-jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('testEntityName'),
-}));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
@@ -125,6 +139,68 @@ jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
 }));
 
 describe('MetricDetails component', () => {
+  afterEach(() => {
+    (DataAssetsHeader as jest.Mock).mockReturnValue(
+      <div>DataAssetsHeader</div>
+    );
+  });
+
+  const openRestoreDialog = async () => {
+    (DataAssetsHeader as jest.Mock).mockImplementation(
+      ({ onRestoreDataAsset }) => (
+        <ManageButton
+          allowSoftDelete
+          canRestore
+          deleted
+          entityId={mockMetricDetails.id}
+          entityName={mockMetricDetails.name}
+          entityType={EntityType.METRIC}
+          onRestoreEntity={onRestoreDataAsset}
+        />
+      )
+    );
+    render(<MetricDetails {...mockProps} />, { wrapper: MemoryRouter });
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('restore-button'));
+
+    return screen.findByRole('dialog');
+  };
+
+  it('closes the restore dialog after the metric is restored', async () => {
+    (restoreMetric as jest.Mock).mockResolvedValueOnce({ version: 0.3 });
+    const dialog = await openRestoreDialog();
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'label.restore' })
+    );
+
+    await waitFor(() =>
+      expect(restoreMetric).toHaveBeenCalledWith(mockMetricDetails.id)
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
+  });
+
+  it('keeps the restore dialog open when the restore request fails', async () => {
+    (restoreMetric as jest.Mock).mockRejectedValueOnce(
+      new Error('Restore unavailable')
+    );
+    const dialog = await openRestoreDialog();
+    const restoreButton = within(dialog).getByRole('button', {
+      name: 'label.restore',
+    });
+    fireEvent.click(restoreButton);
+
+    await waitFor(() =>
+      expect(restoreMetric).toHaveBeenCalledWith(mockMetricDetails.id)
+    );
+    await waitFor(() =>
+      expect(restoreButton).not.toHaveClass('ant-btn-loading')
+    );
+
+    expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
   it('should render successfully', () => {
     const { container } = render(<MetricDetails {...mockProps} />, {
       wrapper: MemoryRouter,
@@ -140,7 +216,7 @@ describe('MetricDetails component', () => {
 
     expect(PageLayoutV1).toHaveBeenCalledWith(
       expect.objectContaining({
-        pageTitle: 'testEntityName',
+        pageTitle: 'Test Metric',
       }),
       expect.anything()
     );

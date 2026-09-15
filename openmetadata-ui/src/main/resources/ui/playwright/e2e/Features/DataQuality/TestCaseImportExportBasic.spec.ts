@@ -649,7 +649,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -670,7 +672,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -690,7 +694,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -713,7 +719,9 @@ test.describe(
       const testCaseListResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list*'
       );
-      await page.goto(`/test-suites/${testSuiteName}`);
+      await page.goto(`/test-suites/${testSuiteName}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await testCaseListResponse;
       await waitForAllLoadersToDisappear(page);
 

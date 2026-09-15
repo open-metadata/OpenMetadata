@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.dropwizard.lifecycle.JettyManaged;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.util.HashSet;
@@ -13,12 +14,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -35,19 +39,30 @@ import org.openmetadata.service.search.SearchIndexRetryWorker;
 import org.openmetadata.service.search.SearchRepository;
 
 @ExtendWith(TestNamespaceExtension.class)
+@Isolated("Owns the global retry queue and application worker lifecycle")
 @Execution(ExecutionMode.SAME_THREAD)
 class SearchIndexRetryQueueIT {
 
+  private static JettyManaged applicationWorker;
   private static CollectionDAO collectionDAO;
   private static SearchIndexRetryQueueDAO retryQueueDAO;
   private static SearchRepository searchRepository;
 
   @BeforeAll
-  static void setupAll() {
+  static void setupAll() throws Exception {
     SdkClients.adminClient();
+    applicationWorker = TestSuiteBootstrap.getSearchIndexRetryWorker();
+    applicationWorker.stop();
     collectionDAO = Entity.getCollectionDAO();
     retryQueueDAO = collectionDAO.searchIndexRetryQueueDAO();
     searchRepository = Entity.getSearchRepository();
+  }
+
+  @AfterAll
+  static void restoreApplicationWorker() throws Exception {
+    if (applicationWorker != null) {
+      applicationWorker.start();
+    }
   }
 
   @BeforeEach
@@ -88,6 +103,28 @@ class SearchIndexRetryQueueIT {
     assertNull(record.getClaimedAt());
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
+  void testPendingRecordIsStableWithoutAWorker(TestNamespace ns) {
+    final String entityId = UUID.randomUUID().toString();
+    final String entityFqn = ns.prefix("unclaimed");
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "pending", SearchIndexRetryQueue.STATUS_PENDING, "table");
+    try {
+      Awaitility.await("DAO tests own the retry queue until they start a worker")
+          .during(Duration.ofSeconds(6))
+          .atMost(Duration.ofSeconds(8))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      retryQueueDAO
+                          .findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000)
+                          .stream()
+                          .anyMatch(record -> record.getEntityId().equals(entityId))));
+    } finally {
+      retryQueueDAO.deleteByEntity(entityId, entityFqn);
+    }
   }
 
   @Test

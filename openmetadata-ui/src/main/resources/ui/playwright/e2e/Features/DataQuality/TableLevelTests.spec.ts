@@ -14,10 +14,10 @@ import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { expect, test } from '../../../support/fixtures/base';
 import {
+  chooseSelectOption,
   createNewPage,
   getApiContext,
   redirectToHomePage,
-  selectOptionWithRetry,
 } from '../../../utils/common';
 import {
   clickUpdateButton,
@@ -873,10 +873,14 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
-        await selectOptionWithRetry(
-          page.locator('#testCaseFormV1_params_strategy'),
-          page.getByRole('option', { name: 'ROWS' })
+        const strategy = page.locator('#testCaseFormV1_params_strategy');
+        await chooseSelectOption(
+          strategy,
+          page
+            .getByRole('listbox')
+            .getByRole('option', { name: 'ROWS', exact: true })
         );
+        await expect(strategy).toHaveText('ROWS');
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
 
@@ -923,7 +927,7 @@ test.describe(
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(' update');
-        await selectOptionWithRetry(
+        await chooseSelectOption(
           page.getByRole('button', { name: 'ROWS Strategy' }),
           page.getByRole('option', { name: 'COUNT' })
         );

@@ -350,7 +350,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
           await overview.shouldShowOwner(deletedUser.getUserDisplayName());
 
           await deletedUser.delete(apiContext);
-          await adminPage.reload();
+          await adminPage.reload({ waitUntil: 'domcontentloaded' });
           await rightPanel.waitForPanelLoaded();
 
           const deletedOwnerLocator =
@@ -395,7 +395,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           await deletedTag.delete(apiContext);
           await deletedClassification.delete(apiContext);
-          await adminPage.reload();
+          await adminPage.reload({ waitUntil: 'domcontentloaded' });
           await rightPanel.waitForPanelLoaded();
 
           const deletedTagLocator = await overview.verifyDeletedTagNotVisible(
@@ -437,7 +437,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           await deletedGlossaryTerm.delete(apiContext);
           await deletedGlossary.delete(apiContext);
-          await adminPage.reload();
+          await adminPage.reload({ waitUntil: 'domcontentloaded' });
           await rightPanel.waitForPanelLoaded();
 
           const deletedTermLocator =

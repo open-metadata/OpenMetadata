@@ -78,7 +78,7 @@ test.describe(
     );
 
     test('Signup and Login with signed up credentials', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
 
       await expect(page).toHaveURL(`/signin`);
 
@@ -123,9 +123,9 @@ test.describe(
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
 
-      await expect(page).toHaveURL(
-        (url) => url.pathname === '/' || url.pathname === '/my-data'
-      );
+      await expect
+        .poll(() => new URL(page.url()).pathname)
+        .toMatch(/^\/(?:my-data)?$/);
 
       // Verify user profile
       await page.locator('[data-testid="dropdown-profile"]').click();
@@ -156,9 +156,9 @@ test.describe(
         await nonAsciiUser.create(apiContext);
         await nonAsciiUser.login(page);
 
-        await expect(page).toHaveURL(
-          (url) => !url.pathname.includes('/signin')
-        );
+        await expect
+          .poll(() => new URL(page.url()).pathname)
+          .not.toContain('/signin');
 
         await page.getByTestId('dropdown-profile').click();
 
@@ -172,7 +172,7 @@ test.describe(
     });
 
     test('Signin using invalid credentials', async ({ page }) => {
-      await page.goto(`/signin`);
+      await page.goto(`/signin`, { waitUntil: 'domcontentloaded' });
       // Login with invalid email
       await page.fill('#email', invalidEmail);
       await page.fill('#password', CREDENTIALS.password);
@@ -193,7 +193,7 @@ test.describe(
     });
 
     test('Forgot password and login with new password', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
       // Click on Forgot button
       await page.locator('[data-testid="forgot-password"]').click();
 
@@ -207,10 +207,6 @@ test.describe(
     });
 
     test.describe('Token renewal', () => {
-      test.describe.configure({
-        retries: process.env.PLAYWRIGHT_IS_OSS ? 0 : 2,
-      });
-
       test('Refresh should work', async ({ page: page1, browser }) => {
         test.slow();
 
@@ -232,7 +228,7 @@ test.describe(
           await waitForAllLoadersToDisappear(page1);
           await redirectToHomePage(page2);
           await waitForAllLoadersToDisappear(page2);
-          await page2.reload();
+          await page2.reload({ waitUntil: 'domcontentloaded' });
 
           // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
           await page1.waitForTimeout(2 * 61 * 1000);

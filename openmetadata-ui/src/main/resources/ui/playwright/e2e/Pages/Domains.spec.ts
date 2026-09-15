@@ -91,6 +91,7 @@ import { selectActiveGlossaryTerm } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 import { performUserLogin } from '../../utils/user';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 let user: UserClass;
 let domain: Domain;
 let classification: ClassificationClass;
@@ -124,7 +125,7 @@ test.describe('Domains', () => {
     user = new UserClass();
     domain = new Domain();
     classification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: true,
     });
     tag = new TagClass({ classification: classification.data.name });
@@ -324,7 +325,7 @@ test.describe('Domains', () => {
     const dataProduct1 = new DataProduct([domain]);
     const dataProduct2 = new DataProduct([domain]);
     await domain.create(apiContext);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await test.step('Add assets to domain', async () => {
       await redirectToHomePage(page);
@@ -414,7 +415,7 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       // Verify assets count is 0 after removal
       await checkAssetsCount(page, 0);
@@ -431,7 +432,7 @@ test.describe('Domains', () => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     await domain.create(apiContext);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await followEntity(page, EntityTypeEndpoint.Domain);
@@ -452,7 +453,7 @@ test.describe('Domains', () => {
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
     await domain.create(apiContext);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await sidebarClick(page, SidebarItem.DOMAIN);
     await addAssetsToDomain(page, domain, assets);
     await page.getByTestId('documentation').click();
@@ -618,7 +619,7 @@ test.describe('Domains', () => {
       await dataProduct1.create(apiContext);
       await dataProduct2.create(apiContext);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await addAssetsToDomain(page, domain, assets);
       await verifyDataProductAssetsAfterDelete(page, {
         domain,
@@ -632,7 +633,7 @@ test.describe('Domains', () => {
         await domain1.create(apiContext);
         await newDomainDP1.create(apiContext);
         await newDomainDP2.create(apiContext);
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, newDomainDP1.data);
@@ -682,7 +683,7 @@ test.describe('Domains', () => {
       await domain.create(apiContext);
       await dataProduct.create(apiContext);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await redirectToHomePage(page);
       const dataProductFqn =
         dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name;
@@ -695,7 +696,9 @@ test.describe('Domains', () => {
           );
 
           if (!response.ok()) {
-            return { owners: 0, experts: 0 };
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -791,7 +794,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Add assets to domain', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -847,12 +850,22 @@ test.describe('Domains', () => {
         const assetCountElement = page
           .getByTestId('assets')
           .getByTestId('count');
-        const countText = await assetCountElement.textContent();
-        const displayedCount = Number.parseInt(countText ?? '0', 10);
         const totalCount = domainAssets.length + subDomainAssets.length;
         const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
-        expect(displayedCount).toBe(totalCount);
+        // The badge is a search aggregation over the domain and renders 0 until
+        // that query returns, so reading it once can capture the placeholder
+        // rather than the answer — which is how this reported 0 against 6.
+        await expect
+          .poll(
+            async () =>
+              Number.parseInt(
+                (await assetCountElement.textContent()) ?? '0',
+                10
+              ),
+            { timeout: 60_000 }
+          )
+          .toBe(totalCount);
         await expect(assetCards).toHaveCount(totalCount);
       });
 
@@ -885,12 +898,18 @@ test.describe('Domains', () => {
         const assetCountElement = page
           .getByTestId('assets')
           .getByTestId('count');
-        const countText = await assetCountElement.textContent();
-        const displayedCount = Number.parseInt(countText ?? '0', 10);
-
         const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
-        expect(displayedCount).toBe(subDomainAssets.length);
+        await expect
+          .poll(
+            async () =>
+              Number.parseInt(
+                (await assetCountElement.textContent()) ?? '0',
+                10
+              ),
+            { timeout: 60_000 }
+          )
+          .toBe(subDomainAssets.length);
         await expect(assetCards).toHaveCount(subDomainAssets.length);
       });
     } finally {
@@ -939,7 +958,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Verify domain data products tab shows both domain and subdomain data products', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -1084,7 +1103,7 @@ test.describe('Domains', () => {
         );
 
         // 1. Verify at domain level: should see 4 data products (domain's own + all nested)
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -1177,7 +1196,7 @@ test.describe('Domains', () => {
     const domain = new Domain();
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await waitForAllLoadersToDisappear(page);
       await selectDomain(page, domain.data);
@@ -1262,7 +1281,7 @@ test.describe('Domains', () => {
 
     try {
       await parentDomain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await test.step('Navigate to domain and open subdomain modal', async () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
@@ -1344,11 +1363,11 @@ test.describe('Domains', () => {
     const domain = new Domain();
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await page.getByTestId('domain-dropdown').click();
       await page.getByTestId('all-domains-selector').click();
 
@@ -1372,7 +1391,7 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await dataProduct.create(apiContext);
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await redirectToHomePage(page);
 
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -1420,7 +1439,7 @@ test.describe('Domains', () => {
     });
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
 
       const addDomainButton = page.click('[data-testid="add-domain"]');
@@ -1457,7 +1476,7 @@ test.describe('Domains', () => {
 
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await test.step('Navigate to domain and assign custom property value', async () => {
         await sidebarClick(page, SidebarItem.DOMAIN);
@@ -1496,7 +1515,7 @@ test.describe('Domains', () => {
       });
 
       await test.step('Reload and verify custom property value persists', async () => {
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         await sidebarClick(page, SidebarItem.DOMAIN);
         await selectDomain(page, domain.data);
@@ -1525,7 +1544,7 @@ test.describe('Domains', () => {
 
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
@@ -1560,7 +1579,7 @@ test.describe('Domains', () => {
 
     try {
       await domain.create(apiContext);
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
       await createDataProduct(page, dataProduct.data);
@@ -1732,11 +1751,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await selectDomain(page, domain.data);
 
       // Verify subdomain exists before rename
-      const subdomainSearchResponse = page.waitForResponse(
+      const subdomainSearchResponse = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       await page.getByTestId('subdomains').getByText('Sub Domains').click();
@@ -1761,11 +1782,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify subdomain is still accessible after parent domain rename
-      const subdomainSearchResponseAfterRename = page.waitForResponse(
+      const subdomainSearchResponseAfterRename = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab = page
@@ -1846,11 +1869,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Navigate to subDomain1
-      const subdomainSearchResponse1 = page.waitForResponse(
+      const subdomainSearchResponse1 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab1 = page
@@ -1876,11 +1901,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       ).toContainText(subDomain1.data.displayName);
 
       // Navigate to subDomain2 from subDomain1
-      const subdomainSearchResponse2 = page.waitForResponse(
+      const subdomainSearchResponse2 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab2 = page
@@ -1906,11 +1933,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       ).toContainText(subDomain2.data.displayName);
 
       // Navigate to subDomain3 from subDomain2
-      const subdomainSearchResponse3 = page.waitForResponse(
+      const subdomainSearchResponse3 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab3 = page
@@ -1997,7 +2026,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       const newDomainName = `renamed-dp-domain-${uuid()}`;
       await renameDomain(page, newDomainName);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
 
       currentDomainName = newDomainName;
@@ -2060,7 +2089,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const testClassification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: false,
     });
     const testTag = new TagClass({
@@ -2319,11 +2348,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       await selectDomain(page, domain.data);
 
       // Navigate to subDomain1
-      const subdomainSearchResponse1 = page.waitForResponse(
+      const subdomainSearchResponse1 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab = page
@@ -2344,11 +2375,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       ]);
 
       // Verify subDomain2 exists under subDomain1 before rename
-      const subdomainSearchResponse2 = page.waitForResponse(
+      const subdomainSearchResponse2 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab2 = page
@@ -2376,11 +2409,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // Verify subDomain2 is still accessible after parent subdomain rename
-      const subdomainSearchResponse3 = page.waitForResponse(
+      const subdomainSearchResponse3 = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab3 = page
@@ -2429,7 +2464,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
     const testClassification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: false,
     });
     const testTag = new TagClass({
@@ -2531,11 +2566,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       );
 
       // 2. Verify subdomain
-      const subdomainSearchResponse = page.waitForResponse(
+      const subdomainSearchResponse = waitForResponseWithStatus(
+        page,
         (response) =>
+          response.request().method() === 'GET' &&
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain') &&
-          response.status() === 200
+          response.url().includes('index=domain'),
+        200
       );
 
       const subDomainsTab = page
@@ -2650,11 +2687,13 @@ test.describe('Domain Rename Comprehensive Tests', () => {
           newDomainName
         );
 
-        const subdomainSearchResponse = page.waitForResponse(
+        const subdomainSearchResponse = waitForResponseWithStatus(
+          page,
           (response) =>
+            response.request().method() === 'GET' &&
             response.url().includes('/api/v1/search/query') &&
-            response.url().includes('index=domain') &&
-            response.status() === 200
+            response.url().includes('index=domain'),
+          200
         );
 
         const subDomainsTab = page
@@ -2818,7 +2857,8 @@ test.describe('Domains Rbac', () => {
           }/name/${fqn}*`
         );
         await userPage.goto(
-          `/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/${fqn}`
+          `/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/${fqn}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await assetData;
 
@@ -2860,7 +2900,7 @@ test.describe('Data Consumer Domain Ownership', () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     classification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: true,
     });
     tag = new TagClass({ classification: classification.data.name });
@@ -2978,7 +3018,9 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       // Navigate to the domain table
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
@@ -2994,7 +3036,9 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       // Navigate to the subdomain table
       const subDomainTableFqn =
         testResources.subDomainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(subDomainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Verify no permission error
       await expect(
@@ -3042,7 +3086,9 @@ test.describe('Domain Access with noDomain() Rule', () => {
     await test.step('Verify user can access domain-assigned table', async () => {
       const domainTableFqn =
         testResources.domainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify no permission error
@@ -3057,7 +3103,9 @@ test.describe('Domain Access with noDomain() Rule', () => {
     await test.step('Verify user gets permission error for table without domain', async () => {
       const noDomainTableFqn =
         testResources.noDomainTable.entityResponseData.fullyQualifiedName;
-      await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
+      await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(userPage);
 
       // Verify permission error is shown
@@ -3241,18 +3289,22 @@ test.describe('Domain Tree View Functionality', () => {
       await selectActiveGlossaryTerm(page, testGlossaryTerm.data.displayName);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse((response) => {
-        const url = response.url();
-        if (
-          url.includes('/api/v1/domains/name/') &&
-          url.includes('fields=') &&
-          response.status() === 200
-        ) {
-          apiRequestUrl = url;
-          return true;
-        }
-        return false;
-      });
+      const responsePromise = waitForResponseWithStatus(
+        page,
+        (response) => {
+          if (response.request().method() !== 'GET') return false;
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=')
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        },
+        200
+      );
 
       await page.getByTestId('assets').click();
       await responsePromise;
@@ -3278,7 +3330,7 @@ test.describe('Domain Tree View Functionality', () => {
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const testClassification = new ClassificationClass({
-      provider: 'system',
+      provider: 'user',
       mutuallyExclusive: false,
     });
     const testTag = new TagClass({
@@ -3306,11 +3358,28 @@ test.describe('Domain Tree View Functionality', () => {
       const input = page.locator(
         '[data-testid="tags-container"] #tagsForm_tags'
       );
+      await expect(input).toBeVisible();
       await input.click();
-      await input.fill(testTag.responseData.fullyQualifiedName);
-      await page
-        .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
-        .click();
+      const tagFqn = testTag.responseData.fullyQualifiedName;
+      const tagOption = page.getByTestId(`tag-${tagFqn}`);
+
+      // Wait for the tag search response as a deterministic signal that the
+      // dropdown has settled with its final options, then click.
+      const tagSearchResponse = page.waitForResponse(
+        (response) => {
+          const url = response.url();
+
+          return (
+            url.includes('/api/v1/search/query') &&
+            /[?&]index=tag(&|$)/.test(url)
+          );
+        },
+        { timeout: 15_000 }
+      );
+      await input.fill(tagFqn);
+      await tagSearchResponse;
+      await expect(tagOption).toBeVisible({ timeout: 15_000 });
+      await tagOption.click();
 
       const updateResponse = page.waitForResponse(
         (response) =>
@@ -3323,18 +3392,22 @@ test.describe('Domain Tree View Functionality', () => {
       await testTag.visitPage(page);
 
       let apiRequestUrl: string | null = null;
-      const responsePromise = page.waitForResponse((response) => {
-        const url = response.url();
-        if (
-          url.includes('/api/v1/domains/name/') &&
-          url.includes('fields=') &&
-          response.status() === 200
-        ) {
-          apiRequestUrl = url;
-          return true;
-        }
-        return false;
-      });
+      const responsePromise = waitForResponseWithStatus(
+        page,
+        (response) => {
+          if (response.request().method() !== 'GET') return false;
+          const url = response.url();
+          if (
+            url.includes('/api/v1/domains/name/') &&
+            url.includes('fields=')
+          ) {
+            apiRequestUrl = url;
+            return true;
+          }
+          return false;
+        },
+        200
+      );
 
       await page.getByTestId('assets').click();
       await responsePromise;
@@ -3442,7 +3515,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       await expect(warningModal).not.toBeVisible();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 1);
     } finally {
@@ -3502,7 +3575,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       expect(await commitOnCancel).toBeNull();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 0);
     } finally {
@@ -3604,7 +3677,7 @@ test.describe('Domain asset dryRun — add confirmation', () => {
 
       await expect(warningModal).not.toBeVisible();
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(page);
       await checkAssetsCount(page, 1);
     } finally {
