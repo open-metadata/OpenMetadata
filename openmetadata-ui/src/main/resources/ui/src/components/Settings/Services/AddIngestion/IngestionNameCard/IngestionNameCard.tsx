@@ -64,14 +64,13 @@ const IngestionNameCard = ({
         onFocus={() => onFocus?.('displayName')}
       />
 
-      <div
+      <fieldset
         aria-describedby={
           showOwnersError ? 'ingestion-owners-error' : undefined
         }
         aria-label={t('label.owner-plural')}
         className="tw:mt-4"
-        data-testid="ingestion-owners-field"
-        role="group">
+        data-testid="ingestion-owners-field">
         <Owner
           hasPermission
           showLabel
@@ -103,7 +102,7 @@ const IngestionNameCard = ({
             })}
           </HintText>
         )}
-      </div>
+      </fieldset>
     </div>
   );
 };
