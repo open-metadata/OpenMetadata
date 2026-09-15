@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.Entity.TOPIC;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,9 +58,22 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * both {@code mysql/v210} and {@code postgres/v210} invoke this pass.
  */
 @Slf4j
-public class DottedServiceFqnMigration {
+public final class DottedServiceFqnMigration {
 
   private DottedServiceFqnMigration() {}
+
+  private enum RepairOutcome {
+    FIXED,
+    UNCHANGED,
+    DUPLICATE_BLOCKED,
+    FAILED
+  }
+
+  /** Per-hierarchy accumulator: rows healed, and rows left for manual merge. */
+  private static final class RepairTally {
+    private int fixed;
+    private final List<UUID> blocked = new ArrayList<>();
+  }
 
   /**
    * A direct service -> child hierarchy whose child FQNs may need repair. The DAOs are resolved
@@ -117,32 +131,45 @@ public class DottedServiceFqnMigration {
     if (serviceIds.isEmpty()) {
       return;
     }
-    int fixedCount = 0;
+    RepairTally tally = new RepairTally();
     for (UUID serviceId : serviceIds) {
-      fixedCount += repairServiceChildren(collectionDAO, hierarchy, serviceId);
+      repairServiceChildren(collectionDAO, hierarchy, serviceId, tally);
     }
-    if (fixedCount > 0) {
-      LOG.info("Repaired {} {} FQNs under dotted-name services", fixedCount, hierarchy.childType());
+    if (tally.fixed > 0) {
+      LOG.info(
+          "Repaired {} {} FQNs under dotted-name services", tally.fixed, hierarchy.childType());
+    }
+    if (!tally.blocked.isEmpty()) {
+      // Surfaced at WARN (not swallowed) so an operator can merge the duplicates by hand.
+      LOG.warn(
+          "{} {} rows under dotted-name services were left unhealed because a canonical row already "
+              + "exists at the target FQN (re-ingestion duplicate); merge manually: {}",
+          tally.blocked.size(),
+          hierarchy.childType(),
+          tally.blocked);
     }
   }
 
-  private static int repairServiceChildren(
-      CollectionDAO collectionDAO, ServiceChildHierarchy hierarchy, UUID serviceId) {
-    int fixedCount = 0;
+  private static void repairServiceChildren(
+      CollectionDAO collectionDAO,
+      ServiceChildHierarchy hierarchy,
+      UUID serviceId,
+      RepairTally tally) {
     try {
       EntityInterface service =
           hierarchy.serviceDao().apply(collectionDAO).findEntityById(serviceId);
       String serviceFqn = service == null ? null : service.getFullyQualifiedName();
       // Only a quoted service FQN could have produced the unquoted-dotted corruption.
       if (serviceFqn == null || !serviceFqn.contains("\"")) {
-        return 0;
+        return;
       }
       EntityDAO<?> childDao = hierarchy.childDao().apply(collectionDAO);
       Set<UUID> childIds =
           findChildEntityIds(
               collectionDAO, serviceId, hierarchy.serviceType(), hierarchy.childType());
       for (UUID childId : childIds) {
-        fixedCount += repairChild(childDao, hierarchy.childType(), serviceFqn, childId);
+        recordOutcome(
+            tally, childId, repairChild(childDao, hierarchy.childType(), serviceFqn, childId));
       }
     } catch (Exception e) {
       LOG.warn(
@@ -151,28 +178,42 @@ public class DottedServiceFqnMigration {
           serviceId,
           e.getMessage());
     }
-    return fixedCount;
   }
 
-  private static int repairChild(
+  private static void recordOutcome(RepairTally tally, UUID childId, RepairOutcome outcome) {
+    if (outcome == RepairOutcome.FIXED) {
+      tally.fixed++;
+    } else if (outcome == RepairOutcome.DUPLICATE_BLOCKED) {
+      tally.blocked.add(childId);
+    }
+  }
+
+  private static RepairOutcome repairChild(
       EntityDAO<?> childDao, String childType, String serviceFqn, UUID childId) {
     try {
       EntityInterface child = childDao.findEntityById(childId);
       if (child == null) {
-        return 0;
+        return RepairOutcome.UNCHANGED;
       }
       String expectedFqn = FullyQualifiedName.add(serviceFqn, child.getName());
       if (expectedFqn.equals(child.getFullyQualifiedName())) {
-        return 0;
+        return RepairOutcome.UNCHANGED;
+      }
+      // A prior re-ingestion may already hold a canonical row at the target FQN. Rewriting this
+      // row's fqnHash to match would violate the fqnHash UNIQUE constraint, so leave it for a
+      // manual merge (e.g. two dashboards, one per FQN form) rather than swallowing the failure.
+      if (childDao.existsByName(
+          childDao.getTableName(), childDao.getNameHashColumn(), expectedFqn)) {
+        return RepairOutcome.DUPLICATE_BLOCKED;
       }
       LOG.debug("Fixing {} FQN: {} -> {}", childType, child.getFullyQualifiedName(), expectedFqn);
       child.setFullyQualifiedName(expectedFqn);
       // update(EntityInterface) rewrites both the FQN in the JSON and the @BindFQN-hashed fqnHash.
       childDao.update(child);
-      return 1;
+      return RepairOutcome.FIXED;
     } catch (Exception e) {
       LOG.warn("Error repairing {} entity {}: {}", childType, childId, e.getMessage());
-      return 0;
+      return RepairOutcome.FAILED;
     }
   }
 
