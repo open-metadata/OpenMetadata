@@ -170,7 +170,9 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await page.getByRole('button', { name: 'Tools' }).click();
   await page.getByRole('menuitemradio', { name: 'Advanced Search' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  // The dialog is a core-components Modal now, not an antd one — address it by
+  // its testid rather than any library-specific class.
+  await expect(page.getByTestId('advanced-search-modal')).toBeVisible();
 };
 
 export const selectOption = async (
@@ -264,8 +266,8 @@ export const selectOption = async (
       .waitFor({ state: 'hidden', timeout: 2000 })
       .catch(async () => {
         // Blur the control — react-aria comboboxes close their popup when
-        // focus leaves. NEVER send Escape here: surrounding antd modals and
-        // forms handle Escape in the capture phase and dismiss themselves.
+        // focus leaves. NEVER send Escape here: the surrounding modals and
+        // forms handle Escape themselves and would dismiss.
         await control.blur({ timeout: 1000 }).catch(() => undefined);
         await openListbox
           .waitFor({ state: 'hidden', timeout: 1000 })
