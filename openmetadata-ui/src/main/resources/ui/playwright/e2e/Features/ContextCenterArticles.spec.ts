@@ -1575,11 +1575,11 @@ test.describe('Context Center Articles', () => {
       (response) =>
         response.url().includes('/versions') &&
         !response.url().match(/\/versions\/[\d.]+$/) &&
-        response.request().method() === 'GET' &&
-        response.status() === 200
+        response.request().method() === 'GET'
     );
     await page.getByTestId('version-btn').click();
-    await versionsListResponse;
+    const versionsListRes = await versionsListResponse;
+    expect(versionsListRes.ok()).toBeTruthy();
     await waitForAllLoadersToDisappear(page);
 
     await expect(
