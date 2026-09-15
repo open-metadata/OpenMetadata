@@ -40,6 +40,7 @@ const IngestionNameCard = ({
 }: IngestionNameCardProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.INGESTION_PIPELINE);
+  const showOwnersError = isOwnersRequired && isOwnersInvalid;
 
   return (
     <div
@@ -51,7 +52,7 @@ const IngestionNameCard = ({
       <div className="tw:mt-0.5 tw:text-xs tw:text-tertiary">
         {t('message.name-this-ingestion-description')}
       </div>
-      <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
+      <div className="tw:my-3 tw:h-px tw:bg-border-secondary" />
       <Input
         isRequired
         id="ingestion-display-name"
@@ -62,7 +63,15 @@ const IngestionNameCard = ({
         onChange={onDisplayNameChange}
         onFocus={() => onFocus?.('displayName')}
       />
-      <div className="tw:mt-4" data-testid="ingestion-owners-field">
+
+      <div
+        aria-describedby={
+          showOwnersError ? 'ingestion-owners-error' : undefined
+        }
+        aria-label={t('label.owner-plural')}
+        className="tw:mt-4"
+        data-testid="ingestion-owners-field"
+        role="group">
         <Owner
           hasPermission
           showLabel
@@ -83,8 +92,12 @@ const IngestionNameCard = ({
             />
           }
         />
-        {isOwnersRequired && isOwnersInvalid && (
-          <HintText isInvalid className="tw:mt-1" data-testid="owners-error">
+        {showOwnersError && (
+          <HintText
+            isInvalid
+            className="tw:mt-1"
+            data-testid="owners-error"
+            id="ingestion-owners-error">
             {t('label.field-required-plural', {
               field: t('label.owner-plural'),
             })}

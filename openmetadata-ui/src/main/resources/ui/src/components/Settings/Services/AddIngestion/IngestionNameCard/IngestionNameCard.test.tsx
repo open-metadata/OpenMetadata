@@ -99,4 +99,23 @@ describe('IngestionNameCard', () => {
 
     expect(screen.getByTestId('owners-error')).toBeInTheDocument();
   });
+
+  it('should link the error to the owners group for assistive tech', () => {
+    const { rerender } = render(<IngestionNameCard {...mockProps} />);
+
+    expect(screen.getByTestId('ingestion-owners-field')).not.toHaveAttribute(
+      'aria-describedby'
+    );
+
+    rerender(
+      <IngestionNameCard {...mockProps} isOwnersInvalid isOwnersRequired />
+    );
+
+    const describedBy = screen
+      .getByTestId('ingestion-owners-field')
+      .getAttribute('aria-describedby');
+
+    expect(describedBy).toBe(screen.getByTestId('owners-error').id);
+    expect(describedBy).toBeTruthy();
+  });
 });
