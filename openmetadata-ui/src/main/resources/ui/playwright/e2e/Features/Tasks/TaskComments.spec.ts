@@ -520,10 +520,17 @@ test.describe('Task Comments - Edit/Delete', () => {
     }
   });
 
-  test('should be able to delete own comment', async ({ page }) => {
-    await adminUser.login(page);
+  /**
+   * Shared by the two real delete tests below: opens the task's activity-feed
+   * drawer as `user` and posts one comment from there, returning the task's id
+   * (needed to match the DELETE response) and the comment's text (needed to
+   * find the right `task-comment-card`).
+   */
+  const postCommentAsUser = async (
+    page: import('@playwright/test').Page,
+    message: string
+  ) => {
     await table.visitEntityPage(page);
-
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
@@ -534,45 +541,228 @@ test.describe('Task Comments - Edit/Delete', () => {
     }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
+    await expect(drawer).toBeVisible();
 
-      if (await drawer.isVisible()) {
-        const comments = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
-        const initialCount = await comments.count();
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill(message);
 
-        if (initialCount > 0) {
-          await comments.first().hover();
+    const sendBtn = drawer.getByTestId('send-comment');
+    const commentResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments') &&
+        response.request().method() === 'POST'
+    );
+    await sendBtn.click();
+    const commentResponse = await commentResponsePromise;
+    const comment = await commentResponse.json();
 
-          const deleteBtn = comments.first().getByTestId('delete-comment');
+    await expect(drawer.getByText(message)).toBeVisible();
 
-          if (await deleteBtn.isVisible()) {
-            await deleteBtn.click();
+    return { drawer, taskCommentId: comment.id as string };
+  };
 
-            // Confirm deletion
-            const confirmBtn = page.getByRole('button', {
-              name: /confirm|yes|delete/i,
-            });
-            if (await confirmBtn.isVisible()) {
-              await confirmBtn.click();
-              await waitForPageLoaded(page);
+  /**
+   * Deletes the comment identified by `message` from an already-open drawer,
+   * waiting for the real DELETE response and asserting the comment is gone
+   * from the DOM afterwards. Runs the button through a real hover first,
+   * matching how a person actually finds it (the button is reachable by
+   * keyboard/tab without hovering, but hover is the primary discovery path).
+   */
+  const deleteCommentViaUi = async (
+    page: import('@playwright/test').Page,
+    drawer: ReturnType<import('@playwright/test').Page['locator']>,
+    message: string,
+    taskCommentId: string
+  ) => {
+    const commentCard = drawer
+      .getByTestId('task-comment-card')
+      .filter({ hasText: message });
+    await expect(commentCard).toBeVisible();
 
-              // Comment count should decrease
-              const newCount = await comments.count();
-              expect(newCount).toBeLessThan(initialCount);
-            }
-          }
-        }
+    await commentCard.hover();
+    await commentCard.getByTestId('delete-task-comment').click();
+
+    await expect(page.getByTestId('delete-modal')).toBeVisible();
+
+    const deleteResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/comments/${taskCommentId}`) &&
+        response.request().method() === 'DELETE'
+    );
+    await page.getByTestId('confirm-button').click();
+    const deleteResponse = await deleteResponsePromise;
+
+    expect(deleteResponse.ok()).toBe(true);
+    await expect(commentCard).not.toBeVisible();
+    await expect(drawer.getByText(message)).not.toBeVisible();
+  };
+
+  test('should be able to delete own comment', async ({ page }) => {
+    // assigneeUser is a regular (non-admin) user, so a successful delete here
+    // exercises the author-match branch of canDelete, not the admin override.
+    await assigneeUser.login(page);
+
+    const message = `Author-deletable comment ${Date.now()}`;
+    const { drawer, taskCommentId } = await postCommentAsUser(page, message);
+
+    await deleteCommentViaUi(page, drawer, message, taskCommentId);
+  });
+
+  test('admin should be able to delete a comment they did not author', async ({
+    page,
+    browser,
+  }) => {
+    // Post as the non-admin assignee first, in a separate browser context so
+    // this test doesn't depend on execution order relative to the one above.
+    const authorContext = await browser.newContext();
+    const authorPage = await authorContext.newPage();
+    await assigneeUser.login(authorPage);
+
+    const message = `Admin-deletable comment ${Date.now()}`;
+    const { taskCommentId } = await postCommentAsUser(authorPage, message);
+    await authorContext.close();
+
+    await adminUser.login(page);
+    const { drawer } = await postCommentAsUser(page, `unused-${Date.now()}`);
+    // postCommentAsUser leaves an extra comment behind as a side effect of
+    // reusing it purely for its navigation-to-the-open-drawer behavior; that
+    // extra comment isn't asserted on and is left for afterAll to clean up
+    // along with the rest of the table.
+
+    await deleteCommentViaUi(page, drawer, message, taskCommentId);
+  });
+
+  test('non-author, non-admin should not see the delete option', async ({
+    page,
+    browser,
+  }) => {
+    const otherUser = new UserClass();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    try {
+      await otherUser.create(apiContext);
+    } finally {
+      await afterAction();
+    }
+
+    try {
+      const authorContext = await browser.newContext();
+      const authorPage = await authorContext.newPage();
+      await assigneeUser.login(authorPage);
+
+      const message = `Not-my-comment ${Date.now()}`;
+      await postCommentAsUser(authorPage, message);
+      await authorContext.close();
+
+      await otherUser.login(page);
+      const { drawer } = await postCommentAsUser(
+        page,
+        `viewer-comment-${Date.now()}`
+      );
+
+      const commentCard = drawer
+        .getByTestId('task-comment-card')
+        .filter({ hasText: message });
+      await expect(commentCard).toBeVisible();
+      await commentCard.hover();
+
+      await expect(
+        commentCard.getByTestId('delete-task-comment')
+      ).not.toBeVisible();
+    } finally {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      try {
+        await otherUser.delete(apiContext);
+      } finally {
+        await afterAction();
       }
     }
   });
 
-  test('non-author should not see edit/delete options', async ({ page }) => {
+  test('should be able to delete a comment from inside the activity-feed drawer', async ({
+    page,
+  }) => {
+    // Regression coverage for the DeleteModal/antd-Drawer z-index conflict:
+    // TaskTabNew (and therefore TaskCommentCard's DeleteModal) is rendered
+    // inside an antd Drawer here, unlike the standalone task page used by the
+    // other delete tests above. If the confirmation dialog's overlay ever
+    // sits below the Drawer's own mask again, this click lands on the mask
+    // (which closes the drawer) instead of the dialog's confirm button, and
+    // this test will hang/time out waiting for the DELETE response instead
+    // of silently passing.
+    await assigneeUser.login(page);
+
+    const message = `Drawer-delete comment ${Date.now()}`;
+    const { drawer, taskCommentId } = await postCommentAsUser(page, message);
+
+    await expect(
+      page.locator('.activity-feed-drawer, .feed-drawer')
+    ).toBeVisible();
+
+    await deleteCommentViaUi(page, drawer, message, taskCommentId);
+  });
+});
+
+test.describe('Task Comments - Long Comment Overflow', () => {
+  const assigneeUser = new UserClass();
+  const table = new TableClass();
+
+  test.beforeAll('Setup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await assigneeUser.create(apiContext);
+
+      await table.create(apiContext);
+      await table.setOwner(apiContext, {
+        id: assigneeUser.responseData.id,
+        type: 'user',
+      });
+
+      await apiContext.post('/api/v1/tasks', {
+        data: {
+          about: {
+            type: 'table',
+            id: table.entityResponseData?.id,
+            fullyQualifiedName: table.entityResponseData?.fullyQualifiedName,
+          },
+          type: 'RequestDescription',
+          assignees: [{ id: assigneeUser.responseData.id, type: 'user' }],
+        },
+      });
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.afterAll('Cleanup test data', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await table.delete(apiContext);
+      await assigneeUser.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('a long comment shows a working View More / View Less toggle instead of being silently clamped', async ({
+    page,
+  }) => {
+    // Regression coverage for TaskCommentCard's RichTextEditorPreviewNew
+    // usage: the ~2-line clamp applies independent of `enableSeeMoreVariant`,
+    // so a comment that overflows needs the toggle rendered to stay
+    // readable. This can't be covered in Jest - jsdom has no real layout, so
+    // the scrollHeight-vs-clientHeight overflow check that decides whether
+    // to render the toggle never actually fires there.
     await assigneeUser.login(page);
     await table.visitEntityPage(page);
 
@@ -585,30 +775,49 @@ test.describe('Task Comments - Edit/Delete', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
-    if (await taskCard.isVisible()) {
-      await taskCard.click();
-      await waitForPageLoaded(page);
+    const taskCard = page.getByTestId('task-feed-card');
+    await expect(taskCard).toBeVisible();
+    await taskCard.click();
+    await waitForPageLoaded(page);
 
-      const drawer = page.locator('.ant-drawer-content');
+    const drawer = page.locator('.ant-drawer-content');
+    await expect(drawer).toBeVisible();
 
-      if (await drawer.isVisible()) {
-        // Find comment from admin (not assignee)
-        const comment = drawer.locator(
-          '[data-testid="comment-item"], .task-comment'
-        );
+    const uniqueMarker = `overflow-marker-${Date.now()}`;
+    const longMessage = `${'This comment is written to overflow the two line clamp on the task comment preview. '.repeat(
+      8
+    )}${uniqueMarker}`;
 
-        if (await comment.first().isVisible()) {
-          await comment.first().hover();
+    const commentInput = drawer.locator(
+      '[data-testid="comment-input"], .ql-editor, [placeholder*="comment" i]'
+    );
+    await expect(commentInput).toBeVisible();
+    await commentInput.fill(longMessage);
 
-          // Non-author should NOT see edit/delete buttons for others' comments
-          const editBtn = comment.first().getByTestId('edit-comment');
-          const deleteBtn = comment.first().getByTestId('delete-comment');
+    const sendBtn = drawer.getByTestId('send-comment');
+    const commentResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tasks/') &&
+        response.url().includes('/comments') &&
+        response.request().method() === 'POST'
+    );
+    await sendBtn.click();
+    await commentResponsePromise;
 
-          // These should not be visible (or should be for own comments only)
-        }
-      }
-    }
+    const commentCard = drawer
+      .getByTestId('task-comment-card')
+      .filter({ hasText: uniqueMarker });
+    await expect(commentCard).toBeVisible();
+
+    // The toggle only renders when the browser's real layout measurement
+    // (scrollHeight vs clientHeight against the clamp) finds an overflow -
+    // its presence here is the actual signal Jest can't produce.
+    const readMoreButton = commentCard.getByTestId('read-more-button');
+    await expect(readMoreButton).toBeVisible();
+    await readMoreButton.click();
+
+    await expect(commentCard.getByTestId('read-less-button')).toBeVisible();
+    await expect(commentCard.getByText(uniqueMarker)).toBeVisible();
   });
 });
 
