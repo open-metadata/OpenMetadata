@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -24,17 +24,14 @@ import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/Da
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
@@ -48,7 +45,6 @@ import {
 } from '../../rest/queries/dashboardDataModelQuery';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -66,23 +62,32 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const queryClient = useQueryClient();
 
   const { entityFqn: dashboardDataModelFQN } = useFqn({
     type: EntityType.DASHBOARD_DATA_MODEL,
   });
 
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
-  const [dataModelPermissions, setDataModelPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const {
+    permissions: dataModelPermissions,
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    hasViewAccess: hasViewPermission,
+  } = useEntityPermissions(
+    ResourceEntity.DASHBOARD_DATA_MODEL,
+    dashboardDataModelFQN,
+    { enabled: Boolean(dashboardDataModelFQN) }
+  );
 
-  const { hasViewPermission } = useMemo(() => {
-    return {
-      hasViewPermission:
-        dataModelPermissions.ViewAll || dataModelPermissions.ViewBasic,
-    };
-  }, [dataModelPermissions]);
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.asset-lowercase'),
+        })
+      );
+    }
+  }, [permissionsError]);
 
   const dataModelCacheKey = useMemo(
     () => dashboardDataModelQueryKey(dashboardDataModelFQN, DATA_MODEL_FIELDS),
@@ -161,26 +166,6 @@ const DataModelsPage = () => {
       ) ?? false,
     [dataModelData?.followers, currentUser?.id]
   );
-
-  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.DASHBOARD_DATA_MODEL,
-        entityFqn
-      );
-      setDataModelPermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.asset-lowercase'),
-        })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const handleUpdateDataModelData = useCallback(
     (updatedData: DashboardDataModel) => {
@@ -381,10 +366,6 @@ const DataModelsPage = () => {
     [setDataModelData]
   );
 
-  useEffect(() => {
-    fetchResourcePermission(dashboardDataModelFQN);
-  }, [dashboardDataModelFQN]);
-
   if (permissionsLoading || dataModelLoading) {
     return <PageLoader />;
   }
@@ -397,7 +378,7 @@ const DataModelsPage = () => {
     );
   }
 
-  if (!dataModelPermissions.ViewAll && !dataModelPermissions.ViewBasic) {
+  if (!hasViewPermission) {
     return (
       <ErrorPlaceHolder
         className="border-none"

@@ -319,7 +319,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
             getEntityDisplayName(knowledgeCenter.responseData)
           );
           const ownerElement = adminPage
-            .locator('.owners-section')
+            .getByTestId('owners-section')
             .getByText(user1.getUserDisplayName());
           await expect(ownerElement).not.toBeVisible();
         }

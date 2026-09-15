@@ -31,6 +31,7 @@ import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../../rest/alertsAPI';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   AlertTableColumn,
@@ -102,7 +103,8 @@ export function useObservabilityAlerts({
 
       return {
         id: alertDetails.id,
-        edit: permission.EditAll,
+        // Pure rename — old raw read never referenced `deleted` here (ungated).
+        edit: getDerivedPermissionFlags(permission).canEditAll,
         delete: permission.Delete,
       };
     },

@@ -132,6 +132,16 @@ export interface KnowledgeItem {
     id?:   string;
     name?: string;
     /**
+     * True when read-time trust signals indicate this item may no longer reflect the asset it
+     * is attached to (e.g. the asset changed after the knowledge was last updated, or the
+     * asset's data-quality tests are failing). Absent means no staleness signal.
+     */
+    stale?: boolean;
+    /**
+     * Machine-readable reasons for the stale flag (e.g. assetUpdated, dataQualityFailing).
+     */
+    staleReasons?: string[];
+    /**
      * The entity type of the knowledge item.
      */
     type?: Type;

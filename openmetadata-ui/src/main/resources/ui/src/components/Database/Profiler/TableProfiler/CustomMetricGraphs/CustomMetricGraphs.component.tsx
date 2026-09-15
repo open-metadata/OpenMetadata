@@ -27,14 +27,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  BLUE_600,
-  BLUE_CHART_AREA_FILL,
-  CHART_CURSOR_STROKE,
-} from '../../../../../constants/Color.constants';
-import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
+import { useChartColors } from '../../../../../hooks/useChartColors';
 import {
   deleteCustomMetric,
   putCustomMetric,
@@ -68,6 +63,7 @@ const CustomMetricGraphs = ({
   customMetrics,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
+  const { grid, primary, primaryArea } = useChartColors();
   const [form] = Form.useForm<CustomMetric>();
   const {
     permissions,
@@ -201,7 +197,7 @@ const CustomMetricGraphs = ({
                     latestValue: last(metric)?.[key] ?? '--',
                     title: t('label.count'),
                     dataKey: key,
-                    color: BLUE_600,
+                    color: primary,
                   },
                 ],
                 extra:
@@ -250,7 +246,7 @@ const CustomMetricGraphs = ({
                       margin={{ left: 16 }}>
                       <CartesianGrid
                         horizontal={renderHorizontalGridLine}
-                        stroke={GRAPH_BACKGROUND_COLOR}
+                        stroke={grid}
                         strokeDasharray="3 3"
                         vertical={false}
                       />
@@ -281,7 +277,7 @@ const CustomMetricGraphs = ({
                           />
                         }
                         cursor={{
-                          stroke: CHART_CURSOR_STROKE,
+                          stroke: grid,
                           strokeDasharray: '3 3',
                         }}
                       />
@@ -289,14 +285,14 @@ const CustomMetricGraphs = ({
                       <Line
                         dataKey={key}
                         name={key}
-                        stroke={BLUE_600}
+                        stroke={primary}
                         type="monotone"
                       />
                       <Area
                         dataKey={key}
-                        fill={BLUE_CHART_AREA_FILL}
+                        fill={primaryArea}
                         name={key}
-                        stroke={BLUE_600}
+                        stroke={primary}
                         type="monotone"
                       />
                     </ComposedChart>
