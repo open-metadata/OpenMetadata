@@ -11,20 +11,18 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { act } from 'react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import {
   ResourceEntity,
   type UIPermission,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { OBSERVABILITY_ROUTES } from '../../../observability/observability.constants';
-import ObservabilityLayout from '../../../observability/ObservabilityLayout/ObservabilityLayout';
 import { observabilityModule } from '../../../observability/ObservabilityModule/observability.module';
-import { AppModule, Intent } from '../AppModule.types';
+import { AppModule } from '../AppModule.types';
 import { useActiveModuleStore } from '../state/useActiveModule';
-import { emitIntent } from '../useIntent';
 import Sidebar from './Sidebar';
 
 // Module-scoped values read by the hoisted jest.mock factories at call time
@@ -53,62 +51,27 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: mockPermissions }),
 }));
 
-// ObservabilityLayout boundaries: the real drawers pull permissions, airflow
-// status and the whole test-case form stack, so stub them as open-state probes.
-jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer', () => ({
-  __esModule: true,
-  default: ({ open }: { open?: boolean }) => (
-    <div data-open={String(open)} data-testid="bundle-suite-drawer" />
-  ),
-}));
-
-jest.mock(
-  '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
-  () => ({
-    __esModule: true,
-    default: ({ open }: { open?: boolean }) => (
-      <div data-open={String(open)} data-testid="test-case-drawer" />
-    ),
-  })
-);
-
-// The layout re-claims its intent listeners on route reactivation; not driven
-// here, so stub the hook to a no-op.
-jest.mock('../context/useRouteActivation', () => ({
-  useRouteActivation: () => {},
-}));
-
 const DATA_QUALITY_PATH = OBSERVABILITY_ROUTES.OBSERVABILITY_DATA_QUALITY_BASE;
-
-let lastPathname = '';
-const PathnameProbe = () => {
-  lastPathname = useLocation().pathname;
-
-  return null;
-};
 
 const permissionsWith = (testSuiteCreate: boolean): UIPermission =>
   ({
     [ResourceEntity.TEST_SUITE]: { [Operation.Create]: testSuiteCreate },
   } as unknown as UIPermission);
 
-const renderShell = () =>
+const renderSidebar = () =>
   render(
     <MemoryRouter initialEntries={[DATA_QUALITY_PATH]}>
-      <PathnameProbe />
-      <ObservabilityLayout>
-        <Sidebar />
-      </ObservabilityLayout>
+      <Sidebar />
     </MemoryRouter>
   );
 
-describe('Sidebar collapsed sub-rail intent CTAs', () => {
+describe('Sidebar collapsed sub-rail', () => {
   beforeEach(() => {
     mockModules = [observabilityModule];
     mockPermissions = permissionsWith(true);
     useActiveModuleStore.setState({ activeModule: 'observability' });
+    // The sub-panel defaults to collapsed, so the sub-rail is what renders.
     localStorage.clear();
-    lastPathname = '';
   });
 
   afterEach(() => {
@@ -117,112 +80,49 @@ describe('Sidebar collapsed sub-rail intent CTAs', () => {
     });
   });
 
-  it('renders the intent-only CTAs as action buttons and keeps both drawers closed', () => {
-    renderShell();
-    const testCase = screen.getByTestId('ask-sub-rail-item-add-test-case');
-    const bundle = screen.getByTestId('ask-sub-rail-item-add-bundle-suite');
+  it('renders the sub-rail rather than the sub-panel', () => {
+    renderSidebar();
 
-    // intent-only items have no `path` → render as <button>, not an anchor.
-    expect(testCase.tagName).toBe('BUTTON');
-    expect(bundle.tagName).toBe('BUTTON');
-    expect(screen.getByTestId('test-case-drawer')).toHaveAttribute(
-      'data-open',
-      'false'
-    );
-    expect(screen.getByTestId('bundle-suite-drawer')).toHaveAttribute(
-      'data-open',
-      'false'
-    );
+    expect(screen.getByTestId('ask-sub-rail')).toBeInTheDocument();
+    expect(screen.queryByTestId('ask-sub-panel')).toBeNull();
   });
 
-  it('opens the test-case drawer when the add-test-case chip is clicked', () => {
-    renderShell();
+  it('omits the intent-only Quick Action CTAs — the rail is navigation-only', () => {
+    renderSidebar();
 
-    fireEvent.click(screen.getByTestId('ask-sub-rail-item-add-test-case'));
-
-    expect(screen.getByTestId('test-case-drawer')).toHaveAttribute(
-      'data-open',
-      'true'
-    );
-    expect(screen.getByTestId('bundle-suite-drawer')).toHaveAttribute(
-      'data-open',
-      'false'
-    );
-    // intent-only CTA must not navigate.
-    expect(lastPathname).toBe(DATA_QUALITY_PATH);
+    // An unlabeled "+" in a 65px icon strip can't convey what it creates, and
+    // two of them are indistinguishable. Create actions live in the expanded
+    // SubPanel's Quick Actions instead (see SubPanel.intent.test.tsx).
+    expect(screen.queryByTestId('ask-sub-rail-item-add-test-case')).toBeNull();
+    expect(
+      screen.queryByTestId('ask-sub-rail-item-add-bundle-suite')
+    ).toBeNull();
   });
 
-  it('opens the bundle-suite drawer when the add-bundle-suite chip is clicked', () => {
-    renderShell();
+  it('still renders every path-based sub-nav item as an anchor with its href', () => {
+    renderSidebar();
 
-    fireEvent.click(screen.getByTestId('ask-sub-rail-item-add-bundle-suite'));
-
-    expect(screen.getByTestId('bundle-suite-drawer')).toHaveAttribute(
-      'data-open',
-      'true'
-    );
-    expect(screen.getByTestId('test-case-drawer')).toHaveAttribute(
-      'data-open',
-      'false'
-    );
-    expect(lastPathname).toBe(DATA_QUALITY_PATH);
-  });
-
-  it('still renders path-only sub-rail items as anchors with the route href', () => {
-    renderShell();
+    // Regression guard for the `!item.path` skip: navigable items must be
+    // untouched by it.
     const dataQuality = screen.getByTestId('ask-sub-rail-item-data-quality');
 
-    // Navigable items keep their href → open-in-new-tab affordances survive.
     expect(dataQuality.tagName).toBe('A');
     expect(dataQuality).toHaveAttribute('href', DATA_QUALITY_PATH);
-  });
 
-  it('opens the bundle-suite drawer on a direct emitIntent (listener-wiring control)', () => {
-    renderShell();
-
-    act(() => {
-      emitIntent(Intent.AddBundleSuite);
+    ['incidents', 'alerts', 'pipeline', 'test-library'].forEach((key) => {
+      expect(screen.getByTestId(`ask-sub-rail-item-${key}`).tagName).toBe('A');
     });
-
-    expect(screen.getByTestId('bundle-suite-drawer')).toHaveAttribute(
-      'data-open',
-      'true'
-    );
   });
 
-  it('hides the add-bundle-suite chip when the user lacks TEST_SUITE.Create', () => {
+  it('keeps the nav items when the user lacks TEST_SUITE.Create', () => {
     mockPermissions = permissionsWith(false);
-    renderShell();
+    renderSidebar();
 
+    expect(
+      screen.getByTestId('ask-sub-rail-item-data-quality')
+    ).toBeInTheDocument();
     expect(
       screen.queryByTestId('ask-sub-rail-item-add-bundle-suite')
     ).toBeNull();
-    expect(
-      screen.getByTestId('ask-sub-rail-item-add-test-case')
-    ).toBeInTheDocument();
-  });
-
-  it('still opens the test-case drawer without TEST_SUITE.Create (ungated CTA)', () => {
-    mockPermissions = permissionsWith(false);
-    renderShell();
-
-    fireEvent.click(screen.getByTestId('ask-sub-rail-item-add-test-case'));
-
-    expect(screen.getByTestId('test-case-drawer')).toHaveAttribute(
-      'data-open',
-      'true'
-    );
-  });
-
-  it('hides the add-bundle-suite chip while permissions are still loading', () => {
-    mockPermissions = undefined;
-    renderShell();
-
-    expect(
-      screen.queryByTestId('ask-sub-rail-item-add-bundle-suite')
-    ).toBeNull();
-    expect(
-      screen.getByTestId('ask-sub-rail-item-add-test-case')
-    ).toBeInTheDocument();
   });
 });
