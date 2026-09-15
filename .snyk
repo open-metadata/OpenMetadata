@@ -27,7 +27,48 @@
 #   https://docs.snyk.io/developer-tools/snyk-cli/scan-and-maintain-projects-using-the-cli/snyk-cli-for-snyk-code/exclude-directories-and-files-from-snyk-code-cli-tests
 
 version: v1.25.0
-ignore: {}
+
+# Suppressed Snyk Open Source findings.
+#
+# Each entry states a premise a reviewer can re-check and carries a short expiry, so a suppression
+# that outlives its premise comes back on its own instead of hiding silently. Renewing one means
+# re-verifying it, not moving the date.
+ignore:
+  # @tiptap/core prototype pollution in mergeAttributes() -- we are already on the fixed build.
+  #
+  # PREMISE: @tiptap/core resolves to >= 2.27.3. 2.27.3 is the backport of the same fix 3.30.4
+  # shipped: the "__proto__" key is written with Object.defineProperty() and returned early,
+  # instead of falling through to plain assignment. Confirmed by diffing the published tarballs --
+  # 2.27.2 and 3.30.3 lack the guard, 2.27.3 and 3.30.4 carry it, identically. Re-check with:
+  #   for v in 2.27.2 2.27.3 3.30.3 3.30.4; do npm pack @tiptap/core@$v >/dev/null 2>&1; \
+  #     mkdir -p x$v && tar xzf tiptap-core-$v.tgz -C x$v; \
+  #     printf '%s: ' "$v"; grep -c '__proto__' x$v/package/dist/index.js; done
+  #
+  # WHY IT IS FLAGGED ANYWAY: GHSA-cp6q-959q-f8rh was published 2026-09-02; 2.27.3 was published
+  # 2026-09-04. The advisory's single range ">= 2.0.0-alpha.0, < 3.30.4" predates the backport and
+  # has never been revised, so no version on the v2 line can satisfy it (2.27.3 is npm's v2-latest).
+  # Snyk mirrors GHSA and inherits the error.
+  #
+  # RESOLUTION: correcting the advisory upstream, which clears this everywhere and lets the block be
+  # deleted. Do NOT resolve it by moving to v3 -- that is a major across the BlockEditor (~68 files
+  # under openmetadata-ui/), and @tiptap/pm@3 requires prosemirror-model ^1.25.11 / prosemirror-view
+  # ^1.42.3 / prosemirror-transform ^1.12.0 against the 1.22.1 / 1.28.2 / 1.7.0 pinned in the UI
+  # package.json resolutions block.
+  #
+  # SCOPE NOTE: '*' suppresses this id on every path and version -- .snyk has no version predicate,
+  # so the premise above cannot be encoded as a condition. It holds today because @tiptap/core is a
+  # direct dependency at ^2.27.3 in the UI package.json and the only package depending on it,
+  # @tiptap/starter-kit, also requires ^2.27.3 -- neither can resolve below the fix. If a transitive
+  # @tiptap/core ever appears on a looser range, this block must be re-scoped or dropped.
+  SNYK-JS-TIPTAPCORE-19643571:
+    - '*':
+        reason: >-
+          False positive -- @tiptap/core 2.27.3 is the v2 backport of the same mergeAttributes()
+          __proto__ guard released in 3.30.4, verified against the published 2.27.2/2.27.3/3.30.3/
+          3.30.4 tarballs. GHSA-cp6q-959q-f8rh predates the backport and omits the carve-out for it.
+        created: 2026-09-15T00:00:00.000Z
+        expires: 2026-10-31T00:00:00.000Z
+
 patch: {}
 exclude:
   global:
