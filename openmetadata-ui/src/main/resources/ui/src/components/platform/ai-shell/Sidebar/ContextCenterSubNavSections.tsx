@@ -224,7 +224,10 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
   return (
     <>
       <section className="ask-sub-panel__section ask-sub-panel__section--with-header">
-        <Typography className="tw:text-gray-500" size="text-xs" weight="medium">
+        <Typography
+          className="tw:text-quaternary"
+          size="text-xs"
+          weight="medium">
           {t('label.quick-action-plural')}
         </Typography>
         <ul className="ask-sub-panel__list">
@@ -276,7 +279,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
       {!isEmpty(recentlyViewed) && (
         <section className="ask-sub-panel__section ask-sub-panel__section--with-header">
           <Typography
-            className="tw:text-gray-500 tw:pl-1"
+            className="tw:text-quaternary tw:pl-1"
             size="text-xs"
             weight="medium">
             {t('label.recently-viewed')}
@@ -290,7 +293,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
       {!isEmpty(bookmarks) && (
         <section className="ask-sub-panel__section ask-sub-panel__section--with-header">
           <Typography
-            className="tw:text-gray-500 tw:pl-1"
+            className="tw:text-quaternary tw:pl-1"
             size="text-xs"
             weight="medium">
             {t('label.bookmark-plural')}
@@ -306,7 +309,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
           className="ask-sub-panel__section ask-sub-panel__section--with-header"
           key={tagFqn}>
           <Typography
-            className="tw:text-gray-500 tw:pl-1"
+            className="tw:text-quaternary tw:pl-1"
             size="text-xs"
             weight="medium">
             {startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
