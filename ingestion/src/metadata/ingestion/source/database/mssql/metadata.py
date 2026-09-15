@@ -232,7 +232,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Could not detect indexed views for schema {schema_name}; they will be reported as plain views: {exc}"
+                "Could not detect indexed views for schema %s; they will be reported as plain views: %s",
+                schema_name,
+                exc,
             )
             return set()
 
