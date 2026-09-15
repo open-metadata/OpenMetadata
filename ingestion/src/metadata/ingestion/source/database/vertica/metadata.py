@@ -329,8 +329,8 @@ VerticaDialect._get_default_schema_name = _get_default_schema_name  # pylint: di
 # these, and they are registered globally rather than per dialect. Vertica does
 # import a connector that installs them, but only as a side effect of sharing
 # Postgres helpers, so declare them here rather than depend on that chain.
-Inspector.get_all_table_ddls = get_all_table_ddls
-Inspector.get_table_ddl = get_table_ddl
+Inspector.get_all_table_ddls = get_all_table_ddls  # pyright: ignore[reportAttributeAccessIssue]
+Inspector.get_table_ddl = get_table_ddl  # pyright: ignore[reportAttributeAccessIssue]
 
 # sqlalchemy-vertica predates SQLAlchemy 2.0 and overrides only the singular
 # get_* reflection methods. The batched get_multi_* API that MetaData.reflect()
