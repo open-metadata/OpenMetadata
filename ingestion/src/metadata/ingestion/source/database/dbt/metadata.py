@@ -38,7 +38,9 @@ from metadata.generated.schema.entity.data.metric import (
     MetricFilter,
     MetricGranularity,
     MetricMeasure,
+    MetricUnitOfMeasurement,
 )
+from metadata.generated.schema.type import basic
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
@@ -1375,6 +1377,41 @@ class DbtSource(DbtServiceSource):
 
             tags = self._extract_metric_tags(metric_node)
 
+            # Governance metadata lives in the node-level meta (dbt copies config.meta: onto
+            # manifest_node.meta while parsing). Tables already ingest owners/domain/tier/
+            # glossary/custom properties from there; metrics must too.
+            dbt_meta = None
+            raw_meta = getattr(metric_node, "meta", None)
+            if raw_meta:
+                dbt_meta = DbtMeta(**raw_meta)
+                # Tier/glossary/tags flow through the tag channel; owner/domain/custom
+                # properties/unit of measurement are read directly below. process_dbt_meta also
+                # records table-level domain and custom-property side effects, so only feed it
+                # meta that needs the tag channel.
+                om_meta = raw_meta.get("openmetadata") if isinstance(raw_meta, dict) else None
+                if isinstance(om_meta, dict) and any(om_meta.get(k) for k in ("tier", "glossary", "tags")):
+                    tag_meta = {
+                        "openmetadata": {
+                            k: om_meta[k] for k in ("tier", "glossary", "tags") if om_meta.get(k)
+                        }
+                    }
+                    tags = (tags or []) + (self.process_dbt_meta(tag_meta, metric_name) or [])
+
+            owners = self.get_dbt_owner(metric_node, None)
+            domain_ref = self.get_dbt_domain(metric_node)
+            unit_of_measurement = None
+            custom_unit = None
+            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.unit:
+                unit_value = dbt_meta.openmetadata.unit.upper()
+                if unit_value in set(MetricUnitOfMeasurement.__members__):
+                    unit_of_measurement = MetricUnitOfMeasurement(unit_value)
+                else:
+                    custom_unit = dbt_meta.openmetadata.unit
+            extension = None
+            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.customProperties:
+                extension = basic.EntityExtension(
+                    root=dict(dbt_meta.openmetadata.customProperties)
+                )
             create_metric = CreateMetricRequest(
                 name=metric_name,
                 displayName=label or metric_name,
@@ -1387,6 +1424,11 @@ class DbtSource(DbtServiceSource):
                 measures=measures or None,
                 filters=filters or None,
                 tags=tags or None,
+                owners=owners,
+                domains=[domain_ref.fullyQualifiedName] if domain_ref else None,
+                unitOfMeasurement=unit_of_measurement,
+                customUnitOfMeasurement=custom_unit,
+                extension=extension,
             )
 
             yield Either(right=create_metric)
