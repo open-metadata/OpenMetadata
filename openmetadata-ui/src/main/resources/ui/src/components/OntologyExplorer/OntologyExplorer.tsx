@@ -59,7 +59,10 @@ import OntologyConceptDraftInspector from './OntologyConceptDraftInspector';
 import OntologyControlButtons from './OntologyControlButtons';
 import OntologyDataGraph from './OntologyDataGraph';
 import { OntologyEntityPanel } from './OntologyEntityPanel';
-import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
+import {
+  ONTOLOGY_HEALTH_PREVIEW_SIZE,
+  withoutOntologyAutocompleteAll,
+} from './OntologyExplorer.constants';
 import {
   MergedEdge,
   OntologyExplorerProps,
@@ -72,6 +75,7 @@ import { OntologyRelationDetailsPanel } from './OntologyRelationDetailsPanel';
 import {
   buildOntologyTreeGroups,
   getOntologyHealthSummary,
+  resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
 import OntologyTermEditor from './OntologyTermEditor';
 import OntologyTreeView from './OntologyTreeView';
@@ -350,6 +354,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     exportableGlossaryId,
     hasMoreDataTerms,
     ontologySummary,
+    isolatedTermDetails,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -574,10 +579,39 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     [handleRefresh, onConceptCreated, onConceptDraftClose, setSelectedNode]
   );
 
+  const derivedHealthSummary = useMemo(
+    () => getOntologyHealthSummary(combinedGraphData, filters),
+    [combinedGraphData, filters]
+  );
   const healthSummary = useMemo(() => {
-    const derived = getOntologyHealthSummary(combinedGraphData, filters);
+    const graphNodeById = new Map(
+      derivedHealthSummary.isolatedTerms.map((term) => [term.id, term])
+    );
     if (!ontologySummary) {
-      return derived;
+      const termDetailsById = new Map(
+        isolatedTermDetails.map((term) => [term.id, term])
+      );
+
+      return {
+        ...derivedHealthSummary,
+        isolatedTerms: derivedHealthSummary.isolatedTerms
+          .slice(0, ONTOLOGY_HEALTH_PREVIEW_SIZE)
+          .map((term) => {
+            const details = termDetailsById.get(term.id);
+
+            return {
+              ...term,
+              label: resolveOntologyTermLabel({
+                displayName: details?.displayName,
+                fullyQualifiedName:
+                  details?.fullyQualifiedName ?? term.fullyQualifiedName,
+                id: term.id,
+                label: term.label,
+                name: details?.name,
+              }),
+            };
+          }),
+      };
     }
 
     return {
@@ -587,12 +621,17 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       isolatedTerms: ontologySummary.isolatedPreview.map((term) => ({
         id: term.id,
         fullyQualifiedName: term.fullyQualifiedName,
-        label: term.displayName ?? term.name,
+        label: resolveOntologyTermLabel({
+          ...graphNodeById.get(term.id),
+          ...term,
+        }),
         type: 'glossaryTermIsolated',
       })),
       totalTermCount: ontologySummary.totalTerms,
     };
-  }, [combinedGraphData, filters, ontologySummary]);
+  }, [derivedHealthSummary, isolatedTermDetails, ontologySummary]);
+  const isolatedTermCount =
+    ontologySummary?.isolatedTerms ?? derivedHealthSummary.isolatedTerms.length;
   const treeGroups = useMemo(
     () =>
       buildOntologyTreeGroups(
@@ -1373,7 +1412,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     return (
       <OntologyHealthPanel
         health={healthSummary}
-        isolatedTermCount={ontologySummary?.isolatedTerms}
+        isolatedTermCount={isolatedTermCount}
         onConnect={(node) => {
           setSelectedNode(node);
           onRequestEdit?.();

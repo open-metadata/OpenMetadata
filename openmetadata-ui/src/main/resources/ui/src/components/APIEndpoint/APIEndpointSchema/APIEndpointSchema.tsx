@@ -52,6 +52,7 @@ import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -115,6 +116,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.API_ENDPOINT,
   });
+
+  // Consumer via useGenericContext() — `permissions` stays the raw `OperationPermission`
+  // object (GenericProvider precedent). No `deleted` argument: the old raw expressions never
+  // gated on it themselves — `isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}`
+  // is a separate prop on the same components.
+  const { canEditDescription, canEditTags, canEditGlossaryTerms } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const viewTypeOptions = [
     {
@@ -410,9 +420,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             }}
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
-            hasEditPermission={
-              permissions.EditDescription || permissions.EditAll
-            }
+            hasEditPermission={canEditDescription}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
@@ -430,7 +438,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={permissions.EditTags || permissions.EditAll}
+            hasTagEditAccess={canEditTags}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
@@ -453,9 +461,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={
-              permissions.EditGlossaryTerms || permissions.EditAll
-            }
+            hasTagEditAccess={canEditGlossaryTerms}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
@@ -477,7 +483,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       theme,
       handleFieldTagsChange,
       handleFieldClick,
-      permissions,
+      canEditDescription,
+      canEditTags,
+      canEditGlossaryTerms,
       isVersionView,
       tagFilterState,
     ]

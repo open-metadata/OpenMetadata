@@ -312,6 +312,14 @@ class MssqlUnitTest(TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].name, "sp_include")
 
+        # The executed SQL must scope sys.procedures by the routine's schema so a
+        # same-named procedure in another schema cannot fan out and override the
+        # definition (regression guard for the cross-schema join bug).
+        executed_sql = str(mock_conn.execute.call_args.args[0])
+        self.assertIn("sch.name = r.ROUTINE_SCHEMA", executed_sql)
+        self.assertIn(f"ROUTINE_CATALOG = '{MOCK_DATABASE.name.root}'", executed_sql)
+        self.assertIn(f"ROUTINE_SCHEMA = '{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
+
 
 class TestUpdateMssqlIschemaNames:
     """Verify update_mssql_ischema_names mutates the dict in-place and returns None."""
