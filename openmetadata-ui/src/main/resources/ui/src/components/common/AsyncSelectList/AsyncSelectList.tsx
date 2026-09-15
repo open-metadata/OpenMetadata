@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  ClassificationTag,
+  GlossaryTag,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import {
   Button,
   Empty,
@@ -36,8 +41,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
-import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';
 import {

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  ClassificationTag,
+  GlossaryTag,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import { Button, Empty, Form, Space, TreeSelect, TreeSelectProps } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -55,8 +60,6 @@ import {
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import ClassificationTag from '../atoms/Tag/ClassificationTag';
-import GlossaryTag from '../atoms/Tag/GlossaryTag';
 import { KeyDownStopPropagationWrapper } from '../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../Loader/Loader';
 import './async-select-list.less';

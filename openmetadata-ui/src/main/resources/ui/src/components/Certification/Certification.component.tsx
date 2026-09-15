@@ -22,7 +22,15 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  ReactNode,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -34,10 +42,19 @@ import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
-import { Icon } from '../common/Icon/Icon';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
+
+// Lazy-loaded from the dedicated `@openmetadata/ui-core-components/icon`
+// subpath (not the package root) so ICON_MAP's ~44 icon components — a plain
+// object a bundler cannot tree-shake key-by-key — never enter this eagerly
+// rendered component's chunk unless a certification actually has an iconURL.
+const Icon = lazy(() =>
+  import('@openmetadata/ui-core-components/icon').then((m) => ({
+    default: m.Icon,
+  }))
+);
 
 const Certification = ({
   currentCertificate = '',
@@ -161,12 +178,14 @@ const Certification = ({
 
             const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
             const renderedIcon = iconURL ? (
-              <Icon
-                alt={title}
-                fallback={<CertificationIcon height={28} width={28} />}
-                iconValue={iconURL}
-                size={28}
-              />
+              <Suspense fallback={<CertificationIcon height={28} width={28} />}>
+                <Icon
+                  alt={title}
+                  fallback={<CertificationIcon height={28} width={28} />}
+                  iconValue={iconURL}
+                  size={28}
+                />
+              </Suspense>
             ) : null;
 
             let iconContent: ReactNode;

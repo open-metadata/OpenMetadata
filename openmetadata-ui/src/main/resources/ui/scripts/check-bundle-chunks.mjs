@@ -30,7 +30,14 @@ import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 const MAX_EMITTED_JS_FILES = 1400;
 const MAX_SMALL_JS_FILES = 1250;
 const MAX_HTML_BOOTSTRAP_JS_FILES = 8;
-const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 970 * 1024;
+// Raised from 970 KiB: ClassificationTag/GlossaryTag/DomainTag/DataProductTag/
+// AutoClassificationTag and the Icon component moved from this app into
+// @openmetadata/ui-core-components (so Storybook and other consumers can
+// share them) — vite.config.ts buckets the whole linked package into one
+// `vendor-untitled` chunk regardless of code-splitting, so the moved code
+// still counts against this app's eager bootstrap bytes even though nothing
+// new is rendered. ~5 KiB of headroom above the post-move measurement.
+const MAX_HTML_BOOTSTRAP_JS_BROTLI_BYTES = 975 * 1024;
 const MAX_SINGLE_JS_BYTES = 1.75 * 1024 * 1024;
 const SMALL_JS_BYTES = 20 * 1024;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));

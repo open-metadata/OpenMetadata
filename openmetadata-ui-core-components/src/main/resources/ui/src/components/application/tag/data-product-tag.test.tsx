@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,21 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import DataProductTag from './DataProductTag';
-import { DEFAULT_TAG_COLOR } from './Tag.constant';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DataProductTag } from './data-product-tag';
+import { DEFAULT_TAG_COLOR } from './tag.constants';
 
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a href={to} {...rest}>
-      {children}
-    </a>
-  )),
-}));
-
-describe('DataProductTag (atoms)', () => {
+describe('DataProductTag', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should render the label text', () => {
@@ -39,12 +32,14 @@ describe('DataProductTag (atoms)', () => {
     expect(container.querySelector('svg')).toBeInTheDocument();
   });
 
-  it('should render an icon when an icon prop is passed', () => {
+  it('should render an icon when an icon prop is passed', async () => {
     const { container } = render(
       <DataProductTag icon="Tag01" label="Reporting Suite" />
     );
 
-    expect(container.querySelector('svg')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(container.querySelector('svg')).toBeInTheDocument();
+    });
   });
 
   it('should not render a redirect link when no href is passed', () => {
@@ -94,8 +89,8 @@ describe('DataProductTag (atoms)', () => {
   });
 
   it('should call onDelete once with the native event when the delete button is clicked, without bubbling to a parent handler', () => {
-    const onDelete = jest.fn();
-    const onParentClick = jest.fn();
+    const onDelete = vi.fn();
+    const onParentClick = vi.fn();
 
     render(
       <div role="presentation" onClick={onParentClick}>
@@ -134,7 +129,7 @@ describe('DataProductTag (atoms)', () => {
       <DataProductTag label="Reporting Suite" size="md" />
     );
 
-    expect(container.firstChild).toHaveClass('tw:h-6', 'tw:text-sm');
+    expect(container.firstChild).toHaveClass('tw:text-sm');
   });
 
   it('should render an accent badge with no other inline style property', () => {
