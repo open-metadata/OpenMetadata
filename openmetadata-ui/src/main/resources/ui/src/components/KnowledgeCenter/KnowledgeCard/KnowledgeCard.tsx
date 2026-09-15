@@ -136,7 +136,6 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
               icon={tag.style?.iconURL}
               key={tag.tagFQN ?? ''}
               label={getEntityName(tag)}
-              maxWidth={120}
               tooltip={getEntityName(tag)}
             />
           );
