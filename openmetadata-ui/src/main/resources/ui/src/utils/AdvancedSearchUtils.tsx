@@ -20,9 +20,8 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/ui';
 import { Plus, Trash01, X } from '@untitledui/icons';
-import DOMPurify from 'dompurify';
-import parse from 'html-react-parser';
-import { isArray, isEmpty } from 'lodash';
+import { escapeRegExp, isArray, isEmpty } from 'lodash';
+import React from 'react';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -33,12 +32,42 @@ import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/EntityDisplayPureUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
+import type { QueryBuilderConfigModes } from './queryBuilder/types';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import searchClassBase from './SearchClassBase';
+import { toTagSelectOptions } from './SearchPureUtils';
 
 type DropdownItem = { key: string; label: JSX.Element };
+const renderSearchLabel = (label: string, searchKey: string) => {
+  if (!searchKey) {
+    return label;
+  }
+
+  const matches = label.matchAll(new RegExp(escapeRegExp(searchKey), 'gi'));
+  const parts: React.ReactNode[] = [];
+  let previousIndex = 0;
+
+  for (const match of matches) {
+    const matchIndex = match.index;
+    if (matchIndex === undefined) {
+      continue;
+    }
+
+    if (matchIndex > previousIndex) {
+      parts.push(label.slice(previousIndex, matchIndex));
+    }
+    parts.push(<mark key={`match-${matchIndex}`}>{match[0]}</mark>);
+    previousIndex = matchIndex + match[0].length;
+  }
+
+  if (previousIndex < label.length) {
+    parts.push(label.slice(previousIndex));
+  }
+
+  return parts;
+};
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
@@ -138,11 +167,7 @@ export const generateSearchDropdownLabel = (
           <span
             className="dropdown-option-label tw:truncate tw:block"
             title={option.label}>
-            <span>
-              {parse(
-                DOMPurify.sanitize(getSearchLabel(option.label, searchKey))
-              )}
-            </span>
+            <span>{renderSearchLabel(option.label, searchKey)}</span>
           </span>
           {option.description && (
             <span
@@ -194,17 +219,14 @@ export const getTierOptions = async (): Promise<ListValues> => {
       limit: 50,
     });
 
-    const tierFields = tiers.map((tier) => ({
-      title: tier.fullyQualifiedName, // tier.name,
-      value: tier.fullyQualifiedName,
-    }));
-
-    return tierFields as ListValues;
+    return toTagSelectOptions(tiers) as ListValues;
   } catch {
     return [];
   }
 };
 
+// Legacy entry point: translates the single `isExplorePage` boolean into the explicit mode inputs the class bases now
+// take.
 export const getTreeConfig = ({
   searchOutputType,
   searchIndex,
@@ -215,19 +237,27 @@ export const getTreeConfig = ({
   isExplorePage: boolean;
 }) => {
   const index = isArray(searchIndex) ? searchIndex : [searchIndex];
+  const modes: QueryBuilderConfigModes = isExplorePage
+    ? {}
+    : {
+        showLabels: false,
+        useFriendlyOperatorLabels: true,
+        renderButton: renderQueryBuilderFilterButtons,
+      };
 
-  return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(index, isExplorePage)
-    : jsonLogicSearchClassBase.getQbConfigs(index, isExplorePage);
+  if (searchOutputType === SearchOutputType.ElasticSearch) {
+    return advancedSearchClassBase.getQbConfigs(index, modes);
+  }
+
+  // JSONLogic keeps its own icon-only renderer; only label visibility varies.
+  return jsonLogicSearchClassBase.getQbConfigs(index, {
+    showLabels: isExplorePage,
+  });
 };
 
-/**
- * Process a custom property field and add it to the subfields
- * @param field - The custom property field to process
- * @param resEntityType - The entity type containing the field
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
+// Process a custom property field and add it to the subfields @param field - The custom property field to process
+// @param resEntityType - The entity type containing the field @param subfields - The subfields record to update @param
+// entityType - Optional specific entity type to filter for
 export const processCustomPropertyField = (
   field: CustomPropertySummary,
   resEntityType: string,
@@ -277,13 +307,9 @@ export const processCustomPropertyField = (
   });
 };
 
-/**
- * Process all custom property fields for a specific entity type
- * @param resEntityType - The entity type to process
- * @param fields - Array of custom property fields
- * @param subfields - The subfields record to update
- * @param entityType - Optional specific entity type to filter for
- */
+// Process all custom property fields for a specific entity type @param resEntityType - The entity type to process
+// @param fields - Array of custom property fields @param subfields - The subfields record to update @param entityType -
+// Optional specific entity type to filter for
 export const processEntityTypeFields = (
   resEntityType: string,
   fields: CustomPropertySummary[],

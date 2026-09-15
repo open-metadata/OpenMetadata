@@ -12,9 +12,8 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Col, Input, Radio, RadioChangeEvent, Row, Typography } from 'antd';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ALL_ASTERISKS_REGEX } from '../../../../../constants/regex.constants';
 import { CertificationInputType } from '../../../../../enums/PasswordWidget.enum';
 import FileUploadWidget from './FileUploadWidget';
 import './password-widget.less';
@@ -30,17 +29,15 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
   const isInputTypeFile = props.schema.uiFieldType === 'file';
   const isInputTypeFileOrInput = props.schema.uiFieldType === 'fileOrInput';
 
-  const passwordWidgetValue = useMemo(() => {
-    if (ALL_ASTERISKS_REGEX.test(props.value)) {
-      return undefined; // Do not show the password if it is masked
-    } else {
-      return props.value;
-    }
-  }, [props.value]);
+  const handleChange = (nextValue: string) =>
+    props.onChange(
+      nextValue === '' ? props.options.emptyValue ?? undefined : nextValue
+    );
 
   const getPasswordInput = useCallback(
     (disabled?: boolean) => (
       <Input.Password
+        allowClear
         autoComplete="off"
         // eslint-disable-next-line jsx-a11y/no-autofocus -- focus is driven by the RJSF widget schema
         autoFocus={props.autofocus}
@@ -51,9 +48,9 @@ const PasswordWidget: FC<WidgetProps> = (props) => {
         placeholder={props.placeholder}
         readOnly={props.readonly}
         required={props.required}
-        value={passwordWidgetValue}
+        value={props.value}
         onBlur={() => props.onBlur(props.id, props.value)}
-        onChange={(e) => props.onChange(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         onFocus={() => props.onFocus(props.id, props.value)}
       />
     ),

@@ -149,11 +149,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
             ? config.getSearchIndexMappingLanguage().value()
             : "en";
 
-    try {
-      for (String dataAssetType : getDataAssetTypes()) {
-        IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
-        String dataStreamName =
-            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
+    for (String dataAssetType : getDataAssetTypes()) {
+      IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
+      String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
+      try {
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
               dataStreamName,
@@ -161,10 +160,17 @@ public class DataInsightsApp extends AbstractNativeApplication {
               dataAssetIndex,
               language,
               dataAssetsConfig.getRetention());
+        } else {
+          searchInterface.updateDataAssetsDataStream(
+              dataStreamName, dataAssetType, dataAssetIndex, language);
         }
+      } catch (IOException ex) {
+        LOG.error(
+            "Could not prepare Data Insights snapshot index for asset type {} (data stream {}).",
+            dataAssetType,
+            dataStreamName,
+            ex);
       }
-    } catch (IOException ex) {
-      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
     }
   }
 

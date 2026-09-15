@@ -49,7 +49,6 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
@@ -57,10 +56,8 @@ import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../utils/EntityPureUtils';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   callServicePatchAPI,
   getServiceMainTabColumns,
@@ -220,9 +217,13 @@ function ServiceMainTabContent({
     const currentPermission =
       servicePermissions[serviceCategory as keyof typeof servicePermissions];
 
-    return (
-      currentPermission?.EditAll || currentPermission?.EditDisplayName || false
-    );
+    // Resource-level permission (usePermissionProvider().permissions.<resourceType>) — itself
+    // OperationPermission-shaped, so it runs through the same derivation as an entity-level or
+    // consumer-prop permission object (Task 8 Batch 3 precedent, DatabaseSchemaTable.tsx). No
+    // `deleted` argument: the old expression never gated on it.
+    return getDerivedPermissionFlags(
+      currentPermission ?? DEFAULT_ENTITY_PERMISSION
+    ).canEditDisplayName;
   }, [permissions, serviceCategory, isVersionPage]);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
@@ -333,6 +334,19 @@ function ServiceMainTabContent({
     });
   };
 
+  // Consumer via the `servicePermission: OperationPermission` prop (Task 8 rule 2) — derive
+  // named flags once instead of five separate raw/prioritized calls. `deleted` is passed
+  // through: every edit flag here was already ANDed with `!serviceDetails.deleted` in the old
+  // code (view flags are never deleted-gated by design, matching the old ViewCustomFields read).
+  const flags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        servicePermission,
+        Boolean(serviceDetails.deleted)
+      ),
+    [servicePermission, serviceDetails.deleted]
+  );
+
   const {
     editTagsPermission,
     viewCustomPropertiesPermission,
@@ -341,27 +355,13 @@ function ServiceMainTabContent({
     editDataProductPermission,
   } = useMemo(
     () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(servicePermission, Operation.EditTags) &&
-        !serviceDetails.deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          servicePermission,
-          Operation.EditGlossaryTerms
-        ) && !serviceDetails.deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          servicePermission,
-          Operation.EditDescription
-        ) && !serviceDetails.deleted,
-      editDataProductPermission:
-        servicePermission.EditAll && !serviceDetails.deleted,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        servicePermission,
-        Operation.ViewCustomFields
-      ),
+      editTagsPermission: flags.canEditTags,
+      editGlossaryTermsPermission: flags.canEditGlossaryTerms,
+      editDescriptionPermission: flags.canEditDescription,
+      editDataProductPermission: flags.canEditAll,
+      viewCustomPropertiesPermission: flags.canViewCustomFields,
     }),
-    [servicePermission, serviceDetails]
+    [flags]
   );
 
   useEffect(() => {
@@ -432,8 +432,7 @@ function ServiceMainTabContent({
 
                           {entityType === EntityType.DATABASE_SERVICE &&
                             getBulkEditButton(
-                              servicePermission.EditAll &&
-                                !serviceDetails.deleted,
+                              flags.canEditAll,
                               handleEditTable
                             )}
                         </>

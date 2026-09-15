@@ -126,6 +126,10 @@ function SqlParamsSection({
 
 function TestCaseSidePanel({
   testCaseData,
+  description,
+  descriptionChangeSummaryEntry,
+  hasEditDescriptionPermission,
+  handleDescriptionChange,
   hasEditTagsPermission,
   hasEditGlossaryTermsPermission,
   updatedTags,
@@ -137,8 +141,21 @@ function TestCaseSidePanel({
   handleDataProductsSave,
 }: Readonly<TestCaseSidePanelProps>) {
   return (
-    <div className="transition-all-200ms tw:col-span-3">
+    <div
+      className="transition-all-200ms tw:col-span-3"
+      data-testid="test-case-rail">
       <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
+        <div className="tw:w-full">
+          <Description
+            wrapInCard
+            changeSummaryEntry={descriptionChangeSummaryEntry}
+            description={description}
+            entityType={EntityType.TEST_CASE}
+            hasEditAccess={hasEditDescriptionPermission}
+            showCommentsIcon={false}
+            onDescriptionUpdate={handleDescriptionChange}
+          />
+        </div>
         <div className="tw:w-full">
           <TagsContainerV2
             newLook
@@ -341,17 +358,17 @@ const TestCaseResultTab = ({
           isSidePanelVisible
         )}`}>
         <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
-          <div className="tw:w-full">
-            <Description
-              wrapInCard
-              changeSummaryEntry={descriptionChangeSummaryEntry}
-              description={description}
-              entityType={EntityType.TEST_CASE}
-              hasEditAccess={hasEditDescriptionPermission}
-              showCommentsIcon={false}
-              onDescriptionUpdate={handleDescriptionChange}
-            />
-          </div>
+          {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
+            AlertComponent && (
+              <div className="tw:w-full">
+                <AlertComponent />
+              </div>
+            )}
+          {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
+            <div className="test-case-result-tab-graph tw:w-full">
+              <TestSummary data={testCaseData} />
+            </div>
+          )}
 
           <div className="tw:w-full" data-testid="parameter-container">
             <div className="parameter-container">
@@ -392,18 +409,6 @@ const TestCaseResultTab = ({
             />
           ) : null}
 
-          {shouldShowAILearningBanner(showAILearningBanner, testCaseData) &&
-            AlertComponent && (
-              <div className="tw:w-full">
-                <AlertComponent />
-              </div>
-            )}
-          {shouldRenderTestSummary(testCaseData, shouldRenderDefaultGraph) && (
-            <div className="test-case-result-tab-graph tw:w-full">
-              <TestSummary data={testCaseData} />
-            </div>
-          )}
-
           {hasAdditionalComponents(additionalComponents) &&
             additionalComponents.map(({ Component, id }) => (
               <Component key={id} testCaseData={testCaseData} />
@@ -425,8 +430,12 @@ const TestCaseResultTab = ({
       </div>
       {isSidePanelVisible && (
         <TestCaseSidePanel
+          description={description}
+          descriptionChangeSummaryEntry={descriptionChangeSummaryEntry}
           handleDataProductsSave={handleDataProductsSave}
+          handleDescriptionChange={handleDescriptionChange}
           handleTagSelection={handleTagSelection}
+          hasEditDescriptionPermission={hasEditDescriptionPermission}
           hasEditGlossaryTermsPermission={hasEditGlossaryTermsPermission}
           hasEditPermission={hasEditPermission}
           hasEditTagsPermission={hasEditTagsPermission}

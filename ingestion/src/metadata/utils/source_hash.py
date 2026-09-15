@@ -39,6 +39,7 @@ SOURCE_HASH_EXCLUDE_FIELDS = {
 }
 
 VOLATILE_ENTITY_REFERENCE_FIELDS = {"href", "deleted", "inherited"}
+VOLATILE_CERTIFICATION_FIELDS = {"appliedDate", "expiryDate"}
 
 
 def _normalize_whitespace(text: str | None) -> str | None:
@@ -124,6 +125,22 @@ def _sort_columns(columns: list[Any]) -> list[Any]:
     return sorted_columns
 
 
+def _strip_volatile_certification_fields(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Return a shallow copy of data with certification.appliedDate/expiryDate removed.
+
+    Kept separate from _normalize_for_hash so it operates on the typed create-request
+    dict rather than on the loosely-typed output of _remove_volatile_fields.
+    """
+    certification = data.get("certification")
+    if not isinstance(certification, dict):
+        return data
+    return {
+        **data,
+        "certification": {k: v for k, v in certification.items() if k not in VOLATILE_CERTIFICATION_FIELDS},
+    }
+
+
 def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     """
     Normalize a create request dict to ensure deterministic hashing.
@@ -136,11 +153,16 @@ def _normalize_for_hash(data: dict[str, Any]) -> dict[str, Any]:
     5. Sorts aliases lexicographically
     6. Removes volatile EntityReference fields (href, deleted, inherited)
     7. Normalizes schemaDefinition whitespace
+    8. Drops certification.appliedDate/expiryDate, which the backend always
+       recomputes server-side from AssetCertificationSettings and never takes
+       from the request, so they carry no change-detection signal and would
+       otherwise destabilize the hash if a connector ever populates them with
+       a run-time-relative value
     """
     # _remove_volatile_fields is `dict | list | Any` because it recurses into nested
     # lists, but called here on a top-level create-request dict it always returns a dict
     # (see its `isinstance(obj, dict)` branch); cast narrows for the string-keyed lookups below.
-    result = cast("dict[str, Any]", _remove_volatile_fields(data))
+    result = cast("dict[str, Any]", _remove_volatile_fields(_strip_volatile_certification_fields(data)))
 
     if "columns" in result and isinstance(result["columns"], list):
         result["columns"] = _sort_columns(result["columns"])

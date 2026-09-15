@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -22,11 +22,7 @@ import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -35,6 +31,7 @@ import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import {
@@ -48,7 +45,6 @@ import {
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -56,7 +52,6 @@ import AddTeamForm from './AddTeamForm';
 const TeamsPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn } = useFqn();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
@@ -75,8 +70,19 @@ const TeamsPage = () => {
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
   const { updateCurrentUser } = useApplicationStore();
 
-  const [entityPermissions, setEntityPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // Full fetch-owner conversion (useTestSuiteDetailsPage.tsx precedent). `entityPermissions`
+  // stays the raw `OperationPermission` object on purpose — this batch's note requires
+  // TeamDetailsV1 and its already-converted (Task 8 Batch 3) children keep receiving the raw
+  // prop contract unchanged (their own ungated/gated derivation split lives inside them).
+  // Deliberately ungated (no `deleted` option): the old raw `ViewAll || ViewBasic` read was
+  // never gated on the team's own `deleted` either — view flags never are, only edit flags.
+  const {
+    permissions: entityPermissions,
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    hasViewAccess: hasViewPermission,
+  } = useEntityPermissions(ResourceEntity.TEAM, fqn);
+
   const [isFetchingAdvancedDetails, setFetchingAdvancedDetails] =
     useState<boolean>(true);
   const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
@@ -84,11 +90,6 @@ const TeamsPage = () => {
   const [teamAssetCounts, setTeamAssetCounts] = useState<
     Record<string, number>
   >({});
-
-  const hasViewPermission = useMemo(
-    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
-    [entityPermissions]
-  );
 
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
@@ -500,28 +501,40 @@ const TeamsPage = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  const init = useCallback(async () => {
-    setIsPageLoading(true);
-    try {
-      const teamPermissions = await getEntityPermissionByFqn(
-        ResourceEntity.TEAM,
-        fqn
-      );
-      setEntityPermissions(teamPermissions);
-      if (teamPermissions.ViewAll || teamPermissions.ViewBasic) {
-        await fetchTeamBasicDetails(fqn, true);
-        loadAdvancedDetails();
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPageLoading(false);
+  // useEntityPermissions fetches reactively (React Query, keyed on resource+fqn) — no manual
+  // trigger effect needed for the permission fetch itself. This replaces the old init()'s
+  // try/catch showErrorToast with the same user-facing behavior: a permission-fetch failure
+  // still surfaces a toast (useTestSuiteDetailsPage.tsx precedent).
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
     }
+  }, [permissionsError]);
+
+  // isPageLoading resets on every fqn change (old init() did the same at its very start) so
+  // a navigation to a new team shows the loader again rather than flashing stale content
+  // while the new team's permissions resolve.
+  useEffect(() => {
+    setIsPageLoading(true);
   }, [fqn]);
 
+  // Reactive replacement for init()'s conditional team-fetch (useTestSuiteDetailsPage.tsx's
+  // `if (hasViewAccess) { fetchTestSuiteByName(); }` shape): fetchTeamBasicDetails already
+  // manages isPageLoading internally via its own try/finally, matching the granted-view path
+  // exactly. The denied-view path needs the separate effect below since nothing else would
+  // otherwise flip isPageLoading back to false.
   useEffect(() => {
-    init();
-  }, [fqn]);
+    if (hasViewPermission) {
+      fetchTeamBasicDetails(fqn, true);
+      loadAdvancedDetails();
+    }
+  }, [hasViewPermission, fqn]);
+
+  useEffect(() => {
+    if (!permissionsLoading && !hasViewPermission) {
+      setIsPageLoading(false);
+    }
+  }, [permissionsLoading, hasViewPermission]);
 
   useEffect(() => {
     if (hasViewPermission && fqn) {
