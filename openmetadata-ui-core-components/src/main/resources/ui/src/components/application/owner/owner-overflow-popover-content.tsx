@@ -79,7 +79,9 @@ export const OwnerOverflowPopoverContent = ({
         </>
       )}
       {renderGroup(overflowTeamsLabel, teamOwners)}
-      {teamOwners.length > 0 && userOwners.length > 0 && <Divider />}
+      {showHeadings && teamOwners.length > 0 && userOwners.length > 0 && (
+        <Divider />
+      )}
       {renderGroup(overflowUsersLabel, userOwners)}
     </div>
   );
