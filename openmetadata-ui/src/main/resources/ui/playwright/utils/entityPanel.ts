@@ -333,7 +333,9 @@ export const editTags = async (page: Page, tagName: string) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  const tagOption = page.getByTitle(tagName);
+  const tagOption = page
+    .locator('.selectable-list-item')
+    .filter({ hasText: tagName });
   // Wait for tag option to be visible before clicking
   await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
@@ -391,12 +393,12 @@ export const editGlossaryTerms = async (page: Page, termName?: string) => {
     await searchBar.fill(termName);
     await waitForAllLoadersToDisappear(page);
     const termOption = page
-      .locator('.ant-list-item')
+      .locator('.selectable-list-item')
       .filter({ hasText: termName });
 
     await termOption.click();
   } else {
-    const firstTerm = page.locator('.ant-list-item').first();
+    const firstTerm = page.locator('.selectable-list-item').first();
     await firstTerm.click();
   }
 
@@ -477,7 +479,9 @@ export const verifyDeletedEntityNotVisible = async (
   expect(searchResponse.status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
-  const deletedItem = page.getByTitle(entityName);
+  const deletedItem = page
+    .locator('.selectable-list-item')
+    .filter({ hasText: entityName });
 
   return deletedItem;
 };
@@ -520,7 +524,9 @@ export const removeTagsFromPanel = async (
   await waitForAllLoadersToDisappear(page);
 
   for (const tagName of tagDisplayNames) {
-    const tagOption = page.getByTitle(tagName);
+    const tagOption = page
+      .locator('.selectable-list-item')
+      .filter({ hasText: tagName });
     await tagOption.waitFor({ state: 'visible' });
     await tagOption.click();
   }
@@ -555,7 +561,7 @@ export const removeGlossaryTermFromPanel = async (
 
     // Wait for the list to update with search results
     const termItem = page
-      .locator('.ant-list-item')
+      .locator('.selectable-list-item')
       .filter({ hasText: termName });
     await termItem.waitFor({ state: 'visible' });
 
@@ -600,7 +606,7 @@ export const removeOwnerFromPanel = async (
     }
 
     const ownerItem = page
-      .locator('.ant-list-item')
+      .locator('[data-testid="owner-option"]')
       .filter({ hasText: ownerName });
     await ownerItem.waitFor({ state: 'visible' });
     await ownerItem.click();

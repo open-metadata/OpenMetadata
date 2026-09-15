@@ -93,15 +93,15 @@ would fail PRs for code they merely touched.
 
 | Tier | Meaning | Today |
 |---|---|---|
-| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y + 3 OpenMetadata performance |
-| `warn` | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, 10 OpenMetadata import rules, `react-hooks/exhaustive-deps`, `i18next/no-literal-string`, `@typescript-eslint/no-non-null-assertion` |
+| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y + 3 OpenMetadata performance + `i18next/no-literal-string` |
+| `warn` | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, 10 OpenMetadata import rules, `react-hooks/exhaustive-deps`, `@typescript-eslint/no-non-null-assertion` |
 
 Repo-wide today: **0 errors, 10120 warnings** across 2228 files. The warnings *are* the backlog, made
 visible instead of hidden — the target is zero, reached rule by rule.
 
 `i18next/no-literal-string` was disabled with a `TODO: re-enable when the plugin supports ESLint 9`.
-That incompatibility no longer reproduces; it runs fine and reports a large backlog, so it is back on
-at `warn`. The repo convention is no user-facing string literals, so it should reach `error`.
+That incompatibility no longer reproduces; the backlog has since been cleared and the rule is now
+enforced at `error`.
 
 ## Repository-specific performance rules
 
@@ -175,7 +175,9 @@ that already runs on every UI PR. A finding in your editor is the finding Sonar 
 
 The high-backlog SonarJS rules are also enforced *blockingly* by SonarCloud, whose Clean-as-You-Code
 model scopes them to **new lines** — something ESLint fundamentally cannot express. So
-`cognitive-complexity` and `no-duplicate-string` warn locally and block on new code in the PR gate.
+`cognitive-complexity` warns locally and blocks on new code in the PR gate. The stock
+`sonarjs/no-duplicate-string` is `off` because it flags i18n keys (`t('label.…')`) that must stay
+inline; the i18n-aware `openmetadata-i18n/no-duplicate-string` replacement is enforced at `error`.
 
 `eslint-plugin-sonarjs` is pinned **exactly** (`4.2.0`). SonarCloud upgrades its analyzer server-side
 on its own schedule and that drift is silent.

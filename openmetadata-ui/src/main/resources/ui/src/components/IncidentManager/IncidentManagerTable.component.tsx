@@ -13,6 +13,7 @@
 import {
   Box,
   EmptyPlaceholder,
+  Owner,
   Skeleton,
   Table,
   Tooltip,
@@ -38,14 +39,15 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
   ProfilerTabPath,
   TestCasePermission,
@@ -123,25 +125,31 @@ const IncidentManagerTable = ({
 
     return (
       <div data-testid="assignee">
-        <OwnerLabel
-          isCompactView
+        <Owner
           className="m-0"
           hasPermission={getRowEditPermission(
             record?.testCaseReference?.fullyQualifiedName
           )}
+          isCompactView={false}
           multiple={{
             user: false,
             team: false,
           }}
-          owners={value?.assignee ? [value.assignee] : []}
+          owners={toOwnerRefs(value?.assignee ? [value.assignee] : [])}
           placeHolder={t('label.no-entity', {
             entity: t('label.assignee'),
           })}
-          tooltipText={t('label.edit-entity', {
-            entity: t('label.assignee'),
-          })}
-          onUpdate={(assignees) =>
-            record && handleAssigneeUpdate(record, assignees)
+          selectorContent={
+            <UserTeamSelectableList
+              hasPermission={getRowEditPermission(
+                record?.testCaseReference?.fullyQualifiedName
+              )}
+              multiple={{ user: false, team: false }}
+              owner={value?.assignee ? [value.assignee] : []}
+              onUpdate={(assignees) =>
+                record && handleAssigneeUpdate(record, assignees)
+              }
+            />
           }
         />
       </div>

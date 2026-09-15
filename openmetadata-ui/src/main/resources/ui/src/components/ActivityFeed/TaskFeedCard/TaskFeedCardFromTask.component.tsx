@@ -12,6 +12,7 @@
  */
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,6 +29,7 @@ import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskFromTask from '../../../pages/TasksPage/shared/DescriptionTaskFromTask';
 import TagsTaskFromTask from '../../../pages/TasksPage/shared/TagsTaskFromTask';
@@ -58,7 +60,6 @@ import {
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -123,6 +124,7 @@ const TaskFeedCardFromTask = ({
 }: TaskFeedCardFromTaskProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { setActiveTask, showTaskDrawer } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -355,9 +357,10 @@ const TaskFeedCardFromTask = ({
           className={`flex items-center gap-2 text-grey-muted ${
             commentsCount > 0 ? 'task-card-assignee' : ''
           }`}>
-          <OwnerLabel
+          <Owner
             isCompactView={false}
-            owners={task.assignees}
+            owners={toOwnersWithHref(task.assignees ?? [])}
+            renderOwnerContent={renderOwnerContent}
             showLabel={false}
           />
         </Col>
