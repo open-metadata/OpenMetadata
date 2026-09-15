@@ -157,6 +157,18 @@ test('separates subtle and interactive border roles in both themes', () => {
   assert.equal(dark.get('--color-border-primary'), 'theme(--color-gray-700)');
   assert.equal(dark.get('--color-border-hover'), 'theme(--color-gray-600)');
 
+  // Card/Table/Badge draw their subtle edge with `tw:outline-subtle`, so the
+  // outline-color namespace must expose the subtle role in both themes —
+  // without it Tailwind emits no color and the outline falls back to currentColor.
+  assert.equal(
+    light.get('--outline-color-subtle'),
+    'var(--outline-color-subtle, theme(--color-border-subtle))'
+  );
+  assert.equal(
+    dark.get('--outline-color-subtle'),
+    'theme(--color-border-subtle)'
+  );
+
   for (const role of ['subtle', 'hover']) {
     assert.equal(
       light.get(`--border-color-${role}`),
