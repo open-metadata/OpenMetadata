@@ -7836,6 +7836,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/TestLibrary/TestDefinitionForm/TestDefinitionFormBody.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
       ]
     },
