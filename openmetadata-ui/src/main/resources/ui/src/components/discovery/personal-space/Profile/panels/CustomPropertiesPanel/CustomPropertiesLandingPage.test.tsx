@@ -38,7 +38,6 @@ const mockPipelineItem = {
   isProtected: true,
 };
 
-
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn(),
 }));
