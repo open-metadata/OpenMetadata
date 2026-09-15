@@ -1762,9 +1762,9 @@ def test_view_pass_skips_repository_models() -> None:
     """The two passes must not both describe a _SYS_BIC view.
 
     On-premise surfaces calculation, analytic and attribute views as runtime views in
-    _SYS_BIC, and metadata ingestion stores a definition for them. Without this
-    partition the SQL pass would parse that definition while the CDATA pass emits XML
-    lineage for the same entity, producing duplicate or conflicting edges.
+    _SYS_BIC. Where such a view carries a definition, the SQL pass would parse it while
+    the CDATA pass emits XML lineage for the same entity, producing duplicate or
+    conflicting edges.
     """
     source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
 
@@ -1780,3 +1780,29 @@ def test_view_pass_skips_repository_models() -> None:
 
     assert [view.table_name for view in produced] == ["LT_V_CHAINED"]
     assert len(source.status.filtered) == 1
+
+
+def test_query_history_excludes_sap_internal_schemas() -> None:
+    """SAP's own statements must not consume the result limit.
+
+    The statement orders by execution time and truncates at resultLimit, and on an
+    on-premise instance the internal statistics and task servers hold the bulk of the
+    plan cache. Without this exclusion they crowd user statements out of the window.
+    The guard has to sit outside the keyword group, which is a chain of ORs, or it
+    would only apply to the last branch.
+    """
+    # Exactly the reserved prefix: SYS and SYSTEM are ordinary schemas a user can own.
+    guard = "AND LEFT(SCHEMA_NAME, 5) <> '_SYS_'"
+    assert guard in SAPHANA_QUERY_HISTORY_STATEMENT
+
+    filters = SaphanaLineageSource.filters
+    assert filters.count("(") == filters.count(")")
+    assert filters.strip().endswith(")")
+
+    sql = SAPHANA_QUERY_HISTORY_STATEMENT.format(
+        filters=filters,
+        start_time="2026-09-14 00:00:00",
+        end_time="2026-09-15 00:00:00",
+        result_limit=100,
+    )
+    assert sql.index(guard) > sql.index(filters.strip())

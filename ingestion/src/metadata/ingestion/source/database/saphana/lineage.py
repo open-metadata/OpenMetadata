@@ -163,9 +163,10 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         """Leave the repository models to the CDATA pass.
 
         On-premise exposes calculation, analytic and attribute views as runtime views in
-        _SYS_BIC, and metadata ingestion stores a definition for them like any other
-        view. Both passes would then describe the same entity, one from SQL and one from
-        the XML model, so the two are partitioned here rather than allowed to overlap.
+        _SYS_BIC. SYS.VIEWS carries no definition for them on the instances checked, so
+        they never reach this producer, which reads definitions from the search index.
+        The partition is kept for an instance that does expose one, where both passes
+        would otherwise describe the same entity, one from SQL and one from the XML.
         """
         for view in super().view_lineage_producer():
             if view.schema_name == SYS_BIC_SCHEMA_NAME:
