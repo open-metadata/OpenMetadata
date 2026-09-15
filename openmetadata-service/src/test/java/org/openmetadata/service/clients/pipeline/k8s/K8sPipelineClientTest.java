@@ -50,8 +50,10 @@ import io.kubernetes.client.openapi.models.V1JobList;
 import io.kubernetes.client.openapi.models.V1JobStatus;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1PodList;
+import io.kubernetes.client.openapi.models.V1PodSecurityContext;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1Secret;
+import io.kubernetes.client.openapi.models.V1SecurityContext;
 import io.kubernetes.client.openapi.models.V1Status;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -578,29 +580,7 @@ class K8sPipelineClientTest {
     ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
     verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
 
-    V1Job createdJob = jobCaptor.getValue();
-    V1PodSpec podSpec = createdJob.getSpec().getTemplate().getSpec();
-
-    // Verify pod security context
-    assertNotNull(podSpec.getSecurityContext());
-    assertTrue(podSpec.getSecurityContext().getRunAsNonRoot());
-    assertEquals(1000L, podSpec.getSecurityContext().getRunAsUser());
-    assertEquals(1000L, podSpec.getSecurityContext().getRunAsGroup());
-    assertEquals(1000L, podSpec.getSecurityContext().getFsGroup());
-
-    // Verify container security context
-    assertNotNull(podSpec.getContainers().get(0).getSecurityContext());
-    assertTrue(podSpec.getContainers().get(0).getSecurityContext().getRunAsNonRoot());
-    assertFalse(podSpec.getContainers().get(0).getSecurityContext().getAllowPrivilegeEscalation());
-    assertNotNull(podSpec.getContainers().get(0).getSecurityContext().getCapabilities());
-    assertTrue(
-        podSpec
-            .getContainers()
-            .get(0)
-            .getSecurityContext()
-            .getCapabilities()
-            .getDrop()
-            .contains("ALL"));
+    assertSecurityContextIsSet(jobCaptor.getValue());
   }
 
   @Test
@@ -1149,6 +1129,34 @@ class K8sPipelineClientTest {
         applicationJob.getSpec().getTemplate().getSpec().getContainers().get(0).getCommand());
     assertEquals(
         "query-runner", applicationJob.getMetadata().getLabels().get("app.kubernetes.io/app-name"));
+  }
+
+  @Test
+  void testSecurityContextIsSetOnAutomationJob() throws Exception {
+    // Automation jobs must satisfy the same admission policies as ingestion jobs
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runAutomationsWorkflow(createTestWorkflow("Nightly Cleanup"));
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    assertSecurityContextIsSet(jobCaptor.getValue());
+  }
+
+  @Test
+  void testSecurityContextIsSetOnApplicationJob() throws Exception {
+    // Application jobs must satisfy the same admission policies as ingestion jobs
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runApplicationFlow(createTestApplication("Query Runner"));
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    assertSecurityContextIsSet(jobCaptor.getValue());
   }
 
   @Test
@@ -1954,6 +1962,26 @@ class K8sPipelineClientTest {
     Call listCall = mock(Call.class);
     when(listCall.execute()).thenReturn(jsonResponse(podListJson));
     when(httpClient.newCall(any(Request.class))).thenReturn(listCall);
+  }
+
+  private static void assertSecurityContextIsSet(V1Job job) {
+    V1PodSpec podSpec = job.getSpec().getTemplate().getSpec();
+
+    V1PodSecurityContext podSecurityContext = podSpec.getSecurityContext();
+    assertNotNull(podSecurityContext);
+    assertTrue(podSecurityContext.getRunAsNonRoot());
+    assertEquals(1000L, podSecurityContext.getRunAsUser());
+    assertEquals(1000L, podSecurityContext.getRunAsGroup());
+    assertEquals(1000L, podSecurityContext.getFsGroup());
+
+    V1SecurityContext containerSecurityContext =
+        podSpec.getContainers().get(0).getSecurityContext();
+    assertNotNull(containerSecurityContext);
+    assertTrue(containerSecurityContext.getRunAsNonRoot());
+    assertEquals(1000L, containerSecurityContext.getRunAsUser());
+    assertFalse(containerSecurityContext.getAllowPrivilegeEscalation());
+    assertNotNull(containerSecurityContext.getCapabilities());
+    assertTrue(containerSecurityContext.getCapabilities().getDrop().contains("ALL"));
   }
 
   private static Workflow createTestWorkflow(String name) {
