@@ -55,6 +55,7 @@ const waitForAppMode = async (page: Page, expected: AppModeExpectation) => {
 };
 
 const openSwitcherAsAi = async (page: Page, user: UserClass) => {
+  // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
   await user.login(page);
   await switchToAiModeViaProfileToggle(page);
   await expect(page.getByTestId('ask-sidebar')).toBeVisible();
@@ -108,6 +109,7 @@ test.describe('AppMode — cross-device sync', { tag: ['@Platform'] }, () => {
 
       // B has taken no action of its own — a fresh login must pick up the
       // server-side preference A just wrote.
+      // eslint-disable-next-line openmetadata-playwright/prefer-role-page-fixture -- app-mode precedence is asserted across real sign-in sessions, so the session must be established the way a user establishes it
       await user.login(pageB);
       await waitForAllLoadersToDisappear(pageB);
 

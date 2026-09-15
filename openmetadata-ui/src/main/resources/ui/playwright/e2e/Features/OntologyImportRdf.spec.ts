@@ -139,7 +139,7 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
   test('hides Import Ontology from a user without glossary edit permission', async ({
     page,
   }) => {
-    await consumerUser.login(page);
+    await consumerUser.signIn(page);
     await redirectToHomePage(page);
 
     // A read-only data consumer can open the glossary (visitPage asserts the

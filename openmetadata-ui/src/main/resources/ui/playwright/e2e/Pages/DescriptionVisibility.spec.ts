@@ -336,7 +336,7 @@ test.describe(
     }) => {
       // Admin: Customize Table detail page for persona
       const adminPage = await browser.newPage();
-      await adminUser.login(adminPage);
+      await adminUser.signIn(adminPage);
       await redirectToHomePage(adminPage);
 
       const personaListResponse =
@@ -402,7 +402,7 @@ test.describe(
 
       // User: Validate long description in custom tab
       const userPage = await browser.newPage();
-      await regularUser.login(userPage);
+      await regularUser.signIn(userPage);
       await redirectToHomePage(userPage);
 
       await table.visitEntityPage(userPage);

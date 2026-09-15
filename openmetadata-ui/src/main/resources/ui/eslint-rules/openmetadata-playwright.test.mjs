@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RuleTester } from 'eslint';
 import assert from 'node:assert/strict';
 import test, { describe, it } from 'node:test';
-import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 
 RuleTester.describe = describe;
@@ -23,6 +23,10 @@ const playwrightPlugin = (await import('./openmetadata-playwright.mjs'))
 
 test('exports the aggregation wait helper rule', () => {
   assert.ok(playwrightPlugin.rules['require-aggregation-wait-helper']);
+});
+
+test('exports the role page fixture rule', () => {
+  assert.ok(playwrightPlugin.rules['prefer-role-page-fixture']);
 });
 
 const ruleTester = new RuleTester({
@@ -126,6 +130,82 @@ ruleTester.run(
         // Path split across concatenated literals.
         code: "const res = page.waitForResponse('/api/v1/search/' + 'aggregate?*');",
         errors: [{ messageId: 'rawAggregationWait' }],
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+    ],
+  }
+);
+
+ruleTester.run(
+  'prefer-role-page-fixture',
+  playwrightPlugin.rules['prefer-role-page-fixture'],
+  {
+    valid: [
+      {
+        // Taking a role page is the point of the rule.
+        code: "test('x', async ({ dataConsumerPage }) => { await dataConsumerPage.goto('/'); });",
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+      {
+        // Creating a user as *test data* — an owner, a reviewer, an assignee —
+        // has nothing to do with authenticating as one.
+        code: 'const owner = new UserClass(); await owner.create(apiContext);',
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+      {
+        // auth.setup.ts is what mints the storage states the fixtures reuse.
+        code: 'await dataConsumer.login(dataConsumerPage);',
+        filename: 'playwright/e2e/auth.setup.ts',
+      },
+      {
+        // The fixture modules and the login helper itself are the implementation.
+        code: 'await user.login(page);',
+        filename: 'playwright/utils/user.ts',
+      },
+      {
+        // performUserLogin signs in through the API and owns the page, the
+        // context and their teardown — it is a sanctioned path, not a
+        // hand-rolled login.
+        code: 'const { page, afterAction } = await performUserLogin(browser, user);',
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+      {
+        // The migrated shape.
+        code: 'await user.signIn(page);',
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+      {
+        // The isolated-user fixtures are the sanctioned bespoke-account path,
+        // so they are the one place that legitimately drives the sign-in form.
+        code: 'await user.login(loginPage);',
+        filename: 'playwright/support/fixtures/isolatedUser.ts',
+      },
+      {
+        // Taking the sanctioned bespoke-account fixture.
+        code: "test('x', async ({ isolatedUserPage }) => { await isolatedUserPage.goto('/'); });",
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+      {
+        // A method that merely shares the name on an unrelated object.
+        code: "await ssoProvider.login({ user: 'x' });",
+        filename: 'playwright/e2e/Flow/Example.spec.ts',
+      },
+    ],
+    invalid: [
+      {
+        code: 'await regularUser.login(page);',
+        errors: [{ messageId: 'preferRolePageFixture' }],
+        filename: 'playwright/e2e/Pages/Example.spec.ts',
+      },
+      {
+        code: 'await user.login(await browser.newPage());',
+        errors: [{ messageId: 'preferRolePageFixture' }],
+        filename: 'playwright/e2e/Pages/Example.spec.ts',
+      },
+      {
+        // Trailing options do not make it any less a bespoke login.
+        code: 'await user.login(page, undefined, undefined, { skipTour: true });',
+        errors: [{ messageId: 'preferRolePageFixture' }],
         filename: 'playwright/e2e/Flow/Example.spec.ts',
       },
     ],

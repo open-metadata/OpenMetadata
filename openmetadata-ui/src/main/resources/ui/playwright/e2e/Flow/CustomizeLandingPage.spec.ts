@@ -96,7 +96,7 @@ const test = base.extend<LandingPageTestFixtures>({
     void persona;
 
     const adminPage = await browser.newPage();
-    await testUser.login(adminPage);
+    await testUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },

@@ -42,19 +42,19 @@ const test = base.extend<{
 }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   reviewer1Page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await reviewer1.login(page);
+    await reviewer1.signIn(page);
     await use(page);
     await page.close();
   },
   reviewer2Page: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await reviewer2.login(page);
+    await reviewer2.signIn(page);
     await use(page);
     await page.close();
   },
