@@ -1,0 +1,484 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  Badge,
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { PlusCircle } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
+import { useFormDrawerWithHook } from '../../components/common/atoms/drawer';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import {
+  DeleteIconButton,
+  EditIconButton,
+} from '../../components/common/IconButtons/EditIconButton';
+import Loader from '../../components/common/Loader/Loader';
+import Table from '../../components/common/Table/Table';
+import { ColumnsType } from '../../components/common/Table/Table.interface';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { AGGREGATE_PAGE_SIZE_LARGE } from '../../constants/constants';
+import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import {
+  DataQualityDimension,
+  ProviderType,
+} from '../../generated/tests/dataQualityDimension';
+import {
+  createDataQualityDimension,
+  deleteDataQualityDimension,
+  getDataQualityDimensions,
+  getDataQualityDimensionTestCaseCounts,
+  getDataQualityDimensionTestDefinitionCounts,
+  patchDataQualityDimension,
+} from '../../rest/dataQualityDimensionAPI';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import './data-quality-settings-page.less';
+import DeleteDimensionModal from './DeleteDimensionModal';
+import DimensionForm, { type DimensionFormValues } from './DimensionForm';
+
+const DEFAULT_COLOR = DIMENSION_COLOR_PALETTE[0];
+
+/**
+ * The drawer is a three-state affair — closed, creating, editing something — so it is modelled
+ * as a discriminated union rather than as `null` vs `undefined` on the edited dimension.
+ */
+type DrawerState =
+  | { mode: 'closed' }
+  | { mode: 'create' }
+  | { mode: 'edit'; dimension: DataQualityDimension };
+
+const CLOSED_DRAWER: DrawerState = { mode: 'closed' };
+
+/**
+ * The dimension list and its two count maps always arrive from the same request, so they are
+ * held together. A count map is `undefined` when its request failed — unknown, not zero.
+ *
+ * Test definitions reference a dimension by name rather than by relationship, so they are
+ * counted separately from test cases — without them the delete confirmation reports no impact
+ * for a dimension a dozen test definitions are classified under.
+ */
+interface DimensionListState {
+  dimensions: DataQualityDimension[];
+  testCaseCounts?: Record<string, number>;
+  testDefinitionCounts?: Record<string, number>;
+}
+
+const countFor = <T,>(
+  counts: Record<string, number> | undefined,
+  dimension: DataQualityDimension | undefined,
+  fallback: T
+): number | T => counts?.[dimension?.id ?? ''] ?? fallback;
+
+const DataQualitySettingsPage = () => {
+  const { t } = useTranslation();
+  // react-hook-form rather than antd's: the drawer's hook variant drives validation and submit
+  // off it, and the form fields are core-components inputs bound with Controller.
+  const hookForm = useForm<DimensionFormValues>({
+    mode: 'onSubmit',
+    defaultValues: {
+      name: '',
+      displayName: '',
+      description: '',
+      color: DEFAULT_COLOR,
+    },
+  });
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [listState, setListState] = useState<DimensionListState>({
+    dimensions: [],
+  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [drawer, setDrawer] = useState<DrawerState>(CLOSED_DRAWER);
+  const [deleting, setDeleting] = useState<DataQualityDimension>();
+
+  const { dimensions, testCaseCounts, testDefinitionCounts } = listState;
+  const editing = drawer.mode === 'edit' ? drawer.dimension : undefined;
+
+  const breadcrumbs = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.PREFERENCES,
+        t('label.data-quality')
+      ),
+    [t]
+  );
+
+  const fetchDimensions = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [{ data }, counts, definitionCounts] = await Promise.all([
+        getDataQualityDimensions({ limit: AGGREGATE_PAGE_SIZE_LARGE }),
+        // A missing count must not hide the dimension list itself. It stays `undefined` rather
+        // than falling back to `{}`, so a count that could not be fetched is reported as
+        // unknown instead of as zero in the table and in the delete confirmation.
+        getDataQualityDimensionTestCaseCounts().catch(() => undefined),
+        getDataQualityDimensionTestDefinitionCounts().catch(() => undefined),
+      ]);
+      setListState({
+        dimensions: data,
+        testCaseCounts: counts,
+        testDefinitionCounts: definitionCounts,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDimensions();
+  }, [fetchDimensions]);
+
+  const filteredDimensions = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) {
+      return dimensions;
+    }
+
+    return dimensions.filter((dimension) =>
+      [dimension.name, dimension.displayName, dimension.description].some(
+        (value) => value?.toLowerCase().includes(term)
+      )
+    );
+  }, [dimensions, searchTerm]);
+
+  // Fed to form.reset when the drawer opens: react-hook-form keeps one instance for the page, so
+  // the values are pushed in rather than applied by remounting the form.
+  const initialValues: DimensionFormValues = useMemo(
+    () => ({
+      name: editing?.name ?? '',
+      displayName: editing?.displayName ?? '',
+      description: editing?.description ?? '',
+      color: editing?.style?.color ?? DEFAULT_COLOR,
+    }),
+    [editing]
+  );
+
+  const handleSave = useCallback(
+    async (values: DimensionFormValues) => {
+      setIsSaving(true);
+      try {
+        if (editing) {
+          const updated: DataQualityDimension = {
+            ...editing,
+            displayName: values.displayName || undefined,
+            description: values.description || undefined,
+            style: { ...editing.style, color: values.color },
+          };
+          await patchDataQualityDimension(
+            editing.id ?? '',
+            compare(editing, updated)
+          );
+        } else {
+          await createDataQualityDimension({
+            name: values.name,
+            displayName: values.displayName || undefined,
+            description: values.description || undefined,
+            style: { color: values.color },
+          });
+        }
+        showSuccessToast(
+          t(
+            editing
+              ? 'server.update-entity-success'
+              : 'server.create-entity-success',
+            { entity: t('label.dimension') }
+          )
+        );
+        setDrawer(CLOSED_DRAWER);
+        await fetchDimensions();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [editing, fetchDimensions, t]
+  );
+
+  const handleDelete = useCallback(async () => {
+    if (!deleting?.id) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteDataQualityDimension(deleting.id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.dimension'),
+        })
+      );
+      setDeleting(undefined);
+      await fetchDimensions();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleting, fetchDimensions, t]);
+
+  const columns: ColumnsType<DataQualityDimension> = useMemo(
+    () => [
+      {
+        title: t('label.dimension'),
+        dataIndex: 'name',
+        key: 'name',
+        render: (name: string, record) => (
+          <Box align="start" data-testid={`dimension-${name}`} gap={2}>
+            <span
+              className="dimension-color-dot"
+              style={{ backgroundColor: record.style?.color ?? DEFAULT_COLOR }}
+            />
+            <Box direction="col">
+              <Typography size="text-sm" weight="semibold">
+                {record.displayName ?? name}
+              </Typography>
+              <Typography
+                className="dimension-technical-name"
+                color="secondary"
+                size="text-xs">
+                {name}
+              </Typography>
+            </Box>
+          </Box>
+        ),
+      },
+      ...descriptionTableObject<DataQualityDimension>(),
+      {
+        title: t('label.type'),
+        dataIndex: 'provider',
+        key: 'provider',
+        width: '120px',
+        render: (provider?: ProviderType) => (
+          <Badge
+            color={provider === ProviderType.System ? 'gray' : 'blue'}
+            size="sm">
+            {provider === ProviderType.System
+              ? t('label.system')
+              : t('label.custom')}
+          </Badge>
+        ),
+      },
+      {
+        title: t('label.test-case-plural'),
+        key: 'testCases',
+        width: '120px',
+        // '--' rather than 0: the count request can fail on its own, and an unknown count must
+        // not read as "no test case uses this".
+        render: (_, record) => countFor(testCaseCounts, record, '--'),
+      },
+      {
+        title: t('label.action-plural'),
+        key: 'actions',
+        width: '100px',
+        align: 'center',
+        // System dimensions are seeded from the server and cannot be changed, so they get the
+        // same disabled actions every provider-owned entity shows instead of a bespoke label.
+        render: (_, record) => {
+          const isSystem = record.provider === ProviderType.System;
+          const disabledTitle = isSystem
+            ? t('message.system-dimensions-are-read-only')
+            : undefined;
+
+          return (
+            <Box gap={1}>
+              <EditIconButton
+                data-testid={`edit-${record.name}`}
+                disabled={isSystem}
+                size="small"
+                title={
+                  disabledTitle ??
+                  t('label.edit-entity', { entity: t('label.dimension') })
+                }
+                onClick={() => setDrawer({ mode: 'edit', dimension: record })}
+              />
+              <DeleteIconButton
+                data-testid={`delete-${record.name}`}
+                disabled={isSystem}
+                size="small"
+                title={
+                  disabledTitle ??
+                  t('label.delete-entity', { entity: t('label.dimension') })
+                }
+                onClick={() => setDeleting(record)}
+              />
+            </Box>
+          );
+        },
+      },
+    ],
+    [t, testCaseCounts]
+  );
+
+  const dimensionForm = (
+    <DimensionForm hookForm={hookForm} isEditing={Boolean(editing)} />
+  );
+
+  // Every dismissal path — cancel, the header X, Escape and the backdrop — ends up in the base
+  // drawer's onClose, so moving back to `closed` there keeps the state below in step with the
+  // drawer and stops the effect from immediately reopening it.
+  //
+  // Deliberately does NOT reset the form. onClose fires twice — once from our own closeDrawer
+  // and again when the overlay finishes its transition — and that second, late call lands after
+  // the user may already have reopened the drawer, wiping the values the open path had just
+  // seeded. Seeding on open is what keeps the form clean, so there is nothing to clear here.
+  const handleDrawerClose = useCallback(() => {
+    setDrawer(CLOSED_DRAWER);
+  }, []);
+
+  const { formDrawer, openDrawer, closeDrawer, isOpen } =
+    useFormDrawerWithHook<DimensionFormValues>({
+      className: 'dimension-form-drawer',
+      testId: 'dimension-drawer',
+      title: editing
+        ? t('label.edit-entity', { entity: t('label.dimension') })
+        : t('label.create-entity', { entity: t('label.dimension') }),
+      // Same three-quarter panel the create test case drawer uses.
+      width: '75%',
+      form: dimensionForm,
+      hookForm,
+      submitLabel: editing ? t('label.save') : t('label.create'),
+      submitTestId: 'save-dimension',
+      submitLoading: isSaving,
+      onClose: handleDrawerClose,
+      onSubmit: handleSave,
+    });
+
+  // Split from the close effect below so that opening does not depend on `isOpen`: an effect
+  // that both reads and writes it re-runs once the drawer reports itself open, which would seed
+  // the form twice on every open.
+  useEffect(() => {
+    if (drawer.mode !== 'closed') {
+      // Seeded on open rather than on mount: one form instance serves both create and edit.
+      hookForm.reset(initialValues);
+      openDrawer();
+    }
+  }, [drawer, initialValues, hookForm, openDrawer]);
+
+  useEffect(() => {
+    if (drawer.mode === 'closed' && isOpen) {
+      closeDrawer();
+    }
+  }, [drawer.mode, isOpen, closeDrawer]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  const deletingCount = countFor(testCaseCounts, deleting, undefined);
+  const deletingDefinitionCount = countFor(
+    testDefinitionCounts,
+    deleting,
+    undefined
+  );
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.data-quality')}>
+      <div className="m-b-mlg">
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+      </div>
+      <Grid className="data-quality-settings-page" rowGap="4">
+        <Grid.Item span={12}>
+          <PageHeader
+            data={{
+              header: t('label.data-quality'),
+              subHeader: t('message.page-sub-header-for-data-quality-settings'),
+            }}
+            title={t('label.data-quality')}
+          />
+        </Grid.Item>
+        <Grid.Item span={12}>
+          <Box align="center" gap={4} justify="end">
+            <Button
+              color="primary"
+              data-testid="add-dimension"
+              iconLeading={PlusCircle}
+              size="md"
+              onClick={() => setDrawer({ mode: 'create' })}>
+              {t('label.add-entity', {
+                entity: t('label.dimension'),
+              })}
+            </Button>
+          </Box>
+        </Grid.Item>
+        <Grid.Item span={24}>
+          {/* The shared table renders the search box in its own toolbar, so the dimension list
+              looks like every other settings list instead of carrying its own chrome. */}
+          <Table
+            columns={columns}
+            data-testid="dimensions-table"
+            dataSource={filteredDimensions}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  permission
+                  className="border-none"
+                  heading={t('label.dimension')}
+                  permissionValue={t('label.create-entity', {
+                    entity: t('label.dimension'),
+                  })}
+                  type={
+                    searchTerm
+                      ? ERROR_PLACEHOLDER_TYPE.FILTER
+                      : ERROR_PLACEHOLDER_TYPE.CREATE
+                  }
+                  onClick={() => setDrawer({ mode: 'create' })}
+                />
+              ),
+            }}
+            pagination={false}
+            rowKey="id"
+            searchProps={{
+              placeholder: t('label.search-entity', {
+                entity: t('label.dimension-plural'),
+              }),
+              searchValue: searchTerm,
+              searchBarDataTestId: 'search-dimensions',
+              typingInterval: 350,
+              onSearch: setSearchTerm,
+            }}
+            size="small"
+          />
+        </Grid.Item>
+      </Grid>
+
+      {formDrawer}
+
+      <DeleteDimensionModal
+        dimension={deleting}
+        isDeleting={isDeleting}
+        testCaseCount={deletingCount}
+        testDefinitionCount={deletingDefinitionCount}
+        onCancel={() => setDeleting(undefined)}
+        onConfirm={handleDelete}
+      />
+    </PageLayoutV1>
+  );
+};
+
+export default DataQualitySettingsPage;
