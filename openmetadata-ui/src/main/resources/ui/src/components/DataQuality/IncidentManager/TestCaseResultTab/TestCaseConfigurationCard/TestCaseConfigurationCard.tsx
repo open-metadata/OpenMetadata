@@ -200,20 +200,26 @@ const TestCaseConfigurationCard = ({
       </Box>
 
       <div className="tw:px-4 tw:py-3.5">
-        {definitionName && (
+        {/* Spacing sits on a plain wrapper: `Typography` renders inside a
+            `.prose` container whose rules override utility margins set on the
+            element itself, so `tw:mb-*` here computed to 0 and the mock's
+            3px/12px rhythm collapsed. */}
+        <div className="tw:mb-3 tw:flex tw:flex-col tw:gap-0.5">
+          {definitionName && (
+            <Typography
+              as="p"
+              className="tw:text-sm tw:font-semibold tw:text-secondary"
+              data-testid="configuration-test-name">
+              {definitionName}
+            </Typography>
+          )}
           <Typography
             as="p"
-            className="tw:mb-0.5 tw:text-sm tw:font-semibold tw:text-secondary"
-            data-testid="configuration-test-name">
-            {definitionName}
+            className="tw:text-xs tw:text-tertiary"
+            data-testid="configuration-category">
+            {categoryLine}
           </Typography>
-        )}
-        <Typography
-          as="p"
-          className="tw:mb-3 tw:text-xs tw:text-tertiary"
-          data-testid="configuration-category">
-          {categoryLine}
-        </Typography>
+        </div>
 
         <div className="tw:flex tw:flex-col tw:gap-2.5">
           {hasVersionDiff && (
