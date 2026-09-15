@@ -30,20 +30,23 @@ public final class TagPropagation {
 
   private TagPropagation() {}
 
+  /** Served when the setting has never been written -- a fresh install, or an older deployment. */
+  private static final TagPropagationSettings DISABLED =
+      new TagPropagationSettings().withEnabled(false);
+
   /**
    * Reads the setting through {@link SettingsCache}, so the answer follows an admin toggling it
-   * without a restart. Any failure reads as "off": this is consulted on every entity read, and
-   * defaulting to on would silently alter tag-based authorization if the setting were unreadable.
+   * without a restart. An unreadable or unconfigured setting reads as "off": this is consulted on
+   * every entity read, and defaulting to on would silently alter what tag-based policies match.
+   *
+   * <p>{@code getSettingOrDefault} rather than {@code getSetting} so the unconfigured case is
+   * handled by the cache's own narrow {@code InvalidCacheLoadException} branch, instead of this
+   * method catching broadly and masking unrelated failures.
    */
   public static boolean isEnabled() {
-    try {
-      TagPropagationSettings settings =
-          SettingsCache.getSetting(
-              SettingsType.TAG_PROPAGATION_SETTINGS, TagPropagationSettings.class);
-      return settings != null && Boolean.TRUE.equals(settings.getEnabled());
-    } catch (Exception e) {
-      LOG.debug("Tag propagation setting unavailable; treating it as disabled", e);
-      return false;
-    }
+    TagPropagationSettings settings =
+        SettingsCache.getSettingOrDefault(
+            SettingsType.TAG_PROPAGATION_SETTINGS, DISABLED, TagPropagationSettings.class);
+    return settings != null && Boolean.TRUE.equals(settings.getEnabled());
   }
 }

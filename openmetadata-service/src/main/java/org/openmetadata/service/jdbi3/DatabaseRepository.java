@@ -72,6 +72,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.TagPropagation;
 
 @Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
@@ -143,9 +144,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public List<PropagationDescriptor> getSearchPropagationDescriptors() {
     List<PropagationDescriptor> descriptors =
         new ArrayList<>(super.getSearchPropagationDescriptors());
-    descriptors.add(
-        new PropagationDescriptor(
-            Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    // Gated on the same setting as the read-time inheritance: this cascade carries this entity's
+    // OWN tags into its children, so leaving it ungated would show tags in Explore that
+    // GET /{entity}/{id} does not report while propagation is off.
+    if (TagPropagation.isEnabled()) {
+      descriptors.add(
+          new PropagationDescriptor(
+              Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    }
     return descriptors;
   }
 

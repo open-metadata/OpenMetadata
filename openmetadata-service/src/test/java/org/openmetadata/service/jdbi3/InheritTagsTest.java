@@ -1,8 +1,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +17,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.TagPropagation;
 
@@ -129,6 +133,36 @@ class InheritTagsTest {
 
       assertTrue(tagFqns(table).isEmpty());
     }
+  }
+
+  /**
+   * The search cascade must be gated on the same setting as the read-time inheritance. It carries a
+   * parent's OWN tags into child documents, so leaving it ungated would write tags into Explore
+   * that {@code GET /{entity}/{id}} does not report while propagation is off.
+   */
+  @Test
+  void searchPropagationDescriptors_carryTags_onlyWhilePropagationIsEnabled() {
+    DatabaseRepository repository = mock(DatabaseRepository.class);
+    when(repository.getSearchPropagationDescriptors()).thenCallRealMethod();
+
+    try (MockedStatic<TagPropagation> propagation = mockStatic(TagPropagation.class)) {
+      propagation.when(TagPropagation::isEnabled).thenReturn(false);
+
+      assertFalse(
+          propagatesField(repository.getSearchPropagationDescriptors(), Entity.FIELD_TAGS),
+          "with propagation off the cascade must not carry tags into child documents");
+
+      propagation.when(TagPropagation::isEnabled).thenReturn(true);
+
+      assertTrue(
+          propagatesField(repository.getSearchPropagationDescriptors(), Entity.FIELD_TAGS),
+          "with propagation on the cascade keeps search in step with the API");
+    }
+  }
+
+  private static boolean propagatesField(
+      List<PropagationDescriptor> descriptors, String fieldName) {
+    return descriptors.stream().anyMatch(d -> fieldName.equals(d.fieldName()));
   }
 
   private static Table table() {

@@ -368,6 +368,9 @@ public class RuleEvaluator {
   @SuppressWarnings("unused")
   public boolean matchAnyServiceType(String... serviceTypes) {
     if (expressionValidation) {
+      for (String serviceType : serviceTypes) {
+        validateServiceType(serviceType);
+      }
       return false;
     }
     if (resourceContext == null || serviceTypes.length == 0) {
@@ -622,6 +625,24 @@ public class RuleEvaluator {
           entityType,
           fqn);
     }
+  }
+
+  /**
+   * Connector types are a closed set, so a typo is caught when the policy is written. Without this
+   * {@code matchAnyServiceType('Snowflak')} would be accepted and then match no service on either
+   * path, so a Deny meant to hide those assets would quietly hide nothing.
+   */
+  private void validateServiceType(String serviceType) {
+    if (ServiceAttributeUtil.isKnownServiceType(serviceType)) {
+      return;
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "'%s' is not a known service type. Expected one of: %s",
+            serviceType,
+            ServiceAttributeUtil.serviceTypes().stream()
+                .sorted()
+                .collect(Collectors.joining(", "))));
   }
 
   /**

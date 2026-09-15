@@ -336,6 +336,39 @@ public class ServiceAttributePolicyIT {
         "rejection should name the unresolvable tag, but was: " + failure.getMessage());
   }
 
+  /**
+   * A connector type that matches no service makes a Deny rule quietly grant access, so a typo has
+   * to be rejected when the policy is written -- the same guarantee the tag condition gives.
+   */
+  @Test
+  void serviceTypeCondition_rejectsAnUnknownTypeOnCreate(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.shortPrefix();
+
+    OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                admin
+                    .policies()
+                    .create(
+                        new CreatePolicy()
+                            .withName(prefix + "_badTypePolicy")
+                            .withDescription("Policy naming a connector type that does not exist")
+                            .withRules(
+                                List.of(
+                                    new Rule()
+                                        .withName("denyUnknownServiceType")
+                                        .withEffect(Rule.Effect.DENY)
+                                        .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                                        .withResources(List.of("All"))
+                                        .withCondition("matchAnyServiceType('Snowflak')")))));
+
+    assertTrue(
+        failure.getMessage() != null && failure.getMessage().contains("Snowflak"),
+        "rejection should name the unrecognised type, but was: " + failure.getMessage());
+  }
+
   private Table createTable(OpenMetadataClient admin, String name, DatabaseSchema schema) {
     return admin
         .tables()
