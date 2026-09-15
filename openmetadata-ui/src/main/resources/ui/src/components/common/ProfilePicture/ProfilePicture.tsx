@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Avatar } from 'antd';
-import classNames from 'classnames';
+import { Avatar } from '@openmetadata/ui-core-components';
 import { parseInt } from 'lodash';
-import { ImageShape } from 'Models';
-import { useMemo } from 'react';
+import { ComponentProps, useMemo, type ReactNode } from 'react';
+import { ReactComponent as IconTeams } from '../../../assets/svg/common/teams.svg';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../generated/entity/teams/user';
@@ -26,13 +25,57 @@ import Loader from '../Loader/Loader';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 
+type CoreAvatarSize = NonNullable<ComponentProps<typeof Avatar>['size']>;
+
+// Maps numeric pixel width to the closest core-components Avatar size.
+const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
+  16: 'xxs',
+  18: 'xxs',
+  20: 'xs',
+  24: 'xs',
+  28: 'xs',
+  32: 'sm',
+  36: 'sm',
+  40: 'md',
+  48: 'lg',
+  56: 'xl',
+  64: '2xl',
+  80: '2xl',
+};
+
+function getLoaderPlaceholder(
+  isLoading: boolean,
+  numericWidth: number,
+  isSolid: boolean
+): ReactNode | undefined {
+  if (!isLoading) {
+    return undefined;
+  }
+
+  return (
+    <Loader
+      size={numericWidth <= 24 ? 'x-small' : 'small'}
+      type={isSolid ? 'white' : 'default'}
+    />
+  );
+}
+
+function getAvatarStyle(
+  isSolid: boolean,
+  color: string,
+  backgroundColor: string
+) {
+  return {
+    backgroundColor: isSolid ? color : backgroundColor,
+    color: isSolid ? '#fff' : color,
+  };
+}
+
 interface Props extends UserData {
   width?: string;
-  type?: ImageShape;
   className?: string;
   height?: string;
   isTeam?: boolean;
-  size?: number | 'small' | 'default' | 'large';
   avatarType?: 'solid' | 'outlined';
 }
 
@@ -40,17 +83,16 @@ const ProfilePicture = ({
   name,
   displayName,
   className = '',
-  type = 'circle',
   width = '36',
-  height,
   isTeam = false,
-  size,
   avatarType = 'outlined',
 }: Props) => {
   const { permissions } = usePermissionProvider();
-  const { color, character, backgroundColor } = getRandomColor(
-    displayName ?? name
-  );
+  const avatarName = displayName ?? name ?? '';
+  const numericWidth = parseInt(width) || 36;
+  const avatarSize: CoreAvatarSize = WIDTH_TO_SIZE[numericWidth] ?? 'sm';
+  const { color, character, backgroundColor } = getRandomColor(avatarName);
+  const isSolid = avatarType === 'solid';
 
   const viewUserPermission = useMemo(() => {
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
@@ -62,59 +104,37 @@ const ProfilePicture = ({
     isTeam,
   });
 
-  const getAvatarByName = () => {
+  const isLoadingWithoutUrl = isPicLoading && !profileURL;
+
+  if (isTeam) {
     return (
       <Avatar
-        className={classNames('flex-center flex-shrink', className)}
+        className={className}
+        contrastBorder={false}
         data-testid="profile-avatar"
-        icon={character}
-        shape={type}
-        size={size ?? parseInt(width)}
-        style={{
-          color: avatarType === 'solid' ? 'default' : color,
-          backgroundColor: avatarType === 'solid' ? color : backgroundColor,
-          fontWeight: avatarType === 'solid' ? 400 : 500,
-          border: `0.5px solid ${avatarType === 'solid' ? 'default' : color}`,
-        }}
+        placeholderIcon={IconTeams}
+        size={avatarSize}
+        src={profileURL || undefined}
+        style={{ backgroundColor: 'transparent' }}
       />
     );
-  };
+  }
 
-  const getAvatarElement = () => {
-    return isPicLoading ? (
-      <div
-        className="d-inline-block relative"
-        style={{
-          height: `${height || width}px`,
-          width: `${width}px`,
-        }}>
-        {getAvatarByName()}
-        <div
-          className="absolute inset-0 opacity-60 bg-grey-4 rounded-full"
-          data-testid="loader-cntnr">
-          <Loader
-            className="absolute inset-0"
-            size="small"
-            style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
-            type="white"
-          />
-        </div>
-      </div>
-    ) : (
-      getAvatarByName()
-    );
-  };
-
-  return profileURL ? (
+  return (
     <Avatar
       className={className}
-      data-testid="profile-image"
-      shape={type}
-      size={size ?? parseInt(width)}
-      src={profileURL}
+      contrastBorder={!isSolid}
+      data-testid="profile-avatar"
+      initials={isLoadingWithoutUrl ? undefined : character}
+      placeholder={getLoaderPlaceholder(
+        isLoadingWithoutUrl,
+        numericWidth,
+        isSolid
+      )}
+      size={avatarSize}
+      src={profileURL || undefined}
+      style={getAvatarStyle(isSolid, color, backgroundColor)}
     />
-  ) : (
-    getAvatarElement()
   );
 };
 
