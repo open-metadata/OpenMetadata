@@ -12,7 +12,7 @@
  */
 
 import { Space } from 'antd';
-import { debounce, startCase } from 'lodash';
+import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -114,12 +114,6 @@ const ENTITY_TYPE_SEARCH_OPTIONS: SearchDropdownOption[] =
         EntityIconSize.Size14
       ) ?? undefined,
   }));
-
-const BOT_DISPLAY_NAME_MAP: Record<string, string> = {
-  aiautomationapplicationbot: 'AI Automation Application Bot',
-  'autoclassification-bot': 'Auto Classification Bot',
-  automatorapplicationbot: 'Automator Application Bot',
-};
 
 const AuditLogFilters: FC<AuditLogFiltersProps> = ({
   activeFilters,
@@ -294,10 +288,7 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
       setBotOptions(
         bots.map((bot) => ({
           key: bot.name,
-          label:
-            BOT_DISPLAY_NAME_MAP[
-              (getEntityName(bot) || bot.name).toLowerCase()
-            ] ?? startCase(getEntityName(bot) || bot.name),
+          label: getEntityName(bot) || bot.name,
         }))
       );
     } catch {

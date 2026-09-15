@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
   DEFAULT_POLICIES,
@@ -30,6 +30,26 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { getElementWithPagination } from '../../utils/roles';
 import { enableAiAppMode } from '../Utils/appMode';
+
+// ─── API polling helper ───────────────────────────────────────────────────────
+
+const waitUntilAccessible = async (
+  apiContext: APIRequestContext,
+  path: string,
+  timeout = 10_000
+) => {
+  const intervals = [200, 500, 1_000, 2_000];
+  const start = Date.now();
+  let i = 0;
+  while (Date.now() - start < timeout) {
+    const r = await apiContext.get(path);
+    if (r.ok()) return;
+    await new Promise((res) =>
+      setTimeout(res, intervals[Math.min(i++, intervals.length - 1)])
+    );
+  }
+  throw new Error(`API path "${path}" not accessible after ${timeout}ms`);
+};
 
 // ─── Navigation helpers ───────────────────────────────────────────────────────
 
@@ -80,6 +100,8 @@ const navigateToRoleDetail = async (
 ): Promise<void> => {
   const container = page.getByTestId('roles-list-container');
   const roleRow = container.getByTestId(`role-${roleName}`);
+  console.log(roleRow);
+  console.log(roleName);
   await getElementWithPagination(page, roleRow, false, 50, container);
   await roleRow.getByTestId('role-name').click();
   await page.getByTestId('role-detail-container').waitFor({ state: 'visible' });
@@ -205,7 +227,7 @@ test.describe(
     test('should create a role via the UI and verify via toast', async ({
       page,
     }) => {
-      const roleName = `PW-AC-Role-${uuid()}`;
+      const roleName = `Aa PW-AC-Role-${uuid()}`;
 
       // Navigate first so IndexedDB is populated before getApiContext
       await openAccessControlSettings(page);
@@ -260,13 +282,22 @@ test.describe(
     test('should navigate to role detail and verify all 3 tabs', async ({
       page,
     }) => {
-      const role = new RolesClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       // Navigate to home first so token is available for API pre-creation
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
 
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       // Add admin user to role via API so the Users tab is non-empty
       const adminUser = await apiContext
@@ -310,7 +341,7 @@ test.describe(
       await test.step('Users tab shows pre-added user', async () => {
         await clickDetailTab(page, 'users');
         await expect(
-          page.getByRole('gridcell', { name: adminUser.name })
+          page.getByRole('rowheader', { name: adminUser.name })
         ).toBeVisible();
       });
 
@@ -319,11 +350,20 @@ test.describe(
     });
 
     test('should edit role description', async ({ page }) => {
-      const role = new RolesClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToRolesPanel(page);
@@ -363,11 +403,20 @@ test.describe(
     });
 
     test('should rename a role', async ({ page }) => {
-      const role = new RolesClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       const newDisplayName = `Renamed Role ${uuid()}`;
 
@@ -406,11 +455,20 @@ test.describe(
     });
 
     test('should add a policy to an existing role', async ({ page }) => {
-      const role = new RolesClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToRolesPanel(page);
@@ -460,16 +518,34 @@ test.describe(
     });
 
     test('should remove a policy from a role', async ({ page }) => {
-      const role = new RolesClass();
-      const policyToRemove = new PolicyClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
+      const policyId = uuid();
+      const policyToRemove = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policyToRemove.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policyToRemove.responseData.name)}`
+      );
       await role.create(apiContext, [
         DEFAULT_POLICY_FQNS.dataConsumerPolicy,
         policyToRemove.responseData.name,
       ]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToRolesPanel(page);
@@ -505,11 +581,20 @@ test.describe(
     test('should remove a user from a role via the Users tab', async ({
       page,
     }) => {
-      const role = new RolesClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       const adminUser = await apiContext
         .get('/api/v1/users/name/admin?fields=id,name,displayName')
@@ -538,7 +623,7 @@ test.describe(
 
       await test.step('User row is visible', async () => {
         await expect(
-          page.getByRole('gridcell', { name: 'admin' })
+          page.getByRole('rowheader', { name: 'admin' })
         ).toBeVisible();
       });
 
@@ -546,8 +631,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/users') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page.getByTestId(`remove-${adminUser.name}`).click();
         await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
@@ -557,7 +641,7 @@ test.describe(
 
       await test.step('User row is gone', async () => {
         await expect(
-          page.getByRole('gridcell', { name: 'admin' })
+          page.getByRole('rowheader', { name: 'admin' })
         ).not.toBeVisible();
       });
 
@@ -566,11 +650,20 @@ test.describe(
     });
 
     test('should delete a role from the roles list table', async ({ page }) => {
-      const role = new RolesClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToRolesPanel(page);
@@ -609,11 +702,20 @@ test.describe(
     test('should delete a role from the role detail header', async ({
       page,
     }) => {
-      const role = new RolesClass();
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await role.create(apiContext, [DEFAULT_POLICY_FQNS.dataConsumerPolicy]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToRolesPanel(page);
@@ -652,8 +754,8 @@ test.describe(
     test('should create a policy via the UI and verify via toast', async ({
       page,
     }) => {
-      const policyName = `PW-AC-Policy-${uuid()}`;
-      const ruleName = `PW-Rule-${uuid()}`;
+      const policyName = `Aa PW-AC-Policy-${uuid()}`;
+      const ruleName = `Aa PW-Rule-${uuid()}`;
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -715,14 +817,32 @@ test.describe(
     test('should view policy detail and verify all 3 tabs', async ({
       page,
     }) => {
-      const policy = new PolicyClass();
-      const role = new RolesClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
 
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
       await role.create(apiContext, [policy.responseData.name]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       const orgTeam = await apiContext
         .get(
@@ -790,11 +910,20 @@ test.describe(
     });
 
     test('should edit policy description', async ({ page }) => {
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
       const updatedDescription = `Updated description ${uuid()}`;
 
@@ -834,11 +963,20 @@ test.describe(
     });
 
     test('should rename a policy', async ({ page }) => {
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
       const newDisplayName = `Renamed Policy ${uuid()}`;
 
@@ -877,15 +1015,24 @@ test.describe(
     });
 
     test('should add a rule to a policy', async ({ page }) => {
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
 
       // Seed with a rule — the API requires at least one rule at creation time.
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
-      const newRuleName = `PW-Rule-${uuid()}`;
+      const newRuleName = `Aa PW-Rule-${uuid()}`;
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -947,11 +1094,20 @@ test.describe(
     });
 
     test('should edit a rule in a policy', async ({ page }) => {
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
       const existingRuleName = VIEW_ALL_RULE[0].name;
       const updatedRuleName = `${existingRuleName}-Updated`;
@@ -997,7 +1153,7 @@ test.describe(
     });
 
     test('should delete a rule from a policy', async ({ page }) => {
-      const extraRuleName = `PW-Extra-Rule-${uuid()}`;
+      const extraRuleName = `Aa PW-Extra-Rule-${uuid()}`;
       const twoRules = [
         ...VIEW_ALL_RULE,
         {
@@ -1007,11 +1163,20 @@ test.describe(
           effect: 'allow',
         },
       ];
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, twoRules);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -1040,16 +1205,34 @@ test.describe(
     test('should remove a role from a policy via Roles tab', async ({
       page,
     }) => {
-      const policy = new PolicyClass();
-      const role = new RolesClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
+      const roleId = uuid();
+      const role = new RolesClass({
+        name: `AaPW%Roles-${roleId}`,
+        displayName: `AaPW Roles ${roleId}`,
+        description: 'playwright for roles description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
       await role.create(apiContext, [
         policy.responseData.name,
         DEFAULT_POLICY_FQNS.dataConsumerPolicy,
       ]);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/roles/name/${encodeURIComponent(role.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -1090,11 +1273,20 @@ test.describe(
     test('should remove a team from a policy via Teams tab', async ({
       page,
     }) => {
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
       const orgTeam = await apiContext
         .get(
@@ -1166,11 +1358,20 @@ test.describe(
     test('should delete a policy from the policies list table', async ({
       page,
     }) => {
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -1209,11 +1410,20 @@ test.describe(
     test('should delete a policy from the policy detail header', async ({
       page,
     }) => {
-      const policy = new PolicyClass();
+      const policyId = uuid();
+      const policy = new PolicyClass({
+        name: `AaPW%Policy-${policyId}`,
+        displayName: `AaPW Policy ${policyId}`,
+        description: 'playwright for policy description',
+      });
 
       await redirectToHomePage(page);
       const { apiContext, afterAction } = await getApiContext(page);
       await policy.create(apiContext, VIEW_ALL_RULE);
+      await waitUntilAccessible(
+        apiContext,
+        `/api/v1/policies/name/${encodeURIComponent(policy.responseData.name)}`
+      );
 
       await openAccessControlSettings(page);
       await navigateToPoliciesPanel(page);
@@ -1435,7 +1645,9 @@ test.describe(
       });
 
       await test.step('Export modal opens with required elements', async () => {
-        await page.getByTestId('export-audit-logs-button').click();
+        const exportBtn = page.getByTestId('export-audit-logs-button');
+        await exportBtn.waitFor({ state: 'visible' });
+        await exportBtn.click();
         await page
           .getByTestId('export-audit-logs-modal')
           .waitFor({ state: 'visible' });

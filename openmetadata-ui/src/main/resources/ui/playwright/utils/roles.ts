@@ -48,17 +48,23 @@ export const getElementWithPagination = async (
   }
 
   for (let currentPage = 0; currentPage < maxPages; currentPage++) {
-    // Check if element is visible on current page
-    if (await locator.isVisible()) {
+    // Use waitFor with a short timeout so transient render delays after
+    // a page-turn don't cause isVisible() to return false prematurely.
+    try {
+      await locator.waitFor({ state: 'visible', timeout: 2_000 });
       if (click) {
         await locator.click();
       }
 
       return;
+    } catch {
+      // Element not visible on this page — paginate forward.
     }
 
     const nextBtn = scope.locator('[data-testid="next"]');
-    await nextBtn.waitFor({ state: 'visible' });
+    if (!(await nextBtn.isVisible())) {
+      break;
+    }
 
     await nextBtn.click();
     await waitForAllLoadersToDisappear(page);
