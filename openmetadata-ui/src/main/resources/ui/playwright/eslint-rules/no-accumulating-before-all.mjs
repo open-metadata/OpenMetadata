@@ -58,21 +58,66 @@ const rule = {
         : undefined;
     };
 
-    /** Names the hook reassigns wholesale, in the order the statements run. */
+    const isZero = (node) =>
+      node && node.type === 'Literal' && node.value === 0;
+
+    /**
+     * The name this statement empties, if it empties one.
+     *
+     * Reassignment (`xs = []`) is the common form, but truncation
+     * (`xs.length = 0`) and `xs.splice(0)` empty the array just as completely
+     * and leak nothing — flagging them would make an error-level rule reject
+     * correct code. Anything that only *partially* clears — `xs.length = 5`,
+     * `xs.splice(1)` — keeps earlier entries and is deliberately not a reset.
+     */
+    const resetTarget = (node) => {
+      if (
+        node.type === 'AssignmentExpression' &&
+        node.operator === '=' &&
+        node.left.type === 'Identifier'
+      ) {
+        return node.left.name;
+      }
+
+      if (
+        node.type === 'AssignmentExpression' &&
+        node.operator === '=' &&
+        node.left.type === 'MemberExpression' &&
+        !node.left.computed &&
+        node.left.object.type === 'Identifier' &&
+        node.left.property.type === 'Identifier' &&
+        node.left.property.name === 'length' &&
+        isZero(node.right)
+      ) {
+        return node.left.object.name;
+      }
+
+      if (
+        node.type === 'CallExpression' &&
+        node.callee.type === 'MemberExpression' &&
+        !node.callee.computed &&
+        node.callee.object.type === 'Identifier' &&
+        node.callee.property.type === 'Identifier' &&
+        node.callee.property.name === 'splice' &&
+        isZero(node.arguments[0])
+      ) {
+        return node.callee.object.name;
+      }
+
+      return undefined;
+    };
+
+    /** Names the hook empties, in the order the statements run. */
     const collectResets = (hookBody, resetsBefore) => {
       const walk = (node) => {
         if (!node || typeof node.type !== 'string') {
           return;
         }
 
-        if (
-          node.type === 'AssignmentExpression' &&
-          node.operator === '=' &&
-          node.left.type === 'Identifier'
-        ) {
-          if (!resetsBefore.has(node.left.name)) {
-            resetsBefore.set(node.left.name, node.range[0]);
-          }
+        const target = resetTarget(node);
+
+        if (target !== undefined && !resetsBefore.has(target)) {
+          resetsBefore.set(target, node.range[0]);
         }
 
         for (const key of Object.keys(node)) {
