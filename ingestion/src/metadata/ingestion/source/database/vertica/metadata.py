@@ -21,6 +21,7 @@ from textwrap import dedent
 from sqlalchemy import sql, text, util
 from sqlalchemy.engine import Inspector, reflection
 from sqlalchemy.engine.default import DefaultDialect
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_vertica.base import VerticaDialect, ischema_names
 
@@ -83,13 +84,24 @@ ischema_names.update(
 )
 
 
+def _rollback_quietly(connection) -> None:
+    """A failed statement leaves the transaction unusable for whatever follows,
+    and the caller goes straight on to read columns.
+    """
+    with contextlib.suppress(Exception):
+        connection.rollback()
+
+
 def supports_column_comments(self, connection) -> bool:
     """Whether this server exposes v_catalog.comments.child_object.
 
     Vertica 10 added it. Without it the column query cannot be expressed, and
     the failure takes out the whole column read rather than just the comments,
-    so tables end up with no columns and no schema definition. Checked once per
-    dialect and remembered, since it cannot change while connected.
+    so tables end up with no columns and no schema definition.
+
+    A definite answer is remembered on the dialect, since it cannot change while
+    connected and re-asking would log once per table. An inconclusive one is not,
+    so a passing timeout cannot quietly cost every later table its comments.
     """
     remembered = getattr(self, "_column_comment_support", None)
     if remembered is not None:
@@ -97,22 +109,29 @@ def supports_column_comments(self, connection) -> bool:
 
     try:
         connection.execute(sql.text(VERTICA_SUPPORTS_COLUMN_COMMENTS))
-        supported = True
-    except Exception as exc:
-        supported = False
+    except ProgrammingError as exc:
+        # The server rejected the statement itself, so it will keep rejecting it.
+        # Remember that and stop asking.
         logger.warning(
             "This Vertica server does not expose v_catalog.comments.child_object, "
             "so column comments cannot be read. Columns and schema definitions are "
             "still ingested, without comments. Vertica 10 and later expose it: %s",
             exc,
         )
-        # The failed statement leaves the transaction unusable for anything that
-        # follows, and the caller goes straight on to read columns.
-        with contextlib.suppress(Exception):
-            connection.rollback()
+        _rollback_quietly(connection)
+        self._column_comment_support = False  # pylint: disable=protected-access
+        return False
+    except Exception as exc:
+        # Anything else, a timeout or a dropped connection, says nothing about
+        # what this server supports. Read columns without comments this once so
+        # the table still arrives, and leave the question open for the next call
+        # rather than stripping comments for the rest of the session.
+        logger.warning("Could not determine Vertica column comment support, reading columns without them: %s", exc)
+        _rollback_quietly(connection)
+        return False
 
-    self._column_comment_support = supported  # pylint: disable=protected-access
-    return supported
+    self._column_comment_support = True  # pylint: disable=protected-access
+    return True
 
 
 @reflection.cache

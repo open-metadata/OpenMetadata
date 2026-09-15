@@ -34,8 +34,11 @@ the join cannot be expressed, so the statement fails and takes the whole column
 read with it instead of merely losing the comments.
 """
 
+from unittest.mock import Mock
+
 import pytest
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.pool import StaticPool
 from sqlalchemy_vertica.dialect_vertica_python import VerticaDialect
 
@@ -146,21 +149,42 @@ class TestVerticaColumnCommentSupport:
         with engine.connect() as connection:
             assert supports_column_comments(VerticaDialect(), connection) is True
 
-    def test_not_detected_when_child_object_missing(self, catalog_engine):
-        engine = catalog_engine(with_child_object=False)
+    def test_not_detected_when_child_object_missing(self):
+        """Vertica reports the absent column as a ProgrammingError, so that is
+        what decides the fallback. SQLite raises OperationalError for the same
+        situation, which is why this case is driven by the real error rather
+        than by attaching a table without the column.
+        """
+        connection = Mock()
+        connection.execute.side_effect = ProgrammingError("SELECT child_object", {}, Exception("does not exist"))
 
-        with engine.connect() as connection:
-            assert supports_column_comments(VerticaDialect(), connection) is False
+        assert supports_column_comments(VerticaDialect(), connection) is False
 
-    def test_probed_once_per_dialect(self, catalog_engine):
+    def test_probed_once_per_dialect(self):
         """The answer cannot change while connected, and probing per table would
         log a failing statement for every table on an older server.
         """
-        engine = catalog_engine(with_child_object=False)
+        connection = Mock()
+        connection.execute.side_effect = ProgrammingError("SELECT child_object", {}, Exception("does not exist"))
         dialect = VerticaDialect()
 
-        with engine.connect() as connection:
-            supports_column_comments(dialect, connection)
+        supports_column_comments(dialect, connection)
+        supports_column_comments(dialect, connection)
 
-        # A connection that can no longer answer proves the memo is used.
-        assert supports_column_comments(dialect, None) is False
+        assert connection.execute.call_count == 1
+
+    def test_transient_failure_degrades_without_being_remembered(self):
+        """A timeout or dropped connection says nothing about what the server
+        supports. The columns still have to arrive, so this call falls back, but
+        the answer is left open instead of stripping comments for the session.
+        """
+        connection = Mock()
+        connection.execute.side_effect = OperationalError("SELECT child_object", {}, Exception("connection reset"))
+        dialect = VerticaDialect()
+
+        assert supports_column_comments(dialect, connection) is False
+        assert getattr(dialect, "_column_comment_support", None) is None
+
+        # The next call asks again rather than trusting the earlier failure.
+        connection.execute.side_effect = None
+        assert supports_column_comments(dialect, connection) is True
