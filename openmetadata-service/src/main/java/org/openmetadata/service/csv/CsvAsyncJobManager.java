@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.csv;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import jakarta.ws.rs.BadRequestException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -142,6 +144,18 @@ public final class CsvAsyncJobManager {
   public String getExportResult(String jobId) {
     Long id = lookupIdOrNull(jobId);
     return id == null ? null : dao.findCsvJobResultById(id);
+  }
+
+  // Read after completion only: getJob omits the result column so a large import does not ride
+  // every status poll. Fetching it here also makes the validation result reachable from any node,
+  // not just the pod whose websocket ran the job.
+  public CsvImportResult getImportResult(String jobId) {
+    Long id = lookupIdOrNull(jobId);
+    if (id == null) {
+      return null;
+    }
+    String result = dao.findCsvJobResultById(id);
+    return nullOrEmpty(result) ? null : JsonUtils.readValue(result, CsvImportResult.class);
   }
 
   private CsvAsyncJob insertExportJob(

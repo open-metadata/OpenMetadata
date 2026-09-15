@@ -73,6 +73,15 @@ public final class CsvJobClient {
     return startJob("GET", path, null);
   }
 
+  public String startImport(String path, String csvBody) throws IOException, InterruptedException {
+    return startJob("PUT", path, csvBody);
+  }
+
+  public HttpResponse<String> fetchImportResult(String jobId)
+      throws IOException, InterruptedException {
+    return request("GET", "/v1/csvAsyncJobs/" + jobId + "/importResult", null);
+  }
+
   public JsonNode awaitJobStatus(String jobId, String expectedStatus) {
     Awaitility.await()
         .atMost(JOB_TIMEOUT)
