@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Owner } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
 import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
@@ -46,9 +46,11 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
 import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
@@ -58,6 +60,11 @@ import {
 } from '../../../utils/ClassificationUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import {
+  DerivedPermissionFlags,
+  getDerivedPermissionFlags,
+} from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -74,9 +81,14 @@ import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/Mana
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
@@ -100,41 +112,39 @@ const TAG_TABLE_FILL_CLASSNAME = [
 function computeEditDescriptionPermission(
   isVersionView: boolean,
   isClassificationDisabled: boolean,
-  classificationPermissions: OperationPermission
+  flags: DerivedPermissionFlags
 ): boolean {
+  // explicit-deny-wins (Task 6 Finding 1): the raw `EditAll || EditDescription` let a
+  // classification-level EditAll override an explicit `EditDescription: false`.
   return (
-    !isVersionView &&
-    !isClassificationDisabled &&
-    (classificationPermissions.EditAll ||
-      classificationPermissions.EditDescription)
+    !isVersionView && !isClassificationDisabled && flags.canEditDescription
   );
 }
 
 function computeCreatePermission(
   isVersionView: boolean,
   permissions: UIPermission,
-  classificationPermissions: OperationPermission
+  flags: DerivedPermissionFlags
 ): boolean {
   return (
     !isVersionView &&
     (checkPermission(Operation.Create, ResourceEntity.TAG, permissions) ||
-      classificationPermissions.EditAll)
+      flags.canEditAll)
   );
 }
 
 function computeEditOwnerPermission(
   isEditable: boolean,
-  classificationPermissions: OperationPermission
+  flags: DerivedPermissionFlags
 ): boolean {
-  return (
-    isEditable &&
-    (classificationPermissions.EditAll || classificationPermissions.EditOwners)
-  );
+  // explicit-deny-wins, same as computeEditDescriptionPermission above.
+  return isEditable && flags.canEditOwners;
 }
 
 function computeClassificationPermissionFlags(
   permissions: UIPermission,
   classificationPermissions: OperationPermission,
+  flags: DerivedPermissionFlags,
   isVersionView: boolean,
   isClassificationDisabled: boolean,
   isSystemClassification: boolean,
@@ -143,24 +153,21 @@ function computeClassificationPermissionFlags(
   const isEditable = !isClassificationDisabled && !isClassificationDeleted;
 
   return {
-    editClassificationPermission: classificationPermissions.EditAll,
+    editClassificationPermission: flags.canEditAll,
     editDescriptionPermission: computeEditDescriptionPermission(
       isVersionView,
       isClassificationDisabled,
-      classificationPermissions
+      flags
     ),
     createPermission: computeCreatePermission(
       isVersionView,
       permissions,
-      classificationPermissions
+      flags
     ),
     deletePermission:
       classificationPermissions.Delete && !isSystemClassification,
-    editOwnerPermission: computeEditOwnerPermission(
-      isEditable,
-      classificationPermissions
-    ),
-    editDomainPermission: isEditable && classificationPermissions.EditAll,
+    editOwnerPermission: computeEditOwnerPermission(isEditable, flags),
+    editDomainPermission: isEditable && flags.canEditAll,
   };
 }
 
@@ -190,6 +197,7 @@ const ClassificationDetails = forwardRef(
     const { t } = useTranslation();
     const { fqn: tagCategoryName } = useFqn();
     const navigate = useNavigate();
+    const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
@@ -280,6 +288,18 @@ const ClassificationDetails = forwardRef(
       }
     }, [currentVersion, tagCategoryName]);
 
+    // Prop stays raw (OperationPermission) — ClassificationUtils.tsx's getTagsTableColumn
+    // (out of this batch's scope: src/utils/**, not src/components/**) also consumes this
+    // object verbatim, and the GenericProvider context below exposes it to consumers as-is
+    // (TableProfilerProvider precedent, Task 8 Batch 3). No `deleted` argument:
+    // isClassificationDeleted is a separate, already-computed local (from
+    // getClassificationInfo) folded into `isEditable` below, never passed into the
+    // derivation itself — the old expressions never gated on it either.
+    const classificationFlags = useMemo(
+      () => getDerivedPermissionFlags(classificationPermissions),
+      [classificationPermissions]
+    );
+
     const {
       editClassificationPermission,
       editDescriptionPermission,
@@ -292,6 +312,7 @@ const ClassificationDetails = forwardRef(
         computeClassificationPermissionFlags(
           permissions,
           classificationPermissions,
+          classificationFlags,
           isVersionView,
           isClassificationDisabled,
           isSystemClassification,
@@ -300,6 +321,7 @@ const ClassificationDetails = forwardRef(
       [
         permissions,
         classificationPermissions,
+        classificationFlags,
         isVersionView,
         isClassificationDisabled,
         isSystemClassification,
@@ -340,8 +362,8 @@ const ClassificationDetails = forwardRef(
       () =>
         !isVersionView &&
         !isSystemClassification &&
-        classificationPermissions.ViewAll,
-      [isVersionView, isSystemClassification, classificationPermissions]
+        classificationFlags.canViewAll,
+      [isVersionView, isSystemClassification, classificationFlags]
     );
 
     // Import creates/updates tags, so it needs full EditAll access and is not
@@ -352,12 +374,12 @@ const ClassificationDetails = forwardRef(
         !isVersionView &&
         !isClassificationDisabled &&
         !isSystemClassification &&
-        classificationPermissions.EditAll,
+        classificationFlags.canEditAll,
       [
         isVersionView,
         isClassificationDisabled,
         isSystemClassification,
-        classificationPermissions,
+        classificationFlags,
       ]
     );
 
@@ -738,10 +760,48 @@ const ClassificationDetails = forwardRef(
                   showDomainHeading
                   hasPermission={editDomainPermission}
                 />
-                <OwnerLabelV2
+                <WidgetCard
                   dataTestId="classification-owner-name"
-                  hasPermission={editOwnerPermission}
-                />
+                  headerExtra={
+                    !isVersionView && editOwnerPermission ? (
+                      <UserTeamSelectableList
+                        hasPermission={Boolean(editOwnerPermission)}
+                        listHeight={200}
+                        multiple={{
+                          user: entityRules.canAddMultipleUserOwners,
+                          team: entityRules.canAddMultipleTeamOwner,
+                        }}
+                        owner={currentClassification.owners}
+                        onUpdate={async (updatedOwners?: EntityReference[]) => {
+                          handleUpdateClassification?.({
+                            ...currentClassification,
+                            owners: updatedOwners,
+                          });
+                        }}>
+                        {isEmpty(currentClassification.owners) ? (
+                          <WidgetPlusButton
+                            data-testid="add-owner"
+                            title={t('label.add-entity', {
+                              entity: t('label.owner-plural'),
+                            })}
+                          />
+                        ) : (
+                          <WidgetEditButton
+                            data-testid="edit-owner"
+                            title={t('label.edit-entity', {
+                              entity: t('label.owner-plural'),
+                            })}
+                          />
+                        )}
+                      </UserTeamSelectableList>
+                    ) : null
+                  }
+                  isExpandDisabled={isEmpty(currentClassification.owners)}
+                  title={t('label.owner-plural')}>
+                  <Owner
+                    owners={toOwnerRefs(currentClassification.owners ?? [])}
+                  />
+                </WidgetCard>
                 {tagClassBase.getClassificationReviewerWidget()}
               </div>
             </Col>

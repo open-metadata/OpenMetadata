@@ -499,50 +499,101 @@ const clickAssociatedTagSave = async (page: Page) => {
   await saveButton.waitFor({ state: 'detached' });
 };
 
-export const fillOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+// The owner cell mounts a react-aria picker that is force-opened on mount
+// (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
+// mount + paint cycle to position the overlay, which races the react-data-grid
+// editor lifecycle, so entering edit mode once does not reliably show the
+// picker in CI. Two failure modes were seen: (1) a keyboard trigger no-ops
+// because focus sits on document.body (e.g. after a prior portal interaction),
+// so the grid never enters edit mode; (2) the popover opens slightly slower
+// than a short poll window and a premature Escape closes it.
+//
+// Make the open robust: each pass first CLICKS the active owner cell (which
+// focuses the grid and may itself open the force-open picker), then asks rdg
+// for edit mode via Enter and F2, waiting generously after each. Only Escape
+// and retry when nothing became visible in the whole pass.
+const OWNER_PICKER_OPEN_TIMEOUT = 4000;
+const OWNER_PICKER_OPEN_ATTEMPTS = 6;
 
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+const openOwnerPickerEditor = async (page: Page) => {
+  const ownerTabs = page.getByTestId('select-owner-tabs');
 
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Teams')
-  ).toBeVisible();
+  for (let attempt = 0; attempt < OWNER_PICKER_OPEN_ATTEMPTS; attempt++) {
+    try {
+      await clickActiveGridCell(page);
+      if (await waitForVisibleLocator(ownerTabs, EDITOR_OPEN_TIMEOUT)) {
+        return;
+      }
 
-  await waitForAllLoadersToDisappear(page);
-  await page.waitForLoadState('domcontentloaded');
+      await page.keyboard.press('Enter', { delay: 100 });
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
 
-  const userListResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query?q=') &&
-      response.url().includes('index=user')
-  );
-  await page.getByRole('tab', { name: 'Users' }).click();
-  await userListResponse;
+      await page.keyboard.press('F2');
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
+    } catch {
+      // fall through and retry after resetting edit mode
+    }
 
-  await waitForAllLoadersToDisappear(page);
+    // Reset edit mode before retrying, but never after the final attempt so the
+    // closing assertion can still catch a picker that opened just after the
+    // last poll window.
+    if (attempt < OWNER_PICKER_OPEN_ATTEMPTS - 1) {
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
+  }
 
+  await expect(ownerTabs).toBeVisible();
+};
+
+const selectOwnersOnTab = async (
+  page: Page,
+  tab: 'Users' | 'Teams',
+  searchBarTestId: string,
+  searchIndex: 'user' | 'team',
+  owners: string[]
+) => {
+  // Do NOT wait for a tab-switch list response here: the picker opens on the
+  // Teams tab by default and caches each tab's first (empty-query) fetch in a
+  // ref, so re-activating an already-visited tab returns the cache and fires no
+  // request (UserTeamSelectableList fetchTeamOptions/fetchUserOptions). Waiting
+  // for one would hang until the test times out. Each per-owner search below
+  // has a non-empty query, bypasses the cache, and awaits its own response, so
+  // that is the reliable synchronization point.
   await page
-    .getByTestId('owner-select-users-search-bar')
-    .waitFor({ state: 'visible' });
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: tab })
+    .click();
 
-  await page.click('[data-testid="owner-select-users-search-bar"]');
+  await waitForAllLoadersToDisappear(page);
+
+  await page.getByTestId(searchBarTestId).waitFor({ state: 'visible' });
+  await page.getByTestId(searchBarTestId).click();
 
   for (const owner of owners) {
     const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user*'
+      `api/v1/search/query?q=*&index=${searchIndex}*`
     );
-    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
+    await page.getByTestId(searchBarTestId).clear();
+    await page.getByTestId(searchBarTestId).fill(owner);
     await searchOwner;
     await expect(
       page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
     ).toHaveCount(0);
 
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
   }
+};
 
+const commitOwnerSelection = async (page: Page, panelTestId: string) => {
   await page
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .getByTestId(panelTestId)
     .getByTestId('selectable-list-update-btn')
     .click();
 
@@ -551,51 +602,64 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     .waitFor({ state: 'detached' });
 };
 
-export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
-
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Users')
-  ).toBeVisible();
+export const fillOwnerDetails = async (page: Page, owners: string[]) => {
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
-  await page
-    .locator("[data-testid='select-owner-tabs']")
-    .getByRole('tab', { name: 'Teams' })
-    .click();
+  await selectOwnersOnTab(
+    page,
+    'Users',
+    'owner-select-users-search-bar',
+    'user',
+    owners
+  );
+
+  await commitOwnerSelection(page, 'owner-select-users-panel');
+};
+
+// Select user AND team owners in a SINGLE picker session, then commit once.
+//
+// The grid owner cell editor force-opens the picker on mount and cannot be
+// re-opened after its first commit: committing clicks the picker's Update
+// button, which lives in a react-aria portal, so focus leaves the grid to
+// document.body; react-data-grid then keeps the cell aria-selected but has no
+// keyboard focus, so a subsequent Enter/F2/double-click never re-enters edit
+// mode. Opening the picker a second time therefore deterministically fails.
+//
+// When the cell allows both multiple users and multiple teams (the rules that
+// gate this are disabled for the bulk-edit flows that need mixed owners), the
+// picker preserves cross-tab selection in one parent state, so selecting on
+// both tabs before a single Update commits users and teams together — no
+// re-open required.
+export const fillUserAndTeamOwnerDetails = async (
+  page: Page,
+  userOwners: string[],
+  teamOwners: string[]
+) => {
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
-  await page
-    .getByTestId('owner-select-teams-search-bar')
-    .waitFor({ state: 'visible' });
+  await selectOwnersOnTab(
+    page,
+    'Users',
+    'owner-select-users-search-bar',
+    'user',
+    userOwners
+  );
 
-  await page.click('[data-testid="owner-select-teams-search-bar"]');
+  await selectOwnersOnTab(
+    page,
+    'Teams',
+    'owner-select-teams-search-bar',
+    'team',
+    teamOwners
+  );
 
-  for (const owner of owners) {
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=team*'
-    );
-    await page.locator('[data-testid="owner-select-teams-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-teams-search-bar"]', owner);
-    await searchOwner;
-    await expect(
-      page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
-    ).toHaveCount(0);
-    await page.getByRole('listitem', { name: owner }).click();
-  }
-
-  await page
-    .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
-    .getByTestId('selectable-list-update-btn')
-    .click();
-
-  await page
-    .getByTestId('selectable-list-update-btn')
-    .waitFor({ state: 'detached' });
+  await commitOwnerSelection(page, 'owner-select-teams-panel');
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
@@ -1321,10 +1385,15 @@ export const fillRowDetails = async (
   await fillDescriptionDetails(page, row.description);
 
   await selectActiveRowCellByColumn(page, 'owner');
-  await fillOwnerDetails(page, row.owners);
 
   if (row.teamOwners && row.teamOwners.length > 0) {
-    await fillTeamOwnerDetails(page, row.teamOwners);
+    // Users and teams must be selected in a single picker session: the grid
+    // owner editor force-opens on mount and cannot be re-opened after its first
+    // commit (see fillUserAndTeamOwnerDetails), so committing users and teams
+    // separately would fail on the second open.
+    await fillUserAndTeamOwnerDetails(page, row.owners, row.teamOwners);
+  } else {
+    await fillOwnerDetails(page, row.owners);
   }
 
   await selectActiveRowCellByColumn(page, 'tags');

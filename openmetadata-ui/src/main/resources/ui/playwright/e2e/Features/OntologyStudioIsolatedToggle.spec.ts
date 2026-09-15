@@ -58,7 +58,55 @@ test.describe('Ontology Studio — isolated concepts', () => {
     page,
   }) => {
     test.slow();
+    await page.route('**/api/v1/glossaryTerms/ontology/summary?*', (route) =>
+      route.fulfill({
+        body: JSON.stringify({ message: 'Summary unavailable' }),
+        contentType: 'application/json',
+        status: 503,
+      })
+    );
+    await page.route('**/api/v1/glossaryTerms?*', async (route) => {
+      const response = await route.fetch();
+      const body = (await response.json()) as {
+        data: Array<{
+          displayName?: string;
+          fullyQualifiedName: string;
+          id: string;
+          name: string;
+        }>;
+      };
+
+      await route.fulfill({
+        response,
+        json: {
+          ...body,
+          data: body.data.map((term) =>
+            term.id === toggleTermIso.responseData.id
+              ? {
+                  ...term,
+                  displayName: undefined,
+                  fullyQualifiedName: term.id,
+                  name: term.id,
+                }
+              : term
+          ),
+        },
+      });
+    });
+    const isolatedTermDetailsResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      const ids = url.searchParams.get('ids')?.split(',') ?? [];
+
+      return (
+        url.pathname.endsWith('/api/v1/glossaryTerms/byIds') &&
+        ids.includes(toggleTermIso.responseData.id)
+      );
+    });
     await navigateAndFilterByGlossary(page, toggleGlossary.responseData.id);
+
+    const detailsResponse = await isolatedTermDetailsResponse;
+
+    expect(detailsResponse.ok(), await detailsResponse.text()).toBe(true);
 
     await expect
       .poll(
@@ -73,9 +121,17 @@ test.describe('Ontology Studio — isolated concepts', () => {
       )
       .toBe(true);
     await expect(page.getByTestId('ontology-health-panel')).toBeVisible();
-    await expect(
-      page.getByTestId(`ontology-connect-${toggleTermIso.responseData.id}`)
-    ).toBeVisible();
+    const connectButton = page.getByTestId(
+      `ontology-connect-${toggleTermIso.responseData.id}`
+    );
+
+    await expect(connectButton).toBeVisible();
+    await expect(connectButton).toContainText(
+      toggleTermIso.responseData.displayName
+    );
+    await expect(connectButton).not.toContainText(
+      toggleTermIso.responseData.id
+    );
     await expect(page.getByTestId('ontology-isolated-count')).toHaveText('1');
     await expect(
       page.getByTestId('ontology-header-isolated-count')
