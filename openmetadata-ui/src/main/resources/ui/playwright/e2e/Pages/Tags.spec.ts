@@ -135,6 +135,7 @@ test('Classification Page', async ({ page }) => {
       'Enabled',
       'Tag',
       'Display Name',
+      'Usage',
       'Description',
       'Actions',
     ]);
