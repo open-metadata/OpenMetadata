@@ -49,6 +49,7 @@ import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsights
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
+import ServiceAttributesCard from '../../components/Settings/Services/ServiceAttributes/ServiceAttributesCard';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
   INITIAL_PAGING_VALUE,
@@ -76,6 +77,7 @@ import {
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
+import { ServiceAttributes } from '../../generated/entity/services/serviceAttributes';
 
 import { Tag } from '../../generated/entity/classification/tag';
 import { Directory } from '../../generated/entity/data/directory';
@@ -1129,6 +1131,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails, serviceCategory]
   );
 
+  const handleUpdateServiceAttributes = useCallback(
+    async (serviceAttributes: ServiceAttributes) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData: ServicesType = {
+        ...serviceDetails,
+        serviceAttributes,
+      };
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails((pre) => ({
+          ...pre,
+          serviceAttributes: response.serviceAttributes,
+        }));
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        // Rethrow so the card stays in edit mode and the user does not lose their input.
+        throw error;
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
   const handleUpdateServiceStyle = useCallback(
     async (style: Style | null) => {
       if (isEmpty(serviceDetails)) {
@@ -1803,6 +1837,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
           </Space>
         </div>
 
+        <ServiceAttributesCard
+          hasEditPermission={flags.canEditAll}
+          serviceAttributes={serviceDetails?.serviceAttributes}
+          onSave={handleUpdateServiceAttributes}
+        />
+
         <ServiceConnectionDetails
           connectionDetails={connectionDetails ?? {}}
           extraInfo={extraInfoData}
@@ -1816,6 +1856,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     allowTestConn,
     goToEditConnection,
     serviceDetails,
+    handleUpdateServiceAttributes,
     connectionDetails,
     isTestingDisabled,
     serviceCategory,

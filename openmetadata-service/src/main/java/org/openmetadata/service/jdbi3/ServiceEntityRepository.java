@@ -86,6 +86,16 @@ public abstract class ServiceEntityRepository<
           new PropagationDescriptor(
               FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     }
+    // Keeps the search index in step with the read-time tag inheritance in EntityRepository. Both
+    // halves are needed: the descriptor alone would write tags into child documents that GET
+    // /{entity}/{id} does not report, leaving Explore and the API disagreeing about an asset's
+    // tags. Registered unconditionally because the gate belongs where the tags are produced -- with
+    // propagation off no service tag is ever inherited, so this cascade has nothing to carry.
+    if (supportsTags) {
+      descriptors.add(
+          new PropagationDescriptor(
+              Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    }
     return descriptors;
   }
 

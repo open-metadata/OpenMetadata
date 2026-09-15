@@ -67,6 +67,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseResource;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -131,6 +132,21 @@ public class DatabaseRepository extends EntityRepository<Database> {
     if (entities.isEmpty()) return;
     List<UUID> ids = entities.stream().map(Database::getId).toList();
     deleteToMany(ids, entityType, Relationship.CONTAINS, null);
+  }
+
+  /**
+   * Carries a database tag change down to the assets beneath it in the search index, matching the
+   * read-time inheritance in {@link EntityRepository#inheritTags}. Without it Explore would keep
+   * showing the pre-change tags while the API reported the new ones.
+   */
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    return descriptors;
   }
 
   @Override

@@ -60,6 +60,7 @@ export enum SettingType {
     SlackState = "slackState",
     SparqlQuerySettings = "sparqlQuerySettings",
     StartupChecksums = "startupChecksums",
+    TagPropagationSettings = "tagPropagationSettings",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
@@ -114,6 +115,10 @@ export enum SettingType {
  *
  * Administrator-managed SPARQL query templates available across the installation.
  *
+ * Controls whether tags applied to a service, database or schema flow down to the assets
+ * beneath them. Off by default: turning it on changes which tags every affected asset
+ * reports, and therefore what existing tag-based policies match.
+ *
  * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
  * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
  *
@@ -147,6 +152,10 @@ export interface PipelineServiceClientConfiguration {
      * Enable or disable the OpenLineage HTTP API endpoint.
      *
      * Enable or disable the MCP server
+     *
+     * Propagate tags from a parent down to its assets. Propagated labels are reported as
+     * `Derived`, so they are read-only on the asset and disappear when the parent's tag is
+     * removed.
      */
     enabled?: boolean;
     /**
