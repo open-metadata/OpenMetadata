@@ -76,17 +76,17 @@ test('keeps the light neutral scale stable and applies the approved dark scale',
   };
   const expectedDark = {
     25: 'rgb(250 250 250)',
-    50: 'rgb(240 240 240)',
-    100: 'rgb(224 224 224)',
-    200: 'rgb(217 217 217)',
-    300: 'rgb(191 191 191)',
-    400: 'rgb(160 160 160)',
-    500: 'rgb(128 128 128)',
-    600: 'rgb(102 102 102)',
-    700: 'rgb(46 46 46)',
-    800: 'rgb(34 34 34)',
-    900: 'rgb(25 25 25)',
-    950: 'rgb(20 20 20)',
+    50: 'rgb(247 247 247)',
+    100: 'rgb(228 229 231)',
+    200: 'rgb(217 218 221)',
+    300: 'rgb(206 207 210)',
+    400: 'rgb(148 151 156)',
+    500: 'rgb(123 127 134)',
+    600: 'rgb(97 101 108)',
+    700: 'rgb(55 58 65)',
+    800: 'rgb(34 38 47)',
+    900: 'rgb(19 22 27)',
+    950: 'rgb(12 14 18)',
   };
 
   for (const [step, value] of Object.entries(expectedLight)) {
@@ -148,14 +148,32 @@ test('separates subtle and interactive border roles in both themes', () => {
   );
   assert.equal(
     dark.get('--color-border-subtle'),
-    '--alpha(var(--color-white) / 8%)'
+    '--alpha(theme(--color-white) / 8%)'
   );
   assert.equal(
     dark.get('--color-border-secondary_alt'),
-    '--alpha(var(--color-white) / 8%)'
+    '--alpha(theme(--color-white) / 8%)'
   );
-  assert.equal(dark.get('--color-border-primary'), 'theme(--color-gray-500)');
-  assert.equal(dark.get('--color-border-hover'), 'theme(--color-gray-400)');
+  assert.equal(dark.get('--color-border-primary'), 'theme(--color-gray-700)');
+  assert.equal(dark.get('--color-border-hover'), 'theme(--color-gray-600)');
+
+  // Card/Table/Badge draw their subtle edge with `tw:outline-subtle`, so the
+  // outline-color namespace must expose the subtle role in both themes —
+  // without it Tailwind emits no color and the outline falls back to currentColor.
+  assert.equal(
+    light.get('--outline-color-subtle'),
+    'var(--outline-color-subtle, theme(--color-border-subtle))'
+  );
+  assert.equal(
+    dark.get('--outline-color-subtle'),
+    'theme(--color-border-subtle)'
+  );
+  // `tw:outline-subtle` reads var(--tw-outline-color-subtle); without the dark
+  // bridge entry the outline keeps its light initial value in dark mode.
+  assert.equal(
+    dark.get('--tw-outline-color-subtle'),
+    'var(--color-border-subtle)'
+  );
 
   for (const role of ['subtle', 'hover']) {
     assert.equal(
@@ -167,6 +185,26 @@ test('separates subtle and interactive border roles in both themes', () => {
       `var(--color-border-${role})`
     );
   }
+});
+
+test('mirrors every dark utility-color remap into the --tw-color-* layer', () => {
+  const css = fs.readFileSync(GLOBALS_FILE, 'utf8');
+  const dark = declarations(extractBlock(css, '.dark-mode'));
+
+  // tw:bg-/text-/outline-utility-* all read var(--tw-color-utility-*). A dark
+  // --color-utility-* remap only reaches those utilities once mirrored into the
+  // --tw-color-* layer; an unmirrored remap renders the light value in dark.
+  const remapped = [...dark.keys()].filter((k) =>
+    /^--color-utility-[a-z-]+-\d+$/.test(k)
+  );
+
+  assert.ok(remapped.length > 0, 'expected dark utility-color remaps');
+
+  const missing = remapped.filter(
+    (k) => !dark.has(k.replace('--color-', '--tw-color-'))
+  );
+
+  assert.deepEqual(missing, [], `unmirrored dark utility colors: ${missing}`);
 });
 
 test('keeps dark text readable and exposes dedicated link roles', () => {
@@ -202,19 +240,19 @@ test('uses shared dark interaction and feedback recipes', () => {
   const light = declarations(extractBlock(css, '@theme static'));
   const dark = declarations(extractBlock(css, '.dark-mode'));
   const backgrounds = {
-    '--color-bg-primary_hover': '--alpha(var(--color-white) / 6%)',
-    '--color-bg-secondary_hover': '--alpha(var(--color-white) / 6%)',
-    '--color-bg-active': '--alpha(var(--color-white) / 10%)',
-    '--color-bg-brand-primary': '--alpha(var(--color-brand-500) / 16%)',
-    '--color-bg-error-primary': '--alpha(var(--color-error-500) / 16%)',
-    '--color-bg-warning-primary': '--alpha(var(--color-warning-500) / 16%)',
-    '--color-bg-success-primary': '--alpha(var(--color-success-500) / 16%)',
+    '--color-bg-primary_hover': '--alpha(theme(--color-white) / 6%)',
+    '--color-bg-secondary_hover': '--alpha(theme(--color-white) / 6%)',
+    '--color-bg-active': '--alpha(theme(--color-white) / 10%)',
+    '--color-bg-brand-primary': '--alpha(theme(--color-brand-500) / 16%)',
+    '--color-bg-error-primary': '--alpha(theme(--color-error-500) / 16%)',
+    '--color-bg-warning-primary': '--alpha(theme(--color-warning-500) / 16%)',
+    '--color-bg-success-primary': '--alpha(theme(--color-success-500) / 16%)',
   };
   const borders = {
-    brand: ['brand-300', '--alpha(var(--color-brand-400) / 35%)'],
-    error: ['error-300', '--alpha(var(--color-error-400) / 35%)'],
-    warning: ['warning-300', '--alpha(var(--color-warning-400) / 35%)'],
-    success: ['success-300', '--alpha(var(--color-success-400) / 35%)'],
+    brand: ['brand-300', '--alpha(theme(--color-brand-400) / 35%)'],
+    error: ['error-300', '--alpha(theme(--color-error-400) / 35%)'],
+    warning: ['warning-300', '--alpha(theme(--color-warning-400) / 35%)'],
+    success: ['success-300', '--alpha(theme(--color-success-400) / 35%)'],
   };
 
   for (const [token, value] of Object.entries(backgrounds)) {
@@ -243,9 +281,9 @@ test('aliases semantic elevation roles to the existing shadow scale', () => {
   const css = fs.readFileSync(GLOBALS_FILE, 'utf8');
   const light = declarations(extractBlock(css, '@theme static'));
 
-  assert.equal(light.get('--shadow-card'), 'var(--shadow-xs)');
-  assert.equal(light.get('--shadow-raised'), 'var(--shadow-lg)');
-  assert.equal(light.get('--shadow-overlay'), 'var(--shadow-xl)');
+  assert.equal(light.get('--shadow-card'), 'theme(--shadow-xs)');
+  assert.equal(light.get('--shadow-raised'), 'theme(--shadow-lg)');
+  assert.equal(light.get('--shadow-overlay'), 'theme(--shadow-xl)');
 });
 
 test('exposes the approved roles through the legacy token bridge', () => {
@@ -258,6 +296,7 @@ test('exposes the approved roles through the legacy token bridge', () => {
     '--om-color-bg-surface': 'var(--color-bg-surface, #ffffff)',
     '--om-color-bg-raised': 'var(--color-bg-raised, #ffffff)',
     '--om-color-bg-overlay-surface': 'var(--color-bg-overlay-surface, #ffffff)',
+    '--om-color-bg-secondary-hover': 'var(--color-bg-secondary_hover, #f5f5f5)',
     '--om-color-border-subtle': 'var(--color-border-subtle, rgb(0 0 0 / 0.08))',
     '--om-color-border-hover': 'var(--color-border-hover, #a4a7ae)',
     '--om-color-border-brand-subtle':
