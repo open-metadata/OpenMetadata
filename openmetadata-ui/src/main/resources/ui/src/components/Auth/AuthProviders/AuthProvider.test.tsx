@@ -452,6 +452,21 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     expect(mockOffRefreshed).toHaveBeenCalled();
     expect(mockOffFailed).toHaveBeenCalled();
   });
+
+  // Zero-lifetime token protection (main's #33172 “Prevent zero-lifetime
+  // OIDC login tokens”): AuthProvider used to own an axios response
+  // interceptor + `startTokenRefresh` that called `tokenService.refreshToken`
+  // and validated the response before retrying. That whole path is deleted
+  // on this branch — the AuthCoordinator's singleton response interceptor
+  // owns the retry + validation now, and `AuthCoordinator.isRenewResult`
+  // rejects any renewer result whose `expiresAt` is at or before the
+  // pre-expiry buffer (`typeof expiresAt === 'number' && expiresAt >
+  // Date.now() - EXPIRY_THRESHOLD_MILLES`). That's the structural
+  // equivalent of the dead-on-arrival guard the old test asserted on. See:
+  //   - src/utils/Auth/AuthCoordinator/AuthCoordinator.ts:isRenewResult
+  //   - src/utils/Auth/AuthCoordinator/__tests__/AuthCoordinator.test.ts —
+  //     "follower with a `done` message but missing/invalid payload falls
+  //     back to local refresh" exercises the negative branch.
 });
 
 describe('Test getLoggedInUserDetails catch (auth-coordinator-refactor Task 13 — Bug 1 fix)', () => {
