@@ -309,7 +309,7 @@ class AirbyteSource(PipelineServiceSource):
         :param pipeline_details: pipeline_details object from airbyte
         :return: Lineage from inlets and outlets
         """
-        pipeline_name = pipeline_details.connection.name
+        pipeline_name = pipeline_details.connection.name or pipeline_details.connection.connectionId
 
         logger.debug(
             f"Processing lineage for pipeline: {pipeline_name}, "
@@ -383,6 +383,11 @@ class AirbyteSource(PipelineServiceSource):
                     pipeline=pipeline_reference,
                     source=LineageSource.PipelineLineage,
                 )
+
+            # Both sides are resolved by construction: the two guards above already dropped
+            # every case where either side stays None after the anchoring step.
+            assert from_reference is not None
+            assert to_reference is not None
 
             yield Either(
                 right=AddLineageRequest(

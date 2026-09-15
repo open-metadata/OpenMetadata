@@ -27,7 +27,7 @@ Direction rules baked into the resolvers:
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
@@ -92,10 +92,12 @@ class TableResolver(EntityResolver):
     om_type = "table"
 
     def resolve(self, source, stream, connection, direction, pipeline_name) -> EntityReference | None:
+        # The caller pairs `connection` with `direction`: source_connection only ever
+        # arrives with SOURCE, destination_connection only ever arrives with DESTINATION.
         details = (
-            get_source_table_details(stream, connection)
+            get_source_table_details(stream, cast("AirbyteSourceResponse", connection))
             if direction == SOURCE
-            else get_destination_table_details(stream, connection)
+            else get_destination_table_details(stream, cast("AirbyteDestinationResponse", connection))
         )
         if not details:
             return None
@@ -130,10 +132,11 @@ class ContainerResolver(EntityResolver):
     om_type = "container"
 
     def resolve(self, source, stream, connection, direction, pipeline_name) -> EntityReference | None:
+        # Same caller-guaranteed pairing as TableResolver.resolve.
         container_path = (
-            get_source_container_path(stream, connection)
+            get_source_container_path(stream, cast("AirbyteSourceResponse", connection))
             if direction == SOURCE
-            else get_destination_container_path(stream, connection)
+            else get_destination_container_path(stream, cast("AirbyteDestinationResponse", connection))
         )
         if not container_path:
             return None
