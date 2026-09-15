@@ -536,7 +536,9 @@ test.describe(
       await policyToRemove.create(apiContext, VIEW_ALL_RULE);
       await waitUntilAccessible(
         apiContext,
-        `/api/v1/policies/name/${encodeURIComponent(policyToRemove.responseData.name)}`
+        `/api/v1/policies/name/${encodeURIComponent(
+          policyToRemove.responseData.name
+        )}`
       );
       await role.create(apiContext, [
         DEFAULT_POLICY_FQNS.dataConsumerPolicy,
