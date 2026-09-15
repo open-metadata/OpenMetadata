@@ -40,15 +40,6 @@ const NEGATED_OPERATORS = [
   'multiselect_not_contains',
 ];
 
-const RANGEABLE_OM_TYPES = [
-  'integer',
-  'number',
-  'timestamp',
-  'date-cp',
-  'dateTime-cp',
-  'time-cp',
-];
-
 /**
  * Converts a string representation of top_left and bottom_right cords to
  * a ES geo_point required for query
@@ -86,6 +77,7 @@ function buildEsGeoPoint(geoPointString) {
  *
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildEsRangeParameters(value, operator) {
   // -- if value is greater than 1 then we assume this is a between operator : BUG this is wrong,
   // a selectable list can have multiple values
@@ -279,6 +271,10 @@ function buildParameters(
  * @returns {string} - The base property name
  * @private
  */
+// The entityReference sub-fields a custom-property field can name.
+const DISPLAY_NAME_SUFFIX = '.displayName';
+const FQN_SUFFIX = '.fullyQualifiedName';
+
 function getBasePropertyName(propertyName) {
   // Handle table-cp pattern: propertyName.rows.columnName.keyword -> propertyName.rows.columnName
   // Backend stores separate entries for each column with names like "propertyName.rows.columnName"
@@ -299,11 +295,11 @@ function getBasePropertyName(propertyName) {
   // Known nested field suffixes for complex custom property types
   const nestedSuffixes = [
     '.displayName.keyword',
-    '.displayName',
+    DISPLAY_NAME_SUFFIX,
     '.name.keyword',
     '.name',
     '.fullyQualifiedName.keyword',
-    '.fullyQualifiedName',
+    FQN_SUFFIX,
     '.start',
     '.end',
     '.keyword',
@@ -319,6 +315,32 @@ function getBasePropertyName(propertyName) {
   }
 
   return baseName;
+}
+
+/**
+ * The nested sub-field holding the part of an entityReference a field names.
+ *
+ * `SearchIndexUtils.populateEntityRefFields` splits a reference across the
+ * nested doc: `name` into refName, `fullyQualifiedName` into refFqn and
+ * `displayName` into stringValue. Reading refName for all three matched a
+ * displayName against a name and returned nothing.
+ *
+ * @param {string} propertyName - The full property name, `.keyword` and all
+ * @returns {string} - The customPropertiesTyped sub-field to query
+ * @private
+ */
+function getEntityRefNestedField(propertyName) {
+  const path = String(propertyName ?? '').replace(/\.keyword$/, '');
+
+  if (path.endsWith(DISPLAY_NAME_SUFFIX)) {
+    return 'stringValue';
+  }
+
+  if (path.endsWith(FQN_SUFFIX)) {
+    return 'refFqn';
+  }
+
+  return 'refName';
 }
 
 /**
@@ -339,7 +361,10 @@ function getFieldTypeInfoFromOmType(omPropertyType, propertyName) {
   switch (omPropertyType) {
     case 'entityReference':
     case 'array<entityReference>':
-      return { fieldType: 'entityReference', nestedField: 'refName' };
+      return {
+        fieldType: 'entityReference',
+        nestedField: getEntityRefNestedField(propertyName),
+      };
     case 'hyperlink-cp':
       return { fieldType: 'hyperlink', nestedField: 'stringValue' };
     case 'table-cp':
@@ -379,11 +404,14 @@ function getFieldTypeInfo(propertyName) {
   // are not misclassified. For full disambiguation when the property name itself
   // is `owner.name`, callers should pass the type via getFieldTypeInfoFromOmType.
   if (
-    propertyName.endsWith('.displayName') ||
+    propertyName.endsWith(DISPLAY_NAME_SUFFIX) ||
     propertyName.endsWith('.name') ||
-    propertyName.endsWith('.fullyQualifiedName')
+    propertyName.endsWith(FQN_SUFFIX)
   ) {
-    return { fieldType: 'entityReference', nestedField: 'refName' };
+    return {
+      fieldType: 'entityReference',
+      nestedField: getEntityRefNestedField(propertyName),
+    };
   }
 
   // Hyperlink fields: propertyName.url.keyword or propertyName.displayText.keyword
@@ -412,30 +440,64 @@ function getFieldTypeInfo(propertyName) {
  * @returns {string|null} - The OM property type, or null
  * @private
  */
+/**
+ * A property's declared type, from whichever scope of the config holds it.
+ *
+ * Explore nests properties per entity type; a builder pinned to one type
+ * exposes them directly under `extension`. Both store the key flat, dots and
+ * all — a table-type property declares each column as
+ * `<property>.rows.<column>`. Picking a single scope by `entityType` returned
+ * no type for the pinned shape, and the path fallback then read a column's
+ * trailing `.name` as an entity reference: the query asked for `refName`
+ * instead of `stringValue` and matched nothing.
+ */
 function lookupOmPropertyType(config, entityType, propertyName) {
   const extensionGroup = config?.fields?.extension;
-  const entityGroup = extensionGroup?.subfields?.[entityType];
-  const fieldConfig = entityGroup?.subfields?.[propertyName];
+  const scopes = [
+    entityType ? extensionGroup?.subfields?.[entityType]?.subfields : null,
+    extensionGroup?.subfields,
+  ];
 
-  return fieldConfig?.__omPropertyType ?? null;
+  for (const scope of scopes) {
+    // The field key carries suffixes such as `.keyword` that the config key
+    // does not.
+    const found =
+      scope?.[propertyName]?.__omPropertyType ??
+      scope?.[getBasePropertyName(propertyName)]?.__omPropertyType;
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
 }
 
-/**
- * Checks if the operator is a range operator (requires numeric field).
- *
- * @param {string} operator - The query operator
- * @returns {boolean} - True if range operator
- * @private
- */
+const RANGE_OPERATOR_BOUNDS = {
+  less: 'lt',
+  less_or_equal: 'lte',
+  greater: 'gt',
+  greater_or_equal: 'gte',
+};
+
 function isRangeOperator(operator) {
-  return [
-    'between',
-    'not_between',
-    'less',
-    'less_or_equal',
-    'greater',
-    'greater_or_equal',
-  ].includes(operator);
+  return (
+    operator === 'between' ||
+    operator === 'not_between' ||
+    operator in RANGE_OPERATOR_BOUNDS
+  );
+}
+
+function buildRangeClause(value, operator) {
+  if (operator === 'between' || operator === 'not_between') {
+    return Array.isArray(value) && value.length >= 2
+      ? { gte: value[0], lte: value[1] }
+      : {};
+  }
+
+  return {
+    [RANGE_OPERATOR_BOUNDS[operator]]: Array.isArray(value) ? value[0] : value,
+  };
 }
 
 /**
@@ -448,40 +510,25 @@ function isRangeOperator(operator) {
  * @returns {object} - The nested ES query
  * @private
  */
-function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
-  const mustClauses = [
-    { term: { 'customPropertiesTyped.name': propertyName } },
-  ];
+function buildNestedTypedQuery(
+  propertyName,
+  nestedField,
+  value,
+  operator,
+  caseInsensitive = false
+) {
+  const fieldPath = `customPropertiesTyped.${nestedField}`;
+  const termValue = Array.isArray(value) ? value[0] : value;
 
-  // Build the value query based on operator
-  if (isRangeOperator(operator)) {
-    const rangeQuery = {};
-    if (
-      (operator === 'between' || operator === 'not_between') &&
-      Array.isArray(value) &&
-      value.length >= 2
-    ) {
-      rangeQuery.gte = value[0];
-      rangeQuery.lte = value[1];
-    } else if (operator === 'less') {
-      rangeQuery.lt = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'less_or_equal') {
-      rangeQuery.lte = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'greater') {
-      rangeQuery.gt = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'greater_or_equal') {
-      rangeQuery.gte = Array.isArray(value) ? value[0] : value;
-    }
-    mustClauses.push({
-      range: { [`customPropertiesTyped.${nestedField}`]: rangeQuery },
-    });
-  } else {
-    // Exact match
-    const termValue = Array.isArray(value) ? value[0] : value;
-    mustClauses.push({
-      term: { [`customPropertiesTyped.${nestedField}`]: termValue },
-    });
-  }
+  const valueClause = isRangeOperator(operator)
+    ? { range: { [fieldPath]: buildRangeClause(value, operator) } }
+    : {
+        term: {
+          [fieldPath]: caseInsensitive
+            ? { value: termValue, case_insensitive: true }
+            : termValue,
+        },
+      };
 
   return {
     nested: {
@@ -489,7 +536,10 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
       ignore_unmapped: true,
       query: {
         bool: {
-          must: mustClauses,
+          must: [
+            { term: { 'customPropertiesTyped.name': propertyName } },
+            valueClause,
+          ],
         },
       },
     },
@@ -514,6 +564,7 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
  * @returns {object} - The ES query for custom properties
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildExtensionQuery(
   propertyName,
   entityType,
@@ -611,19 +662,14 @@ function buildExtensionQuery(
       mainQuery = existsQuery;
     }
 
-    // Return early with entityType filter
-    return {
-      bool: {
-        must: [
-          mainQuery,
-          {
-            term: {
-              entityType: entityType,
-            },
+    // Return early, narrowing by entity type only when the field carried one.
+    return entityType
+      ? {
+          bool: {
+            must: [mainQuery, { term: { entityType: entityType } }],
           },
-        ],
-      },
-    };
+        }
+      : mainQuery;
   } else if (fieldType === 'timeInterval' && nestedField) {
     // TimeInterval: query start or end field
     mainQuery = buildNestedTypedQuery(
@@ -633,12 +679,12 @@ function buildExtensionQuery(
       operator
     );
   } else if (fieldType === 'entityReference') {
-    // EntityReference: use refName for exact match queries
     mainQuery = buildNestedTypedQuery(
       basePropertyName,
-      'refName',
+      nestedField ?? 'refName',
       value,
-      operator
+      operator,
+      true
     );
   } else if (
     (fieldType === 'hyperlink' || fieldType === 'table') &&
@@ -745,19 +791,14 @@ function buildExtensionQuery(
     };
   }
 
-  // Combine with entityType filter
-  return {
-    bool: {
-      must: [
-        mainQuery,
-        {
-          term: {
-            entityType: entityType,
-          },
+  // Combine with the entity-type filter only when the field carried one.
+  return entityType
+    ? {
+        bool: {
+          must: [mainQuery, { term: { entityType: entityType } }],
         },
-      ],
-    },
-  };
+      }
+    : mainQuery;
 }
 
 /**
@@ -771,6 +812,7 @@ function buildExtensionQuery(
  * @returns {object} - The ES rule
  * @private
  */
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildEsRule(fieldName, value, operator, config, valueSrc) {
   if (!fieldName || !operator || value === undefined) {
     return undefined;
@@ -806,12 +848,40 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   let entityType = null;
   let extensionPropertyName = null;
 
-  if (fieldName.startsWith('extension.') && fieldName.split('.').length >= 3) {
+  if (fieldName.startsWith('extension.')) {
     const parts = fieldName.split('.');
-    entityType = parts[1];
-    extensionPropertyName = parts.slice(2).join('.');
-    actualFieldName = `${parts[0]}.${extensionPropertyName}`;
-    isNestedExtensionField = true;
+    // The entity-type segment is only present when the builder offers custom
+    // properties for every entity type (Explore): `extension.table.testCp`.
+    // A builder pinned to one entity type omits it: `extension.testCp`.
+    // Deciding positionally read `testCp` as the entity type and `keyword` as
+    // the property, so those builders matched nothing at all. Ask the config
+    // instead: an entity-type segment is a group, a property is a leaf.
+    // `omEntityType` is set only for a builder pinned to one entity type, and
+    // that is exactly when its keys omit the entity-type segment — so it
+    // decides, and the key's shape is only a fallback. Shape alone cannot: a
+    // table-type property is itself a struct (`testCp.rows.name`), so "the
+    // segment has subfields, therefore it is an entity type" read `testCp` as
+    // the entity and `rows` as the property, and the query matched nothing.
+    const pinnedEntityType = config?.settings?.omEntityType ?? null;
+    const extensionSubfields = config?.fields?.extension?.subfields;
+    const segment = extensionSubfields?.[parts[1]];
+    const hasEntityTypeSegment =
+      !pinnedEntityType &&
+      parts.length >= 3 &&
+      (segment ? Boolean(segment.subfields) : !extensionSubfields);
+
+    if (hasEntityTypeSegment) {
+      entityType = parts[1];
+      extensionPropertyName = parts.slice(2).join('.');
+    } else if (parts.length >= 2) {
+      entityType = pinnedEntityType;
+      extensionPropertyName = parts.slice(1).join('.');
+    }
+
+    if (extensionPropertyName) {
+      actualFieldName = `${parts[0]}.${extensionPropertyName}`;
+      isNestedExtensionField = true;
+    }
   }
 
   let op = operator;
@@ -834,26 +904,20 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   // Handle both value-based operators and unary operators (is_null, is_not_null)
   const isUnaryOperator = op === 'is_null' || op === 'is_not_null';
   const hasValue = Array.isArray(value) && value.length > 0;
-  if (isNestedExtensionField && entityType && (hasValue || isUnaryOperator)) {
+  // No `entityType` requirement: a builder pinned to one entity type keys its
+  // custom properties without that segment, and demanding it sent those fields
+  // down the generic path, which cannot express a nested customPropertiesTyped
+  // query and produced no query at all.
+  if (isNestedExtensionField && (hasValue || isUnaryOperator)) {
     const omPropertyType = lookupOmPropertyType(
       config,
       entityType,
       extensionPropertyName
     );
 
-    // For range operators (between / not_between) the value is a two-element
-    // array [from, to]. Pass the full array so buildExtensionQuery can build a
-    // proper gte/lte range query. Numeric types (integer/number/timestamp) query
-    // longValue/doubleValue. Date types (date-cp/dateTime-cp/time-cp) are stored
-    // as formatted strings in stringValue; a keyword range is a lexicographic
-    // comparison, which is chronologically correct for the default big-endian,
-    // zero-padded formats (e.g. yyyy-MM-dd HH:mm:ss). Other types collapse to
-    // value[0] since only a single bound is meaningful.
-    const isBetweenOp = op === 'between';
-    const isRangeableOmType = RANGEABLE_OM_TYPES.includes(omPropertyType);
     let extensionValue = null;
     if (hasValue) {
-      extensionValue = isBetweenOp && isRangeableOmType ? value : value[0];
+      extensionValue = isRangeOperator(op) ? value : value[0];
     }
 
     return buildExtensionQuery(
@@ -981,6 +1045,7 @@ function buildEsGroup(
   };
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   try {
     const extendedConfig = extendConfigUtils.ConfigUtils.extendConfig(
@@ -1118,6 +1183,7 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
     .some((child) => hasUnfinishedRule(child, config, syntax));
 }
 
+// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 export function elasticSearchFormatForJSONLogic(
   tree,
   config,

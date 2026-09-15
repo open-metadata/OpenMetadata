@@ -216,6 +216,21 @@ public abstract class McpTestBase {
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
+  protected static HttpResponse<String> putResponse(String path, Object body, String token)
+      throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    String jsonBody = OBJECT_MAPPER.writeValueAsString(body);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Content-Type", "application/json")
+            .header("Authorization", token)
+            .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
   protected static HttpResponse<String> postResponse(String path, Object body, String token)
       throws Exception {
     String baseUrl = TestSuiteBootstrap.getBaseUrl();

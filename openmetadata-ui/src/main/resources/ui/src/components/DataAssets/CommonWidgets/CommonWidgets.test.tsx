@@ -30,24 +30,77 @@ jest.mock(
   '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
   () => ({
     __esModule: true,
-    default: () => (
-      <div data-testid="data-products-widget">Data Products Widget</div>
-    ),
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="data-products-widget">Data Products Widget</div>
+      )),
   })
 );
+// Captures the `permission` prop directly instead of an opaque div — needed to verify the
+// explicit-deny-wins wiring (Task 8 Batch 2 review, Finding 2): the right named flag
+// (`canEditTags`) must actually reach the right prop, not just compute correctly in isolation
+// (PermissionDerivation.test.ts already covers the math).
 jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
   __esModule: true,
-  default: () => <div data-testid="tags-widget">Tags Widget</div>,
+  default: ({ permission }: { permission?: boolean }) => (
+    <div
+      data-permission={String(Boolean(permission))}
+      data-testid="tags-widget">
+      Tags Widget
+    </div>
+  ),
 }));
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: () => (
     <div data-testid="custom-properties-widget">Custom Properties Widget</div>
   ),
 }));
-jest.mock('../OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: () => (
-    <div data-testid="owner-label-widget">Owner Label Widget</div>
-  ),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Owner: () => <div data-testid="owner-label-widget">Owner Label Widget</div>,
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+  }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+  }),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+      })
+    ),
+}));
+jest.mock('../../../hooks/useOwnerDisplayProps', () => ({
+  useOwnerDisplayProps: () => ({
+    toOwnersWithHref: (refs: unknown[]) => refs ?? [],
+    renderOwnerContent: (_owner: unknown, chip: unknown) => chip,
+  }),
 }));
 jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
   ReviewerLabelV2: () => (
@@ -63,6 +116,19 @@ jest.mock('../../Domain/DomainExpertsWidget/DomainExpertWidget', () => ({
 jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
   getCommonWidgetsFromConfig: jest.fn(),
 }));
+
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
+);
 
 const mockGenericContext = {
   data: {
@@ -148,6 +214,71 @@ describe('CommonWidgets', () => {
     );
 
     expect(await screen.findByTestId('tags-widget')).toBeInTheDocument();
+  });
+
+  // Task 8 Batch 2 review, Finding 2: explicit-deny-wins wiring coverage — verifies
+  // `canEditTags` (not the old raw `EditTags || EditAll`) is actually the value reaching
+  // TagsContainerV2's `permission` prop.
+  it('denies the tags edit affordance when EditTags is explicitly false, even though EditAll is true (explicit-deny-wins, prioritized over the old raw OR)', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      ...mockGenericContext,
+      permissions: {
+        ...mockGenericContext.permissions,
+        EditAll: true,
+        EditTags: false,
+      },
+    });
+
+    const widgetConfig = {
+      i: DetailPageWidgetKeys.TAGS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
+
+    expect(await screen.findByTestId('tags-widget')).toHaveAttribute(
+      'data-permission',
+      'false'
+    );
+  });
+
+  it('grants the tags edit affordance when EditTags is true', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      ...mockGenericContext,
+      permissions: {
+        ...mockGenericContext.permissions,
+        EditAll: false,
+        EditTags: true,
+      },
+    });
+
+    const widgetConfig = {
+      i: DetailPageWidgetKeys.TAGS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
+
+    expect(await screen.findByTestId('tags-widget')).toHaveAttribute(
+      'data-permission',
+      'true'
+    );
   });
 
   it('should render glossary terms widget', async () => {
@@ -392,6 +523,94 @@ describe('CommonWidgets', () => {
       expect(
         await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Data Products multi-select rule gating', () => {
+    const getDataProductsContainerMock = () =>
+      jest.requireMock(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      ).default as jest.Mock;
+
+    const dataProductsWidgetConfig = {
+      i: DetailPageWidgetKeys.DATA_PRODUCTS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    beforeEach(() => {
+      getDataProductsContainerMock().mockClear();
+    });
+
+    it('holds single-select (multiple=false) while entity rules are loading', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: false,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
+    });
+
+    it('enables multiple select when rules are loaded and multi-product rule is not enabled', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: true });
+    });
+
+    it('keeps single select when rules are loaded and multi-product rule is enabled', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: false,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
     });
   });
 });

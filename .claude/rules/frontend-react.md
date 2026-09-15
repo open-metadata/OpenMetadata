@@ -6,7 +6,8 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx}"
 # Frontend React/TypeScript conventions
 
 Applies to UI `*.{ts,tsx}`. Styling/tokens are in `frontend-styling.md`; component-library choice in
-`component-library.md`; strings/i18n in `i18n.md`; Playwright in `frontend-playwright.md`. For the
+`component-library.md`; strings/i18n in `i18n.md`; Playwright in `frontend-playwright.md`;
+reading permissions in `frontend-permissions.md`. For the
 **formatting procedure** invoke the `ui-checkstyle` skill — do not hand-edit formatting.
 **Folder structure and file naming for new code:
 `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md`** — read it before creating any new

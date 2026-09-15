@@ -25,12 +25,12 @@ import { SchemaValidation } from '../../../generated/entity/datacontract/dataCon
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
-import Table from '../../common/Table/Table';
 import {
   ColumnsType,
   ColumnType,
   TablePaginationConfig,
 } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import './contract-schema.less';
 
 const ContractSchemaTable: React.FC<{

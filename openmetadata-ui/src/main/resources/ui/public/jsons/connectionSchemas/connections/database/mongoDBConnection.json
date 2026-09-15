@@ -195,9 +195,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -209,9 +207,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -223,9 +219,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             }

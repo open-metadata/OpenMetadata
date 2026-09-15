@@ -15,27 +15,86 @@ import { MemoryRouter } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { TableType } from '../../generated/entity/data/table';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+// Mocked globally in src/setupTests.js — imported here only to assert on it.
+import { showErrorToast } from '../../utils/ToastUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
 
-const mockEntityPermissionByFqn = jest
-  .fn()
-  .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 const mockNavigate = jest.fn();
 
 const COMMON_API_FIELDS =
   'columns,followers,joins,tags,owners,dataModel,tableConstraints,schemaDefinition,domains,dataProducts,votes,extension';
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockEntityPermissionByFqn,
-  })),
+// The page now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context, so mocking that hook (instead of the old
+// getEntityPermissionByFqn REST boundary) is what drives the page's permission-gated
+// behavior in these tests. mockUseEntityPermissions is asserted against directly (see
+// "should fetch permissions" below) so it needs a `mock`-prefixed name to be usable inside
+// the (hoisted) jest.mock factory below.
+const mockUseEntityPermissions = jest.fn();
+
+/**
+ * Configures the mocked useEntityPermissions hook to return the flags derived from a raw
+ * OperationPermission object — mirroring the shape tests used to hand to the mocked
+ * getEntityPermissionByFqn, but run through the real {@link getDerivedPermissionFlags} so
+ * the derived flags (e.g. the ViewAll fallback for an unset field-level permission) stay
+ * accurate without every test having to hand-compute them.
+ *
+ * Deliberately does NOT merge `overrides` onto a fully-populated default (e.g.
+ * DEFAULT_ENTITY_PERMISSION): getPrioritizedViewPermission/getPrioritizedEditPermission
+ * fall back to ViewAll/EditAll only when the field-specific key is truly *absent* (lodash
+ * `has()`), not merely `false`. The real backend response (see getOperationPermissions in
+ * PermissionsUtils.ts) already omits operations a policy doesn't mention, so a partial
+ * object here is the faithful mock, not a shortcut — filling in every key with `false`
+ * would silently defeat the fallback (caught a real test failure during this conversion).
+ *
+ * Uses mockReturnValue rather than mockImplementationOnce: the page calls the hook twice
+ * per render (see the comments in TableDetailsPageV1.tsx), so a "once" mock would answer
+ * the first call and silently fall through to the default for the second, producing
+ * inconsistent flags within one render. Note this means `isLoading`/`error` apply
+ * identically to BOTH of the page's two hook calls through this mock — the real hook can't
+ * diverge between them either, since both read the same React Query cache entry, but a
+ * conversion that gives its two calls genuinely different queryKeys would not be caught by
+ * this mock; see the "same first two args" guardrail in afterEach below for that case.
+ *
+ * `deleted` gating itself is untestable through this mock: real `useEntityPermissions`
+ * gates its own canEdit* flags on the `deleted` option a conversion passes it, but this
+ * mock's flags come from `getDerivedPermissionFlags(permissions, false)` — always
+ * `deleted: false` — regardless of what the page passes as `options.deleted`. A conversion
+ * that forgets `{ deleted }` on its edit-tier call will not fail this kind of test; that
+ * has to be caught by reading the page's source (or an integration/e2e test against the
+ * real hook).
+ */
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock('../../rest/tableAPI', () => ({
@@ -114,6 +173,13 @@ jest.mock(
     return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
   }
 );
+
+// Distinct sentinel so permission-loading (this) and entity-loading (mocked PageLoader
+// below) are unambiguous in assertions — both real components render
+// data-testid="loader", which would make "no loader" assertions ambiguous between the two.
+jest.mock('./TableDetailsPageSkeleton.component', () => {
+  return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
+});
 
 jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);
@@ -260,6 +326,30 @@ jest.mock(
 );
 
 describe('TestDetailsPageV1 component', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
+  // Guardrail for the two-call pattern (see the comment on setMockPermissions and the
+  // early/late useEntityPermissions call sites in TableDetailsPageV1.tsx): the page must
+  // call the hook with the IDENTICAL (resource, identifier) pair both times — a future
+  // conversion that accidentally passes a different identifier on one call would silently
+  // fetch two different permission sets instead of sharing one cache entry. This does not
+  // catch every call in every test (some tests render more than once via act()/waitFor()
+  // re-renders, which is fine — same-args still holds across all of them), only that no
+  // call ever diverges from the first.
+  afterEach(() => {
+    const calls = mockUseEntityPermissions.mock.calls;
+    if (calls.length === 0) {
+      return;
+    }
+    const [expectedResource, expectedIdentifier] = calls[0];
+    calls.forEach(([resource, identifier]) => {
+      expect(resource).toBe(expectedResource);
+      expect(identifier).toBe(expectedIdentifier);
+    });
+  });
+
   it('TableDetailsPageV1 should fetch permissions', () => {
     renderWithQueryClient(
       <MemoryRouter>
@@ -267,7 +357,10 @@ describe('TestDetailsPageV1 component', () => {
       </MemoryRouter>
     );
 
-    expect(mockEntityPermissionByFqn).toHaveBeenCalledWith('table', 'fqn');
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      ResourceEntity.TABLE,
+      'fqn'
+    );
   });
 
   it('TableDetailsPageV1 should not fetch table details if permission is there', () => {
@@ -280,12 +373,85 @@ describe('TestDetailsPageV1 component', () => {
     expect(getTableDetailsByFQN).not.toHaveBeenCalled();
   });
 
+  // Covers the hand-written (not generated by the recipe's destructure) bits of the
+  // conversion: the loading gate, the error-toast effect, and the tour-mode bypass of that
+  // loading gate. These are exactly the pieces a mechanical destructure-swap could get
+  // wrong without a test catching it, so every conversion copying this template should
+  // carry an equivalent trio.
+  describe('permission hook loading/error/tour states', () => {
+    // The tour test below sets a persistent (not "once") useTourProvider implementation —
+    // see its comment for why — so restore the module-level default afterward regardless
+    // of whether the test passed, or a failure would leak isTourOpen: true into every
+    // later test in this file.
+    afterEach(() => {
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: false,
+        activeTabForTourDatasetPage: 'schema',
+        isTourPage: false,
+      }));
+    });
+
+    it('renders the permission-loading skeleton while isLoading is true', () => {
+      setMockPermissions({}, { isLoading: true });
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+      expect(
+        screen.queryByText('testDataAssetsHeader')
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the permission-fetch error toast when the hook reports an error', async () => {
+      setMockPermissions({}, { error: new Error('permission fetch failed') });
+
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      // t() is globally mocked to the identity function (see src/setupTests.js), so the
+      // interpolated `entity` option collapses out and only the outer key survives.
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'server.fetch-entity-permissions-error'
+      );
+    });
+
+    it('does not show the permission-loading skeleton in tour mode, even while isLoading is true', () => {
+      // mockImplementationOnce would only override the FIRST call to useTourProvider() —
+      // TableDetailsPageV1 is wrapped in withSuggestions(withActivityFeed(...)), and those
+      // wrappers (or providers they render) may call the hook before the inner component
+      // does, silently consuming the "once" override before it reaches this test's target.
+      // A persistent mockImplementation, explicitly restored after, doesn't depend on call
+      // order.
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: true,
+        activeTabForTourDatasetPage: 'schema',
+        isTourPage: false,
+      }));
+      setMockPermissions({}, { isLoading: true });
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.queryByText('testPermissionSkeleton')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('TableDetailsPageV1 should fetch table details with basic fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -301,13 +467,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should fetch table details with all the permitted fields', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewAll: true,
-        ViewBasic: true,
-        ViewUsage: true,
-      })),
-    }));
+    setMockPermissions({ ViewAll: true, ViewBasic: true, ViewUsage: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -323,11 +483,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should render page for ViewBasic permissions', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -359,11 +515,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should dbt tab if data is present', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -388,11 +540,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should dbt tab for rawSql, when sql is empty', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -417,11 +565,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should dbt tab for rawSql, when there is no sql available', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -446,11 +590,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should show dbt tab when path is available without sql', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -475,11 +615,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should show dbt tab when dbtSourceProject is available without sql', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -504,11 +640,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should render schema definition tab table type is not view', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -538,11 +670,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should render view definition tab if table type is view', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -568,11 +696,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should render schemaTab by default', async () => {
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     await act(async () => {
       renderWithQueryClient(
@@ -597,11 +721,7 @@ describe('TestDetailsPageV1 component', () => {
       columns: [],
     };
 
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-        ViewBasic: true,
-      })),
-    }));
+    setMockPermissions({ ViewBasic: true });
 
     (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve(mockTableData)
@@ -640,11 +760,7 @@ describe('TestDetailsPageV1 component', () => {
       },
     ];
 
-    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
-        ViewBasic: true,
-      }),
-    }));
+    setMockPermissions({ ViewBasic: true });
     mockNavigate.mockClear();
 
     await act(async () => {
@@ -682,11 +798,7 @@ describe('TestDetailsPageV1 component', () => {
     const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
 
     const renderOnSchemaTab = async () => {
-      (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-        getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
-          ViewBasic: true,
-        })),
-      }));
+      setMockPermissions({ ViewBasic: true });
 
       await act(async () => {
         renderWithQueryClient(
