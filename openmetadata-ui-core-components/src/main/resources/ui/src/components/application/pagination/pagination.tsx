@@ -498,7 +498,7 @@ export const PaginationCardWithControls = ({
     <Pagination.Root
       {...props}
       className={cx(
-        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-gray-blue-100 tw:bg-primary tw:px-4 tw:py-3 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
+        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-subtle tw:bg-surface tw:px-4 tw:py-3 tw:shadow-card',
         className
       )}
       page={currentPage}
