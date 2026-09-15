@@ -120,10 +120,10 @@ export enum Logmech {
  * Storage config to store sample data
  */
 export interface SampleDataStorageConfig {
-    config?: NoSampleDataStorageConfig;
+    config?: OpenMetadataStorage;
 }
 
-export interface NoSampleDataStorageConfig {
+export interface OpenMetadataStorage {
 }
 
 /**
