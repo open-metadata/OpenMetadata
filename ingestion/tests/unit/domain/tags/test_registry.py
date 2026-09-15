@@ -402,6 +402,24 @@ def test_recently_used_definition_is_retained():
         assert [record.tag_request.name.root for record in registry.drain()] == expected
 
 
+def test_recently_used_label_stays_interned_after_eviction():
+    registry = TagRegistry(cache_size=2)
+    for index, name in enumerate(("First", "Second", "First", "Third", "First", "Second")):
+        registry.attach(**_attach_kwargs(registry, "svc.db", f"svc.db.schema.table_{index}", tag=name))
+
+    labels = [registry.labels_for(f"svc.db.schema.table_{index}")[0] for index in range(6)]
+    assert [label.tagFQN.root for label in labels] == [
+        "TestClass.First",
+        "TestClass.Second",
+        "TestClass.First",
+        "TestClass.Third",
+        "TestClass.First",
+        "TestClass.Second",
+    ]
+    assert labels[0] is labels[2] is labels[4]
+    assert labels[1] is not labels[5]
+
+
 def test_stale_scope_cannot_attach_or_close_replacement(registry):
     kwargs = _attach_kwargs(registry, "svc.db.schema", "svc.db.schema.table")
     old = kwargs["scope"]

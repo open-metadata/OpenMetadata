@@ -304,6 +304,38 @@ def test_resolution_caches_bound_matches_and_misses(mock_metadata):
     assert canonicalizer.tag("Class", "Tag0", "desc") == Canonical("TAG0", "server")
 
 
+@pytest.mark.parametrize("entity_type", [Classification, Tag], ids=["classification", "tag"])
+@pytest.mark.parametrize("system_match", [False, True], ids=["miss", "match"])
+def test_recently_used_resolution_avoids_another_search(mock_metadata, entity_type, system_match):
+    canonicalizer = TagCanonicalizer(mock_metadata, cache_size=2)
+    if entity_type is Classification:
+        lookup = canonicalizer.classification
+        make_entity = _system_classification
+    else:
+        lookup = partial(canonicalizer.tag, "Class")
+        make_entity = partial(_system_tag, "Class")
+    responses = {
+        name.lower(): [make_entity(name, "server")] if system_match else [] for name in ("First", "Second", "Third")
+    }
+
+    def search(*, fqn_search_string, **_):
+        return responses[fqn_search_string.rsplit(".", 1)[-1].lower()]
+
+    mock_metadata.es_search_from_fqn.side_effect = search
+
+    for name, canonical_name in (
+        ("First", "First"),
+        ("Second", "Second"),
+        ("FIRST", "First"),
+        ("Third", "Third"),
+        ("FIRST", "First"),
+        ("SECOND", "Second"),
+    ):
+        expected = Canonical(canonical_name, "server") if system_match else Canonical(name, "source")
+        assert lookup(name, "source") == expected
+    assert mock_metadata.es_search_from_fqn.call_count == 4
+
+
 @pytest.mark.parametrize("cache_size", [0, -1])
 def test_canonicalizer_rejects_invalid_capacity(mock_metadata, cache_size):
     with pytest.raises(ValueError, match="positive"):

@@ -18,10 +18,10 @@ raise after retry exhaustion.
 
 import logging
 import threading
-from collections import OrderedDict
 from collections.abc import Iterable
 from typing import Any, NamedTuple, cast
 
+from cachetools import LRUCache
 from tenacity import (
     before_sleep_log,
     retry,
@@ -66,9 +66,8 @@ class TagCanonicalizer:
         if cache_size < 1:
             raise ValueError("cache_size must be positive")
         self._metadata = metadata
-        self._cache_size = cache_size
-        self._classification_cache: OrderedDict[str, Canonical | None] = OrderedDict()
-        self._tag_cache: OrderedDict[tuple[str, str], Canonical | None] = OrderedDict()
+        self._classification_cache: LRUCache[str, Canonical | None] = LRUCache(maxsize=cache_size)
+        self._tag_cache: LRUCache[tuple[str, str], Canonical | None] = LRUCache(maxsize=cache_size)
         self._lock = threading.RLock()
 
     def resolve(
@@ -99,7 +98,6 @@ class TagCanonicalizer:
         key = name.lower()
         with self._lock:
             if key in self._classification_cache:
-                self._classification_cache.move_to_end(key)
                 return self._with_fallback(self._classification_cache[key], name, default_description)
 
         results = self._es_search(Classification, name)
@@ -114,9 +112,6 @@ class TagCanonicalizer:
 
         with self._lock:
             self._classification_cache[key] = canonical
-            self._classification_cache.move_to_end(key)
-            if len(self._classification_cache) > self._cache_size:
-                self._classification_cache.popitem(last=False)
         return self._with_fallback(canonical, name, default_description)
 
     def tag(
@@ -139,7 +134,6 @@ class TagCanonicalizer:
         key = (classification_name, tag_name.lower())
         with self._lock:
             if key in self._tag_cache:
-                self._tag_cache.move_to_end(key)
                 return self._with_fallback(self._tag_cache[key], tag_name, default_tag_description)
 
         results = self._es_search(Tag, tag_fqn)
@@ -158,9 +152,6 @@ class TagCanonicalizer:
 
         with self._lock:
             self._tag_cache[key] = canonical
-            self._tag_cache.move_to_end(key)
-            if len(self._tag_cache) > self._cache_size:
-                self._tag_cache.popitem(last=False)
         return self._with_fallback(canonical, tag_name, default_tag_description)
 
     @staticmethod

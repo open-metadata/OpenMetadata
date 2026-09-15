@@ -22,9 +22,10 @@ Safe for concurrent use across the topology's parallel schema workers.
 """
 
 import threading
-from collections import OrderedDict
 from collections.abc import Generator
 from typing import NamedTuple, cast
+
+from cachetools import LRUCache
 
 from metadata.domain.tags.models import TagDefinition
 from metadata.generated.schema.api.classification.createClassification import (
@@ -95,9 +96,8 @@ class TagRegistry:
     def __init__(self, cache_size: int = 1000) -> None:
         if cache_size < 1:
             raise ValueError("cache_size must be positive")
-        self._cache_size = cache_size
-        self._known_tag_fqns: OrderedDict[str, None] = OrderedDict()
-        self._tag_label_cache: OrderedDict[_TagLabelKey, TagLabel] = OrderedDict()
+        self._known_tag_fqns: LRUCache[str, bool] = LRUCache(maxsize=cache_size)
+        self._tag_label_cache: LRUCache[_TagLabelKey, TagLabel] = LRUCache(maxsize=cache_size)
         self._pending: dict[str, OMetaTagAndClassification] = {}
         self._scopes: dict[str, TagScope] = {}
 
@@ -118,7 +118,6 @@ class TagRegistry:
         key = _TagLabelKey(classification_name, tag_name, label_type, state)
         cached = self._tag_label_cache.get(key)
         if cached is not None:
-            self._tag_label_cache.move_to_end(key)
             return cached
         tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name))
         cached = TagLabel(  # pyright: ignore[reportCallIssue]
@@ -128,8 +127,6 @@ class TagRegistry:
             source=TagSource.Classification,
         )
         self._tag_label_cache[key] = cached
-        if len(self._tag_label_cache) > self._cache_size:
-            self._tag_label_cache.popitem(last=False)
         return cached
 
     def define(self, tag: TagDefinition) -> None:
@@ -138,9 +135,9 @@ class TagRegistry:
             return
         tag_fqn = cast("str", fqn.build(None, Tag, classification_name=tag.classification_name, tag_name=tag.tag_name))
         with self._lock:
-            if tag_fqn in self._known_tag_fqns:
-                self._known_tag_fqns.move_to_end(tag_fqn)
-            elif tag_fqn not in self._pending:
+            if self._known_tag_fqns.get(tag_fqn, False):
+                return
+            if tag_fqn not in self._pending:
                 self._pending[tag_fqn] = self._build_pending_record(
                     classification_name=tag.classification_name,
                     classification_description=tag.classification_description,
@@ -195,7 +192,7 @@ class TagRegistry:
                 # Resuming confirms publication to the workflow queue, not successful persistence.
                 with self._lock:
                     del self._pending[tag_fqn]
-                    self._remember_locked(tag_fqn)
+                    self._known_tag_fqns[tag_fqn] = True
 
             if pending:
                 logger.debug("TagRegistry: drained %d pending tag payloads.", len(pending))
@@ -220,12 +217,6 @@ class TagRegistry:
                 scope = self._scopes.pop(name)
                 scope.closed = True
                 scope._labels_by_entity.clear()
-
-    def _remember_locked(self, tag_fqn: str) -> None:
-        self._known_tag_fqns[tag_fqn] = None
-        self._known_tag_fqns.move_to_end(tag_fqn)
-        if len(self._known_tag_fqns) > self._cache_size:
-            self._known_tag_fqns.popitem(last=False)
 
     def stats(self) -> dict[str, int]:
         """Return current state counts for instrumentation."""
