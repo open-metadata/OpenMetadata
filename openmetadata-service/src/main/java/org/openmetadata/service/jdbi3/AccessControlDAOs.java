@@ -913,18 +913,69 @@ public interface AccessControlDAOs {
         @Bind("afterId") String afterId,
         @Bind("relation") int relation);
 
-    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
+    // Bare equality on MySQL: its collation is already case-insensitive and indexed. Postgres is
+    // case-sensitive, so LOWER(), backed by idx_user_entity_{email,name}_lower.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     int checkEmailExists(@Bind("email") String email);
 
-    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE name = :name",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)",
+        connectionType = POSTGRES)
     int checkUserNameExists(@Bind("name") String name);
 
-    @SqlQuery(
-        "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)")
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE name = :name AND email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
-    @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
+    // At most one row: emails are stored lowercased (normalized on write since 1.5.0, which also
+    // de-duplicated existing rows by LOWER(email)) and user_entity has a UNIQUE constraint on it.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE email = :email",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)",
+        connectionType = POSTGRES)
     String findUserByEmail(@Bind("email") String email);
+
+    record NameEmail(String name, String email) {}
+
+    class NameEmailMapper implements RowMapper<NameEmail> {
+      @Override
+      public NameEmail map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new NameEmail(rs.getString("name"), rs.getString("email"));
+      }
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE email LIKE :domainSuffix AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, email FROM user_entity WHERE LOWER(email) LIKE LOWER(:domainSuffix) AND deleted = FALSE "
+                + "AND (isBot IS NULL OR isBot = FALSE) "
+                + "AND name > :afterName ORDER BY name LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(NameEmailMapper.class)
+    List<NameEmail> listUsersWithEmailDomain(
+        @Bind("domainSuffix") String domainSuffix,
+        @Bind("afterName") String afterName,
+        @Bind("limit") int limit);
 
     @Override
     default User findEntityByName(String fqn, Include include) {
