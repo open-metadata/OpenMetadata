@@ -15,6 +15,8 @@ Test that the DynamoDB source turns the table key schema into primary key metada
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import (
     Constraint,
     ConstraintType,
@@ -136,13 +138,35 @@ def columns_by_name(columns) -> dict:
     return {column.name.root: column for column in columns}
 
 
-def test_composite_key_is_ingested_as_a_primary_key():
+def assert_server_would_accept(table_request):
+    """
+    Mirror of DatabaseUtil.validateConstraints, which TableMapper.validateNewTable runs over every
+    CreateTableRequest. Both of its rules are easy to trip from the ingestion side and neither is
+    visible without a live server, so assert them here.
+    """
+    column_names = [column.name.root for column in table_request.columns]
+    primary_key_columns = [column for column in table_request.columns if column.constraint == Constraint.PRIMARY_KEY]
+    assert len(primary_key_columns) <= 1, "Multiple columns tagged with primary key constraints"
+
+    for constraint in table_request.tableConstraints or []:
+        assert not (constraint.constraintType == ConstraintType.PRIMARY_KEY and primary_key_columns), (
+            "A column already tagged as a primary key and table constraint also includes primary key"
+        )
+        for column_name in constraint.columns:
+            assert column_name in column_names, "Invalid column name found in table constraint"
+
+
+def yield_one_table(source):
+    requests = [either.right for either in source.yield_table(("users", "Regular"))]
+    assert len(requests) == 1, "expected the table to be yielded, not an error"
+    return requests[0]
+
+
+def test_composite_key_is_ingested_as_a_table_level_primary_key():
     source, _ = build_source()
 
-    requests = [either.right for either in source.yield_table(("users", "Regular"))]
+    table_request = yield_one_table(source)
 
-    assert len(requests) == 1
-    table_request = requests[0]
     assert table_request.tableConstraints == [
         # DynamoDB's primary key is the partition key together with the sort key
         TableConstraint(
@@ -151,22 +175,44 @@ def test_composite_key_is_ingested_as_a_primary_key():
         ),
         TableConstraint(constraintType=ConstraintType.SORT_KEY, columns=["created_at"]),
     ]
-    columns = columns_by_name(table_request.columns)
-    assert columns["user_id"].constraint == Constraint.PRIMARY_KEY
-    assert columns["created_at"].constraint == Constraint.PRIMARY_KEY
-    assert columns["email"].constraint is None
+    # a composite key lives on the table constraint only: the server refuses a table whose
+    # columns carry more than one primary key tag
+    assert all(column.constraint is None for column in table_request.columns)
 
 
-def test_partition_key_only_has_no_sort_key_constraint():
+def test_partition_key_alone_is_tagged_on_the_column():
     source, _ = build_source(
         key_schema=[{"AttributeName": "id", "KeyType": "HASH"}],
         attribute_definitions=[{"AttributeName": "id", "AttributeType": "S"}],
         items=[{"id": "a", "name": "Alice"}],
     )
 
-    constraints = source.get_table_constraints(db_name="default", schema_name="default", table_name="users")
+    table_request = yield_one_table(source)
 
-    assert constraints == [TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=["id"])]
+    # the server rejects a table constraint that repeats a primary key already on a column
+    assert table_request.tableConstraints is None
+    columns = columns_by_name(table_request.columns)
+    assert columns["id"].constraint == Constraint.PRIMARY_KEY
+    assert columns["name"].constraint is None
+
+
+@pytest.mark.parametrize(
+    ("key_schema", "attribute_definitions", "items"),
+    [
+        pytest.param(
+            [{"AttributeName": "id", "KeyType": "HASH"}],
+            [{"AttributeName": "id", "AttributeType": "S"}],
+            [{"id": "a", "name": "Alice"}],
+            id="partition-key-only",
+        ),
+        pytest.param(COMPOSITE_KEY_SCHEMA, COMPOSITE_ATTRIBUTE_DEFINITIONS, COMPOSITE_ITEMS, id="composite-key"),
+        pytest.param(COMPOSITE_KEY_SCHEMA, COMPOSITE_ATTRIBUTE_DEFINITIONS, [], id="composite-key-empty-table"),
+    ],
+)
+def test_emitted_table_passes_server_constraint_validation(key_schema, attribute_definitions, items):
+    source, _ = build_source(key_schema=key_schema, attribute_definitions=attribute_definitions, items=items)
+
+    assert_server_would_accept(yield_one_table(source))
 
 
 def test_key_column_types_come_from_the_table_definition_not_the_sample():
@@ -191,17 +237,17 @@ def test_empty_table_still_reports_its_key_columns():
     # server would reject it.
     assert [column.name.root for column in columns] == ["user_id", "created_at"]
     assert [column.dataType for column in columns] == [DataType.STRING, DataType.NUMBER]
-    assert all(column.constraint == Constraint.PRIMARY_KEY for column in columns)
 
 
 def test_describe_failure_leaves_the_table_ingestible():
-    source, _ = build_source(describe_error=RuntimeError("AccessDeniedException"))
+    source, table = build_source(describe_error=RuntimeError("AccessDeniedException"))
 
-    requests = [either.right for either in source.yield_table(("users", "Regular"))]
+    table_request = yield_one_table(source)
 
-    assert len(requests) == 1
-    assert requests[0].tableConstraints is None
-    assert sorted(columns_by_name(requests[0].columns)) == ["created_at", "email", "user_id"]
+    assert table_request.tableConstraints is None
+    assert sorted(columns_by_name(table_request.columns)) == ["created_at", "email", "user_id"]
+    # the failure is cached as well, so a table we cannot describe is not described twice
+    assert table.describe_calls == 1
 
 
 def test_a_table_is_described_only_once():

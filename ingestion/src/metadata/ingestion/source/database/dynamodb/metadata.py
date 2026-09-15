@@ -130,8 +130,13 @@ class DynamodbSource(CommonNoSQLSource):
         `get_table_columns_dict`, DescribeTable reads no table data. The result is memoised
         because `yield_table` asks for both the columns and the constraints of the same table.
         """
-        if table_name in self._key_metadata_cache:
+        try:
+            # Read once rather than checking for membership first: the topology runs stages in
+            # worker threads and an eviction between the two calls would raise here. A cached
+            # None means we already tried and failed, so it must not trigger another describe.
             return self._key_metadata_cache.get(table_name)
+        except KeyError:
+            pass
 
         key_metadata = None
         try:
@@ -161,12 +166,17 @@ class DynamodbSource(CommonNoSQLSource):
         if key_metadata is None or not key_metadata.primary_key:
             return None
 
-        constraints = [
-            TableConstraint(
-                constraintType=ConstraintType.PRIMARY_KEY,
-                columns=[truncate_column_name(key) for key in key_metadata.primary_key],
+        constraints = []
+        # A partition key on its own is carried by the column instead: DatabaseUtil.validateConstraints
+        # rejects a table constraint that repeats a primary key already tagged on a column. Same split
+        # the SQL sources make in SqlColumnHandlerMixin.
+        if len(key_metadata.primary_key) > 1:
+            constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.PRIMARY_KEY,
+                    columns=[truncate_column_name(key) for key in key_metadata.primary_key],
+                )
             )
-        ]
         if key_metadata.sort_key:
             constraints.append(
                 TableConstraint(
@@ -174,7 +184,7 @@ class DynamodbSource(CommonNoSQLSource):
                     columns=[truncate_column_name(key_metadata.sort_key)],
                 )
             )
-        return constraints
+        return constraints or None
 
     def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         """
@@ -189,11 +199,16 @@ class DynamodbSource(CommonNoSQLSource):
     @staticmethod
     def _apply_key_metadata(columns: list[Column], key_metadata: TableKeyMetadata) -> list[Column]:
         """
-        Key attributes are typed from the table definition rather than from the sampled values,
-        and flagged as primary key. Keys missing from the sample - which is every key of an empty
-        table - are added, because the server rejects a constraint over a column the table lacks.
+        Key attributes are typed from the table definition rather than from the sampled values.
+        Keys missing from the sample - which is every key of an empty table - are added, because
+        the server rejects a constraint over a column the table lacks.
+
+        Only a partition key standing alone is tagged on the column: the server refuses a table
+        with more than one column marked as a primary key, so a composite key is carried by the
+        table constraint that `get_table_constraints` emits instead.
         """
         columns_by_name = {model_str(column.name): column for column in columns}
+        key_constraint = Constraint.PRIMARY_KEY if len(key_metadata.primary_key) == 1 else None
         unsampled_keys = []
         for key in key_metadata.primary_key:
             column_name = truncate_column_name(key)
@@ -208,11 +223,11 @@ class DynamodbSource(CommonNoSQLSource):
                         displayName=key,
                         dataType=data_type,
                         dataTypeDisplay=data_type.value,
-                        constraint=Constraint.PRIMARY_KEY,
+                        constraint=key_constraint,
                     )
                 )
                 continue
-            column.constraint = Constraint.PRIMARY_KEY
+            column.constraint = key_constraint
             if data_type:
                 column.dataType = data_type
                 column.dataTypeDisplay = data_type.value
