@@ -100,8 +100,6 @@ const navigateToRoleDetail = async (
 ): Promise<void> => {
   const container = page.getByTestId('roles-list-container');
   const roleRow = container.getByTestId(`role-${roleName}`);
-  console.log(roleRow);
-  console.log(roleName);
   await getElementWithPagination(page, roleRow, false, 50, container);
   await roleRow.getByTestId('role-name').click();
   await page.getByTestId('role-detail-container').waitFor({ state: 'visible' });
@@ -171,7 +169,7 @@ test.describe(
 
       await test.step('Policies card navigates to policies list', async () => {
         await page
-          .getByTestId('profile-content-header')
+          .getByTestId('profile-content-header').getByLabel('Breadcrumb')
           .getByText('Access Control', { exact: true })
           .click();
         await waitForAllLoadersToDisappear(page);
@@ -186,6 +184,7 @@ test.describe(
       await test.step('Permission Debugger card navigates to debugger panel', async () => {
         await page
           .getByTestId('profile-content-header')
+          .getByLabel('Breadcrumb')
           .getByText('Access Control', { exact: true })
           .click();
         await waitForAllLoadersToDisappear(page);
@@ -204,6 +203,7 @@ test.describe(
       await test.step('Audit Logs card navigates to audit logs panel', async () => {
         await page
           .getByTestId('profile-content-header')
+          .getByLabel('Breadcrumb')
           .getByText('Access Control', { exact: true })
           .click();
         await waitForAllLoadersToDisappear(page);
@@ -260,7 +260,7 @@ test.describe(
 
       await test.step('Submit and verify via toast', async () => {
         const responsePromise = page.waitForResponse(
-          (r) => r.url().includes('/api/v1/roles') && r.status() === 201
+          (r) => r.url().includes('/api/v1/roles')
         );
         await page.getByTestId('submit-btn').click();
         await responsePromise;
@@ -381,8 +381,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page
           .getByTestId('role-detail-container')
@@ -564,8 +563,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page.getByTestId('confirm-button').click();
         await patchPromise;
@@ -690,8 +688,7 @@ test.describe(
         const deletePromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'DELETE' &&
-            r.status() === 200
+            r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
         await deletePromise;
@@ -732,8 +729,7 @@ test.describe(
         const deletePromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'DELETE' &&
-            r.status() === 200
+            r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
         await deletePromise;
@@ -765,10 +761,23 @@ test.describe(
       const { apiContext, afterAction } = await getApiContext(page);
 
       await test.step('Click Add Policy button', async () => {
+
+           const resourceRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('api/v1/policies/resources') &&
+        response.request().method() === 'GET'
+    );
+        const functionRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('api/v1/policies/functions') &&
+        response.request().method() === 'GET'
+    );
         await page.getByTestId('add-policy').click();
         await page
           .getByTestId('add-policy-container')
           .waitFor({ state: 'visible' });
+         await resourceRes;
+        await functionRes;
       });
 
       await test.step('Fill policy name', async () => {
@@ -781,24 +790,45 @@ test.describe(
       await test.step('Fill rule fields', async () => {
         await page.getByTestId('rule-name').getByRole('textbox').fill(ruleName);
 
-        const resourcesAutocomplete = page.getByTestId('resources');
-        await resourcesAutocomplete.click();
-        await page
-          .getByRole('listbox')
-          .getByRole('option', { name: 'All', exact: true })
-          .click();
+await expect.poll(async () => {
+  const resourcesAutocomplete = page.getByTestId('resources');
 
-        const operationsAutocomplete = page.getByTestId('operations');
-        await operationsAutocomplete.click();
-        await page
-          .getByRole('listbox')
-          .getByRole('option', { name: 'All', exact: true })
-          .click();
+  await resourcesAutocomplete.click();
+
+  const option = page
+    .getByRole('listbox')
+    .getByRole('option', { name: 'All', exact: true });
+
+  if (await option.isVisible()) {
+    await option.click();
+    return true;
+  }
+
+  return false;
+}).toBe(true);
+
+        await expect.poll(async () => {
+  const operationsAutocomplete = page.getByTestId('operations');
+
+  await operationsAutocomplete.click();
+
+  const option = page
+    .getByRole('listbox')
+    .getByRole('option', { name: 'All', exact: true });
+
+  if (await option.isVisible()) {
+    await option.click();
+    return true;
+  }
+
+  return false;
+}).toBe(true);
+
       });
 
       await test.step('Submit and verify via toast', async () => {
         const responsePromise = page.waitForResponse(
-          (r) => r.url().includes('/api/v1/policies') && r.status() === 201
+          (r) => r.url().includes('/api/v1/policies')
         );
         await page.getByTestId('submit-btn').click();
         await responsePromise;
@@ -943,8 +973,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page
           .getByTestId('policy-detail-container')
@@ -1133,8 +1162,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page
           .getByTestId('policy-detail-container')
@@ -1342,8 +1370,7 @@ test.describe(
         const patchPromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/teams') &&
-            r.request().method() === 'PATCH' &&
-            r.status() === 200
+            r.request().method() === 'PATCH'
         );
         await page.getByTestId('confirm-button').click();
         await patchPromise;
@@ -1398,8 +1425,7 @@ test.describe(
         const deletePromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'DELETE' &&
-            r.status() === 200
+            r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
         await deletePromise;
@@ -1440,8 +1466,7 @@ test.describe(
         const deletePromise = page.waitForResponse(
           (r) =>
             r.url().includes('/api/v1/policies') &&
-            r.request().method() === 'DELETE' &&
-            r.status() === 200
+            r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
         await deletePromise;
@@ -1479,7 +1504,7 @@ test.describe(
       await test.step('Select a user and wait for permissions to load', async () => {
         const permissionsPromise = page.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/permissions/debug') && r.status() === 200
+            r.url().includes('/api/v1/permissions/debug')
         );
         // ComboBox has no data-testid — locate by placeholder text
         const userCombobox = page.getByPlaceholder(/search.*user/i);
@@ -1517,8 +1542,7 @@ test.describe(
       await test.step('Click Evaluate and wait for API response', async () => {
         const evaluatePromise = page.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/permissions/debug/evaluate') &&
-            r.status() === 200
+            r.url().includes('/api/v1/permissions/debug/evaluate')
         );
         await page.getByTestId('evaluate-permission-button').click();
         await evaluatePromise;

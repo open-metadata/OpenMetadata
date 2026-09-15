@@ -76,12 +76,12 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
   const [detailHeaderTitleSuffix, setDetailHeaderTitleSuffix] =
     useState<React.ReactNode>(undefined);
 
-  // Clear detail/panel header state when navigating away.
+  // Clear detail header state when navigating away.
+  // panelHeaderActions is cleared by AccessControlAuditLogsPanel's own effect cleanup on unmount.
   useEffect(() => {
     setDetailHeaderActions(undefined);
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
-    setPanelHeaderActions(undefined);
   }, [view.type]);
 
   const canAddRole = useMemo(

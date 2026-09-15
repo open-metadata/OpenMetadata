@@ -371,6 +371,10 @@ const AccessControlAuditLogsPanel: React.FC<
         {t('label.export')}
       </Button>
     );
+
+    return () => {
+      onSetHeaderActions(undefined);
+    };
   }, [onSetHeaderActions, t]);
 
   const handleExport = useCallback(async () => {
