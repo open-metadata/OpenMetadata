@@ -262,7 +262,6 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
               icon={tagData?.style?.iconURL}
               key={String(item.id)}
               label={getEntityName(tagData) || String(item.label ?? item.id)}
-              maxWidth={120}
               tooltip={getEntityName(tagData) || String(item.label ?? item.id)}
               onDelete={onRemove}
             />
