@@ -22,6 +22,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
@@ -658,7 +659,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Resolve parent/glossary references in batch to avoid per-entity relationship lookups.
     populateParentAndGlossaryReferencesInBulk(entities);
 
-    fetchAndSetFields(entities, fields);
+    fetchAndSetFieldsExcept(entities, fields, Set.of(FIELD_PARENT));
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
