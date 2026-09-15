@@ -69,4 +69,7 @@ export const getElementWithPagination = async (
     await nextBtn.click();
     await waitForAllLoadersToDisappear(page);
   }
+  throw new Error(
+  `Element was not found after searching ${maxPages} page(s) of pagination.`
+);
 };

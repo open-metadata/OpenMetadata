@@ -169,7 +169,8 @@ test.describe(
 
       await test.step('Policies card navigates to policies list', async () => {
         await page
-          .getByTestId('profile-content-header').getByLabel('Breadcrumb')
+          .getByTestId('profile-content-header')
+          .getByLabel('Breadcrumb')
           .getByText('Access Control', { exact: true })
           .click();
         await waitForAllLoadersToDisappear(page);
@@ -259,8 +260,8 @@ test.describe(
       });
 
       await test.step('Submit and verify via toast', async () => {
-        const responsePromise = page.waitForResponse(
-          (r) => r.url().includes('/api/v1/roles')
+        const responsePromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/roles')
         );
         await page.getByTestId('submit-btn').click();
         await responsePromise;
@@ -761,22 +762,21 @@ test.describe(
       const { apiContext, afterAction } = await getApiContext(page);
 
       await test.step('Click Add Policy button', async () => {
-
-           const resourceRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('api/v1/policies/resources') &&
-        response.request().method() === 'GET'
-    );
+        const resourceRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('api/v1/policies/resources') &&
+            response.request().method() === 'GET'
+        );
         const functionRes = page.waitForResponse(
-      (response) =>
-        response.url().includes('api/v1/policies/functions') &&
-        response.request().method() === 'GET'
-    );
+          (response) =>
+            response.url().includes('api/v1/policies/functions') &&
+            response.request().method() === 'GET'
+        );
         await page.getByTestId('add-policy').click();
         await page
           .getByTestId('add-policy-container')
           .waitFor({ state: 'visible' });
-         await resourceRes;
+        await resourceRes;
         await functionRes;
       });
 
@@ -790,45 +790,48 @@ test.describe(
       await test.step('Fill rule fields', async () => {
         await page.getByTestId('rule-name').getByRole('textbox').fill(ruleName);
 
-await expect.poll(async () => {
-  const resourcesAutocomplete = page.getByTestId('resources');
+        await expect
+          .poll(async () => {
+            const resourcesAutocomplete = page.getByTestId('resources');
 
-  await resourcesAutocomplete.click();
+            await resourcesAutocomplete.click();
 
-  const option = page
-    .getByRole('listbox')
-    .getByRole('option', { name: 'All', exact: true });
+            const option = page
+              .getByRole('listbox')
+              .getByRole('option', { name: 'All', exact: true });
 
-  if (await option.isVisible()) {
-    await option.click();
-    return true;
-  }
+            if (await option.isVisible()) {
+              await option.click();
+              return true;
+            }
 
-  return false;
-}).toBe(true);
+            return false;
+          })
+          .toBe(true);
 
-        await expect.poll(async () => {
-  const operationsAutocomplete = page.getByTestId('operations');
+        await expect
+          .poll(async () => {
+            const operationsAutocomplete = page.getByTestId('operations');
 
-  await operationsAutocomplete.click();
+            await operationsAutocomplete.click();
 
-  const option = page
-    .getByRole('listbox')
-    .getByRole('option', { name: 'All', exact: true });
+            const option = page
+              .getByRole('listbox')
+              .getByRole('option', { name: 'All', exact: true });
 
-  if (await option.isVisible()) {
-    await option.click();
-    return true;
-  }
+            if (await option.isVisible()) {
+              await option.click();
+              return true;
+            }
 
-  return false;
-}).toBe(true);
-
+            return false;
+          })
+          .toBe(true);
       });
 
       await test.step('Submit and verify via toast', async () => {
-        const responsePromise = page.waitForResponse(
-          (r) => r.url().includes('/api/v1/policies')
+        const responsePromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/policies')
         );
         await page.getByTestId('submit-btn').click();
         await responsePromise;
@@ -1502,9 +1505,8 @@ test.describe(
       });
 
       await test.step('Select a user and wait for permissions to load', async () => {
-        const permissionsPromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/permissions/debug')
+        const permissionsPromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/permissions/debug')
         );
         // ComboBox has no data-testid — locate by placeholder text
         const userCombobox = page.getByPlaceholder(/search.*user/i);
@@ -1540,9 +1542,8 @@ test.describe(
       });
 
       await test.step('Click Evaluate and wait for API response', async () => {
-        const evaluatePromise = page.waitForResponse(
-          (r) =>
-            r.url().includes('/api/v1/permissions/debug/evaluate')
+        const evaluatePromise = page.waitForResponse((r) =>
+          r.url().includes('/api/v1/permissions/debug/evaluate')
         );
         await page.getByTestId('evaluate-permission-button').click();
         await evaluatePromise;
