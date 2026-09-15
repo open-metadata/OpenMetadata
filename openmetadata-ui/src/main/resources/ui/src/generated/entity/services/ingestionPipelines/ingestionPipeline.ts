@@ -3345,6 +3345,10 @@ export interface LineageInformation {
      */
     dbServicePrefixes?: string[];
     /**
+     * List of API Service Names for creation of lineage
+     */
+    apiServiceNames?: string[];
+    /**
      * List of Database Service Names for creation of lineage
      */
     dbServiceNames?: string[];
@@ -3352,6 +3356,10 @@ export interface LineageInformation {
      * List of Messaging Service Names for creation of lineage
      */
     messagingServiceNames?: string[];
+    /**
+     * List of Search Service Names for creation of lineage
+     */
+    searchServiceNames?: string[];
     /**
      * List of Storage Service Names for creation of lineage
      */
