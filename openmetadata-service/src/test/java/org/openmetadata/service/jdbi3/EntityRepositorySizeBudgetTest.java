@@ -17,9 +17,9 @@ import javax.tools.ToolProvider;
 import org.junit.jupiter.api.Test;
 
 class EntityRepositorySizeBudgetTest {
-  private static final int LINE_BUDGET = 13513;
+  private static final int LINE_BUDGET = 13456;
   private static final int PROTECTED_HOOK_BUDGET = 141;
-  private static final int IMPORT_METHOD_BUDGET = 13;
+  private static final int IMPORT_METHOD_BUDGET = 12;
 
   @Test
   void repositoryAndExtensionSurfaceOnlyShrink() throws IOException {

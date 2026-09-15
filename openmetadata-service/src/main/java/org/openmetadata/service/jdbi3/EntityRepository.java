@@ -56,6 +56,10 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.IMPORT_OWNERS;
+import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.REPLACE;
+import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.REPLACE_IF_NONEMPTY;
+import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.RETAIN;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -9409,7 +9413,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
         compareAndUpdate(FIELD_DISPLAY_NAME, this::updateDisplayName);
         compareAndUpdate(FIELD_ENTITY_STATUS, () -> updateEntityStatus(consolidatingChanges));
-        compareAndUpdate(FIELD_OWNERS, this::updateOwners);
+        compareAndUpdate(FIELD_OWNERS, () -> updateOwners(false));
         compareAndUpdate(FIELD_EXTENSION, () -> updateExtension(consolidatingChanges));
         compareAndUpdate(
             FIELD_TAGS,
@@ -9441,7 +9445,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDescription();
         updateDisplayName();
         updateEntityStatus(consolidatingChanges);
-        updateOwnersForImport();
+        updateOwners(true);
         updateExtension(consolidatingChanges);
         updateTagsForImport(
             updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
@@ -9563,59 +9567,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    private void updateOwners() {
-      // A bot whose policy denies EditOwners (e.g. the ingestion bot via DefaultBotPolicy /
-      // IngestionBotPolicy) must not clobber user-curated owners. A PUT or bulk update authorizes
-      // with the coarse EDIT_ALL operation, which does not intersect that field-level deny, so
-      // re-apply it here. Bots the policy allows fall through and update owners as before. A bulk
-      // force-sync (overrideMetadata=true) also bypasses this guard.
-      boolean preserveUserOwners =
-          updatedByBot()
+    private void updateOwners(boolean importMode) {
+      // Coarse EDIT_ALL authorization does not cover a bot's field-level EditOwners deny.
+      // Keep this decision ahead of comparison so a denied request cannot replace curated owners.
+      final boolean preserveUserOwners =
+          !importMode
+              && updatedByBot()
               && !nullOrEmpty(original.getOwners())
               && !overrideMetadata
               && updatingBotDeniedOperation(MetadataOperation.EDIT_OWNERS);
-      if (preserveUserOwners) {
-        updated.setOwners(original.getOwners());
-        return;
+      final var mode =
+          importMode
+              ? IMPORT_OWNERS
+              : preserveUserOwners ? RETAIN : operation.isPatch() ? REPLACE : REPLACE_IF_NONEMPTY;
+      final var change =
+          EntityReferenceChange.reconcile(
+              original.getOwners(), updated.getOwners(), mode, shouldCompare(FIELD_OWNERS));
+      change.recordIn(changeDescription, FIELD_OWNERS);
+      if (change.changed() && indexBaselinePass) {
+        EntityRepository.this.updateOwners(original, change.original(), change.updated());
       }
-      List<EntityReference> origOwners = getEntityReferences(original.getOwners());
-      List<EntityReference> updatedOwners = getEntityReferences(updated.getOwners());
-      List<EntityReference> addedOwners = new ArrayList<>();
-      List<EntityReference> removedOwners = new ArrayList<>();
-      if ((operation.isPatch() || !nullOrEmpty(updatedOwners))
-          && recordListChange(
-              FIELD_OWNERS,
-              origOwners,
-              updatedOwners,
-              addedOwners,
-              removedOwners,
-              entityReferenceMatch)) {
-        // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
-        EntityRepository.this.updateOwners(original, origOwners, updatedOwners);
-        updated.setOwners(updatedOwners);
-      } else {
-        updated.setOwners(original.getOwners()); // Restore original owner
-      }
-    }
-
-    private void updateOwnersForImport() {
-      List<EntityReference> origOwners = getEntityReferences(original.getOwners());
-      List<EntityReference> updatedOwners = getEntityReferences(updated.getOwners());
-      List<EntityReference> addedOwners = new ArrayList<>();
-      List<EntityReference> removedOwners = new ArrayList<>();
-      if (recordListChange(
-          FIELD_OWNERS,
-          origOwners,
-          updatedOwners,
-          addedOwners,
-          removedOwners,
-          entityReferenceMatch)) {
-        // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
-        EntityRepository.this.updateOwners(original, origOwners, updatedOwners);
-        updated.setOwners(updatedOwners);
-      } else {
-        updated.setOwners(origOwners); // Restore original owner
-      }
+      updated.setOwners(change.updated());
     }
 
     protected void updateTags(
@@ -9859,35 +9831,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     protected void updateDomains() {
-      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
-      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
-      List<EntityReference> addedDomains = new ArrayList<>();
-      List<EntityReference> removedDomains = new ArrayList<>();
+      updateDomains(false);
+    }
 
-      if (origDomains == updatedDomains) {
-        return;
+    private void updateDomains(boolean importMode) {
+      final boolean preserveUserDomains =
+          !importMode && operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot();
+      final var mode =
+          preserveUserDomains
+              ? RETAIN
+              : importMode || operation.isPatch() ? REPLACE : REPLACE_IF_NONEMPTY;
+      final var change =
+          EntityReferenceChange.reconcile(
+              original.getDomains(), updated.getDomains(), mode, shouldCompare(FIELD_DOMAINS));
+      change.recordIn(changeDescription, FIELD_DOMAINS);
+      if (change.changed() && indexBaselinePass) {
+        updateDomains(original, change.original(), change.updated());
       }
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
-        updated.setDomains(original.getDomains());
-        return;
-      }
-
-      if ((operation.isPatch() || !nullOrEmpty(updatedDomains))
-          && recordListChange(
-              FIELD_DOMAINS,
-              origDomains,
-              updatedDomains,
-              addedDomains,
-              removedDomains,
-              entityReferenceMatch)) {
-        updateDomains(original, origDomains, updatedDomains);
-        updated.setDomains(updatedDomains);
-      } else {
-        updated.setDomains(original.getDomains());
-      }
+      updated.setDomains(change.updated());
     }
 
     @Transaction
@@ -9931,27 +9892,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     protected void updateDomainsForImport() {
-      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
-      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
-      List<EntityReference> addedDomains = new ArrayList<>();
-      List<EntityReference> removedDomains = new ArrayList<>();
-
-      if (origDomains == updatedDomains) {
-        return;
-      }
-
-      if (recordListChange(
-          FIELD_DOMAINS,
-          origDomains,
-          updatedDomains,
-          addedDomains,
-          removedDomains,
-          entityReferenceMatch)) {
-        updateDomains(original, origDomains, updatedDomains);
-        updated.setDomains(updatedDomains);
-      } else {
-        updated.setDomains(original.getDomains());
-      }
+      updateDomains(true);
     }
 
     private void updateDataProducts() {
@@ -10245,7 +10186,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Batch delete removed relationships
-      if (!deleted.isEmpty()) {
+      if (indexBaselinePass && !deleted.isEmpty()) {
         // Group by entity type for bulk removal
         Map<String, List<EntityReference>> deletedByType =
             deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
@@ -10267,7 +10208,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Batch add new relationships
-      if (!added.isEmpty()) {
+      if (indexBaselinePass && !added.isEmpty()) {
         if (bidirectional) {
           // For bidirectional relationships, apply the optimization where smaller UUID is always
           // fromId
@@ -10322,7 +10263,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityReference origToRef,
         EntityReference updatedToRef,
         boolean bidirectional) {
-      if (!recordChange(field, origToRef, updatedToRef, true, entityReferenceMatch)) {
+      if (!recordChange(field, origToRef, updatedToRef, true, entityReferenceMatch)
+          || !indexBaselinePass) {
         return; // No changes between original and updated.
       }
       // Remove relationships from original
@@ -10362,7 +10304,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // No changes between original and updated.
       }
       // Batch delete removed relationships
-      if (!deleted.isEmpty()) {
+      if (indexBaselinePass && !deleted.isEmpty()) {
         // Group by entity type for bulk removal
         Map<String, List<EntityReference>> deletedByType =
             deleted.stream().collect(Collectors.groupingBy(EntityReference::getType));
@@ -10378,7 +10320,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Batch add new relationships
-      if (!added.isEmpty()) {
+      if (indexBaselinePass && !added.isEmpty()) {
         // Use bulkInsertTo for true batch operation
         List<CollectionDAO.EntityRelationshipObject> relationships =
             added.stream()
@@ -10425,7 +10367,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         Relationship relationshipType,
         String toEntityType,
         UUID toId) {
-      if (!recordChange(field, originFromRef, updatedFromRef, true, entityReferenceMatch)) {
+      if (!recordChange(field, originFromRef, updatedFromRef, true, entityReferenceMatch)
+          || !indexBaselinePass) {
         return; // No changes between original and updated.
       }
       // Remove relationships from original
