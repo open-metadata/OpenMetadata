@@ -5795,6 +5795,14 @@ export interface Pipeline {
      */
     includeDraftDashboard?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML
+     * measures) as first-class Metric entities. Metric names are unique across the whole
+     * OpenMetadata instance, so this is disabled by default.
+     *
+     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
+     */
+    includeMetrics?: boolean;
+    /**
      * Optional configuration to toggle the ingestion of usage metadata for dashboards. When
      * enabled, usage statistics will be collected and ingested.
      */
@@ -6141,10 +6149,6 @@ export interface Pipeline {
      * Optional configuration to update the owners from DBT or not
      */
     dbtUpdateOwners?: boolean;
-    /**
-     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
-     */
-    includeMetrics?: boolean;
     /**
      * Optional configuration to search across databases for tables or not
      */
