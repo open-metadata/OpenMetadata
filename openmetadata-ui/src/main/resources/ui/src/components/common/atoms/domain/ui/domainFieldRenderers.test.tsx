@@ -24,6 +24,14 @@ import { useDomainCardTemplates } from './useDomainCardTemplates';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: () => <span data-testid="avatar" />,
+  Owner: ({ showDashPlaceholder }: { showDashPlaceholder?: boolean }) => (
+    <div
+      data-show-dash={String(showDashPlaceholder)}
+      data-testid="owner-label"
+    />
+  ),
+  toOwnerRef: (ref: unknown) => ref,
+  toOwnerRefs: (refs: unknown[] = []) => refs,
   Box: ({
     children,
     onClick,
@@ -61,21 +69,13 @@ jest.mock('../../../../../utils/IconUtils', () => ({
   getEntityAvatarProps: () => ({}),
 }));
 
-jest.mock('../../../OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: ({ showDashPlaceholder }: { showDashPlaceholder?: boolean }) => (
-    <div
-      data-show-dash={String(showDashPlaceholder)}
-      data-testid="owner-label"
-    />
-  ),
-}));
-
-jest.mock('../../../TagBadgeList/TagBadgeList.component', () => ({
+jest.mock('../../../../Tag/TagsViewer/TagsViewer', () => ({
   __esModule: true,
-  default: ({ emptyPlaceholder }: { emptyPlaceholder?: string }) => (
+  default: ({ sizeCap, tags }: { sizeCap?: number; tags?: unknown[] }) => (
     <div
-      data-empty-placeholder={emptyPlaceholder}
-      data-testid="tag-badge-list"
+      data-size-cap={sizeCap}
+      data-tags-length={tags?.length}
+      data-testid="tags-viewer"
     />
   ),
 }));
@@ -136,10 +136,15 @@ describe('renderDomainNameCell', () => {
 });
 
 describe('renderDomainOwnersCell', () => {
-  it('forwards showDashPlaceholder to OwnerLabel', () => {
+  it('forwards showDashPlaceholder to Owner', () => {
     render(
       <>
-        {renderDomainOwnersCell({ owners: [] }, { showDashPlaceholder: true })}
+        {renderDomainOwnersCell(
+          { owners: [] },
+          () => [],
+          (_owner, chip) => chip,
+          { showDashPlaceholder: true }
+        )}
       </>
     );
 
@@ -150,7 +155,15 @@ describe('renderDomainOwnersCell', () => {
   });
 
   it('defaults showDashPlaceholder to undefined when no options are passed', () => {
-    render(<>{renderDomainOwnersCell({ owners: [] })}</>);
+    render(
+      <>
+        {renderDomainOwnersCell(
+          { owners: [] },
+          () => [],
+          (_owner, chip) => chip
+        )}
+      </>
+    );
 
     expect(screen.getByTestId('owner-label')).toHaveAttribute(
       'data-show-dash',
@@ -160,33 +173,16 @@ describe('renderDomainOwnersCell', () => {
 });
 
 describe('renderDomainGlossaryTagsCell / renderDomainClassificationTagsCell', () => {
-  it('forwards emptyPlaceholder to TagBadgeList for glossary terms', () => {
-    render(
-      <>
-        {renderDomainGlossaryTagsCell({ tags: [] }, { emptyPlaceholder: '--' })}
-      </>
-    );
+  it('renders TagsViewer for glossary terms', () => {
+    render(<>{renderDomainGlossaryTagsCell({ tags: [] })}</>);
 
-    expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
-      'data-empty-placeholder',
-      '--'
-    );
+    expect(screen.getByTestId('tags-viewer')).toBeInTheDocument();
   });
 
-  it('forwards emptyPlaceholder to TagBadgeList for classification tags', () => {
-    render(
-      <>
-        {renderDomainClassificationTagsCell(
-          { tags: [] },
-          { emptyPlaceholder: '--' }
-        )}
-      </>
-    );
+  it('renders TagsViewer for classification tags', () => {
+    render(<>{renderDomainClassificationTagsCell({ tags: [] })}</>);
 
-    expect(screen.getByTestId('tag-badge-list')).toHaveAttribute(
-      'data-empty-placeholder',
-      '--'
-    );
+    expect(screen.getByTestId('tags-viewer')).toBeInTheDocument();
   });
 });
 
@@ -305,17 +301,11 @@ describe('useDomainCardTemplates > renderDataProductCard', () => {
     );
   });
 
-  it('requests the -- placeholder for both glossary terms and tags', () => {
+  it('renders TagsViewer for both glossary terms and tags', () => {
     const { result } = renderHook(() => useDomainCardTemplates());
 
     render(<>{result.current.renderDataProductCard(DATA_PRODUCT_BASE)}</>);
 
-    const tagBadgeLists = screen.getAllByTestId('tag-badge-list');
-
-    expect(tagBadgeLists).toHaveLength(2);
-
-    tagBadgeLists.forEach((el) =>
-      expect(el).toHaveAttribute('data-empty-placeholder', '--')
-    );
+    expect(screen.getAllByTestId('tags-viewer')).toHaveLength(2);
   });
 });

@@ -86,6 +86,7 @@ import {
   getQuickFilterQuery,
 } from '../../../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
@@ -460,6 +461,15 @@ const AssetsTabs = forwardRef(
       useState<EntityReference[]>();
 
     const entityTypeString = getEntityTypeString(type);
+
+    // Consumer via prop. No `deleted` argument: `isEntityDeleted` is destructured but
+    // never referenced anywhere in this file's permission logic (only listed, unused, in
+    // a dependency array) — old expressions here read a bare permissions.EditAll with no
+    // deleted gating, so getDerivedPermissionFlags defaults to its `deleted = false`.
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     const handleMenuClick = ({ key }: { key: string }) => {
       setSelectedFilter((prevSelected) =>
@@ -984,7 +994,7 @@ const AssetsTabs = forwardRef(
               <ExploreSearchCard
                 showEntityIcon
                 actionPopoverContent={
-                  isRemovable && permissions.EditAll ? (
+                  isRemovable && canEditAll ? (
                     <Dropdown
                       align={{ targetOffset: [-12, 0] }}
                       dropdownRender={renderDropdownContainer}
@@ -1047,6 +1057,7 @@ const AssetsTabs = forwardRef(
         data,
         activeEntity,
         permissions,
+        canEditAll,
         paging,
         currentPage,
         selectedCard,
@@ -1296,7 +1307,7 @@ const AssetsTabs = forwardRef(
         </div>
         <BulkDeleteNotification
           assetRemoving={assetRemoving}
-          hasEditAllPermission={Boolean(permissions?.EditAll)}
+          hasEditAllPermission={canEditAll}
           isLoading={isLoading}
           selectedItemsCount={selectedItems.size}
           totalAssetCount={totalAssetCount}

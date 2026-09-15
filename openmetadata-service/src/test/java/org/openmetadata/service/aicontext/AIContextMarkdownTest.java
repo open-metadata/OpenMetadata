@@ -23,6 +23,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
@@ -558,6 +559,99 @@ class AIContextMarkdownTest {
     assertTrue(
         markdown.contains("```sql\nSELECT COUNT(DISTINCT user_id) FROM events\n```"),
         "missing metric expression block");
+  }
+
+  @Test
+  void render_emitsSampleDataRowsUnderSchema() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("id", "customer_id"))
+                .withRows(List.of(List.of(1, 42), List.of(2, 43))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(markdown.contains("# Sample Data"), "missing sample-data heading");
+    assertTrue(
+        markdown.contains("not the full table"),
+        "sample rows must be captioned as a sample so the agent does not read them as the table");
+    assertTrue(markdown.contains("| id | customer_id |"), "missing sample-data header row");
+    assertTrue(markdown.contains("| 1 | 42 |"), "missing first sample row");
+    assertTrue(markdown.contains("| 2 | 43 |"), "missing second sample row");
+  }
+
+  @Test
+  void render_omitsSampleDataWhenAbsentOrEmpty() {
+    assertFalse(render().contains("Sample Data"), "no sample data attached");
+
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(new TableData().withColumns(List.of("id")).withRows(List.of()));
+
+    assertFalse(
+        AIContextMarkdown.render(context).contains("Sample Data"),
+        "a column-only payload carries no values to show");
+  }
+
+  @Test
+  void render_sanitizesAndPadsDelimiterSensitiveSampleValues() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("a", "b", "c"))
+                .withRows(List.of(Arrays.asList("x|y", "line1\nline2", null))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains("| x\\|y | line1 line2 |  |"),
+        "pipes must be escaped, newlines flattened, and a null value rendered as an empty cell");
+  }
+
+  @Test
+  void render_padsRaggedSampleRowsToTheColumnWidth() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("a", "b", "c"))
+                .withRows(List.of(List.of("only"), List.of("x", "y", "z", "overflow"))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains("| only |  |  |"), "a short row must be padded, not left misaligned");
+    assertTrue(
+        markdown.contains("| x | y | z |"),
+        "values beyond the declared columns must be dropped, not appended as phantom cells");
+    assertFalse(markdown.contains("overflow"), "overflowing cell must not widen the table");
+  }
+
+  @Test
+  void render_capsLongSampleValues() {
+    AIContext context = sampleContext();
+    context
+        .getAssetContext()
+        .getTable()
+        .withSampleData(
+            new TableData()
+                .withColumns(List.of("blob"))
+                .withRows(List.of(List.of("z".repeat(500)))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertFalse(markdown.contains("z".repeat(200)), "a blob column must not crowd out the context");
+    assertTrue(markdown.contains("\u2026 |"), "a capped value must be marked as elided");
   }
 
   private String render() {

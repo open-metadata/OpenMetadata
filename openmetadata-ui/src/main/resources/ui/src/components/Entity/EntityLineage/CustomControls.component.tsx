@@ -26,11 +26,14 @@ import {
   FC,
   memo,
   MouseEventHandler,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { useFocusable } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
@@ -53,6 +56,7 @@ import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -70,6 +74,36 @@ import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 import LineageTimeFilter from './LineageTimeFilter.component';
+
+type LineageFilterNodeData = {
+  node?: { id?: string };
+  sceneNode?: { sourceEntity?: { id?: string } };
+};
+
+const DisabledEditTooltipTrigger = ({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  // Disabled controls ignore the tooltip context; a focusable span keeps the
+  // hint available without nesting the disabled button in another button.
+  const { focusableProps } = useFocusable({}, ref);
+
+  return (
+    <span
+      {...focusableProps}
+      aria-label={label}
+      className="tw:inline-flex"
+      ref={ref}
+      role="group">
+      {children}
+    </span>
+  );
+};
+
 const CustomControls: FC<{
   nodeDepthOptions?: number[];
   onSearchValueChange?: (value: string) => void;
@@ -78,6 +112,10 @@ const CustomControls: FC<{
   deleted?: boolean;
   hasEditAccess?: boolean;
   impactLevel?: EImpactLevel;
+  // Reset the host's pagination to page 1 when the user narrows the result set
+  // via a quick-filter value change or "Clear all". Hosts that have no
+  // pagination (e.g. the lineage graph view) simply omit the prop.
+  onPageReset?: () => void;
 }> = ({
   nodeDepthOptions,
   onSearchValueChange,
@@ -86,6 +124,7 @@ const CustomControls: FC<{
   deleted = false,
   hasEditAccess = false,
   impactLevel,
+  onPageReset,
 }) => {
   const { t } = useTranslation();
   const {
@@ -101,6 +140,7 @@ const CustomControls: FC<{
     toggleEditMode,
     isEditMode,
     platformView,
+    sceneBand,
     setLineageConfig,
   } = useLineageStore();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
@@ -112,15 +152,24 @@ const CustomControls: FC<{
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
-      .map((node) => node.data?.node?.id)
+      .map((node) => {
+        const nodeData = node.data as LineageFilterNodeData | undefined;
+
+        return nodeData?.sceneNode?.sourceEntity?.id ?? nodeData?.node?.id;
+      })
       .filter(Boolean);
+    const filterNodeIds = queryFilterNodeIds ?? nodeIds;
+
+    if (filterNodeIds.length === 0) {
+      return undefined;
+    }
 
     return {
       query: {
         bool: {
           must: {
             terms: {
-              'id.keyword': queryFilterNodeIds ?? nodeIds,
+              'id.keyword': filterNodeIds,
             },
           },
         },
@@ -154,6 +203,7 @@ const CustomControls: FC<{
 
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
+      onPageReset?.(); // reset pagination so the narrowed set is fetched from page 1
       setSelectedQuickFilters((pre) => {
         const data = pre.map((preField) => {
           if (preField.key === field.key) {
@@ -166,7 +216,7 @@ const CustomControls: FC<{
         return data;
       });
     },
-    [setSelectedQuickFilters]
+    [setSelectedQuickFilters, onPageReset]
   );
 
   // Initialize quick filters on component mount
@@ -231,6 +281,11 @@ const CustomControls: FC<{
       (prev ?? []).map((filter) => ({ ...filter, value: [] }))
     );
   }, [setSelectedQuickFilters]);
+
+  const handleClearAllClick = useCallback(() => {
+    handleClearAllFilters();
+    onPageReset?.(); // reset pagination so the un-narrowed set is fetched from page 1
+  }, [handleClearAllFilters, onPageReset]);
 
   const handleTabChange = useCallback(
     (key: string) => {
@@ -377,19 +432,34 @@ const CustomControls: FC<{
       isEditableLineageView &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
+    const isLayerBand = sceneBand === LineageBand.Layer;
+    const editLabel = t('label.edit-entity', { entity: t('label.lineage') });
+    const editButton = (
+      <Button
+        aria-label={editLabel}
+        color={isEditMode ? 'primary' : 'secondary'}
+        data-testid="edit-lineage"
+        iconLeading={EditIcon}
+        isDisabled={isLayerBand}
+        onClick={toggleEditMode}
+      />
+    );
 
     return showEditOption ? (
       <Tooltip
         placement="top"
-        title={t('label.edit-entity', { entity: t('label.lineage') })}>
-        <TooltipTrigger>
-          <Button
-            color={isEditMode ? 'primary' : 'secondary'}
-            data-testid="edit-lineage"
-            iconLeading={EditIcon}
-            onClick={toggleEditMode}
-          />
-        </TooltipTrigger>
+        title={
+          isLayerBand
+            ? t('label.zoom-in')
+            : t('label.edit-entity', { entity: t('label.lineage') })
+        }>
+        {isLayerBand ? (
+          <DisabledEditTooltipTrigger label={editLabel}>
+            {editButton}
+          </DisabledEditTooltipTrigger>
+        ) : (
+          editButton
+        )}
       </Tooltip>
     ) : null;
   }, [
@@ -398,6 +468,7 @@ const CustomControls: FC<{
     platformView,
     entityType,
     isEditMode,
+    sceneBand,
     toggleEditMode,
     t,
   ]);
@@ -505,7 +576,7 @@ const CustomControls: FC<{
             color="link-color"
             isDisabled={!filterApplied}
             size="sm"
-            onClick={handleClearAllFilters}>
+            onClick={handleClearAllClick}>
             {t('label.clear-entity', { entity: t('label.all') })}
           </Button>
         </div>
@@ -547,11 +618,13 @@ const CustomControls: FC<{
         <div className="tw:flex tw:gap-4 tw:items-center">
           {tabsSection}
 
-          <LineageTimeFilter
-            endTime={timeFilter?.endTime}
-            startTime={timeFilter?.startTime}
-            onChange={setTimeFilter}
-          />
+          {activeTab === 'impact_analysis' && (
+            <LineageTimeFilter
+              endTime={timeFilter?.endTime}
+              startTime={timeFilter?.startTime}
+              onChange={setTimeFilter}
+            />
+          )}
           {lineageEditButton}
           <Tooltip placement="top" title={exportButtonLabel}>
             <TooltipTrigger>

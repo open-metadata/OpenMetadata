@@ -15,10 +15,10 @@ import moment from 'moment';
 import type { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-// DateInput from @openmetadata/ui-core-components is not publicly exported and requires
-// @internationalized/date CalendarDate objects, which are incompatible with the query
-// builder's string-based date values. Native <input> is used instead.
+// DateInput from @openmetadata/ui-core-components is not publicly exported and requires @internationalized/date
+// CalendarDate objects, which are incompatible with the query builder's string-based date values.
 const classNameValue =
+  'tw:w-full tw:min-w-0 ' +
   'tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary ' +
   'tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary ' +
   'tw:transition-[outline-color,outline-width] tw:duration-100 tw:focus:outline-2 tw:focus:-outline-offset-1 tw:focus:outline-brand ' +
@@ -53,9 +53,7 @@ const getInputKind = (
   return result;
 };
 
-// The query builder stores values in the field's `valueFormat` (a moment
-// format, e.g. "DD-MM-YYYY HH:mm:ss" for custom properties), while native
-// date/time inputs only speak fixed ISO-like formats — convert both ways.
+// The query builder stores values in the field's `valueFormat` (a moment format, e.g.
 const OMDateWidget: FC<DateTimeWidgetProps> = ({
   value,
   setValue,
@@ -91,8 +89,8 @@ const OMDateWidget: FC<DateTimeWidgetProps> = ({
       data-testid={`query-date-value-${delta}`}
       disabled={readonly}
       placeholder={placeholder}
-      // Native time inputs default to step=60, which rejects values with a
-      // seconds component — the stored formats include seconds.
+      // Native time inputs default to step=60, which rejects values with a seconds component — the stored formats
+      // include seconds.
       step={kind === 'date' ? undefined : 1}
       type={kind === 'datetime' ? 'datetime-local' : kind}
       value={displayValue}

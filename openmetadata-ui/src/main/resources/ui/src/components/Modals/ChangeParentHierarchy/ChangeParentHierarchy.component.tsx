@@ -21,7 +21,6 @@ import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/Tree
 import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagSource } from '../../../generated/entity/data/container';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   EntityStatus,
@@ -213,7 +212,6 @@ const ChangeParentHierarchy = ({
             placeholder={t('label.select-field', {
               field: t('label.parent'),
             })}
-            tagType={TagSource.Glossary}
             onCancel={handleTreeAsyncSelectCancel}
             onChange={handleTagSelection}
           />
