@@ -94,7 +94,9 @@ const openEditAgentForm = async (page: Page, service: DatabaseServiceClass) => {
  * the only empty state a user can actually produce.
  */
 const clearAgentOwners = async (page: Page) => {
-  await page.getByTestId('add-ingestion-owners').click();
+  // Owners are always populated when this runs, so the trigger is the edit
+  // variant; the empty state swaps it for `add-owner`.
+  await page.getByTestId('edit-owner').click();
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
 
@@ -124,7 +126,7 @@ const selectAgentOwner = async (
   await addMultiOwner({
     page,
     ownerNames: [owner.getUserDisplayName()],
-    activatorBtnDataTestId: 'add-ingestion-owners',
+    activatorBtnDataTestId: 'add-owner',
     resultTestId: 'ingestion-owners',
     endpoint: service.endpoint,
     isSelectableInsideForm: true,

@@ -11,13 +11,23 @@
  *  limitations under the License.
  */
 
-import { HintText, Input, Owner } from '@openmetadata/ui-core-components';
+import {
+  HintText,
+  Input,
+  Label,
+  Owner,
+} from '@openmetadata/ui-core-components';
+import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useEntityRules } from '../../../../../hooks/useEntityRules';
 import { toOwnerRefs } from '../../../../../utils/Owner/ownerConversionUtils';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../../../common/WidgetActionButton/WidgetActionButton';
 
 interface IngestionNameCardProps {
   displayName: string;
@@ -71,25 +81,38 @@ const IngestionNameCard = ({
         aria-label={t('label.owner-plural')}
         className="tw:mt-4"
         data-testid="ingestion-owners-field">
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <Label isRequired={isOwnersRequired}>{t('label.owner-plural')}</Label>
+          <UserTeamSelectableList
+            hasPermission
+            listHeight={200}
+            multiple={{
+              user: entityRules.canAddMultipleUserOwners,
+              team: entityRules.canAddMultipleTeamOwner,
+            }}
+            owner={owners}
+            onUpdate={onOwnersChange}>
+            {isEmpty(owners) ? (
+              <WidgetPlusButton
+                data-testid="add-owner"
+                title={t('label.add-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            ) : (
+              <WidgetEditButton
+                data-testid="edit-owner"
+                title={t('label.edit-entity', {
+                  entity: t('label.owner-plural'),
+                })}
+              />
+            )}
+          </UserTeamSelectableList>
+        </div>
         <Owner
-          hasPermission
-          showLabel
+          className="tw:mt-2"
           data-testid="ingestion-owners"
-          isCompactView={false}
           owners={toOwnerRefs(owners)}
-          selectorContent={
-            <UserTeamSelectableList
-              hasPermission
-              previewSelected
-              multiple={{
-                user: entityRules.canAddMultipleUserOwners,
-                team: entityRules.canAddMultipleTeamOwner,
-              }}
-              owner={owners}
-              triggerDataTestId="add-ingestion-owners"
-              onUpdate={onOwnersChange}
-            />
-          }
         />
         {showOwnersError && (
           <HintText
