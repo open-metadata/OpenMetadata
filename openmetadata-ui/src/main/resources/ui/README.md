@@ -285,7 +285,7 @@ When writing new tests, follow these guidelines:
 Example test structure:
 
 ```typescript
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/base';
 import { LoginPage } from '../Pages/LoginPage';
 
 test.describe('Feature Name', () => {
