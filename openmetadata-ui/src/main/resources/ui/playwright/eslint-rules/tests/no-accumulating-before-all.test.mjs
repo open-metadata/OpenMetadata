@@ -54,6 +54,23 @@ ruleTester.run('no-accumulating-before-all', rule, {
      test.beforeAll(async () => {
        entities.length = 0;
      });`,
+    // Truncated to empty before pushing — a correct, non-leaking reset.
+    `const entities = [];
+     test.beforeAll(async () => {
+       entities.length = 0;
+       entities.push(new TableClass());
+     });`,
+    // Same, spliced rather than truncated.
+    `const entities = [];
+     test.beforeAll(async () => {
+       entities.splice(0);
+       entities.push(new TableClass());
+     });`,
+    `const entities = [];
+     test.beforeAll(async () => {
+       entities.splice(0, entities.length);
+       entities.push(new TableClass());
+     });`,
   ],
   invalid: [
     {
@@ -75,6 +92,40 @@ ruleTester.run('no-accumulating-before-all', rule, {
              });`,
       errors: [
         { messageId: 'accumulatingBeforeAll', data: { name: 'created' } },
+      ],
+    },
+    {
+      // Truncating *after* the push is no better than reassigning after it.
+      code: `const entities = [];
+             test.beforeAll(async () => {
+               entities.push(new TableClass());
+               entities.length = 0;
+             });`,
+      errors: [
+        { messageId: 'accumulatingBeforeAll', data: { name: 'entities' } },
+      ],
+    },
+    {
+      // Truncating to a non-zero length keeps earlier entries, so it is not a
+      // reset.
+      code: `const entities = [];
+             test.beforeAll(async () => {
+               entities.length = 5;
+               entities.push(new TableClass());
+             });`,
+      errors: [
+        { messageId: 'accumulatingBeforeAll', data: { name: 'entities' } },
+      ],
+    },
+    {
+      // Splicing from a non-zero index leaves the head in place.
+      code: `const entities = [];
+             test.beforeAll(async () => {
+               entities.splice(1);
+               entities.push(new TableClass());
+             });`,
+      errors: [
+        { messageId: 'accumulatingBeforeAll', data: { name: 'entities' } },
       ],
     },
     {
