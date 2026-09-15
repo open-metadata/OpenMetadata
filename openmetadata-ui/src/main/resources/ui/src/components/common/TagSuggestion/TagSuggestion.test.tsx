@@ -52,19 +52,6 @@ jest.mock('lodash', () => {
   };
 });
 
-jest.mock('../atoms/TagChip', () => ({
-  TagChip: ({ label, onDelete }: { label: string; onDelete?: () => void }) => (
-    <span data-testid="tag-chip">
-      {label}
-      {onDelete && (
-        <button data-testid="tag-chip-delete" onClick={onDelete}>
-          x
-        </button>
-      )}
-    </span>
-  ),
-}));
-
 type MockItem = { id: string; label: string; supportingText?: string };
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -156,7 +143,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     supportingText?: string;
   }) => ({ id, label, supportingText });
 
-  return { Autocomplete };
+  const BadgeWithButton = ({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  );
+
+  const Dot = () => <span data-testid="dot" />;
+
+  return { Autocomplete, BadgeWithButton, Dot };
 });
 
 describe('TagSuggestion', () => {

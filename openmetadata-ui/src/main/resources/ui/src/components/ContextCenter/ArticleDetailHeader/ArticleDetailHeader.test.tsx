@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { ContentChangeState } from '../../../interface/knowledge-center.interface';
 import ArticleDetailHeader from './ArticleDetailHeader.component';
 
@@ -26,6 +27,10 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-article' })),
+}));
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -98,6 +103,15 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock(
+  '../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest.fn(
+      ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
+    ),
+  })
+);
+
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
   jest.fn(() => <nav data-testid="breadcrumb" />)
 );
@@ -105,12 +119,6 @@ jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
 jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
   jest.fn(({ name }: { name: string }) => <span>{name}</span>)
 );
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
-    <span>{owners.map((o) => o.name).join(', ')}</span>
-  )),
-}));
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
   jest.fn(() => <div data-testid="delete-modal" />)
@@ -209,6 +217,38 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  PageLayout: {
+    PageHeader: jest.fn(
+      ({
+        actions,
+        badge,
+        breadcrumb,
+        footer,
+        meta,
+        title,
+        variant,
+        'data-testid': dataTestId,
+      }: {
+        actions?: React.ReactNode;
+        badge?: React.ReactNode;
+        breadcrumb?: React.ReactNode;
+        footer?: React.ReactNode;
+        meta?: React.ReactNode;
+        title: React.ReactNode;
+        variant?: string;
+        'data-testid'?: string;
+      }) => (
+        <div data-testid={dataTestId} data-variant={variant}>
+          {breadcrumb}
+          {title}
+          {badge}
+          {meta}
+          {actions}
+          {footer}
+        </div>
+      )
+    ),
+  },
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tabs: Object.assign(
     jest.fn(
@@ -231,6 +271,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
+  Owner: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
+    <span>{owners?.map((o) => o.name).join(', ')}</span>
+  )),
+  toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+    .toOwnerRefs,
+  toOwnerRef: jest.requireActual('@openmetadata/ui-core-components').toOwnerRef,
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
@@ -294,6 +340,7 @@ const defaultProps = {
 describe('ArticleDetailHeader', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   it('renders the header with data-testid', () => {
@@ -306,6 +353,19 @@ describe('ArticleDetailHeader', () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
+  });
+
+  it('uses the embedded header presentation in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(<ArticleDetailHeader {...defaultProps} />);
+
+    expect(
+      screen.getByTestId('article-detail-header').lastElementChild
+    ).toHaveAttribute('data-variant', 'gradient');
+    expect(
+      screen.getByTestId('article-detail-header').lastElementChild
+    ).toContainElement(screen.getByTestId('breadcrumb'));
   });
 
   it('renders the article display name', () => {

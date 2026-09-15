@@ -79,10 +79,6 @@ jest.mock('../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((v) => v),
 }));
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
-  jest.fn().mockReturnValue(<span>TagsV1</span>)
-);
-
 describe('TreeAsyncSelectList', () => {
   const onChange = jest.fn();
   const onCancel = jest.fn();

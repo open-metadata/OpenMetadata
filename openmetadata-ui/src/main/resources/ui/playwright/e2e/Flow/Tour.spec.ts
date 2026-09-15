@@ -153,6 +153,7 @@ const validateTourSteps = async (page: Page) => {
 
   await expectTourBadge(page, '15');
 
+  await expect(page.getByTestId('lineage-map-onboarding-dialog')).toBeHidden();
   await page.getByTestId('last-step-button').click();
   await page.getByTestId('saveButton').click();
 };

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Owner } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -17,7 +18,6 @@ import { Table as TableType } from '../../generated/entity/data/table';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import { getNameFromFQN } from '../../utils/FqnUtils';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -106,6 +106,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children }: React.PropsWithChildren) => (
         <button>{children}</button>
       )),
+    Owner: jest.fn(({ owners = [] }: { owners?: unknown[] }) => (
+      <div data-testid="owner-label">{owners.length}</div>
+    )),
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 
@@ -128,10 +135,6 @@ jest.mock('../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () => {
       <div data-testid="filter-table-placeholder">{placeholderText}</div>
     ));
 });
-
-jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 
 jest.mock('../DataQuality/IncidentManager/Severity/Severity.component', () => {
   return jest.fn().mockImplementation(() => <div>Severity</div>);
@@ -374,7 +377,7 @@ describe('IncidentManagerTable', () => {
         expect.objectContaining({ hasPermission: true }),
         expect.anything()
       );
-      expect(OwnerLabel).toHaveBeenCalledWith(
+      expect(Owner).toHaveBeenCalledWith(
         expect.objectContaining({ hasPermission: true }),
         expect.anything()
       );
@@ -398,7 +401,7 @@ describe('IncidentManagerTable', () => {
         expect.objectContaining({ hasPermission: false }),
         expect.anything()
       );
-      expect(OwnerLabel).toHaveBeenCalledWith(
+      expect(Owner).toHaveBeenCalledWith(
         expect.objectContaining({ hasPermission: false }),
         expect.anything()
       );
