@@ -20,7 +20,6 @@ import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
@@ -31,7 +30,6 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
-import { userPermissions } from '../../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
@@ -52,10 +50,6 @@ const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { permissions } = usePermissionProvider();
-  const hasTypeViewPermission = userPermissions.hasViewPermissions(
-    ResourceEntity.TYPE,
-    permissions
-  );
   const { extensionRegistry } = useApplicationsProvider();
   // Seed userData from the application store so the page chrome renders
   // immediately on tab switch. The getUserByName fetch below refreshes
@@ -174,10 +168,12 @@ const ProfilePage: React.FC = () => {
         };
       });
 
-    const workspaceItems = hasTypeViewPermission ? WORKSPACE_NAV_ITEMS : [];
+    const workspaceItems = WORKSPACE_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions)
+    );
 
     return [...PROFILE_NAV_ITEMS, ...workspaceItems, ...contributed];
-  }, [extensionRegistry, hasTypeViewPermission, userData]);
+  }, [extensionRegistry, permissions, userData]);
 
   const activeItem =
     navItems.find((item) => item.id === selectedId) ?? navItems[0];
