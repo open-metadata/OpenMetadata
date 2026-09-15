@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -96,8 +95,16 @@ class EntityRepositoryRestoreTest {
     final Set<UUID> bulkSoftDeleteInvokedWith = new HashSet<>();
     final Set<UUID> bulkHardDeleteInvokedWith = new HashSet<>();
 
-    CountingPipelineRepo(CollectionDAO.PipelineDAO dao) {
-      super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "");
+    CountingPipelineRepo(CollectionDAO.PipelineDAO dao, CollectionDAO dependencies) {
+      super(
+          "pipelines",
+          Entity.PIPELINE,
+          Pipeline.class,
+          dao,
+          "",
+          "",
+          Set.of(),
+          new RepositoryDependencies(dependencies, null, null, null));
     }
 
     @Override
@@ -151,17 +158,11 @@ class EntityRepositoryRestoreTest {
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
-    Entity.setCollectionDAO(daoCollection);
-  }
-
-  @AfterEach
-  void tearDown() {
-    Entity.setCollectionDAO(null);
   }
 
   @Test
   void restoreChildren_withNoChildren_isNoOp() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID parentId = UUID.randomUUID();
     when(relationshipDAO.findTo(eq(parentId), eq(Entity.PIPELINE), eq(SUBTREE_RELATIONS)))
         .thenReturn(List.of());
@@ -174,7 +175,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void restoreChildren_groupsByTypeAndDispatchesOnceEach() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID parentId = UUID.randomUUID();
 
     UUID schemaA = UUID.randomUUID();
@@ -220,7 +221,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void bulkRestoreSubtree_emptyOrNullIds_isNoOp() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
 
     repo.bulkRestoreSubtree(null, "user");
     repo.bulkRestoreSubtree(List.of(), "user");
@@ -236,7 +237,7 @@ class EntityRepositoryRestoreTest {
   void bulkRestoreSubtree_noEntitiesAtAll_isNoOp() {
     // loadForBulk returns an empty list (entity doesn't exist at all): bulk path bails
     // before children traversal or hook invocation.
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID id = UUID.randomUUID();
     when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of());
 
@@ -248,7 +249,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void invalidate_clearsRegisteredCacheLayers() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     Pipeline pipeline =
         new Pipeline()
             .withId(UUID.randomUUID())
@@ -291,7 +292,7 @@ class EntityRepositoryRestoreTest {
     // loadForBulk returns entities, but none are in DELETED state. Bulk path must skip
     // the deferred-store update phase but still call runRestoreAdditionalChildren — a
     // re-entered cascade may have HAS-related descendants that need reconciliation.
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID id = UUID.randomUUID();
     Pipeline pa =
         new Pipeline().withId(id).withName("a").withFullyQualifiedName("svc.a").withDeleted(false);
@@ -307,7 +308,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void bulkRestoreSubtree_usesBatchedFindToOncePerLevel() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID a = UUID.randomUUID();
     UUID b = UUID.randomUUID();
     Pipeline pa =
@@ -335,7 +336,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void deleteChildren_softDelete_groupsByTypeAndDispatchesToBulkSoftDelete() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
 
     UUID schemaA = UUID.randomUUID();
     UUID schemaB = UUID.randomUUID();
@@ -374,7 +375,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void bulkSoftDeleteSubtree_emptyOrNullIds_isNoOp() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
 
     repo.bulkSoftDeleteSubtree(null, "user");
     repo.bulkSoftDeleteSubtree(List.of(), "user");
@@ -385,7 +386,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void bulkSoftDeleteSubtree_usesBatchedFindToOncePerLevel() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID a = UUID.randomUUID();
     UUID b = UUID.randomUUID();
     Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
@@ -410,7 +411,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void deleteChildren_hardDelete_groupsByTypeAndDispatchesToBulkHardDelete() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
 
     UUID schemaA = UUID.randomUUID();
     UUID schemaB = UUID.randomUUID();
@@ -452,7 +453,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void bulkHardDeleteSubtree_emptyOrNullIds_isNoOp() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
 
     repo.bulkHardDeleteSubtree(null, "user");
     repo.bulkHardDeleteSubtree(List.of(), "user");
@@ -464,7 +465,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void bulkHardDeleteSubtree_usesBatchedFindToOncePerLevel_includingParentOf() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID a = UUID.randomUUID();
     UUID b = UUID.randomUUID();
     Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
@@ -490,7 +491,7 @@ class EntityRepositoryRestoreTest {
 
   @Test
   void bulkHardDeleteSubtree_callsBulkEntitySpecificCleanupAndAdditionalChildrenHooks() {
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     UUID a = UUID.randomUUID();
     UUID b = UUID.randomUUID();
     Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
@@ -538,7 +539,7 @@ class EntityRepositoryRestoreTest {
     // hundreds of thousands of tables). Verify: more than one chunk, each chunk strictly smaller
     // than the whole level, every id covered exactly once, one batched cleanup/relationship/row
     // delete per chunk, and the per-entity hook firing for every entity.
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     int total = 1500;
     List<UUID> ids = new ArrayList<>(total);
     for (int i = 0; i < total; i++) {
@@ -605,7 +606,7 @@ class EntityRepositoryRestoreTest {
     // fire the per-entity field_relationship / tag_usage deletes — those are redundant N no-op
     // round-trips. usage is keyed by id (not covered by the FQN prefix), so it must still be
     // cleared, but in ONE batched IN-list delete rather than one per entity.
-    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO, daoCollection);
     repo.descendantsCoveredByAncestorCascade = true;
     UUID a = UUID.randomUUID();
     UUID b = UUID.randomUUID();
