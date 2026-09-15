@@ -96,8 +96,12 @@ class StoredProcedureLineageMixin(ABC):
                 results = conn.execute(text(query)).all()
 
             for row in results:
-                row_data = row._asdict()
+                # Bound outside the try so the handler can still name the procedure, and
+                # assigned inside it so an unreadable row cannot escape and silently drop
+                # every row after it.
+                row_data = {}
                 try:
+                    row_data = row._asdict()
                     query_by_procedure = QueryByProcedure.model_validate(row_data)
                     if not query_by_procedure.procedure_name and query_by_procedure.procedure_text:
                         query_by_procedure.procedure_name = get_procedure_name_from_call(

@@ -836,6 +836,22 @@ class TestProcedureBodyUnavailable:
 
         assert [result.procedure for result in results] == [procedure]
 
+    def test_an_unreadable_row_does_not_take_the_rest_of_the_batch_with_it(self):
+        """The producer consumes this as a generator, so an exception that escapes here
+        silently drops every remaining row while the run still reports success."""
+        mixin = TestableStoredProcedureMixin()
+        unreadable = Mock()
+        unreadable._asdict.side_effect = RuntimeError("row adapter blew up")
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+            unreadable,
+            self._row("usp_after_the_unreadable_row", None),
+        ]
+
+        yielded = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in yielded] == ["usp_after_the_unreadable_row"]
+        assert mixin.status.failed.call_count == 1
+
     def test_unusable_row_names_the_procedure_it_came_from(self):
         """A row that really is unusable still has to say which procedure it belongs to,
         otherwise the failure is undiagnosable on a server with thousands of procedures."""
