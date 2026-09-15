@@ -615,7 +615,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_source_table_details(
                 stream,
-                AirbyteSourceResponse(sourceType="bigquery", configuration={"database": "x"}),
+                AirbyteSourceResponse(sourceType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -660,7 +660,7 @@ class AirbyteUnitTest(TestCase):
         assert (
             get_destination_table_details(
                 stream,
-                AirbyteDestinationResponse(destinationType="bigquery", configuration={"database": "x"}),
+                AirbyteDestinationResponse(destinationType="dynamodb", configuration={"database": "x"}),
             )
             is None
         )
@@ -868,8 +868,9 @@ def test_get_source_table_details_mongodb_null_database_config():
 
 
 def test_get_source_table_details_unsupported():
-    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
-    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="bigquery")) is None
+    # dynamodb has no OM entity kind: not a table, not an object store. bigquery/snowflake
+    # are now mapped (see TestResolverRegistry), so they no longer belong in this case.
+    assert get_source_table_details(_stream(), AirbyteSourceResponse(sourceType="dynamodb")) is None
 
 
 def test_get_source_table_details_snowflake():
@@ -903,8 +904,9 @@ def test_get_destination_table_details_public_slugs():
 
 
 def test_get_destination_table_details_unsupported():
-    # A warehouse type OM still can't map (e.g. bigquery: project/dataset, not database/schema)
-    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="bigquery")) is None
+    # dynamodb has no OM entity kind: not a table, not an object store. bigquery/snowflake
+    # are now mapped (see TestResolverRegistry), so they no longer belong in this case.
+    assert get_destination_table_details(_stream(), AirbyteDestinationResponse(destinationType="dynamodb")) is None
 
 
 def test_get_destination_table_details_snowflake():
