@@ -23,6 +23,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { chooseSelectOption, uuid } from '../../utils/common';
 import {
   navigateToOntologyStudio,
+  QUERY_RESULT_GRAPH_CONTAINER,
   readGraphEdges,
 } from '../../utils/ontologyStudio';
 
@@ -296,7 +297,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
         page.getByTestId('ontology-sparql-result-graph')
       ).toBeVisible();
 
-      const edges = await readGraphEdges(page);
+      // Read the results graph explicitly: the studio's own graph is still
+      // mounted behind the Graph tab, and both carry .ontology-g6-container.
+      const edges = await readGraphEdges(page, 1, QUERY_RESULT_GRAPH_CONTAINER);
       expect(edges).toContainEqual(
         expect.objectContaining({
           from: sourceIri,

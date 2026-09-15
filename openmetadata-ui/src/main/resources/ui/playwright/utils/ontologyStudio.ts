@@ -170,13 +170,28 @@ export interface RenderedEdge {
   inverseRelationType?: string;
 }
 
+/**
+ * The query-results graph, for callers that run with the studio's own graph also
+ * on screen.
+ *
+ * Query mode mounts OntologyGraphG6 twice -- once for the explorer and once for
+ * the SPARQL results -- and both carry `.ontology-g6-container`, so a bare
+ * selector matches two elements and a Playwright locator raises a strict-mode
+ * violation. Worse when it does not: `document.querySelector` silently takes
+ * whichever happens to be first, so a caller meaning to read the results could
+ * read the explorer instead and still find the edge it was looking for.
+ */
+export const QUERY_RESULT_GRAPH_CONTAINER =
+  '[data-testid="ontology-sparql-result-graph"] .ontology-g6-container';
+
 export async function readGraphEdges(
   page: Page,
-  minCount = 1
+  minCount = 1,
+  containerSelector = '.ontology-g6-container'
 ): Promise<RenderedEdge[]> {
   await page.waitForFunction(
-    (min) => {
-      const el = document.querySelector<HTMLElement>('.ontology-g6-container');
+    ({ min, selector }) => {
+      const el = document.querySelector<HTMLElement>(selector);
       const raw = el?.dataset.edges;
       if (typeof raw !== 'string') {
         return false;
@@ -189,12 +204,12 @@ export async function readGraphEdges(
         return false;
       }
     },
-    minCount,
+    { min: minCount, selector: containerSelector },
     { timeout: 20000 }
   );
 
   return page
-    .locator('.ontology-g6-container')
+    .locator(containerSelector)
     .evaluate(
       (el: HTMLElement) =>
         JSON.parse(el.dataset.edges ?? '[]') as RenderedEdge[]
