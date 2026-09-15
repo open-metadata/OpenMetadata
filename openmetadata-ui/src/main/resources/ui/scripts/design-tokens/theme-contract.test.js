@@ -168,6 +168,12 @@ test('separates subtle and interactive border roles in both themes', () => {
     dark.get('--outline-color-subtle'),
     'theme(--color-border-subtle)'
   );
+  // `tw:outline-subtle` reads var(--tw-outline-color-subtle); without the dark
+  // bridge entry the outline keeps its light initial value in dark mode.
+  assert.equal(
+    dark.get('--tw-outline-color-subtle'),
+    'var(--color-border-subtle)'
+  );
 
   for (const role of ['subtle', 'hover']) {
     assert.equal(
@@ -179,6 +185,26 @@ test('separates subtle and interactive border roles in both themes', () => {
       `var(--color-border-${role})`
     );
   }
+});
+
+test('mirrors every dark utility-color remap into the --tw-color-* layer', () => {
+  const css = fs.readFileSync(GLOBALS_FILE, 'utf8');
+  const dark = declarations(extractBlock(css, '.dark-mode'));
+
+  // tw:bg-/text-/outline-utility-* all read var(--tw-color-utility-*). A dark
+  // --color-utility-* remap only reaches those utilities once mirrored into the
+  // --tw-color-* layer; an unmirrored remap renders the light value in dark.
+  const remapped = [...dark.keys()].filter((k) =>
+    /^--color-utility-[a-z-]+-\d+$/.test(k)
+  );
+
+  assert.ok(remapped.length > 0, 'expected dark utility-color remaps');
+
+  const missing = remapped.filter(
+    (k) => !dark.has(k.replace('--color-', '--tw-color-'))
+  );
+
+  assert.deepEqual(missing, [], `unmirrored dark utility colors: ${missing}`);
 });
 
 test('keeps dark text readable and exposes dedicated link roles', () => {
