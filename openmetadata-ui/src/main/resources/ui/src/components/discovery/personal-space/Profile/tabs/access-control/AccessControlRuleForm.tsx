@@ -292,9 +292,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
           setIsValidCondition(false);
         }
       }, 300),
-    // t is stable from react-i18next; deps intentionally minimal to keep one debounced instance
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [t]
   );
 
   useEffect(() => {

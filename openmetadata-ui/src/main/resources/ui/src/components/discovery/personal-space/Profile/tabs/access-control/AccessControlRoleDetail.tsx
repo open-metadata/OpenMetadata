@@ -21,13 +21,11 @@ import {
   Table,
   TableCard,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { TFunction } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, {
   FC,
@@ -102,7 +100,7 @@ const renderEntityCell = (
   canEditAll: boolean,
   isLoadingOnSave: boolean,
   onRemove: (item: EntityReference) => void,
-  t: TFunction,
+  t: ReturnType<typeof useTranslation>['t'],
   onNavigateToDetail?: (item: EntityReference) => void
 ) => {
   if (colId === 'name') {
@@ -121,7 +119,7 @@ const renderEntityCell = (
     }
 
     return (
-      <Typography ellipses weight="medium">
+      <Typography ellipsis weight="medium">
         {name}
       </Typography>
     );
@@ -133,20 +131,18 @@ const renderEntityCell = (
 
   if (colId === 'actions' && showRemove) {
     return (
-      <Tooltip
-        placement="left"
-        title={String(
+      <Button
+        color="tertiary"
+        data-testid={`remove-${getEntityName(item)}`}
+        isDisabled={!canEditAll || isLoadingOnSave}
+        size="xs"
+        tooltip={String(
           canEditAll ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
-        )}>
-        <Button
-          color="tertiary"
-          data-testid={`remove-${getEntityName(item)}`}
-          isDisabled={!canEditAll || isLoadingOnSave}
-          size="xs"
-          onPress={() => onRemove(item)}>
-          <Delete name={String(t('label.remove'))} width="16px" />
-        </Button>
-      </Tooltip>
+        )}
+        tooltipPlacement="left"
+        onPress={() => onRemove(item)}>
+        <Delete name={String(t('label.remove'))} width="16px" />
+      </Button>
     );
   }
 
@@ -166,7 +162,7 @@ interface EntityTableProps {
   showRemove: boolean;
   onNavigateToDetail?: (item: EntityReference) => void;
   onRemove: (item: EntityReference) => void;
-  t: TFunction;
+  t: ReturnType<typeof useTranslation>['t'];
 }
 
 const EntityTable: FC<EntityTableProps> = ({
@@ -250,7 +246,7 @@ interface InlineDescriptionEditorProps {
   onStartEdit: () => void;
   onCancel: () => void;
   onSave: () => void;
-  t: TFunction;
+  t: ReturnType<typeof useTranslation>['t'];
 }
 
 const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
@@ -270,17 +266,15 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         {t('label.description')}
       </Typography>
       {canEdit && !isEditing && (
-        <Tooltip
-          placement="right"
-          title={t('label.edit-entity', { entity: t('label.description') })}>
-          <Button
-            color="tertiary"
-            data-testid="edit-description-btn"
-            size="xs"
-            onPress={onStartEdit}>
-            <Edit name={t('label.edit')} width="14px" />
-          </Button>
-        </Tooltip>
+        <Button
+          color="tertiary"
+          data-testid="edit-description-btn"
+          size="xs"
+          tooltip={String(t('label.edit-entity', { entity: t('label.description') }))}
+          tooltipPlacement="right"
+          onPress={onStartEdit}>
+          <Edit name={t('label.edit')} width="14px" />
+        </Button>
       )}
     </Box>
 
@@ -322,7 +316,7 @@ interface RenameHeaderInputProps {
   onChange: (v: string) => void;
   onCancel: () => void;
   onSave: () => void;
-  t: TFunction;
+  t: ReturnType<typeof useTranslation>['t'];
 }
 
 const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
@@ -499,40 +493,36 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     ) : undefined;
 
     const renameButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <Tooltip
-        placement="right"
-        title={String(
+      <Button
+        color="tertiary"
+        data-testid="rename-role-btn"
+        isDisabled={!canEditAll}
+        size="sm"
+        tooltip={String(
           canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
-        )}>
-        <Button
-          color="tertiary"
-          data-testid="rename-role-btn"
-          isDisabled={!canEditAll}
-          size="sm"
-          onPress={() => {
-            setRenameValue(role.displayName || role.name || '');
-            setIsRenameOpen(true);
-          }}>
-          <Edit name={t('label.rename')} width="16px" />
-        </Button>
-      </Tooltip>
+        )}
+        tooltipPlacement="right"
+        onPress={() => {
+          setRenameValue(role.displayName || role.name || '');
+          setIsRenameOpen(true);
+        }}>
+        <Edit name={t('label.rename')} width="16px" />
+      </Button>
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <Tooltip
-        placement="left"
-        title={String(
+      <Button
+        color="tertiary"
+        data-testid="delete-role-btn"
+        isDisabled={!canDelete}
+        size="sm"
+        tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-        )}>
-        <Button
-          color="tertiary"
-          data-testid="delete-role-btn"
-          isDisabled={!canDelete}
-          size="sm"
-          onPress={() => setIsDeleteRoleOpen(true)}>
-          <Delete name={t('label.delete')} width="16px" />
-        </Button>
-      </Tooltip>
+        )}
+        tooltipPlacement="left"
+        onPress={() => setIsDeleteRoleOpen(true)}>
+        <Delete name={t('label.delete')} width="16px" />
+      </Button>
     );
 
     onSetHeaderTitleSuffix?.(renameButtonNode);

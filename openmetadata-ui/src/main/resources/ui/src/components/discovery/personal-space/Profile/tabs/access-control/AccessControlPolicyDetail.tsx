@@ -19,7 +19,6 @@ import {
   Table,
   TableCard,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
@@ -263,38 +262,34 @@ const RuleCard: FC<RuleCardProps> = ({
           {rule.name}
         </Typography>
         <Box direction="row" gap={1}>
-          <Tooltip
-            placement="left"
-            title={getPermissionTooltipTitle(
+          <Button
+            color="tertiary"
+            data-testid={`edit-rule-${rule.name}`}
+            isDisabled={!canEditAll || isLoadingOnSave}
+            size="xs"
+            tooltip={getPermissionTooltipTitle(
               canEditAll,
               t('label.edit'),
               t(NO_PERMISSION_FOR_ACTION)
-            )}>
-            <Button
-              color="tertiary"
-              data-testid={`edit-rule-${rule.name}`}
-              isDisabled={!canEditAll || isLoadingOnSave}
-              size="xs"
-              onPress={() => onEdit(rule)}>
-              <Edit name={String(t('label.edit'))} width="14px" />
-            </Button>
-          </Tooltip>
-          <Tooltip
-            placement="left"
-            title={getPermissionTooltipTitle(
+            )}
+            tooltipPlacement="left"
+            onPress={() => onEdit(rule)}>
+            <Edit name={String(t('label.edit'))} width="14px" />
+          </Button>
+          <Button
+            color="tertiary"
+            data-testid={`delete-rule-${rule.name}`}
+            isDisabled={!canEditAll || isLoadingOnSave}
+            size="xs"
+            tooltip={getPermissionTooltipTitle(
               canEditAll,
               t('label.delete'),
               t(NO_PERMISSION_FOR_ACTION)
-            )}>
-            <Button
-              color="tertiary"
-              data-testid={`delete-rule-${rule.name}`}
-              isDisabled={!canEditAll || isLoadingOnSave}
-              size="xs"
-              onPress={() => onDelete(rule.name ?? '')}>
-              <Delete name={String(t('label.delete'))} width="14px" />
-            </Button>
-          </Tooltip>
+            )}
+            tooltipPlacement="left"
+            onPress={() => onDelete(rule.name ?? '')}>
+            <Delete name={String(t('label.delete'))} width="14px" />
+          </Button>
         </Box>
       </Box>
       <Box direction="col" gap={1}>
@@ -389,20 +384,18 @@ const renderRoleOrTeamCell = (
 
   if (colId === 'actions' && canEditAll) {
     return (
-      <Tooltip
-        placement="left"
-        title={String(
+      <Button
+        color="tertiary"
+        data-testid={`remove-${getEntityName(item)}`}
+        isDisabled={isLoadingOnSave}
+        size="xs"
+        tooltip={String(
           canEditAll ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
-        )}>
-        <Button
-          color="tertiary"
-          data-testid={`remove-${getEntityName(item)}`}
-          isDisabled={isLoadingOnSave}
-          size="xs"
-          onPress={() => onRemove(item, kind)}>
-          <Delete name={String(t('label.remove'))} width="16px" />
-        </Button>
-      </Tooltip>
+        )}
+        tooltipPlacement="left"
+        onPress={() => onRemove(item, kind)}>
+        <Delete name={String(t('label.remove'))} width="16px" />
+      </Button>
     );
   }
 
@@ -827,40 +820,36 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     ) : undefined;
 
     const renameButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <Tooltip
-        placement="right"
-        title={String(
+      <Button
+        color="tertiary"
+        data-testid="rename-policy-btn"
+        isDisabled={!canEditAll}
+        size="sm"
+        tooltip={String(
           canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
-        )}>
-        <Button
-          color="tertiary"
-          data-testid="rename-policy-btn"
-          isDisabled={!canEditAll}
-          size="sm"
-          onPress={() => {
-            setRenameValue(policy.displayName || policy.name || '');
-            setIsRenameOpen(true);
-          }}>
-          <Edit name={t('label.rename')} width="16px" />
-        </Button>
-      </Tooltip>
+        )}
+        tooltipPlacement="right"
+        onPress={() => {
+          setRenameValue(policy.displayName || policy.name || '');
+          setIsRenameOpen(true);
+        }}>
+        <Edit name={t('label.rename')} width="16px" />
+      </Button>
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <Tooltip
-        placement="left"
-        title={String(
+      <Button
+        color="tertiary"
+        data-testid="delete-policy-btn"
+        isDisabled={!canDelete}
+        size="sm"
+        tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-        )}>
-        <Button
-          color="tertiary"
-          data-testid="delete-policy-btn"
-          isDisabled={!canDelete}
-          size="sm"
-          onPress={() => setIsDeletePolicyOpen(true)}>
-          <Delete name={t('label.delete')} width="16px" />
-        </Button>
-      </Tooltip>
+        )}
+        tooltipPlacement="left"
+        onPress={() => setIsDeletePolicyOpen(true)}>
+        <Delete name={t('label.delete')} width="16px" />
+      </Button>
     );
 
     onSetHeaderTitleSuffix?.(renameButtonNode);

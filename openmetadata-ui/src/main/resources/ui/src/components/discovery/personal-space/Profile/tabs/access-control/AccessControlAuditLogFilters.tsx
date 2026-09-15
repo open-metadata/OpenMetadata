@@ -39,17 +39,20 @@ import { translateWithNestedKeys } from '../../../../../../utils/i18next/LocalUt
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { ENTITY_TYPE_SEARCH_OPTIONS } from './AccessControl.constants';
 
-const BOT_DISPLAY_NAME_MAP: Record<string, string> = {
-  aiautomationapplicationbot: 'AI Automation Application Bot',
-  'autoclassification-bot': 'Auto Classification Bot',
-  automatorapplicationbot: 'Automator Application Bot',
-};
-
 const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
   activeFilters,
   onFiltersChange,
 }) => {
   const { t } = useTranslation();
+
+  const botDisplayNameMap = useMemo<Record<string, string>>(
+    () => ({
+      aiautomationapplicationbot: t('label.ai-automation-application-bot'),
+      'autoclassification-bot': t('label.auto-classification-bot'),
+      automatorapplicationbot: t('label.automator-application-bot'),
+    }),
+    [t]
+  );
 
   const auditTimeFilterRange = useMemo(
     () =>
@@ -213,32 +216,34 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     }
   }, []);
 
-  const fetchBots = useCallback(async (search: string) => {
-    setIsLoadingBots(true);
-    try {
-      const response = await searchQuery({
-        query: search,
-        pageNumber: 1,
-        pageSize: 10,
-        queryFilter: getTermQuery({ isBot: 'true' }),
-        searchIndex: SearchIndex.USER,
-      });
-      const bots: User[] = formatUsersResponse(response.hits.hits);
-      setBotOptions(
-        bots.map((bot) => ({
-          key: bot.name,
-          label:
-            BOT_DISPLAY_NAME_MAP[
-              (getEntityName(bot) || bot.name).toLowerCase()
-            ] ?? startCase(getEntityName(bot) || bot.name),
-        }))
-      );
-    } catch {
-      setBotOptions([]);
-    } finally {
-      setIsLoadingBots(false);
-    }
-  }, []);
+  const fetchBots = useCallback(
+    async (search: string) => {
+      setIsLoadingBots(true);
+      try {
+        const response = await searchQuery({
+          query: search,
+          pageNumber: 1,
+          pageSize: 10,
+          queryFilter: getTermQuery({ isBot: 'true' }),
+          searchIndex: SearchIndex.USER,
+        });
+        const bots: User[] = formatUsersResponse(response.hits.hits);
+        setBotOptions(
+          bots.map((bot) => ({
+            key: bot.name,
+            label:
+              botDisplayNameMap[(getEntityName(bot) || bot.name).toLowerCase()] ??
+              startCase(getEntityName(bot) || bot.name),
+          }))
+        );
+      } catch {
+        setBotOptions([]);
+      } finally {
+        setIsLoadingBots(false);
+      }
+    },
+    [botDisplayNameMap]
+  );
 
   const debouncedFetchUsers = useMemo(
     () => debounce(fetchUsers, 300),

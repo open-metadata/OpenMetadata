@@ -22,6 +22,7 @@ import {
   Table,
   TableCard,
   Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -184,11 +185,13 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
     if (!viewPolicyPermission) {
       return (
-        <Tooltip key={key} title={t(NO_PERMISSION_TO_VIEW)}>
-          <Box className="tw:text-sm tw:truncate tw:block">
-            {getEntityName(policy)}
-          </Box>
-        </Tooltip>
+        <Typography
+          key={key}
+          className="tw:truncate tw:block"
+          size="text-sm"
+          tooltip={t(NO_PERMISSION_TO_VIEW)}>
+          {getEntityName(policy)}
+        </Typography>
       );
     }
 
@@ -296,22 +299,20 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       case 'actions':
         return (
-          <Tooltip
-            placement="left"
-            title={
+          <Button
+            color="tertiary"
+            data-testid={`delete-action-${getEntityName(role)}`}
+            isDisabled={!deleteRolePermission}
+            size="xs"
+            tooltip={
               deleteRolePermission
                 ? t('label.delete-entity', { entity: t('label.role') })
                 : t(NO_PERMISSION_FOR_ACTION)
-            }>
-            <Button
-              color="tertiary"
-              data-testid={`delete-action-${getEntityName(role)}`}
-              isDisabled={!deleteRolePermission}
-              size="xs"
-              onPress={() => setSelectedRole(role)}>
-              <Delete name={t('label.delete')} width="16px" />
-            </Button>
-          </Tooltip>
+            }
+            tooltipPlacement="left"
+            onPress={() => setSelectedRole(role)}>
+            <Delete name={t('label.delete')} width="16px" />
+          </Button>
         );
 
       default:

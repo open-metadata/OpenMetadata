@@ -555,8 +555,12 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
         details.push(
           <span key={`added-${change.name}`}>
-            <span className="tw:text-tertiary">{addedLabel}</span>{' '}
-            <span className="tw:font-medium">{label || fallbackField}</span>
+            <Typography as="span" className="tw:text-tertiary">
+              {addedLabel}
+            </Typography>{' '}
+            <Typography as="span" weight="medium">
+              {label || fallbackField}
+            </Typography>
             {valueNode && <>: {valueNode}</>}
           </span>
         );
@@ -580,8 +584,12 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
           details.push(
             <span key={`updated-${change.name}`}>
-              <span className="tw:text-tertiary">{updatedLabel}</span>{' '}
-              <span className="tw:font-medium">{label || fallbackField}</span>
+              <Typography as="span" className="tw:text-tertiary">
+                {updatedLabel}
+              </Typography>{' '}
+              <Typography as="span" weight="medium">
+                {label || fallbackField}
+              </Typography>
               {hasValueChange && (
                 <>
                   : {oldValueNode}
@@ -603,8 +611,12 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
         details.push(
           <span key={`deleted-${change.name}`}>
-            <span className="tw:text-tertiary">{removedLabel}</span>{' '}
-            <span className="tw:font-medium">{label || fallbackField}</span>
+            <Typography as="span" className="tw:text-tertiary">
+              {removedLabel}
+            </Typography>{' '}
+            <Typography as="span" weight="medium">
+              {label || fallbackField}
+            </Typography>
             {valueNode && <>: {valueNode}</>}
           </span>
         );

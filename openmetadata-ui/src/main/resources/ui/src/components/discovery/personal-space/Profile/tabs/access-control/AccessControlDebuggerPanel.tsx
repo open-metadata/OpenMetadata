@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
@@ -38,7 +38,7 @@ import Loader from '../../../../../common/Loader/Loader';
 import { OPERATION_ITEMS, RESOURCE_ITEMS } from './AccessControl.constants';
 import AccessControlUserPermissions from './AccessControlUserPermissions';
 
-const AccessControlDebuggerPanel: React.FC = () => {
+const AccessControlDebuggerPanel: FC = () => {
   const { t } = useTranslation();
   const [selectedUsername, setSelectedUsername] = useState('');
   const [permissionInfo, setPermissionInfo] = useState<PermissionDebugInfo>();

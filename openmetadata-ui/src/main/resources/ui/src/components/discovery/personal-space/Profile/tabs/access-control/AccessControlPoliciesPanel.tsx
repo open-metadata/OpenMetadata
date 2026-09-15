@@ -22,6 +22,7 @@ import {
   Table,
   TableCard,
   Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -185,9 +186,9 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     if (!viewRolePermission) {
       return (
-        <Tooltip key={key} title={t(NO_PERMISSION_TO_VIEW)}>
-          <Typography ellipses>{getEntityName(role)}</Typography>
-        </Tooltip>
+        <Typography key={key} ellipsis tooltip={t(NO_PERMISSION_TO_VIEW)}>
+          {getEntityName(role)}
+        </Typography>
       );
     }
 
@@ -256,16 +257,16 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     switch (colId) {
       case 'name':
         return onNavigate ? (
-          <Tooltip placement="top" title={getEntityName(policy)}>
-            <Button
-              className="tw:max-w-full tw:truncate tw:block tw:text-left"
-              color="link-color"
-              data-testid="policy-name"
-              size="sm"
-              onPress={() => handlePolicyClick(policy)}>
-              {getEntityName(policy)}
-            </Button>
-          </Tooltip>
+          <Button
+            className="tw:max-w-full tw:truncate tw:block tw:text-left"
+            color="link-color"
+            data-testid="policy-name"
+            size="sm"
+            tooltip={getEntityName(policy)}
+            tooltipPlacement="top"
+            onPress={() => handlePolicyClick(policy)}>
+            {getEntityName(policy)}
+          </Button>
         ) : (
           <Tooltip
             placement="top"
@@ -299,22 +300,20 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
       case 'actions':
         return (
-          <Tooltip
-            placement="left"
-            title={
+          <Button
+            color="tertiary"
+            data-testid={`delete-action-${getEntityName(policy)}`}
+            isDisabled={!deletePolicyPermission}
+            size="xs"
+            tooltip={
               deletePolicyPermission
                 ? t('label.delete-entity', { entity: t('label.policy') })
                 : t(NO_PERMISSION_FOR_ACTION)
-            }>
-            <Button
-              color="tertiary"
-              data-testid={`delete-action-${getEntityName(policy)}`}
-              isDisabled={!deletePolicyPermission}
-              size="xs"
-              onPress={() => setSelectedPolicy(policy)}>
-              <Delete name={t('label.delete')} width="16px" />
-            </Button>
-          </Tooltip>
+            }
+            tooltipPlacement="left"
+            onPress={() => setSelectedPolicy(policy)}>
+            <Delete name={t('label.delete')} width="16px" />
+          </Button>
         );
 
       default:
