@@ -60,6 +60,7 @@ import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.IMPORT_O
 import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.REPLACE;
 import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.REPLACE_IF_NONEMPTY;
 import static org.openmetadata.service.jdbi3.EntityReferenceChange.Mode.RETAIN;
+import static org.openmetadata.service.jdbi3.EntityReferenceChange.explicitReferences;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -79,7 +80,6 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
-import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReference;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReferenceList;
 import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
@@ -155,7 +155,6 @@ import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
 import lombok.NonNull;
@@ -9135,60 +9134,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (consolidateChanges) {
-        // Consolidation requires request-local incremental diff before reverting to previous
-        // session state.
-        if (importMode) {
-          try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
-            incrementalChangeForImport();
-          }
-          indexBaselinePass = false;
-          try (var ignored = phase("entityUpdateRevertImport")) {
-            revertForImport();
-          }
-        } else {
-          try (var ignored = phase("entityUpdateIncrementalChange")) {
-            incrementalChange();
-          }
-          // Everything from here on diffs against a reverted baseline the external stores never
-          // saw: revert() inverts this request, replays it, then rebases original onto the
-          // pre-session version.
-          indexBaselinePass = false;
-          try (var ignored = phase("entityUpdateRevert")) {
-            revert();
-          }
+        try (var ignored =
+            phase(
+                importMode
+                    ? "entityUpdateIncrementalChangeImport"
+                    : "entityUpdateIncrementalChange")) {
+          incrementalChange(importMode);
         }
-
-        // Consolidation compares previous (pre-session) to updated — must compare all fields
+        // Historical comparisons describe past state; only the current delta may write or validate.
+        indexBaselinePass = false;
+        try (var ignored = phase(importMode ? "entityUpdateRevertImport" : "entityUpdateRevert")) {
+          revert(importMode);
+        }
+        // The session diff includes all fields, including edits made by earlier requests.
         patchedFields = null;
-        // Now updated from previous/original to updated one
-        changeDescription = new ChangeDescription();
-        if (importMode) {
-          try (var ignored = phase("entityUpdateDiffImport")) {
-            updateInternalForImport();
-          }
-        } else {
-          try (var ignored = phase("entityUpdateDiff")) {
-            updateInternal();
-          }
-        }
-      } else {
-        // Common path: single diff pass. Derive incremental description from final diff to avoid
-        // duplicate side-effectful update traversal.
-        changeDescription = new ChangeDescription();
-        if (importMode) {
-          try (var ignored = phase("entityUpdateDiffImport")) {
-            updateInternalForImport();
-          }
-          try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
-            captureIncrementalFromCurrentChange();
-          }
-        } else {
-          try (var ignored = phase("entityUpdateDiff")) {
-            updateInternal();
-          }
-          try (var ignored = phase("entityUpdateIncrementalChange")) {
-            captureIncrementalFromCurrentChange();
-          }
+      }
+
+      changeDescription = new ChangeDescription();
+      try (var ignored = phase(importMode ? "entityUpdateDiffImport" : "entityUpdateDiff")) {
+        updateInternal(false, importMode);
+      }
+      if (!consolidateChanges) {
+        try (var ignored =
+            phase(
+                importMode
+                    ? "entityUpdateIncrementalChangeImport"
+                    : "entityUpdateIncrementalChange")) {
+          captureIncrementalFromCurrentChange();
         }
       }
 
@@ -9271,17 +9243,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return updated;
     }
 
-    private void incrementalChange() {
+    private void incrementalChange(boolean importMode) {
       changeDescription = new ChangeDescription();
-      updateInternal(false);
-      incrementalChangeDescription = changeDescription;
-      incrementalChangeDescription.setPreviousVersion(original.getVersion());
-      updated.setIncrementalChangeDescription(incrementalChangeDescription);
-    }
-
-    private void incrementalChangeForImport() {
-      changeDescription = new ChangeDescription();
-      updateInternalForImport(false);
+      updateInternal(false, importMode);
       incrementalChangeDescription = changeDescription;
       incrementalChangeDescription.setPreviousVersion(original.getVersion());
       updated.setIncrementalChangeDescription(incrementalChangeDescription);
@@ -9334,10 +9298,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     @Transaction
-    private void revert() {
-      // Revert from current version to previous version to go back to the previous version
-      // set changeDescription to null
-      T updatedOld = updated;
+    private void revert(boolean importMode) {
+      final T requested = updated;
       previous = getPreviousVersion(original);
       if (previous != null) {
         LOG.debug(
@@ -9345,76 +9307,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
             previous.getVersion());
         changeDescription = new ChangeDescription();
         updated = previous;
-        updateInternal(true);
+        updateInternal(true, importMode);
         LOG.info(
             "In session change consolidation. Reverting to previous version {} completed",
             previous.getVersion());
-
-        // Now go from original to updated
-        updated = updatedOld;
-        updateInternal();
-
-        // Finally, go from previous to the latest updated entity to consolidate changes
+        updated = requested;
+        updateInternal(false, importMode);
         original = previous;
         entityChanged = false;
       }
     }
 
-    @Transaction
-    private void revertForImport() {
-      // Revert from current version to previous version to go back to the previous version
-      // set changeDescription to null
-      T updatedOld = updated;
-      previous = getPreviousVersion(original);
-      if (previous != null) {
-        LOG.debug(
-            "In session change consolidation. Reverting to previous version {}",
-            previous.getVersion());
-        changeDescription = new ChangeDescription();
-        updated = previous;
-        updateInternalForImport(true);
-        LOG.info(
-            "In session change consolidation. Reverting to previous version {} completed",
-            previous.getVersion());
-
-        // Now go from original to updated
-        updated = updatedOld;
-        updateInternalForImport();
-
-        // Finally, go from previous to the latest updated entity to consolidate changes
-        original = previous;
-        entityChanged = false;
-      }
-    }
-
-    /**
-     * Compare original and updated entities and perform updates. Update the entity version and track changes.
-     */
     @Transaction
     private void updateInternal() {
-      updateInternal(false);
+      updateInternal(false, false);
     }
 
     @Transaction
-    private void updateInternalForImport() {
-      updateInternalForImport(false);
-    }
-
-    /**
-     * Compare original and updated entities and perform updates. Update the entity version and track changes.
-     */
-    @Transaction
-    private void updateInternal(boolean consolidatingChanges) {
-      if (operation.isDelete()) { // Soft DELETE Operation
+    private void updateInternal(boolean consolidatingChanges, boolean importMode) {
+      if (operation.isDelete()) {
         updateDeleted();
-      } else { // PUT or PATCH operations
-        updated.setId(original.getId());
-        updateDeleted();
-        compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
-        compareAndUpdate(FIELD_DISPLAY_NAME, this::updateDisplayName);
-        compareAndUpdate(FIELD_ENTITY_STATUS, () -> updateEntityStatus(consolidatingChanges));
-        compareAndUpdate(FIELD_OWNERS, () -> updateOwners(false));
-        compareAndUpdate(FIELD_EXTENSION, () -> updateExtension(consolidatingChanges));
+        return;
+      }
+      final BiConsumer<String, Runnable> compare =
+          importMode ? (field, action) -> action.run() : this::compareAndUpdate;
+      updated.setId(original.getId());
+      updateDeleted();
+      compare.accept(FIELD_DESCRIPTION, this::updateDescription);
+      compare.accept(FIELD_DISPLAY_NAME, this::updateDisplayName);
+      compare.accept(FIELD_ENTITY_STATUS, this::updateEntityStatus);
+      compare.accept(FIELD_OWNERS, () -> updateOwners(importMode));
+      compare.accept(FIELD_EXTENSION, this::updateExtension);
+      if (importMode) {
+        updateTagsForImport(
+            updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
+      } else {
         compareAndUpdate(
             FIELD_TAGS,
             () ->
@@ -9423,42 +9350,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     FIELD_TAGS,
                     original.getTags(),
                     updated.getTags()));
-        compareAndUpdate(FIELD_DOMAINS, this::updateDomains);
-        compareAndUpdate(FIELD_DATA_PRODUCTS, this::updateDataProducts);
-        compareAndUpdate(FIELD_EXPERTS, this::updateExperts);
-        compareAndUpdate(FIELD_REVIEWERS, this::updateReviewers);
-        compareAndUpdate(FIELD_STYLE, this::updateStyle);
-        compareAndUpdate(FIELD_LIFE_CYCLE, this::updateLifeCycle);
-        compareAndUpdate(FIELD_CERTIFICATION, this::updateCertification);
-        entitySpecificUpdate(consolidatingChanges);
-        updateChangeSummary();
       }
-    }
-
-    @Transaction
-    private void updateInternalForImport(boolean consolidatingChanges) {
-      if (operation.isDelete()) { // Soft DELETE Operation
-        updateDeleted();
-      } else { // PUT or PATCH operations
-        updated.setId(original.getId());
-        updateDeleted();
-        updateDescription();
-        updateDisplayName();
-        updateEntityStatus(consolidatingChanges);
-        updateOwners(true);
-        updateExtension(consolidatingChanges);
-        updateTagsForImport(
-            updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
-        updateDomainsForImport();
-        updateDataProducts();
-        updateExperts();
-        updateReviewers();
-        updateStyle();
-        updateLifeCycle();
-        updateCertification();
-        entitySpecificUpdate(consolidatingChanges);
-        updateChangeSummary();
-      }
+      compare.accept(
+          FIELD_DOMAINS, importMode ? this::updateDomainsForImport : this::updateDomains);
+      compare.accept(FIELD_DATA_PRODUCTS, this::updateDataProducts);
+      compare.accept(FIELD_EXPERTS, this::updateExperts);
+      compare.accept(FIELD_REVIEWERS, this::updateReviewers);
+      compare.accept(FIELD_STYLE, this::updateStyle);
+      compare.accept(FIELD_LIFE_CYCLE, this::updateLifeCycle);
+      compare.accept(FIELD_CERTIFICATION, this::updateCertification);
+      entitySpecificUpdate(consolidatingChanges);
+      updateChangeSummary();
     }
 
     protected void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -9523,13 +9425,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    private void updateEntityStatus(boolean consolidatingChanges) {
+    private void updateEntityStatus() {
       if (supportsEntityStatus) {
         if (original.getEntityStatus() == updated.getEntityStatus()) {
           return;
         }
         // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
-        if (!consolidatingChanges
+        if (indexBaselinePass
             && original.getEntityStatus() == EntityStatus.IN_REVIEW
             && (updated.getEntityStatus() == EntityStatus.APPROVED
                 || updated.getEntityStatus() == EntityStatus.REJECTED)) {
@@ -9600,91 +9502,62 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return; // Nothing to update
       }
 
-      List<TagLabel> addedTags = new ArrayList<>();
-      List<TagLabel> deletedTags = new ArrayList<>();
-
       boolean shouldMergeTags =
           operation.isPut() && (!overrideMetadata || nullOrEmpty(updatedTags));
+      final var diff = EntityDiff.tags(origTags, updatedTags, shouldMergeTags);
+      final List<TagLabel> addedTags = new ArrayList<>(diff.added());
+      final List<TagLabel> deletedTags = new ArrayList<>(diff.deleted());
       if (shouldMergeTags) {
-        // A regular PUT merges tags in the request with what already exists.
-        // Calculate what needs to be added (tags in updatedTags but not in origTags)
-        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
-        Set<String> origTagKeys = createTagKeySet(origTags);
-        for (TagLabel updatedTag : updatedTags) {
-          if (!origTagKeys.contains(createTagKey(updatedTag))) {
-            addedTags.add(updatedTag);
-          }
-        }
-        // For PUT, we don't delete any existing tags
-        // Merge the tags for validation and recording purposes
-        EntityUtil.mergeTags(updatedTags, origTags);
+        updatedTags.clear();
+        updatedTags.addAll(diff.updated());
+      }
+      if (indexBaselinePass) {
         checkMutuallyExclusive(updatedTags);
-      } else {
-        // PATCH and an explicit PUT override replace tags.
-        // Use Set for O(1) lookup performance instead of O(n) stream().anyMatch()
-        Set<String> updatedTagKeys = createTagKeySet(updatedTags);
-        Set<String> origTagKeys = createTagKeySet(origTags);
 
-        // Calculate what needs to be deleted (tags in origTags but not in updatedTags)
-        for (TagLabel origTag : origTags) {
-          if (!updatedTagKeys.contains(createTagKey(origTag))) {
-            deletedTags.add(origTag);
-          }
+        // Filter out certification tags — handled exclusively by updateCertification()
+        String certClassification = getCertificationClassification();
+        if (certClassification != null) {
+          addedTags.removeIf(
+              tag -> certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())));
+          deletedTags.removeIf(
+              tag -> certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())));
         }
-        // Calculate what needs to be added (tags in updatedTags but not in origTags)
-        for (TagLabel updatedTag : updatedTags) {
-          if (!origTagKeys.contains(createTagKey(updatedTag))) {
-            addedTags.add(updatedTag);
-          }
+
+        // Apply differential updates - only modify what changed
+        if (!deletedTags.isEmpty()) {
+          applyTagsDeleteInFlushAndDeferRdf(deletedTags, fqn);
         }
-        checkMutuallyExclusive(updatedTags);
-      }
-
-      // Filter out certification tags — handled exclusively by updateCertification()
-      String certClassification = getCertificationClassification();
-      if (certClassification != null) {
-        addedTags.removeIf(
-            tag -> certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())));
-        deletedTags.removeIf(
-            tag -> certClassification.equals(FullyQualifiedName.getParentFQN(tag.getTagFQN())));
-      }
-
-      // Apply differential updates - only modify what changed
-      if (!deletedTags.isEmpty()) {
-        applyTagsDeleteInFlushAndDeferRdf(deletedTags, fqn);
-      }
-      if (!addedTags.isEmpty()) {
-        applyTagsAddInFlushAndDeferRdf(
-            addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
+        if (!addedTags.isEmpty()) {
+          applyTagsAddInFlushAndDeferRdf(
+              addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(),
+              fqn);
+        }
       }
 
       // Record changes for audit trail
-      recordListChange(
-          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
+      if (shouldCompare(fieldName)) {
+        EntityDiff.recordItems(changeDescription, fieldName, diff.added(), diff.deleted());
+      }
       updatedTags.sort(compareTagLabel);
     }
 
     protected void updateTagsForImport(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      origTags = listOrEmpty(origTags);
-      // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
-      // its empty.
-      updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
-      if (origTags.isEmpty() && updatedTags.isEmpty()) {
-        return; // Nothing to update
+      final var changes = EntityDiff.tags(origTags, updatedTags, false);
+      if (shouldCompare(fieldName)) {
+        EntityDiff.recordItems(changeDescription, fieldName, changes.added(), changes.deleted());
       }
-
-      // Remove current entity tags in the database. It will be added back later from the merged tag
-      // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
-
-      List<TagLabel> addedTags = new ArrayList<>();
-      List<TagLabel> deletedTags = new ArrayList<>();
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
-      updatedTags.sort(compareTagLabel);
-      applyTagsReplaceInFlushAndDeferRdf(origTags, updatedTags, fqn);
+      if (updatedTags != null && updatedTags.size() > 1) {
+        updatedTags.sort(compareTagLabel);
+      }
+      if (indexBaselinePass) {
+        final var writes =
+            EntityDiff.tagRows(getNonDerivedTags(origTags), getNonDerivedTags(updatedTags));
+        applyTagsDeleteInFlushAndDeferRdf(writes.deleted(), fqn);
+        applyTagsAddInFlushAndDeferRdf(writes.added(), fqn);
+        // Imported label attributes are unversioned, but still need cache and projection refresh.
+        entityChanged |= !writes.added().isEmpty() || !writes.deleted().isEmpty();
+      }
     }
 
     private List<TagLabel> getNonDerivedTags(List<TagLabel> tags) {
@@ -9728,106 +9601,72 @@ public abstract class EntityRepository<T extends EntityInterface> {
           });
     }
 
-    private void applyTagsReplaceInFlushAndDeferRdf(
-        List<TagLabel> originalTags, List<TagLabel> updatedTags, String targetFqn) {
-      List<TagLabel> originalNonDerived = getNonDerivedTags(originalTags);
-      if (!originalNonDerived.isEmpty()) {
-        List<TagLabel> tagsToRemove = List.copyOf(originalNonDerived);
-        deferReactOperation(
-            () -> {
-              for (TagLabel tagLabel : tagsToRemove) {
-                org.openmetadata.service.rdf.RdfTagUpdater.removeTag(tagLabel, targetFqn);
-              }
-            });
-      }
-      applyTagsAddInFlushAndDeferRdf(updatedTags, targetFqn);
-    }
-
-    private void updateExtension(boolean consolidatingChanges) {
+    private void updateExtension() {
       Object origExtension = original.getExtension();
       Object updatedExtension = updated.getExtension();
       if (origExtension == updatedExtension) {
         return;
       }
-      if (updatedByBot() && operation == Operation.PUT) {
-        // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting
-        // custom extension
+      if (operation == Operation.PUT && (updatedByBot() || updatedExtension == null)) {
         updated.setExtension(origExtension);
         return;
       }
-
-      if (operation == Operation.PUT && updatedExtension == null) {
-        // Revert change to non-empty extension if it is being updated by a PUT request
-        // For PUT operations, existing extension can't be removed.
-        updated.setExtension(origExtension);
-        return;
+      final var changes = EntityDiff.properties(origExtension, updatedExtension);
+      recordExtensionChanges(changes);
+      if (indexBaselinePass) {
+        prepareExtensionChanges(changes);
+        storeExtensionChanges(changes);
       }
+    }
 
+    private void recordExtensionChanges(List<EntityDiff.Property> changes) {
       List<JsonNode> addedFields = new ArrayList<>();
       List<JsonNode> deletedFields = new ArrayList<>();
-      List<JsonNode> updatedFields = new ArrayList<>();
-      JsonNode origExtensionFields = JsonUtils.valueToTree(origExtension);
-      JsonNode updatedExtensionFields = JsonUtils.valueToTree(updatedExtension);
-      Set<String> allKeys = new HashSet<>();
-      if (origExtensionFields.isObject()) {
-        origExtensionFields.fieldNames().forEachRemaining(allKeys::add);
-      }
-      if (updatedExtensionFields.isObject()) {
-        updatedExtensionFields.fieldNames().forEachRemaining(allKeys::add);
-      }
-
-      for (String key : allKeys) {
-        JsonNode origValue = origExtensionFields.get(key);
-        JsonNode updatedValue = updatedExtensionFields.get(key);
-
-        if (origValue == null) {
-          addedFields.add(JsonUtils.getObjectNode(key, updatedValue));
-        } else if (updatedValue == null) {
-          deletedFields.add(JsonUtils.getObjectNode(key, origValue));
-        } else if (!origValue.equals(updatedValue)) {
-          updatedFields.add(JsonUtils.getObjectNode(key, updatedValue));
-          recordChange(getExtensionField(key), origValue.toString(), updatedValue.toString());
+      for (var change : changes) {
+        if (change.before() == null) {
+          addedFields.add(JsonUtils.getObjectNode(change.name(), change.after()));
+        } else if (change.after() == null) {
+          deletedFields.add(JsonUtils.getObjectNode(change.name(), change.before()));
+        } else {
+          recordChange(
+              getExtensionField(change.name()),
+              change.before().toString(),
+              change.after().toString());
         }
       }
+      EntityDiff.recordItems(changeDescription, FIELD_EXTENSION, addedFields, deletedFields);
+    }
 
-      if (!consolidatingChanges) {
-        JsonNode extensionJsonNode = JsonUtils.valueToTree(updated.getExtension());
-        if (extensionJsonNode.isObject()) {
-          ObjectNode extensionNode = (ObjectNode) extensionJsonNode;
-          for (JsonNode node :
-              Stream.of(addedFields, updatedFields).flatMap(List::stream).toList()) {
-            node.fields()
-                .forEachRemaining(
-                    field -> {
-                      Map<String, Object> singleField = new HashMap<>();
-                      singleField.put(
-                          field.getKey(), JsonUtils.treeToValue(field.getValue(), Object.class));
-                      Object transformedField =
-                          validateAndTransformExtension(singleField, entityType);
-                      JsonNode transformedNode = JsonUtils.valueToTree(transformedField);
-                      if (transformedNode.isObject()) {
-                        extensionNode.set(field.getKey(), transformedNode.get(field.getKey()));
-                      }
-                    });
-          }
-          for (JsonNode node : deletedFields) {
-            node.fields().forEachRemaining(field -> extensionNode.remove(field.getKey()));
-          }
-          if (extensionNode.isEmpty()) {
-            updated.setExtension(null);
+    private void prepareExtensionChanges(List<EntityDiff.Property> changes) {
+      if (JsonUtils.valueToTree(updated.getExtension()) instanceof ObjectNode extension) {
+        for (var change : changes) {
+          if (change.after() == null) {
+            extension.remove(change.name());
           } else {
-            updated.setExtension(JsonUtils.treeToValue(extensionNode, Object.class));
+            final var field =
+                Collections.singletonMap(
+                    change.name(), JsonUtils.treeToValue(change.after(), Object.class));
+            final JsonNode transformed =
+                JsonUtils.valueToTree(validateAndTransformExtension(field, entityType));
+            if (transformed.isObject()) {
+              extension.set(change.name(), transformed.get(change.name()));
+            }
           }
         }
+        updated.setExtension(
+            extension.isEmpty() ? null : JsonUtils.treeToValue(extension, Object.class));
       }
-      if (!addedFields.isEmpty()) {
-        fieldAdded(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(addedFields));
+    }
+
+    private void storeExtensionChanges(List<EntityDiff.Property> changes) {
+      final JsonNode extension = JsonUtils.valueToTree(updated.getExtension());
+      for (var change : changes) {
+        if (change.after() == null) {
+          removeCustomProperty(original, change.name());
+        } else {
+          storeCustomProperty(updated, change.name(), extension.get(change.name()));
+        }
       }
-      if (!deletedFields.isEmpty()) {
-        fieldDeleted(changeDescription, FIELD_EXTENSION, JsonUtils.pojoToJson(deletedFields));
-      }
-      removeExtension(original);
-      storeExtension(updated);
     }
 
     protected void updateDomains() {
@@ -9901,7 +9740,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       List<EntityReference> origDataProducts = listOrEmpty(original.getDataProducts());
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
-      validateDataProducts(updatedDataProducts);
+      if (indexBaselinePass) {
+        validateDataProducts(updatedDataProducts);
+      }
 
       if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
         // Revert change to non-empty DataProduct if it is being updated by a bot
@@ -9916,8 +9757,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
             "Domain cannot be empty when data products are provided.");
       }
 
-      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
-      List<EntityReference> updatedDomains = getEntityReferences(updated.getDomains());
+      List<EntityReference> origDomains = explicitReferences(original.getDomains());
+      List<EntityReference> updatedDomains = explicitReferences(updated.getDomains());
       List<EntityReference> removedDomains =
           diffLists(
               origDomains,
@@ -9938,23 +9779,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
-          DATA_PRODUCT,
           origDataProducts,
           updatedDataProducts,
           Relationship.HAS,
           entityType,
-          original.getId());
-      removeDataProductsLineage(original.getId(), entityType, origDataProducts);
-      addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
+          original.getId(),
+          (deleted, added) -> {
+            removeDataProductsLineage(original.getId(), entityType, deleted);
+            addDataProductsLineage(original.getId(), entityType, added);
+          });
     }
 
     private void updateExperts() {
       if (!supportsExperts) {
         return;
       }
-      List<EntityReference> origExperts = getEntityReferences(original.getExperts());
-      List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
-      validateUsers(updatedExperts);
+      List<EntityReference> origExperts = explicitReferences(original.getExperts());
+      List<EntityReference> updatedExperts = explicitReferences(updated.getExperts());
+      if (indexBaselinePass) {
+        validateUsers(updatedExperts);
+      }
       updateToRelationships(
           FIELD_EXPERTS,
           entityType,
@@ -9971,9 +9815,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!supportsReviewers) {
         return;
       }
-      List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
-      List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
-      validateReviewers(updatedReviewers);
+      List<EntityReference> origReviewers = explicitReferences(original.getReviewers());
+      List<EntityReference> updatedReviewers = explicitReferences(updated.getReviewers());
+      if (indexBaselinePass) {
+        validateReviewers(updatedReviewers);
+      }
       // Either all users or team which is one team at a time, assuming all ref to have same type,
       // validateReviewer checks it
       updateFromRelationships(
@@ -9990,13 +9836,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private static EntityReference getEntityReference(EntityReference reference) {
       // Don't use the inherited entity reference in update
       return reference == null || Boolean.TRUE.equals(reference.getInherited()) ? null : reference;
-    }
-
-    private static List<EntityReference> getEntityReferences(List<EntityReference> references) {
-      // Don't use the inherited entity references in update
-      return listOrEmpty(references).stream()
-          .filter(r -> !Boolean.TRUE.equals(r.getInherited()))
-          .collect(Collectors.toList());
     }
 
     private void updateStyle() {
@@ -10052,7 +9891,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");
-        deleteCertificationTag(updated.getFullyQualifiedName());
+        if (indexBaselinePass && origCertification != null) {
+          deleteCertificationTag(updated.getFullyQualifiedName());
+        }
         recordChange(FIELD_CERTIFICATION, origCertification, null, true);
         return;
       }
@@ -10079,9 +9920,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      validateAndStampCertification(updatedCertification);
-
-      applyCertification(updated);
+      if (indexBaselinePass) {
+        validateAndStampCertification(updatedCertification);
+        applyCertification(updated);
+      }
 
       recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
     }
@@ -10297,6 +10139,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         Relationship relationshipType,
         String toEntityType,
         UUID toId) {
+      updateFromRelationships(
+          field, originFromRefs, updatedFromRefs, relationshipType, toEntityType, toId, null);
+    }
+
+    private void updateFromRelationships(
+        String field,
+        List<EntityReference> originFromRefs,
+        List<EntityReference> updatedFromRefs,
+        Relationship relationshipType,
+        String toEntityType,
+        UUID toId,
+        BiConsumer<List<EntityReference>, List<EntityReference>> afterWrite) {
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
       if (!recordListChange(
@@ -10339,6 +10193,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       sortEntityReferencesForDeterminism(updatedFromRefs);
       sortEntityReferencesForDeterminism(originFromRefs);
+      if (indexBaselinePass && afterWrite != null) {
+        afterWrite.accept(deleted, added);
+      }
     }
 
     private void sortEntityReferencesForDeterminism(List<EntityReference> refs) {
@@ -10382,86 +10239,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final void storeUpdate() {
-      try (var ignored = phase("storeUpdateVersioning")) {
-        this.versionChanged = updateVersion(original.getVersion());
-      }
-      LOG.info(
-          "storeUpdate: versionChanged={}, entityChanged={}, entityType={}, id={}",
-          this.versionChanged,
-          entityChanged,
-          entityType,
-          updated.getId());
-
-      if (this.versionChanged) { // Update changed the entity version
-        try (var ignored = phase("storeUpdateHistory")) {
-          storeEntityHistory(); // Store old version for listing previous versions of the entity
-        }
-        try (var ignored = phase("storeUpdateCurrent")) {
-          storeNewVersion(); // Store the update version of the entity
-        }
-      } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
-        try (var ignored = phase("storeUpdateCurrent")) {
-          storeNewVersion();
-        }
-      } else { // Update did not change the entity version
-        LOG.info("No version change and entityChanged=false, checking previous");
-        updated.setChangeDescription(original.getChangeDescription());
-        updated.setUpdatedBy(original.getUpdatedBy());
-        updated.setUpdatedAt(original.getUpdatedAt());
-        // Remove entity history recorded when going from previous -> original (and now back to
-        // previous)
-        if (previous != null && previous.getVersion().equals(updated.getVersion())) {
-          try (var ignored = phase("storeUpdateCurrent")) {
-            storeNewVersion();
-          }
-          try (var ignored = phase("storeUpdateHistoryCleanup")) {
-            removeEntityHistory(updated.getVersion());
-          }
-        }
-      }
+      storeUpdate(false);
     }
 
     public final void storeUpdateWithOptimisticLocking() {
-      // During session consolidation, we need to bypass version checking
-      // because we're intentionally reverting to a previous version
-      boolean isConsolidating =
+      // A consolidated session intentionally replaces its previous version.
+      final boolean consolidating =
           previous != null
               && changeDescription != null
               && changeDescription.getPreviousVersion() != null
-              && changeDescription.getPreviousVersion().equals(previous.getVersion());
+              && Objects.equals(changeDescription.getPreviousVersion(), previous.getVersion());
+      storeUpdate(!consolidating);
+    }
 
+    private void storeUpdate(boolean optimistic) {
       try (var ignored = phase("storeUpdateVersioning")) {
         this.versionChanged = updateVersion(original.getVersion());
       }
-
       if (this.versionChanged) { // Update changed the entity version
         try (var ignored = phase("storeUpdateHistory")) {
           storeEntityHistory(); // Store old version for listing previous versions of the entity
         }
-        if (isConsolidating) {
-          // During consolidation, use regular store without version check
-          try (var ignored = phase("storeUpdateCurrent")) {
-            storeNewVersion();
-          }
-        } else {
-          try (var ignored = phase("storeUpdateCurrentOptimistic")) {
-            storeNewVersionWithOptimisticLocking(); // Store with version check
-          }
-        }
-      } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+      }
+      if (this.versionChanged || entityChanged) {
+        if (!versionChanged
+            && updated.getVersion().equals(changeDescription.getPreviousVersion())) {
           updated.setChangeDescription(original.getChangeDescription());
         }
-        if (isConsolidating) {
-          try (var ignored = phase("storeUpdateCurrent")) {
-            storeNewVersion();
-          }
-        } else {
-          try (var ignored = phase("storeUpdateCurrentOptimistic")) {
+        try (var ignored =
+            phase(optimistic ? "storeUpdateCurrentOptimistic" : "storeUpdateCurrent")) {
+          if (optimistic) {
             storeNewVersionWithOptimisticLocking();
+          } else {
+            storeNewVersion();
           }
         }
       } else { // Update did not change the entity version
@@ -10472,7 +10282,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // previous)
         if (previous != null && previous.getVersion().equals(updated.getVersion())) {
           try (var ignored = phase("storeUpdateCurrent")) {
-            storeNewVersion(); // Always use regular store for this case
+            storeNewVersion();
           }
           try (var ignored = phase("storeUpdateHistoryCleanup")) {
             removeEntityHistory(updated.getVersion());
@@ -11865,21 +11675,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         System.currentTimeMillis() - startTime);
 
     return result;
-  }
-
-  /**
-   * Creates a unique key for a TagLabel combining TagFQN and Source for fast Set-based lookups.
-   * This replaces O(n) stream().anyMatch() operations with O(1) Set.contains() operations.
-   */
-  private String createTagKey(TagLabel tag) {
-    return tag.getTagFQN() + ":" + tag.getSource();
-  }
-
-  /**
-   * Creates a Set of tag keys from a list of TagLabels for efficient O(1) lookups.
-   */
-  private Set<String> createTagKeySet(List<TagLabel> tags) {
-    return tags.stream().map(this::createTagKey).collect(Collectors.toSet());
   }
 
   protected Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
