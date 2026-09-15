@@ -43,6 +43,7 @@ import {
   UIPermission,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -52,6 +53,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import { exportClassificationInCSVFormat, getTags } from '../../../rest/tagAPI';
 import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
 import {
@@ -72,6 +74,11 @@ import {
 } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
+import {
+  buildTagFqnIncludeRegex,
+  getTagUsageAggregationField,
+  parseTagUsageBuckets,
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import Description from '../../common/EntityDescription/Description';
@@ -200,8 +207,13 @@ const ClassificationDetails = forwardRef(
     const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
     const [tags, setTags] = useState<Tag[]>([]);
     const [isTagsLoading, setIsTagsLoading] = useState(true);
+    // Undefined means the count is unknown, so the column can tell a real zero
+    // apart from an aggregation that never landed
+    const [usageCounts, setUsageCounts] = useState<Record<string, number>>();
+    const [isUsageCountsLoading, setIsUsageCountsLoading] = useState(true);
     const isLoading = isTagsLoading || isClassificationLoading;
     const previousClassificationRef = useRef<string | undefined>();
+    const usageCountsRequestIdRef = useRef(0);
     const isClassificationChangingRef = useRef(false);
     const {
       currentPage,
@@ -214,15 +226,63 @@ const ClassificationDetails = forwardRef(
       showPagination,
     } = usePaging();
 
+    // One terms aggregation covers the whole page, no matter how many tags it
+    // holds. Paging can leave an older one in flight, and its counts key on the
+    // previous page's tags, so only the newest request may write.
+    const fetchTagUsageCounts = async (
+      currentClassificationName: string,
+      pageTags: Tag[]
+    ) => {
+      const requestId = ++usageCountsRequestIdRef.current;
+      const isStale = () => requestId !== usageCountsRequestIdRef.current;
+      const tagFQNs = pageTags
+        .map(({ fullyQualifiedName }) => fullyQualifiedName)
+        .filter(Boolean) as string[];
+
+      if (isEmpty(tagFQNs)) {
+        setUsageCounts({});
+        setIsUsageCountsLoading(false);
+
+        return;
+      }
+
+      setIsUsageCountsLoading(true);
+      const fieldName = getTagUsageAggregationField(currentClassificationName);
+      try {
+        const { data } = await postExactAggregateFieldOptions({
+          index: SearchIndex.ALL,
+          fieldName,
+          fieldValue: buildTagFqnIncludeRegex(tagFQNs),
+          size: tagFQNs.length,
+          deleted: false,
+        });
+
+        if (!isStale()) {
+          setUsageCounts(parseTagUsageBuckets(data.aggregations, fieldName));
+        }
+      } catch {
+        // The counts are supplementary, so a search outage must not block the
+        // table or raise a toast on every classification the user opens
+        if (!isStale()) {
+          setUsageCounts(undefined);
+        }
+      } finally {
+        if (!isStale()) {
+          setIsUsageCountsLoading(false);
+        }
+      }
+    };
+
     const fetchClassificationChildren = async (
       currentClassificationName: string,
       paging?: Partial<Paging>
     ) => {
       setIsTagsLoading(true);
       setTags([]);
+      setUsageCounts(undefined);
       try {
         const { data, paging: tagPaging } = await getTags({
-          fields: `${TabSpecificField.USAGE_COUNT},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
           parent: currentClassificationName,
           after: paging?.after,
           before: paging?.before,
@@ -230,6 +290,11 @@ const ClassificationDetails = forwardRef(
         });
         setTags(data);
         handlePagingChange(tagPaging);
+
+        if (!isVersionView) {
+          // The version view has no usage column to fill
+          fetchTagUsageCounts(currentClassificationName, data);
+        }
       } catch (error) {
         const errMsg = getErrorText(
           error as AxiosError,
@@ -237,6 +302,7 @@ const ClassificationDetails = forwardRef(
         );
         showErrorToast(errMsg);
         setTags([]);
+        setIsUsageCountsLoading(false);
       } finally {
         setIsTagsLoading(false);
       }
@@ -463,6 +529,8 @@ const ClassificationDetails = forwardRef(
           handleActionDeleteTag,
           isVersionView,
           handleToggleDisable,
+          usageCounts,
+          isUsageCountsLoading,
         }),
       [
         isClassificationDisabled,
@@ -473,6 +541,8 @@ const ClassificationDetails = forwardRef(
         handleActionDeleteTag,
         isVersionView,
         handleToggleDisable,
+        usageCounts,
+        isUsageCountsLoading,
       ]
     );
 

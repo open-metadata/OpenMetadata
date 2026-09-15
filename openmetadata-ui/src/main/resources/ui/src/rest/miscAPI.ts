@@ -245,28 +245,27 @@ export const getAggregateFieldOptions = (
 };
 
 /**
- * Posts aggregate field options request with parameters in the body.
- * @param {AggregationRequest} body - The aggregation request body containing the parameters.
- * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
- * containing the aggregate field options.
+ * Aggregates with `fieldValue` used verbatim as the terms `include` regex,
+ * which the search engine anchors to the whole term.
+ */
+export const postExactAggregateFieldOptions = (body: AggregationRequest) =>
+  APIClient.post<SearchResponse<ExploreSearchIndex>>('/search/aggregate', body);
+
+/**
+ * Aggregates on terms *containing* `fieldValue`. The `.*value.*` wrapping
+ * breaks alternation — `.*a|b.*` parses as `(.*a)|(b.*)` — so an exact set of
+ * terms belongs in postExactAggregateFieldOptions instead.
  */
 export const postAggregateFieldOptions = ({
   fieldValue,
   ...rest
-}: AggregationRequest) => {
-  const withWildCardValue = fieldValue
-    ? `.*${escapeESReservedCharacters(fieldValue)}.*`
-    : '.*';
-  const body: AggregationRequest = {
-    fieldValue: withWildCardValue,
+}: AggregationRequest) =>
+  postExactAggregateFieldOptions({
     ...rest,
-  };
-
-  return APIClient.post<SearchResponse<ExploreSearchIndex>>(
-    `/search/aggregate`,
-    body
-  );
-};
+    fieldValue: fieldValue
+      ? `.*${escapeESReservedCharacters(fieldValue)}.*`
+      : '.*',
+  });
 
 export const getEntityCount = async (
   path: string,
