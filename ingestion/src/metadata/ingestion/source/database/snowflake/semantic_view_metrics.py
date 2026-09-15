@@ -19,8 +19,6 @@ carrying its expression, inferred type, the view's dimensions/facts, and an
 because the ``Metric`` namespace is global (FQN == name).
 """
 
-import hashlib
-
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import (
     Language,
@@ -33,6 +31,7 @@ from metadata.generated.schema.entity.data.metric import (
 from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.utils.metric_naming import build_metric_name as build_semantic_metric_name
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
@@ -48,10 +47,6 @@ SEMANTIC_SYNONYMS_IDX = 5
 # Snowflake data types that make a dimension a TIME dimension rather than CATEGORICAL.
 _TIME_TYPE_MARKERS = ("DATE", "TIME", "TIMESTAMP")
 
-# A metric name is prefixed with its service so the global Metric namespace stays
-# browsable by service; the digest after it carries the identity. Cap the prefix so a
-# long service name cannot push the name past the 256-character entityName limit.
-SERVICE_PREFIX_MAX_LEN = 64
 _FALLBACK_SERVICE_PREFIX = "snowflake"
 
 _METRIC_TYPE_BY_PREFIX = {
@@ -80,42 +75,20 @@ def _unquote_name_part(part: str) -> str:
     return value
 
 
-def _service_prefix(service: str) -> str:
-    """FQN-safe prefix derived from the OpenMetadata service name.
-
-    A service name is user-defined and may carry ``.``, spaces, or ``::``, any of
-    which would stop the metric name from being a single FQN segment --
-    ``MetricRepository`` assigns the FQN from the raw name without quoting it. Map
-    everything outside ``[alnum]``/``_``/``-`` to ``-``. This is deliberately lossy:
-    the digest is what makes the name unique, so two services that flatten to the
-    same prefix still produce different names.
-    """
-    safe = "".join(char if char.isalnum() or char in "_-" else "-" for char in _unquote_name_part(service))
-    return safe[:SERVICE_PREFIX_MAX_LEN].strip("-") or _FALLBACK_SERVICE_PREFIX
-
-
 def build_metric_name(service: str, database: str, schema: str, view: str, table: str, metric: str) -> str:
     """Stable ``<service>-<digest>`` name for a Snowflake semantic-view metric.
 
-    A Metric's FQN is its name, so the name must be globally unique and remain one
-    FQN-safe segment. Hash the complete canonical identity instead of exposing a
-    lossy, separator-joined path, and lead with the service so the global Metric
-    namespace is still browsable. ``displayName`` retains the Snowflake metric name
-    for the UI.
+    The hashing and service-prefix rules are shared with every other semantic-layer
+    connector (see ``metadata.utils.metric_naming``); what is Snowflake-specific is
+    the identity itself and the unquoting each part needs first.
 
     ``table`` is the *logical* table the metric is declared on. Snowflake scopes a
     semantic object's name to its logical table — every object is declared as
     ``<table_alias>.<name> AS <expr>`` — so one view may define both ``orders.total``
     and ``returns.total``, and the logical table is part of the metric's identity.
-
-    NUL separates identity components because Snowflake identifiers cannot contain
-    it, keeping part boundaries unambiguous. The full digest avoids introducing a
-    connector-defined truncation collision and stays well below the entity-name
-    length limit.
     """
-    identity = tuple(_unquote_name_part(part) for part in (service, database, schema, view, table, metric))
-    digest = hashlib.sha256("\x00".join(identity).encode("utf-8")).hexdigest()
-    return f"{_service_prefix(service)}-{digest}"
+    identity = tuple(_unquote_name_part(part) for part in (database, schema, view, table, metric))
+    return build_semantic_metric_name(_unquote_name_part(service), identity, _FALLBACK_SERVICE_PREFIX)
 
 
 def infer_metric_type(expression: str | None) -> MetricType:
