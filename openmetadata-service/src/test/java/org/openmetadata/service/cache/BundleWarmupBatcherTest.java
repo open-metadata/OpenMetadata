@@ -11,6 +11,7 @@
 package org.openmetadata.service.cache;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -128,16 +129,54 @@ class BundleWarmupBatcherTest {
     assertTrue(t1Dto.tagsLoaded);
     assertEquals(1, t1Dto.tags.size());
     assertEquals("PII.Sensitive", t1Dto.tags.get(0).getTagFQN());
-    assertTrue(t1Dto.certificationLoaded);
-    assertNotNull(t1Dto.certification);
+    assertFalse(
+        t1Dto.certificationLoaded, "warmer must not cache authoritative-null certification");
+    assertNull(t1Dto.certification);
 
     String t2Json = writes.get(keys.bundle("table", t2.getId()));
     assertNotNull(t2Json);
     CachedReadBundle.Dto t2Dto = JsonUtils.readValue(t2Json, CachedReadBundle.Dto.class);
     assertTrue(t2Dto.tagsLoaded);
     assertTrue(t2Dto.tags.isEmpty(), "Untagged entity should have empty tags list");
-    assertTrue(t2Dto.certificationLoaded);
+    assertFalse(t2Dto.certificationLoaded);
     assertNull(t2Dto.certification);
+  }
+
+  @Test
+  void warmupStripsCertTagFromTagsAndDoesNotCacheAuthoritativeNullCertification() {
+    Table t1 =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders");
+
+    String hash1 = FullyQualifiedName.buildHash(t1.getFullyQualifiedName());
+
+    TagLabel certTag = new TagLabel().withTagFQN("Certification.Gold");
+    TagLabel piiTag = new TagLabel().withTagFQN("PII.Sensitive");
+    Map<String, List<TagLabel>> tagMap = new HashMap<>();
+    tagMap.put(hash1, List.of(certTag, piiTag));
+    when(tagUsageDAO.getTagsByTargetFQNHashes(any())).thenReturn(tagMap);
+
+    BundleWarmupBatcher.BatchResult result =
+        batcher.warmupBatch("table", List.of(t1), Duration.ofSeconds(60));
+    assertEquals(1, result.success());
+    assertEquals(0, result.failed());
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(cache, times(1)).pipelineSet(captor.capture(), any(Duration.class));
+    Map<String, String> writes = captor.getValue();
+
+    CachedReadBundle.Dto dto =
+        JsonUtils.readValue(
+            writes.get(keys.bundle("table", t1.getId())), CachedReadBundle.Dto.class);
+    assertTrue(dto.tagsLoaded);
+    assertEquals(1, dto.tags.size(), "Certification.* tag must be stripped from warmed tags");
+    assertEquals("PII.Sensitive", dto.tags.get(0).getTagFQN());
+    assertFalse(
+        dto.certificationLoaded, "warmer must not mark a stripped-null certification as loaded");
+    assertNull(dto.certification);
   }
 
   @Test
