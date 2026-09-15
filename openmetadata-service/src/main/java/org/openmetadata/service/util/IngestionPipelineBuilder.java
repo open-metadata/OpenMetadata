@@ -14,10 +14,13 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.DBT;
+import static org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType.METADATA;
 
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 
 public final class IngestionPipelineBuilder {
@@ -28,13 +31,22 @@ public final class IngestionPipelineBuilder {
 
   /** Build `IngestionPipeline` object with concrete class for the config which by definition it is a `Object`. */
   public static void addDefinedConfig(IngestionPipeline ingestionPipeline) {
-    if (DBT.equals(ingestionPipeline.getPipelineType())
-        && ingestionPipeline.getSourceConfig() != null) {
-      ingestionPipeline
-          .getSourceConfig()
-          .setConfig(
-              ClassConverterFactory.getConverter(DbtPipeline.class)
-                  .convert(ingestionPipeline.getSourceConfig().getConfig()));
+    if (ingestionPipeline.getSourceConfig() != null) {
+      final Object config = ingestionPipeline.getSourceConfig().getConfig();
+      if (DBT.equals(ingestionPipeline.getPipelineType())) {
+        ingestionPipeline
+            .getSourceConfig()
+            .setConfig(ClassConverterFactory.getConverter(DbtPipeline.class).convert(config));
+      } else if (METADATA.equals(ingestionPipeline.getPipelineType())
+          && StorageServiceMetadataPipeline.StorageMetadataConfigType.STORAGE_METADATA
+              .value()
+              .equals(JsonUtils.valueToTree(config).path("type").asText())) {
+        ingestionPipeline
+            .getSourceConfig()
+            .setConfig(
+                ClassConverterFactory.getConverter(StorageServiceMetadataPipeline.class)
+                    .convert(config));
+      }
     }
     if (ingestionPipeline.getOpenMetadataServerConnection() != null) {
       ingestionPipeline.setOpenMetadataServerConnection(

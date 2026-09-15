@@ -21,7 +21,10 @@ import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretsUtil;
@@ -73,12 +76,24 @@ public class PasswordEntityMasker extends EntityMasker {
     if (ingestionPipeline != null) {
       IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
       try {
+        maskAppPrivateConfig(ingestionPipeline);
         maskPasswordFields(ingestionPipeline);
       } catch (Exception e) {
         throw new EntityMaskException(
             String.format(
                 "Failed to mask ingestion pipeline instance [%s]", ingestionPipeline.getName()));
       }
+    }
+  }
+
+  private void maskAppPrivateConfig(IngestionPipeline ingestionPipeline) {
+    if (PipelineType.APPLICATION.equals(ingestionPipeline.getPipelineType())
+        && ingestionPipeline.getSourceConfig() != null
+        && ingestionPipeline.getSourceConfig().getConfig() != null) {
+      final ApplicationPipeline config =
+          JsonUtils.convertValue(
+              ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
+      ingestionPipeline.getSourceConfig().setConfig(config.withAppPrivateConfig(null));
     }
   }
 

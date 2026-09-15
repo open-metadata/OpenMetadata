@@ -22,12 +22,16 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
@@ -40,10 +44,13 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.config.types.ApplicationWorkflowConfig;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.util.SSLUtil;
 
@@ -63,6 +70,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   protected final String password;
   protected final HttpClient client;
   protected final URL serviceURL;
+  private final Duration requestTimeout;
   private volatile List<String> apiEndpointSegments;
   private static final String DAG_ID = "dag_id";
   private static final String CONF = "conf";
@@ -91,13 +99,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
               + DOCS_LINK);
     }
     this.serviceURL = validateServiceURL(config.getApiEndpoint());
+    this.requestTimeout = Duration.ofSeconds(getIntParam(params, TIMEOUT_KEY, 10));
 
     SSLContext sslContext = createAirflowSSLContext(config);
 
     HttpClient.Builder clientBuilder =
-        HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(getIntParam(params, TIMEOUT_KEY, 10)));
+        HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(requestTimeout);
 
     if (sslContext == null) {
       this.client = clientBuilder.build();
@@ -162,7 +169,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = send(request);
 
       if (response.statusCode() == 200) {
         try {
@@ -199,7 +206,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = send(request);
 
       if (response.statusCode() == 200) {
         try {
@@ -235,7 +242,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
               .timeout(Duration.ofSeconds(5))
               .build();
 
-      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      HttpResponse<String> response = send(request);
 
       if (response.statusCode() == 200) {
         try {
@@ -287,8 +294,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       }
     }
 
-    HttpResponse<String> response =
-        client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(requestBuilder.build());
 
     // If we get a 400 with CSRF token expired error, clear the token and retry once
     if (authenticate
@@ -313,7 +319,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         requestBuilder.header("Cookie", String.join("; ", sessionCookies));
       }
 
-      response = client.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+      response = send(requestBuilder.build());
     }
 
     return response;
@@ -322,6 +328,21 @@ public class AirflowRESTClient extends PipelineServiceClient {
   public final HttpResponse<String> post(String endpoint, String payload)
       throws IOException, InterruptedException {
     return post(endpoint, payload, true);
+  }
+
+  private HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
+    final var response = client.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+    final Duration timeout = request.timeout().orElse(requestTimeout);
+    try {
+      // Bound the complete response body as well as headers while deployment holds a database lock.
+      return response.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      throw new HttpTimeoutException("Airflow request timed out after " + timeout);
+    } catch (ExecutionException e) {
+      throw new IOException(e.getCause());
+    } finally {
+      response.cancel(true);
+    }
   }
 
   /**
@@ -341,7 +362,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     HttpResponse<String> response;
     try {
       String deployUrl = buildURI("deploy").build().toString();
-      String pipelinePayload = JsonUtils.pojoToJson(ingestionPipeline);
+      String pipelinePayload = buildDeployPayload(ingestionPipeline);
       response = post(deployUrl, pipelinePayload);
       if (response.statusCode() == 200) {
         ingestionPipeline.setDeployed(true);
@@ -361,6 +382,19 @@ public class AirflowRESTClient extends PipelineServiceClient {
             ingestionPipeline.getName(),
             Response.Status.fromStatusCode(response.statusCode()),
             response.body()));
+  }
+
+  private String buildDeployPayload(IngestionPipeline ingestionPipeline) {
+    if (!PipelineType.APPLICATION.equals(ingestionPipeline.getPipelineType())) {
+      return JsonUtils.pojoToJson(ingestionPipeline);
+    }
+    final IngestionPipeline deployment =
+        JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
+    deployment.setSourceConfig(
+        new SourceConfig()
+            .withConfig(
+                new ApplicationWorkflowConfig().buildApplicationPipeline(ingestionPipeline)));
+    return JsonUtils.pojoToJson(deployment);
   }
 
   @Override
@@ -750,7 +784,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private HttpResponse<String> getRequestAuthenticatedForJsonContent(String url)
       throws IOException, InterruptedException {
     HttpRequest request = authenticatedRequestBuilder(url).GET().build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    return send(request);
   }
 
   private HttpResponse<String> deleteRequestAuthenticatedForJsonContent(String url)
@@ -758,7 +792,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
     // DELETE endpoints are protected by CSRF on Airflow 3.x
     fetchCsrfTokenIfNeeded();
     HttpRequest request = authenticatedRequestBuilder(url).DELETE().build();
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    HttpResponse<String> response = send(request);
 
     // If we get a 400 with CSRF token expired error, clear the token and retry once
     if (response.statusCode() == 400
@@ -768,7 +802,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       clearCsrfToken();
       fetchCsrfTokenIfNeeded();
       request = authenticatedRequestBuilder(url).DELETE().build();
-      response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      response = send(request);
     }
 
     return response;
@@ -872,7 +906,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
             .header(AUTH_HEADER, getBasicAuthenticationHeader(username, password))
             .GET()
             .build();
-    return client.send(request, HttpResponse.BodyHandlers.ofString());
+    return send(request);
   }
 
   private void storeSessionCookies(HttpResponse<String> response) {

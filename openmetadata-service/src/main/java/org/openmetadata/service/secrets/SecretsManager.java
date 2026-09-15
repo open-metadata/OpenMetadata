@@ -347,6 +347,12 @@ public abstract class SecretsManager {
     ingestionPipeline.setOpenMetadataServerConnection(openMetadataConnection);
   }
 
+  /** Fernet-encrypts a snapshot without reading or writing external secrets. */
+  public void encryptIngestionPipelineForHistory(IngestionPipeline ingestionPipeline) {
+    IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
+    encryptPasswordFields(ingestionPipeline, "", true, false);
+  }
+
   public Workflow encryptWorkflow(Workflow workflow) {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
@@ -438,6 +444,11 @@ public abstract class SecretsManager {
   }
 
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
+    return encryptPasswordFields(toEncryptObject, secretId, store, true);
+  }
+
+  private Object encryptPasswordFields(
+      Object toEncryptObject, String secretId, boolean store, boolean useSecretStore) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
         // for each get method
@@ -453,13 +464,16 @@ public abstract class SecretsManager {
                     encryptPasswordFields(
                         obj,
                         buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
-                        store);
+                        store,
+                        useSecretStore);
                     // check if it has annotation
                   } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
                     // store value if proceed
                     String newFieldValue =
-                        storeValue(
-                            fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
+                        useSecretStore
+                            ? storeValue(
+                                fieldName, fernet.decryptIfApplies((String) obj), secretId, store)
+                            : (String) obj;
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
                     // set new value
