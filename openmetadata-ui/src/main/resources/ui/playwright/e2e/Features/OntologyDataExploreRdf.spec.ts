@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import {
   CreateTable,
   DataType,
@@ -20,6 +20,7 @@ import {
 import { Table } from '../../../src/generated/entity/data/table';
 import { EntityReference } from '../../../src/generated/entity/type';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';

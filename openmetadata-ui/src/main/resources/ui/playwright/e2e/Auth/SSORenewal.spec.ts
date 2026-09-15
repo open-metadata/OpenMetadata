@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BrowserContext, expect, Page, Response, test } from '@playwright/test';
+import { BrowserContext, Page, Response } from '@playwright/test';
 import { SSO_ENV } from '../../constant/ssoAuth';
+import { expect, test } from '../../support/fixtures/base';
 import {
   AUTH_REFRESH_PATH,
   clearServerSessionCookie,
@@ -69,7 +70,6 @@ for (const scenario of SCENARIOS) {
     `SSO Session Renewal — ${scenario.title}`,
     { tag: RENEWAL_TAGS },
     () => {
-      test.slow();
       // eslint-disable-next-line playwright/no-skipped-test
       test.skip(
         !username || !password,
@@ -108,6 +108,7 @@ for (const scenario of SCENARIOS) {
       });
 
       test('should silently refresh the access token after expiry', async () => {
+        test.slow();
         const page = userPage!;
 
         await expect(page.getByTestId('dropdown-profile')).toBeVisible();
@@ -138,6 +139,7 @@ for (const scenario of SCENARIOS) {
       });
 
       test('should queue concurrent 401s behind a single refresh call', async () => {
+        test.slow();
         const page = userPage!;
 
         await expect(page.getByTestId('dropdown-profile')).toBeVisible();
@@ -174,6 +176,7 @@ for (const scenario of SCENARIOS) {
       });
 
       test('should force re-login when the session is gone', async () => {
+        test.slow();
         const page = userPage!;
 
         await clearServerSessionCookie(userContext!);

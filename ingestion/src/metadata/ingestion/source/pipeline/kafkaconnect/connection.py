@@ -51,6 +51,7 @@ class KafkaConnectConnection(BaseConnection[KafkaConnectConnectionConfig, KafkaC
             "GetClusterInfo": client.get_cluster_info,
             "GetPipelines": client.get_connectors_list,
             "GetPlugins": client.get_connector_plugins,
+            "CheckConfluentTelemetry": client.check_confluent_telemetry,
         }
 
         return test_connection_steps(

@@ -74,7 +74,8 @@
                 "token": {
                   "title": "Token",
                   "description": "The Astra DB application token used for authentication.",
-                  "type": "string"
+                  "type": "string",
+                  "format": "password"
                 },
                 "secureConnectBundle": {
                   "title": "Secure Connect Bundle",
@@ -145,9 +146,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -159,9 +158,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             },
@@ -173,9 +170,7 @@
               "accept": [
                 ".pem",
                 ".crt",
-                ".cer",
-                ".der",
-                ".p12"
+                ".cer"
               ],
               "uiFieldType": "fileOrInput"
             }

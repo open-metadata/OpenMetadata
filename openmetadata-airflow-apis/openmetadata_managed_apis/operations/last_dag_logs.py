@@ -144,7 +144,8 @@ def last_dag_logs(dag_id: str, task_id: str, after: int | None = None) -> Respon
 
     task_log_reader = TaskLogReader()
     if not task_log_reader.supports_read:
-        return ApiResponse.server_error("Task Log Reader does not support read logs.")
+        logger.error("Task log reader does not support reading logs")
+        return ApiResponse.server_error()
 
     # Try to use file streaming for better performance
     try:

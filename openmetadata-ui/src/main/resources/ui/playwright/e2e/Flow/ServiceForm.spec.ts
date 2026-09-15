@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
@@ -27,6 +27,7 @@ import {
 } from '../../constant/serviceForm';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
@@ -241,15 +242,20 @@ test.describe(
           .click();
 
         // Upload the test certificate file
-        const fileInput1 = page.locator(
-          '[data-field-name="caCertificate"] input[type="file"]'
+        const caCertificateField = page.locator(
+          '[data-field-name="caCertificate"]'
         );
-        await fileInput1.setInputFiles(testCertPath);
+        await caCertificateField
+          .locator('input[type="file"]')
+          .setInputFiles(testCertPath);
 
-        // Wait for file upload to complete
+        // An attached credential is represented by its chip, not by its content
+        // in the paste box — the two would otherwise show the same secret twice.
+        // The chip carrying the (very long) file name is what has to survive
+        // without overflowing.
         await expect(
-          page.locator('[id="root/connection/sslConfig/caCertificate"]')
-        ).toHaveValue(CERT_FILE);
+          caCertificateField.getByTestId('credential-file-name')
+        ).toHaveText(CERT_FILE);
 
         // Verify the certificate content is sent correctly.
         const testConnectionResponse1 = page.waitForResponse(

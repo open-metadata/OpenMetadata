@@ -40,7 +40,10 @@ import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
@@ -154,56 +157,68 @@ const AddIngestionPage = () => {
   const onAddIngestionSave = (data: CreateIngestionPipeline) => {
     setIngestionProgress(INGESTION_PROGRESS_START_VAL);
 
-    return new Promise<void>((resolve, reject) => {
-      return addIngestionPipeline(data)
-        .then((res) => {
-          if (res) {
-            setIngestionId(res.id ?? '');
-            onIngestionDeploy(res.id).finally(() => resolve());
-          } else {
+    const handleCreateSuccess = (
+      res: IngestionPipeline,
+      resolve: () => void,
+      reject: () => void
+    ) => {
+      if (res) {
+        setIngestionId(res.id ?? '');
+        onIngestionDeploy(res.id).finally(() => resolve());
+      } else {
+        showErrorToast(
+          t('server.create-entity-error', {
+            entity: t('label.ingestion-workflow'),
+          })
+        );
+        reject();
+      }
+    };
+
+    const handleCreateError = (
+      err: AxiosError,
+      resolve: () => void,
+      reject: () => void
+    ) => {
+      if (err.response?.status === 409) {
+        showErrorToast(
+          err,
+          t('message.entity-already-exists', {
+            entity: t('label.data-asset'),
+          })
+        );
+        reject();
+      } else {
+        getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
+          .then((res) => {
+            if (res) {
+              resolve();
+              showErrorToast(
+                err,
+                t('server.deploy-entity-error', {
+                  entity: t('label.ingestion-workflow'),
+                })
+              );
+            } else {
+              throw t('server.unexpected-response');
+            }
+          })
+          .catch(() => {
             showErrorToast(
+              err,
               t('server.create-entity-error', {
                 entity: t('label.ingestion-workflow'),
               })
             );
             reject();
-          }
-        })
-        .catch((err: AxiosError) => {
-          if (err.response?.status === 409) {
-            showErrorToast(
-              err,
-              t('message.entity-already-exists', {
-                entity: t('label.data-asset'),
-              })
-            );
-            reject();
-          } else {
-            getIngestionPipelineByFqn(`${serviceData?.name}.${data.name}`)
-              .then((res) => {
-                if (res) {
-                  resolve();
-                  showErrorToast(
-                    err,
-                    t('server.deploy-entity-error', {
-                      entity: t('label.ingestion-workflow'),
-                    })
-                  );
-                } else {
-                  throw t('server.unexpected-response');
-                }
-              })
-              .catch(() => {
-                showErrorToast(
-                  err,
-                  t('server.create-entity-error', {
-                    entity: t('label.ingestion-workflow'),
-                  })
-                );
-                reject();
-              });
-          }
-        });
+          });
+      }
+    };
+
+    return new Promise<void>((resolve, reject) => {
+      return addIngestionPipeline(data)
+        .then((res) => handleCreateSuccess(res, resolve, reject))
+        .catch((err: AxiosError) => handleCreateError(err, resolve, reject));
     });
   };
 

@@ -24,17 +24,13 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import DirectoryDetails from '../../components/DriveService/Directory/DirectoryDetails';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Directory } from '../../generated/entity/data/directory';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDriveAssetFollower,
@@ -46,10 +42,6 @@ import {
 import { defaultFields } from '../../utils/DirectoryDetailsUtils';
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -59,17 +51,32 @@ const DirectoryDetailsPage = () => {
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: directoryFQN } = useFqn();
   const [directoryDetails, setDirectoryDetails] = useState<Directory>(
     {} as Directory
   );
-  const [isLoading, setLoading] = useState<boolean>(true);
+  // Entity-fetch loading only now — permission-fetch loading comes from the hook below.
+  // Combined at the render gate as `isPermissionsLoading || (canViewBasic &&
+  // isEntityLoading)` — see SpreadsheetDetailsPage.tsx's analogous comment for why the
+  // `canViewBasic` guard matters (a denied-view render must not get stuck on the loader
+  // forever, since fetchDirectoryDetails — the only thing that ever flips this flag false —
+  // is never called at all when view permission is denied).
+  const [isEntityLoading, setEntityLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
-  const [directoryPermissions, setDirectoryPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  // Single useEntityPermissions call — no genuine cycle: this page never derives a
+  // `deleted`-gated canEdit* flag of its own. DirectoryDetails (the child) owns the raw
+  // directoryPermissions prop and derives its own edit-tier flags against its own `deleted`
+  // (sourced from directoryDetails.deleted) — see TopicDetailsPage.component.tsx's
+  // analogous comment.
+  const {
+    permissions: directoryPermissions, // DirectoryDetails consumes the raw OperationPermission prop
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    canViewBasic,
+    hasViewAccess,
+  } = useEntityPermissions(ResourceEntity.DIRECTORY, directoryFQN);
 
   const { id: directoryId, version: currentVersion } = directoryDetails;
 
@@ -105,27 +112,8 @@ const DirectoryDetailsPage = () => {
     }
   };
 
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
-    try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.DIRECTORY,
-        entityFqn
-      );
-      setDirectoryPermissions(permissions);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const fetchDirectoryDetails = async (directoryFQN: string) => {
-    setLoading(true);
+    setEntityLoading(true);
     try {
       const res = await getDriveAssetByFqn<Directory>(
         directoryFQN,
@@ -161,7 +149,7 @@ const DirectoryDetailsPage = () => {
         );
       }
     } finally {
-      setLoading(false);
+      setEntityLoading(false);
     }
   };
 
@@ -267,22 +255,24 @@ const DirectoryDetailsPage = () => {
     []
   );
 
+  // Permission fetching itself now lives in useEntityPermissions (called above). Preserves
+  // the old fetchResourcePermission catch's exact toast (interpolating the FQN itself, not
+  // a translated entity-type label) — matches FileDetailsPage.tsx's analogous effect.
   useEffect(() => {
-    fetchResourcePermission(directoryFQN);
-  }, [directoryFQN]);
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', { entity: directoryFQN })
+      );
+    }
+  }, [permissionsError, directoryFQN]);
 
   useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        directoryPermissions,
-        PermissionOperation.ViewBasic
-      )
-    ) {
+    if (canViewBasic) {
       fetchDirectoryDetails(directoryFQN);
     }
-  }, [directoryPermissions, directoryFQN]);
+  }, [canViewBasic, directoryFQN]);
 
-  if (isLoading) {
+  if (isPermissionsLoading || (canViewBasic && isEntityLoading)) {
     return <PageLoader />;
   }
   if (isError) {
@@ -292,7 +282,7 @@ const DirectoryDetailsPage = () => {
       </ErrorPlaceHolder>
     );
   }
-  if (!directoryPermissions.ViewAll && !directoryPermissions.ViewBasic) {
+  if (!hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"

@@ -570,6 +570,281 @@ interface ConnectionFormContext {
   handleFocus?: (fieldName: string) => void;
 }
 
+interface PropertySections {
+  requiredKeys: string[];
+  schemaProperties: Record<string, SchemaProperty>;
+  wideNames: Set<string>;
+  authProperties: ObjectFieldTemplatePropertyType[];
+  advancedProperties: ObjectFieldTemplatePropertyType[];
+  explicitConnectionProperties: ObjectFieldTemplatePropertyType[];
+  connectionProperties: ObjectFieldTemplatePropertyType[];
+  scopeProperties: ObjectFieldTemplatePropertyType[];
+  shouldRenderScopeSection: boolean;
+  hiddenUnsectionedProperties: ObjectFieldTemplatePropertyType[];
+  authRequiredKeys: string[];
+}
+
+// Splits the flat property list into the connection/auth/scope/advanced
+// groups the grouped form renders as separate sections.
+const getPropertySections = (
+  schema: ObjectFieldTemplateProps['schema'],
+  sectionProperties: ObjectFieldTemplatePropertyType[]
+): PropertySections => {
+  const requiredKeys = schema.required ?? [];
+  const schemaProperties = (schema.properties ?? {}) as Record<
+    string,
+    SchemaProperty
+  >;
+  const isAdvanced = (name: string) => ADVANCED_PROPERTIES.includes(name);
+  // authType oneOf renders the segmented selector. Flat secret fields stay in
+  // Authentication, while connector identity fields remain in Connection.
+  const isAuth = (name: string) =>
+    name === AUTH_PROPERTY || schemaProperties[name]?.format === 'password';
+  // Object/array fields (additionalProperties maps, storage config, …) render
+  // wide controls — span the full row so they don't ragged-wrap the grid.
+  const isWide = (name: string) => {
+    const property = schemaProperties[name];
+    const propType = property?.type;
+
+    return (
+      propType === 'object' ||
+      propType === 'array' ||
+      Boolean(property?.oneOf?.length) ||
+      Boolean(property?.anyOf?.length)
+    );
+  };
+  const wideNames = new Set(
+    sectionProperties.filter((p) => isWide(p.name)).map((p) => p.name)
+  );
+
+  const authProperties = sectionProperties.filter((p) => isAuth(p.name));
+  const advancedProperties = sectionProperties.filter((p) =>
+    isAdvanced(p.name)
+  );
+  const explicitConnectionProperties = sectionProperties.filter(
+    (p) =>
+      !isAuth(p.name) && !isAdvanced(p.name) && requiredKeys.includes(p.name)
+  );
+  const optionalConnectionProperties = sectionProperties.filter(
+    (p) =>
+      !isAuth(p.name) &&
+      !isAdvanced(p.name) &&
+      !requiredKeys.includes(p.name) &&
+      OPTIONAL_CONNECTION_PROPERTIES.has(p.name)
+  );
+  const fallbackConnectionProperties = sectionProperties.filter(
+    (p) =>
+      !isAuth(p.name) &&
+      !isAdvanced(p.name) &&
+      !OPTIONAL_SCOPE_PROPERTIES.has(p.name)
+  );
+  const connectionProperties =
+    explicitConnectionProperties.length > 0
+      ? [...explicitConnectionProperties, ...optionalConnectionProperties]
+      : fallbackConnectionProperties;
+  const connectionPropertyNames = new Set(
+    connectionProperties.map((property) => property.name)
+  );
+  const scopeProperties = sectionProperties.filter(
+    (p) =>
+      !isAuth(p.name) &&
+      !isAdvanced(p.name) &&
+      !connectionPropertyNames.has(p.name)
+  );
+  const shouldRenderScopeSection = hasVisibleProperties(scopeProperties);
+  const hiddenUnsectionedProperties = [
+    ...(shouldRenderScopeSection ? [] : scopeProperties),
+  ].filter((property) => !isVisibleProperty(property));
+  const authRequiredKeys = requiredKeys.filter((k) => isAuth(k));
+
+  return {
+    requiredKeys,
+    schemaProperties,
+    wideNames,
+    authProperties,
+    advancedProperties,
+    explicitConnectionProperties,
+    connectionProperties,
+    scopeProperties,
+    shouldRenderScopeSection,
+    hiddenUnsectionedProperties,
+    authRequiredKeys,
+  };
+};
+
+interface MissingCounts {
+  connectionMissingCount: number;
+  authMissingCount: number;
+}
+
+// Counts the still-empty required fields per section so the section header
+// can surface a "N required" badge.
+const getMissingCounts = (
+  explicitConnectionProperties: ObjectFieldTemplatePropertyType[],
+  authProperties: ObjectFieldTemplatePropertyType[],
+  authRequiredKeys: string[],
+  schemaProperties: Record<string, SchemaProperty>,
+  rootFormData: Record<string, unknown>
+): MissingCounts => {
+  const explicitConnectionPropertyNames = explicitConnectionProperties
+    .filter((p) => !p.hidden && p.name !== SERVICE_TYPE_PROPERTY)
+    .map((p) => p.name);
+
+  const connectionMissingCount =
+    getMissingSchemaRequiredFieldsCountForSelectedBranch(
+      {
+        type: 'object',
+        properties: Object.fromEntries(
+          explicitConnectionPropertyNames.map((name) => [
+            name,
+            schemaProperties[name] as Record<string, unknown>,
+          ])
+        ),
+        required: explicitConnectionPropertyNames,
+      },
+      rootFormData
+    );
+
+  const effectiveAuthRequired = [
+    ...authRequiredKeys,
+    ...(rootFormData?.[AUTH_PROPERTY] !== undefined &&
+    !authRequiredKeys.includes(AUTH_PROPERTY)
+      ? [AUTH_PROPERTY]
+      : []),
+  ];
+  const authMissingCount = getMissingSchemaRequiredFieldsCountForSelectedBranch(
+    {
+      type: 'object',
+      properties: Object.fromEntries(
+        authProperties.map((p) => [
+          p.name,
+          schemaProperties[p.name] as Record<string, unknown>,
+        ])
+      ),
+      required: effectiveAuthRequired,
+    },
+    rootFormData
+  );
+
+  return { connectionMissingCount, authMissingCount };
+};
+
+// Assembles the ordered section list (connection/auth/scope/advanced),
+// omitting sections that have no visible properties.
+const buildRawSections = (
+  t: (key: string, options?: Record<string, unknown>) => string,
+  connectionProperties: ObjectFieldTemplatePropertyType[],
+  authProperties: ObjectFieldTemplatePropertyType[],
+  scopeProperties: ObjectFieldTemplatePropertyType[],
+  advancedProperties: ObjectFieldTemplatePropertyType[],
+  schemaProperties: Record<string, SchemaProperty>,
+  wideNames: Set<string>,
+  shouldRenderScopeSection: boolean,
+  connectionMissingCount: number,
+  authMissingCount: number,
+  onFocus: ((fieldName: string) => void) | undefined
+): SectionConfig[] => [
+  ...(hasVisibleProperties(connectionProperties)
+    ? [
+        {
+          key: 'connection',
+          title: t('label.connection'),
+          description: t('message.connection-section-description'),
+          properties: connectionProperties,
+          schemaProperties,
+          collapsible: false,
+          defaultOpen: true,
+          layout: LayoutType.GRID,
+          wideNames,
+          focusName: getFirstVisibleFieldName(
+            connectionProperties,
+            'connection'
+          ),
+          onFocus,
+          badge:
+            connectionMissingCount > 0 ? (
+              <ReqBadge tone="error">
+                {t('message.field-count-required', {
+                  count: connectionMissingCount,
+                })}
+              </ReqBadge>
+            ) : (
+              <ReqBadge>{t('label.optional')}</ReqBadge>
+            ),
+        },
+      ]
+    : []),
+  ...(hasVisibleProperties(authProperties)
+    ? [
+        {
+          key: 'authentication',
+          title: t('label.authentication'),
+          description: t('message.authentication-section-description'),
+          properties: authProperties,
+          schemaProperties,
+          collapsible: false,
+          defaultOpen: true,
+          layout: LayoutType.STACK,
+          focusName: authProperties.some(
+            (property) => property.name === AUTH_PROPERTY
+          )
+            ? AUTH_PROPERTY
+            : getFirstVisibleFieldName(authProperties, AUTH_PROPERTY),
+          onFocus,
+          badge:
+            authMissingCount > 0 ? (
+              <ReqBadge tone="error">
+                {t('message.field-count-required', {
+                  count: authMissingCount,
+                })}
+              </ReqBadge>
+            ) : (
+              <ReqBadge>{t('label.optional')}</ReqBadge>
+            ),
+        } as SectionConfig,
+      ]
+    : []),
+  ...(shouldRenderScopeSection
+    ? [
+        {
+          key: 'scope',
+          title: t('label.scope-and-option-plural'),
+          description: t('message.scope-section-description'),
+          properties: scopeProperties,
+          schemaProperties,
+          collapsible: true,
+          defaultOpen: false,
+          layout: LayoutType.GRID,
+          wideNames,
+          focusName: getFirstVisibleFieldName(scopeProperties, 'scopeOptions'),
+          onFocus,
+          badge: <ReqBadge>{t('label.optional')}</ReqBadge>,
+        } as SectionConfig,
+      ]
+    : []),
+  ...(hasVisibleProperties(advancedProperties)
+    ? [
+        {
+          key: 'advanced',
+          title: t('label.advanced-config'),
+          description: t('message.advanced-config-section-description'),
+          properties: advancedProperties,
+          schemaProperties,
+          collapsible: true,
+          defaultOpen: false,
+          layout: LayoutType.GRID,
+          wideNames,
+          inlineBooleans: true,
+          focusName: getFirstVisibleFieldName(
+            advancedProperties,
+            'advancedConfig'
+          ),
+          onFocus,
+        } as SectionConfig,
+      ]
+    : []),
+];
+
 const ConnectionObjectFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props) => {
@@ -608,219 +883,42 @@ const ConnectionObjectFieldTemplate: FunctionComponent<
       additionalFieldContent,
     } = serviceUtilClassBase.getProperties(properties);
 
-    const requiredKeys = schema.required ?? [];
-    const schemaProperties = (schema.properties ?? {}) as Record<
-      string,
-      SchemaProperty
-    >;
-    const isAdvanced = (name: string) => ADVANCED_PROPERTIES.includes(name);
-    // authType oneOf renders the segmented selector. Flat secret fields stay in
-    // Authentication, while connector identity fields remain in Connection.
-    const isAuth = (name: string) =>
-      name === AUTH_PROPERTY || schemaProperties[name]?.format === 'password';
-    // Object/array fields (additionalProperties maps, storage config, …) render
-    // wide controls — span the full row so they don't ragged-wrap the grid.
-    const isWide = (name: string) => {
-      const property = schemaProperties[name];
-      const propType = property?.type;
+    const {
+      schemaProperties,
+      wideNames,
+      authProperties,
+      advancedProperties,
+      explicitConnectionProperties,
+      connectionProperties,
+      scopeProperties,
+      shouldRenderScopeSection,
+      hiddenUnsectionedProperties,
+      authRequiredKeys,
+    } = getPropertySections(schema, sectionProperties);
 
-      return (
-        propType === 'object' ||
-        propType === 'array' ||
-        Boolean(property?.oneOf?.length) ||
-        Boolean(property?.anyOf?.length)
-      );
-    };
-    const wideNames = new Set(
-      sectionProperties.filter((p) => isWide(p.name)).map((p) => p.name)
-    );
-
-    const authProperties = sectionProperties.filter((p) => isAuth(p.name));
-    const advancedProperties = sectionProperties.filter((p) =>
-      isAdvanced(p.name)
-    );
-    const explicitConnectionProperties = sectionProperties.filter(
-      (p) =>
-        !isAuth(p.name) && !isAdvanced(p.name) && requiredKeys.includes(p.name)
-    );
-    const optionalConnectionProperties = sectionProperties.filter(
-      (p) =>
-        !isAuth(p.name) &&
-        !isAdvanced(p.name) &&
-        !requiredKeys.includes(p.name) &&
-        OPTIONAL_CONNECTION_PROPERTIES.has(p.name)
-    );
-    const fallbackConnectionProperties = sectionProperties.filter(
-      (p) =>
-        !isAuth(p.name) &&
-        !isAdvanced(p.name) &&
-        !OPTIONAL_SCOPE_PROPERTIES.has(p.name)
-    );
-    const connectionProperties =
-      explicitConnectionProperties.length > 0
-        ? [...explicitConnectionProperties, ...optionalConnectionProperties]
-        : fallbackConnectionProperties;
-    const connectionPropertyNames = new Set(
-      connectionProperties.map((property) => property.name)
-    );
-    const scopeProperties = sectionProperties.filter(
-      (p) =>
-        !isAuth(p.name) &&
-        !isAdvanced(p.name) &&
-        !connectionPropertyNames.has(p.name)
-    );
-    const shouldRenderScopeSection = hasVisibleProperties(scopeProperties);
-    const hiddenUnsectionedProperties = [
-      ...(shouldRenderScopeSection ? [] : scopeProperties),
-    ].filter((property) => !isVisibleProperty(property));
     const rootFormData = formData as Record<string, unknown>;
 
-    const explicitConnectionPropertyNames = explicitConnectionProperties
-      .filter((p) => !p.hidden && p.name !== SERVICE_TYPE_PROPERTY)
-      .map((p) => p.name);
+    const { connectionMissingCount, authMissingCount } = getMissingCounts(
+      explicitConnectionProperties,
+      authProperties,
+      authRequiredKeys,
+      schemaProperties,
+      rootFormData
+    );
 
-    const connectionMissingCount =
-      getMissingSchemaRequiredFieldsCountForSelectedBranch(
-        {
-          type: 'object',
-          properties: Object.fromEntries(
-            explicitConnectionPropertyNames.map((name) => [
-              name,
-              schemaProperties[name] as Record<string, unknown>,
-            ])
-          ),
-          required: explicitConnectionPropertyNames,
-        },
-        rootFormData
-      );
-
-    const authRequiredKeys = requiredKeys.filter((k) => isAuth(k));
-    const effectiveAuthRequired = [
-      ...authRequiredKeys,
-      ...(rootFormData?.[AUTH_PROPERTY] !== undefined &&
-      !authRequiredKeys.includes(AUTH_PROPERTY)
-        ? [AUTH_PROPERTY]
-        : []),
-    ];
-    const authMissingCount =
-      getMissingSchemaRequiredFieldsCountForSelectedBranch(
-        {
-          type: 'object',
-          properties: Object.fromEntries(
-            authProperties.map((p) => [
-              p.name,
-              schemaProperties[p.name] as Record<string, unknown>,
-            ])
-          ),
-          required: effectiveAuthRequired,
-        },
-        rootFormData
-      );
-
-    const rawSections: SectionConfig[] = [
-      ...(hasVisibleProperties(connectionProperties)
-        ? [
-            {
-              key: 'connection',
-              title: t('label.connection'),
-              description: t('message.connection-section-description'),
-              properties: connectionProperties,
-              schemaProperties,
-              collapsible: false,
-              defaultOpen: true,
-              layout: LayoutType.GRID,
-              wideNames,
-              focusName: getFirstVisibleFieldName(
-                connectionProperties,
-                'connection'
-              ),
-              onFocus: connectionFormContext?.handleFocus,
-              badge:
-                connectionMissingCount > 0 ? (
-                  <ReqBadge tone="error">
-                    {t('message.field-count-required', {
-                      count: connectionMissingCount,
-                    })}
-                  </ReqBadge>
-                ) : (
-                  <ReqBadge>{t('label.optional')}</ReqBadge>
-                ),
-            },
-          ]
-        : []),
-      ...(hasVisibleProperties(authProperties)
-        ? [
-            {
-              key: 'authentication',
-              title: t('label.authentication'),
-              description: t('message.authentication-section-description'),
-              properties: authProperties,
-              schemaProperties,
-              collapsible: false,
-              defaultOpen: true,
-              layout: LayoutType.STACK,
-              focusName: authProperties.some(
-                (property) => property.name === AUTH_PROPERTY
-              )
-                ? AUTH_PROPERTY
-                : getFirstVisibleFieldName(authProperties, AUTH_PROPERTY),
-              onFocus: connectionFormContext?.handleFocus,
-              badge:
-                authMissingCount > 0 ? (
-                  <ReqBadge tone="error">
-                    {t('message.field-count-required', {
-                      count: authMissingCount,
-                    })}
-                  </ReqBadge>
-                ) : (
-                  <ReqBadge>{t('label.optional')}</ReqBadge>
-                ),
-            } as SectionConfig,
-          ]
-        : []),
-      ...(shouldRenderScopeSection
-        ? [
-            {
-              key: 'scope',
-              title: t('label.scope-and-option-plural'),
-              description: t('message.scope-section-description'),
-              properties: scopeProperties,
-              schemaProperties,
-              collapsible: true,
-              defaultOpen: false,
-              layout: LayoutType.GRID,
-              wideNames,
-              focusName: getFirstVisibleFieldName(
-                scopeProperties,
-                'scopeOptions'
-              ),
-              onFocus: connectionFormContext?.handleFocus,
-              badge: <ReqBadge>{t('label.optional')}</ReqBadge>,
-            } as SectionConfig,
-          ]
-        : []),
-      ...(hasVisibleProperties(advancedProperties)
-        ? [
-            {
-              key: 'advanced',
-              title: t('label.advanced-config'),
-              description: t('message.advanced-config-section-description'),
-              properties: advancedProperties,
-              schemaProperties,
-              collapsible: true,
-              defaultOpen: false,
-              layout: LayoutType.GRID,
-              wideNames,
-              inlineBooleans: true,
-              focusName: getFirstVisibleFieldName(
-                advancedProperties,
-                'advancedConfig'
-              ),
-              onFocus: connectionFormContext?.handleFocus,
-            } as SectionConfig,
-          ]
-        : []),
-    ];
+    const rawSections = buildRawSections(
+      t,
+      connectionProperties,
+      authProperties,
+      scopeProperties,
+      advancedProperties,
+      schemaProperties,
+      wideNames,
+      shouldRenderScopeSection,
+      connectionMissingCount,
+      authMissingCount,
+      connectionFormContext?.handleFocus
+    );
 
     let sectionCounter = 0;
     const sections = rawSections.map((section) => ({

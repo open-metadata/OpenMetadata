@@ -253,6 +253,13 @@ let pendingRequests: {
 // them — the bug that hung the UI on a spinner.
 let isRefreshDriverActive = false;
 
+// A refresh can return HTTP 200 carrying a token that is ALREADY expired — a non-positive
+// configured token lifetime mints `exp == iat`. Retrying that token 401s, which drives
+// another refresh, forever, with the user staring at a spinner and nothing in the logs.
+// Bound the consecutive cycles so the failure surfaces as a logout instead.
+const MAX_CONSECUTIVE_REFRESH_CYCLES = 3;
+let consecutiveRefreshCycles = 0;
+
 type AuthContextType = {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
@@ -517,6 +524,18 @@ export const AuthProvider = ({
   // immediately and refresh only when the token is actually stale; otherwise
   // just reschedule the timer with the correct remaining time.
   useEffect(() => {
+    const refreshTokenAndReauth = async () => {
+      const newToken = await tokenService.current?.refreshToken();
+      // Post-refresh reauth: if the user was bounced to signin by an
+      // earlier failed call, a successful refresh must re-run the
+      // loggedInUser flow to flip isAuthenticated back to true.
+      // Reading via getState() avoids the stale closure of the
+      // mount-only useEffect.
+      if (newToken && !useApplicationStore.getState().isAuthenticated) {
+        await getLoggedInUserDetails();
+      }
+    };
+
     const handleVisibilityChange = async () => {
       if (document.visibilityState !== 'visible') {
         return;
@@ -544,15 +563,7 @@ export const AuthProvider = ({
           return;
         }
         if (isExpired) {
-          const newToken = await tokenService.current?.refreshToken();
-          // Post-refresh reauth: if the user was bounced to signin by an
-          // earlier failed call, a successful refresh must re-run the
-          // loggedInUser flow to flip isAuthenticated back to true.
-          // Reading via getState() avoids the stale closure of the
-          // mount-only useEffect.
-          if (newToken && !useApplicationStore.getState().isAuthenticated) {
-            await getLoggedInUserDetails();
-          }
+          await refreshTokenAndReauth();
 
           return;
         }
@@ -560,10 +571,7 @@ export const AuthProvider = ({
         // refresh here. `timeoutExpiry === 0` exactly captures that case
         // once we've ruled out invalid exp above.
         if (isNumber(timeoutExpiry) && timeoutExpiry <= 0) {
-          const newToken = await tokenService.current?.refreshToken();
-          if (newToken && !useApplicationStore.getState().isAuthenticated) {
-            await getLoggedInUserDetails();
-          }
+          await refreshTokenAndReauth();
 
           return;
         }
@@ -688,6 +696,94 @@ export const AuthProvider = ({
     }
   };
 
+  // Drain the queued 401 requests once a refresh settles — retry each with the
+  // new token, or reject them all with the original error. Hoisted to component
+  // scope so its forEach loops don't nest past the depth limit inside the
+  // response interceptor. `pendingRequests` / `isRefreshDriverActive` remain the
+  // module-level bindings so the single-driver invariant is unchanged.
+  const drainPendingRequests = (
+    hasNewToken: boolean,
+    rejectionError: unknown
+  ) => {
+    const queued = pendingRequests;
+    pendingRequests = [];
+    isRefreshDriverActive = false;
+    if (hasNewToken) {
+      queued.forEach(
+        ({ resolve: onResolve, reject: onReject, config: queuedConfig }) =>
+          axiosClient
+            .request(queuedConfig)
+            .then((response) => {
+              // The retry succeeded, so this cycle genuinely recovered the session and
+              // the loop budget starts fresh. A retry that 401s again leaves the budget
+              // spent, which is what eventually breaks a non-recovering loop.
+              consecutiveRefreshCycles = 0;
+              onResolve(response);
+            })
+            .catch(onReject)
+      );
+    } else {
+      queued.forEach(({ reject: onReject }) => onReject(rejectionError));
+    }
+  };
+
+  // A token that decodes to an expiry already in the past can never satisfy the retry, so
+  // retrying it only re-enters the refresh cycle. Requires a real `exp` claim: a token we
+  // cannot decode reports the same `isExpired` and is left to the cycle cap instead, so an
+  // opaque-token provider keeps working.
+  const isTokenAlreadyExpired = (token: unknown) => {
+    const { exp, isExpired } = extractDetailsFromToken(token as string);
+
+    return Boolean(exp) && Boolean(isExpired);
+  };
+
+  const abandonRefresh = (error: unknown) => {
+    drainPendingRequests(false, error);
+    resetUserDetails(true);
+  };
+
+  // Drives exactly one token refresh for a batch of 401s in THIS tab. Extracted
+  // from the response interceptor's Promise executor so the refresh-settled
+  // handlers no longer nest past the depth limit. `resolve` / `reject` belong to
+  // the failed request's own Promise; `error` / `config` are that request's
+  // rejection and axios config — all passed in so the closure observes exactly
+  // the values it did inline. `reinit` (the interceptor re-init) is passed in
+  // rather than referenced by name to avoid a use-before-define cycle.
+  const startTokenRefresh = (
+    resolve: (value?: unknown) => void,
+    reject: (reason?: unknown) => void,
+    error: unknown,
+    config: InternalAxiosRequestConfig<unknown>,
+    reinit: () => Promise<void>
+  ) => {
+    pendingRequests.push({ resolve, reject, config });
+    if (isRefreshDriverActive) {
+      return;
+    }
+    if (consecutiveRefreshCycles >= MAX_CONSECUTIVE_REFRESH_CYCLES) {
+      abandonRefresh(error);
+
+      return;
+    }
+    isRefreshDriverActive = true;
+    consecutiveRefreshCycles += 1;
+
+    tokenService.current
+      .refreshToken()
+      .then(async (token: unknown) => {
+        if (!token || isTokenAlreadyExpired(token)) {
+          abandonRefresh(error);
+
+          return;
+        }
+        await reinit();
+        drainPendingRequests(true, error);
+      })
+      .catch(() => {
+        abandonRefresh(error);
+      });
+  };
+
   /**
    * Initialize Axios interceptors to intercept every request and response
    * to handle appropriately. This should be called only when security is enabled.
@@ -728,7 +824,13 @@ export const AuthProvider = ({
 
     // Axios response interceptor for statusCode 401,403
     responseInterceptor = axiosClient.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Any non-401 response proves the current token works, so a later unrelated
+        // expiry still gets the full refresh budget.
+        consecutiveRefreshCycles = 0;
+
+        return response;
+      },
       (error) => {
         if (error.response) {
           const { status } = error.response;
@@ -753,46 +855,15 @@ export const AuthProvider = ({
             // Nothing is left parked. The previous code queued behind a
             // cross-tab localStorage flag that no in-tab driver would clear,
             // hanging the request (and the UI spinner) indefinitely.
-            return new Promise((resolve, reject) => {
-              pendingRequests.push({ resolve, reject, config: error.config });
-              if (isRefreshDriverActive) {
-                return;
-              }
-              isRefreshDriverActive = true;
-
-              const drainPendingRequests = (hasNewToken: boolean) => {
-                const queued = pendingRequests;
-                pendingRequests = [];
-                isRefreshDriverActive = false;
-                if (hasNewToken) {
-                  queued.forEach(
-                    ({ resolve: onResolve, reject: onReject, config }) =>
-                      axiosClient
-                        .request(config)
-                        .then(onResolve)
-                        .catch(onReject)
-                  );
-                } else {
-                  queued.forEach(({ reject: onReject }) => onReject(error));
-                }
-              };
-
-              tokenService.current
-                .refreshToken()
-                .then(async (token) => {
-                  if (token) {
-                    await initializeAxiosInterceptors();
-                    drainPendingRequests(true);
-                  } else {
-                    drainPendingRequests(false);
-                    resetUserDetails(true);
-                  }
-                })
-                .catch(() => {
-                  drainPendingRequests(false);
-                  resetUserDetails(true);
-                });
-            });
+            return new Promise((resolve, reject) =>
+              startTokenRefresh(
+                resolve,
+                reject,
+                error,
+                error.config,
+                initializeAxiosInterceptors
+              )
+            );
           }
         }
 
@@ -857,26 +928,13 @@ export const AuthProvider = ({
     }
   };
 
-  const getProtectedApp = () => {
-    // Show loader if application is loading or authenticating
-    const childElement =
-      isApplicationLoading || isAuthenticating ? (
-        <Loader fullScreen />
-      ) : (
-        children
-      );
+  const getAuth0ProviderConfig = () => ({
+    clientId: authConfig?.clientId?.toString() ?? '',
+    domain: authConfig?.authority?.toString() ?? '',
+    redirectUri: authConfig?.callbackUrl?.toString() ?? '',
+  });
 
-    // Handling for SAML moved to GenericAuthenticator
-    if (
-      clientType === ClientType.Confidential ||
-      authConfig?.provider === AuthProviderEnum.Saml
-    ) {
-      return (
-        <LazyGenericAuthenticator ref={authenticatorRef}>
-          {childElement}
-        </LazyGenericAuthenticator>
-      );
-    }
+  const renderAuthenticatorForProvider = (childElement: ReactNode) => {
     switch (authConfig?.provider) {
       case AuthProviderEnum.LDAP:
       case AuthProviderEnum.Basic: {
@@ -889,13 +947,15 @@ export const AuthProvider = ({
         );
       }
       case AuthProviderEnum.Auth0: {
+        const { clientId, domain, redirectUri } = getAuth0ProviderConfig();
+
         return (
           <LazyAuth0ProviderWrapper
             useRefreshTokens
             cacheLocation="memory"
-            clientId={authConfig.clientId?.toString() ?? ''}
-            domain={authConfig.authority?.toString() ?? ''}
-            redirectUri={authConfig.callbackUrl?.toString() ?? ''}>
+            clientId={clientId}
+            domain={domain}
+            redirectUri={redirectUri}>
             <LazyAuth0Authenticator ref={authenticatorRef}>
               {childElement}
             </LazyAuth0Authenticator>
@@ -938,6 +998,30 @@ export const AuthProvider = ({
         return null;
       }
     }
+  };
+
+  const getProtectedApp = () => {
+    // Show loader if application is loading or authenticating
+    const childElement =
+      isApplicationLoading || isAuthenticating ? (
+        <Loader fullScreen />
+      ) : (
+        children
+      );
+
+    // Handling for SAML moved to GenericAuthenticator
+    if (
+      clientType === ClientType.Confidential ||
+      authConfig?.provider === AuthProviderEnum.Saml
+    ) {
+      return (
+        <LazyGenericAuthenticator ref={authenticatorRef}>
+          {childElement}
+        </LazyGenericAuthenticator>
+      );
+    }
+
+    return renderAuthenticatorForProvider(childElement);
   };
 
   useEffect(() => {

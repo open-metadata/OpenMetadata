@@ -38,6 +38,14 @@ import { LearningResourceFormProps } from './LearningResourceForm.interface';
 
 const { TextArea } = Input;
 
+const normalizeToArray = (val: unknown): unknown[] => {
+  if (Array.isArray(val)) {
+    return val;
+  }
+
+  return val != null ? [val] : [];
+};
+
 export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
   open,
   resource,
@@ -258,9 +266,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           data-testid="categories-form-item"
           label={t('label.category-plural')}
           name="categories"
-          normalize={(val) =>
-            Array.isArray(val) ? val : val != null ? [val] : []
-          }
+          normalize={normalizeToArray}
           rules={[
             {
               message: t('label.field-required', {
@@ -282,9 +288,7 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
           data-testid="contexts-form-item"
           label={t('label.context')}
           name="contexts"
-          normalize={(val) =>
-            Array.isArray(val) ? val : val != null ? [val] : []
-          }
+          normalize={normalizeToArray}
           rules={[
             {
               message: t('label.field-required', {

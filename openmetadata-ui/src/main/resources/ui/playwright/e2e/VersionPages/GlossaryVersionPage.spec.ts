@@ -67,13 +67,11 @@ test('Glossary', async ({ page }) => {
       ).toBeVisible();
 
       await expect(
-        page.locator(
-          '.diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-        )
+        page.locator('[data-testid="tag-PersonalData.SpecialCategory"]')
       ).toBeVisible();
 
       await expect(
-        page.locator('.diff-added [data-testid="tag-PII.Sensitive"]')
+        page.locator('[data-testid="tag-PII.Sensitive"]')
       ).toBeVisible();
     });
 
@@ -163,13 +161,11 @@ test('GlossaryTerm', async ({ page }) => {
     ).toBeVisible();
 
     await expect(
-      page.locator(
-        '.diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
-      )
+      page.locator('[data-testid="tag-PersonalData.SpecialCategory"]')
     ).toBeVisible();
 
     await expect(
-      page.locator('.diff-added [data-testid="tag-PII.Sensitive"]')
+      page.locator('[data-testid="tag-PII.Sensitive"]')
     ).toBeVisible();
 
     await expect(

@@ -13,6 +13,7 @@ Patch the Presidio recognizer results to make adapt them to specific use cases.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Protocol
 
 from dateutil.parser import parse
@@ -21,6 +22,19 @@ from presidio_analyzer import RecognizerResult
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
+
+# Two probe defaults that differ in every component. `parse` fills whatever the text does not
+# spell out from its default, so a component that changes between the two parses was never in
+# the text to begin with.
+_DATE_PROBE_DEFAULTS = (datetime(1900, 1, 1), datetime(2222, 7, 23))
+_DATE_PARTS = ("year", "month", "day")
+
+# Two of the three parts is what separates a date from a number that merely parses as one:
+# `2018-03` and `March 14` are dates, `1999` and `29.99` are a year code and a price.
+_MIN_SPELLED_OUT_DATE_PARTS = 2
+
+# The spaCy-backed entities that name a person, a place or a nationality.
+_NAMED_ENTITIES = frozenset({"PERSON", "LOCATION", "NRP"})
 
 
 class PresidioRecognizerResultPatcher(Protocol):
@@ -63,22 +77,52 @@ def url_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Se
     return patched_result
 
 
+def named_entity_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]:
+    """
+    Patch the recognizer result to remove name false positives with opaque identifiers.
+
+    spaCy reads fragments of identifiers as names: a chunk of the UUID
+    `b1e3a1c2-1111-4222-8333-444455556666` comes back as a PERSON. People, places and
+    nationalities are not spelled with digits, so a span holding one is none of them.
+    """
+    return [
+        result
+        for result in recognizer_results
+        if result.entity_type not in _NAMED_ENTITIES
+        or not any(char.isdigit() for char in text[result.start : result.end])
+    ]
+
+
+def spells_out_a_date(text: str) -> bool:
+    """
+    Whether the text names a date rather than merely being parseable as one.
+
+    spaCy labels bare numbers as DATE -- an order id `1001`, a year code `1999`, a price
+    `29.99` -- and `parse` accepts every one of them by silently taking the missing
+    components from its default. Parsing twice with different defaults exposes which
+    components the text actually named: the rest move with the default.
+    """
+    default_a, default_b = _DATE_PROBE_DEFAULTS
+    try:
+        parsed_a, parsed_b = parse(text, default=default_a), parse(text, default=default_b)
+    except (ValueError, OverflowError):
+        return False
+    except Exception as e:
+        logger.info("Unexpected error while parsing date time: %s", e)
+        return False
+
+    spelled_out = sum(getattr(parsed_a, part) == getattr(parsed_b, part) for part in _DATE_PARTS)
+    return spelled_out >= _MIN_SPELLED_OUT_DATE_PARTS
+
+
 def date_time_patcher(recognizer_results: Sequence[RecognizerResult], text: str) -> Sequence[RecognizerResult]:
     """
     Patch the recognizer result to remove date time false positive with date.
     """
     patched_result: list[RecognizerResult] = []
     for result in recognizer_results:
-        if result.entity_type == "DATE_TIME":
-            # try to parse using dateutils, if it fails, skip the result
-            try:
-                _ = parse(text[result.start : result.end])
-            except (ValueError, OverflowError):
-                # if parsing fails, skip the result
-                continue
-            except Exception as e:
-                logger.info("Unexpected error while parsing date time: %s", e)
-                continue
+        if result.entity_type == "DATE_TIME" and not spells_out_a_date(text[result.start : result.end]):
+            continue
         patched_result.append(result)
     return patched_result
 

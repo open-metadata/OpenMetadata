@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, test } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
+import { test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { clickUpdateButtonIfVisible } from '../../utils/explore';
