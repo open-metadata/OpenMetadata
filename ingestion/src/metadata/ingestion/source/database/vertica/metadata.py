@@ -12,6 +12,7 @@
 Vertica source implementation.
 """
 
+import contextlib
 import re
 import traceback
 from collections.abc import Iterable
@@ -37,11 +38,13 @@ from metadata.ingestion.source.database.common_db_source import CommonDbSourceSe
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
+    VERTICA_GET_COLUMNS_WITHOUT_COMMENTS,
     VERTICA_GET_CURRENT_SCHEMA,
     VERTICA_GET_PRIMARY_KEYS,
     VERTICA_GET_SERVER_VERSION,
     VERTICA_LIST_DATABASES,
     VERTICA_SCHEMA_COMMENTS,
+    VERTICA_SUPPORTS_COLUMN_COMMENTS,
     VERTICA_TABLE_COMMENTS,
     VERTICA_VIEW_DEFINITION,
 )
@@ -55,6 +58,8 @@ from metadata.utils.sqlalchemy_utils import (
 )
 
 logger = ingestion_logger()
+
+VERTICA_VERSION_PATTERN = re.compile(r".*Vertica Analytic Database v(\d+)\.(\d+)\.(\d)+.*")
 
 ischema_names.update(
     {
@@ -76,6 +81,38 @@ ischema_names.update(
 )
 
 
+def supports_column_comments(self, connection) -> bool:
+    """Whether this server exposes v_catalog.comments.child_object.
+
+    Vertica 10 added it. Without it the column query cannot be expressed, and
+    the failure takes out the whole column read rather than just the comments,
+    so tables end up with no columns and no schema definition. Checked once per
+    dialect and remembered, since it cannot change while connected.
+    """
+    remembered = getattr(self, "_column_comment_support", None)
+    if remembered is not None:
+        return remembered
+
+    try:
+        connection.execute(sql.text(VERTICA_SUPPORTS_COLUMN_COMMENTS))
+        supported = True
+    except Exception as exc:
+        supported = False
+        logger.warning(
+            "This Vertica server does not expose v_catalog.comments.child_object, "
+            "so column comments cannot be read. Columns and schema definitions are "
+            "still ingested, without comments. Vertica 10 and later expose it: %s",
+            exc,
+        )
+        # The failed statement leaves the transaction unusable for anything that
+        # follows, and the caller goes straight on to read columns.
+        with contextlib.suppress(Exception):
+            connection.rollback()
+
+    self._column_comment_support = supported  # pylint: disable=protected-access
+    return supported
+
+
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=too-many-locals,unused-argument
     """
@@ -86,9 +123,10 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
     else:
         schema_condition = "1"
 
-    sql_query = sql.text(
-        dedent(VERTICA_GET_COLUMNS.format(table=table_name.lower(), schema_condition=schema_condition))
+    columns_query = (
+        VERTICA_GET_COLUMNS if supports_column_comments(self, connection) else VERTICA_GET_COLUMNS_WITHOUT_COMMENTS
     )
+    sql_query = sql.text(dedent(columns_query.format(table=table_name.lower(), schema_condition=schema_condition)))
 
     spk = sql.text(dedent(VERTICA_GET_PRIMARY_KEYS.format(table=table_name.lower(), schema_condition=schema_condition)))
 
@@ -250,9 +288,6 @@ def get_table_comment(
         schema=schema,
         query=VERTICA_TABLE_COMMENTS,
     )
-
-
-VERTICA_VERSION_PATTERN = re.compile(r".*Vertica Analytic Database v(\d+)\.(\d+)\.(\d)+.*")
 
 
 def _get_server_version_info(self, connection):  # pylint: disable=unused-argument

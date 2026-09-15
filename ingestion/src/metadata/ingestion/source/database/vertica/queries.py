@@ -64,6 +64,47 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
     """  # noqa: W291
 )
 
+# v_catalog.comments gained child_object in Vertica 10. Before that the join
+# above cannot be expressed at all, and the whole column read fails rather than
+# just losing comments, which leaves tables with no schema definition. This
+# variant drops the join so older servers still reflect their columns.
+VERTICA_GET_COLUMNS_WITHOUT_COMMENTS = textwrap.dedent(
+    """
+        select
+          column_name,
+          data_type,
+          column_default,
+          is_nullable,
+          '' AS comment
+        from
+          v_catalog.columns col
+        WHERE
+          lower(table_name) = '{table}'
+          AND {schema_condition}
+        UNION ALL
+        SELECT
+          column_name,
+          data_type,
+          '' AS column_default,
+          true AS is_nullable,
+          ''  AS comment
+        FROM v_catalog.view_columns
+        WHERE lower(table_name) = '{table}'
+        AND {schema_condition}
+    """
+)
+
+# Referencing the column is the only reliable probe. v_catalog.columns lists
+# user tables only, so looking the system catalog up there always reports
+# absent, on every version. Selecting no rows keeps this cheap.
+VERTICA_SUPPORTS_COLUMN_COMMENTS = textwrap.dedent(
+    """
+        SELECT child_object
+        FROM v_catalog.comments
+        LIMIT 0
+    """
+)
+
 VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
     """
         SELECT column_name
