@@ -387,33 +387,38 @@ _QUERY_HISTORY_PRIVILEGE_TOKEN = "query-history views"
 REDSHIFT_ERRORS = ErrorPack(
     when(Matchers.contains("password authentication failed")).diagnose(
         "Authentication failed",
-        fix="Check the username and password, and that the user is allowed to connect.",
+        fix="Redshift rejected the sign-in. Check Username and Password. If both are correct, the account may not be "
+        "allowed to connect to this cluster.",
     ),
     # No _sqlstate("28000", "28P01") rule: those are connect-phase codes, and libpq
     # reports a failed connection with no PGresult, so .pgcode is None (verified on
     # PostgreSQL 15). The message rule above is what catches auth failures.
     when(_database_not_found).diagnose(
         "Database not found",
-        fix="Verify the configured database exists and the user is allowed to connect to it.",
+        fix="Redshift has no database with the name in Database. Check the spelling, and that the account in Username "
+        "is allowed to connect to it.",
     ),
     # Raised by the GetQueries check when has_table_privilege reports the user lacks
     # SELECT on the query-history views; config-agnostic so it never names a view.
     when(Matchers.contains(_QUERY_HISTORY_PRIVILEGE_TOKEN)).diagnose(
         "Query history not accessible",
-        fix="Grant the user SELECT on the Redshift query-history views (stl_* for Provisioned, "
-        "sys_* for Serverless), or usage and lineage won't be collected.",
+        fix="The account cannot read the views Redshift keeps query history in - stl_* on a Provisioned cluster, sys_* on "
+        "Serverless. Ask a Redshift administrator to grant SELECT on them, otherwise usage and lineage will not be "
+        "collected.",
     ),
     when(_sqlstate("42501")).diagnose(  # insufficient_privilege
         "Insufficient privileges",
-        fix="Grant the user SELECT on the objects the failing step reads.",
+        fix="The account signed in but is not allowed to read what this step needs. Ask a Redshift administrator to "
+        "GRANT SELECT on those objects to it.",
     ),
     # 42P01 (undefined_table) across the test steps can only come from the GetQueries
     # source probe - every other step reads catalogs that always exist - so it means
     # the query-history source view is missing, whatever it is named.
     when(_sqlstate("42P01")).diagnose(  # undefined_table
         "Query history source not found",
-        fix="The Redshift query-history views are not available on this deployment. Verify the "
-        "cluster type (Provisioned vs Serverless), or usage and lineage won't be collected.",
+        fix="The query-history views this step looked for do not exist on this cluster. Provisioned clusters expose stl_* "
+        "views and Serverless exposes sys_* views, so this usually means the cluster is not the type the connection "
+        "assumes. Without them, usage and lineage will not be collected.",
     ),
 ).including(NETWORK_ERRORS)
 
