@@ -12,9 +12,9 @@
  */
 
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import i18n from '../utils/i18next/LocalUtil';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from './constants';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const TAG_CONSTANT = {
   labelType: LabelType.Manual,

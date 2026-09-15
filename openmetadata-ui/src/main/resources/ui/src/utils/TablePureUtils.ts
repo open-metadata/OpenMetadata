@@ -12,13 +12,13 @@
  */
 
 import {
-  isEmpty,
-  isUndefined,
-  lowerCase,
-  omit,
-  toString,
-  uniqueId,
-  upperCase,
+    isEmpty,
+    isUndefined,
+    lowerCase,
+    omit,
+    toString,
+    uniqueId,
+    upperCase
 } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -29,28 +29,28 @@ import type { MlFeature } from '../generated/entity/data/mlmodel';
 import type { Task } from '../generated/entity/data/pipeline';
 import type { SearchIndexField } from '../generated/entity/data/searchIndex';
 import type {
-  Column,
-  ConstraintType,
-  JoinedWith,
-  Table,
-  TableJoins,
+    Column,
+    ConstraintType,
+    JoinedWith,
+    Table,
+    TableJoins
 } from '../generated/entity/data/table';
 import { DataType } from '../generated/entity/data/table';
 import type { EntityReference } from '../generated/entity/type';
 import type { Field } from '../generated/type/schema';
 import {
-  LabelType,
-  State,
-  TagSource,
-  type TagLabel,
+    LabelType,
+    State,
+    TagSource,
+    type TagLabel
 } from '../generated/type/tagLabel';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointFieldUtils';
 import { extractContainerColumns } from './ContainerDetailPureUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
+    getPartialNameFromTableFQN,
+    getTableFQNFromColumnFQN
 } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import { extractMlModelFeatures } from './MlModelDetailsUtils';

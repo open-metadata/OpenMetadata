@@ -101,9 +101,10 @@ test.describe(
       await classification.visitPage(page);
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByTestId(`usage-count-${usedTag.data.name}`)
-      ).toHaveText(POSITIVE_COUNT);
+      const usedCount = page.getByTestId(`usage-count-${usedTag.data.name}`);
+
+      await expect(usedCount).toHaveText(POSITIVE_COUNT);
+      await expect(usedCount).toHaveAttribute('href', /.+/);
 
       const unusedCount = page.getByTestId(
         `usage-count-${unusedTag.data.name}`

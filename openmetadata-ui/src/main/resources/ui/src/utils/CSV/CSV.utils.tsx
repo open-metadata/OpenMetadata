@@ -24,10 +24,6 @@ import {
 } from '../../components/common/EntityImport/OperationCell/OperationCell.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  CERTIFICATION_CATEGORY,
-  TIER_CATEGORY,
-} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   LabelType,
@@ -71,10 +67,7 @@ const CSV_SEPARATOR = ',';
 const CSV_FIELD_SEPARATOR = ';';
 const CSV_ENTITY_TYPE_SEPARATOR = ':';
 const CSV_INTERNAL_ARRAY_SEPARATOR = '|';
-const SYSTEM_CLASSIFICATION_TAG_PREFIXES = [
-  CERTIFICATION_CATEGORY,
-  TIER_CATEGORY,
-];
+const SYSTEM_CLASSIFICATION_TAG_PREFIXES = ['Certification', 'Tier'];
 
 export const isSystemClassificationTagFqn = (tagFQN = '') =>
   SYSTEM_CLASSIFICATION_TAG_PREFIXES.some((classification) =>

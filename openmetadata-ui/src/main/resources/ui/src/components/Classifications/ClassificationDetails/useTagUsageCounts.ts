@@ -18,9 +18,9 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
-  buildTagFqnIncludeRegex,
-  getTagUsageAggregationField,
-  parseTagUsageBuckets,
+    buildTagFqnIncludeRegex,
+    getTagUsageAggregationField,
+    parseTagUsageBuckets
 } from '../../../utils/TagsPureUtils';
 
 export const TAG_USAGE_COUNTS_QUERY_KEY = 'tag-usage-counts';

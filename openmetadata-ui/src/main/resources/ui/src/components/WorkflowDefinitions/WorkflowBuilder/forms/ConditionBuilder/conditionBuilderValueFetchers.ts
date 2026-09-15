@@ -12,16 +12,16 @@
  */
 
 import {
-  CERTIFICATION_CATEGORY,
-  PAGE_SIZE_MEDIUM,
+    CERTIFICATION_CATEGORY,
+    PAGE_SIZE_MEDIUM
 } from '../../../../../constants/constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { searchData } from '../../../../../rest/miscAPI';
 import { getTags } from '../../../../../rest/tagAPI';
 import { searchEntity } from '../../../../../utils/Alerts/AlertsUtil';
 import {
-  formatTeamsResponse,
-  formatUsersResponse,
+    formatTeamsResponse,
+    formatUsersResponse
 } from '../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import type { ConditionBuilderOption } from './ConditionBuilder.interface';

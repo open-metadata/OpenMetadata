@@ -12,14 +12,14 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Button,
-  Col,
-  Divider,
-  Dropdown,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
+    Button,
+    Col,
+    Divider,
+    Dropdown,
+    Row,
+    Space,
+    Tabs,
+    Tooltip
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -36,8 +36,8 @@ import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
-  ActivityFeedLayoutType,
-  ActivityFeedTabs,
+    ActivityFeedLayoutType,
+    ActivityFeedTabs
 } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
@@ -64,7 +64,7 @@ import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
-  AssetsTabRef,
+    AssetsTabRef
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
@@ -72,11 +72,11 @@ import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameM
 import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  BLACK_COLOR,
-  CERTIFICATION_CATEGORY,
-  DE_ACTIVE_COLOR,
-  ROUTES,
-  TIER_CATEGORY,
+    BLACK_COLOR,
+    CERTIFICATION_CATEGORY,
+    DE_ACTIVE_COLOR,
+    ROUTES,
+    TIER_CATEGORY
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
@@ -85,8 +85,8 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -101,9 +101,9 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
-  tagQueryFn,
-  tagQueryKey,
-  TAG_DEFAULT_FIELDS,
+    tagQueryFn,
+    tagQueryKey,
+    TAG_DEFAULT_FIELDS
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
@@ -111,19 +111,19 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
+    fetchEntityActivityCountInto,
+    fetchEntityTaskCountsInto,
+    getFeedCounts
 } from '../../utils/FeedUtilsPure';
 import {
-  getClassificationDetailsPath,
-  getClassificationTagPath,
+    getClassificationDetailsPath,
+    getClassificationTagPath
 } from '../../utils/RouterUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import {
-  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
-  getQueryFilterToExcludeTermsAndEntities,
-  getTagAssetsQueryFilter,
+    getExcludedIndexesBasedOnEntityTypeEditTagPermission,
+    getQueryFilterToExcludeTermsAndEntities,
+    getTagAssetsQueryFilter
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
