@@ -56,6 +56,7 @@ final class SanitizedModelBuilder {
     CORE,
     TAGS,
     COLUMNS,
+    DOMAINS,
     EXTENSION,
     LINEAGE;
 
@@ -67,6 +68,7 @@ final class SanitizedModelBuilder {
   enum NodeKind {
     TABLE(ViewField.CORE),
     TAG(ViewField.CORE),
+    DOMAIN(ViewField.CORE),
     COLUMN(ViewField.COLUMNS),
     EXTENSION(ViewField.EXTENSION),
     EXTENSION_PROPERTY(ViewField.EXTENSION);
@@ -89,6 +91,7 @@ final class SanitizedModelBuilder {
               entry(MODIFIED, ViewField.CORE),
               entry(VERSION, ViewField.CORE),
               entry(OM + "hasTag", ViewField.TAGS),
+              entry(OM + "domains", ViewField.DOMAINS),
               entry(OM + "hasColumn", ViewField.COLUMNS),
               entry(OM + "hasExtension", ViewField.EXTENSION),
               entry(OM + "upstream", ViewField.LINEAGE),
@@ -112,6 +115,8 @@ final class SanitizedModelBuilder {
               ViewField.CORE,
               OM + "tagSource",
               ViewField.CORE),
+          NodeKind.DOMAIN,
+          Map.of(TYPE, ViewField.CORE, LABEL, ViewField.CORE, FQN, ViewField.CORE),
           NodeKind.COLUMN,
           Map.of(
               TYPE,
@@ -338,6 +343,7 @@ final class SanitizedModelBuilder {
     return switch (resource.type()) {
       case Entity.TABLE -> NodeKind.TABLE;
       case Entity.TAG -> NodeKind.TAG;
+      case Entity.DOMAIN -> NodeKind.DOMAIN;
       default -> throw new FactAdmissionException("No mapping for resource " + resource.type());
     };
   }

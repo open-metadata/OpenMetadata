@@ -3,7 +3,7 @@
 - **Status:** test-only prototype evidence for the proposed ADR [`docs/adr/2026-09-14-authorized-sparql.md`](adr/2026-09-14-authorized-sparql.md), candidate **L** of [`docs/rdf-authorization-research.md`](rdf-authorization-research.md). No production code, endpoint, schema, POM, or configuration changed. Not an approved architecture.
 - **Date / base:** 2026-09-14, on top of `9c2f27a7682`.
 - **Question:** On real projected triples, does a request-local model that physically contains only admitted facts give the ADR's answers for `COUNT`, `ASK`, paths, joins and `EXISTS`? Can a bounded retrieval from `graph/knowledge` build that model without guessing?
-- **Scope:** the core model, its fixture and the semantic tests, plus a test-only query profile that confines queries to the sanitized model. Local tests run on in-process Jena. An opt-in subclass reruns the same tests with every retrieval sent to an isolated, memory-capped Fuseki 6.2.0 container built from `docker/rdf-store`.
+- **Scope:** the core model, its fixture and the semantic tests, plus a test-only query profile that confines queries to the sanitized model. Local tests run on in-process Jena. An opt-in subclass reruns the same tests with every retrieval sent to an isolated, memory-capped Fuseki 6.2.0 container built from `docker/rdf-store`. An integration test checks decisions against OpenMetadata's real authorization on API-created entities, and that live projections are rejected where the map has no reviewed rule.
 
 ## Short answer
 
@@ -27,6 +27,8 @@ All files are under `openmetadata-service/src/test/java/org/openmetadata/service
 | `rdf/SanitizedModelBuilder.java` | The experiment itself: bounded retrieval, the per-fact admission map, and a fresh `Model`. |
 | `rdf/SanitizedQueryProfile.java` | Test-only query profile: `SELECT`/`ASK` only, confined to the model. |
 | `security/policyevaluator/PolicyContextFixture.java` | Builds `PolicyContext`, whose constructor is package-private. |
+
+The integration test lives in `openmetadata-integration-tests/src/test/java/org/openmetadata/service/rdf/RdfAuthorizationAlignmentIT.java`, in the builder's package so it can use the package-private experiment classes. The builder also gained the domain field family (`om:domains` on tables; domain type, label and FQN) that its catalog entries need.
 
 ## Beginner walkthrough
 
@@ -119,6 +121,67 @@ mvn -pl openmetadata-service -am package -Dtest='SanitizedModel*Test' \
 
 **Not measured:** Fuseki or model heap per request, retrieval latency or evaluation latency per request. The Fuseki timings above are whole test classes, and the memory figures are coarse container samples.
 
+### Integration run against OpenMetadata authorization
+
+`RdfAuthorizationAlignmentIT` runs in the integration-test application: Postgres 15, OpenSearch 3.4.0, and Fuseki 6.2.0 built from this checkout, capped at 1 GiB with a 384 MiB heap.
+- **When it runs:** the class carries `@EnabledIfSystemProperty(named = "enableRdf", matches = "true")`, which the `postgres-rdf-tests` profile sets. The generic integration profiles include every `*IT` but start no Fuseki. No CI workflow runs `postgres-rdf-tests` today.
+- **Skip check without RDF (2026-09-15):** `mvn -pl openmetadata-integration-tests -am verify -Ppostgres-opensearch -Dskip.embedded.bootstrap=true -DintegrationTests.skipIsolated=true -Dit.test=RdfAuthorizationAlignmentIT -Dfailsafe.failIfNoSpecifiedTests=false -Dtest=NoSuchUnitTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false -Dspotless.check.skip=true`, with `enableRdf` unset.
+  - Failsafe: 2 tests, 0 failures, 0 errors, 2 skipped, each with the reason "RDF is disabled for this run; use the postgres-rdf-tests profile". Maven exit 0.
+  - Docker recorded no container event during the Maven run.
+  - A first version guarded the class with an assumption in `@BeforeAll`. Failsafe reported that as 0 tests run, not as skipped, and `verify` failed with "No tests were executed". The class-level condition replaced it.
+- **Image:** that profile defaults to `secoresearch/fuseki:5.5.0`. All evidence below used `-DrdfContainerImage` with the 6.2.0 image; 5.5.0 was not tested.
+
+**Fixture.** Domains *visible* and *hidden*. A user with the built-in `DomainOnlyAccessRole` and the visible domain. Tables A, C and D in the visible domain, B in the hidden one. API lineage A←B, B←C, A←D.
+
+**`authorizationFollowsDomainAndRoleChanges`.** Each phase has a predetermined visible set. REST GETs by the user (403 means hidden) must equal it, and in-process `DefaultAuthorizer` decisions must equal REST.
+- In-process checks use the REST GET's context shape: no requested fields, `NON_DELETED`, `VIEW_BASIC`.
+- All checks of a phase run together on one new thread, so request-scoped thread-local state starts empty, as it does behind the request filters. No cache is invalidated by the test.
+- Every role change first asserts that the caller is not an admin, holds exactly the assigned roles, and keeps the inherited roles it had at creation.
+
+| Phase | Visible |
+| --- | --- |
+| Initial | A, C, D |
+| B moved to the visible domain | A, B, C, D |
+| B moved back to the hidden domain | A, C, D |
+| Role with an unconditional deny on all table operations assigned (allowed → revoked) | none |
+| That role removed | A, C, D |
+| `DomainOnlyAccessRole` removed; its `!hasDomain()` deny goes, `OrganizationPolicy` still allows | A, B, C, D |
+
+Result: all six phases passed, in three separate runs on 2026-09-15. The last is the verification run below, with the final test code.
+
+**Request-lifecycle finding (test harness, not production).** A first version made in-process decisions on the long-lived JUnit thread. `RequestEntityCache` is thread-local and cleared only by the request filters, so that thread kept the entity it loaded first. All three passing runs also recorded, without asserting, decisions on a reused thread:
+- In all three, after B moved into the visible domain, the reused thread still denied B, with the REST context shape and with a cache-backed one. Fresh-request decisions matched REST, and every other recorded cell matched REST.
+- In a separate run, where the reused thread first loaded B after that move, it kept allowing B after B moved back.
+
+This concerns thread reuse in the test only. Production request threads, the shared entity cache and cross-pod invalidation were not examined.
+
+**`sanitizedModelBuildRejectsUnmappedLiveFacts`: a fail-closed regression, not model construction.** Building the model for the same user on API-created entities is rejected as a whole. The last run with the build as a plain test reported 22 violations: 20 predicates without a permission mapping and 2 unapproved types.
+- Tables: `om:belongsToService`, `om:belongsToDatabase`, `om:belongsToSchema`, `om:hasServiceType`, `om:entityStatus`, `om:isDeleted`, `om:joins`, `om:processedLineage`, `dct:hasVersion`.
+- Domains: `dct:description`, `dct:hasVersion`, `dct:modified`, `dcat:version`, `om:domainType`, `om:entityStatus`, `om:childrenCount`, `om:has`, `om:upstream`, `om:downstream`, `prov:wasDerivedFrom`.
+- Types: `om:Domain`, `skos:Collection`.
+
+The test asserts the rejection, that every violation is a mapping gap (no ownership or retrieval error), and that domain membership (`om:has`), domain lineage (`om:upstream`), a container link (`om:belongsToSchema`) and the `om:Domain` type are among the violations. It proves that unsupported live facts are rejected. It does not show that a sanitized model can be built from live projections.
+
+**Verification run, 2026-09-15, with the final test code.**
+
+```bash
+mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
+  -DintegrationTests.skipIsolated=true -Dit.test=RdfAuthorizationAlignmentIT \
+  -Dtest=SanitizedModelExperimentTest -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false \
+  -Dfailsafe.failIfNoSpecifiedTests=false \
+  -DsearchType=opensearch -DsearchImage=opensearchproject/opensearch:3.4.0 \
+  -DrdfContainerImage=openmetadata-fuseki:6.2.0-rbac-it -DrdfContainerMemoryBytes=1073741824 \
+  -DrdfContainerTmpfsSize=512m "-DrdfContainerJvmArgs=-Xms384m -Xmx384m" \
+  -Dspotless.check.skip=true
+```
+
+- **Image:** `openmetadata-fuseki:6.2.0-rbac-it` (`sha256:81dd896eb4a1…`), built from `docker/rdf-store` at `4e409314cd7` (tree `ed6684dfd7f5`).
+- **Failsafe:** `RdfAuthorizationAlignmentIT` 2 tests, 0 failures, 0 errors, 0 skipped. Both `authorizationFollowsDomainAndRoleChanges` (all six phases) and `sanitizedModelBuildRejectsUnmappedLiveFacts` passed. Surefire: `SanitizedModelExperimentTest` 56 tests, 0 failures, 0 errors, 0 skipped. Maven exit 0.
+- **Earlier run of the same command:** it also reported 2 tests, 0 failures, 0 errors, 0 skipped. That was before the class-level RDF condition replaced a `@BeforeAll` assumption.
+- **What the passing rejection test shows:** the build was rejected, the four selected violations were among those reported, and every violation was a mapping gap. Neither passing run of this test recorded the full violation list, so the 22 above come from the run in which the build was still a plain test.
+
+**Diagnostics, not latency evidence.** Across the three passing runs, REST checks took 50–99 ms per phase for four tables, and fresh-request checks 13–20 ms. Container peaks: OpenSearch 2,571–2,755 MiB, Fuseki 557–728 MiB (1 GiB limit), Postgres 199–271 MiB. The host recorded no swap-outs.
+
 ### Findings
 
 1. **The ADR semantics hold on four tables.**
@@ -150,6 +213,8 @@ mvn -pl openmetadata-service -am package -Dtest='SanitizedModel*Test' \
    - `"0.1"^^xsd:double` comes back from Fuseki as `"0.1e0"`, which a separate throwaway container probe confirmed. The value is the same, but the RDF term differs.
    - Comparisons by term must therefore use a reference read through the same store; comparing against the in-memory fixture instead makes whole-model comparisons fail.
    - The tests read the unrestricted reference through the same source as the sanitized build.
+10. **Live projections carry facts outside the map (blocking).** On API-created tables and domains the build fails closed with 22 violations (see "Integration run"). The scalar ones need their field and operation derived from the resource's registered view operations, one field group at a time.
+11. **Relationship and shared facts need target-aware rules, not field mappings.** Domain membership (`om:has`) and domain-level lineage, which `LineageRepository.addDomainLineage` derives from asset lineage, both reference other assets. `om:joins` is a JSON literal naming other tables. Container links point at service, database and schema entities. A visible domain must not reveal hidden members. These rules are undecided.
 
 ## Proven vs not proven
 
@@ -163,14 +228,15 @@ mvn -pl openmetadata-service -am package -Dtest='SanitizedModel*Test' \
 **Not proven (explicitly out of scope or not reached):**
 - **The query profile as a security boundary.** It is a test helper, not reviewed as one. No endpoint uses it, and untested SPARQL forms are not covered by evidence.
 - **Remote retrieval beyond one small run.** The remote evidence is a single run of 56 tests on four tables, against one arm64 image built locally. Query evaluation happened on the local sanitized model, not inside Fuseki.
-- **Real policy integration end to end.** Not exercised: `SubjectCache` role/team/persona policy resolution, `DefaultAuthorizer` (admin, bot, domain and reviewer handling), `ResourceContext` entity loading, owner conditions such as `isOwner()`, and the search-side compiled RBAC filter. The catalog attributes (tags) are fixture values, not loaded from the database.
+- **Real policy integration end to end.** The integration test exercises `DefaultAuthorizer`, role policies resolved through `SubjectCache`, `ResourceContext` entity loading and the `hasDomain()` condition, for one user on four tables. Not exercised: team and persona policies, bot and reviewer handling, owner conditions such as `isOwner()`, and the search-side compiled RBAC filter. In the in-process semantic tests the catalog attributes (tags) are fixture values, not loaded from the database.
+- **A sanitized model built from live projections.** It is always rejected today (Findings 10 and 11).
 - **Field coverage** beyond the predicates this fixture emits. Also unproven: the documented map for glossary terms, domains, owners, data products, usage, sample data, tests, queries, custom properties, lifecycle and certification.
 - **Candidate selection at scale.** The builder evaluates every catalog resource; a real system needs a pre-filter (for example the search RBAC compiler).
 - **Remote consistency.** The three retrieval queries are not pinned to one dataset (ADR F8): no blue/green or in-place rebuild behavior (A9), and no snapshot.
-- **Permission freshness and revocation** (A7), and cancellation of remote work (F9).
+- **Permission freshness and revocation** (A7) beyond one JVM: the integration test shows REST and in-process decisions following a domain move and an assigned or removed deny role in the same application. Cross-pod invalidation, in-flight requests and policy edits are not covered. Cancellation of remote work (F9) is not covered either.
 - **Memory, latency and scale.** Nothing beyond four tables, and no heap or per-request timing measurement.
 - **Owned blank-node structures** (they fail closed by design, but no test covers them) and orphaned owned nodes.
 
 ## Proposed next step (needs approval)
 
-Decide, with the #33224 owners, how two things are governed or re-projected: tag-application attributes on shared tag nodes (Finding 3) and edge-owned lineage details (Finding 4). Only then extend the map to the next field family, one family per commit. Scale, consistency and freshness measurements should wait until the map covers a representative asset.
+Decide, with the #33224 owners, how two things are governed or re-projected: tag-application attributes on shared tag nodes (Finding 3) and edge-owned lineage details (Finding 4). Map the scalar live facts of Finding 10 in small groups, deriving each operation from the resource's registered view operations. Review the relationship and shared-fact rules of Finding 11 separately. Scale, consistency and freshness measurements should wait until the map covers a representative asset.
