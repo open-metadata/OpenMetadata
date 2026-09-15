@@ -473,22 +473,31 @@ function lookupOmPropertyType(config, entityType, propertyName) {
   return null;
 }
 
-/**
- * Checks if the operator is a range operator (requires numeric field).
- *
- * @param {string} operator - The query operator
- * @returns {boolean} - True if range operator
- * @private
- */
+const RANGE_OPERATOR_BOUNDS = {
+  less: 'lt',
+  less_or_equal: 'lte',
+  greater: 'gt',
+  greater_or_equal: 'gte',
+};
+
 function isRangeOperator(operator) {
-  return [
-    'between',
-    'not_between',
-    'less',
-    'less_or_equal',
-    'greater',
-    'greater_or_equal',
-  ].includes(operator);
+  return (
+    operator === 'between' ||
+    operator === 'not_between' ||
+    operator in RANGE_OPERATOR_BOUNDS
+  );
+}
+
+function buildRangeClause(value, operator) {
+  if (operator === 'between' || operator === 'not_between') {
+    return Array.isArray(value) && value.length >= 2
+      ? { gte: value[0], lte: value[1] }
+      : {};
+  }
+
+  return {
+    [RANGE_OPERATOR_BOUNDS[operator]]: Array.isArray(value) ? value[0] : value,
+  };
 }
 
 /**
@@ -501,7 +510,6 @@ function isRangeOperator(operator) {
  * @returns {object} - The nested ES query
  * @private
  */
-// eslint-disable-next-line sonarjs/cyclomatic-complexity -- predates the budget
 function buildNestedTypedQuery(
   propertyName,
   nestedField,
@@ -509,43 +517,18 @@ function buildNestedTypedQuery(
   operator,
   caseInsensitive = false
 ) {
-  const mustClauses = [
-    { term: { 'customPropertiesTyped.name': propertyName } },
-  ];
+  const fieldPath = `customPropertiesTyped.${nestedField}`;
+  const termValue = Array.isArray(value) ? value[0] : value;
 
-  // Build the value query based on operator
-  if (isRangeOperator(operator)) {
-    const rangeQuery = {};
-    if (
-      (operator === 'between' || operator === 'not_between') &&
-      Array.isArray(value) &&
-      value.length >= 2
-    ) {
-      rangeQuery.gte = value[0];
-      rangeQuery.lte = value[1];
-    } else if (operator === 'less') {
-      rangeQuery.lt = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'less_or_equal') {
-      rangeQuery.lte = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'greater') {
-      rangeQuery.gt = Array.isArray(value) ? value[0] : value;
-    } else if (operator === 'greater_or_equal') {
-      rangeQuery.gte = Array.isArray(value) ? value[0] : value;
-    }
-    mustClauses.push({
-      range: { [`customPropertiesTyped.${nestedField}`]: rangeQuery },
-    });
-  } else {
-    // Exact match
-    const termValue = Array.isArray(value) ? value[0] : value;
-    mustClauses.push({
-      term: {
-        [`customPropertiesTyped.${nestedField}`]: caseInsensitive
-          ? { value: termValue, case_insensitive: true }
-          : termValue,
-      },
-    });
-  }
+  const valueClause = isRangeOperator(operator)
+    ? { range: { [fieldPath]: buildRangeClause(value, operator) } }
+    : {
+        term: {
+          [fieldPath]: caseInsensitive
+            ? { value: termValue, case_insensitive: true }
+            : termValue,
+        },
+      };
 
   return {
     nested: {
@@ -553,7 +536,10 @@ function buildNestedTypedQuery(
       ignore_unmapped: true,
       query: {
         bool: {
-          must: mustClauses,
+          must: [
+            { term: { 'customPropertiesTyped.name': propertyName } },
+            valueClause,
+          ],
         },
       },
     },
