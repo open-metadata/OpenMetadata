@@ -648,7 +648,7 @@ describe('TestCases component', () => {
 
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
-          expect.objectContaining({ q: 'orders', limit: 15, offset: 15 })
+          expect.objectContaining({ q: '*orders*', limit: 15, offset: 15 })
         );
       });
 

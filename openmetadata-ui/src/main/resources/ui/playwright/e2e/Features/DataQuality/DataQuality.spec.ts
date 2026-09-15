@@ -1496,7 +1496,8 @@ test.describe(
             const url = new URL(response.url());
 
             return (
-              isListResponse(url) && url.searchParams.get('q') === testCaseName
+              isListResponse(url) &&
+              url.searchParams.get('q') === `*${testCaseName}*`
             );
           });
           await searchBar.fill(testCaseName);
