@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AutomatedTag } from '../../../../assets/svg/automated-tag.svg';
 import {
   AUTO_CLASSIFICATION_TAG_COLOR,
+  DEFAULT_TAG_MAX_WIDTH,
   ICON_PX,
   SIZE_CLASS,
 } from './Tag.constant';
@@ -43,7 +44,7 @@ const AutoClassificationTag: FC<BaseTagProps> = ({
   size = 'sm',
   onDelete,
   href,
-  maxWidth,
+  maxWidth = DEFAULT_TAG_MAX_WIDTH,
   disabled,
   className,
   tooltip,

@@ -2059,6 +2059,7 @@
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/ConditionalPermissions.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
@@ -3143,6 +3144,7 @@
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
@@ -3600,6 +3602,7 @@
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
@@ -6172,6 +6175,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityVersionTimeLine/EntityVersionTimeLine.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityVersionTimeLine/VersionButton.tsx"
       ],
       "specs": [
@@ -7597,7 +7608,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/ServiceConfig/ConnectionConfigForm.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
+        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts"
       ]
     },
     {
@@ -7605,7 +7617,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/ServiceConfig/EmbeddedConnectionConfigForm.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
+        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts"
       ]
     },
     {
@@ -8468,6 +8481,7 @@
       "specs": [
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts"
       ]
     },
@@ -8526,16 +8540,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/FileUploadWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts"
+        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts"
       ]
     },
     {
@@ -9905,6 +9911,7 @@
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/ConditionalPermissions.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
