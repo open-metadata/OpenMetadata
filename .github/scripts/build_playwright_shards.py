@@ -103,19 +103,6 @@ AUDITED_PARALLEL_SUITES = {
     # (module-scoped entity constructors generate unique names), so each
     # parallel unit brings its own state without cross-worker collision.
     ("Features/BulkImport.spec.ts", "Bulk Import Export"),
-    # Forty-four tests in one top-level describe, 23.3m of measured history
-    # against the 19m chromium budget. Summed as a single atomic unit the plan
-    # step failed outright, so no shard ran at all -- the suite was not slow,
-    # it was unschedulable.
-    #
-    # Splitting is safe rather than free. Safe because the chromium project
-    # inherits fullyParallel, so these tests already execute across workers,
-    # and every fixture the describe shares is a module-scoped binding assigned
-    # in beforeAll from a uuid(), so each unit builds its own entities instead
-    # of racing for shared ones. Not free because the units land on 28 shards
-    # and beforeAll re-runs on each, and that beforeAll creates roughly fifteen
-    # entities. If this suite gets cheaper, fold it back into a single unit.
-    ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
     # These suites already run fullyParallel. Domains creates unique entities
     # and Curated Assets owns its user/persona while reading seeded assets.
     # Partition them before applying the atomic-unit budget; summing every
@@ -133,6 +120,18 @@ AUDITED_PARALLEL_SUITES = {
 # ordering, but let separate shards initialize those independent groups.
 AUDITED_CHILD_SUITE_PARTITIONS = {
     ("Pages/CustomProperties.spec.ts", "Add update and delete custom properties for dashboard"),
+    # Forty-four tests in one top-level describe, 23.3m of measured history
+    # against the 19m chromium budget, so as a single atomic unit it is
+    # unschedulable and the whole plan step fails -- no shard runs at all.
+    #
+    # Partition by child suite rather than per spec. Splitting per spec also
+    # fits the budget, but it produces 44 units that land on 28 shards, and this
+    # describe's beforeAll creates roughly fifteen entities every time it runs.
+    # Its natural seams are already the right size: the twenty top-level tests
+    # weigh 12.25m and the four nested describes 3.7m, 2.5m, 2.5m and 2.3m, all
+    # under budget. That yields 5 units on 4 shards for the same 47-shard plan,
+    # so the suite becomes schedulable without multiplying its setup sevenfold.
+    ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
 }
 ATOMIC_PARALLEL_SCOPES = {
     (
