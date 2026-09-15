@@ -31,11 +31,9 @@ const unusedTag = new TagClass({
 });
 const table = new TableClass();
 
-// A tagged table also surfaces derived documents under the alias the count
-// reads, and those land on their own schedule, so the exact total is not
-// assertable. Exercised here: a used tag counts something, an unused tag counts
-// nothing, and the count drills into the assets it stands for.
-const POSITIVE_COUNT = /^[1-9]\d*$/;
+// The fixture tags exactly one table, and only that table's own document
+// carries the tag, so the count is exact
+const USED_TAG_ASSET_COUNT = '1';
 
 test.describe(
   'Classification tag usage counts',
@@ -103,7 +101,7 @@ test.describe(
 
       const usedCount = page.getByTestId(`usage-count-${usedTag.data.name}`);
 
-      await expect(usedCount).toHaveText(POSITIVE_COUNT);
+      await expect(usedCount).toHaveText(USED_TAG_ASSET_COUNT);
       await expect(usedCount).toHaveAttribute('href', /.+/);
 
       const unusedCount = page.getByTestId(
@@ -125,7 +123,7 @@ test.describe(
       await test.step('Follow the count through to the assets', async () => {
         const usageCount = page.getByTestId(`usage-count-${usedTag.data.name}`);
 
-        await expect(usageCount).toHaveText(POSITIVE_COUNT);
+        await expect(usageCount).toHaveText(USED_TAG_ASSET_COUNT);
         await usageCount.click();
 
         await expect(
@@ -135,7 +133,7 @@ test.describe(
         ).toBeVisible({ timeout: 30_000 });
         await expect(
           page.getByTestId('assets').getByTestId('count')
-        ).toHaveText(POSITIVE_COUNT);
+        ).toHaveText(USED_TAG_ASSET_COUNT);
       });
     });
   }
