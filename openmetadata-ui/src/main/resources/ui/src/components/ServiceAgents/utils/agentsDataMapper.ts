@@ -144,15 +144,16 @@ interface ProgressAggregate {
   eta: number | null;
 }
 
-const aggregateProgress = (steps: StepSummary[]): ProgressAggregate => {
-  // The workflow's progress tracker is a process-wide singleton, so every step of a run carries an
-  // identical copy of the whole per-entity-type map. Summing over steps would multiply the counts by
-  // the number of steps, so collapse to one entry per entity type (highest wins, in case a straggling
-  // step reports a stale snapshot) before summing across the types.
-  const progressByEntity = new Map<
-    string,
-    NonNullable<StepSummary['progress']>[string]
-  >();
+type EntityProgress = NonNullable<StepSummary['progress']>[string];
+
+// The workflow's progress tracker is a process-wide singleton, so every step of a run carries an
+// identical copy of the whole per-entity-type map. Summing over steps would multiply the counts by
+// the number of steps, so collapse to one entry per entity type (highest wins, in case a straggling
+// step reports a stale snapshot) before summing across the types.
+const collapseProgressByEntity = (
+  steps: StepSummary[]
+): Map<string, EntityProgress> => {
+  const progressByEntity = new Map<string, EntityProgress>();
 
   for (const step of steps) {
     for (const [entityType, progress] of Object.entries(step.progress ?? {})) {
@@ -163,6 +164,12 @@ const aggregateProgress = (steps: StepSummary[]): ProgressAggregate => {
     }
   }
 
+  return progressByEntity;
+};
+
+const sumProgress = (
+  progressByEntity: Map<string, EntityProgress>
+): { assets: number; target: number; eta: number | null } => {
   let assets = 0;
   let target = 0;
   let eta: number | null = null;
@@ -174,6 +181,13 @@ const aggregateProgress = (steps: StepSummary[]): ProgressAggregate => {
       eta = Math.max(eta ?? 0, progress.estimatedRemainingSeconds);
     }
   }
+
+  return { assets, target, eta };
+};
+
+const aggregateProgress = (steps: StepSummary[]): ProgressAggregate => {
+  const progressByEntity = collapseProgressByEntity(steps);
+  const { assets, target, eta } = sumProgress(progressByEntity);
 
   return { assets, target: target > 0 ? target : Math.max(assets, 1), eta };
 };
@@ -264,24 +278,21 @@ const buildRecentRuns = (statuses: PipelineStatus[]): AgentRecentRun[] =>
       status: toRunStatus(status.pipelineState),
     }));
 
-export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
-  const agentType = getAgentTypeFromPipelineType(pipeline.pipelineType);
-  const { unit, verb } = getAgentUnitVerb(pipeline.pipelineType);
-  const latestStatus = pipeline.pipelineStatuses?.[0];
-  const agentStatus = getAgentStatusLabelFromStatus(
-    latestStatus?.pipelineState
-  );
-  const uiStatus: UiAgentStatus = latestStatus?.pipelineState
-    ? toUiAgentStatus(agentStatus)
-    : 'none';
-  const steps = latestStatus?.status ?? [];
-
-  let progressFields: Pick<
+interface AgentProgressAndCounts {
+  progressFields: Pick<
     Agent,
     'pct' | 'assets' | 'target' | 'eta' | 'finishedAt'
   >;
-  let errors = 0;
-  let warnings = 0;
+  errors: number;
+  warnings: number;
+}
+
+const computeAgentProgressAndCounts = (
+  latestStatus: PipelineStatus | undefined,
+  uiStatus: UiAgentStatus,
+  steps: StepSummary[]
+): AgentProgressAndCounts => {
+  let progressFields: AgentProgressAndCounts['progressFields'];
 
   if (!latestStatus || uiStatus === 'queued') {
     // A queued run has not started, so it has no counts and — crucially — is not 100% done.
@@ -294,11 +305,30 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     progressFields = buildFinishedAgentFields(steps, latestStatus.endDate);
   }
 
-  if (latestStatus) {
-    const totals = aggregateStepTotals(steps);
-    errors = totals.errors;
-    warnings = totals.warnings;
-  }
+  const { errors, warnings } = latestStatus
+    ? aggregateStepTotals(steps)
+    : { errors: 0, warnings: 0 };
+
+  return { progressFields, errors, warnings };
+};
+
+export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
+  const agentType = getAgentTypeFromPipelineType(pipeline.pipelineType);
+  const { unit, verb } = getAgentUnitVerb(pipeline.pipelineType);
+  const latestStatus = pipeline.pipelineStatuses?.[0];
+  const agentStatus = getAgentStatusLabelFromStatus(
+    latestStatus?.pipelineState
+  );
+  const uiStatus: UiAgentStatus = latestStatus?.pipelineState
+    ? toUiAgentStatus(agentStatus)
+    : 'none';
+  const steps = latestStatus?.status ?? [];
+
+  const { progressFields, errors, warnings } = computeAgentProgressAndCounts(
+    latestStatus,
+    uiStatus,
+    steps
+  );
 
   return {
     id: pipeline.id ?? pipeline.fullyQualifiedName ?? pipeline.name,

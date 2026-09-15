@@ -72,6 +72,269 @@ import AntDTagSuggestion, {
 import { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
 
+type FieldPropsBag = Record<string, unknown> & { children?: ReactNode };
+
+interface FieldRenderContext {
+  props: FieldPropsBag;
+  id: string;
+  placeholder?: string;
+  label: ReactNode;
+  formProps: FormItemProps;
+  fieldRules: FieldProp['rules'];
+}
+
+interface FieldElementResult {
+  element: ReactNode;
+  formPropsPatch?: Partial<FormItemProps>;
+}
+
+// Maps a field type to the element it renders, keeping getField's own
+// complexity independent of how many field types exist.
+const FIELD_ELEMENT_RENDERERS: Partial<
+  Record<FieldTypes, (ctx: FieldRenderContext) => FieldElementResult>
+> = {
+  [FieldTypes.TEXT]: ({ props, id, placeholder }) => ({
+    element: <SanitizedInput {...props} id={id} placeholder={placeholder} />,
+  }),
+  [FieldTypes.PASSWORD]: ({ props, id, placeholder }) => ({
+    element: (
+      <Input.Password
+        {...props}
+        autoComplete="off"
+        id={id}
+        placeholder={placeholder}
+      />
+    ),
+  }),
+  [FieldTypes.NUMBER]: ({ props, id, placeholder }) => ({
+    element: (
+      <InputNumber id={id} placeholder={placeholder} size="small" {...props} />
+    ),
+  }),
+  [FieldTypes.FILTER_PATTERN]: ({ props }) => ({
+    element: <FilterPattern {...(props as unknown as FilterPatternProps)} />,
+  }),
+  [FieldTypes.SWITCH]: ({ props, id }) => ({
+    element: <Switch {...props} id={id} />,
+    formPropsPatch: { valuePropName: 'checked' },
+  }),
+  [FieldTypes.CHECK_BOX]: ({ props, id }) => ({
+    element: <Checkbox {...props} id={id} />,
+    formPropsPatch: { valuePropName: 'checked' },
+  }),
+  [FieldTypes.SELECT]: ({ props, id }) => ({
+    element: <Select {...props} id={id} />,
+  }),
+  [FieldTypes.SLIDER_INPUT]: ({ props }) => ({
+    element: (
+      <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
+    ),
+  }),
+  [FieldTypes.DESCRIPTION]: ({ props }) => ({
+    element: <RichTextEditor {...(props as unknown as RichTextEditorProp)} />,
+    formPropsPatch: {
+      trigger: 'onTextChange',
+      initialValue: props?.initialValue ?? '',
+    },
+  }),
+  [FieldTypes.TAG_SUGGESTION]: ({ props }) => ({
+    element: (
+      <AntDTagSuggestion
+        {...(props as unknown as AntDTagSuggestionProps)}
+        newLook
+      />
+    ),
+  }),
+  [FieldTypes.TREE_ASYNC_SELECT_LIST]: ({ props }) => ({
+    element: (
+      <TreeAsyncSelectList
+        {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
+      />
+    ),
+  }),
+  [FieldTypes.ASYNC_SELECT_LIST]: ({ props }) => ({
+    element: (
+      <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
+    ),
+  }),
+  [FieldTypes.DOMAIN_SELECT]: ({ props }) => {
+    const { children, ...rest } = props;
+
+    return {
+      element: (
+        <DomainSelectableList
+          {...(rest as unknown as DomainSelectableListProps)}>
+          {children}
+        </DomainSelectableList>
+      ),
+    };
+  },
+  [FieldTypes.USER_TEAM_SELECT]: ({ props }) => {
+    const { children, ...rest } = props;
+
+    return {
+      element: (
+        <UserTeamSelectableList
+          {...(rest as unknown as UserSelectDropdownProps)}>
+          {children}
+        </UserTeamSelectableList>
+      ),
+    };
+  },
+  [FieldTypes.USER_TEAM_SELECT_INPUT]: ({ props }) => ({
+    element: (
+      <UserTeamSelectableListSearchInput
+        {...(props as unknown as UserSelectDropdownProps)}
+      />
+    ),
+  }),
+  [FieldTypes.USER_MULTI_SELECT]: ({ props }) => {
+    const { children, ...rest } = props;
+
+    return {
+      element: (
+        <UserSelectableList {...(rest as unknown as UserSelectableListProps)}>
+          {children}
+        </UserSelectableList>
+      ),
+    };
+  },
+  [FieldTypes.COLOR_PICKER]: ({ props }) => ({
+    element: <ColorPicker {...props} />,
+  }),
+  [FieldTypes.COMPONENT]: ({ props }) => ({
+    element: props.children,
+  }),
+};
+
+const renderUtTextField = ({
+  formProps,
+  props,
+  id,
+  placeholder,
+  label,
+  fieldRules,
+}: FieldRenderContext) => {
+  const isRequired = (fieldRules ?? []).some(
+    (rule) => (rule as RuleObject).required
+  );
+  const { 'data-testid': dataTestId, ...inputRest } = props;
+
+  return (
+    <Form.Item
+      {...formProps}
+      getValueProps={(value) => ({ value: (value as string) ?? '' })}>
+      <UTInput
+        {...(inputRest as Partial<ComponentProps<typeof UTInput>>)}
+        id={id}
+        inputDataTestId={dataTestId as string}
+        isRequired={isRequired}
+        label={isString(label) ? label : undefined}
+        placeholder={placeholder}
+      />
+    </Form.Item>
+  );
+};
+
+const renderUtSelectField = ({
+  formProps,
+  props,
+  id,
+  placeholder,
+  label,
+  fieldRules,
+}: FieldRenderContext) => {
+  const isRequired = (fieldRules ?? []).some(
+    (rule) => (rule as RuleObject).required
+  );
+  const { items = [], ...selectRest } = props as {
+    items?: SelectItemType[];
+  } & Record<string, unknown>;
+
+  return (
+    <Form.Item
+      {...formProps}
+      getValueProps={(value) => ({ selectedKey: value ?? null })}
+      trigger="onSelectionChange"
+      validateTrigger="onSelectionChange"
+      valuePropName="selectedKey">
+      <UTSelect
+        {...(selectRest as Partial<ComponentProps<typeof UTSelect>>)}
+        id={id}
+        isRequired={isRequired}
+        items={items}
+        label={isString(label) ? label : undefined}
+        placeholder={placeholder}>
+        {(item: SelectItemType) => <UTSelect.Item {...item} />}
+      </UTSelect>
+    </Form.Item>
+  );
+};
+
+const renderUtTagSuggestionField = ({
+  formProps,
+  props,
+  placeholder,
+  label,
+  fieldRules,
+}: FieldRenderContext) => {
+  const isRequired = (fieldRules ?? []).some(
+    (rule) => (rule as RuleObject).required
+  );
+
+  return (
+    <Form.Item {...formProps}>
+      <TagSuggestion
+        {...(props as unknown as TagSuggestionProps)}
+        label={typeof label === 'string' ? label : undefined}
+        placeholder={placeholder}
+        required={isRequired}
+      />
+    </Form.Item>
+  );
+};
+
+const renderUtSwitchField = ({
+  formProps,
+  props,
+  label,
+}: FieldRenderContext) => {
+  const { isDisabled, onChange, size, ...switchRest } = props as ToggleProps;
+
+  return (
+    <Form.Item {...formProps} valuePropName="isSelected">
+      <Toggle
+        isDisabled={isDisabled}
+        label={isString(label) ? label : undefined}
+        size={size}
+        onChange={onChange}
+        {...switchRest}
+      />
+    </Form.Item>
+  );
+};
+
+// These field types render their own complete Form.Item (a different shape
+// than the common wrapper below) and return immediately, matching the
+// original switch-case early returns.
+const CUSTOM_FIELD_RENDERERS: Partial<
+  Record<FieldTypes, (ctx: FieldRenderContext) => ReactNode>
+> = {
+  [FieldTypes.UT_TEXT]: renderUtTextField,
+  [FieldTypes.UT_SELECT]: renderUtSelectField,
+  [FieldTypes.UT_TAG_SUGGESTION]: renderUtTagSuggestionField,
+  [FieldTypes.UT_SWITCH]: renderUtSwitchField,
+};
+
+const shouldShowHelperAlert = (
+  helperTextType: HelperTextType | undefined,
+  helperText: ReactNode,
+  showHelperText: boolean
+): boolean =>
+  helperTextType === HelperTextType.ALERT &&
+  Boolean(helperText) &&
+  showHelperText;
+
 export const getField = (field: FieldProp) => {
   const {
     label,
@@ -118,243 +381,25 @@ export const getField = (field: FieldProp) => {
     ...formItemProps,
   };
 
-  switch (type) {
-    case FieldTypes.TEXT:
-      fieldElement = (
-        <SanitizedInput {...props} id={id} placeholder={placeholder} />
-      );
+  const renderContext: FieldRenderContext = {
+    props,
+    id,
+    placeholder,
+    label,
+    formProps,
+    fieldRules,
+  };
 
-      break;
+  const customRenderer = CUSTOM_FIELD_RENDERERS[type];
+  if (customRenderer) {
+    return customRenderer(renderContext);
+  }
 
-    case FieldTypes.UT_TEXT: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-      const { 'data-testid': dataTestId, ...inputRest } = props;
-
-      return (
-        <Form.Item
-          {...formProps}
-          getValueProps={(value) => ({ value: (value as string) ?? '' })}>
-          <UTInput
-            {...(inputRest as Partial<ComponentProps<typeof UTInput>>)}
-            id={id}
-            inputDataTestId={dataTestId as string}
-            isRequired={isRequired}
-            label={isString(label) ? label : undefined}
-            placeholder={placeholder}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.UT_SELECT: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-      const { items = [], ...selectRest } = props as {
-        items?: SelectItemType[];
-      } & Record<string, unknown>;
-
-      return (
-        <Form.Item
-          {...formProps}
-          getValueProps={(value) => ({ selectedKey: value ?? null })}
-          trigger="onSelectionChange"
-          validateTrigger="onSelectionChange"
-          valuePropName="selectedKey">
-          <UTSelect
-            {...(selectRest as Partial<ComponentProps<typeof UTSelect>>)}
-            id={id}
-            isRequired={isRequired}
-            items={items}
-            label={isString(label) ? label : undefined}
-            placeholder={placeholder}>
-            {(item: SelectItemType) => <UTSelect.Item {...item} />}
-          </UTSelect>
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.PASSWORD:
-      fieldElement = (
-        <Input.Password
-          {...props}
-          autoComplete="off"
-          id={id}
-          placeholder={placeholder}
-        />
-      );
-
-      break;
-    case FieldTypes.NUMBER:
-      fieldElement = (
-        <InputNumber
-          id={id}
-          placeholder={placeholder}
-          size="small"
-          {...props}
-        />
-      );
-
-      break;
-
-    case FieldTypes.FILTER_PATTERN:
-      fieldElement = (
-        <FilterPattern {...(props as unknown as FilterPatternProps)} />
-      );
-
-      break;
-
-    case FieldTypes.SWITCH:
-      fieldElement = <Switch {...props} id={id} />;
-      formProps.valuePropName = 'checked';
-
-      break;
-    case FieldTypes.CHECK_BOX:
-      fieldElement = <Checkbox {...props} id={id} />;
-      formProps.valuePropName = 'checked';
-
-      break;
-    case FieldTypes.SELECT:
-      fieldElement = <Select {...props} id={id} />;
-
-      break;
-
-    case FieldTypes.SLIDER_INPUT:
-      fieldElement = (
-        <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
-      );
-
-      break;
-    case FieldTypes.DESCRIPTION:
-      fieldElement = (
-        <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
-      );
-      formProps.trigger = 'onTextChange';
-      formProps.initialValue = props?.initialValue ?? '';
-
-      break;
-    case FieldTypes.TAG_SUGGESTION:
-      fieldElement = (
-        <AntDTagSuggestion
-          {...(props as unknown as AntDTagSuggestionProps)}
-          newLook
-        />
-      );
-
-      break;
-
-    case FieldTypes.UT_TAG_SUGGESTION: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <TagSuggestion
-            {...(props as unknown as TagSuggestionProps)}
-            label={typeof label === 'string' ? label : undefined}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.TREE_ASYNC_SELECT_LIST:
-      fieldElement = (
-        <TreeAsyncSelectList
-          {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
-        />
-      );
-
-      break;
-
-    case FieldTypes.ASYNC_SELECT_LIST:
-      fieldElement = (
-        <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
-      );
-
-      break;
-    case FieldTypes.DOMAIN_SELECT:
-      {
-        const { children, ...rest } = props;
-
-        fieldElement = (
-          <DomainSelectableList
-            {...(rest as unknown as DomainSelectableListProps)}>
-            {children}
-          </DomainSelectableList>
-        );
-      }
-
-      break;
-    case FieldTypes.USER_TEAM_SELECT:
-      {
-        const { children, ...rest } = props;
-
-        fieldElement = (
-          <UserTeamSelectableList
-            {...(rest as unknown as UserSelectDropdownProps)}>
-            {children}
-          </UserTeamSelectableList>
-        );
-      }
-
-      break;
-
-    case FieldTypes.USER_TEAM_SELECT_INPUT:
-      fieldElement = (
-        <UserTeamSelectableListSearchInput
-          {...(props as unknown as UserSelectDropdownProps)}
-        />
-      );
-
-      break;
-
-    case FieldTypes.USER_MULTI_SELECT:
-      {
-        const { children, ...rest } = props;
-
-        fieldElement = (
-          <UserSelectableList {...(rest as unknown as UserSelectableListProps)}>
-            {children}
-          </UserSelectableList>
-        );
-      }
-
-      break;
-    case FieldTypes.COLOR_PICKER:
-      fieldElement = <ColorPicker {...props} />;
-
-      break;
-
-    case FieldTypes.UT_SWITCH: {
-      const { isDisabled, onChange, size, ...switchRest } =
-        props as ToggleProps;
-
-      return (
-        <Form.Item {...formProps} valuePropName="isSelected">
-          <Toggle
-            isDisabled={isDisabled}
-            label={isString(label) ? label : undefined}
-            size={size}
-            onChange={onChange}
-            {...switchRest}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.COMPONENT: {
-      fieldElement = props.children;
-
-      break;
-    }
-
-    default:
-      break;
+  const elementRenderer = FIELD_ELEMENT_RENDERERS[type];
+  if (elementRenderer) {
+    const { element, formPropsPatch } = elementRenderer(renderContext);
+    fieldElement = element;
+    Object.assign(formProps, formPropsPatch);
   }
 
   const labelValue = (
@@ -395,17 +440,15 @@ export const getField = (field: FieldProp) => {
         {fieldElement}
       </Form.Item>
 
-      {helperTextType === HelperTextType.ALERT &&
-        helperText &&
-        showHelperText && (
-          <Alert
-            showIcon
-            className="m-b-lg alert-icon"
-            data-testid="form-item-alert"
-            message={helperText}
-            type="warning"
-          />
-        )}
+      {shouldShowHelperAlert(helperTextType, helperText, showHelperText) && (
+        <Alert
+          showIcon
+          className="m-b-lg alert-icon"
+          data-testid="form-item-alert"
+          message={helperText}
+          type="warning"
+        />
+      )}
 
       {hasSeparator && <Divider />}
     </Fragment>

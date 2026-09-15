@@ -511,13 +511,13 @@ jest.mock('@untitledui/icons', () => ({
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string>) => {
-      const value =
+      const suffix =
         params?.entity ||
         params?.fieldName ||
         params?.field ||
         params?.fieldText;
 
-      return value ? `${key}:${value}` : key;
+      return suffix ? `${key}:${suffix}` : key;
     },
   }),
 }));

@@ -64,7 +64,7 @@ export const marketplaceModule: AppModule = {
   defaultPath: ROUTES.DATA_MARKETPLACE,
   routes: [
     {
-      // Marketplace overview — the header is swapped for the shared HeaderShell
+      // Marketplace overview — the header is swapped for the shared PageHeader
       // page header in AI mode. Exact path so it overrides the catch-all for the
       // overview only, leaving the data-access sub-route untouched.
       path: ROUTES.DATA_MARKETPLACE,

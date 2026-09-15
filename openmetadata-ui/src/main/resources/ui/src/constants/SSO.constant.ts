@@ -131,7 +131,7 @@ export const COMMON_UI_FIELDS = {
   oidcClientAuthenticationMethod: {
     'ui:title': 'OIDC Client Authentication Method',
   },
-  oidcTokenValidity: { 'ui:title': 'OIDC Token Validity' },
+  oidcTokenValidity: { 'ui:title': 'OpenMetadata Access Token Validity' },
   oidcCustomParameters: { 'ui:title': 'OIDC Custom Parameters' },
   oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
   oidcPrompt: { 'ui:title': 'OIDC Prompt' },
@@ -544,7 +544,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
     tokenValidity: {
-      'ui:title': 'OIDC Token Validity',
+      'ui:title': 'OpenMetadata Access Token Validity',
       'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
     },
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,

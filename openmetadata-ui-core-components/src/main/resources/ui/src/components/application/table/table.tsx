@@ -38,7 +38,7 @@ import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
-import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 
 export const TableRowActionsDropdown = () => {
@@ -372,10 +372,11 @@ const TableHead = ({
           </div>
 
           {tooltip && (
-            <Tooltip placement="top" title={tooltip}>
-              <TooltipTrigger className="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
-                <HelpCircle className="tw:size-4" />
-              </TooltipTrigger>
+            <Tooltip
+              placement="top"
+              title={tooltip}
+              triggerClassName="tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover">
+              <HelpCircle className="tw:size-4" />
             </Tooltip>
           )}
 
@@ -408,6 +409,15 @@ interface TableRowProps<T extends object>
       'children' | 'className' | 'onClick' | 'slot' | 'style' | 'id'
     > {
   highlightSelectedRow?: boolean;
+  /**
+   * Hides the per-row selection cell that `selectionBehavior="toggle"`
+   * otherwise injects. Use for full-width synthetic rows (e.g. section
+   * group headers) whose single child cell spans every column — including
+   * the selection column — via `colSpan`. Without this the row would emit
+   * both the selection cell and the spanning cell, and react-aria's
+   * `TableCollection` throws `Cell count must match column count`.
+   */
+  hideSelectionCell?: boolean;
 }
 
 const TableRow = <T extends object>({
@@ -415,6 +425,7 @@ const TableRow = <T extends object>({
   children,
   className,
   highlightSelectedRow = true,
+  hideSelectionCell = false,
   ...props
 }: TableRowProps<T>) => {
   const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
@@ -441,7 +452,7 @@ const TableRow = <T extends object>({
           typeof className === 'function' ? className(state) : className
         )
       }>
-      {selectionBehavior === 'toggle' && (
+      {selectionBehavior === 'toggle' && !hideSelectionCell && (
         <AriaCell
           className={cx(
             'tw:relative tw:py-2 tw:pr-0 tw:pl-4',

@@ -75,8 +75,8 @@ import { advanceSearchSaveFilter } from '../../utils/advancedSearchCustomPropert
 import {
   clickOutside,
   createNewPage,
-  descriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -856,7 +856,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await container.getByTestId('edit-icon').click();
 
           // Move to a new paragraph at the end, then insert a table via slash command
-          const editor = page.locator(descriptionBox);
+          const editor = getDescriptionBox(page);
           await editor.click();
           await page.keyboard.press('Control+End');
           await page.keyboard.press('Enter');
@@ -881,7 +881,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           // Regression for #32477: edit button must not be hidden by horizontal overflow
           await editButton.click();
-          await expect(page.locator(descriptionBox)).toBeVisible();
+          await expect(getDescriptionBox(page)).toBeVisible();
         });
       });
 
@@ -991,35 +991,35 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await sidebarClick(page, SidebarItem.EXPLORE);
           await showAdvancedSearchDialog(page);
 
-          const ruleLocator = page.locator('.rule').nth(0);
+          const ruleLocator = page.getByTestId('query-builder-rule-0');
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select'),
             'Custom Properties',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-1'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field'),
+            ruleLocator.getByTestId('advanced-search-field-select-2'),
             durationPropertyName,
             true
           );
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             CONDITIONS_MUST.equalTo.name
           );
 
           const inputElement = ruleLocator.locator(
-            '.rule--widget--TEXT input[type="text"]'
+            '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
           );
           await inputElement.fill(durationPropertyValue);
 
@@ -1037,7 +1037,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator'),
+            ruleLocator.getByTestId('advanced-search-operator-select'),
             'Contains'
           );
           await inputElement.fill(partialSearchValue);
@@ -1285,37 +1285,39 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await showAdvancedSearchDialog(page);
 
-            const ruleLocator = page.locator('.rule').nth(0);
+            const ruleLocator = page.getByTestId('query-builder-rule-0');
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select'),
               'Custom Properties',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-1'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field'),
+              ruleLocator.getByTestId('advanced-search-field-select-2'),
               propertyName,
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--operator'),
+              ruleLocator.getByTestId('advanced-search-operator-select'),
               CONDITIONS_MUST.equalTo.name
             );
 
             await ruleLocator
-              .locator('.rule--widget--TEXT input[type="text"]')
+              .locator(
+                '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+              )
               .fill('updated value');
 
             await advanceSearchSaveFilter(page, 'updated value');

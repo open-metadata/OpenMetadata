@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,10 +21,8 @@ import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Chart } from '../generated/entity/data/chart';
 import type { Dashboard } from '../generated/entity/data/dashboard';
-import type {
-  Metric,
-  UnitOfMeasurement,
-} from '../generated/entity/data/metric';
+import type { Metric } from '../generated/entity/data/metric';
+import { UnitOfMeasurement } from '../generated/entity/data/metric';
 import type { Pipeline } from '../generated/entity/data/pipeline';
 import type { Topic } from '../generated/entity/data/topic';
 import type { ChangeDescription } from '../generated/entity/type';
@@ -58,13 +55,15 @@ export const VersionExtraInfoLink = ({
 export const VersionExtraInfoLabel = ({
   label,
   value,
+  dataTestId,
 }: {
   label: string;
   value: string;
+  dataTestId?: string;
 }) => (
   <>
     <Divider className="self-center m-x-sm" type="vertical" />
-    <Space align="center">
+    <Space align="center" data-testid={dataTestId}>
       <Typography.Text className="self-center text-xs whitespace-nowrap">
         {!isEmpty(label) && (
           <span className="text-grey-muted">{`${label}: `}</span>
@@ -126,6 +125,104 @@ export const getExtraInfoSourceUrl = (
   );
 };
 
+const getTopicVersionExtraInfo = (
+  currentVersionData: DataAssetsVersionHeaderProps['currentVersionData'],
+  changeDescription: ChangeDescription
+) => {
+  const topicDetails = currentVersionData as Topic;
+
+  const partitions = getEntityVersionByField(
+    changeDescription,
+    EntityField.PARTITIONS,
+    toString(topicDetails.partitions)
+  );
+
+  const replicationFactor = getEntityVersionByField(
+    changeDescription,
+    EntityField.REPLICATION_FACTOR,
+    toString(topicDetails.replicationFactor)
+  );
+
+  return (
+    <>
+      {!isEmpty(partitions) && (
+        <VersionExtraInfoLabel
+          label={t('label.partition-plural')}
+          value={partitions}
+        />
+      )}
+      {!isEmpty(replicationFactor) && (
+        <VersionExtraInfoLabel
+          label={t('label.replication-factor')}
+          value={replicationFactor}
+        />
+      )}
+    </>
+  );
+};
+
+const getMetricVersionExtraInfo = (
+  currentVersionData: DataAssetsVersionHeaderProps['currentVersionData'],
+  changeDescription: ChangeDescription
+) => {
+  const metricDetails = currentVersionData as Metric;
+
+  const metricType = getEntityVersionByField(
+    changeDescription,
+    'metricType',
+    toString(metricDetails.metricType)
+  );
+
+  const unitOfMeasurement = getEntityVersionByField(
+    changeDescription,
+    'unitOfMeasurement',
+    toString(metricDetails.unitOfMeasurement)
+  );
+
+  const customUnitOfMeasurement = getEntityVersionByField(
+    changeDescription,
+    'customUnitOfMeasurement',
+    toString(metricDetails.customUnitOfMeasurement)
+  );
+
+  const displayUnitOfMeasurement =
+    unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
+      ? customUnitOfMeasurement
+      : unitOfMeasurement;
+
+  const granularity = getEntityVersionByField(
+    changeDescription,
+    'granularity',
+    toString(metricDetails.granularity)
+  );
+
+  return (
+    <>
+      {!isEmpty(metricType) && (
+        <VersionExtraInfoLabel
+          dataTestId="metric-type-version-info"
+          label={t('label.metric-type')}
+          value={metricType}
+        />
+      )}
+      {!isEmpty(displayUnitOfMeasurement) && (
+        <VersionExtraInfoLabel
+          dataTestId="unit-of-measurement-version-info"
+          label={t('label.unit-of-measurement')}
+          value={displayUnitOfMeasurement}
+        />
+      )}
+      {!isEmpty(granularity) && (
+        <VersionExtraInfoLabel
+          dataTestId="granularity-version-info"
+          label={t('label.granularity')}
+          value={granularity}
+        />
+      )}
+    </>
+  );
+};
+
 export const getDataAssetsVersionHeaderInfo = (
   entityType: DataAssetsVersionHeaderProps['entityType'],
   currentVersionData: DataAssetsVersionHeaderProps['currentVersionData']
@@ -134,36 +231,7 @@ export const getDataAssetsVersionHeaderInfo = (
 
   switch (entityType) {
     case EntityType.TOPIC:
-      const topicDetails = currentVersionData as Topic;
-
-      const partitions = getEntityVersionByField(
-        changeDescription,
-        EntityField.PARTITIONS,
-        toString(topicDetails.partitions)
-      );
-
-      const replicationFactor = getEntityVersionByField(
-        changeDescription,
-        EntityField.REPLICATION_FACTOR,
-        toString(topicDetails.replicationFactor)
-      );
-
-      return (
-        <>
-          {!isEmpty(partitions) && (
-            <VersionExtraInfoLabel
-              label={t('label.partition-plural')}
-              value={partitions}
-            />
-          )}
-          {!isEmpty(replicationFactor) && (
-            <VersionExtraInfoLabel
-              label={t('label.replication-factor')}
-              value={replicationFactor}
-            />
-          )}
-        </>
-      );
+      return getTopicVersionExtraInfo(currentVersionData, changeDescription);
 
     case EntityType.PIPELINE:
       return getExtraInfoSourceUrl(
@@ -183,61 +251,9 @@ export const getDataAssetsVersionHeaderInfo = (
         changeDescription
       );
 
-    case EntityType.METRIC: {
-      const metricDetails = currentVersionData as Metric;
+    case EntityType.METRIC:
+      return getMetricVersionExtraInfo(currentVersionData, changeDescription);
 
-      const metricType = getEntityVersionByField(
-        changeDescription,
-        'metricType',
-        toString(metricDetails.metricType)
-      );
-
-      const unitOfMeasurement = getEntityVersionByField(
-        changeDescription,
-        'unitOfMeasurement',
-        toString(metricDetails.unitOfMeasurement)
-      );
-
-      const customUnitOfMeasurement = getEntityVersionByField(
-        changeDescription,
-        'customUnitOfMeasurement',
-        toString(metricDetails.customUnitOfMeasurement)
-      );
-
-      const displayUnitOfMeasurement =
-        unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
-          ? customUnitOfMeasurement
-          : unitOfMeasurement;
-
-      const granularity = getEntityVersionByField(
-        changeDescription,
-        'granularity',
-        toString(metricDetails.granularity)
-      );
-
-      return (
-        <>
-          {!isEmpty(metricType) && (
-            <VersionExtraInfoLabel
-              label={t('label.metric-type')}
-              value={metricType}
-            />
-          )}
-          {!isEmpty(displayUnitOfMeasurement) && (
-            <VersionExtraInfoLabel
-              label={t('label.unit-of-measurement')}
-              value={displayUnitOfMeasurement}
-            />
-          )}
-          {!isEmpty(granularity) && (
-            <VersionExtraInfoLabel
-              label={t('label.granularity')}
-              value={granularity}
-            />
-          )}
-        </>
-      );
-    }
     default:
       return null;
   }

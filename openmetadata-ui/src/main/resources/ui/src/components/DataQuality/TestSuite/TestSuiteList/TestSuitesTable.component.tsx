@@ -14,6 +14,7 @@ import {
   Box,
   EmptyPlaceholder,
   EmptyPlaceholderAction,
+  Owner,
   Skeleton,
   Table,
 } from '@openmetadata/ui-core-components';
@@ -27,6 +28,7 @@ import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { Paging } from '../../../../generated/type/paging';
+import { useOwnerDisplayProps } from '../../../../hooks/useOwnerDisplayProps';
 import {
   DataQualityPageTabs,
   DataQualitySubTabs,
@@ -36,7 +38,6 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 
@@ -87,6 +88,7 @@ export const TestSuitesTable = ({
   emptyStateAction,
 }: TestSuitesTableProps) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const renderNameCell = (record: TestSuite) => {
     if (record.basic) {
@@ -158,10 +160,11 @@ export const TestSuitesTable = ({
       </Table.Cell>
       <Table.Cell>{renderSuccessCell(record.summary)}</Table.Cell>
       <Table.Cell>
-        <OwnerLabel
+        <Owner
           isCompactView={false}
           maxVisibleOwners={4}
-          owners={record.owners}
+          owners={toOwnersWithHref(record.owners)}
+          renderOwnerContent={renderOwnerContent}
           showLabel={false}
         />
       </Table.Cell>

@@ -104,6 +104,11 @@ public class PatchEntityTool implements McpTool {
         new OperationContext(entityType, jsonPatch),
         new ResourceContext<>(entityType, null, fqn, ResourceContextInterface.Operation.PATCH));
 
+    // The response carries the patched entity, so this write answers a read as well: apply the
+    // per-entity visibility rules the authorize() above cannot see, since they live outside the
+    // policy model.
+    CommonUtils.enforceEntityVisibility(entityType, fqn, securityContext);
+
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     String userName = securityContext.getUserPrincipal().getName();
     RestUtil.PatchResponse<? extends EntityInterface> response =

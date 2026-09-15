@@ -17,6 +17,7 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
+  Owner,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -39,6 +40,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import {
@@ -63,18 +65,87 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
+
+const renderDataProductNameCell = (
+  entity: DataProduct,
+  onEntityClick?: (entity: DataProduct) => void
+): ReactNode => {
+  const entityName = getEntityName(entity);
+  const showName =
+    entity.displayName && entity.name && entity.displayName !== entity.name;
+
+  const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    onEntityClick?.(entity);
+  };
+
+  return (
+    <Box
+      align="center"
+      className={NAME_CELL_CLIP_CLASS}
+      data-testid="entity-name"
+      direction="row"
+      gap={3}
+      onClick={handleNameClick}>
+      <Avatar size="md" {...getEntityAvatarProps(entity)} />
+      <Box className="tw:min-w-0" direction="col">
+        <Typography
+          className={CLIPPED_NAME_CLASS}
+          ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
+          size="text-sm"
+          weight="medium">
+          {entityName}
+        </Typography>
+        {showName && (
+          <Typography
+            className={CLIPPED_NAME_CLASS}
+            ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
+            size="text-xs">
+            {entity.name}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
+  const domains = entity.domains;
+  if (!domains?.length) {
+    return <Typography size="text-sm">{NO_DATA}</Typography>;
+  }
+  const domain = domains[0];
+
+  return (
+    <Box
+      align="center"
+      className={COMPACT_CELL_CLIP_CLASS}
+      direction="row"
+      gap={1}>
+      <Globe01 size={16} style={{ flexShrink: 0 }} />
+      <Typography
+        className={CLIPPED_NAME_CLASS}
+        ellipsis={{
+          tooltip: renderBreakableTooltip(domain.displayName || domain.name),
+        }}
+        size="text-sm">
+        {domain.displayName || domain.name}
+      </Typography>
+    </Box>
+  );
+};
 
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -168,94 +239,38 @@ const DataProductListPage = ({
   const renderDataProductCell = useCallback(
     (entity: DataProduct, columnId: string): ReactNode => {
       switch (columnId) {
-        case 'name': {
-          const entityName = getEntityName(entity);
-          const showName =
-            entity.displayName &&
-            entity.name &&
-            entity.displayName !== entity.name;
-
-          const handleNameClick = (event: MouseEvent<HTMLDivElement>) => {
-            event.stopPropagation();
-            dataProductListing.actionHandlers.onEntityClick?.(entity);
-          };
-
-          return (
-            <Box
-              align="center"
-              className={NAME_CELL_CLIP_CLASS}
-              direction="row"
-              gap={3}
-              onClick={handleNameClick}>
-              <Avatar size="md" {...getEntityAvatarProps(entity)} />
-              <Box className="tw:min-w-0" direction="col">
-                <Typography
-                  className={CLIPPED_NAME_CLASS}
-                  ellipsis={{ tooltip: renderBreakableTooltip(entityName) }}
-                  size="text-sm"
-                  weight="medium">
-                  {entityName}
-                </Typography>
-                {showName && (
-                  <Typography
-                    className={CLIPPED_NAME_CLASS}
-                    ellipsis={{ tooltip: renderBreakableTooltip(entity.name) }}
-                    size="text-xs">
-                    {entity.name}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
+        case 'name':
+          return renderDataProductNameCell(
+            entity,
+            dataProductListing.actionHandlers.onEntityClick
           );
-        }
         case 'owners':
           return (
-            <OwnerLabel
+            <Owner
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.owners}
+              owners={toOwnersWithHref(entity.owners ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );
         case 'glossaryTerms':
-          return <TagBadgeList size="lg" tags={getGlossaryTags(entity.tags)} />;
-        case 'domains': {
-          const domains = entity.domains;
-          if (!domains?.length) {
-            return <Typography size="text-sm">{NO_DATA}</Typography>;
-          }
-          const domain = domains[0];
-
-          return (
-            <Box
-              align="center"
-              className={COMPACT_CELL_CLIP_CLASS}
-              direction="row"
-              gap={1}>
-              <Globe01 size={16} style={{ flexShrink: 0 }} />
-              <Typography
-                className={CLIPPED_NAME_CLASS}
-                ellipsis={{
-                  tooltip: renderBreakableTooltip(
-                    domain.displayName || domain.name
-                  ),
-                }}
-                size="text-sm">
-                {domain.displayName || domain.name}
-              </Typography>
-            </Box>
-          );
-        }
+          return <TagsViewer sizeCap={1} tags={getGlossaryTags(entity.tags)} />;
+        case 'domains':
+          return renderDataProductDomainCell(entity);
         case 'tags':
           return (
-            <TagBadgeList size="sm" tags={getClassificationTags(entity.tags)} />
+            <TagsViewer sizeCap={1} tags={getClassificationTags(entity.tags)} />
           );
         case 'experts':
           return (
-            <OwnerLabel
+            <Owner
+              showDashPlaceholder
               isCompactView={false}
               maxVisibleOwners={4}
-              owners={entity.experts}
+              owners={toOwnersWithHref(entity.experts ?? [])}
+              renderOwnerContent={renderOwnerContent}
               showLabel={false}
             />
           );
@@ -398,7 +413,7 @@ const DataProductListPage = ({
     permissions.dataProduct?.Create,
   ]);
 
-  return (
+  const renderHeader = () => (
     <>
       {!renderPageHeader && !isAiMode && (
         <HeaderBreadcrumb items={breadcrumbItems} />
@@ -412,6 +427,12 @@ const DataProductListPage = ({
             search: headerSearch,
           })
         : pageHeader}
+    </>
+  );
+
+  return (
+    <>
+      {renderHeader()}
 
       <Card
         className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {

@@ -11,28 +11,27 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, PageLayout, Typography } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
 import { ROUTES } from '../../../../constants/constants';
 import HeaderBreadcrumb from '../../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import HeaderShell from '../../../common/HeaderShell/HeaderShell.component';
 import MarketplaceSearchBar from '../../../DataMarketplace/MarketplaceSearchBar/MarketplaceSearchBar.component';
 import { AddNewMenu } from '../AddNewMenu/AddNewMenu';
 
 /**
- * Data Marketplace overview page header. Renders the shared `HeaderShell`
+ * Data Marketplace overview page header. Renders the shared `PageHeader`
  * gradient chrome — marketplace breadcrumb, "Data Marketplace" title and
  * subtitle — with the existing marketplace search alongside the "Add New" menu,
  * replacing the classic greeting banner + standalone search bar. Spacing
  * (breadcrumb→title, title→subtitle, action gap, padding) is owned by
- * `HeaderShell` per the Figma spec.
+ * `PageHeader` per the Figma spec.
  */
 export const MarketplaceOverviewHeader: FC = () => {
   const { t } = useTranslation();
 
-  // HeaderShell's title slot owns the full content width. Keeping the text and
+  // PageHeader's title slot owns the full content width. Keeping the text and
   // controls in one row mirrors Explore and lets the search center correctly.
   const headerLayout = (
     <Box
@@ -61,7 +60,7 @@ export const MarketplaceOverviewHeader: FC = () => {
   );
 
   return (
-    <HeaderShell
+    <PageLayout.PageHeader
       breadcrumb={
         <HeaderBreadcrumb
           noMargin
@@ -79,6 +78,7 @@ export const MarketplaceOverviewHeader: FC = () => {
       }
       className="tw:mb-5"
       data-testid="marketplace-overview-header"
+      density="compact"
       title={headerLayout}
       variant="gradient"
     />

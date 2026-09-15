@@ -19,11 +19,10 @@ import {
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { getDefaultAdminAPIContext } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  navigateToPersonaSettings,
-  navigateToPersonaWithPagination,
-} from '../../utils/persona';
+  enablePersonaRulePreloading,
+  openPersonaAIContext,
+} from '../../utils/personaAIContext';
 
 const persona = new PersonaClass();
 const RULE_ID = '55555555-5555-4555-8555-555555555555';
@@ -113,12 +112,7 @@ const mockPersonaContext = async (
 };
 
 const openPersonaContext = async (page: Page) => {
-  await navigateToPersonaSettings(page);
-  await navigateToPersonaWithPagination(page, persona.data.name, true);
-  await page.getByRole('tab', { name: 'AI Context' }).click();
-  await expect(page).toHaveURL(/#ai-context/);
-  await waitForAllLoadersToDisappear(page);
-  await expect(page.getByTestId('persona-ai-context')).toBeVisible();
+  await openPersonaAIContext(page, persona.data.name);
 };
 
 test.describe
@@ -205,7 +199,9 @@ test.describe
     await openPersonaContext(adminPage);
 
     await adminPage.getByTestId('empty-add-context-rule').click();
+    await enablePersonaRulePreloading(adminPage);
     const maxAssets = adminPage.getByTestId('context-rule-max-assets');
+    await expect(maxAssets).toBeEnabled();
     await maxAssets.fill('5000');
     await maxAssets.blur();
 
