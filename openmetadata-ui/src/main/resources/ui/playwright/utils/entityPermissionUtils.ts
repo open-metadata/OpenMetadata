@@ -238,7 +238,19 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).not.toBeVisible();
+        // `getByText(...).first()` with `not.toBeVisible()` is also satisfied by
+        // text that is simply not there yet, so on its own it cannot separate a
+        // denied page from one still loading -- the same hole the other deny
+        // branches had. Let the page settle and wait for the entity header,
+        // which was present on all four entities that use this config in both
+        // modes, then assert the label is absent. Absence is what denial
+        // actually produces here: measured zero matches on every entity under
+        // deny and exactly one under allow, so it is removed rather than hidden.
+        await waitForAllLoadersToDisappear(testUserPage);
+        await expect(
+          testUserPage.locator('[data-testid="entity-header-title"]')
+        ).toBeVisible();
+        await expect(testUserPage.getByText(testId)).toHaveCount(0);
 
         break;
       }
