@@ -13,8 +13,8 @@ Dagster source to extract metadata from OM UI
 """
 
 import traceback
-from datetime import datetime, timedelta, timezone
 from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
