@@ -78,6 +78,9 @@ public interface CollectionDAO
   @CreateSqlObject
   IntakeFormDAO intakeFormDAO();
 
+  @CreateSqlObject
+  OnboardingDAO onboardingDAO();
+
   interface IntakeFormDAO extends EntityDAO<IntakeForm> {
     @Override
     default String getTableName() {

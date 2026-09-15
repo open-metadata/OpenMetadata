@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingStep.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingStep",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStep",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Step display name."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "field",
+        "approval"
+      ]
+    },
+    "fieldPath": {
+      "type": "string",
+      "description": "Reference to formFields; requiredness is defined there."
+    },
+    "workflow": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "assignment": {
+      "$ref": "./onboardingAssignment.json"
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingCondition.json"
+      },
+      "default": []
+    },
+    "guidance": {
+      "type": "string",
+      "description": "Instructions for the person completing this step."
+    },
+    "rules": {
+      "$ref": "./onboardingRules.json"
+    }
+  },
+  "required": [
+    "id",
+    "type"
+  ],
+  "additionalProperties": false
+}

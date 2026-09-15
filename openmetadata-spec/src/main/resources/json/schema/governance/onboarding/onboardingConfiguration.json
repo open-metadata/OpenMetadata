@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingConfiguration",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingConfiguration",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "$ref": "./onboardingGate.json"
+      },
+      "default": [],
+      "maxItems": 5
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

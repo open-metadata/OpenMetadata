@@ -48,7 +48,22 @@ export const NATIVE_FIELDS_BY_ENTITY_TYPE: Record<
     { path: 'owners', labelKey: 'label.owner-plural' },
     { path: 'experts', labelKey: 'label.expert-plural' },
   ],
+  [TargetEntityType.Metric]: [
+    { path: 'displayName', labelKey: 'label.display-name' },
+    { path: 'description', labelKey: 'label.description' },
+    { path: 'metricType', labelKey: 'label.metric-type' },
+    { path: 'granularity', labelKey: 'label.granularity' },
+    { path: 'unitOfMeasurement', labelKey: 'label.unit-of-measurement' },
+    { path: 'metricExpression.code', labelKey: 'label.expression' },
+    { path: 'domains', labelKey: 'label.domain-plural' },
+    { path: 'tags', labelKey: 'label.tag-plural' },
+    { path: 'owners', labelKey: 'label.owner-plural' },
+    { path: 'reviewers', labelKey: 'label.reviewer-plural' },
+    { path: 'relatedMetrics', labelKey: 'label.related-metric-plural' },
+  ],
   [TargetEntityType.GlossaryTerm]: [
+    { path: 'owners', labelKey: 'label.owner-plural' },
+    { path: 'domains', labelKey: 'label.domain-plural' },
     { path: 'displayName', labelKey: 'label.display-name' },
     { path: 'synonyms', labelKey: 'label.synonym-plural' },
     { path: 'tags', labelKey: 'label.tag-plural' },
@@ -64,4 +79,5 @@ export const ENTITY_TYPE_API_NAME: Record<TargetEntityType, string> = {
   [TargetEntityType.DataProduct]: 'dataProduct',
   [TargetEntityType.Domain]: 'domain',
   [TargetEntityType.GlossaryTerm]: 'glossaryTerm',
+  [TargetEntityType.Metric]: 'metric',
 };

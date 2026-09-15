@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/onboarding/onboardingStage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnboardingStage",
+  "javaType": "org.openmetadata.schema.governance.onboarding.OnboardingStage",
+  "type": "string",
+  "enum": [
+    "Creation",
+    "Draft",
+    "In Review",
+    "Approved",
+    "Deprecated"
+  ]
+}

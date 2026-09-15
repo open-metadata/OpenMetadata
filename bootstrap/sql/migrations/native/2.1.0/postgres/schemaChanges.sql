@@ -298,3 +298,28 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_entity_type_ts
 -- test connection, query runner and reverse ingestion runs.
 CREATE INDEX IF NOT EXISTS idx_automations_workflow_updated_at
   ON automations_workflow (updatedat);
+
+CREATE TABLE IF NOT EXISTS onboarding_instance (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  entityId VARCHAR(36) NOT NULL UNIQUE,
+  entityType VARCHAR(64) NOT NULL,
+  configurationId VARCHAR(36) NOT NULL,
+  stage VARCHAR(32) NOT NULL,
+  revision BIGINT NOT NULL DEFAULT 0,
+  json JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS onboarding_board_stage ON onboarding_instance (entityType, stage, id);
+CREATE INDEX IF NOT EXISTS onboarding_configuration ON onboarding_instance (configurationId, id);
+CREATE TABLE IF NOT EXISTS onboarding_task (
+  taskId VARCHAR(36) NOT NULL PRIMARY KEY,
+  instanceId VARCHAR(36) NOT NULL,
+  stepId VARCHAR(64) NOT NULL,
+  attempt INT NOT NULL,
+  UNIQUE (instanceId, stepId, attempt)
+);
+CREATE TABLE IF NOT EXISTS onboarding_backfill (
+  configurationId VARCHAR(36) NOT NULL PRIMARY KEY,
+  leaseOwner VARCHAR(36),
+  leaseUntil BIGINT NOT NULL DEFAULT 0,
+  json JSONB NOT NULL
+);

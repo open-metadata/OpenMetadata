@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { OnboardingBackfillStatus } from '../../components/governance/onboarding/OnboardingBackfillStatus';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
@@ -49,6 +50,12 @@ import {
   patchIntakeForm,
 } from '../../rest/intakeFormsAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { STAGE_LABELS } from '../../utils/governance/onboarding/Onboarding.utils';
+import {
+  onboardingDueStage,
+  onboardingGateSummaries,
+  onboardingRequirementLabel,
+} from '../../utils/governance/onboarding/OnboardingBuilder.utils';
 import { getIntakeFormFields } from '../../utils/IntakeFormUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import IntakeFormDesignerModal from './IntakeFormDesignerModal';
@@ -57,6 +64,7 @@ const ENTITY_TYPE_LABEL_KEYS: Record<TargetEntityType, string> = {
   [TargetEntityType.DataProduct]: 'label.data-product',
   [TargetEntityType.Domain]: 'label.domain',
   [TargetEntityType.GlossaryTerm]: 'label.glossary-term',
+  [TargetEntityType.Metric]: 'label.metric',
 };
 
 const IntakeFormsPage = () => {
@@ -192,7 +200,7 @@ const IntakeFormsPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.GOVERNANCE,
-        t('label.intake-form-plural')
+        t('label.onboarding-intake-forms')
       ),
     [t]
   );
@@ -256,32 +264,86 @@ const IntakeFormsPage = () => {
     <Box align="center" justify="between">
       <PageHeader
         data={{
-          header: t('label.intake-form-plural'),
+          header: t('label.onboarding-intake-forms'),
           subHeader: t('message.intake-form-plural-description'),
         }}
       />
-      {renderAddButton()}
+      <Box className="tw:gap-3">
+        <Button color="secondary" href="/onboarding">
+          {t('label.onboarding-board')}
+        </Button>
+        {renderAddButton()}
+      </Box>
     </Box>
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.intake-form-plural')}>
+    <PageLayoutV1 pageTitle={t('label.onboarding-intake-forms')}>
       <Box className="tw:gap-4" direction="col">
         <TitleBreadcrumb titleLinks={breadcrumbs} />
         {headerBar}
 
+        {!loading && (
+          <Box data-testid="onboarding-configurations" gap={3} wrap="wrap">
+            {Object.values(TargetEntityType).map((type) => {
+              const configured = forms.find((form) => form.entityType === type);
+
+              return (
+                <Box
+                  className="tw:flex-1 tw:min-w-40 tw:rounded-lg tw:border tw:border-secondary tw:p-4"
+                  direction="col"
+                  gap={2}
+                  key={type}>
+                  <Typography size="text-sm" weight="semibold">
+                    {entityTypeLabel(type)}
+                  </Typography>
+                  <Typography className="tw:text-tertiary" size="text-xs">
+                    {configured
+                      ? t('label.version-number', {
+                          version: configured.version,
+                        })
+                      : t('message.not-configured')}
+                  </Typography>
+                  {configured &&
+                    onboardingGateSummaries(configured).map((gate) => (
+                      <Typography key={gate.stage} size="text-xs">
+                        {t(STAGE_LABELS[gate.stage])}:{' '}
+                        {t('message.onboarding-stage-checks', {
+                          count: gate.count,
+                        })}
+                      </Typography>
+                    ))}
+                  <Button
+                    color="link-color"
+                    data-testid={`configure-onboarding-${type}`}
+                    onPress={() =>
+                      configured
+                        ? handleEdit(configured)
+                        : setModalState({
+                            open: true,
+                            entityType: type,
+                            initialValue: null,
+                          })
+                    }>
+                    {t(configured ? 'label.edit' : 'label.configure')}
+                  </Button>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
         {!loading && forms.length === 0 ? (
           <div className="tw:relative tw:min-h-90">
             <CreatePlaceholder
               data-testid="intake-forms-empty"
-              description={t('message.no-intake-form-yet-description')}
+              description={t('message.intake-form-plural-description')}
               icon={<FileCheck02 className="tw:text-fg-brand-primary" />}
               title={t('message.no-intake-form-yet')}
             />
           </div>
         ) : (
           <Table
-            aria-label={t('label.intake-form-plural')}
+            aria-label={t('label.onboarding-intake-forms')}
             data-testid="intake-forms-table">
             <Table.Header columns={columns}>
               {(col) => (
@@ -306,6 +368,11 @@ const IntakeFormsPage = () => {
                     <Typography size="text-sm" weight="semibold">
                       {entityTypeLabel(record.entityType)}
                     </Typography>
+                    {record.onboarding?.enabled && record.enabled && (
+                      <OnboardingBackfillStatus
+                        entityType={record.entityType}
+                      />
+                    )}
                   </Table.Cell>
                   <Table.Cell>
                     <Box className="tw:gap-1" direction="col">
@@ -335,9 +402,13 @@ const IntakeFormsPage = () => {
                               as="span"
                               className="tw:ml-1 tw:text-tertiary"
                               size="text-xs">
-                              {field.required
-                                ? t('label.required')
-                                : t('label.optional')}
+                              {t(onboardingRequirementLabel(field))}
+                              {' · '}
+                              {t(
+                                STAGE_LABELS[
+                                  onboardingDueStage(record, field.fieldPath)
+                                ]
+                              )}
                             </Typography>
                           </Badge>
                         ))

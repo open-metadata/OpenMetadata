@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 /**
- * An IntakeForm declares the fields shown when creating or updating a governance entity
- * (Data Product, Domain, Glossary Term) and which of those fields are required. Required
- * fields are enforced identically at the API and UI layers so both contracts match.
+ * One intake and onboarding configuration per governance entity type. Field requirements
+ * are shared by creation forms and lifecycle gates.
  */
 export interface IntakeForm {
     /**
@@ -65,7 +64,8 @@ export interface IntakeForm {
     /**
      * Unique name of the IntakeForm.
      */
-    name: string;
+    name:        string;
+    onboarding?: OnboardingConfiguration;
     /**
      * Owners of this IntakeForm configuration.
      */
@@ -166,6 +166,7 @@ export enum TargetEntityType {
     DataProduct = "dataProduct",
     Domain = "domain",
     GlossaryTerm = "glossaryTerm",
+    Metric = "metric",
 }
 
 /**
@@ -191,6 +192,10 @@ export interface IntakeFormField {
      */
     fieldPath: string;
     /**
+     * An optional field recommended for onboarding.
+     */
+    recommended?: boolean;
+    /**
      * Whether this field must have a value before the entity can be created or updated.
      */
     required?: boolean;
@@ -208,15 +213,59 @@ export enum FieldKind {
     Native = "native",
 }
 
+export interface OnboardingConfiguration {
+    enabled?: boolean;
+    gates?:   OnboardingGate[];
+}
+
+export interface OnboardingGate {
+    stage: OnboardingStage;
+    steps: OnboardingStep[];
+}
+
+export enum OnboardingStage {
+    Approved = "Approved",
+    Creation = "Creation",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+}
+
+export interface OnboardingStep {
+    assignment?: OnboardingAssignment;
+    conditions?: OnboardingCondition[];
+    /**
+     * Reference to formFields; requiredness is defined there.
+     */
+    fieldPath?: string;
+    /**
+     * Instructions for the person completing this step.
+     */
+    guidance?: string;
+    id:        string;
+    rules?:    OnboardingRules;
+    /**
+     * Step display name.
+     */
+    title?:    string;
+    type:      Type;
+    workflow?: EntityReference;
+}
+
+export interface OnboardingAssignment {
+    assignees?: EntityReference[];
+    role?:      Role;
+}
+
 /**
- * Owners of this IntakeForm configuration.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this IntakeForm configuration.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -262,6 +311,42 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+export enum Role {
+    Creator = "creator",
+    DomainOwners = "domainOwners",
+    Experts = "experts",
+    Explicit = "explicit",
+    Owners = "owners",
+}
+
+export interface OnboardingCondition {
+    /**
+     * Native or extension field to test.
+     */
+    fieldPath: string;
+    operator:  Operator;
+    /**
+     * Value compared using the selected operator.
+     */
+    value?: any;
+}
+
+export enum Operator {
+    Contains = "contains",
+    Equals = "equals",
+    Present = "present",
+}
+
+export interface OnboardingRules {
+    minItems?:  number;
+    minLength?: number;
+}
+
+export enum Type {
+    Approval = "approval",
+    Field = "field",
 }
 
 /**

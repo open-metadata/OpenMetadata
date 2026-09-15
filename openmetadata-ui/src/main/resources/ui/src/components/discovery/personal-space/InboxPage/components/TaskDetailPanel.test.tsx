@@ -1160,16 +1160,20 @@ describe('TaskDetailPanel', () => {
       expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
     });
 
-    it('does not gate a non-DAR task on ResolveTask and skips the permission fetch', async () => {
-      mockGetTaskById.mockResolvedValue({ data: TASK });
-      mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
+    it.each(['RequestApproval', 'GlossaryApproval'])(
+      'hides %s approval actions when the viewer cannot resolve the task',
+      async (type) => {
+        mockGetTaskById.mockResolvedValue({
+          data: { ...TASK, type, category: 'Approval' },
+        });
+        mockGetEntityPermission.mockResolvedValue({ ResolveTask: false });
 
-      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
-      expect(mockGetEntityPermission).not.toHaveBeenCalled();
-      expect(screen.getByText('label.approve')).toBeInTheDocument();
-      expect(screen.getByText('label.reject')).toBeInTheDocument();
-    });
+        expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+        expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+      }
+    );
   });
 
   describe('status badge', () => {
