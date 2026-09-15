@@ -186,8 +186,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     if (!viewPolicyPermission) {
       return (
         <Typography
-          key={key}
           className="tw:truncate tw:block"
+          key={key}
           size="text-sm"
           tooltip={t(NO_PERMISSION_TO_VIEW)}>
           {getEntityName(policy)}

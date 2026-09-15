@@ -232,8 +232,9 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
           bots.map((bot) => ({
             key: bot.name,
             label:
-              botDisplayNameMap[(getEntityName(bot) || bot.name).toLowerCase()] ??
-              startCase(getEntityName(bot) || bot.name),
+              botDisplayNameMap[
+                (getEntityName(bot) || bot.name).toLowerCase()
+              ] ?? startCase(getEntityName(bot) || bot.name),
           }))
         );
       } catch {

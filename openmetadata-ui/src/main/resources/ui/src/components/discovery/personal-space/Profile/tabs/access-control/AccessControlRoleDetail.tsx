@@ -270,7 +270,9 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
           color="tertiary"
           data-testid="edit-description-btn"
           size="xs"
-          tooltip={String(t('label.edit-entity', { entity: t('label.description') }))}
+          tooltip={String(
+            t('label.edit-entity', { entity: t('label.description') })
+          )}
           tooltipPlacement="right"
           onPress={onStartEdit}>
           <Edit name={t('label.edit')} width="14px" />

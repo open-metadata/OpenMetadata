@@ -186,7 +186,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     if (!viewRolePermission) {
       return (
-        <Typography key={key} ellipsis tooltip={t(NO_PERMISSION_TO_VIEW)}>
+        <Typography ellipsis key={key} tooltip={t(NO_PERMISSION_TO_VIEW)}>
           {getEntityName(role)}
         </Typography>
       );
