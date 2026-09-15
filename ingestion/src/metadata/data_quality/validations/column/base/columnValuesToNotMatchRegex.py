@@ -63,7 +63,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
 
             metric_values = {Metrics.notRegexCount.name: not_match_count}
 
-            if self.test_case.computePassedFailedRowCount:
+            if self._needs_row_count():
                 metric_values[Metrics.rowCount.name] = self.get_row_count()
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -120,7 +120,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
             Metrics.notRegexCount.name: Metrics.notRegexCount,
         }
 
-        if self.test_case.computePassedFailedRowCount:
+        if self._needs_row_count():
             metrics[Metrics.rowCount.name] = Metrics.rowCount
 
         return metrics
@@ -128,8 +128,9 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
     def _evaluate_test_condition(self, metric_values: dict, test_params: dict | None = None) -> TestEvaluation:
         """Evaluate the not regex match test condition
 
-        For not regex match test, pass if NO values match the forbidden regex pattern
-        (not_match_count == 0).
+        For not regex match test, pass if the values matching the forbidden regex pattern
+        stay within the failure threshold, counted against the table row count. With the
+        default threshold, that means not_match_count == 0.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
@@ -149,7 +150,7 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         not_match_count = metric_values[Metrics.notRegexCount.name]
         total_rows = metric_values.get(Metrics.rowCount.name)
 
-        matched = not_match_count == 0
+        matched = self._apply_row_threshold(not_match_count, total_rows)
         failed_count = not_match_count
         if total_rows is not None:
             passed_count = total_rows - failed_count
