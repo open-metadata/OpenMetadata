@@ -238,6 +238,54 @@ class DottedServiceFqnMigrationTest {
     verify(dashboardDAO, never()).update(any());
   }
 
+  @Test
+  void leavesRowUnhealedWhenCanonicalDuplicateAlreadyExists() {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.DashboardServiceDAO dashboardServiceDAO =
+        mock(CollectionDAO.DashboardServiceDAO.class);
+    CollectionDAO.DashboardDAO dashboardDAO = mock(CollectionDAO.DashboardDAO.class);
+
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(collectionDAO.dashboardServiceDAO()).thenReturn(dashboardServiceDAO);
+    when(collectionDAO.dashboardDAO()).thenReturn(dashboardDAO);
+
+    UUID serviceId = UUID.randomUUID();
+    UUID dashboardId = UUID.randomUUID();
+    stubServiceRows(handle, "dashboard_service_entity", serviceId);
+    stubServiceRows(handle, "pipeline_service_entity");
+    stubServiceRows(handle, "messaging_service_entity");
+    stubServiceRows(handle, "mlmodel_service_entity");
+
+    when(relationshipDAO.findTo(
+            serviceId, Entity.DASHBOARD_SERVICE, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD))
+        .thenReturn(List.of(relationship(dashboardId, Entity.DASHBOARD)));
+
+    DashboardService service =
+        new DashboardService()
+            .withId(serviceId)
+            .withName("dash.service")
+            .withFullyQualifiedName("\"dash.service\"");
+    Dashboard dashboard =
+        new Dashboard()
+            .withId(dashboardId)
+            .withName("sales")
+            .withFullyQualifiedName("dash.service.sales");
+    when(dashboardServiceDAO.findEntityById(serviceId)).thenReturn(service);
+    when(dashboardDAO.findEntityById(dashboardId)).thenReturn(dashboard);
+    // A canonical row already occupies "dash.service".sales -> updating would violate the fqnHash
+    // UNIQUE constraint, so the corrupted row must be left untouched (not silently
+    // update-and-throw).
+    when(dashboardDAO.existsByName(any(), any(), any())).thenReturn(true);
+
+    DottedServiceFqnMigration.repairDottedServiceChildFqns(handle, collectionDAO);
+
+    verify(dashboardDAO, never()).update(any());
+    assertEquals("dash.service.sales", dashboard.getFullyQualifiedName());
+  }
+
   private static void stubServiceRows(Handle handle, String tableName, UUID... ids) {
     String query = String.format("SELECT id FROM %s WHERE name LIKE '%%.%%'", tableName);
     List<Map<String, Object>> rows =
