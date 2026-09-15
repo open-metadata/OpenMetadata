@@ -103,6 +103,19 @@ AUDITED_PARALLEL_SUITES = {
     # (module-scoped entity constructors generate unique names), so each
     # parallel unit brings its own state without cross-worker collision.
     ("Features/BulkImport.spec.ts", "Bulk Import Export"),
+    # Forty-four tests in one top-level describe, 23.3m of measured history
+    # against the 19m chromium budget. Summed as a single atomic unit the plan
+    # step failed outright, so no shard ran at all -- the suite was not slow,
+    # it was unschedulable.
+    #
+    # Splitting is safe rather than free. Safe because the chromium project
+    # inherits fullyParallel, so these tests already execute across workers,
+    # and every fixture the describe shares is a module-scoped binding assigned
+    # in beforeAll from a uuid(), so each unit builds its own entities instead
+    # of racing for shared ones. Not free because the units land on 28 shards
+    # and beforeAll re-runs on each, and that beforeAll creates roughly fifteen
+    # entities. If this suite gets cheaper, fold it back into a single unit.
+    ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
     # These suites already run fullyParallel. Domains creates unique entities
     # and Curated Assets owns its user/persona while reading seeded assets.
     # Partition them before applying the atomic-unit budget; summing every
