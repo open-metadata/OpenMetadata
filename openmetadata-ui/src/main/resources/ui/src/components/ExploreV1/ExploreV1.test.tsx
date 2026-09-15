@@ -33,19 +33,28 @@ import ExploreV1 from './ExploreV1.component';
 jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
+    hideFocusOutline,
     iconLeading,
     iconTrailing,
     onClick,
     onPress,
+    size,
     ...rest
   }: {
     children?: import('react').ReactNode;
+    hideFocusOutline?: boolean;
     iconLeading?: import('react').ReactNode;
     iconTrailing?: import('react').ReactNode;
     onClick?: () => void;
     onPress?: () => void;
+    size?: string;
   } & Record<string, unknown>) => (
-    <button type="button" onClick={onPress ?? onClick} {...rest}>
+    <button
+      data-hide-focus-outline={hideFocusOutline}
+      data-size={size}
+      type="button"
+      onClick={onPress ?? onClick}
+      {...rest}>
       {iconLeading}
       {children}
       {iconTrailing}
@@ -133,7 +142,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onClick?: () => void;
       onPress?: () => void;
     } & Record<string, unknown>) => (
-      <div role="menuitem" onClick={onPress ?? onClick} {...props}>
+      <div
+        role="menuitem"
+        tabIndex={0}
+        onClick={onPress ?? onClick}
+        onKeyDown={onPress ?? onClick}
+        {...props}>
         {label ?? children}
       </div>
     ),
@@ -240,7 +254,23 @@ jest.mock('../common/ResizablePanels/ResizablePanels', () => {
 jest.mock('../common/ResizablePanels/ResizableLeftPanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
-      <div>{firstPanel.children}</div>
+      <div className={firstPanel.className} data-testid="resizable-left-panel">
+        <div
+          className={firstPanel.cardClassName}
+          data-testid="resizable-left-panel-card">
+          <div
+            className={firstPanel.titleContainerClassName}
+            data-testid="resizable-left-panel-title">
+            <span
+              className={firstPanel.titleClassName}
+              data-testid="resizable-left-panel-title-text"
+              data-title-strong={String(firstPanel.titleStrong)}>
+              {firstPanel.title}
+            </span>
+          </div>
+        </div>
+        {firstPanel.children}
+      </div>
       <div>{secondPanel.children}</div>
     </div>
   ));
@@ -538,6 +568,47 @@ describe('ExploreV1', () => {
     fireEvent.click(screen.getByTestId('sort-order-button'));
 
     expect(onChangeSortOder).toHaveBeenCalled();
+  });
+
+  it('uses parent header spacing and actions without persistent focus styles', () => {
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    expect(screen.getByTestId('resizable-left-panel-card')).toHaveClass(
+      'tw:[&_.ant-card-head-title]:pb-2'
+    );
+    expect(screen.getByTestId('resizable-left-panel-title')).toHaveClass(
+      'tw:items-center'
+    );
+    expect(screen.getByTestId('resizable-left-panel-title')).not.toHaveClass(
+      'tw:pb-2'
+    );
+    expect(screen.getByTestId('resizable-left-panel-title-text')).toHaveClass(
+      'tw:capitalize',
+      'tw:font-medium'
+    );
+    expect(
+      screen.getByTestId('resizable-left-panel-title-text')
+    ).toHaveAttribute('data-title-strong', 'false');
+    expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
+      'data-size',
+      'sm'
+    );
+    expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
+      'data-hide-focus-outline',
+      'true'
+    );
+    expect(screen.getByTestId('sorting-dropdown-label')).not.toHaveClass(
+      'quick-filter-dropdown-trigger-btn'
+    );
+    expect(
+      screen.getByText('label.tool-plural').closest('button')
+    ).toHaveAttribute('data-size', 'sm');
+    expect(
+      screen.getByText('label.tool-plural').closest('button')
+    ).toHaveAttribute('data-hide-focus-outline', 'true');
+    expect(
+      screen.getByText('label.tool-plural').closest('button')
+    ).not.toHaveClass('quick-filter-dropdown-trigger-btn');
   });
 
   it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {

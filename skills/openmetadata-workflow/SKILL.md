@@ -19,7 +19,7 @@ This skill is loaded automatically at session start. It ensures you follow the r
 | Bug fix | `/systematic-debugging` then `/tdd` (write regression test) then `/verification` |
 | New API endpoint | `/planning` then `/tdd` then `/test-enforcement` (must include integration test) |
 | New connector | `/connector-standards` then `/connector-building` then `/test-enforcement` |
-| UI component | `/ui-core-components` + `/react-best-practices` + `/composition-patterns` **before writing**, then `/tdd`, then `/web-design-guidelines` **after**, then `/test-enforcement` (must include Jest + Playwright if user-facing) |
+| UI component | **Read `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` first** (folder structure + file naming for any new file), then `/ui-core-components` + `/react-best-practices` + `/composition-patterns` **before writing**, then `/tdd`, then `/web-design-guidelines` **after**, then `/test-enforcement` (must include Jest + Playwright if user-facing) |
 | UI a11y / UX / design audit | `/web-design-guidelines` |
 | React perf work (re-renders, waterfalls, bundle) | `/react-best-practices` |
 | Code review / PR review | `/code-review` then `/test-enforcement` |

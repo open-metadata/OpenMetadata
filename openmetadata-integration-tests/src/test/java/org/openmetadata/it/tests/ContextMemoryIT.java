@@ -422,6 +422,34 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertEquals(MemoryVisibility.PRIVATE, memory.getShareConfig().getVisibility());
   }
 
+  @Test
+  void get_privateContextMemoryByOwnerWithoutFields_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "owner-direct-read", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService ownerService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    ContextMemory fetched = ownerService.get(memory.getId().toString());
+
+    assertEquals(memory.getId(), fetched.getId());
+  }
+
+  @Test
+  void getByName_privateContextMemoryByOwnerWithoutFields_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "owner-name-read", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService ownerService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    ContextMemory fetched = ownerService.getByName(memory.getFullyQualifiedName());
+
+    assertEquals(memory.getId(), fetched.getId());
+  }
+
   /**
    * The ContextCenter serves its listing from search whenever it passes a query, filter, sort or
    * offset — which it always does. Restricted memories must therefore reach the search index and be

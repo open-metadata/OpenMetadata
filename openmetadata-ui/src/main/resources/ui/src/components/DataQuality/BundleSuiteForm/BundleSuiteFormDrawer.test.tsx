@@ -596,6 +596,36 @@ describe('BundleSuiteFormDrawer', () => {
       });
     });
 
+    it('shows a loader on the create button while the modal submit is pending', async () => {
+      let resolveCreate!: (value: TestSuite) => void;
+      mockCreateTestSuites.mockReturnValueOnce(
+        new Promise<TestSuite>((resolve) => {
+          resolveCreate = resolve;
+        })
+      );
+      await act(async () => {
+        renderDrawer({ variant: 'modal' });
+      });
+
+      await screen.findByRole('dialog');
+
+      const createButton = screen.getByTestId('submit-button');
+      fireEvent.click(createButton);
+
+      await waitFor(() => {
+        expect(mockCreateTestSuites).toHaveBeenCalledTimes(1);
+      });
+
+      expect(createButton).toHaveAttribute('data-loading', 'true');
+      expect(
+        createButton.querySelector('[data-icon="loading"]')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        resolveCreate(mockTestSuite);
+      });
+    });
+
     it('keeps the modal open and shows the inline error when createTestSuites rejects', async () => {
       mockCreateTestSuites.mockRejectedValue({
         response: { data: { message: 'Suite already exists' } },

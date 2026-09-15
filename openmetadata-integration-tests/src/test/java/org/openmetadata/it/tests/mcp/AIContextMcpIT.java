@@ -36,7 +36,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableConstraint;
 
 /**
- * End-to-end integration test for the AI Context Platform's Mode A ({@code get_asset_context} MCP
+ * End-to-end integration test for the AI Context Platform's Mode A (get_entity_details with
  * tool) against the real application: a table with a foreign key, an attached Approved glossary
  * term, a linked Context Center article, and a metric applied to the table must all surface in one
  * tool call, as the LLM-ready markdown document.
@@ -212,8 +212,14 @@ class AIContextMcpIT extends McpTestBase {
   void getAssetContext_returnsStructuralAndAttachedKnowledgeAsMarkdown() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_asset_context",
-            Map.of("entityType", "table", "fqn", ordersTable.getFullyQualifiedName()));
+            "get_entity_details",
+            Map.of(
+                "entityType",
+                "table",
+                "fqn",
+                ordersTable.getFullyQualifiedName(),
+                "include",
+                List.of("context")));
     JsonNode response = executeMcpRequest(toolCall);
 
     String text = response.get("result").get("content").get(0).get("text").asText();
@@ -233,18 +239,22 @@ class AIContextMcpIT extends McpTestBase {
   void getAssetContext_jsonFormatCarriesForeignKeysAndKnowledge() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_asset_context",
+            "get_entity_details",
             Map.of(
                 "entityType",
                 "table",
                 "fqn",
                 ordersTable.getFullyQualifiedName(),
+                "include",
+                List.of("context"),
                 "format",
                 "json"));
     JsonNode response = executeMcpRequest(toolCall);
 
     JsonNode context =
-        OBJECT_MAPPER.readTree(response.get("result").get("content").get(0).get("text").asText());
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("context");
     JsonNode foreignKeys = context.path("assetContext").path("table").path("foreignKeys");
     assertThat(foreignKeys.isArray()).isTrue();
     assertThat(foreignKeys.get(0).path("referredColumns").get(0).asText())
@@ -258,18 +268,22 @@ class AIContextMcpIT extends McpTestBase {
   void getAssetContext_excerptsLongArticleAndTruncationFlagIsSet() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_asset_context",
+            "get_entity_details",
             Map.of(
                 "entityType",
                 "table",
                 "fqn",
                 ordersTable.getFullyQualifiedName(),
+                "include",
+                List.of("context"),
                 "format",
                 "json"));
     JsonNode response = executeMcpRequest(toolCall);
 
     JsonNode context =
-        OBJECT_MAPPER.readTree(response.get("result").get("content").get(0).get("text").asText());
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("context");
     JsonNode longArticle = findArticle(context.path("articles"), longArticleFqn);
     assertThat(longArticle).isNotNull();
     assertThat(longArticle.path("contentTruncated").asBoolean()).isTrue();
@@ -286,7 +300,8 @@ class AIContextMcpIT extends McpTestBase {
   void getKnowledgeContent_returnsFullBodyForTruncatedArticle() throws Exception {
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest(
-            "get_knowledge_content", Map.of("entityType", "page", "fqn", longArticleFqn));
+            "get_entity_details",
+            Map.of("entityType", "page", "fqn", longArticleFqn, "include", List.of("content")));
     JsonNode response = executeMcpRequest(toolCall);
 
     String text = response.get("result").get("content").get(0).get("text").asText();

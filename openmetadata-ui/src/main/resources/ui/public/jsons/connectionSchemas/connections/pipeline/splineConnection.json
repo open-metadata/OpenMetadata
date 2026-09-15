@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SplineConnection",
+  "description": "Spline Metadata Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.SplineConnection",
+  "definitions": {
+    "SplineType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Spline"
+      ],
+      "default": "Spline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Spline",
+      "type": "string",
+      "enum": [
+        "Spline"
+      ]
+    },
+    "hostPort": {
+      "title": "Spline REST Server Host & Port",
+      "expose": true,
+      "description": "Spline REST Server Host & Port.",
+      "type": "string",
+      "format": "uri"
+    },
+    "uiHostPort": {
+      "title": "Spline UI Host & Port",
+      "expose": true,
+      "description": "Spline UI Host & Port.",
+      "type": "string",
+      "format": "uri"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "title": "Default Pipeline Filter Pattern",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "hostPort"
+  ]
+}

@@ -13,7 +13,8 @@ Salesforce source ingestion
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any, cast
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -90,7 +91,7 @@ class SalesforceSource(DatabaseServiceSource):
         self.database_source_state = set()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SalesforceConnection = config.serviceConnection.root.config
         if not isinstance(connection, SalesforceConnection):
@@ -146,7 +147,7 @@ class SalesforceSource(DatabaseServiceSource):
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, str]] | None:
         """
         Handle table and views.
 
@@ -200,7 +201,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_table_description(self, table_name: str) -> Optional[str]:  # noqa: UP045
+    def get_table_description(self, table_name: str) -> str | None:
         """
         Method to get the table description for salesforce with Tooling API
         """
@@ -219,7 +220,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(f"Unable to get description with Tooling API for table [{table_name}]: {exc}")
         return table_description
 
-    def get_table_column_description(self, table_name: str) -> Optional[List]:  # noqa: UP006, UP045
+    def get_table_column_description(self, table_name: str) -> list | None:
         """
         Method to get the all columns' (field) description for Salesforce with the Tooling API.
         """
@@ -237,7 +238,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(f"Unable to get column description with Tooling API for table [{table_name}]: {exc}")
         return all_column_description
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -281,7 +282,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, table_name: str, salesforce_fields: List):  # noqa: UP006
+    def get_columns(self, table_name: str, salesforce_fields: list):
         """
         Method to handle column details
         """
@@ -360,8 +361,8 @@ class SalesforceSource(DatabaseServiceSource):
 
     def get_source_url(
         self,
-        table_name: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        table_name: str | None = None,
+    ) -> str | None:
         """
         Method to get the source url for salesforce
         """

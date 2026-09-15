@@ -19,7 +19,7 @@ jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
 );
 
 jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
-  jest.fn(() => <button data-testid="copy-link-btn" />)
+  jest.fn(() => <button aria-label="Copy link" data-testid="copy-link-btn" />)
 );
 
 jest.mock('../../../assets/svg/edit-new.svg', () => ({
@@ -48,7 +48,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       isDisabled?: boolean;
       'data-testid'?: string;
     }) => (
-      <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
+      <button
+        aria-label="Button utility"
+        data-testid={testId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
     )
   ),
   Dot: jest.fn(() => <span />),

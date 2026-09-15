@@ -23,7 +23,11 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import {
+  createNewPage,
+  expectNoErrorToast,
+  redirectToHomePage,
+} from '../../../utils/common';
 import { sidebarClick } from '../../../utils/sidebar';
 
 type IncidentListResponse = {
@@ -193,10 +197,7 @@ test('Incident Manager renders after a test case owner change', async ({
     const response = await pageIncidentListResponse;
     expect(response.status()).toBe(200);
 
-    const errorToast = page
-      .locator('[data-testid="alert-bar"]')
-      .filter({ hasText: /Unrecognized field|owners/i });
-    await expect(errorToast).toHaveCount(0);
+    await expectNoErrorToast(page, /Unrecognized field|owners/i);
   } finally {
     await table.delete(apiContext).catch(() => undefined);
     if (owner.responseData.id) {

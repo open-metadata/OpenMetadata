@@ -385,7 +385,9 @@
 
 .sso-settings-page .content-height-with-resizable-panel.sso-configured {
   background-color: var(--tw-color-bg-primary);
-  height: calc(100vh - var(--ant-navbar-height) - 200px);
+  // Configured view carries the provider header + tab bar above the panel;
+  // alert handling comes from --page-alert-offset (page-layout.less).
+  --content-panel-offset: 200px;
 
   .right-panel-splitter {
     margin-left: @size-lg;
@@ -431,13 +433,6 @@
         font-weight: @font-semibold;
       }
     }
-  }
-}
-
-// When alert is visible with configured SSO, adjust container height
-.sso-settings-page:has(#page-alert) {
-  .content-height-with-resizable-panel.sso-configured {
-    height: calc(100vh - var(--ant-navbar-height) - 200px - 78px) !important;
   }
 }
 

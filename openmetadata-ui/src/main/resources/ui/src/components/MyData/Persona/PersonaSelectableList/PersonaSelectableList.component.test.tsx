@@ -18,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { EntityReference } from '../../../../generated/entity/type';
 import { PersonaSelectableList } from './PersonaSelectableList.component';
 
@@ -53,17 +54,32 @@ jest.mock('antd', () => {
   return {
     ...antd,
     // Render the popover content inline so the Select mounts without a click.
-    Popover: ({ children, content }: any) => (
+    Popover: ({
+      children,
+      content,
+    }: {
+      children?: ReactNode;
+      content?: ReactNode;
+    }) => (
       <div>
         {children}
         {content}
       </div>
     ),
-    Select: ({ options, onSearch, onChange }: any) => {
+    Select: ({
+      options,
+      onSearch,
+      onChange,
+    }: {
+      options?: { label: string; value: string }[];
+      onSearch?: (value: string) => void;
+      onChange?: (value: string[]) => void;
+    }) => {
       latestOnChange = onChange;
 
       return (
         <div>
+          {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- test mock */}
           <input
             data-testid="persona-search"
             onChange={(e) => onSearch?.(e.target.value)}
@@ -72,6 +88,7 @@ jest.mock('antd', () => {
             <div
               data-testid={`option-${option.value}`}
               key={option.value}
+              role="presentation"
               onClick={() => onChange?.([option.value])}>
               {option.label}
             </div>
@@ -165,11 +182,11 @@ describe('PersonaSelectableList', () => {
   });
 
   it('retains a persona selected under a previous query when saving', async () => {
-    mockSearchPersonas.mockImplementation((query: string) =>
-      Promise.resolve(
-        query === 'ana' ? [PERSONAS[0]] : query === 'stew' ? [PERSONAS[1]] : []
-      )
-    );
+    mockSearchPersonas.mockImplementation((query: string) => {
+      const stewMatches = query === 'stew' ? [PERSONAS[1]] : [];
+
+      return Promise.resolve(query === 'ana' ? [PERSONAS[0]] : stewMatches);
+    });
     const onUpdate = jest.fn().mockResolvedValue(undefined);
 
     render(

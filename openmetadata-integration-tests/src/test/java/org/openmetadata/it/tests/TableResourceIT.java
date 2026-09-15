@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -32,6 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -45,6 +48,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -81,6 +85,7 @@ import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -90,6 +95,7 @@ import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
@@ -111,6 +117,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for Table entity operations.
@@ -118,7 +127,9 @@ import org.openmetadata.sdk.network.HttpMethod;
  * <p>Extends BaseEntityIT to inherit all 8 common entity tests. Adds table-specific tests for
  * columns, constraints, partitions, and complex column types.
  *
- * <p>Total coverage: 8 (common) + 81 (table-specific) = 89 tests
+ * <p>Total coverage: 130 declared test methods (8 inherited from BaseEntityIT plus table-specific
+ * tests for columns, constraints, partitions, profiles and CSV import/export); the executed count is
+ * higher because several are parameterized.
  *
  * <p>Migrated from: org.openmetadata.service.resources.databases.TableResourceTest Migration date:
  * 2025-10-11
@@ -128,6 +139,14 @@ import org.openmetadata.sdk.network.HttpMethod;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
+
+  // Physical extension values persisted in profiler_data_time_series. Kept as literals rather than
+  // referencing the production constants so the tests pin the on-disk contract.
+  private static final String TABLE_PROFILE_EXTENSION = "table.tableProfile";
+  private static final String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
+  private static final String COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+  // Enough column-profile history that the purge is not trivially a single-row delete.
+  private static final int LARGE_PROFILE_HISTORY_ROWS = 1001;
 
   {
     // Table CSV export exports columns from a specific table, not tables from a schema
@@ -1970,6 +1989,205 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertNotNull(updated.getProfile().getRowCount());
   }
 
+  // ===================================================================
+  // PROFILER DATA LIFECYCLE ON DELETE (issue #27041)
+  // ===================================================================
+
+  @Test
+  void delete_hardDeletePurgesProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_purge_table"), ns);
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    assertTrue(
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION) >= 1,
+        "Table profile row must exist before the delete");
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the delete");
+    assertTrue(
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION) >= 1,
+        "System profile row must exist before the delete");
+
+    hardDeleteEntity(table.getId().toString());
+
+    awaitProfilerRowsDeleted(tableFqn, columnFqn);
+
+    Table recreated = createEntity(createRequest);
+    assertEquals(
+        tableFqn, recreated.getFullyQualifiedName(), "Re-created table must reuse the same FQN");
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNull(
+        latestProfile.getProfile(),
+        "Re-created table must not resurface the deleted table's profile");
+    assertTrue(
+        latestProfile.getColumns().stream().allMatch(column -> column.getProfile() == null),
+        "Re-created table must not resurface the deleted table's column profiles");
+    assertTrue(
+        listSystemProfiles(client, tableFqn).isEmpty(),
+        "Re-created table must not resurface the deleted table's system profiles");
+  }
+
+  @Test
+  void delete_softDeletePreservesProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_soft_delete_table"), ns);
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    deleteEntity(table.getId().toString());
+
+    assertTrue(
+        countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve table profile rows");
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve column profile rows");
+    assertTrue(
+        countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION) >= 1,
+        "Soft delete must preserve system profile rows");
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNotNull(
+        latestProfile.getProfile(), "Soft-deleted table must still serve its latest profile");
+    assertTrue(
+        latestProfile.getColumns().stream().anyMatch(column -> column.getProfile() != null),
+        "Soft-deleted table must still serve its column profiles");
+    assertFalse(
+        listSystemProfiles(client, tableFqn).isEmpty(),
+        "Soft-deleted table must still serve its system profiles");
+  }
+
+  @Test
+  void delete_hardDeleteOfSchemaPurgesTableProfilerData(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("profile_cascade_table"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+    Table table = createEntity(createRequest);
+    String tableFqn = table.getFullyQualifiedName();
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    writeFullProfile(client, table);
+    assertTrue(
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the cascade delete");
+
+    Map<String, String> params = Map.of("hardDelete", "true", "recursive", "true");
+    client.databaseSchemas().delete(schema.getId().toString(), params);
+
+    awaitProfilerRowsDeleted(tableFqn, columnFqn);
+  }
+
+  /** A table with a long profiling history must be drained in full, not partially. */
+  @Test
+  void delete_hardDeletePurgesLargeColumnProfileHistory(TestNamespace ns) {
+    CreateTable createRequest = createRequest(ns.prefix("profile_history_table"), ns);
+    Table table = createEntity(createRequest);
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    long baseTimestamp = System.currentTimeMillis() - LARGE_PROFILE_HISTORY_ROWS;
+    for (int offset = 0; offset < LARGE_PROFILE_HISTORY_ROWS; offset++) {
+      seedColumnProfileRow(columnFqn, baseTimestamp + (long) offset);
+    }
+    assertEquals(
+        LARGE_PROFILE_HISTORY_ROWS,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Seeding must produce the full column profile history");
+
+    hardDeleteEntity(table.getId().toString());
+
+    awaitColumnProfileRowsDeleted(
+        columnFqn, "Purge must drain the whole column profile history in one statement");
+  }
+
+  /**
+   * The purge is bounded to profiles recorded at or before the delete, which is what makes it safe
+   * to run after the FQN has been reused. A row timestamped after the delete stands in for one a
+   * successor table records: it must survive however late the purge lands. Seeding the future row
+   * up front pins the boundary without having to win a race against the async purge.
+   */
+  @Test
+  void delete_hardDeletePurgeSpareProfilesRecordedAfterTheDelete(TestNamespace ns) {
+    CreateTable createRequest = createRequest(ns.prefix("profile_watermark_table"), ns);
+    Table table = createEntity(createRequest);
+    String columnFqn = table.getColumns().get(0).getFullyQualifiedName();
+
+    long successorTimestamp = System.currentTimeMillis() + Duration.ofHours(1).toMillis();
+    seedColumnProfileRow(columnFqn, System.currentTimeMillis() - Duration.ofHours(1).toMillis());
+    seedColumnProfileRow(columnFqn, successorTimestamp);
+    assertEquals(
+        2,
+        countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+        "Seeding must produce one row on each side of the delete watermark");
+
+    hardDeleteEntity(table.getId().toString());
+
+    Awaitility.await("profiles predating the delete are purged")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    1,
+                    countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+                    "Purge must remove the row recorded before the delete"));
+    assertEquals(
+        successorTimestamp,
+        onlyColumnProfileTimestamp(columnFqn),
+        "The surviving row must be the one recorded after the delete");
+  }
+
+  /**
+   * Dropping a column does not remove its profiler rows — {@code detectRemovedColumns} only reworks
+   * constraints and lineage — so those rows are reachable only through the table-FQN prefix, never
+   * through the table's current column list. A table re-created at this FQN with the column present
+   * again would otherwise adopt the dead table's profile for it.
+   */
+  @Test
+  void delete_hardDeletePurgesProfilesOfDroppedColumns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable createRequest = createRequest(ns.prefix("profile_dropped_col_table"), ns);
+    Table table = createEntity(createRequest);
+    Column droppedColumn = table.getColumns().get(1);
+    String droppedColumnFqn = droppedColumn.getFullyQualifiedName();
+
+    writeColumnOnlyProfile(client, table.getFullyQualifiedName(), droppedColumn.getName());
+    assertTrue(
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Column profile row must exist before the column is dropped");
+    assertEquals(
+        0,
+        countProfilerRows(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
+        "Only a column profile is written, so no table-level row can stand in for it");
+
+    createRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    Table shrunkTable = client.tables().createOrUpdate(createRequest);
+    assertTrue(
+        shrunkTable.getColumns().stream()
+            .noneMatch(column -> droppedColumn.getName().equals(column.getName())),
+        "Column must be gone from the table before the delete");
+    assertTrue(
+        countProfilerRows(droppedColumnFqn, COLUMN_PROFILE_EXTENSION) >= 1,
+        "Dropping a column leaves its profiler rows behind — the precondition for this test");
+
+    hardDeleteEntity(shrunkTable.getId().toString());
+
+    awaitColumnProfileRowsDeleted(
+        droppedColumnFqn,
+        "Hard delete must purge column profiles of columns dropped before the delete");
+  }
+
   @Test
   void put_profileConfig_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -1999,6 +2217,154 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             updated.getTableProfilerConfig().getProfileSampleConfig().getConfig(),
             StaticSamplingConfig.class);
     assertEquals(50.0, staticConfig.getProfileSample());
+  }
+
+  private void writeColumnOnlyProfile(
+      OpenMetadataClient client, String tableFqn, String columnName) {
+    long timestamp = System.currentTimeMillis();
+    CreateEntityProfile createProfile =
+        new CreateEntityProfile()
+            .withEntityType(Entity.TABLE)
+            .withTimestamp(timestamp)
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN)
+            .withProfileData(
+                new ColumnProfile()
+                    .withName(columnName)
+                    .withUniqueCount(7.0)
+                    .withTimestamp(timestamp));
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/entity/profiles/name/" + Entity.TABLE + "/" + encodedFqn,
+            createProfile);
+  }
+
+  private void writeFullProfile(OpenMetadataClient client, Table table) {
+    long timestamp = System.currentTimeMillis();
+    TableProfile tableProfile =
+        new TableProfile().withRowCount(42.0).withColumnCount(2.0).withTimestamp(timestamp);
+    ColumnProfile columnProfile =
+        new ColumnProfile()
+            .withName(table.getColumns().get(0).getName())
+            .withUniqueCount(42.0)
+            .withUniqueProportion(1.0)
+            .withTimestamp(timestamp);
+    SystemProfile systemProfile =
+        new SystemProfile()
+            .withTimestamp(timestamp)
+            .withOperation(DmlOperationType.INSERT)
+            .withRowsAffected(42);
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(tableProfile)
+                .withColumnProfile(List.of(columnProfile))
+                .withSystemProfile(List.of(systemProfile)));
+  }
+
+  private Table getLatestTableProfile(OpenMetadataClient client, String tableFqn) {
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/" + encodedFqn + "/tableProfile/latest?includeColumnProfile=true",
+                null);
+    return JsonUtils.readValue(response, Table.class);
+  }
+
+  private List<SystemProfile> listSystemProfiles(OpenMetadataClient client, String tableFqn) {
+    String encodedFqn = URLEncoder.encode(tableFqn, StandardCharsets.UTF_8);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/"
+                    + encodedFqn
+                    + "/systemProfile?startTs=0&endTs="
+                    + System.currentTimeMillis(),
+                null);
+    JsonNode data = JsonUtils.readTree(response).get("data");
+    List<SystemProfile> systemProfiles = new ArrayList<>();
+    if (data != null) {
+      data.forEach(
+          node -> systemProfiles.add(JsonUtils.readValue(node.toString(), SystemProfile.class)));
+    }
+    return systemProfiles;
+  }
+
+  private void seedColumnProfileRow(String columnFqn, long timestamp) {
+    Entity.getCollectionDAO()
+        .profilerDataTimeSeriesDao()
+        .insert(
+            columnFqn,
+            COLUMN_PROFILE_EXTENSION,
+            "columnProfile",
+            String.format("{\"timestamp\":%d,\"uniqueCount\":1}", timestamp));
+  }
+
+  private long onlyColumnProfileTimestamp(String columnFqn) {
+    String fqnHash = FullyQualifiedName.buildHash(columnFqn);
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT timestamp FROM profiler_data_time_series "
+                            + "WHERE entityFQNHash = :fqnHash AND extension = :extension")
+                    .bind("fqnHash", fqnHash)
+                    .bind("extension", COLUMN_PROFILE_EXTENSION)
+                    .mapTo(Long.class)
+                    .one());
+  }
+
+  private int countProfilerRows(String entityFqn, String extension) {
+    String fqnHash = FullyQualifiedName.buildHash(entityFqn);
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM profiler_data_time_series "
+                            + "WHERE entityFQNHash = :fqnHash AND extension = :extension")
+                    .bind("fqnHash", fqnHash)
+                    .bind("extension", extension)
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  /** The purge runs off the request thread, so the rows drain shortly after the delete returns. */
+  private void awaitProfilerRowsDeleted(String tableFqn, String columnFqn) {
+    Awaitility.await("profiler data is purged for " + tableFqn)
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  0,
+                  countProfilerRows(tableFqn, TABLE_PROFILE_EXTENSION),
+                  "Hard delete must purge table profile rows");
+              assertEquals(
+                  0,
+                  countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION),
+                  "Hard delete must purge column profile rows");
+              assertEquals(
+                  0,
+                  countProfilerRows(tableFqn, SYSTEM_PROFILE_EXTENSION),
+                  "Hard delete must purge system profile rows");
+            });
+  }
+
+  private void awaitColumnProfileRowsDeleted(String columnFqn, String reason) {
+    Awaitility.await(reason)
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> assertEquals(0, countProfilerRows(columnFqn, COLUMN_PROFILE_EXTENSION), reason));
   }
 
   // ===================================================================
@@ -2227,6 +2593,54 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table afterUpdate = client.tables().get(table.getId().toString(), "dataModel");
     assertNotNull(afterUpdate.getDataModel(), "dataModel was cleared by a PUT table update");
     assertEquals("select * from test;", afterUpdate.getDataModel().getSql());
+  }
+
+  /**
+   * The mssql synonym-aliases design assumes the connector recomputes the full {@code aliases}
+   * list from {@code sys.synonyms} on every run and ships it inside the {@code CreateTable}
+   * request, so created/dropped/retargeted synonyms reconcile through plain PUT upsert semantics
+   * with no diffing stage. That only holds if PUT replaces {@code aliases} wholesale rather than
+   * merging it (as tags do). This test is the gate on that assumption.
+   */
+  @Test
+  void put_tableAliases_replaceNotMerge(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("aliases_replace_table"), ns)
+            .withAliases(List.of("svc.core_a.dbo.orders"));
+    Table created = createEntity(createRequest);
+    assertEquals(
+        List.of("svc.core_a.dbo.orders"),
+        created.getAliases(),
+        "create response should echo the requested aliases");
+
+    // Re-fetch from the server (rather than trusting the create/PUT response's in-memory echo) so
+    // every assertion below reflects what was actually persisted, not just what the request or
+    // response object carried. A mapper that dropped aliases at store time only on create, for
+    // example, would still pass an echo-only assertion here.
+    Table table = client.tables().get(created.getId().toString());
+    assertEquals(
+        List.of("svc.core_a.dbo.orders"),
+        table.getAliases(),
+        "initial aliases from the create request must be persisted, not just echoed");
+
+    // Retarget: the connector re-sends the full list, so the old alias must be gone.
+    createRequest.setAliases(List.of("svc.core_b.dbo.orders"));
+    client.tables().createOrUpdate(createRequest);
+    Table retargeted = client.tables().get(table.getId().toString());
+    assertEquals(
+        List.of("svc.core_b.dbo.orders"),
+        retargeted.getAliases(),
+        "aliases must be replaced wholesale, not merged with the previous run's list");
+
+    // Synonym dropped at the source: SynonymMap.aliases_for (ingestion/.../mssql/synonyms.py)
+    // returns None, not an empty list, on a miss, so the real connector clear path sends
+    // aliases=null rather than aliases=[]. Test that exact production path.
+    createRequest.setAliases(null);
+    client.tables().createOrUpdate(createRequest);
+    Table cleared = client.tables().get(table.getId().toString());
+    assertNull(cleared.getAliases(), "dropping every synonym must clear aliases");
   }
 
   // ===================================================================
@@ -3375,6 +3789,653 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertNotNull(lineageJson);
     assertTrue(lineageJson.contains("columnsLineage"));
+  }
+
+  // Covers fix for #26674: deleted column FQNs must be flushed exactly once to the search index
+  @Test
+  void test_deletedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(
+        List.of(
+            ColumnBuilder.of("col_to_delete", "BIGINT").build(),
+            ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump version past 0.1 so consolidateChanges() is eligible on the next PATCH.
+    // consolidateChanges requires original.getVersion() > 0.1, which means the entity
+    // must have been updated at least once before the column-removal PATCH we're testing.
+    sourceTable.setDescription("lineage test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String sourceColFqn = sourceTable.getFullyQualifiedName() + ".col_to_delete";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    addColumnLineage(client, sourceTable, targetTable, sourceColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+
+      // PATCH source table without col_to_delete — triggers column lineage delete.
+      // Uses update() which sends HTTP PATCH under the hood, and now that version > 0.1
+      // consolidateChanges() is eligible, exercising the deferred-flush deduplication fix.
+      sourceTable.setColumns(
+          List.of(ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      // Wait for the deletion to propagate to the search index via the deferred flush
+      Awaitility.await("Wait for deleted column lineage to be removed from search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"PATCH", "PUT"})
+  void test_deletedColumnWithoutStoredFqnDoesNotAbortUpdate(HttpMethod method, TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTable request =
+        createMinimalRequest(ns)
+            .withColumns(
+                List.of(
+                    ColumnBuilder.of("legacy_col", "BIGINT").build(),
+                    ColumnBuilder.of("lineage_col", "BIGINT").build(),
+                    ColumnBuilder.of("keep_col", "BIGINT").build()));
+    Table source = client.tables().create(request);
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("legacy_lineage_target"))
+                    .withDatabaseSchema(request.getDatabaseSchema())
+                    .withColumns(List.of(ColumnBuilder.of("target_col", "BIGINT").build())));
+    String deletedColumnFqn = findColumn(source, "lineage_col").getFullyQualifiedName();
+    addColumnLineage(
+        client,
+        source,
+        target,
+        deletedColumnFqn,
+        target.getColumns().getFirst().getFullyQualifiedName());
+
+    // Modern writes populate column FQNs, so seed the legacy state directly in storage.
+    findColumn(source, "legacy_col").setFullyQualifiedName(null);
+    Entity.getCollectionDAO().tableDAO().update(source);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.TABLE, source.getId(), source.getFullyQualifiedName());
+    assertNull(
+        findColumn(client.tables().get(source.getId().toString()), "legacy_col")
+            .getFullyQualifiedName());
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for the valid column's lineage to be indexed")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                      .contains(deletedColumnFqn));
+
+      List<Column> remainingColumns = List.of(ColumnBuilder.of("keep_col", "BIGINT").build());
+      Table updated =
+          method == HttpMethod.PATCH
+              ? client
+                  .tables()
+                  .update(source.getId().toString(), source.withColumns(remainingColumns))
+              : client.tables().createOrUpdate(request.withColumns(remainingColumns));
+      assertEquals(
+          List.of("keep_col"), updated.getColumns().stream().map(Column::getName).toList());
+      Table stored = client.tables().get(source.getId().toString());
+      assertEquals(List.of("keep_col"), stored.getColumns().stream().map(Column::getName).toList());
+      assertFalse(
+          client
+              .lineage()
+              .getEntityLineage(Entity.TABLE, source.getId().toString(), "1", "1")
+              .contains(deletedColumnFqn));
+      Awaitility.await("Wait for the valid deleted column's lineage to be removed from search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                      .contains(deletedColumnFqn));
+    }
+  }
+
+  // Covers the rename leg of #26674: renamed column FQNs must be rewritten in downstream
+  // upstreamLineage via the same deferred flush. A case-only rename is used because
+  // EntityUtil.columnMatch matches names with equalsIgnoreCase — the column is treated as the
+  // same column while its FQN changes, which is what populates the rename map.
+  @Test
+  void test_renamedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_ren_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("col_to_rename", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump version past 0.1 so consolidateChanges() is eligible on the rename PATCH below
+    sourceTable.setDescription("lineage rename test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_ren_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String sourceColFqn = sourceTable.getFullyQualifiedName() + ".col_to_rename";
+    String renamedColFqn = sourceTable.getFullyQualifiedName() + ".COL_TO_RENAME";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    addColumnLineage(client, sourceTable, targetTable, sourceColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+
+      // PATCH the source column to its uppercase name — same column per columnMatch, new FQN
+      sourceTable.setColumns(List.of(ColumnBuilder.of("COL_TO_RENAME", "BIGINT").build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for renamed column lineage to be rewritten in search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(renamedColFqn)
+                    && !upstreamLineage.contains(sourceColFqn);
+              });
+    }
+  }
+
+  // Regression test for the consolidation baseline: renaming a column and reverting it within
+  // the same session window must still leave the search index consistent. Consolidation replays
+  // updateInternal() against the pre-session version, so the final pass sees a net-zero column
+  // diff; only the first pass diffs against the state the index actually holds. If the flush
+  // reads anything but that first pass, the index is stranded on the intermediate FQN.
+  @Test
+  void test_revertedColumnRenameWithinSessionPropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_revert_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump past 0.1 so consolidateChanges() is eligible for both PATCHes below.
+    sourceTable.setDescription("lineage revert test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_revert_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String originalColFqn = sourceTable.getFullyQualifiedName() + ".revert_col";
+    String intermediateColFqn = sourceTable.getFullyQualifiedName() + ".REVERT_COL";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    addColumnLineage(client, sourceTable, targetTable, originalColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(originalColFqn));
+
+      sourceTable.setColumns(List.of(ColumnBuilder.of("REVERT_COL", "BIGINT").build()));
+      sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the intermediate column FQN to reach search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(intermediateColFqn));
+
+      // Revert within the same session. The consolidated diff runs against the pre-session
+      // version, which still holds the original column name, so the final pass sees no column
+      // change at all -- only the first pass carries the REVERT_COL -> revert_col mapping the
+      // index needs.
+      sourceTable.setColumns(List.of(ColumnBuilder.of("revert_col", "BIGINT").build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the reverted column FQN to be restored in search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(originalColFqn)
+                    && !upstreamLineage.contains(intermediateColFqn);
+              });
+    }
+  }
+
+  // The consolidation baseline gate exists for this case: a column added by an earlier request in
+  // the same session is in the persisted table but not in the pre-session version, so the revert
+  // pass (persisted -> previous) reports it as deleted. Acting on any pass but the baseline one
+  // drops the lineage of a column that still exists -- from the stored relationship row, which is
+  // destructive and never restored by a later pass, and from the search index.
+  @Test
+  void test_sessionAddedColumnKeepsLineageThroughConsolidation(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_session_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(ColumnBuilder.of("keep_col", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+
+    // Session request 1 adds the column, so version 0.1 -- the version consolidation reverts to --
+    // does not have it.
+    sourceTable.setColumns(
+        List.of(
+            ColumnBuilder.of("keep_col", "BIGINT").build(),
+            ColumnBuilder.of("added_col", "BIGINT").build()));
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_session_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String addedColFqn = sourceTable.getFullyQualifiedName() + ".added_col";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+    addColumnLineage(client, sourceTable, targetTable, addedColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(addedColFqn));
+
+      // Session request 2, within the session window and touching columns so the column diff runs
+      // on every replay pass. consolidateChanges() applies: same user, PATCH, version > 0.1.
+      findColumn(sourceTable, "added_col").setDescription("still here");
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      // The column still exists, so its lineage must survive. Assert the FQN holds for a window
+      // rather than sampling once -- the destructive write would land after the PATCH returns.
+      Awaitility.await("Lineage of a session-added column must survive consolidation")
+          .during(Duration.ofSeconds(8))
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(addedColFqn));
+    }
+
+    // GET /v1/lineage reads the stored relationship rows, not the index, so this covers the
+    // database half of the same reconciliation.
+    String lineageJson =
+        client.lineage().getEntityLineage("table", targetTable.getId().toString(), "1", "1");
+    assertTrue(
+        lineageJson.contains(addedColFqn),
+        "stored column lineage lost the session-added column: " + lineageJson);
+  }
+
+  // Nested columns are diffed by a recursive updateColumns() whose per-level results are collected
+  // and flushed once for the whole entity. Covers both legs of that flush for a struct child.
+  @Test
+  void test_nestedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_nested_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(List.of(structColumn("struct_col", "child_col")));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump past 0.1 so the rename PATCH below is eligible for consolidation
+    sourceTable.setDescription("nested lineage source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_nested_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String childColFqn = sourceTable.getFullyQualifiedName() + ".struct_col.child_col";
+    String renamedChildColFqn = sourceTable.getFullyQualifiedName() + ".struct_col.CHILD_COL";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+    addColumnLineage(client, sourceTable, targetTable, childColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for nested column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(childColFqn));
+
+      // Include a description edit to cover metadata and nested lineage in the same PATCH.
+      sourceTable.setDescription("nested column renamed");
+      sourceTable.setColumns(List.of(structColumn("struct_col", "CHILD_COL")));
+      sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the renamed nested column to be rewritten in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                String upstreamLineage =
+                    getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString());
+                return upstreamLineage.contains(renamedChildColFqn)
+                    && !upstreamLineage.contains(childColFqn);
+              });
+
+      // Now drop the child entirely. STRUCT requires non-null children, so it becomes empty.
+      sourceTable.setColumns(List.of(structColumn("struct_col")));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      Awaitility.await("Wait for the deleted nested column to be removed from search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(renamedChildColFqn));
+    }
+  }
+
+  // The bulk endpoint runs a single diff pass through updateWithDeferredStore() instead of
+  // update(), bypassing consolidation entirely -- the column-lineage flush must still fire.
+  @Test
+  void test_bulkColumnDeleteLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_bulk_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(
+        List.of(
+            ColumnBuilder.of("bulk_keep_col", "BIGINT").build(),
+            ColumnBuilder.of("bulk_drop_col", "BIGINT").build()));
+    Table sourceTable = client.tables().create(sourceReq);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_bulk_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String droppedColFqn = sourceTable.getFullyQualifiedName() + ".bulk_drop_col";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+    addColumnLineage(client, sourceTable, targetTable, droppedColFqn, targetColFqn);
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(droppedColFqn));
+
+      CreateTable bulkReq = new CreateTable();
+      bulkReq.setName(sourceTable.getName());
+      bulkReq.setDatabaseSchema(schema.getFullyQualifiedName());
+      bulkReq.setColumns(List.of(ColumnBuilder.of("bulk_keep_col", "BIGINT").build()));
+      client.tables().bulkCreateOrUpdate(List.of(bulkReq));
+
+      Awaitility.await("Wait for the bulk-deleted column lineage to be removed from search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(droppedColFqn));
+    }
+  }
+
+  @Test
+  void test_renamedAndDeletedColumnsInSamePatchPropagateInSearch(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("mixed_lineage_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            ColumnBuilder.of("rename_col", "BIGINT").build(),
+                            ColumnBuilder.of("delete_col", "BIGINT").build(),
+                            ColumnBuilder.of("keep_col", "BIGINT").build())));
+    source.setDescription("Enable session consolidation");
+    source = client.tables().update(source.getId().toString(), source);
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("mixed_lineage_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("target_col", "BIGINT").build())));
+    String sourceFqn = source.getFullyQualifiedName();
+    String targetFqn = target.getFullyQualifiedName() + ".target_col";
+    List<String> originalColumns =
+        List.of(sourceFqn + ".rename_col", sourceFqn + ".delete_col", sourceFqn + ".keep_col");
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference().withId(source.getId()).withType(Entity.TABLE))
+                        .withToEntity(
+                            new EntityReference().withId(target.getId()).withType(Entity.TABLE))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(originalColumns)
+                                            .withToColumn(targetFqn))))));
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      getUpstreamLineageFromIndex(searchClient, target.getId().toString())
+                          .contains(sourceFqn + ".delete_col")));
+      source.setColumns(
+          List.of(
+              ColumnBuilder.of("RENAME_COL", "BIGINT").build(),
+              ColumnBuilder.of("keep_col", "BIGINT").build()));
+      client.tables().update(source.getId().toString(), source);
+      JsonNode expectedColumns =
+          JsonUtils.valueToTree(
+              List.of(
+                  new ColumnLineage()
+                      .withFromColumns(List.of(sourceFqn + ".RENAME_COL", sourceFqn + ".keep_col"))
+                      .withToColumn(targetFqn)));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                JsonNode lineage =
+                    JsonUtils.readTree(
+                        getUpstreamLineageFromIndex(searchClient, target.getId().toString()));
+                assertEquals(expectedColumns, lineage.get(0).path("columns"));
+              });
+      String storedLineage =
+          client.lineage().getEntityLineage(Entity.TABLE, target.getId().toString(), "1", "0");
+      assertTrue(storedLineage.contains(sourceFqn + ".RENAME_COL"));
+      assertTrue(storedLineage.contains(sourceFqn + ".keep_col"));
+      assertFalse(storedLineage.contains(sourceFqn + ".delete_col"));
+    }
+  }
+
+  private static void addColumnLineage(
+      OpenMetadataClient client,
+      Table sourceTable,
+      Table targetTable,
+      String fromColumnFqn,
+      String toColumnFqn)
+      throws Exception {
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference()
+                                .withId(sourceTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(sourceTable.getFullyQualifiedName()))
+                        .withToEntity(
+                            new EntityReference()
+                                .withId(targetTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(List.of(fromColumnFqn))
+                                            .withToColumn(toColumnFqn))))));
+  }
+
+  private static Column structColumn(String name, String... childNames) {
+    List<Column> children =
+        Arrays.stream(childNames)
+            .map(child -> new Column().withName(child).withDataType(ColumnDataType.BIGINT))
+            .toList();
+    return new Column()
+        .withName(name)
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(new ArrayList<>(children));
+  }
+
+  private static Column findColumn(Table table, String name) {
+    return table.getColumns().stream()
+        .filter(column -> column.getName().equals(name))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Column not found: " + name));
+  }
+
+  /**
+   * The indexed {@code upstreamLineage} of one table, serialized for substring matching.
+   *
+   * <p>Callers assert that a column FQN is absent, and returning the raw response body would let
+   * that pass for the wrong reasons: an empty hit set, an error body, or a document reindexed
+   * without {@code upstreamLineage} all contain no FQN either, and the awaits use {@code
+   * ignoreExceptions()}. So the shape is checked here, and a document that is not in a readable
+   * state raises instead of returning something the caller would read as "the FQN is gone" — the
+   * await then keeps polling and ultimately times out rather than reporting a false pass. The
+   * delete script empties a lineage entry's {@code columns} but never removes the entry, so a table
+   * that had column lineage keeps a non-empty {@code upstreamLineage} through every case here.
+   */
+  private String getUpstreamLineageFromIndex(Rest5Client searchClient, String tableId)
+      throws Exception {
+    String query =
+        String.format(
+            "{\"size\":1,\"_source\":[\"upstreamLineage\"],\"query\":{\"term\":{\"_id\":\"%s\"}}}",
+            tableId);
+    Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String body;
+    try (InputStream content = response.getEntity().getContent()) {
+      body = new String(content.readAllBytes(), StandardCharsets.UTF_8);
+    }
+    JsonNode hits = new ObjectMapper().readTree(body).path("hits");
+    if (hits.path("total").path("value").asInt() != 1) {
+      throw new IllegalStateException(
+          "Expected exactly one search hit for table " + tableId + ", got: " + body);
+    }
+    JsonNode upstreamLineage = hits.path("hits").get(0).path("_source").path("upstreamLineage");
+    if (!upstreamLineage.isArray() || upstreamLineage.isEmpty()) {
+      throw new IllegalStateException(
+          "upstreamLineage missing or empty for table " + tableId + ": " + body);
+    }
+    return upstreamLineage.toString();
   }
 
   // ===================================================================

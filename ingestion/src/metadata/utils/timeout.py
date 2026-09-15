@@ -20,7 +20,7 @@ import os
 import platform
 import signal
 import threading
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import utils_logger

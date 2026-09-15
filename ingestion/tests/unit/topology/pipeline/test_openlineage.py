@@ -12,14 +12,19 @@ from cachetools import LRUCache
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     ConsumerOffsets,
-    ConsumerOffsets1,
-    KinesisBrokerConfig,
     SecurityProtocol,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    ConsumerOffsets as ConsumerOffsets1,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
+    Kinesis as KinesisBrokerConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -439,11 +444,13 @@ class OpenLineageUnitTest(unittest.TestCase):
             result["arn:aws:glue:us-east-1:1/table/db/users_raw"],
         )
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn):
+    def test_get_column_lineage_valid_inputs_outputs(self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached):
         """Test with valid input and output lists."""
         # Setup
+        mock_get_by_name_cached.return_value = None
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "s3a://project-db/src_test1": "database.schema.input_table_1",
@@ -503,14 +510,40 @@ class OpenLineageUnitTest(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
+    @staticmethod
+    def _mock_table_with_columns(*column_names):
+        """Build a lightweight stand-in for a Table entity with the given real column names."""
+        table = Mock()
+        columns = []
+        for column_name in column_names:
+            column = Mock()
+            column.name.root = column_name
+            columns.append(column)
+        table.columns = columns
+        return table
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_normalizes_caps_columns_to_lowercase(self, mock_build_map, mock_get_table_fqn):
-        """Test that CAPS column names from OL events are normalized to lowercase in column FQNs."""
+    def test_get_column_lineage_matches_stored_column_case(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """OL field names are matched case-insensitively against the resolved Table
+        entity's real stored column names, instead of being force-lowercased.
+
+        Regression test: a destination whose real stored columns are uppercase
+        (e.g. Snowflake) previously got column FQNs built with a lowercased OL
+        field name that matched no real column, so the server silently dropped
+        the columnsLineage entry."""
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
         mock_build_map.return_value = {
             "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
         }
+        source_table = self._mock_table_with_columns("first_name", "last_name")
+        target_table = self._mock_table_with_columns("FIRST_NAME", "LAST_NAME")
+        mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: (
+            target_table if fqn_str == "database.schema.case_test_target" else source_table
+        )
 
         inputs = [
             {
@@ -554,17 +587,137 @@ class OpenLineageUnitTest(unittest.TestCase):
             "database.schema.case_test_target": {
                 "database.schema.case_test_source": [
                     ColumnLineage(
-                        toColumn="database.schema.case_test_target.first_name",
+                        toColumn="database.schema.case_test_target.FIRST_NAME",
                         fromColumns=["database.schema.case_test_source.first_name"],
                     ),
                     ColumnLineage(
-                        toColumn="database.schema.case_test_target.last_name",
+                        toColumn="database.schema.case_test_target.LAST_NAME",
                         fromColumns=["database.schema.case_test_source.last_name"],
                     ),
                 ],
             }
         }
         self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_falls_back_to_lowercase_when_table_entity_unavailable(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """When the Table entity can't be fetched (e.g. cache miss), column FQNs
+        fall back to the lowercased OL field name, preserving prior behavior."""
+        mock_get_by_name_cached.return_value = None
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {
+            "sqlserver://host:1433/hk_schema.CASE_TEST_SOURCE": "database.schema.case_test_source",
+        }
+
+        inputs = [
+            {
+                "name": "hk_schema.CASE_TEST_SOURCE",
+                "facets": {},
+                "namespace": "sqlserver://host:1433",
+            },
+        ]
+        outputs = [
+            {
+                "name": "hk_schema.CASE_TEST_TARGET",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "FIRST_NAME": {
+                                "inputFields": [
+                                    {
+                                        "field": "FIRST_NAME",
+                                        "namespace": "sqlserver://host:1433",
+                                        "name": "hk_schema.CASE_TEST_SOURCE",
+                                    }
+                                ]
+                            },
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        expected = {
+            "database.schema.case_test_target": {
+                "database.schema.case_test_source": [
+                    ColumnLineage(
+                        toColumn="database.schema.case_test_target.first_name",
+                        fromColumns=["database.schema.case_test_source.first_name"],
+                    ),
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_requests_columns_field(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """_match_column_name only works if the fetched Table entity actually
+        has its columns populated. Table lookups must explicitly request the
+        'columns' field rather than relying on whatever the default response
+        happens to include."""
+        mock_get_by_name_cached.return_value = None
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {
+            "hive://schema.input_table": "database.schema.input_table",
+        }
+        inputs = [{"name": "schema.input_table", "facets": {}, "namespace": "hive://"}]
+        outputs = [
+            {
+                "name": "schema.output_table",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            "col": {
+                                "inputFields": [
+                                    {
+                                        "field": "col",
+                                        "namespace": "hive://",
+                                        "name": "schema.input_table",
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+            }
+        ]
+        self.open_lineage_source._get_column_lineage(inputs, outputs)
+
+        mock_get_by_name_cached.assert_any_call(Table, "database.schema.output_table", fields=["columns"])
+        mock_get_by_name_cached.assert_any_call(Table, "database.schema.input_table", fields=["columns"])
+
+    def test_get_by_name_cached_keys_cache_by_requested_fields(self):
+        """A cache entry fetched without 'columns' must not shadow a later
+        lookup for the same entity that explicitly asks for 'columns' - and
+        vice versa. Regression test for a bug where the shared per-event
+        entity cache ignored the requested fields, so a first cache miss for
+        an unfielded call could silently starve a later, differently-fielded
+        call of the data it asked for."""
+        self.open_lineage_source._entity_cache = LRUCache(maxsize=10)
+        bare_table = Mock()
+        full_table = Mock()
+        full_table.columns = [Mock()]
+
+        with patch.object(self.open_lineage_source, "metadata") as mock_metadata:
+            mock_metadata.get_by_name.side_effect = lambda entity, fqn_str, **kwargs: (
+                full_table if kwargs.get("fields") == ["columns"] else bare_table
+            )
+
+            first = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t")
+            second = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t", fields=["columns"])
+
+            self.assertIs(first, bare_table)
+            self.assertIs(second, full_table)
+            self.assertEqual(mock_metadata.get_by_name.call_count, 2)
 
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
         """Datasets with no resolvable identity are skipped, not fatal.
@@ -577,12 +730,16 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
         self.assertEqual(result, {})
 
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
-    def test_get_column_lineage_skips_when_input_unresolved(self, mock_build_map, mock_get_table_fqn):
+    def test_get_column_lineage_skips_when_input_unresolved(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
         """When the input table is not in OpenMetadata, the column entry must
         be skipped instead of being emitted with a literal 'None.column' FQN
         on the input side."""
+        mock_get_by_name_cached.return_value = None
         mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"svc.schema.{table_details.name}"
         # Only the output resolves; the input is intentionally absent from the map.
         mock_build_map.return_value = {"hive:///schema.output_table": "svc.schema.output_table"}
@@ -639,7 +796,10 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
+        with (
+            patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved),
+            patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None),
+        ):
             for outputs in (
                 outputs_null_facets,
                 outputs_null_column_lineage,
@@ -675,7 +835,10 @@ class OpenLineageUnitTest(unittest.TestCase):
                 "namespace": "hive://",
             },
         ]
-        with patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved):
+        with (
+            patch.object(self.open_lineage_source, "_resolve_table", return_value=resolved),
+            patch.object(self.open_lineage_source, "_get_by_name_cached", return_value=None),
+        ):
             for outputs in (
                 outputs_facets_list,
                 outputs_column_lineage_list,
@@ -1047,13 +1210,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
                 # source of table lineage
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
                 # dst of table lineage
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             else:
                 # pipeline
                 z = Mock()
@@ -1126,7 +1289,7 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"glueService.{table_details.schema}.{table_details.name}"
 
-        def mock_get_by_name(entity, fqn):
+        def mock_get_by_name(entity, fqn, **kwargs):
             ids = {
                 "glueService.store_of_value.src_table": src_uuid,
                 "glueService.store_of_value.gsheet_recon_stats_notes": dst_uuid,
@@ -1167,6 +1330,67 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         lineage = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
         self.assertEqual(len(lineage), 1, "Glue-symlink datasets must produce exactly one lineage edge")
+        edge = lineage[0].edge
+        self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
+        self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
+    def test_yield_pipeline_lineage_details_glue_symlink_backticked_database(self, mock_get_table_from_om):
+        """End-to-end for the Iceberg-on-Glue customer scenario: a database name
+        with a hyphen (silver-stagingdb) arrives backtick-quoted inside the symlink
+        identifier. The quotes must not leak into the FQN, otherwise the lookup
+        misses a table that exists in OpenMetadata and the event yields no lineage.
+        """
+        src_uuid = "11111111-1111-1111-1111-111111111111"
+        dst_uuid = "22222222-2222-2222-2222-222222222222"
+
+        def t_fqn_build_side_effect(table_details, services=None):
+            return f"glueService.{table_details.schema}.{table_details.name}"
+
+        catalogued = {
+            "glueService.silver-stagingdb.src_table": src_uuid,
+            "glueService.silver-stagingdb.recon_stats": dst_uuid,
+        }
+
+        def mock_get_by_name(entity, fqn, **kwargs):
+            # Any FQN still carrying the backticks resolves to this sentinel id,
+            # so a leaked quote shows up as a wrong edge rather than no edge.
+            return Mock(id=Mock(root=catalogued.get(fqn, "33333333-3333-3333-3333-333333333333")))
+
+        mock_get_table_from_om.side_effect = t_fqn_build_side_effect
+
+        def glue_symlink_dataset(table_name):
+            return {
+                "namespace": "s3://lakehouse--managed-us-west-2--prod",
+                "name": f"main/silver-stagingdb/{table_name}",
+                "facets": {
+                    "symlinks": {
+                        "identifiers": [
+                            {
+                                "namespace": "arn:aws:glue:us-west-2:012621376717",
+                                "name": f"table/`silver-stagingdb`/{table_name}",
+                                "type": "TABLE",
+                            }
+                        ]
+                    }
+                },
+            }
+
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        event["inputs"] = [glue_symlink_dataset("src_table")]
+        event["outputs"] = [glue_symlink_dataset("recon_stats")]
+        ol_event = self.read_openlineage_event_from_kafka(event)
+
+        with patch.object(
+            OpenMetadataConnection,
+            "get_by_name",
+            create=True,
+            side_effect=mock_get_by_name,
+        ):
+            results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
+
+        lineage = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
+        self.assertEqual(len(lineage), 1, "Backtick-quoted Glue database must still produce a lineage edge")
         edge = lineage[0].edge
         self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
         self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
@@ -1272,11 +1496,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         from_table_id = "69fc8906-4a4a-45ab-9a54-9cc2d399e10e"
         to_table_id = "59fc8906-4a4a-45ab-9a54-9cc2d399e10e"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root=from_table_id))
+                return Mock(id=Mock(root=from_table_id), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root=to_table_id))
+                return Mock(id=Mock(root=to_table_id), columns=[])
             elif "openlineage_source" in fqn:  # Pipeline entity
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             return None
@@ -1471,11 +1695,11 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"), columns=[])
             else:
                 return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
 
@@ -1988,8 +2212,9 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
         """When a Kafka topic input cannot be resolved (no matching messaging service),
-        no lineage edge should be produced for that topic, even though the table output
-        is resolvable. The topic is silently skipped."""
+        no topic -> table edge can be built. The unresolvable side is skipped and the
+        event degrades to the single-sided form, attaching the pipeline itself to the
+        resolvable table output rather than dropping the event entirely."""
         ol_event = OpenLineageEvent(
             run_facet={
                 "facets": {
@@ -2057,13 +2282,18 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         lineage_requests = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
 
-        # No lineage should be produced because the topic input couldn't be resolved
-        # (no matching broker), so there are no input edges to pair with the table output
+        # The topic input never resolves, so there is no dataset to pair the table
+        # output with — the pipeline takes its place as the upstream endpoint.
         self.assertEqual(
             len(lineage_requests),
-            0,
-            "No lineage edges should be produced when input topic cannot be resolved",
+            1,
+            "The resolvable table output must still be linked, with the pipeline as its upstream",
         )
+        edge = lineage_requests[0].edge
+        self.assertEqual(str(edge.fromEntity.id.root), pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(str(edge.toEntity.id.root), table_id)
+        self.assertEqual(edge.toEntity.type, "table")
 
     def test_yield_pipeline_lineage_producer_only_no_inputs(self):
         """When an event has only outputs (producer), the pipeline itself becomes the
@@ -2299,6 +2529,158 @@ class OpenLineageUnitTest(unittest.TestCase):
         self.assertEqual(edge.toEntity.type, "table")
         self.assertIsNone(edge.lineageDetails.pipeline)
 
+    def test_yield_pipeline_lineage_pipeline_as_node_when_inputs_do_not_resolve(self):
+        """An event that declares inputs which none resolve in OpenMetadata is
+        effectively a producer: the fallback must key off the resolved edges, not
+        the raw event payload, so the pipeline still becomes the fromEntity of the
+        resolvable output instead of the whole event yielding nothing."""
+        table_id = UUID("bbbb2222-2222-2222-2222-222222222222")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"name": "partial-job", "namespace": "test-namespace"}}}},
+            job={"name": "partial-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "public.uncatalogued_source",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "public.target_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table and fqn == "db-service.public.target_table":
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        def get_table_fqn(table_details, namespace=None):
+            if table_details.name == "target_table":
+                return "db-service.public.target_table"
+            return None
+
+        extra_patches = [
+            patch.object(self.open_lineage_source, "_get_table_fqn", side_effect=get_table_fqn),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_pipeline_as_node_when_outputs_do_not_resolve(self):
+        """Mirror of the inputs case: an event whose declared outputs are all
+        unresolvable behaves as a consumer, so the resolvable input is wired to
+        the pipeline as its toEntity."""
+        table_id = UUID("aaaa1111-1111-1111-1111-111111111111")
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_table = Mock()
+        mock_table.id.root = table_id
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"name": "partial-job", "namespace": "test-namespace"}}}},
+            job={"name": "partial-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[
+                {
+                    "name": "public.source_table",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+            outputs=[
+                {
+                    "name": "public.uncatalogued_target",
+                    "namespace": "postgres://db:5432",
+                    "facets": {},
+                }
+            ],
+        )
+
+        from metadata.generated.schema.entity.data.table import Table
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Table and fqn == "db-service.public.source_table":
+                return mock_table
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        def get_table_fqn(table_details, namespace=None):
+            if table_details.name == "source_table":
+                return "db-service.public.source_table"
+            return None
+
+        extra_patches = [
+            patch.object(self.open_lineage_source, "_get_table_fqn", side_effect=get_table_fqn),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
+
+        self.assertEqual(len(lineage_requests), 1)
+        edge = lineage_requests[0].edge
+        self.assertEqual(edge.fromEntity.id.root, table_id)
+        self.assertEqual(edge.fromEntity.type, "table")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
+
+    def test_yield_pipeline_lineage_no_edges_when_no_side_resolves(self):
+        """With neither side resolvable there is nothing to attach the pipeline to,
+        so the edge-based fallback must stay silent rather than emit a dangling edge."""
+        pipeline_id = UUID("cccc3333-3333-3333-3333-333333333333")
+
+        mock_pipeline = Mock()
+        mock_pipeline.id.root = pipeline_id
+
+        ol_event = OpenLineageEvent(
+            run_facet={"facets": {"parent": {"job": {"name": "orphan-job", "namespace": "test-namespace"}}}},
+            job={"name": "orphan-job", "namespace": "test-namespace"},
+            event_type="COMPLETE",
+            inputs=[{"name": "public.unknown_source", "namespace": "postgres://db:5432", "facets": {}}],
+            outputs=[{"name": "public.unknown_target", "namespace": "postgres://db:5432", "facets": {}}],
+        )
+
+        def get_by_name(entity, fqn, **kwargs):
+            if entity == Pipeline:
+                return mock_pipeline
+            return None
+
+        extra_patches = [
+            patch.object(self.open_lineage_source, "_get_table_fqn", return_value=None),
+        ]
+
+        lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
+
+        self.assertEqual(lineage_requests, [])
+
     def test_cleanup_only_deletes_edges_matching_current_event_datasets(self):
         """When a both-sided event arrives, cleanup should only remove
         pipeline-as-node edges for the datasets in that event, not unrelated ones."""
@@ -2466,6 +2848,43 @@ class OpenLineageUnitTest(unittest.TestCase):
         result = OpenlineageSource._parse_glue_table_name("table/Sales/Users")
         self.assertEqual(result.name, "users")
         self.assertEqual(result.schema, "sales")
+
+    def test_parse_glue_table_name_strips_iceberg_quoting_backticks(self):
+        """Iceberg backtick-quotes namespace/table parts that contain special
+        characters (e.g. the hyphen in silver-stagingdb) when it builds the
+        TableIdentifier that becomes the Glue symlink name. The quotes are not part
+        of the identifier and must be stripped, otherwise the FQN never matches a
+        catalogued table."""
+        result = OpenlineageSource._parse_glue_table_name("table/`silver-stagingdb`/`order-lines`")
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "order-lines")
+
+    def test_parse_glue_table_name_strips_backticks_on_quoted_schema_only(self):
+        """Iceberg only quotes the parts that need it, so a quoted database can be
+        paired with an unquoted table in the same name."""
+        result = OpenlineageSource._parse_glue_table_name("table/`silver-stagingdb`/orders")
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "orders")
+
+    def test_parse_table_identity_glue_backticked_name(self):
+        """The backtick stripping must survive the namespace-based dispatch that
+        picks the Glue parser."""
+        result = OpenlineageSource._parse_table_identity(
+            "arn:aws:glue:us-west-2:012621376717", "table/`silver-stagingdb`/`Orders`"
+        )
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "orders")
+
+    def test_candidate_glue_backticked_symlink_name(self):
+        """The candidate path used for Glue symlink identifiers yields the unquoted
+        identity, which is what gets turned into the OpenMetadata FQN."""
+        data = {
+            "namespace": "arn:aws:glue:us-west-2:012621376717",
+            "name": "table/`silver-stagingdb`/`order-lines`",
+        }
+        details, _ = OpenlineageSource._iter_table_candidates(data)[0]
+        self.assertEqual(details.schema, "silver-stagingdb")
+        self.assertEqual(details.name, "order-lines")
 
     def test_parse_glue_table_name_not_glue_format_returns_none(self):
         """Names without the table/ prefix are not Glue format and return None."""

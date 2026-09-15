@@ -24,6 +24,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForIncidentToBeIndexed } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
@@ -36,6 +37,7 @@ import {
 import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
+import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 let user1: UserClass;
@@ -498,8 +500,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await afterAction();
   });
 
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -514,6 +514,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     ownerPage,
     browser,
   }) => {
+    test.slow();
     const testCase = table1.testCasesResponseData[0];
     const testCaseName = testCase?.['name'];
     const testCaseFqn = testCase?.['fullyQualifiedName'];
@@ -619,6 +620,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await reassignIncidentTask(actorPage, assignee1);
@@ -638,11 +640,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         await getApiContext(actorPage);
 
       try {
-        await actorApiContext.post('/api/v1/feed', {
+        await actorApiContext.post('/api/v1/conversations', {
           data: {
             message: 'Can you resolve this thread for me? <#E::user::admin>',
             about: `<#E::testCase::${get(testCase, 'fullyQualifiedName')}>`,
-            type: 'Conversation',
           },
         });
       } finally {
@@ -655,7 +656,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       const mentionResponse = adminPage.waitForResponse(
         (response) =>
-          response.url().includes('/api/v1/feed') &&
+          response.url().includes('/api/v1/conversations') &&
           response.url().includes('filterType=MENTIONS') &&
           response.request().method() === 'GET'
       );
@@ -678,7 +679,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           .poll(
             async () => {
               const mentionsResponse = await adminApiContext.get(
-                '/api/v1/feed',
+                '/api/v1/conversations',
                 {
                   params: {
                     userId: loggedInUser.id,
@@ -725,6 +726,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await actorPage.goto(testCasePageUrl);
 
       await testCaseResponse;
+      await verifyTestCaseLastRunBanner(actorPage, 'failed');
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       await addAssigneeFromPopoverWidget({
@@ -988,7 +990,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   /**
    * Validate Incident tab in entity page
-   * @description Verifies incidents list within entity details, lineage incident counts, and navigation back to tab.
+   * @description Verifies incidents within entity details and the entity's lineage scene.
    */
   test('Validate Incident Tab in Entity details page', async ({ page }) => {
     const testCases = table1.testCasesResponseData;
@@ -1007,35 +1009,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       ).toBeVisible();
     }
     const lineageResponse = page.waitForResponse(
-      `/api/v1/lineage/getLineage?*fqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
+      `**/api/v1/lineage/scene?*focusFqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
     await page.click('[data-testid="lineage"]');
     await lineageResponse;
 
-    const incidentCountResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*limit=0*`
-    );
     const nodeFqn = get(table1, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
-    await incidentCountResponse;
-
-    await expect(page.getByTestId('Incidents-label')).toBeVisible();
-    await expect(page.getByTestId('Incidents-value')).toContainText('3');
-
-    const incidentTabResponse = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
-    );
-
-    await page.getByTestId('Incidents-value').locator('a').click();
-
-    await incidentTabResponse;
-
-    for (const testCase of testCases) {
-      await expect(
-        page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
-      ).toBeVisible();
-    }
+    await expect(
+      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    ).toBeVisible();
   });
 
   /**
@@ -1047,6 +1030,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       username: user1.data.email.split('@')[0].toLocaleLowerCase(),
       userDisplayName: user1.getUserDisplayName(),
       testCaseName: table1.testCasesResponseData[2]?.['name'],
+      testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
     const incidentDetailsRes = page.waitForResponse(
@@ -1055,6 +1039,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
     await incidentDetailsRes;
 
+    const assignmentStartedAt = Date.now();
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1064,6 +1049,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       },
       direct: true,
     });
+    // Browser API calls read the JWT from local storage, which page.request
+    // does not inherit. Poll with an authenticated context so a 401 cannot be
+    // mistaken for search-index lag.
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      await waitForIncidentToBeIndexed(
+        apiContext,
+        assigneeTestCase.testCaseFqn,
+        assignmentStartedAt,
+        'Assigned',
+        assigneeTestCase.username
+      );
+    } finally {
+      await afterAction();
+    }
 
     await page.click('[data-testid="select-assignee"]');
     const assigneeOption = page.locator(

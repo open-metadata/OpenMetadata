@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SaslMechanismType",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.SaslMechanismType",
+  "description": "SASL Mechanism consumer config property",
+  "type": "string",
+  "enum": [
+    "PLAIN",
+    "GSSAPI",
+    "SCRAM-SHA-256",
+    "SCRAM-SHA-512",
+    "OAUTHBEARER"
+  ],
+  "default": "PLAIN"
+}

@@ -6,9 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.net.URI;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -27,6 +31,8 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
+import org.openmetadata.schema.entity.datacontract.QualityValidation;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
@@ -35,6 +41,11 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
@@ -47,6 +58,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -2772,6 +2784,260 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(updated);
     assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
     assertTrue(updated.getDescription().contains("Updated via ODCS"));
+  }
+
+  @Test
+  void testODCSQualityRulesSurviveNonODCSUpdate(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract imported = importODCSWithPassthrough(ns, table);
+
+    assertFalse(
+        nullOrEmpty(imported.getOdcsQualityRules()),
+        "ODCS import did not persist odcsQualityRules");
+
+    DataContract refetched = editDescriptionAsNonODCSClient(table, imported);
+    assertFalse(
+        nullOrEmpty(refetched.getOdcsQualityRules()),
+        "odcsQualityRules were stripped by a non-ODCS update");
+
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(refetched.getId());
+    ODCSSchemaElement exportedColumn = findExportedProperty(exported, "email");
+    assertNotNull(exportedColumn);
+    assertFalse(
+        nullOrEmpty(exportedColumn.getQuality()),
+        "ODCS export lost the quality block after a non-ODCS update");
+    assertTrue(
+        exportedColumn.getQuality().stream()
+            .allMatch(rule -> "email_not_null".equals(rule.getName())),
+        "ODCS export returned a quality rule that was never imported");
+  }
+
+  private DataContract editDescriptionAsNonODCSClient(Table table, DataContract imported) {
+    // A non-ODCS client (for example the UI contract editor) edits the contract. It has no
+    // knowledge of the ODCS passthrough fields, so its payload omits them.
+    CreateDataContract edit =
+        new CreateDataContract()
+            .withName(imported.getName())
+            .withEntity(table.getEntityReference())
+            .withDescription("Description edited outside of ODCS")
+            .withEntityStatus(imported.getEntityStatus())
+            .withSchema(imported.getSchema());
+    DataContract updated = SdkClients.adminClient().dataContracts().createOrUpdate(edit);
+
+    DataContract refetched = getEntity(updated.getId().toString());
+    assertEquals("Description edited outside of ODCS", refetched.getDescription());
+    return refetched;
+  }
+
+  @Test
+  void testODCSElementExtensionsSurviveNonODCSUpdate(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract imported = importODCSWithPassthrough(ns, table);
+
+    assertFalse(
+        nullOrEmpty(imported.getOdcsElementExtensions()),
+        "ODCS import did not persist odcsElementExtensions");
+
+    DataContract refetched = editDescriptionAsNonODCSClient(table, imported);
+    assertFalse(
+        nullOrEmpty(refetched.getOdcsElementExtensions()),
+        "odcsElementExtensions were stripped by a non-ODCS update");
+
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(refetched.getId());
+    ODCSSchemaElement exportedColumn = findExportedProperty(exported, "email");
+    assertNotNull(exportedColumn);
+    assertTrue(
+        exportedColumn.getTransformSourceObjects().contains("[cdc.cds.CONTACT].[$.data.EMAIL]"),
+        "ODCS export lost transformSourceObjects after a non-ODCS update");
+    assertFalse(
+        nullOrEmpty(exportedColumn.getAuthoritativeDefinitions()),
+        "ODCS export lost authoritativeDefinitions after a non-ODCS update");
+    assertTrue(
+        exportedColumn.getAuthoritativeDefinitions().stream()
+            .allMatch(
+                definition ->
+                    URI.create("http://localhost:8585/glossary/Finance-Glossary.Email")
+                        .equals(definition.getUrl())),
+        "ODCS export returned an authoritativeDefinition that was never imported");
+  }
+
+  @Test
+  void testODCSQualityRuleReplacementIsPersistedAndVersioned(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract imported = importODCSWithPassthrough(ns, table);
+    Double importedVersion = imported.getVersion();
+
+    ODCSQualityRule replacementRule = new ODCSQualityRule();
+    replacementRule.setName("email_unique");
+    replacementRule.setType(ODCSQualityRule.Type.LIBRARY);
+    replacementRule.setMetric(ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES);
+    replacementRule.setColumn("email");
+
+    CreateDataContract edit =
+        new CreateDataContract()
+            .withName(imported.getName())
+            .withEntity(table.getEntityReference())
+            .withDescription(imported.getDescription())
+            .withEntityStatus(imported.getEntityStatus())
+            .withOdcsQualityRules(List.of(replacementRule));
+    SdkClients.adminClient().dataContracts().createOrUpdate(edit);
+
+    DataContract refetched = getEntityByName(imported.getFullyQualifiedName());
+    assertFalse(
+        nullOrEmpty(refetched.getOdcsQualityRules()),
+        "Replacing odcsQualityRules over PUT wiped them instead");
+    assertTrue(
+        refetched.getOdcsQualityRules().stream()
+            .allMatch(rule -> "email_unique".equals(rule.getName())),
+        "Replacing odcsQualityRules over PUT was silently dropped");
+    assertTrue(
+        refetched.getVersion() > importedVersion,
+        "Replacing odcsQualityRules did not bump the contract version");
+    assertNotNull(refetched.getChangeDescription());
+    assertTrue(
+        refetched.getChangeDescription().getFieldsUpdated().stream()
+            .anyMatch(field -> "odcsQualityRules".equals(field.getName())),
+        "Replacing odcsQualityRules produced no change description entry");
+  }
+
+  @Test
+  void testODCSReplaceModeClearsPassthrough(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract imported = importODCSWithPassthrough(ns, table);
+    assertFalse(
+        nullOrEmpty(imported.getOdcsQualityRules()),
+        "ODCS import did not persist odcsQualityRules");
+    assertFalse(
+        nullOrEmpty(imported.getOdcsElementExtensions()),
+        "ODCS import did not persist odcsElementExtensions");
+
+    // Re-importing in replace mode with a document that declares neither is the documented way to
+    // clear the passthrough, and is the only write path that still can. The document is identical
+    // to the imported one apart from the passthrough, so nothing else can drive the write.
+    ODCSDataContract stripped = new ODCSDataContract();
+    stripped.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    stripped.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    stripped.setId(imported.getId().toString());
+    stripped.setName(imported.getName());
+    stripped.setVersion("1.0.0");
+    stripped.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription sameDescription = new ODCSDescription();
+    sameDescription.setPurpose("Contract imported from ODCS");
+    stripped.setDescription(sameDescription);
+
+    ODCSSchemaElement plainEmail = new ODCSSchemaElement();
+    plainEmail.setName("email");
+    plainEmail.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    tableObject.setProperties(List.of(plainEmail));
+    stripped.setSchema(List.of(tableObject));
+
+    SdkClients.adminClient()
+        .dataContracts()
+        .createOrUpdateFromODCS(stripped, table.getId(), "table", "replace");
+
+    DataContract refetched = getEntityByName(imported.getFullyQualifiedName());
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsQualityRules()),
+        "PUT /odcs?mode=replace did not clear odcsQualityRules");
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsElementExtensions()),
+        "PUT /odcs?mode=replace did not clear odcsElementExtensions");
+  }
+
+  @Test
+  void testExplicitEmptyPassthroughOverPutClears(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract imported = importODCSWithPassthrough(ns, table);
+    assertFalse(
+        nullOrEmpty(imported.getOdcsQualityRules()),
+        "ODCS import did not persist odcsQualityRules");
+    assertFalse(
+        nullOrEmpty(imported.getOdcsElementExtensions()),
+        "ODCS import did not persist odcsElementExtensions");
+
+    // Omitting the passthrough carries it forward; sending it empty is how a client that does know
+    // about it asks for it to be dropped.
+    CreateDataContract clear =
+        new CreateDataContract()
+            .withName(imported.getName())
+            .withEntity(table.getEntityReference())
+            .withDescription(imported.getDescription())
+            .withEntityStatus(imported.getEntityStatus())
+            .withOdcsQualityRules(List.of())
+            .withOdcsElementExtensions(List.of());
+    SdkClients.adminClient().dataContracts().createOrUpdate(clear);
+
+    DataContract refetched = getEntityByName(imported.getFullyQualifiedName());
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsQualityRules()),
+        "An explicitly empty odcsQualityRules did not clear the stored rules");
+    assertTrue(
+        nullOrEmpty(refetched.getOdcsElementExtensions()),
+        "An explicitly empty odcsElementExtensions did not clear the stored extensions");
+  }
+
+  private DataContract importODCSWithPassthrough(TestNamespace ns, Table table) {
+    ODCSDataContract odcs = new ODCSDataContract();
+    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
+    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
+    odcs.setId(UUID.randomUUID().toString());
+    odcs.setName(ns.prefix("odcs_passthrough"));
+    odcs.setVersion("1.0.0");
+    odcs.setStatus(ODCSDataContract.OdcsStatus.ACTIVE);
+
+    ODCSDescription description = new ODCSDescription();
+    description.setPurpose("Contract imported from ODCS");
+    odcs.setDescription(description);
+
+    ODCSAuthoritativeDefinition glossaryLink = new ODCSAuthoritativeDefinition();
+    glossaryLink.setUrl(URI.create("http://localhost:8585/glossary/Finance-Glossary.Email"));
+    glossaryLink.setType("businessDefinition");
+
+    ODCSSchemaElement emailProperty = new ODCSSchemaElement();
+    emailProperty.setName("email");
+    emailProperty.setLogicalType(ODCSSchemaElement.LogicalType.STRING);
+    emailProperty.setAuthoritativeDefinitions(List.of(glossaryLink));
+    emailProperty.setTransformSourceObjects(List.of("[cdc.cds.CONTACT].[$.data.EMAIL]"));
+
+    ODCSQualityRule emailNotNull = new ODCSQualityRule();
+    emailNotNull.setName("email_not_null");
+    emailNotNull.setType(ODCSQualityRule.Type.LIBRARY);
+    emailNotNull.setMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES);
+    emailProperty.setQuality(List.of(emailNotNull));
+
+    ODCSSchemaElement tableObject = new ODCSSchemaElement();
+    tableObject.setName(table.getName());
+    tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
+    tableObject.setProperties(List.of(emailProperty));
+    odcs.setSchema(List.of(tableObject));
+
+    return SdkClients.adminClient().dataContracts().importFromODCS(odcs, table.getId(), "table");
+  }
+
+  private static ODCSSchemaElement findExportedProperty(ODCSDataContract odcs, String name) {
+    return nullOrEmpty(odcs.getSchema()) ? null : findExportedProperty(odcs.getSchema(), name);
+  }
+
+  private static ODCSSchemaElement findExportedProperty(
+      List<ODCSSchemaElement> elements, String name) {
+    ODCSSchemaElement found = null;
+    for (ODCSSchemaElement element : elements) {
+      if (name.equals(element.getName())) {
+        found = element;
+      } else if (element.getProperties() != null) {
+        found = findExportedProperty(element.getProperties(), name);
+      }
+      if (found != null) {
+        break;
+      }
+    }
+    return found;
   }
 
   @Test
@@ -6862,5 +7128,100 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         contract.getId(),
         testSuite.getDataContract().getId(),
         "TestSuite.dataContract must point back at the owning contract");
+  }
+
+  /**
+   * Regression guard for the NaN qualityScore bug. When every test case referenced by a contract's
+   * qualityExpectations is soft-deleted (without pruning qualityExpectations), the auto-created DQ
+   * pipeline completion fires {@code onTestSuiteExecutionComplete -> updateContractDQResults ->
+   * validateDQ}. There {@code testSuite.getTests()} is empty (Include.NON_DELETED) but
+   * {@code testSuite.getTestCaseResultSummary()} still carries stale result rows (no
+   * tc.deleted filter in the SQL), producing an empty post-filter testSummary — a 0/0.0
+   * division that previously stored/broadcast "NaN". The fix short-circuits before the division
+   * and keeps qualityScore null, matching the existing empty-suite baseline.
+   */
+  @Test
+  void testDataContractDQNoNaNWhenAllReferencedTestsSoftDeleted(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+
+    // Create a test case referenced by the contract's qualityExpectations.
+    TestCase tc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("dq_nan_guard_tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Record a passing result so a row exists in data_quality_data_time_series. After the
+    // soft-delete this stale row still surfaces from listLastTestCaseResultsForTestSuite (no
+    // tc.deleted filter) while testSuite.getTests() excludes it (Include.NON_DELETED).
+    client.testCaseResults().forTestCase(tc.getFullyQualifiedName()).passed().create();
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dq_nan_guard"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(tc.getEntityReference()))
+            .withDescription(
+                "Guard: qualityScore must not be NaN when all referenced tests are soft-deleted");
+    DataContract contract = createEntity(request);
+    assertNotNull(
+        contract.getTestSuite(), "Contract with qualityExpectations must have a testSuite");
+
+    // Validate to create a Running/initial DataContractResult. Deploy is best-effort; an Airflow
+    // outage must not prevent the latest result from existing (updateContractDQResults calls
+    // getLatestResult which throws otherwise).
+    try {
+      client.dataContracts().validate(contract.getId());
+    } catch (Exception e) {
+      // deployAndTriggerDQValidation may fail without Airflow — the latest result still exists
+    }
+
+    // Fetch the contract's test suite + pipeline (created in postCreateOrUpdate)
+    TestSuite testSuite =
+        client.testSuites().get(contract.getTestSuite().getId().toString(), "pipelines");
+    assertNotNull(testSuite.getPipelines(), "Contract test suite must have a pipeline");
+    assertFalse(testSuite.getPipelines().isEmpty(), "Contract test suite must have a pipeline");
+
+    IngestionPipeline pipeline =
+        client.ingestionPipelines().get(testSuite.getPipelines().get(0).getId().toString());
+
+    // Soft-delete EVERY referenced test case without touching qualityExpectations.
+    client.testCases().delete(tc.getId().toString());
+
+    // Trigger pipeline completion — fires onTestSuiteExecutionComplete -> updateContractDQResults
+    // -> validateDQ (the buggy method).
+    putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
+
+    // Wait for the async DQ update.
+    Awaitility.await("contract result reflects DQ validation with all tests soft-deleted")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              DataContractResult result =
+                  SdkClients.adminClient().dataContracts().getLatestResult(contract.getId());
+              assertNotNull(result, "Contract must have a latest result after DQ validation");
+              QualityValidation qv = result.getQualityValidation();
+              assertNotNull(qv, "Quality validation must be populated after DQ update");
+              assertNull(
+                  qv.getQualityScore(),
+                  "qualityScore must be null (not NaN) when all referenced test cases are soft-deleted");
+            });
+  }
+
+  private void putPipelineStatus(
+      OpenMetadataClient client, IngestionPipeline pipeline, PipelineStatusType statusType) {
+    PipelineStatus status =
+        new PipelineStatus()
+            .withPipelineState(statusType)
+            .withRunId(UUID.randomUUID().toString())
+            .withTimestamp(System.currentTimeMillis());
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
   }
 }

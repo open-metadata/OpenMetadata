@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import {
   ExploreSearchIndex,
   SearchHitCounts,
@@ -191,9 +192,13 @@ const TourPage = () => {
     [clearSearchTerm, updateActiveTab, updateTourPage]
   );
 
+  // Rendered after the tour's page component so this Helmet wins: the tour
+  // reuses My Data / Explore / table pages, whose own titles would otherwise
+  // claim the tab.
   return (
     <>
       {currentPageComponent}
+      <DocumentTitle title={t('label.tour')} />
       {isTourReady && <Tour steps={tourSteps} />}
     </>
   );

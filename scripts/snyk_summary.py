@@ -170,6 +170,13 @@ def count_severities(libs, by_rule=None):
     return counts
 
 
+def count_fixable(libs):
+    """Number of vulnerable libraries Snyk has a fix for — one per
+    (package, version) with a non-empty `fixedIn`. Mirrors the per-library
+    `fix: X` / `no fix` label rendered in the Slack detail rows."""
+    return sum(1 for info in libs.values() if info["fixedIn"])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("src", nargs="?", default="security-report")
@@ -181,6 +188,7 @@ def main():
     md_parts = ["## 🛡️ Snyk Security Scan\n"]
     slack_parts = ["*🛡️ Snyk Security Scan*"]
     totals = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    fixable = 0
 
     files = sorted(glob.glob(os.path.join(args.src, "*.json")))
     # exclude our own output files if present
@@ -191,7 +199,7 @@ def main():
         sys.stdout.write("\n".join(md_parts) + "\n")
         if args.counts_file:
             with open(args.counts_file, "w") as f:
-                json.dump({**totals, "total": 0}, f)
+                json.dump({**totals, "total": 0, "fixable": 0}, f)
         if args.slack_file:
             with open(args.slack_file, "w") as f:
                 f.write("*🛡️ Snyk Security Scan*\n> No JSON reports found.")
@@ -214,6 +222,7 @@ def main():
             md_parts.append(render_deps_md(name, libs, total))
             slack_parts.append(render_deps_slack(name, libs, total, args.top))
             sub = count_severities(libs, {})
+            fixable += count_fixable(libs)
         for k in totals:
             totals[k] += sub[k]
 
@@ -221,7 +230,7 @@ def main():
 
     if args.counts_file:
         with open(args.counts_file, "w") as f:
-            json.dump({**totals, "total": sum(totals.values())}, f)
+            json.dump({**totals, "total": sum(totals.values()), "fixable": fixable}, f)
 
     if args.slack_file:
         header = (

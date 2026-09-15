@@ -60,7 +60,7 @@ import {
   IngestionExtraConfig,
   ScheduleIntervalHandle,
   WorkflowExtraConfig,
-} from './Steps/ScheduleInterval.interface';
+} from './Steps/ScheduleInterval.types';
 import ScheduleIntervalStep from './Steps/ScheduleIntervalStep';
 
 const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
@@ -385,7 +385,6 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
               <IngestionWorkflowForm
                 hideFooter={hideFooter}
                 okText={t('label.next')}
-                operationType={status}
                 pipeLineType={pipelineType}
                 ref={workflowFormRef}
                 serviceCategory={serviceCategory}

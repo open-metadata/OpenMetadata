@@ -1,0 +1,99 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.rdf.translator;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.StreamSupport;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.vocabulary.RDF;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.ModelType;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.service.rdf.RdfUtils;
+
+class JsonLdTranslatorTest {
+
+  private static final String BASE_URI = "https://example.openmetadata.org/";
+
+  @Test
+  void assignsStableIdentifiersToNestedColumns() {
+    String tableFqn = "service.database.schema.orders";
+    String parentFqn = tableFqn + ".customer";
+    String childFqn = parentFqn + ".email";
+    Column child = new Column().withName("email").withFullyQualifiedName(childFqn);
+    Column parent =
+        new Column()
+            .withName("customer")
+            .withFullyQualifiedName(parentFqn)
+            .withChildren(List.of(child));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName(tableFqn)
+            .withColumns(List.of(parent));
+
+    JsonNode document =
+        new JsonLdTranslator(new ObjectMapper(), BASE_URI, ignored -> "table").toJsonLd(table);
+
+    assertTrue(containsIdentifier(document, RdfUtils.columnUri(BASE_URI, parentFqn)));
+    assertTrue(containsIdentifier(document, RdfUtils.columnUri(BASE_URI, childFqn)));
+  }
+
+  @Test
+  void emitsOnlyTheCanonicalLlmModelType() {
+    UUID modelId = UUID.randomUUID();
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("llmmodel", "llmModel");
+    LLMModel entity =
+        new LLMModel()
+            .withId(modelId)
+            .withName("claimsCopilot")
+            .withFullyQualifiedName("claimsCopilot")
+            .withModelType(ModelType.BaseModel)
+            .withBaseModel("gpt-4");
+
+    Model model = new JsonLdTranslator(new ObjectMapper(), BASE_URI).toRdf(entity);
+    try {
+      Resource entityResource = model.createResource(BASE_URI + "entity/llmModel/" + modelId);
+      assertTrue(
+          model.contains(
+              entityResource,
+              RDF.type,
+              model.createResource("https://open-metadata.org/ontology/LLMModel")));
+      assertFalse(
+          model.contains(
+              entityResource,
+              RDF.type,
+              model.createResource("https://open-metadata.org/ontology/LlmModel")));
+    } finally {
+      model.close();
+    }
+  }
+
+  private static boolean containsIdentifier(JsonNode node, String identifier) {
+    return identifier.equals(node.path("@id").asText())
+        || StreamSupport.stream(node.spliterator(), false)
+            .anyMatch(child -> containsIdentifier(child, identifier));
+  }
+}

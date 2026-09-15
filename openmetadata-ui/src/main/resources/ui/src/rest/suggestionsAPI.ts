@@ -32,6 +32,8 @@ import {
 
 const TASKS_BASE_URL = '/tasks';
 
+const SUGGESTION_FIELDS = 'about,payload,createdBy';
+
 export type ListSuggestionsParams = ListParams & {
   entityFQN?: string;
   limit?: number;
@@ -147,7 +149,7 @@ export const getSuggestionsList = async (
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -170,7 +172,7 @@ export const getSuggestionsByUserId = async (
       limit: params?.limit,
       before: params?.before,
       after: params?.after,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -189,12 +191,13 @@ export const updateSuggestionStatus = async (
       ? TaskResolutionType.Approved
       : TaskResolutionType.Rejected;
 
+  const tagLabelsValue = data.tagLabels
+    ? JSON.stringify(data.tagLabels)
+    : undefined;
   const newValue =
     data.type === SuggestionType.SuggestDescription
       ? data.description
-      : data.tagLabels
-      ? JSON.stringify(data.tagLabels)
-      : undefined;
+      : tagLabelsValue;
 
   const result = await resolveTask(data.id, {
     resolutionType,
@@ -217,7 +220,7 @@ export const approveRejectAllSuggestions = async (
       status: TaskEntityStatus.Open,
       createdById: userId,
       limit: 100,
-      fields: 'about,payload,createdBy',
+      fields: SUGGESTION_FIELDS,
     },
   });
 
@@ -236,12 +239,13 @@ export const approveRejectAllSuggestions = async (
   // Resolve sequentially to avoid optimistic-lock version conflicts on the entity.
   for (const task of filteredTasks) {
     const suggestion = taskToSuggestion(task);
+    const tagLabelsValue = suggestion.tagLabels
+      ? JSON.stringify(suggestion.tagLabels)
+      : undefined;
     const newValue =
       suggestion.type === SuggestionType.SuggestDescription
         ? suggestion.description
-        : suggestion.tagLabels
-        ? JSON.stringify(suggestion.tagLabels)
-        : undefined;
+        : tagLabelsValue;
 
     // Mirror Promise.allSettled behavior: one failure must not block remaining tasks.
     await resolveTask(task.id, { resolutionType, newValue }).catch(

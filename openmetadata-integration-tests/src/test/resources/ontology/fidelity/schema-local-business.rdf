@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+    xml:base="https://schema.org/local-business-subset/"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+    xmlns:ont="https://schema.org/local-business-subset/">
+
+    <owl:Ontology rdf:about="https://schema.org/local-business-subset/">
+        <rdfs:label>Schema.org — LocalBusiness</rdfs:label>
+        <rdfs:comment>Local businesses, opening hours, reviews, and postal addresses — a subset of Schema.org for describing brick-and-mortar businesses.</rdfs:comment>
+    </owl:Ontology>
+
+    <!-- ===================== -->
+    <!-- Entity Types (Classes) -->
+    <!-- ===================== -->
+
+    <owl:Class rdf:about="https://schema.org/local-business-subset/LocalBusiness">
+        <rdfs:label>LocalBusiness</rdfs:label>
+        <rdfs:comment>A physical business establishment like a restaurant, shop, or service provider</rdfs:comment>
+        <ont:icon>🏪</ont:icon>
+        <ont:color>#0078D4</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/local-business-subset/PostalAddress">
+        <rdfs:label>PostalAddress</rdfs:label>
+        <rdfs:comment>A mailing address with street, city, region, and country</rdfs:comment>
+        <ont:icon>📬</ont:icon>
+        <ont:color>#5C2D91</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/local-business-subset/OpeningHoursSpecification">
+        <rdfs:label>OpeningHours</rdfs:label>
+        <rdfs:comment>The days and times a business is open</rdfs:comment>
+        <ont:icon>🕐</ont:icon>
+        <ont:color>#107C10</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/local-business-subset/Review">
+        <rdfs:label>Review</rdfs:label>
+        <rdfs:comment>A customer review with rating and text</rdfs:comment>
+        <ont:icon>⭐</ont:icon>
+        <ont:color>#FFB900</ont:color>
+    </owl:Class>
+
+    <owl:Class rdf:about="https://schema.org/local-business-subset/Person">
+        <rdfs:label>Person</rdfs:label>
+        <rdfs:comment>A person who writes reviews or owns a business</rdfs:comment>
+        <ont:icon>👤</ont:icon>
+        <ont:color>#E74C3C</ont:color>
+    </owl:Class>
+
+    <!-- ===================== -->
+    <!-- Properties            -->
+    <!-- ===================== -->
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/businessName">
+        <rdfs:label>businessName</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/LocalBusiness"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/telephone">
+        <rdfs:label>telephone</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/LocalBusiness"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/priceRange">
+        <rdfs:label>priceRange</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/LocalBusiness"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/streetAddress">
+        <rdfs:label>streetAddress</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/PostalAddress"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/city">
+        <rdfs:label>city</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/PostalAddress"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/postalCode">
+        <rdfs:label>postalCode</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/PostalAddress"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/dayOfWeek">
+        <rdfs:label>dayOfWeek</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/OpeningHoursSpecification"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/opens">
+        <rdfs:label>opens</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/OpeningHoursSpecification"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/closes">
+        <rdfs:label>closes</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/OpeningHoursSpecification"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/reviewRating">
+        <rdfs:label>reviewRating</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/Review"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/reviewBody">
+        <rdfs:label>reviewBody</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/Review"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+
+    <owl:DatatypeProperty rdf:about="https://schema.org/local-business-subset/personName">
+        <rdfs:label>personName</rdfs:label>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/Person"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+        <ont:isIdentifier>true</ont:isIdentifier>
+    </owl:DatatypeProperty>
+
+    <!-- ===================== -->
+    <!-- Relationships         -->
+    <!-- ===================== -->
+
+    <owl:ObjectProperty rdf:about="https://schema.org/local-business-subset/hasAddress">
+        <rdfs:label>hasAddress</rdfs:label>
+        <rdfs:comment>The postal address of the business</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/LocalBusiness"/>
+        <rdfs:range rdf:resource="https://schema.org/local-business-subset/PostalAddress"/>
+        <ont:cardinality>one-to-one</ont:cardinality>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="https://schema.org/local-business-subset/openingHours">
+        <rdfs:label>openingHours</rdfs:label>
+        <rdfs:comment>The opening hours schedule for the business</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/LocalBusiness"/>
+        <rdfs:range rdf:resource="https://schema.org/local-business-subset/OpeningHoursSpecification"/>
+        <ont:cardinality>one-to-many</ont:cardinality>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="https://schema.org/local-business-subset/hasReview">
+        <rdfs:label>hasReview</rdfs:label>
+        <rdfs:comment>Customer reviews of the business</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/LocalBusiness"/>
+        <rdfs:range rdf:resource="https://schema.org/local-business-subset/Review"/>
+        <ont:cardinality>one-to-many</ont:cardinality>
+    </owl:ObjectProperty>
+
+    <owl:ObjectProperty rdf:about="https://schema.org/local-business-subset/author">
+        <rdfs:label>author</rdfs:label>
+        <rdfs:comment>The person who wrote the review</rdfs:comment>
+        <rdfs:domain rdf:resource="https://schema.org/local-business-subset/Review"/>
+        <rdfs:range rdf:resource="https://schema.org/local-business-subset/Person"/>
+        <ont:cardinality>many-to-one</ont:cardinality>
+    </owl:ObjectProperty>
+
+</rdf:RDF>

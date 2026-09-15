@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { act } from 'react';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Table } from '../../generated/entity/data/table';
 import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
@@ -94,7 +95,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
         data-testid="date-field-dropdown-trigger"
         role="button"
         tabIndex={0}
-        onClick={() => onOpenChange(!isOpen)}>
+        onClick={() => onOpenChange(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onOpenChange(!isOpen);
+          }
+        }}>
         {children[0]}
       </div>
       {isOpen && children[1]}
@@ -239,6 +245,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
         )
       ),
     Table: TableMock,
+    Tooltip: jest.fn().mockImplementation(({ children, title }) => (
+      <div data-testid="tooltip" title={String(title)}>
+        {children}
+      </div>
+    )),
+    TooltipTrigger: jest
+      .fn()
+      .mockImplementation(({ children }: React.PropsWithChildren) => (
+        <button>{children}</button>
+      )),
+    Owner: jest.fn().mockImplementation(() => <div>Owner</div>),
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 
@@ -329,9 +350,6 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
   };
 });
 
-jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 jest.mock(
   '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component',
   () => {
@@ -355,14 +373,19 @@ jest.mock('../../pages/TasksPage/shared/Assignees', () => {
 jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
-    .mockImplementation(({ 'data-testid': testId }) => (
-      <div data-testid={testId}>AsyncSelect.component</div>
+    .mockImplementation(({ className, 'data-testid': testId }) => (
+      <div className={className} data-testid={testId}>
+        AsyncSelect.component
+      </div>
     )),
 }));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+  Link: jest.fn().mockImplementation(({ children, state, to, ...rest }) => (
+    <a
+      data-state={JSON.stringify(state)}
+      data-to={typeof to === 'string' ? to : JSON.stringify(to)}
+      {...rest}>
       {children}
     </a>
   )),
@@ -538,6 +561,24 @@ describe('IncidentManagerPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('should align and wrap incident filters at constrained widths', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(await screen.findByTestId('incident-filter-bar')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('incident-filter-controls')).toHaveClass(
+      'tw:flex-wrap',
+      'tw:items-end',
+      'tw:gap-y-4'
+    );
+    expect(screen.getByTestId('test-case-select')).toHaveClass('w-min-15');
+  });
+
   it('should call list incident API on page load', async () => {
     await act(async () => {
       render(<IncidentManager />);
@@ -588,12 +629,14 @@ describe('IncidentManagerPage', () => {
     });
 
     const select = await screen.findByTestId('status-select');
-    const selectBox = select.querySelector('.ant-select-selector');
+    const selectBox = select.querySelector(
+      '.ant-select-selector'
+    ) as HTMLElement;
 
     expect(selectBox).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.mouseDown(selectBox);
     });
 
     const resolvedOption = await screen.findByText('label.resolved');
@@ -1183,6 +1226,59 @@ describe('IncidentManagerPage', () => {
         fqn,
         TestCasePageTabs.TEST_CASE_RESULTS
       );
+      expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toEqual({
+        breadcrumbData: [
+          {
+            name: 'label.incident-manager',
+            url: '/incident-manager',
+          },
+        ],
+      });
+    });
+  });
+
+  describe('permission gating (useIncidentManagerListPage.commonTestCasePermission)', () => {
+    // usePermissionProvider is called more than once per render (this component plus
+    // useIncidentManagerListPage internally), so `mockReturnValueOnce` only overrides the
+    // FIRST call and silently falls back to the granted default for the rest — use a
+    // persistent override for the duration of this test, restored afterward so later tests
+    // (and other describe blocks, if this file's order ever changes) keep the granted default.
+    const grantedReturnValue = (
+      usePermissionProvider as jest.Mock
+    ).getMockImplementation?.();
+
+    afterEach(() => {
+      if (grantedReturnValue) {
+        (usePermissionProvider as jest.Mock).mockImplementation(
+          grantedReturnValue
+        );
+      }
+    });
+
+    it('shows the permission placeholder instead of the table when neither ViewAll nor ViewBasic is granted', async () => {
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        permissions: {
+          testCase: {
+            ViewAll: false,
+            ViewBasic: false,
+          },
+        },
+        getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-case-incident-manager-table')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('incident-filter-bar')
+      ).not.toBeInTheDocument();
     });
   });
 });

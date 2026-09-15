@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -42,10 +43,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -72,6 +74,7 @@ public abstract class AbstractEventConsumer
   private long pendingGapSince;
   private boolean gapStateChanged;
   private long startingOffset = -1;
+  private Long startingTimestamp;
 
   private AlertMetrics alertMetrics;
 
@@ -117,6 +120,7 @@ public abstract class AbstractEventConsumer
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.startingTimestamp = eventSubscriptionOffset.getStartingTimestamp();
       this.lastReadOffset = this.offset;
       this.pendingGapSince = loadPendingGapSince();
       this.gapStateChanged = false;
@@ -250,7 +254,8 @@ public abstract class AbstractEventConsumer
     if (events.isEmpty()) {
       return;
     }
-    Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
+    Map<ChangeEvent, Set<UUID>> filteredEvents =
+        getFilteredEvents(eventSubscription, events, startingTimestamp, this::deadLetterEvent);
     RecipientResolver resolver = new RecipientResolver();
     int successDeliveries = 0;
     int failedDeliveries = 0;
@@ -267,6 +272,20 @@ public abstract class AbstractEventConsumer
     }
     alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + successDeliveries);
     alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + failedDeliveries);
+  }
+
+  /** An event we could not even filter is a publisher-side failure, so record it as one. */
+  private void deadLetterEvent(ChangeEvent event, Exception error) {
+    LOG.error(
+        "Event Subscription: {} could not evaluate filters for change event {}",
+        eventSubscription.getName(),
+        event.getId(),
+        error);
+    handleFailedEvent(
+        new EventPublisherException(
+            String.format("Failed to evaluate alert filters: %s", error.getMessage()),
+            Pair.of(eventSubscription.getId(), event)),
+        false);
   }
 
   private EventDeliveryResult publishEvent(
@@ -351,6 +370,7 @@ public abstract class AbstractEventConsumer
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
             .withStartingOffset(startingOffset)
+            .withStartingTimestamp(startingTimestamp)
             .withTimestamp(currentTime);
 
     Entity.getCollectionDAO()
@@ -490,6 +510,20 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
+    // Quartz worker threads are long lived, shared with every other scheduled job, and never pass
+    // through the JAX-RS response filter. Per-request ThreadLocal caches left behind here would be
+    // served to whatever runs next on this thread — indefinitely stale. Destinations on this thread
+    // read entities (governance workflows resolve inherited reviewers here), so bracket the whole
+    // tick: start clean, and leave clean however this exits.
+    PerRequestContextCleaner.clear();
+    try {
+      executeTick(jobExecutionContext);
+    } finally {
+      PerRequestContextCleaner.clear();
+    }
+  }
+
+  private void executeTick(JobExecutionContext jobExecutionContext) {
     this.init(jobExecutionContext);
     if (this.eventSubscription == null) {
       LOG.error("Skipping job execution - EventSubscription could not be loaded");

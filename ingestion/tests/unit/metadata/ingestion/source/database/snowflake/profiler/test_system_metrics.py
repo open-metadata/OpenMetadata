@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 import pytest
 from sqlalchemy.engine.result import IteratorResult, SimpleResultMetaData
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import coercions, roles
 
 from metadata.generated.schema.entity.data.table import (
     DmlOperationType,
@@ -21,6 +22,8 @@ from metadata.profiler.metrics.system.snowflake.system import (
     PUBLIC_SCHEMA,
     SnowflakeSystemMetricsComputer,
     SnowflakeTableResovler,
+    _cache,
+    _parse_query,
 )
 from metadata.utils.profiler_utils import get_identifiers_from_string
 
@@ -121,6 +124,47 @@ def test_get_identifiers(
             resolver.resolve_snowflake_fqn(context_database, context_schema, identifier)
     else:
         assert expected_value == resolver.resolve_snowflake_fqn(context_database, context_schema, identifier)
+
+
+def show_tables_session(rows):
+    """Build a session double that applies SQLAlchemy 2.x statement coercion and yields rows."""
+
+    class _Session:
+        def execute(self, statement):
+            coercions.expect(roles.StatementRole, statement)
+            metadata = SimpleResultMetaData(["created_on", "name", "database_name", "schema_name"])
+            return IteratorResult(metadata, iter(rows))
+
+    return _Session()
+
+
+def show_tables_row(name):
+    return ("2026-07-20 00:00:00", name, "MY_DB", "MY_SCHEMA")
+
+
+def test_show_tables_statement_is_accepted_by_sqlalchemy_2x():
+    resolver = SnowflakeTableResovler(show_tables_session([show_tables_row("MY_TABLE")]))
+
+    assert resolver.show_tables("MY_DB", "MY_SCHEMA", "MY_TABLE")[1] == "MY_TABLE"
+
+
+def test_show_tables_matches_uppercase_stored_identifiers():
+    resolver = SnowflakeTableResovler(show_tables_session([show_tables_row("MY_TABLE")]))
+
+    assert resolver.show_tables("my_db", "my_schema", "my_table")[1] == "MY_TABLE"
+
+
+def test_show_tables_skips_rows_matched_only_by_like_wildcards():
+    rows = [show_tables_row("MYATABLE"), show_tables_row("MY_TABLE")]
+    resolver = SnowflakeTableResovler(show_tables_session(rows))
+
+    assert resolver.show_tables("my_db", "my_schema", "my_table")[1] == "MY_TABLE"
+
+
+def test_show_tables_returns_none_when_only_wildcard_matches_exist():
+    resolver = SnowflakeTableResovler(show_tables_session([show_tables_row("MYATABLE")]))
+
+    assert resolver.show_tables("my_db", "my_schema", "my_table") is None
 
 
 class TestSnowflakeSystemMetricsComputerDynamicTable:
@@ -465,3 +509,169 @@ def test_it_turns_sql_alchemy_response_to_snowflake_query_log_entries() -> None:
             rows_deleted=0,
         ),
     ]
+
+
+@pytest.fixture
+def isolated_parse_query_cache():
+    _cache.clear()
+    yield
+    _cache.clear()
+
+
+@pytest.mark.parametrize(
+    "query, expected_identifier",
+    [
+        # --- Existing working cases (no leading whitespace/comments) ---
+        (
+            "INSERT INTO my_schema.my_table (col1) VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "INSERT OVERWRITE INTO my_schema.my_table SELECT * FROM src",
+            "my_schema.my_table",
+        ),
+        (
+            "UPDATE my_db.my_schema.my_table SET col1 = 1 WHERE id = 2",
+            "my_db.my_schema.my_table",
+        ),
+        (
+            "MERGE INTO target_table USING source ON target_table.id = source.id WHEN MATCHED THEN UPDATE SET col = source.col",
+            "target_table",
+        ),
+        (
+            "DELETE FROM my_table WHERE id = 1",
+            "my_table",
+        ),
+        (
+            "INSERT INTO IDENTIFIER('MY_DB.MY_SCHEMA.MY_TABLE') SELECT * FROM src",
+            "MY_DB.MY_SCHEMA.MY_TABLE",
+        ),
+        # --- Leading whitespace ---
+        (
+            "  INSERT INTO my_schema.my_table (col1) VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "\tINSERT INTO my_schema.my_table (col1) VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "\n\nDELETE FROM my_table WHERE id = 1",
+            "my_table",
+        ),
+        (
+            "   UPDATE my_table SET col = 1 WHERE id = 2",
+            "my_table",
+        ),
+        # --- Leading single-line SQL comments ---
+        (
+            "-- populate staging table\nINSERT INTO staging.my_table SELECT * FROM raw",
+            "staging.my_table",
+        ),
+        (
+            "-- first comment\n-- second comment\nDELETE FROM my_schema.my_table WHERE expired = TRUE",
+            "my_schema.my_table",
+        ),
+        (
+            "  -- comment with leading spaces\n  UPDATE my_table SET col = 1",
+            "my_table",
+        ),
+        # --- Leading multi-line SQL comments ---
+        (
+            "/* batch load */\nINSERT INTO my_table SELECT * FROM src",
+            "my_table",
+        ),
+        (
+            "/* first comment */\n/* second comment */\nDELETE FROM my_table WHERE id = 1",
+            "my_table",
+        ),
+        (
+            "/* multi\n   line\n   comment */\nMERGE INTO my_table USING src ON my_table.id = src.id WHEN MATCHED THEN UPDATE SET col = src.col",
+            "my_table",
+        ),
+        # --- Non-DML queries return None ---
+        (
+            "SELECT * FROM my_table",
+            None,
+        ),
+        (
+            "  SELECT * FROM my_table",
+            None,
+        ),
+        (
+            "-- a comment\nSELECT col FROM my_table WHERE id = 1",
+            None,
+        ),
+        # --- Comment bodies with DML must NOT affect parsing ---
+        (
+            "-- INSERT INTO old_table VALUES (1)\nINSERT INTO new_table VALUES (2)",
+            "new_table",
+        ),
+        (
+            "-- DELETE FROM wrong_table\nUPDATE real_table SET col = 1 WHERE id = 2",
+            "real_table",
+        ),
+        (
+            "/* INSERT INTO wrong_table VALUES (1) */\nINSERT INTO new_table VALUES (2)",
+            "new_table",
+        ),
+        (
+            "/* UPDATE wrong_table SET col = 0 */\nDELETE FROM real_table WHERE id = 1",
+            "real_table",
+        ),
+        (
+            "/* this was the old approach:\n   INSERT INTO legacy_table SELECT * FROM raw\n*/\nINSERT INTO current_table SELECT * FROM raw",
+            "current_table",
+        ),
+        # --- Terminator cases: semicolon and end-of-string ---
+        (
+            "DELETE FROM my_table",
+            "my_table",
+        ),
+        (
+            "INSERT INTO my_schema.my_table;",
+            "my_schema.my_table",
+        ),
+        (
+            "DELETE FROM my_table; SELECT * FROM rest",
+            "my_table",
+        ),
+        # --- Trailing parenthesised column list stripped ---
+        (
+            "INSERT INTO my_table(col1) VALUES (1)",
+            "my_table",
+        ),
+        (
+            "INSERT INTO my_table(col1, col2) VALUES (1, 2)",
+            "my_table",
+        ),
+        (
+            "UPDATE my_schema.my_table(col1) SET col1 = 1 WHERE id = 2",
+            "my_schema.my_table",
+        ),
+        # --- Quoted identifiers containing parentheses are not truncated ---
+        (
+            'INSERT INTO "my(table)" VALUES (1)',
+            '"my(table)"',
+        ),
+        (
+            'UPDATE "my_schema"."my(table)"(col1) SET col1 = 1',
+            '"my_schema"."my(table)"',
+        ),
+        # --- Block comments inside qualified identifiers ---
+        (
+            "INSERT INTO my_schema./*inline*/my_table VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "DELETE FROM db./*comment*/schema./*comment*/my_table WHERE id = 1",
+            "db.schema.my_table",
+        ),
+        # --- None / empty input ---
+        (None, None),
+        ("", None),
+    ],
+)
+def test_parse_query(query, expected_identifier, isolated_parse_query_cache):
+    result = _parse_query(query)
+    assert result == expected_identifier

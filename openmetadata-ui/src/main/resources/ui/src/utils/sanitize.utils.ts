@@ -13,7 +13,11 @@
 import DOMPurify from 'dompurify';
 
 export const getSanitizeContent = (html: string): string => {
-  // First, temporarily replace entity links to protect them from encoding
+  // Nonce makes placeholders unique per call, preventing collisions if the
+  // user's text itself contains a placeholder-shaped string.
+  const nonce = Math.random().toString(36).slice(2, 10);
+
+  // Protect entity links from DOMPurify encoding
   const entityLinkRegex = /<#E::[^>]+>/g;
   const entityLinks: string[] = [];
   let entityLinkIndex = 0;
@@ -21,16 +25,25 @@ export const getSanitizeContent = (html: string): string => {
   const protectedHtml = html.replaceAll(entityLinkRegex, (match) => {
     entityLinks.push(match);
 
-    return `__ENTITY_LINK_${entityLinkIndex++}__`;
+    return `__OM_ENTITY_LINK_${nonce}_${entityLinkIndex++}__`;
   });
 
-  // Sanitize the content with standard DOMPurify settings
-  const sanitizedContent = DOMPurify.sanitize(protectedHtml);
+  // Allowlist the math-equation custom tag and its attributes instead of
+  // exempting the whole match from sanitization — a raw-substring exemption
+  // would let attacker-controlled attributes/children (e.g. <img onerror>)
+  // nested inside the tag bypass DOMPurify entirely.
+  const sanitizedContent = DOMPurify.sanitize(protectedHtml, {
+    ADD_TAGS: ['block-math-equation'],
+    ADD_ATTR: ['math_equation', 'isediting'],
+  });
 
-  // Restore entity links
+  // Restore entity links — use replacer fn so '$' in values is inserted verbatim
   let restoredContent = sanitizedContent;
   entityLinks.forEach((link, index) => {
-    restoredContent = restoredContent.replace(`__ENTITY_LINK_${index}__`, link);
+    restoredContent = restoredContent.replace(
+      `__OM_ENTITY_LINK_${nonce}_${index}__`,
+      () => link
+    );
   });
 
   return restoredContent;

@@ -23,7 +23,6 @@ import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { TestSuiteType } from '../../../enums/TestSuite.enum';
 import { TestSuite } from '../../../generated/tests/testSuite';
@@ -65,7 +64,7 @@ const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
     setOptionsLoading(true);
     try {
       const result = await getListTestSuitesBySearch({
-        q: searchText ? `*${searchText}*` : WILD_CARD_CHAR,
+        q: searchText || undefined,
         limit: PAGE_SIZE_BASE,
         testSuiteType: TestSuiteType.logical,
         includeEmptyTestSuites: true,

@@ -44,6 +44,7 @@ import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
 import { toLower } from 'lodash';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
+import { getBase64EncodedString } from '../../../utils/StringUtils';
 import {
   getOidcToken,
   getRefreshToken,
@@ -95,7 +96,7 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
         try {
           const response = await basicAuthSignIn({
             email,
-            password: btoa(password),
+            password: getBase64EncodedString(password),
           });
 
           if (response.accessToken) {
@@ -176,8 +177,10 @@ const BasicAuthProvider = ({ children }: BasicAuthProps) => {
   );
 
   const handleLogout = useCallback(async () => {
-    const token = await getOidcToken();
-    const refreshToken = await getRefreshToken();
+    const [token, refreshToken] = await Promise.all([
+      getOidcToken(),
+      getRefreshToken(),
+    ]);
     const isExpired = extractDetailsFromToken(token).isExpired;
     if (token && !isExpired) {
       try {

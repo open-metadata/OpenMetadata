@@ -16,7 +16,6 @@ import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -58,13 +57,13 @@ class WorkflowStatusMixin:
     """
 
     config: OpenMetadataWorkflowConfig
-    _run_id: Optional[str] = None  # noqa: UP045
+    _run_id: str | None = None
     metadata: OpenMetadata
     _start_ts: int
-    ingestion_pipeline: Optional[IngestionPipeline]  # noqa: UP045
+    ingestion_pipeline: IngestionPipeline | None
 
     # All workflows execute a series of steps, aside from the source
-    steps: Tuple[Step, ...]  # noqa: UP006
+    steps: tuple[Step, ...]
 
     @property
     def run_id(self) -> str:
@@ -103,7 +102,7 @@ class WorkflowStatusMixin:
     def set_ingestion_pipeline_status(
         self,
         state: PipelineState,
-        ingestion_status: Optional[IngestionStatus] = None,  # noqa: UP045
+        ingestion_status: IngestionStatus | None = None,
     ) -> None:
         """
         Method to set the pipeline status of current ingestion pipeline
@@ -160,7 +159,7 @@ class WorkflowStatusMixin:
             return WorkflowResultStatus.FAILURE
         return WorkflowResultStatus.SUCCESS
 
-    def build_ingestion_status(self) -> Optional[IngestionStatus]:  # noqa: UP045
+    def build_ingestion_status(self) -> IngestionStatus | None:
         """
         Get the results from the steps and prep the payload
         we'll send to the API
@@ -173,7 +172,7 @@ class WorkflowStatusMixin:
             ]
         )
 
-    def _find_progress_registry(self) -> Optional[ProgressRegistry]:  # noqa: UP045
+    def _find_progress_registry(self) -> ProgressRegistry | None:
         """Registry of the first workflow step that tracked progress. Reads the
         backing attribute so we never create an empty registry on a step that
         never tracked progress."""

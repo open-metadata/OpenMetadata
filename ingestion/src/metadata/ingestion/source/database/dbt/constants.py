@@ -161,6 +161,7 @@ class DbtCommonEnum(Enum):
     UPSTREAM = "upstream"
     UPSTREAM_BY_NAME = "upstream_by_name"
     RESULTS = "results"
+    IS_FRESHNESS = "is_freshness"
     TEST_SUITE_NAME = "test_suite_name"
     DBT_TEST_SUITE = "DBT_TEST_SUITE"
 

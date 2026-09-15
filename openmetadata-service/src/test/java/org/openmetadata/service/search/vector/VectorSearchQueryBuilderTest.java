@@ -59,6 +59,41 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
+  void testContextMemoryScopingFiltersReachTheQuery() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of(
+            "entityType", List.of(Entity.CONTEXT_MEMORY),
+            "sourceType", List.of("FileExtraction"),
+            "visibility", List.of(MemoryVisibility.SHARED.value()));
+
+    String query =
+        VectorSearchQueryBuilder.build(new float[] {0.1f, 0.2f}, 10, 0, 100, filters, 0.0);
+
+    JsonNode must =
+        MAPPER
+            .readTree(query)
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+    assertTrue(termClauseExists(must, "sourceType", "FileExtraction"));
+    assertTrue(termClauseExists(must, "visibility", MemoryVisibility.SHARED.value()));
+  }
+
+  private static boolean termClauseExists(JsonNode mustClauses, String field, String value) {
+    boolean found = false;
+    for (JsonNode clause : mustClauses) {
+      if (value.equals(clause.path("term").path(field).asText(null))) {
+        found = true;
+        break;
+      }
+    }
+    return found;
+  }
+
+  @Test
   void testBuildsValidQueryWithNoFilters() throws Exception {
     float[] vector = {0.1f, 0.2f, 0.3f};
     int size = 10;
@@ -1039,6 +1074,34 @@ class VectorSearchQueryBuilderTest {
         esFilters.size(),
         "Both queries should produce the same number of filter clauses");
     assertEquals(osFilters.toString(), esFilters.toString(), "Filter clauses should be identical");
+  }
+
+  @Test
+  void testPersonaQueryFilterReachesBothVectorEngines() throws Exception {
+    String personaFilter =
+        "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"entityType\":\"table\"}},"
+            + "{\"term\":{\"service.name.keyword\":\"finance\"}}]}}}";
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            "customer data",
+            Map.of("tier", List.of("Tier.Tier1")),
+            10,
+            0,
+            100,
+            0.0,
+            null,
+            null,
+            personaFilter);
+
+    String osQuery = VectorSearchQueryBuilder.build(new float[] {0.1f}, parameters);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(new float[] {0.1f}, parameters, 2);
+
+    JsonNode osMust = MAPPER.readTree(osQuery).at("/query/knn/embedding/filter/bool/must");
+    JsonNode esMust = MAPPER.readTree(esQuery).at("/knn/filter/bool/must");
+    assertEquals(osMust, esMust);
+    assertEquals(3, osMust.size());
+    assertEquals("table", osMust.get(2).at("/bool/filter/0/term/entityType").asText());
+    assertEquals("finance", osMust.get(2).at("/bool/filter/1/term/service.name.keyword").asText());
   }
 
   @Test

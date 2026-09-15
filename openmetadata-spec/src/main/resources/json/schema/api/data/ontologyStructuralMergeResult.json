@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyStructuralMergeResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyStructuralMergeResult",
+  "description": "Durable Draft produced by a selective ontology structural merge.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyStructuralMergeResult",
+  "definitions": {
+    "relationshipOperation": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyStructuralRelationshipOperation",
+      "type": "object",
+      "properties": {
+        "operationType": {
+          "$ref": "../../type/ontologyChangeOperation.json#/definitions/operationType"
+        },
+        "relationship": {
+          "$ref": "../../type/ontologyRelationship.json"
+        }
+      },
+      "required": ["operationType", "relationship"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "sourceGlossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "targetGlossary": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "changeSet": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "terms": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": []
+    },
+    "relationshipOperations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/relationshipOperation"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "sourceGlossary",
+    "targetGlossary",
+    "changeSet",
+    "terms",
+    "relationshipOperations"
+  ],
+  "additionalProperties": false
+}

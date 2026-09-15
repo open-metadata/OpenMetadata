@@ -29,9 +29,9 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
+import org.openmetadata.service.search.HighlightFieldClassifier;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
@@ -61,11 +61,6 @@ public class OpenSearchSourceBuilderFactory
   private static final String INDEX_ALL = "all";
   private static final String INDEX_DATA_ASSET = "dataAsset";
 
-  // OpenSearch maps the `extension` custom-properties object as flat_object (OsUtils transforms
-  // flattened -> flat_object). flat_object has no analyzer, so asking the highlighter to highlight
-  // `extension` or any `extension.*` subfield throws "no associated analyzer" and fails the whole
-  // shard (a 500 on the search). Elasticsearch tolerates it, so this guard is OpenSearch-only.
-  private static final String FLATTENED_EXTENSION_FIELD = "extension";
   private static final String MINIMUM_SHOULD_MATCH = "2<70%";
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
@@ -245,6 +240,11 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public Query buildSearchQueryBuilderV2(String query, Map<String, Float> fields) {
+    return buildSearchQueryBuilderV2(query, fields, false);
+  }
+
+  public Query buildSearchQueryBuilderV2(
+      String query, Map<String, Float> fields, boolean freeText) {
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -255,16 +255,22 @@ public class OpenSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
+    // The non-fuzzy branch is a multi_match, which never parses Lucene syntax; only this
+    // fuzzy branch can throw on user input. Endpoints that document `q` as free text swap
+    // it for simple_query_string, whose parser discards malformed syntax instead of
+    // raising a query_shard_exception.
     Query fuzzyQuery =
-        OpenSearchQueryBuilder.queryStringQuery(
-            query,
-            fuzzyFields,
-            Operator.And,
-            "1",
-            10,
-            3,
-            DEFAULT_TIE_BREAKER,
-            TextQueryType.MostFields);
+        freeText
+            ? OpenSearchQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
+            : OpenSearchQueryBuilder.queryStringQuery(
+                query,
+                fuzzyFields,
+                Operator.And,
+                "1",
+                10,
+                3,
+                DEFAULT_TIE_BREAKER,
+                TextQueryType.MostFields);
 
     Query nonFuzzyQuery =
         OpenSearchQueryBuilder.multiMatchQuery(
@@ -311,14 +317,31 @@ public class OpenSearchSourceBuilderFactory
       int size,
       boolean includeExplain,
       boolean includeAggregations) {
+    return getSearchSourceBuilderV2(
+        indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations, false);
+  }
+
+  public OpenSearchRequestBuilder getSearchSourceBuilderV2(
+      String indexName,
+      String searchQuery,
+      int fromOffset,
+      int size,
+      boolean includeExplain,
+      boolean includeAggregations,
+      boolean freeText) {
     indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
-      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size);
+      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
     if (isColumnIndex(indexName)) {
-      return buildColumnSearchBuilderV2(searchQuery, fromOffset, size);
+      // Column docs carry fqnParts and structured search fields (the "tableColumn"
+      // AssetTypeConfiguration). Route through the data-asset builder so an FQN query
+      // matches precisely (operator AND over fqnParts) instead of OR-matching every
+      // column that merely shares a parent-name token.
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (isServiceIndex(indexName)) {
@@ -326,7 +349,7 @@ public class OpenSearchSourceBuilderFactory
     }
 
     if (isDataQualityIndex(indexName)) {
-      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size);
+      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
     if (isDataAssetIndex(indexName)) {
@@ -351,7 +374,12 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
+    return buildTestCaseSearchV2(query, from, size, false);
+  }
+
+  public OpenSearchRequestBuilder buildTestCaseSearchV2(
+      String query, int from, int size, boolean freeText) {
+    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields(), freeText);
     Highlight highlighter = buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
     return searchBuilderV2(queryBuilder, highlighter, from, size);
   }
@@ -371,27 +399,14 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildTestCaseResultSearchV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
-    Highlight highlighter = buildHighlightsV2(new ArrayList<>());
-    return searchBuilderV2(queryBuilder, highlighter, from, size);
+    return buildTestCaseResultSearchV2(query, from, size, false);
   }
 
-  public OpenSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    Query queryBuilder;
-    if (nullOrEmpty(query) || "*".equals(query.trim())) {
-      queryBuilder = Query.of(q -> q.matchAll(m -> m));
-    } else {
-      Map<String, Float> fields = ColumnSearchIndex.getFields();
-      queryBuilder =
-          OpenSearchQueryBuilder.multiMatchQuery(
-              query,
-              fields,
-              TextQueryType.BestFields,
-              Operator.Or,
-              String.valueOf(DEFAULT_TIE_BREAKER),
-              "0");
-    }
-    Highlight highlighter = buildHighlightsV2(List.of("name", "displayName", "description"));
+  public OpenSearchRequestBuilder buildTestCaseResultSearchV2(
+      String query, int from, int size, boolean freeText) {
+    Query queryBuilder =
+        buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields(), freeText);
+    Highlight highlighter = buildHighlightsV2(new ArrayList<>());
     return searchBuilderV2(queryBuilder, highlighter, from, size);
   }
 
@@ -752,22 +767,18 @@ public class OpenSearchSourceBuilderFactory
     OpenSearchHighlightBuilder hb = new OpenSearchHighlightBuilder();
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
+    // A mapped field with no analyzer (flat_object, which OsUtils rewrites `flattened` to) fails
+    // the
+    // highlight shard with "no associated analyzer" — a 500 on the search — unlike an unmapped
+    // field,
+    // which the highlighter silently skips. Elasticsearch tolerates it, so this guard is
+    // OpenSearch-only; the save-time check in SearchSettingsHandler is the engine-independent one.
     for (String field : listOrEmpty(fields)) {
-      if (!isFlattenedExtensionField(field)) {
+      if (!HighlightFieldClassifier.isHighlightUnsafeField(field)) {
         hb.field(field, org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET);
       }
     }
     return hb.build();
-  }
-
-  // The flat_object `extension` field (and its `extension.*` subfields) has no analyzer on
-  // OpenSearch; a mapped no-analyzer field fails the highlight shard, unlike an unmapped field
-  // which
-  // the highlighter silently skips. Drop it so a configured extension highlight field never 500s.
-  private static boolean isFlattenedExtensionField(String field) {
-    return field != null
-        && (field.equals(FLATTENED_EXTENSION_FIELD)
-            || field.startsWith(FLATTENED_EXTENSION_FIELD + "."));
   }
 
   public OpenSearchRequestBuilder getSearchSourceBuilderV2(
@@ -782,24 +793,19 @@ public class OpenSearchSourceBuilderFactory
 
   public OpenSearchRequestBuilder buildTimeSeriesSearchBuilderV2(
       String indexName, String query, int from, int size) {
+    return buildTimeSeriesSearchBuilderV2(indexName, query, from, size, false);
+  }
+
+  public OpenSearchRequestBuilder buildTimeSeriesSearchBuilderV2(
+      String indexName, String query, int from, int size, boolean freeText) {
     return switch (indexName) {
-      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(
+          query, from, size, freeText);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
           query, from, size);
       case "raw_cost_analysis_report_data_index",
           "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
           query, from, size);
-      default -> buildAggregateSearchBuilderV2(query, from, size);
-    };
-  }
-
-  public OpenSearchRequestBuilder buildDataQualitySearchBuilderV2(
-      String indexName, String query, int from, int size) {
-    return switch (indexName) {
-      case "test_case_search_index",
-          "testCase",
-          "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearchV2(query, from, size);
       default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
@@ -1103,6 +1109,7 @@ public class OpenSearchSourceBuilderFactory
     return switch (matchType) {
       case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
+      case PREFIX -> buildPrefixRankingStageQueryV2(significantQuery, stage);
       case FUZZY -> buildTextRankingStageQueryV2(
           significantQuery, stage, assetConfig, getFuzziness(significantQuery));
       case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
@@ -1137,6 +1144,27 @@ public class OpenSearchSourceBuilderFactory
     return OpenSearchQueryBuilder.constantScoreQuery(exactQuery.build(), weight);
   }
 
+  /**
+   * Prefix stage: {@code match_bool_prefix} treats the last query token as a prefix, so a
+   * partially typed name ranks in its own band above an incidental substring hit. It also covers
+   * queries shorter than {@code om_ngram}'s three-character minimum, which previously matched
+   * nothing at all.
+   */
+  private Query buildPrefixRankingStageQueryV2(String query, RankingStage stage) {
+    OpenSearchQueryBuilder.BoolQueryBuilder prefixQuery = OpenSearchQueryBuilder.boolQuery();
+    for (String field : stage.getFields()) {
+      prefixQuery.should(
+          OpenSearchQueryBuilder.matchBoolPrefixQuery(
+              field,
+              query,
+              SearchRankingHelper.minimumShouldMatch(stage),
+              rankingQueryName(stage, field)));
+    }
+    prefixQuery.minimumShouldMatch(1);
+    return OpenSearchQueryBuilder.constantScoreQuery(
+        prefixQuery.build(), SearchRankingHelper.stageWeight(stage));
+  }
+
   private Query buildPhraseRankingStageQueryV2(String query, RankingStage stage) {
     OpenSearchQueryBuilder.BoolQueryBuilder phraseQuery = OpenSearchQueryBuilder.boolQuery();
     float weight = SearchRankingHelper.stageWeight(stage);
@@ -1164,7 +1192,7 @@ public class OpenSearchSourceBuilderFactory
               fields,
               TextQueryType.BestFields,
               Operator.And,
-              String.valueOf(DEFAULT_TIE_BREAKER),
+              String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
               "0",
               null,
               null,
@@ -1179,17 +1207,22 @@ public class OpenSearchSourceBuilderFactory
   private Query buildTextRankingStageQueryV2(
       String query, RankingStage stage, AssetTypeConfiguration assetConfig, String fuzziness) {
     Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
-    return OpenSearchQueryBuilder.multiMatchQuery(
-        query,
-        fields,
-        TextQueryType.BestFields,
-        Operator.Or,
-        String.valueOf(DEFAULT_TIE_BREAKER),
-        fuzziness,
-        SearchRankingHelper.minimumShouldMatch(stage),
-        SearchRankingHelper.stageWeight(stage),
-        rankingQueryName(stage, "text"),
-        SearchRankingHelper.stageSearchAnalyzer(stage));
+    Query textQuery =
+        OpenSearchQueryBuilder.multiMatchQuery(
+            query,
+            fields,
+            TextQueryType.BestFields,
+            Operator.Or,
+            String.valueOf(SearchRankingHelper.stageTieBreaker(stage, DEFAULT_TIE_BREAKER)),
+            fuzziness,
+            SearchRankingHelper.minimumShouldMatch(stage),
+            null,
+            rankingQueryName(stage, "text"),
+            SearchRankingHelper.stageSearchAnalyzer(stage));
+    return OpenSearchQueryBuilder.scriptScoreQuery(
+        textQuery,
+        SearchRankingHelper.STAGE_SATURATION_SCRIPT,
+        SearchRankingHelper.stageSaturationParams(stage));
   }
 
   private String rankingQueryName(RankingStage stage, String field) {

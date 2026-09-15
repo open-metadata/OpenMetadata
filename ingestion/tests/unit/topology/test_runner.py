@@ -13,12 +13,11 @@
 Check that we are properly running nodes and stages
 """
 
-from typing import List, Optional  # noqa: UP035
+from typing import Annotated
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -32,20 +31,20 @@ from metadata.utils.source_hash import generate_source_hash
 
 
 class MockSchema(BaseModel):
-    sourceHash: Optional[str] = None  # noqa: N815, UP045
+    sourceHash: str | None = None  # noqa: N815
     name: str
     # Keeping it None to reuse the same class for Create and Entity
-    fullyQualifiedName: Optional[str] = None  # noqa: N815, UP045
-    deleted: Optional[bool] = None  # noqa: UP045
+    fullyQualifiedName: str | None = None  # noqa: N815
+    deleted: bool | None = None
 
 
 class MockTable(BaseModel):
-    sourceHash: Optional[str] = None  # noqa: N815, UP045
+    sourceHash: str | None = None  # noqa: N815
     name: str
     # Keeping it None to reuse the same class for Create and Entity
-    fullyQualifiedName: Optional[str] = None  # noqa: N815, UP045
-    columns: List[str]  # noqa: UP006
-    deleted: Optional[bool] = None  # noqa: UP045
+    fullyQualifiedName: str | None = None  # noqa: N815
+    columns: list[str]
+    deleted: bool | None = None
 
 
 class MockTopology(ServiceTopology):

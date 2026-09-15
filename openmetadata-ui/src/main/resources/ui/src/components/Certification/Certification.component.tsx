@@ -22,17 +22,19 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { isImageUrl, renderIcon } from '../../utils/IconUtils';
+import { isImageUrl } from '../../utils/IconUtils';
+import { handleKeyboardActivation } from '../../utils/KeyboardUtil';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
+import { Icon } from '../common/Icon/Icon';
 import Loader from '../common/Loader/Loader';
 import { CertificationProps } from './Certification.interface';
 import './certification.less';
@@ -157,18 +159,36 @@ const Certification = ({
             const title = getEntityName(certificate);
             const { id, fullyQualifiedName, description } = certificate;
 
-            const isIcon = iconURL && !isImageUrl(iconURL);
-            const renderedIcon = iconURL
-              ? renderIcon(iconURL, {
-                  size: 28,
-                  alt: title,
-                })
-              : null;
+            const isIcon = Boolean(iconURL) && !isImageUrl(iconURL as string);
+            const renderedIcon = iconURL ? (
+              <Icon
+                alt={title}
+                fallback={<CertificationIcon height={28} width={28} />}
+                iconValue={iconURL}
+                size={28}
+              />
+            ) : null;
+
+            let iconContent: ReactNode;
+            if (!renderedIcon) {
+              iconContent = (
+                <div className="certification-icon">
+                  <CertificationIcon height={28} width={28} />
+                </div>
+              );
+            } else if (isIcon) {
+              iconContent = (
+                <div className="certification-icon">{renderedIcon}</div>
+              );
+            } else {
+              iconContent = renderedIcon;
+            }
 
             return (
               <div
                 className="certification-card-item cursor-pointer"
                 key={id}
+                role="presentation"
                 style={{ cursor: 'pointer' }}
                 onClick={() => {
                   setSelectedCertification(fullyQualifiedName ?? '');
@@ -179,17 +199,7 @@ const Certification = ({
                   value={fullyQualifiedName}
                 />
                 <div className="certification-card-content">
-                  {renderedIcon ? (
-                    isIcon ? (
-                      <div className="certification-icon">{renderedIcon}</div>
-                    ) : (
-                      renderedIcon
-                    )
-                  ) : (
-                    <div className="certification-icon">
-                      <CertificationIcon height={28} width={28} />
-                    </div>
-                  )}
+                  {iconContent}
                   <div>
                     <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-body">
                       {title}
@@ -271,12 +281,7 @@ const Certification = ({
                   data-testid="clear-certification"
                   tabIndex={0}
                   onClick={() => updateCertificationData()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      updateCertificationData();
-                    }
-                  }}>
+                  onKeyDown={handleKeyboardActivation(updateCertificationData)}>
                   {t('label.clear')}
                 </Typography.Text>
               </Space>

@@ -31,6 +31,7 @@
         "Spline",
         "Spark",
         "OpenLineage",
+        "Prefect",
         "KafkaConnect",
         "DBTCloud",
         "Matillion",
@@ -41,6 +42,7 @@
         "Snowplow",
         "Mulesoft",
         "MicrosoftFabricPipeline",
+        "Data360Pipeline",
         "SapBw4HanaPipeline"
       ],
       "javaEnums": [
@@ -87,6 +89,9 @@
           "name": "OpenLineage"
         },
         {
+          "name": "Prefect"
+        },
+        {
           "name": "KafkaConnect"
         },
         {
@@ -115,6 +120,9 @@
         },
         {
           "name": "MicrosoftFabricPipeline"
+        },
+        {
+          "name": "Data360Pipeline"
         },
         {
           "name": "SapBw4HanaPipeline"
@@ -181,6 +189,9 @@
               "$ref": "./connections/pipeline/openLineageConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/prefectConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
             },
             {
@@ -203,6 +214,9 @@
             },
             {
               "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/data360PipelineConnection.json"
             },
             {
               "$ref": "./connections/pipeline/sapBw4HanaPipelineConnection.json"

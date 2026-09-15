@@ -15,7 +15,6 @@ SFTP connection and helpers
 import io
 import traceback
 from dataclasses import dataclass
-from typing import Optional
 
 import paramiko
 from paramiko import SFTPClient, Transport
@@ -63,17 +62,18 @@ class SftpClient:
             logger.warning(f"Error closing SFTP connection: {exc}")
 
 
-def _parse_private_key(private_key_str: str, passphrase: Optional[str] = None) -> Optional[paramiko.PKey]:  # noqa: UP045
+def _parse_private_key(private_key_str: str, passphrase: str | None = None) -> paramiko.PKey | None:
     """
     Parse a private key string in PEM format.
-    Tries RSA, Ed25519, ECDSA, and DSS key types.
+    Tries RSA, Ed25519 and ECDSA key types.
     """
     key_file = io.StringIO(private_key_str)
+    # DSA is absent: paramiko removed DSSKey in 4.0.0, and OpenSSH has rejected
+    # ssh-dss by default since 7.0.
     key_classes = [
         paramiko.RSAKey,
         paramiko.Ed25519Key,
         paramiko.ECDSAKey,
-        paramiko.DSSKey,
     ]
 
     for key_class in key_classes:
@@ -140,8 +140,8 @@ class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection to SFTP server

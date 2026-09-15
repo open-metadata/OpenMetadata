@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
+import { expect, test } from '../../support/fixtures/base';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  generateRandomUsername,
   getDefaultAdminAPIContext,
   redirectToHomePage,
   toastNotification,
@@ -34,6 +35,10 @@ const invalidPassword = 'testUsers@123';
 test.describe.configure({
   // 5 minutes max for refresh token tests
   timeout: 5 * 60 * 1000,
+});
+
+test.use({
+  trace: 'retain-on-failure',
 });
 
 test.describe(
@@ -118,7 +123,9 @@ test.describe(
       await page.locator('[data-testid="login"]').click();
       await loginResponse;
 
-      await expect(page).toHaveURL(`/my-data`);
+      await expect(page).toHaveURL(
+        (url) => url.pathname === '/' || url.pathname === '/my-data'
+      );
 
       // Verify user profile
       await page.locator('[data-testid="dropdown-profile"]').click();
@@ -126,6 +133,42 @@ test.describe(
       await expect(page.getByTestId('nav-user-name')).toContainText(
         `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
       );
+    });
+
+    // The UI base64-encodes the password before POSTing it to
+    // /api/v1/auth/login and the server decodes those bytes as UTF-8. `btoa`
+    // maps every character to a single Latin-1 byte, so a non-ASCII password
+    // was reconstructed as a different string and the login was rejected —
+    // issue #28694.
+    test('Signin with a password containing non-ASCII characters', async ({
+      page,
+      browser,
+    }) => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      const nonAsciiUser = new UserClass({
+        ...generateRandomUsername(),
+        password: 'T\u00ebst\u00a7123\u00a3aA!',
+      });
+
+      try {
+        await nonAsciiUser.create(apiContext);
+        await nonAsciiUser.login(page);
+
+        await expect(page).toHaveURL(
+          (url) => !url.pathname.includes('/signin')
+        );
+
+        await page.getByTestId('dropdown-profile').click();
+
+        await expect(page.getByTestId('nav-user-name')).toContainText(
+          `${nonAsciiUser.data.firstName}${nonAsciiUser.data.lastName}`
+        );
+      } finally {
+        await nonAsciiUser.delete(apiContext);
+        await afterAction();
+      }
     });
 
     test('Signin using invalid credentials', async ({ page }) => {
@@ -164,7 +207,9 @@ test.describe(
     });
 
     test.describe('Token renewal', () => {
-      test.describe.configure({ retries: 0 });
+      test.describe.configure({
+        retries: process.env.PLAYWRIGHT_IS_OSS ? 0 : 2,
+      });
 
       test('Refresh should work', async ({ page: page1, browser }) => {
         test.slow();
@@ -189,8 +234,8 @@ test.describe(
           await waitForAllLoadersToDisappear(page2);
           await page2.reload();
 
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token refresh timer to fire
-          await page1.waitForTimeout(3 * 60 * 1000);
+          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for token expiry timer (61s * 2 to ensure refresh API completes)
+          await page1.waitForTimeout(2 * 61 * 1000);
 
           await page1.bringToFront();
           await visitOwnProfilePage(page1);

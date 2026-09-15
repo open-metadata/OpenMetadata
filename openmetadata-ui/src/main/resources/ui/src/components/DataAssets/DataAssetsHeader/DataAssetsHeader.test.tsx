@@ -16,7 +16,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -144,11 +146,19 @@ jest.mock('../../common/CertificationTag/CertificationTag', () => {
 });
 
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="breadcrumb">HeaderBreadcrumb.component</div>
-    ))
+  jest.fn().mockImplementation(({ items }) => (
+    <div data-testid="breadcrumb">
+      {items.map((item: { href?: string; label: string }) =>
+        item.href ? (
+          <a href={item.href} key={item.label}>
+            {item.label}
+          </a>
+        ) : (
+          <span key={item.label}>{item.label}</span>
+        )
+      )}
+    </div>
+  ))
 );
 jest.mock(
   '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
@@ -158,10 +168,9 @@ jest.mock(
       .mockImplementation(() => <div>EntityHeaderTitle.component</div>);
   }
 );
-jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest
-    .fn()
-    .mockImplementation(() => <div>OwnerLabel.component</div>),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
   jest.fn().mockImplementation(({ children }) => (
@@ -171,28 +180,75 @@ jest.mock('../../../components/common/TierCard/TierCard', () =>
     </div>
   ))
 );
+// Captures the `editDisplayNamePermission` prop directly instead of rendering an opaque
+// div — needed to assert the rename affordance stays ungated on soft-deleted entities
+// (behavior parity with base commit 9cf866cd23: `permissions?.EditAll ||
+// permissions?.EditDisplayName`, unconditional, never gated by `deleted`).
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
-  () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
+  () =>
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          editDisplayNamePermission,
+        }: {
+          editDisplayNamePermission?: boolean;
+        }) => (
+          <div
+            data-edit-display-name-permission={String(
+              Boolean(editDisplayNamePermission)
+            )}
+            data-testid="manage-button">
+            ManageButton.component
+          </div>
+        )
+      )
 );
+// `onViewAll` exposed as a clickable trigger (not just an opaque div) so tests can drive the
+// drawer open through the *widget* path — the reachable path for a deleted entity, since
+// ManageButton's announcement menu item is independently gated on `!deleted` inside
+// ManageButton itself (ManageButton.tsx), regardless of the `onAnnouncementClick` value
+// DataAssetsHeader passes in.
 jest.mock(
   '../../../components/common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component',
   () =>
     jest
       .fn()
-      .mockImplementation(() => <div>AnnouncementsWidgetV3Body.component</div>)
+      .mockImplementation(({ onViewAll }: { onViewAll?: () => void }) => (
+        <button data-testid="announcements-widget-view-all" onClick={onViewAll}>
+          AnnouncementsWidgetV3Body.component
+        </button>
+      ))
 );
 jest.mock('../../../rest/announcementsAPI', () => ({
   getActiveAnnouncements: jest.fn().mockResolvedValue({ data: [] }),
 }));
+// Captures the `createPermission` prop directly instead of rendering an opaque div — needed
+// to assert `createPermission` stays ungated on soft-deleted entities (behavior parity with
+// base commit 9cf866cd23: `createPermission={permissions?.EditAll}`, unconditional, never
+// gated by `deleted`).
 jest.mock(
   '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
   () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
+    jest
+      .fn()
+      .mockImplementation(
+        ({ createPermission }: { createPermission?: boolean }) => (
+          <div
+            data-create-permission={String(Boolean(createPermission))}
+            data-testid="announcement-drawer"
+          />
+        )
+      )
 );
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
-  jest.fn().mockImplementation(() => <div>TagsV1.component</div>)
+jest.mock('../../common/atoms/Tag/ClassificationTag', () =>
+  jest
+    .fn()
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    ))
 );
 
 jest.mock('../../../rest/storageAPI', () => ({
@@ -253,6 +309,7 @@ jest.mock('../../Modals/IconColorModal', () =>
 );
 
 jest.mock('../../../utils/RouterUtils', () => ({
+  ...jest.requireActual('../../../utils/RouterUtils'),
   getEntityDetailsPath: jest.fn(),
 }));
 
@@ -315,6 +372,44 @@ describe('ExtraInfoLink component', () => {
 });
 
 describe('DataAssetsHeader component', () => {
+  it('should render an explicitly supplied breadcrumb trail', () => {
+    const tableHeaderProps = {
+      ...mockProps,
+      dataAsset: {
+        id: 'table-id',
+        name: 'orders',
+        fullyQualifiedName: 'service.database.schema.orders',
+        columns: [],
+      },
+      entityType: EntityType.TABLE,
+    } as DataAssetsHeaderProps;
+
+    render(
+      <DataAssetsHeader
+        {...tableHeaderProps}
+        breadcrumbData={[
+          {
+            name: 'Test Suites',
+            url: '/data-quality/test-suites/table-suites',
+          },
+          {
+            name: 'orders',
+            url: '/table/service.database.schema.orders/profiler/data-quality',
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'Test Suites' })).toHaveAttribute(
+      'href',
+      '/data-quality/test-suites/table-suites'
+    );
+    expect(
+      within(screen.getByTestId('breadcrumb')).getByText('orders')
+    ).not.toHaveAttribute('href');
+    expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
   it('should call getContainerAncestors API on Page load for container assets', () => {
     const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
     render(<DataAssetsHeader {...mockProps} />);
@@ -427,7 +522,7 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    expect(screen.getByText('TagsV1.component')).toBeInTheDocument();
+    expect(screen.getByTestId('Tier')).toBeInTheDocument();
   });
 
   it('should not render the Tier data if not  present', () => {
@@ -476,6 +571,46 @@ describe('DataAssetsHeader component', () => {
     mockIsAlertSupported = false;
   });
 
+  it('should navigate from the accessible DQ failure alert control', async () => {
+    mockIsAlertSupported = true;
+    jest.mocked(getEntityDetailsPath).mockReturnValueOnce('/lineage');
+    jest.mocked(getDataQualityLineage).mockResolvedValueOnce({
+      entity: {
+        id: 'current-entity',
+        type: EntityType.TABLE,
+        fullyQualifiedName: 'fullyQualifiedName',
+      },
+      nodes: [
+        {
+          id: 'upstream-entity',
+          type: EntityType.TABLE,
+          fullyQualifiedName: 'upstreamFullyQualifiedName',
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <DataAssetsHeader isDqAlertSupported {...mockProps} />
+      </MemoryRouter>
+    );
+
+    const alertButton = await screen.findByRole('button', {
+      name: 'label.check-upstream-failure',
+    });
+
+    expect(within(alertButton).queryByRole('link')).not.toBeInTheDocument();
+
+    fireEvent.click(alertButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      pathname: '/lineage',
+      search: 'layers%5B0%5D=DataObservability',
+    });
+
+    mockIsAlertSupported = false;
+  });
+
   it('should render source URL button when sourceUrl is present', () => {
     const mockSourceUrl = 'http://test-source.com';
 
@@ -497,6 +632,28 @@ describe('DataAssetsHeader component', () => {
     expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
     expect(sourceUrlLink).toHaveAttribute('target', '_blank');
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
+  });
+
+  it('should show the source URL tooltip when the link receives focus', async () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: 'http://test-source.com',
+        }}
+      />
+    );
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    act(() => {
+      fireEvent.keyDown(document, { key: 'Tab' });
+      sourceUrlButton.focus();
+    });
+
+    expect(sourceUrlButton).toHaveFocus();
+    expect(await screen.findByText('label.source-url')).toBeVisible();
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {
@@ -876,6 +1033,131 @@ describe('DataAssetsHeader component', () => {
     expect(
       screen.queryByTestId('request-data-access-button')
     ).not.toBeInTheDocument();
+  });
+
+  // Behavior parity with base commit 9cf866cd23: `createPermission={permissions?.EditAll}`
+  // is unconditional — never gated by `deleted`. Driven through the AnnouncementsWidgetV3Body
+  // "view all" click rather than ManageButton — that's the reachable path for a *deleted*
+  // entity, since ManageButton's own `onAnnouncementClick` menu item is independently gated
+  // on `!deleted` inside ManageButton itself and would never surface the drawer for a
+  // deleted entity in the first place.
+  describe('AnnouncementDrawer.createPermission wiring', () => {
+    it('grants createPermission for a soft-deleted entity reached via the AnnouncementsWidgetV3Body view-all click, when EditAll is granted', async () => {
+      (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'announcement-1' }],
+      });
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId('announcements-widget-view-all')
+      );
+
+      expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'true'
+      );
+    });
+
+    it('grants createPermission when EditAll is granted and the entity is not deleted', async () => {
+      (getActiveAnnouncements as jest.Mock).mockResolvedValueOnce({
+        data: [{ id: 'announcement-1' }],
+      });
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: false }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />
+      );
+
+      fireEvent.click(
+        await screen.findByTestId('announcements-widget-view-all')
+      );
+
+      expect(await screen.findByTestId('announcement-drawer')).toHaveAttribute(
+        'data-create-permission',
+        'true'
+      );
+    });
+  });
+
+  // Behavior parity with base commit 9cf866cd23: editDisplayNamePermission (ManageButton's
+  // rename affordance) was NOT deleted-gated in the pre-refactor code (`permissions?.EditAll
+  // || permissions?.EditDisplayName`, unconditional) — same as createPermission/
+  // onAnnouncementClick above, all three read raw `permissions?.EditAll` ungated in base. It
+  // must stay ungated: the only way back from soft-delete lives behind this same
+  // ManageButton, so gating its other affordances on `deleted` would strand the entity
+  // (TeamDetailsV1 `ungatedFlags` precedent).
+  describe('ManageButton.editDisplayNamePermission wiring', () => {
+    it('keeps the rename affordance enabled for a soft-deleted entity when EditAll is granted', () => {
+      // DEFAULT_ENTITY_PERMISSION sets EditDisplayName: false explicitly, and the
+      // field-priority derivation (kept per the ruling — deny-wins is convention) would let
+      // that explicit false win over EditAll. Omit the field key entirely so the
+      // prioritized lookup falls through to EditAll, isolating the assertion to the
+      // deleted-gating fix under test rather than field-vs-EditAll priority.
+      const { EditDisplayName: _omitted, ...permissionsWithoutFieldOverride } =
+        DEFAULT_ENTITY_PERMISSION;
+
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={
+            {
+              ...permissionsWithoutFieldOverride,
+              EditAll: true,
+            } as typeof DEFAULT_ENTITY_PERMISSION
+          }
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'true'
+      );
+    });
+
+    it('keeps the rename affordance enabled for a soft-deleted entity when EditDisplayName is explicitly granted', () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: true }}
+          permissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: false,
+            EditDisplayName: true,
+          }}
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'true'
+      );
+    });
+
+    it('denies the rename affordance when EditAll and EditDisplayName are both denied, deleted or not', () => {
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{ ...mockProps.dataAsset, deleted: false }}
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: false }}
+        />
+      );
+
+      expect(screen.getByTestId('manage-button')).toHaveAttribute(
+        'data-edit-display-name-permission',
+        'false'
+      );
+    });
   });
 
   describe('dataContractLatestResultButton', () => {

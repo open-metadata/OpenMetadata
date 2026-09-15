@@ -174,6 +174,8 @@ const DataModelDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -181,6 +183,8 @@ const DataModelDetails = ({
           entity: t('label.data-model'),
         })
       );
+
+      return false;
     }
   };
 

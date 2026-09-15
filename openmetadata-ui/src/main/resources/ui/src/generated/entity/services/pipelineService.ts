@@ -185,7 +185,7 @@ export interface FieldChange {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -238,9 +238,11 @@ export interface PipelineConnection {
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
  *
+ * Salesforce Data 360 Pipeline Connection Config
+ *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Choose between database connection or REST API connection to fetch metadata from
      * Airflow.
@@ -257,6 +259,9 @@ export interface ConfigObject {
      *
      * Spline REST Server Host & Port.
      *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
+     *
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
@@ -269,6 +274,8 @@ export interface ConfigObject {
     hostPort?: string;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -280,7 +287,11 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude Process Chains that match the pattern.
      */
-    pipelineFilterPattern?:      FilterPattern;
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Spark metadata is pushed by the Spark Agent; pull-based metadata extraction is not
+     * supported.
+     */
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -330,9 +341,14 @@ export interface ConfigObject {
     /**
      * Fivetran API Limit For Pagination.
      */
-    limit?:     number;
+    limit?: number;
+    /**
+     * SSL Configuration for Prefect API connection.
+     */
     sslConfig?: Config;
     /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      */
@@ -394,8 +410,10 @@ export interface ConfigObject {
     sourcePythonClass?: string;
     /**
      * Choose between different authentication types for Databricks.
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
      */
-    authType?:            AuthenticationType;
+    authType?:            Authentication;
     connectionArguments?: { [key: string]: any };
     /**
      * Connection timeout in seconds.
@@ -526,6 +544,45 @@ export interface ConfigObject {
      */
     workspaceId?: string;
     /**
+     * Consumer key provided when you setup your Salesforce connected app
+     */
+    consumerKey?: string;
+    /**
+     * Consumer secret provided when you setup your Salesforce connected app
+     */
+    consumerSecret?: string;
+    /**
+     * Name of the Data 360 database service to use for lineage resolution
+     */
+    data360DbServiceName?: string;
+    /**
+     * Optional configuration to toggle the ingestion of Data Lake Object to Data Model Object
+     * lineage for every dataspace. This walks all Data Model Objects in the configured Data 360
+     * database service, so it is off by default.
+     */
+    includeBulkLineage?: boolean;
+    /**
+     * Pagination limit used when fetching Data 360 objects. The default value is 10, and the
+     * valid range is 1-200
+     */
+    paginationLimit?: number;
+    /**
+     * API version of the Salesforce instance
+     */
+    salesforceApiVersion?: string;
+    /**
+     * Domain of Salesforce instance
+     */
+    salesforceDomain?: string;
+    /**
+     * JSON object mapping a Data 360 connector or data source name to the OpenMetadata service
+     * that holds it, used to resolve the upstream entity of a Data Stream. Example:
+     * {"S3_Connector": "my-s3-service"}
+     */
+    serviceMapping?:            string;
+    supportsLineageExtraction?: boolean;
+    supportsUsageExtraction?:   boolean;
+    /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
      */
@@ -594,8 +651,15 @@ export interface PurpleAuthentication {
  *
  * Azure Active Directory authentication for Azure Databricks workspaces using Service
  * Principal.
+ *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
  */
-export interface AuthenticationType {
+export interface Authentication {
     /**
      * Generated Personal Access Token for Databricks workspace authentication. This token is
      * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
@@ -623,6 +687,23 @@ export interface AuthenticationType {
      * Azure Active Directory Tenant ID where your Service Principal is registered.
      */
     azureTenantId?: string;
+    /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     */
+    apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
 }
 
 /**
@@ -829,6 +910,8 @@ export enum KafkaSecurityProtocol {
  *
  * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
  * client certificate, and private key for mutual TLS authentication.
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -1484,6 +1567,11 @@ export interface DatabaseConnectionClass {
      */
     hostPort?: string;
     /**
+     * Discover SQL Server synonyms and record them as alternate names (aliases) on the table
+     * they resolve to. Also enables alias resolution when building lineage.
+     */
+    includeSynonyms?: boolean;
+    /**
      * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
@@ -1654,6 +1742,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",
@@ -1667,6 +1756,7 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Prefect = "Prefect",
     SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",

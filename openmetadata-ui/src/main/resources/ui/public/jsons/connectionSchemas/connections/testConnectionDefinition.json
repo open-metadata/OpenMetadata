@@ -1,0 +1,608 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestConnectionDefinition",
+  "description": "TestConnection is the definition that will encapsulate the steps required to test a connection to a specific service.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionDefinition",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {
+    "testConnectionStep": {
+      "description": "Function that tests one specific element of the service. E.g., listing schemas, lineage, or tags.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStep",
+      "properties": {
+        "name": {
+          "description": "Name of the step being tested",
+          "type": "string"
+        },
+        "description": {
+          "description": "What is the goal of the step",
+          "type": "string"
+        },
+        "errorMessage": {
+          "description": "In case of error this message should be displayed on UI, We define this message manually on test connection definition",
+          "type": "string"
+        },
+        "mandatory": {
+          "description": "Is this step mandatory to be passed?",
+          "type": "boolean",
+          "default": true
+        },
+        "shortCircuit": {
+          "description": "This field if set to true, indicates that the step is important enough to break the process in case of failure.",
+          "type": "boolean",
+          "default": false
+        },
+        "category": {
+          "description": "Whether the step gates connectivity (ConnectionGate) or verifies an optional capability (Capability). When a gate fails, later steps are skipped as ConnectionNotEstablished.",
+          "type": "string",
+          "enum": [
+            "ConnectionGate",
+            "Capability"
+          ],
+          "default": "Capability"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "mandatory",
+        "description"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this test case definition instance.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "description": "Name of the Test Connection Definition. It should be the `type` of the service being tested, e.g., Mysql, or Snowflake.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^((?!::)[^>\"\\x00-\\x1f])*$"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test definition.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the test connection def.",
+      "$comment": "@om-field-type",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3072
+    },
+    "steps": {
+      "description": "Steps to test the connection. Order matters.",
+      "type": "array",
+      "items": {
+        "description": "Function that tests one specific element of the service. E.g., listing schemas, lineage, or tags.",
+        "type": "object",
+        "javaType": "org.openmetadata.schema.entity.services.connections.TestConnectionStep",
+        "properties": {
+          "name": {
+            "description": "Name of the step being tested",
+            "type": "string"
+          },
+          "description": {
+            "description": "What is the goal of the step",
+            "type": "string"
+          },
+          "errorMessage": {
+            "description": "In case of error this message should be displayed on UI, We define this message manually on test connection definition",
+            "type": "string"
+          },
+          "mandatory": {
+            "description": "Is this step mandatory to be passed?",
+            "type": "boolean",
+            "default": true
+          },
+          "shortCircuit": {
+            "description": "This field if set to true, indicates that the step is important enough to break the process in case of failure.",
+            "type": "boolean",
+            "default": false
+          },
+          "category": {
+            "description": "Whether the step gates connectivity (ConnectionGate) or verifies an optional capability (Capability). When a gate fails, later steps are skipped as ConnectionNotEstablished.",
+            "type": "string",
+            "enum": [
+              "ConnectionGate",
+              "Capability"
+            ],
+            "default": "Capability"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "mandatory",
+          "description"
+        ]
+      }
+    },
+    "owners": {
+      "description": "Owner of this TestConnection definition.",
+      "default": null,
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Entity Reference List",
+      "type": "array",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Entity Reference",
+        "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
+        "type": "object",
+        "javaType": "org.openmetadata.schema.type.EntityReference",
+        "properties": {
+          "id": {
+            "description": "Unique identifier that identifies an entity instance.",
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the entity instance.",
+            "type": "string"
+          },
+          "fullyQualifiedName": {
+            "description": "Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Optional description of entity.",
+            "$comment": "@om-field-type",
+            "type": "string"
+          },
+          "displayName": {
+            "description": "Display Name that identifies this entity.",
+            "type": "string"
+          },
+          "deleted": {
+            "description": "If true the entity referred to has been soft-deleted.",
+            "type": "boolean"
+          },
+          "inherited": {
+            "description": "If true the relationship indicated by this entity reference is inherited from the parent entity.",
+            "type": "boolean"
+          },
+          "href": {
+            "description": "Link to the entity resource.",
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "type": "number",
+      "multipleOf": 0.1,
+      "default": 0.1,
+      "minimum": 0.1
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$comment": "@om-field-type",
+      "@comment": "Note that during code generation this is converted into long",
+      "type": "integer",
+      "format": "utc-millisec"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "type": "string",
+      "format": "uri"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ChangeDescription",
+      "properties": {
+        "fieldsAdded": {
+          "description": "Names of fields added during the version changes.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the entity field that changed.",
+                "type": "string"
+              },
+              "oldValue": {
+                "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              },
+              "newValue": {
+                "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fieldsUpdated": {
+          "description": "Fields modified during the version changes with old and new values.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the entity field that changed.",
+                "type": "string"
+              },
+              "oldValue": {
+                "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              },
+              "newValue": {
+                "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fieldsDeleted": {
+          "description": "Fields deleted during the version changes with old value before deleted.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the entity field that changed.",
+                "type": "string"
+              },
+              "oldValue": {
+                "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              },
+              "newValue": {
+                "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "previousVersion": {
+          "description": "When a change did not result in change, this could be same as the current version.",
+          "type": "number",
+          "multipleOf": 0.1,
+          "default": 0.1,
+          "minimum": 0.1
+        },
+        "changeSummary": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Change Summary",
+          "description": "This schema defines structure for change summaries.",
+          "definitions": {
+            "changeSource": {
+              "javaType": "org.openmetadata.schema.type.change.ChangeSource",
+              "description": "The source of the change. This will change based on the context of the change (example: manual vs programmatic)",
+              "type": "string",
+              "enum": [
+                "Manual",
+                "Propagated",
+                "Automated",
+                "Derived",
+                "Ingested",
+                "Suggested"
+              ],
+              "default": "Manual"
+            },
+            "changeSummary": {
+              "type": "object",
+              "javaType": "org.openmetadata.schema.type.change.ChangeSummary",
+              "properties": {
+                "changeSource": {
+                  "javaType": "org.openmetadata.schema.type.change.ChangeSource",
+                  "description": "The source of the change. This will change based on the context of the change (example: manual vs programmatic)",
+                  "type": "string",
+                  "enum": [
+                    "Manual",
+                    "Propagated",
+                    "Automated",
+                    "Derived",
+                    "Ingested",
+                    "Suggested"
+                  ],
+                  "default": "Manual"
+                },
+                "changedBy": {
+                  "description": "Name of the user or bot who made this change",
+                  "type": "string"
+                },
+                "changedAt": {
+                  "$comment": "@om-field-type",
+                  "description": "Timestamp in Unix epoch time milliseconds.",
+                  "@comment": "Note that during code generation this is converted into long",
+                  "type": "integer",
+                  "format": "utc-millisec"
+                }
+              }
+            }
+          },
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.change.ChangeSummary",
+            "properties": {
+              "changeSource": {
+                "javaType": "org.openmetadata.schema.type.change.ChangeSource",
+                "description": "The source of the change. This will change based on the context of the change (example: manual vs programmatic)",
+                "type": "string",
+                "enum": [
+                  "Manual",
+                  "Propagated",
+                  "Automated",
+                  "Derived",
+                  "Ingested",
+                  "Suggested"
+                ],
+                "default": "Manual"
+              },
+              "changedBy": {
+                "description": "Name of the user or bot who made this change",
+                "type": "string"
+              },
+              "changedAt": {
+                "$comment": "@om-field-type",
+                "description": "Timestamp in Unix epoch time milliseconds.",
+                "@comment": "Note that during code generation this is converted into long",
+                "type": "integer",
+                "format": "utc-millisec"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ChangeDescription",
+      "properties": {
+        "fieldsAdded": {
+          "description": "Names of fields added during the version changes.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the entity field that changed.",
+                "type": "string"
+              },
+              "oldValue": {
+                "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              },
+              "newValue": {
+                "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fieldsUpdated": {
+          "description": "Fields modified during the version changes with old and new values.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the entity field that changed.",
+                "type": "string"
+              },
+              "oldValue": {
+                "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              },
+              "newValue": {
+                "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fieldsDeleted": {
+          "description": "Fields deleted during the version changes with old value before deleted.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the entity field that changed.",
+                "type": "string"
+              },
+              "oldValue": {
+                "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              },
+              "newValue": {
+                "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "previousVersion": {
+          "description": "When a change did not result in change, this could be same as the current version.",
+          "type": "number",
+          "multipleOf": 0.1,
+          "default": 0.1,
+          "minimum": 0.1
+        },
+        "changeSummary": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "Change Summary",
+          "description": "This schema defines structure for change summaries.",
+          "definitions": {
+            "changeSource": {
+              "javaType": "org.openmetadata.schema.type.change.ChangeSource",
+              "description": "The source of the change. This will change based on the context of the change (example: manual vs programmatic)",
+              "type": "string",
+              "enum": [
+                "Manual",
+                "Propagated",
+                "Automated",
+                "Derived",
+                "Ingested",
+                "Suggested"
+              ],
+              "default": "Manual"
+            },
+            "changeSummary": {
+              "type": "object",
+              "javaType": "org.openmetadata.schema.type.change.ChangeSummary",
+              "properties": {
+                "changeSource": {
+                  "javaType": "org.openmetadata.schema.type.change.ChangeSource",
+                  "description": "The source of the change. This will change based on the context of the change (example: manual vs programmatic)",
+                  "type": "string",
+                  "enum": [
+                    "Manual",
+                    "Propagated",
+                    "Automated",
+                    "Derived",
+                    "Ingested",
+                    "Suggested"
+                  ],
+                  "default": "Manual"
+                },
+                "changedBy": {
+                  "description": "Name of the user or bot who made this change",
+                  "type": "string"
+                },
+                "changedAt": {
+                  "$comment": "@om-field-type",
+                  "description": "Timestamp in Unix epoch time milliseconds.",
+                  "@comment": "Note that during code generation this is converted into long",
+                  "type": "integer",
+                  "format": "utc-millisec"
+                }
+              }
+            }
+          },
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.change.ChangeSummary",
+            "properties": {
+              "changeSource": {
+                "javaType": "org.openmetadata.schema.type.change.ChangeSource",
+                "description": "The source of the change. This will change based on the context of the change (example: manual vs programmatic)",
+                "type": "string",
+                "enum": [
+                  "Manual",
+                  "Propagated",
+                  "Automated",
+                  "Derived",
+                  "Ingested",
+                  "Suggested"
+                ],
+                "default": "Manual"
+              },
+              "changedBy": {
+                "description": "Name of the user or bot who made this change",
+                "type": "string"
+              },
+              "changedAt": {
+                "$comment": "@om-field-type",
+                "description": "Timestamp in Unix epoch time milliseconds.",
+                "@comment": "Note that during code generation this is converted into long",
+                "type": "integer",
+                "format": "utc-millisec"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "domains": {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Entity Reference List",
+      "type": "array",
+      "items": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Entity Reference",
+        "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
+        "type": "object",
+        "javaType": "org.openmetadata.schema.type.EntityReference",
+        "properties": {
+          "id": {
+            "description": "Unique identifier that identifies an entity instance.",
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the entity instance.",
+            "type": "string"
+          },
+          "fullyQualifiedName": {
+            "description": "Fully qualified name of the entity instance. For entities such as tables, databases fullyQualifiedName is returned in this field. For entities that don't have name hierarchy such as `user` and `team` this will be same as the `name` field.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Optional description of entity.",
+            "$comment": "@om-field-type",
+            "type": "string"
+          },
+          "displayName": {
+            "description": "Display Name that identifies this entity.",
+            "type": "string"
+          },
+          "deleted": {
+            "description": "If true the entity referred to has been soft-deleted.",
+            "type": "boolean"
+          },
+          "inherited": {
+            "description": "If true the relationship indicated by this entity reference is inherited from the parent entity.",
+            "type": "boolean"
+          },
+          "href": {
+            "description": "Link to the entity resource.",
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "default": null
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "steps"
+  ]
+}

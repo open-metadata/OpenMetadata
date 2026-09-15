@@ -37,6 +37,7 @@ public interface SearchClient
   String GLOBAL_SEARCH_ALIAS = "all";
   String DATA_ASSET_SEARCH_ALIAS = "dataAsset";
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
+  String RELATIONSHIP_TYPE_SEARCH_INDEX = "relationship_type_search_index";
   String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
   String DEFAULT_UPDATE_SCRIPT =
@@ -52,7 +53,8 @@ public interface SearchClient
         }
       }
       """;
-  String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
+  String REMOVE_DOMAINS_CHILDREN_SCRIPT =
+      "ctx._source.domains.removeIf(domain -> domain.id == params.id)";
 
   // Updates field if null or if inherited is true and the parent is the same (matched by previous
   // ID), setting inherited=true on the new object.
@@ -694,6 +696,12 @@ public interface SearchClient
           }
           """;
 
+  String RECONCILE_COLUMN_LINEAGE_SCRIPT =
+      UPDATE_COLUMN_LINEAGE_SCRIPT
+          + "if (!params.deletedFQNs.isEmpty()) {\n"
+          + DELETE_COLUMN_LINEAGE_SCRIPT
+          + "}\n";
+
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   String ENTITY_RELATIONSHIP_DIRECTION_ENTITY = "entityRelationship.entity.fqnHash.keyword";
@@ -797,7 +805,8 @@ public interface SearchClient
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
   @SuppressWarnings("unused")
-  default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
+  default ResultList listPageHierarchy(
+      String parent, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
@@ -807,7 +816,7 @@ public interface SearchClient
   */
   @SuppressWarnings("unused")
   default ResultList listPageHierarchyForActivePage(
-      String activeFqn, String pageType, int offset, int limit) {
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

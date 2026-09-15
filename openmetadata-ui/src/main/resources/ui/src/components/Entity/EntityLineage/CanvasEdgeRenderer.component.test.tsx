@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { Edge } from 'reactflow';
+import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { CanvasEdgeRenderer } from './CanvasEdgeRenderer.component';
 
 const mockRedraw = jest.fn();
@@ -72,6 +73,8 @@ jest.mock('../../../hooks/useLineageEdgeColors', () => ({
     primary: '#1890ff',
     columnHighlight: '#3F51B5',
     dqHighlight: '#F44336',
+    labelBackground: '#FFFFFF',
+    labelText: '#475467',
   }),
 }));
 
@@ -130,7 +133,7 @@ describe('CanvasEdgeRenderer', () => {
     reactFlowContainer.appendChild(wrapper);
     document.body.appendChild(reactFlowContainer);
 
-    return render(ui, { container: wrapper });
+    return render(ui, { container: wrapper, wrapper: ThemeProvider });
   };
 
   it('renders canvas element', () => {
@@ -171,7 +174,9 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} onEdgeClick={onEdgeClick} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
 
     await waitFor(() => {
       expect(currentPane).toBeInTheDocument();
@@ -200,7 +205,7 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    fireEvent(currentPane!, clickEvent);
+    fireEvent(currentPane, clickEvent);
 
     await waitFor(() => {
       expect(mockGetEdgeAtPoint).toHaveBeenCalled();
@@ -243,7 +248,9 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+    (document.querySelector('.react-flow__pane') as HTMLElement).dispatchEvent(
+      clickEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeClick).toHaveBeenCalledWith(
@@ -284,7 +291,10 @@ describe('CanvasEdgeRenderer', () => {
       clientY: 100,
     });
 
-    fireEvent(document.querySelector('.react-flow__pane')!, moveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      moveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalled();
@@ -300,7 +310,10 @@ describe('CanvasEdgeRenderer', () => {
 
     const leaveEvent = new MouseEvent('mouseleave', { bubbles: true });
 
-    fireEvent(document.querySelector('.react-flow__pane')!, leaveEvent);
+    fireEvent(
+      document.querySelector('.react-flow__pane') as HTMLElement,
+      leaveEvent
+    );
 
     await waitFor(() => {
       expect(onEdgeHover).toHaveBeenCalledWith(null);
@@ -322,7 +335,9 @@ describe('CanvasEdgeRenderer', () => {
     });
 
     await waitFor(() => {
-      document.querySelector('.react-flow__pane')!.dispatchEvent(clickEvent);
+      (
+        document.querySelector('.react-flow__pane') as HTMLElement
+      ).dispatchEvent(clickEvent);
     });
 
     expect(onEdgeClick).not.toHaveBeenCalled();
@@ -385,9 +400,11 @@ describe('CanvasEdgeRenderer', () => {
       <CanvasEdgeRenderer {...defaultProps} />
     );
 
-    const currentPane = document.querySelector('.react-flow__pane');
+    const currentPane = document.querySelector(
+      '.react-flow__pane'
+    ) as HTMLElement;
     const removeEventListenerSpy = jest.spyOn(
-      currentPane!,
+      currentPane,
       'removeEventListener'
     );
 
@@ -445,7 +462,7 @@ describe('CanvasEdgeRenderer', () => {
         },
       ] as unknown as ResizeObserverEntry[];
 
-      resizeCallback(mockEntries, {} as ResizeObserver);
+      act(() => resizeCallback?.(mockEntries, {} as ResizeObserver));
     }
 
     await waitFor(() => {

@@ -18,6 +18,7 @@ import {
   downloadBlob,
   downloadFile,
   exportPNGImageFromElement,
+  shouldIncludeInExport,
 } from './ExportUtils';
 
 jest.mock('html-to-image', () => ({
@@ -366,6 +367,15 @@ describe('ExportUtils', () => {
       );
     });
 
+    it('passes a filter callback to toCanvas', async () => {
+      await exportPNGImageFromElement(mockExportData);
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({ filter: expect.any(Function) })
+      );
+    });
+
     it('applies viewport transformation when provided', async () => {
       const exportDataWithViewport = {
         ...mockExportData,
@@ -512,5 +522,90 @@ describe('ExportUtils', () => {
         );
       });
     });
+  });
+});
+
+// Kept out of the `ExportUtils` describe because that block mocks
+// `document.createElement` — which the html() helper here calls, and mocking
+// it would recurse. These tests use the real DOM.
+describe('shouldIncludeInExport (DOM filter)', () => {
+  const html = (markup: string): HTMLElement => {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = markup;
+
+    return wrapper.firstElementChild as HTMLElement;
+  };
+
+  it('keeps normal DOM elements', () => {
+    expect(shouldIncludeInExport(html('<div class="node">card</div>'))).toBe(
+      true
+    );
+    expect(shouldIncludeInExport(html('<span>text</span>'))).toBe(true);
+    expect(shouldIncludeInExport(html('<button>click</button>'))).toBe(true);
+  });
+
+  it('keeps React Flow handles — OM lineage handles paint a visible box', () => {
+    // React Flow's `<Handle>` always adds the base `react-flow__handle`
+    // class. OM's CustomNodeV1 wraps it as
+    // `<Handle className="lineage-node-handle" .../>`, so real DOM is
+    // `react-flow__handle react-flow__handle-right lineage-node-handle`,
+    // which `custom-node.less` styles as a visible 20x20 white box with an
+    // SVG icon. Filtering by the base class alone would silently drop those
+    // visible handles from the exported PNG — regression covered here.
+    expect(
+      shouldIncludeInExport(
+        html(
+          '<div class="react-flow__handle react-flow__handle-right lineage-node-handle"></div>'
+        )
+      )
+    ).toBe(true);
+    // Even a bare react-flow__handle (no wrapper) must be kept — we cannot
+    // tell from the class alone whether it paints.
+    expect(
+      shouldIncludeInExport(html('<div class="react-flow__handle"></div>'))
+    ).toBe(true);
+  });
+
+  it('skips handles explicitly opted out via data-export-hide="true"', () => {
+    // For handles that truly do not paint (edge-attachment pips on
+    // non-lineage react-flow surfaces, for example), the component author
+    // must opt in individually — the safe path.
+    expect(
+      shouldIncludeInExport(
+        html('<div class="react-flow__handle" data-export-hide="true"></div>')
+      )
+    ).toBe(false);
+  });
+
+  it('honors data-export-hide="true" as an opt-out', () => {
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="true">hidden</div>'))
+    ).toBe(false);
+    // Only literal "true" — anything else stays included so a partial
+    // `data-export-hide` attribute doesn't silently drop content.
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="false">v</div>'))
+    ).toBe(true);
+    expect(
+      shouldIncludeInExport(html('<div data-export-hide="">v</div>'))
+    ).toBe(true);
+  });
+
+  it('skips screen-reader-only content (.sr-only, .visually-hidden)', () => {
+    expect(
+      shouldIncludeInExport(html('<span class="sr-only">for AT</span>'))
+    ).toBe(false);
+    expect(
+      shouldIncludeInExport(html('<span class="visually-hidden">for AT</span>'))
+    ).toBe(false);
+  });
+
+  it('passes through non-HTMLElement nodes without inspecting them', () => {
+    // SVGElements are Elements but not HTMLElements — filter must return true
+    // so SVG lineage icons keep rendering. Guards against a `.classList` /
+    // `.dataset` access path that only works on HTMLElement.
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+    expect(shouldIncludeInExport(svg as unknown as Element)).toBe(true);
   });
 });

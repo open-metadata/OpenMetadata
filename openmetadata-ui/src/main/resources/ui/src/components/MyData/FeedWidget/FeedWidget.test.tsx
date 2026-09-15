@@ -69,6 +69,7 @@ jest.mock(
             onChange={(e) => onSortChange(e.target.value)}>
             <option value={FeedFilter.ALL}>All</option>
             <option value={FeedFilter.OWNER}>Owner</option>
+            <option value={FeedFilter.FOLLOWS}>Following</option>
           </select>
           <button
             data-testid="remove-widget-button"
@@ -85,19 +86,31 @@ jest.mock(
     __esModule: true,
     default: ({
       activityList,
+      onActivityClick,
       onAfterClose,
+      onUpdateEntityDetails,
     }: {
       activityList: ActivityEvent[];
+      onActivityClick?: (activity: ActivityEvent) => void;
       onAfterClose: () => void;
+      onUpdateEntityDetails: () => void;
     }) => (
       <div data-testid="activity-feed-list">
         <button data-testid="close-button" onClick={onAfterClose}>
           Close
         </button>
+        <button
+          data-testid="update-entity-details-button"
+          onClick={onUpdateEntityDetails}>
+          Update
+        </button>
         {activityList.map((item: ActivityEvent, index: number) => (
-          <div data-testid={`activity-item-${index}`} key={index}>
+          <button
+            data-testid={`activity-item-${index}`}
+            key={item.id}
+            onClick={() => onActivityClick?.(item)}>
             {item.summary}
-          </div>
+          </button>
         ))}
       </div>
     ),
@@ -137,18 +150,27 @@ const mockActivityEvents: ActivityEvent[] = [
   },
 ];
 
+const mockFetchActivityEvents = jest.fn();
 const mockFetchMyActivityFeed = jest.fn();
+const mockFetchFollowingActivity = jest.fn();
 const mockShowActivityDrawer = jest.fn();
+
+const mockProviderValue = (overrides = {}) => ({
+  isActivityLoading: false,
+  activityEvents: mockActivityEvents,
+  fetchActivityEvents: mockFetchActivityEvents,
+  fetchMyActivityFeed: mockFetchMyActivityFeed,
+  fetchFollowingActivity: mockFetchFollowingActivity,
+  showActivityDrawer: mockShowActivityDrawer,
+  ...overrides,
+});
 
 jest.mock(
   '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
-    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
-      isActivityLoading: false,
-      activityEvents: mockActivityEvents,
-      fetchMyActivityFeed: mockFetchMyActivityFeed,
-      showActivityDrawer: mockShowActivityDrawer,
-    })),
+    useActivityFeedProvider: jest
+      .fn()
+      .mockImplementation(() => mockProviderValue()),
   })
 );
 
@@ -191,12 +213,7 @@ describe('MyFeedWidget', () => {
     it('should render empty state when no activity events', async () => {
       (
         ActivityFeedProvider.useActivityFeedProvider as jest.Mock
-      ).mockReturnValueOnce({
-        isActivityLoading: false,
-        activityEvents: [],
-        fetchMyActivityFeed: mockFetchMyActivityFeed,
-        showActivityDrawer: mockShowActivityDrawer,
-      });
+      ).mockReturnValueOnce(mockProviderValue({ activityEvents: [] }));
 
       renderComponent();
 
@@ -221,25 +238,87 @@ describe('MyFeedWidget', () => {
   });
 
   describe('Activity Feed Fetching', () => {
-    it('should call fetchMyActivityFeed on mount', async () => {
+    it('should call fetchActivityEvents on mount for the default All filter', async () => {
       renderComponent();
+
+      await waitFor(() => {
+        expect(mockFetchActivityEvents).toHaveBeenCalledWith({
+          limit: PAGE_SIZE_MEDIUM,
+        });
+      });
+
+      expect(mockFetchMyActivityFeed).not.toHaveBeenCalled();
+      expect(mockFetchFollowingActivity).not.toHaveBeenCalled();
+    });
+
+    it('should call fetchMyActivityFeed when the Owner filter is selected', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(mockFetchActivityEvents).toHaveBeenCalled();
+      });
+
+      fireEvent.change(screen.getByTestId('filter-select'), {
+        target: { value: FeedFilter.OWNER },
+      });
 
       await waitFor(() => {
         expect(mockFetchMyActivityFeed).toHaveBeenCalledWith({
           limit: PAGE_SIZE_MEDIUM,
         });
       });
+
+      expect(mockFetchFollowingActivity).not.toHaveBeenCalled();
+      expect(mockFetchActivityEvents).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call fetchFollowingActivity when the Follows filter is selected', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(mockFetchActivityEvents).toHaveBeenCalled();
+      });
+
+      fireEvent.change(screen.getByTestId('filter-select'), {
+        target: { value: FeedFilter.FOLLOWS },
+      });
+
+      await waitFor(() => {
+        expect(mockFetchFollowingActivity).toHaveBeenCalledWith({
+          limit: PAGE_SIZE_MEDIUM,
+        });
+      });
+
+      expect(mockFetchMyActivityFeed).not.toHaveBeenCalled();
+      expect(mockFetchActivityEvents).toHaveBeenCalledTimes(1);
+    });
+
+    it('should refetch the selected filter when entity details are updated', async () => {
+      renderComponent();
+
+      fireEvent.change(screen.getByTestId('filter-select'), {
+        target: { value: FeedFilter.FOLLOWS },
+      });
+
+      await waitFor(() => {
+        expect(mockFetchFollowingActivity).toHaveBeenCalledTimes(1);
+      });
+
+      fireEvent.click(screen.getByTestId('update-entity-details-button'));
+
+      await waitFor(() => {
+        expect(mockFetchFollowingActivity).toHaveBeenCalledTimes(2);
+      });
+
+      expect(mockFetchMyActivityFeed).not.toHaveBeenCalled();
     });
 
     it('should show loading state when fetching', async () => {
       (
         ActivityFeedProvider.useActivityFeedProvider as jest.Mock
-      ).mockReturnValueOnce({
-        isActivityLoading: true,
-        activityEvents: [],
-        fetchMyActivityFeed: mockFetchMyActivityFeed,
-        showActivityDrawer: mockShowActivityDrawer,
-      });
+      ).mockReturnValueOnce(
+        mockProviderValue({ isActivityLoading: true, activityEvents: [] })
+      );
 
       renderComponent();
 
@@ -299,15 +378,18 @@ describe('MyFeedWidget', () => {
   });
 
   describe('Activity Click Handler', () => {
-    it('should pass showActivityDrawer to ActivityFeedListV1New', async () => {
+    it('should open the activity drawer when an activity is clicked', async () => {
       renderComponent();
 
       await waitFor(() => {
         expect(screen.getByTestId('activity-feed-list')).toBeInTheDocument();
       });
 
-      // The showActivityDrawer is passed as onActivityClick prop
-      // This is tested by verifying the component renders with the prop
+      fireEvent.click(screen.getByTestId('activity-item-0'));
+
+      expect(mockShowActivityDrawer).toHaveBeenCalledWith(
+        mockActivityEvents[0]
+      );
     });
   });
 });

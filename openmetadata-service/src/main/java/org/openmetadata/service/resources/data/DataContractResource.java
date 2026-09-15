@@ -58,6 +58,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -1610,48 +1611,28 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   }
 
   private DataContract applySmartMerge(EntityReference entityRef, DataContract imported) {
-    DataContract existing = null;
-
-    // Try to find existing contract by entity reference
-    try {
-      existing = repository.loadEntityDataContract(entityRef);
-    } catch (Exception e) {
-      LOG.debug(
-          "Could not load contract by entity ref for {}: {}", entityRef.getId(), e.getMessage());
-    }
-
-    if (existing != null) {
-      LOG.debug("Found existing contract {} for entity {}", existing.getId(), entityRef.getId());
-      return ODCSConverter.smartMerge(existing, imported);
-    }
-
-    // No existing contract found - return imported for new creation
-    LOG.debug("No existing contract found for entity {}, will create new", entityRef.getId());
-    return imported;
+    DataContract existing = loadExistingContract(entityRef);
+    return existing == null ? imported : ODCSConverter.smartMerge(existing, imported);
   }
 
   private DataContract applyFullReplace(EntityReference entityRef, DataContract imported) {
+    DataContract existing = loadExistingContract(entityRef);
+    return existing == null ? imported : ODCSConverter.fullReplace(existing, imported);
+  }
+
+  private DataContract loadExistingContract(EntityReference entityRef) {
     DataContract existing = null;
-
-    // Try to find existing contract by entity reference
-    try {
-      existing = repository.loadEntityDataContract(entityRef);
-    } catch (Exception e) {
-      LOG.debug(
-          "Could not load contract by entity ref for {}: {}", entityRef.getId(), e.getMessage());
+    if (entityRef != null && entityRef.getId() != null) {
+      try {
+        existing = repository.loadEntityDataContract(entityRef);
+      } catch (JsonParsingException e) {
+        LOG.debug(
+            "Could not read the stored contract for entity {}: {}",
+            entityRef.getId(),
+            e.getMessage());
+      }
     }
-
-    if (existing != null) {
-      LOG.debug(
-          "Found existing contract {} for entity {}, will replace",
-          existing.getId(),
-          entityRef.getId());
-      return ODCSConverter.fullReplace(existing, imported);
-    }
-
-    // No existing contract found - return imported for new creation
-    LOG.debug("No existing contract found for entity {}, will create new", entityRef.getId());
-    return imported;
+    return existing;
   }
 
   public static class DataContractList extends ResultList<DataContract> {

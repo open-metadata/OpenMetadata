@@ -24,20 +24,25 @@ repository) and `common/src/main/java/org/openmetadata/common/utils/CommonUtil.j
 
 - **Methods ≤ ~15 lines** (excluding blanks/braces) and do **one nameable thing** — if you describe
   it with "and"/"then", split it.
-- **One return per method, at the end.** No scattered early returns; initialize a `result`, structure
-  as `if/else`, or extract a helper. (Returns inside lambdas, `switch` expressions, and anonymous
-  classes don't count against the outer method.)
+- **Prefer one successful return, placed at the end.** Do not scatter multiple success and fallback
+  returns through a long method. Extract validation and named helpers until the main flow reads
+  linearly. Throwing a specific validation exception at the boundary is preferable to manufacturing
+  an `error` result or deeply nesting the valid path. Do not introduce a mutable `result` variable
+  solely to satisfy a return-count rule when a direct expression is clearer. (Returns inside lambdas,
+  `switch` expressions, and anonymous classes don't count against the outer method.)
   ```java
-  // GOOD: single trailing return; guards become helpers + a result variable
-  Map<UUID, X> compute(List<EntityInterface> entities) {
-    Map<UUID, X> result = null;
-    if (entities != null && !entities.isEmpty() && supportsX(entities.get(0))) {
-      Map<UUID, X> prefetched = doWork(entities);
-      if (!prefetched.isEmpty()) {
-        result = prefetched;
-      }
-    }
-    return result;
+  // BAD: mixed validation, fallback, and success returns
+  QueryResult execute(String query) {
+    if (query == null) return QueryResult.error("query is required");
+    if (query.isBlank()) return QueryResult.error("query is required");
+    if (!isSupported(query)) return QueryResult.error("unsupported query");
+    return run(query);
+  }
+
+  // GOOD: validation is explicit and the successful path is linear
+  QueryResult execute(String query) {
+    String validatedQuery = requireSupportedQuery(query);
+    return run(validatedQuery);
   }
   ```
 - **Max 3 levels of nesting** — extract a named eligibility helper, don't sprinkle early returns.
@@ -58,6 +63,35 @@ repository) and `common/src/main/java/org/openmetadata/common/utils/CommonUtil.j
 - Return `Collections.unmodifiableList()` / `List.copyOf()` from public methods; never expose internal
   mutable collections. Utility classes are `final` with a private constructor. Prefer `record` for
   immutable data carriers.
+
+## Typed models & protocol boundaries
+
+- **Never `Map<String, Object>` as a domain model or return type.** Use a record, a generated schema
+  class, or a focused class with named fields. Maps are for genuinely dynamic keys only — SPARQL
+  bindings, JSON-LD contexts, JDBC bind values, framework protocol boundaries.
+- Convert dynamic input exactly once, at the boundary: an MCP `Map<String, Object>` becomes a
+  validated parameter object before business logic runs; untyped JSON becomes a typed Jackson record
+  before rows are processed.
+- Public REST request/response shapes belong in `openmetadata-spec` JSON Schema so Java, TypeScript,
+  and Python clients share one contract. Local records are for internal/transport payloads only.
+- Never return an `error` map from a typed method — throw the specific validation, authorization,
+  not-found, or availability exception and let the transport exception mapper build the wire error.
+- Group values that travel together into a record or parameter object rather than passing more than
+  five parameters or parallel lists.
+
+## Layer boundaries
+
+- **JAX-RS resources are transport adapters only:** authorize, translate HTTP inputs, invoke one
+  application service, build transport metadata (status, content type, headers).
+- **Application services own orchestration and business validation;** repositories own persistence
+  and triplestore/database access; serializers and mappers own representation conversion. Don't put
+  workflows in a resource or turn a repository into a catch-all service.
+- Constructor-inject repositories, stores, clocks, and external clients. Don't look up static
+  singletons inside business methods; a thin composition boundary may supply the production singleton.
+- Keep query builders, parsers, normalizers, and validators pure where possible — package-private
+  pure methods are better test seams than static mocking.
+- Share one service implementation across REST, MCP, jobs, and other transports. Don't copy parsing,
+  validation, inference, or serialization into each adapter.
 
 ## Error handling
 
@@ -107,6 +141,13 @@ repository) and `common/src/main/java/org/openmetadata/common/utils/CommonUtil.j
   // GOOD
   if (!nullOrEmpty(entities)) { process(entities.getFirst()); }
   ```
+- `nullOrEmpty(String)` does **not** treat whitespace as empty. For required text, centralize
+  `nullOrEmpty(value) || value.isBlank()` in a named boundary validator rather than repeating it.
+- Use the `nullOrEmpty(JsonNode)` overload for null, missing, JSON-null, and empty container nodes.
+  Add an explicit shape predicate (`isObject`, `isArray`, `isNumber`) when the consumer requires one.
+- Required classpath schemas, ontologies, and configuration resources must **fail fast** with the
+  resource path and original cause — never silently substitute an empty model or partial config.
+  Optional resources must be documented as optional.
 
 ## Common bug patterns
 
@@ -122,6 +163,10 @@ repository) and `common/src/main/java/org/openmetadata/common/utils/CommonUtil.j
 
 ## Testing (backend)
 
+- Unit-test pure validation, parsing, normalization, query-building, and serialization directly.
+  Mock only the repository or external-system boundary, injected through the constructor.
+- Assert typed fields and observable state — not map keys, static singleton wiring, or internal call
+  choreography.
 - Production-ready code, not tutorial code. **Never `Thread.sleep()` in tests** — use condition-based
   waiting / `Awaitility`. Bug fixes include a test that fails without the fix. **90% line coverage on
   changed classes** — see the `test-enforcement` skill.

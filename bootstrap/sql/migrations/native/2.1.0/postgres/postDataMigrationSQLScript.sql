@@ -26,3 +26,179 @@ ON CONFLICT (stateId) DO UPDATE SET
   createdAt = LEAST(test_case_incident.createdAt, EXCLUDED.createdAt),
   updatedAt = EXCLUDED.updatedAt,
   latestRecordId = EXCLUDED.latestRecordId;
+
+-- Invalidate pre-2.1 projection success records. RDF status remains REBUILDING until a new
+-- RdfIndexApp run succeeds, and the applications page exposes that Search indexing must be run.
+DELETE FROM apps_extension_time_series
+WHERE appname IN ('RdfIndexApp', 'SearchIndexingApplication');
+
+-- Search reindexing is staged and recreates every selected index. Include every entity so the
+-- new relationshipType index and the new glossaryTerm attribute mapping are materialized.
+UPDATE installed_apps
+SET json = jsonb_set(
+  COALESCE(json::jsonb, '{}'::jsonb),
+  '{appConfiguration}',
+  COALESCE(json::jsonb -> 'appConfiguration', '{}'::jsonb)
+    || jsonb_build_object('entities', jsonb_build_array('all')),
+  true
+)
+WHERE name = 'SearchIndexingApplication';
+
+UPDATE apps_marketplace
+SET json = jsonb_set(
+  COALESCE(json::jsonb, '{}'::jsonb),
+  '{appConfiguration}',
+  COALESCE(json::jsonb -> 'appConfiguration', '{}'::jsonb)
+    || jsonb_build_object('entities', jsonb_build_array('all')),
+  true
+)
+WHERE name = 'SearchIndexingApplication';
+
+-- Ontology Studio relationships use stable identifiers independent of physical row order.
+UPDATE entity_relationship
+SET relationshipid = COALESCE(
+  relationshipid,
+  substring(md5(concat_ws('|', 'ontology-relationship', fromid, toid, relation, relationtype)), 1, 8)
+    || '-' || substring(md5(concat_ws('|', 'ontology-relationship', fromid, toid, relation, relationtype)), 9, 4)
+    || '-' || substring(md5(concat_ws('|', 'ontology-relationship', fromid, toid, relation, relationtype)), 13, 4)
+    || '-' || substring(md5(concat_ws('|', 'ontology-relationship', fromid, toid, relation, relationtype)), 17, 4)
+    || '-' || substring(md5(concat_ws('|', 'ontology-relationship', fromid, toid, relation, relationtype)), 21, 12)
+)
+WHERE fromentity = 'glossaryTerm'
+  AND toentity = 'glossaryTerm'
+  AND relation = 15;
+
+UPDATE entity_relationship relationship
+SET relationshiptypeid = relationship_type.id,
+    json = COALESCE(relationship.json, '{}'::jsonb) || jsonb_build_object(
+      'id', relationship.relationshipid,
+      'relationshipTypeId', relationship_type.id,
+      'sourceTermId', COALESCE(relationship.json->>'sourceTermId', relationship.fromid),
+      'relationType', relationship.relationtype,
+      'provenance', COALESCE(relationship.json->>'provenance', 'Manual'),
+      'status', COALESCE(relationship.json->>'status', 'Approved'),
+      'createdBy', COALESCE(relationship.json->>'createdBy', 'system'),
+      'createdAt', COALESCE(
+        (relationship.json->>'createdAt')::bigint,
+        (extract(epoch from now()) * 1000)::bigint
+      )
+    )
+FROM relationship_type_entity relationship_type
+WHERE relationship_type.name = relationship.relationtype
+  AND relationship.fromentity = 'glossaryTerm'
+  AND relationship.toentity = 'glossaryTerm'
+  AND relationship.relation = 15;
+-- Activity comments are retained indefinitely unless an administrator explicitly configures a
+-- positive retention period. Preserve any value already chosen by an administrator.
+UPDATE installed_apps
+SET json = jsonb_set(
+    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
+WHERE name = 'DataRetentionApplication'
+  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+UPDATE apps_marketplace
+SET json = jsonb_set(
+    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
+WHERE name = 'DataRetentionApplication'
+  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+UPDATE entity_extension
+SET json = jsonb_set(
+    json::jsonb, '{appConfiguration,activityCommentsRetentionPeriod}', '0'::jsonb, true)
+WHERE extension LIKE 'app.version.%'
+  AND json::jsonb ->> 'name' = 'DataRetentionApplication'
+  AND NOT jsonb_exists(json::jsonb #> '{appConfiguration}', 'activityCommentsRetentionPeriod');
+
+-- Data Quality failure thresholds: declare the `threshold` / `thresholdUnit` parameters on the
+-- in-scope system test definitions, plus `dimensionFailurePolicy` on the ones that support
+-- dimensional analysis. Seeding only covers fresh installs (initializeEntity returns early when the
+-- entity exists) and TestCaseRepository rejects parameters that the definition does not declare, so
+-- existing installs need this backfill. Every statement is guarded on the parameter being absent,
+-- which keeps re-runs a no-op.
+
+-- Definitions that ship without any parameter need the array before we can append to it.
+UPDATE test_definition
+SET json = jsonb_set(json::jsonb, '{parameterDefinition}', '[]'::jsonb)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND json->'parameterDefinition' IS NULL;
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'threshold',
+        'displayName', 'Failure Threshold',
+        'description', 'Number of failures tolerated before the test is marked as failed. Read as an absolute count or as a percentage depending on `thresholdUnit` (defaults to 0).',
+        'dataType', 'NUMBER',
+        'required', false
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "threshold"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'thresholdUnit',
+        'displayName', 'Threshold Unit',
+        'description', 'How to read `threshold`: `ABSOLUTE` for a raw count of failures, `PERCENTAGE` for a share of the evaluated rows (defaults to ABSOLUTE).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', '["ABSOLUTE","PERCENTAGE"]'::jsonb
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex',
+    'tableColumnCountToBeBetween', 'tableColumnCountToEqual', 'tableRowCountToBeBetween',
+    'tableRowCountToEqual', 'tableRowInsertedCountToBeBetween', 'tableCustomSQLQuery'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "thresholdUnit"}]'::jsonb);
+
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{parameterDefinition}',
+    (json->'parameterDefinition')::jsonb || jsonb_build_object(
+        'name', 'dimensionFailurePolicy',
+        'displayName', 'Dimension Failure Policy',
+        'description', 'How dimensional results roll up into the overall test status: `OVERALL_ONLY` only looks at the overall result, `ANY_DIMENSION` fails the test as soon as one dimension fails (defaults to OVERALL_ONLY).',
+        'dataType', 'STRING',
+        'required', false,
+        'optionValues', '["OVERALL_ONLY","ANY_DIMENSION"]'::jsonb
+    )::jsonb
+)
+WHERE name IN (
+    'columnValueMaxToBeBetween', 'columnValueMeanToBeBetween', 'columnValueMedianToBeBetween',
+    'columnValueMinToBeBetween', 'columnValueStdDevToBeBetween',
+    'columnValueToBeAtExpectedLocation', 'columnValuesLengthsToBeBetween',
+    'columnValuesMissingCountToBeEqual', 'columnValuesSumToBeBetween', 'columnValuesToBeBetween',
+    'columnValuesToBeInSet', 'columnValuesToBeNotInSet', 'columnValuesToBeNotNull',
+    'columnValuesToBeUnique', 'columnValuesToMatchRegex', 'columnValuesToNotMatchRegex'
+  )
+  AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "dimensionFailurePolicy"}]'::jsonb);

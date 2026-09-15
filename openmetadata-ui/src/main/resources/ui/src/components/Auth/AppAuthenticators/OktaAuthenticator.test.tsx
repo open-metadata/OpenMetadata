@@ -25,6 +25,17 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: jest.fn(),
 }));
 
+const updateRenewToken = jest.fn();
+
+jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => ({
+  __esModule: true,
+  default: {
+    getInstance: () => ({
+      updateRenewToken: (renewer: unknown) => updateRenewToken(renewer),
+    }),
+  },
+}));
+
 jest.mock('../../../utils/OktaCustomStorage', () => ({
   OktaCustomStorage: jest.fn().mockImplementation(() => ({
     waitForInit: jest.fn().mockResolvedValue(undefined),
@@ -278,5 +289,27 @@ describe('OktaAuthenticator', () => {
       expect(setOidcToken).toHaveBeenCalledWith('');
       expect(result).toBe('');
     });
+  });
+
+  // Regression: renewer registration now lives here instead of in the
+  // parent AuthProvider's ref-deps useEffect.
+  it('registers a renewer with TokenService on mount and unregisters on unmount', () => {
+    (useOktaAuth as jest.Mock).mockReturnValue({ oktaAuth: mockOktaAuth });
+    const { unmount } = render(
+      <OktaAuthenticator
+        {...mockProps}
+        ref={(ref) => (authenticatorRef = ref)}
+      />
+    );
+
+    expect(updateRenewToken).toHaveBeenCalled();
+
+    const registered = updateRenewToken.mock.calls[0][0];
+
+    expect(typeof registered).toBe('function');
+
+    unmount();
+
+    expect(updateRenewToken).toHaveBeenLastCalledWith(null);
   });
 });

@@ -16,14 +16,13 @@ import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import {
-  Post,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+  Conversation,
+  ConversationReply,
+} from '../../../generated/entity/feed/conversation';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { ReactionType } from '../../../generated/type/reaction';
-import { ListActivityParams } from '../../../rest/feedsAPI';
+import { ListActivityParams } from '../../../rest/activityAPI';
 import { Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 
 export interface ActivityFeedProviderContextType {
@@ -34,20 +33,19 @@ export interface ActivityFeedProviderContextType {
   // For activity events (entity changes)
   activityEvents: ActivityEvent[];
   selectedActivity: ActivityEvent | undefined;
-  activityThread: Thread | undefined;
-  // For regular feeds (conversations, announcements)
-  entityThread: Thread[];
-  selectedThread: Thread | undefined;
+  activityReplies: ConversationReply[];
+  entityThread: Conversation[];
+  selectedThread: Conversation | undefined;
   // For tasks - using Task type directly
   tasks: Task[];
   selectedTask: Task | undefined;
   isDrawerOpen: boolean;
   focusReplyEditor: boolean;
   entityPaging: Paging;
-  setActiveThread: (thread?: Thread) => void;
+  setActiveThread: (thread?: Conversation) => void;
   setActiveTask: (task?: Task) => void;
   setActiveActivity: (activity?: ActivityEvent) => void;
-  updateEntityThread: (thread: Thread) => void;
+  updateEntityThread: (thread: Conversation) => void;
   updateTask: (task: Task) => void;
   userId: string;
   deleteFeed: (
@@ -56,6 +54,10 @@ export interface ActivityFeedProviderContextType {
     isThread: boolean
   ) => Promise<void>;
   postFeed: (value: string, id: string, isTask?: boolean) => Promise<void>;
+  postActivityComment: (
+    message: string,
+    activity: ActivityEvent
+  ) => Promise<void>;
   fetchUpdatedThread: (id: string, isTask?: boolean) => Promise<void>;
   updateFeed: (
     threadId: string,
@@ -63,14 +65,12 @@ export interface ActivityFeedProviderContextType {
     isThread: boolean,
     data: Operation[]
   ) => void;
-  refreshActivityFeed: (threads: Thread[]) => void;
+  refreshActivityFeed: (threads: Conversation[]) => void;
   getFeedData: (
     filterType?: FeedFilter,
     after?: string,
-    type?: ThreadType,
     entityType?: EntityType,
     fqn?: string,
-    taskStatusGroup?: TaskStatusGroup,
     limit?: number
   ) => Promise<void>;
   getTaskData: (
@@ -81,17 +81,13 @@ export interface ActivityFeedProviderContextType {
     taskStatusGroup?: TaskStatusGroup,
     limit?: number
   ) => Promise<void>;
-  showDrawer: (thread: Thread) => void;
+  showDrawer: (thread: Conversation) => void;
   showTaskDrawer: (task: Task) => void;
   showActivityDrawer: (activity: ActivityEvent) => void;
   hideDrawer: () => void;
-  postActivityComment: (
-    message: string,
-    activity: ActivityEvent
-  ) => Promise<void>;
   updateEditorFocus: (isFocused: boolean) => void;
   updateReactions: (
-    post: Post,
+    post: Conversation | ConversationReply,
     feedId: string,
     isThread: boolean,
     reactionType: ReactionType,
@@ -102,6 +98,10 @@ export interface ActivityFeedProviderContextType {
   // Activity events methods
   fetchActivityEvents: (params?: ListActivityParams) => Promise<void>;
   fetchMyActivityFeed: (params?: {
+    days?: number;
+    limit?: number;
+  }) => Promise<void>;
+  fetchFollowingActivity: (params?: {
     days?: number;
     limit?: number;
   }) => Promise<void>;

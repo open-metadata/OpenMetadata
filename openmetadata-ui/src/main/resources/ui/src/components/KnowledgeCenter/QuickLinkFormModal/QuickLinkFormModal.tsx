@@ -40,6 +40,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import {
   LabelType,
   State,
+  Style,
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
@@ -48,15 +49,18 @@ import {
   KnowledgePage,
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
+import { queryClient } from '../../../queryClient';
 import { searchGlossaryTerms } from '../../../rest/glossaryAPI';
 import {
   getKnowledgePageByFqn,
   patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { isValidUrl } from '../../../utils/SSOUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringUtils';
 import { getTagsWithoutTier } from '../../../utils/TablePureUtils';
@@ -64,6 +68,7 @@ import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
@@ -85,6 +90,10 @@ interface QuickLinkFormValues {
   glossaryTerms: QuickLinkFormSelectItem[];
   relatedEntities: QuickLinkFormSelectItem[];
 }
+
+const QUICK_LINK_LABEL_KEY = 'label.quick-link';
+const URL_UPPERCASE_LABEL_KEY = 'label.url-uppercase';
+const SELECT_FIELD_LABEL_KEY = 'label.select-field';
 
 export interface QuickLinkFormModalProps {
   isOpen: boolean;
@@ -126,6 +135,18 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const [assetOptions, setAssetOptions] = useState<QuickLinkFormSelectItem[]>(
     []
   );
+
+  // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+  // component receives as a prop; no `deleted` argument since the old expressions below never
+  // referenced `quickLink?.deleted` either. `urlField`'s raw `permissions.EditAll` maps
+  // directly to `canEditAll` (identical, EditAll-only read). `displayNameField`/
+  // `descriptionField`/`tagsField` move from a hand-rolled raw OR (`field || EditAll`) to the
+  // prioritized `canEdit*` flags — the same explicit-deny-wins fix as the sanctioned
+  // canViewBasic precedent (Task 6 Finding 1). `glossaryTermsField` reuses `EditTags` (not a
+  // separate EditGlossaryTerms check) in the old code too — preserved verbatim via
+  // `canEditTags`, not "corrected" to `canEditGlossaryTerms`.
+  const { canEditAll, canEditDisplayName, canEditDescription, canEditTags } =
+    useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
 
   const { initialValues, restRelatedDataAssets } = useMemo(() => {
     if (isUndefined(quickLink)) {
@@ -183,7 +204,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
 
   useEffect(() => {
     form.reset(initialValues);
-  }, [initialValues]);
+  }, [initialValues, form]);
 
   useEffect(() => {
     if (isOpen) {
@@ -207,6 +228,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
             displayName?: string;
             fullyQualifiedName?: string;
             name?: string;
+            style?: Style;
           };
           if (!tag?.fullyQualifiedName) {
             return null;
@@ -220,6 +242,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
             displayName: tag.displayName,
             name: tag.name,
             description: tag.description,
+            style: tag.style,
           });
         })
         .filter((opt): opt is QuickLinkFormSelectItem => opt !== null);
@@ -350,9 +373,12 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         { fields: getKnowledgePageFields() }
       );
 
+      queryClient.invalidateQueries({
+        queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
+      });
       showSuccessToast(
         t('message.entity-saved-successfully', {
-          entity: t('label.quick-link'),
+          entity: t(QUICK_LINK_LABEL_KEY),
         })
       );
       onSave({
@@ -406,7 +432,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.TEXT,
     props: {
       'data-testid': 'displayName',
-      disabled: !(permissions.EditAll || permissions.EditDisplayName),
+      disabled: !canEditDisplayName,
     },
     placeholder: t('label.display-name'),
   };
@@ -414,21 +440,21 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
   const urlField: FieldProp = {
     name: 'url',
     required: true,
-    label: t('label.url-uppercase'),
+    label: t(URL_UPPERCASE_LABEL_KEY),
     id: 'root/url',
     type: FieldTypes.TEXT,
     rules: {
       required: t('label.field-required', {
-        field: t('label.url-uppercase'),
+        field: t(URL_UPPERCASE_LABEL_KEY),
       }),
       validate: (value: string) =>
         isValidUrl(value) || t('message.invalid-url'),
     },
     props: {
       'data-testid': 'url',
-      disabled: !permissions.EditAll,
+      disabled: !canEditAll,
     },
-    placeholder: t('label.url-uppercase'),
+    placeholder: t(URL_UPPERCASE_LABEL_KEY),
   };
 
   const descriptionField: FieldProp = {
@@ -439,7 +465,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.DESCRIPTION,
     props: {
       'data-testid': 'description',
-      disabled: !(permissions.EditAll || permissions.EditDescription),
+      disabled: !canEditDescription,
     },
     placeholder: t('label.description'),
   };
@@ -452,7 +478,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.TAG_SUGGESTION,
     props: {
       'data-testid': 'tags-container',
-      disabled: !(permissions.EditAll || permissions.EditTags),
+      disabled: !canEditTags,
       filterOption: () => true,
       multiple: true,
       onFocus: () => void fetchTagOptions(),
@@ -466,8 +492,25 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
           supportingText={item.supportingText}
         />
       ),
+      renderTag: (item: FormSelectItem, onRemove: () => void) => {
+        const tagValue = (item as QuickLinkFormSelectItem).value;
+        const style =
+          tagValue && 'style' in tagValue ? tagValue.style : undefined;
+
+        return (
+          <ClassificationTag
+            color={style?.color}
+            icon={style?.iconURL}
+            key={item.id}
+            label={item.label || ''}
+            maxWidth={150}
+            tooltip={item.label || ''}
+            onDelete={onRemove}
+          />
+        );
+      },
     },
-    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
+    placeholder: t(SELECT_FIELD_LABEL_KEY, { field: t('label.tag-plural') }),
   };
 
   const glossaryTermsField: FieldProp = {
@@ -478,7 +521,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
     type: FieldTypes.GLOSSARY_TAG_SUGGESTION,
     props: {
       'data-testid': 'glossaryTerms-container',
-      disabled: !(permissions.EditAll || permissions.EditTags),
+      disabled: !canEditTags,
       filterOption: () => true,
       multiple: true,
       onFocus: () => void fetchGlossaryOptions(),
@@ -493,7 +536,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', {
+    placeholder: t(SELECT_FIELD_LABEL_KEY, {
       field: t('label.glossary-term-plural'),
     }),
   };
@@ -520,14 +563,14 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
         />
       ),
     },
-    placeholder: t('label.select-field', {
+    placeholder: t(SELECT_FIELD_LABEL_KEY, {
       field: t('label.data-asset-plural'),
     }),
   };
 
   const title = isUndefined(quickLink)
-    ? t('label.add-entity', { entity: t('label.quick-link') })
-    : `${t('label.edit-entity', { entity: t('label.quick-link') })} ${
+    ? t('label.add-entity', { entity: t(QUICK_LINK_LABEL_KEY) })
+    : `${t('label.edit-entity', { entity: t(QUICK_LINK_LABEL_KEY) })} ${
         getEntityName(quickLink) || t('label.untitled')
       }`;
 
@@ -544,7 +587,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
           width={600}
           onClose={handleCancel}>
           <Dialog.Header title={title} />
-          <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overflow-x-visible">
+          <Dialog.Content>
             <HookForm
               className="tw:flex tw:flex-col tw:gap-6"
               data-testid="quick-link-form"

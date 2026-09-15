@@ -26,6 +26,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
 
 public interface EntityTimeSeriesDAO {
   String getTimeSeriesTableName();
@@ -65,7 +66,7 @@ public interface EntityTimeSeriesDAO {
       @BindFQN("entityFQNHash") String entityFQNHash,
       @Bind("extension") String extension,
       @Bind("jsonSchema") String jsonSchema,
-      @Bind("json") String json);
+      @BindJson("json") String json);
 
   default void insert(String entityFQNHash, String extension, String jsonSchema, String json) {
     insert(getTimeSeriesTableName(), entityFQNHash, extension, jsonSchema, json);
@@ -85,7 +86,7 @@ public interface EntityTimeSeriesDAO {
       @Define("table") String table,
       @BindFQN("entityFQNHash") String entityFQNHash,
       @Bind("jsonSchema") String jsonSchema,
-      @Bind("json") String json);
+      @BindJson("json") String json);
 
   default void insert(String entityFQNHash, String jsonSchema, String json) {
     insertWithoutExtension(getTimeSeriesTableName(), entityFQNHash, jsonSchema, json);
@@ -103,7 +104,7 @@ public interface EntityTimeSeriesDAO {
       @Define("table") String table,
       @BindFQN("entityFQNHash") String entityFQNHash,
       @Bind("extension") String extension,
-      @Bind("json") String json,
+      @BindJson("json") String json,
       @Bind("timestamp") Long timestamp);
 
   default void update(String entityFQNHash, String extension, String json, Long timestamp) {
@@ -116,7 +117,7 @@ public interface EntityTimeSeriesDAO {
   @ConnectionAwareSqlUpdate(
       value = "UPDATE <table> set json = (:json :: jsonb) where id=:id",
       connectionType = POSTGRES)
-  void update(@Define("table") String table, @Bind("json") String json, @Bind("id") String id);
+  void update(@Define("table") String table, @BindJson("json") String json, @Bind("id") String id);
 
   default void update(String json, UUID id) {
     update(getTimeSeriesTableName(), json, id.toString());
@@ -315,7 +316,7 @@ public interface EntityTimeSeriesDAO {
       @Define("table") String table,
       @BindFQN("entityFQNHash") String entityFQNHash,
       @Bind("extension") String extension,
-      @Bind("json") String json,
+      @BindJson("json") String json,
       @Bind("timestamp") Long timestamp,
       @Bind("operation") String operation);
 
@@ -740,7 +741,7 @@ public interface EntityTimeSeriesDAO {
       @Bind("value") String value,
       @BindFQN("entityFQNHash") String entityFQNHash,
       @Bind("extension") String extension,
-      @Bind("json") String json,
+      @BindJson("json") String json,
       @Define("mysqlCond") String mysqlCond,
       @Define("psqlCond") String psqlCond);
 

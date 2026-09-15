@@ -68,9 +68,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -409,16 +409,14 @@ public final class EntityUtil {
     }
 
     // Convert UUIDs to strings for the batch query
-    List<String> entityIdStrings =
-        entityIds.stream().map(UUID::toString).collect(java.util.stream.Collectors.toList());
+    List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
 
     // Use the new batch query method for efficient bulk fetching
-    List<org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId>
-        usageDetailsList = usageDAO.getLatestUsageBatch(entityIdStrings);
+    List<UsageDAO.UsageDetailsWithId> usageDetailsList =
+        usageDAO.getLatestUsageBatch(entityIdStrings);
 
     // Convert the list back to a map keyed by UUID
-    for (org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId usageWithId :
-        usageDetailsList) {
+    for (UsageDAO.UsageDetailsWithId usageWithId : usageDetailsList) {
       if (usageWithId != null && usageWithId.getEntityId() != null) {
         usageMap.put(UUID.fromString(usageWithId.getEntityId()), usageWithId.getUsageDetails());
       }
@@ -1121,6 +1119,66 @@ public final class EntityUtil {
       filter.addQueryParam("restrictToDomainIds", getCommaSeparatedIdsFromRefs(userDomains));
       filter.addQueryParam(
           "restrictToDomainFqnHashes", getCommaSeparatedDomainFqnHashes(userDomains));
+    }
+  }
+
+  // Sentinel owner id that matches no entity_relationship row. Used when an owner filter was
+  // requested but nothing resolved, so the filter yields an empty result rather than every entity.
+  private static final String NO_MATCH_OWNER_ID = "00000000-0000-0000-0000-000000000000";
+
+  /**
+   * Resolves a comma-separated list of owner identifiers to a comma-separated list of ids, so an
+   * owner filter can hit the indexed entity_relationship.fromId directly instead of joining
+   * user/team tables. A value that is already a UUID is accepted as-is (it is not existence-checked);
+   * a name/FQN is resolved to a user or team id, and is dropped if it matches neither. Returns null
+   * when the input is blank (no filter); when a non-blank input resolves to nothing, returns a
+   * sentinel id that matches no rows so the caller filters to an empty result instead of the full
+   * list.
+   */
+  public static String resolveOwnersToIds(String owners) {
+    if (nullOrEmpty(owners)) {
+      return null;
+    }
+    List<String> ids = new ArrayList<>();
+    for (String owner : owners.split(",")) {
+      String id = resolveOwnerToId(owner.trim());
+      if (id != null) {
+        ids.add(id);
+      }
+    }
+    return ids.isEmpty() ? NO_MATCH_OWNER_ID : String.join(",", ids);
+  }
+
+  private static String resolveOwnerToId(String owner) {
+    if (nullOrEmpty(owner)) {
+      return null;
+    }
+    if (isUuid(owner)) {
+      return owner;
+    }
+    EntityReference reference = resolveUserOrTeam(owner);
+    return reference == null ? null : reference.getId().toString();
+  }
+
+  private static EntityReference resolveUserOrTeam(String name) {
+    try {
+      return Entity.getEntityReferenceByName(Entity.USER, name, NON_DELETED);
+    } catch (EntityNotFoundException userNotFound) {
+      try {
+        return Entity.getEntityReferenceByName(Entity.TEAM, name, NON_DELETED);
+      } catch (EntityNotFoundException teamNotFound) {
+        LOG.debug("Owner filter: '{}' did not resolve to a user or team", name);
+        return null;
+      }
+    }
+  }
+
+  private static boolean isUuid(String value) {
+    try {
+      UUID.fromString(value);
+      return true;
+    } catch (IllegalArgumentException notUuid) {
+      return false;
     }
   }
 
