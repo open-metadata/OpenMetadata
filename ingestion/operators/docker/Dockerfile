@@ -64,12 +64,16 @@ RUN dpkg --configure -a \
     # Pull any security updates newer than the base image for packages we or our
     # dependencies pull in. Version-specific Perl module names were removed:
     # trixie ships Perl 5.40, so perl-modules-5.36/libperl5.36 do not exist.
+    # gzip -> 1.13-1+deb13u1 (CVE-2026-41992, Buffer Over-read) and
+    # libsqlite3-0 -> 3.46.1-7+deb13u2 (CVE-2026-11822, CVE-2026-11824,
+    # Heap-based Buffer Overflow). Both fixed versions are in trixie main.
     # --only-upgrade is a no-op for packages not present in the image.
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
          libpam0g libpam-modules libpam-modules-bin libpam-runtime \
          curl libcurl4 libcurl3-gnutls libmariadb3 wget \
          perl perl-base libnss3 \
+         gzip libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
