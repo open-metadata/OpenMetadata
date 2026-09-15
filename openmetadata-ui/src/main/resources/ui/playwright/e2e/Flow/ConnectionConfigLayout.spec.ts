@@ -14,7 +14,7 @@
 import { Locator, Page } from '@playwright/test';
 import { COLLATE_SAAS_RUNNER } from '../../constant/serviceForm';
 import { expect, test } from '../../support/fixtures/base';
-import { redirectToHomePage, selectOptionWithRetry } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectIngestionRunnerFromDropdown } from '../../utils/serviceFormUtils';
 
@@ -52,19 +52,6 @@ const getGridColumnCount = async (locator: Locator) =>
       getComputedStyle(element).gridTemplateColumns.split(' ').filter(Boolean)
         .length
   );
-
-const chooseSelectOption = async (
-  page: Page,
-  select: Locator,
-  optionName: string
-) => {
-  const trigger = select.getByRole('button');
-  const option = page
-    .locator('.core-one-of-field-select-popover')
-    .getByRole('option', { name: optionName, exact: true });
-
-  await selectOptionWithRetry(trigger, option);
-};
 
 const mockSuccessfulSnowflakeTestConnection = async (page: Page) => {
   const workflowId = 'pw-snowflake-test-workflow';
@@ -291,7 +278,7 @@ test.describe('Connection config layout', () => {
       .toBeGreaterThan(0);
   });
 
-  test('should align nested sample data storage config fields without overlap', async ({
+  test('should hide the fieldless sample data storage config and keep advanced fields aligned', async ({
     page,
   }) => {
     await openSnowflakeConnectionConfig(page);
@@ -352,9 +339,6 @@ test.describe('Connection config layout', () => {
       '[data-field-name="connectionOptions"]'
     );
     const addConnectionOption = page.getByTestId('add-item-Connection Options');
-    const sampleStorageSelect = page.locator(
-      '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
-    );
 
     expect(await getGridColumnCount(primaryGrid)).toBe(3);
     await expectNoOverlap(
@@ -362,10 +346,6 @@ test.describe('Connection config layout', () => {
       accessHistoryChunk,
       'Use Access History and chunk size fields overlap'
     );
-
-    const sampleSelectBox = await getBox(sampleStorageSelect);
-
-    expect(sampleSelectBox.width).toBeLessThanOrEqual(530);
 
     const addButtonCenter = await addConnectionOption.evaluate((button) => {
       const icon = button.querySelector('[data-icon]');
@@ -402,33 +382,18 @@ test.describe('Connection config layout', () => {
       )
     ).toBeHidden();
 
-    await chooseSelectOption(page, sampleStorageSelect, 'OpenMetadata Storage');
-
-    const samplePanel = page.locator(
-      '[data-field-id$="/sampleDataStorageConfig/config"]'
-    );
-
-    // External S3 sample-data storage was removed (collate#5995). The selector now
-    // offers only the fieldless "OpenMetadata Storage" choice: no bucket, prefix, file
-    // path, overwrite, or AWS credential fields, and no nested storage-config selector —
-    // so the panel renders without the previously reported empty box.
-    await expect(samplePanel).toBeVisible();
-    await expect(
-      samplePanel.locator('[data-field-name="bucketName"]')
-    ).toHaveCount(0);
-    await expect(
-      samplePanel.locator('[data-field-name="filePathPattern"]')
-    ).toHaveCount(0);
-    await expect(
-      samplePanel.locator('[data-field-name="overwriteData"]')
-    ).toHaveCount(0);
-    await expect(
-      samplePanel.locator('[data-field-name="storageConfig"]')
-    ).toHaveCount(0);
+    // External S3 sample-data storage was removed (collate#5995). OpenMetadata-hosted
+    // storage has no settable fields, so the whole sampleDataStorageConfig group is
+    // hidden from every connection form (ServiceUISchema DEF_UI_SCHEMA) — no selector,
+    // no config panel, and none of the former bucket / prefix / file-path / overwrite /
+    // AWS credential fields render.
     await expect(
       page.locator(
-        '[data-testid^="select-widget-root/sampleDataStorageConfig/config/storageConfig__"]'
+        '[data-testid^="select-widget-root/sampleDataStorageConfig/config__"]'
       )
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[data-field-id$="/sampleDataStorageConfig"]')
     ).toHaveCount(0);
   });
 

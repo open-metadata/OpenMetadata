@@ -59,5 +59,4 @@ export const getFormDisplayLabel = (value: string) =>
     .map((token) => FORM_LABEL_ACRONYMS[token.toLowerCase()] ?? token)
     .join(' ')
     .replace(/\bO Auth\b/g, 'OAuth')
-    .replace(/\bOauth\b/g, 'OAuth')
-    .replace(/\bOpen Metadata\b/g, 'OpenMetadata');
+    .replace(/\bOauth\b/g, 'OAuth');

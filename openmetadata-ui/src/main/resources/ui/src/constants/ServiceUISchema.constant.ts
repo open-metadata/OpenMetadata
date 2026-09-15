@@ -34,6 +34,9 @@ export const DEF_UI_SCHEMA = {
   supportsDBTExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   type: { 'ui:widget': 'hidden' },
   policyAgentConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  // External S3 sample-data storage was removed (collate#5995); OpenMetadata-hosted
+  // storage is implicit and has no settable fields, so the group has nothing to render.
+  sampleDataStorageConfig: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {

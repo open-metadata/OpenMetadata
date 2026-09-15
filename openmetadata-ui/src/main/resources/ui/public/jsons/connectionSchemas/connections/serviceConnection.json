@@ -2633,18 +2633,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -3447,18 +3438,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -7276,18 +7258,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -8048,18 +8021,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -8310,18 +8274,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -8554,18 +8509,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -8914,18 +8860,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -9218,18 +9155,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -9825,18 +9753,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -10905,18 +10824,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -11719,18 +11629,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -11889,18 +11790,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -12128,18 +12020,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -12366,18 +12249,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -12729,18 +12603,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -13827,18 +13692,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -14066,18 +13922,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -14432,18 +14279,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -14929,18 +14767,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -15409,18 +15238,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -15643,18 +15463,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -16102,18 +15913,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -16788,18 +16590,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -17140,18 +16933,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -17530,18 +17314,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -17764,18 +17539,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -17979,18 +17745,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -18653,18 +18410,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -19178,18 +18926,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -20220,18 +19959,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -21099,18 +20829,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -21544,18 +21265,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -22073,18 +21785,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -23256,18 +22959,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -23848,18 +23542,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -27024,18 +26709,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -27838,18 +27514,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -29905,18 +29572,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -30429,18 +30087,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -30648,18 +30297,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -31082,18 +30722,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -31496,18 +31127,9 @@
                           "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                           "properties": {
                             "config": {
-                              "oneOf": [
-                                {
-                                  "title": "No Sample Data Storage Config",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              ]
+                              "title": "OpenMetadata Storage",
+                              "type": "object",
+                              "additionalProperties": false
                             }
                           },
                           "additionalProperties": false
@@ -41255,18 +40877,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -42069,18 +41682,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -45898,18 +45502,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -46670,18 +46265,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -46932,18 +46518,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -47176,18 +46753,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -47536,18 +47104,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -47840,18 +47399,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -48447,18 +47997,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -49527,18 +49068,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -50341,18 +49873,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -50511,18 +50034,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -50750,18 +50264,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -50988,18 +50493,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -51351,18 +50847,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -52449,18 +51936,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -52688,18 +52166,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -53054,18 +52523,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -53551,18 +53011,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -54031,18 +53482,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -54265,18 +53707,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -54724,18 +54157,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -55410,18 +54834,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -55762,18 +55177,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -56152,18 +55558,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -56386,18 +55783,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -56601,18 +55989,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -57275,18 +56654,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -57800,18 +57170,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -58842,18 +58203,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -59721,18 +59073,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -60166,18 +59509,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -60695,18 +60029,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -61878,18 +61203,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -62470,18 +61786,9 @@
                       "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                       "properties": {
                         "config": {
-                          "oneOf": [
-                            {
-                              "title": "No Sample Data Storage Config",
-                              "type": "object",
-                              "additionalProperties": false
-                            },
-                            {
-                              "title": "OpenMetadata Storage",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          ]
+                          "title": "OpenMetadata Storage",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "additionalProperties": false
@@ -65646,18 +64953,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -66460,18 +65758,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -68527,18 +67816,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -69051,18 +68331,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -69270,18 +68541,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -69704,18 +68966,9 @@
                               "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                               "properties": {
                                 "config": {
-                                  "oneOf": [
-                                    {
-                                      "title": "No Sample Data Storage Config",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "title": "OpenMetadata Storage",
-                                      "type": "object",
-                                      "additionalProperties": false
-                                    }
-                                  ]
+                                  "title": "OpenMetadata Storage",
+                                  "type": "object",
+                                  "additionalProperties": false
                                 }
                               },
                               "additionalProperties": false
@@ -70118,18 +69371,9 @@
                           "javaType": "org.openmetadata.schema.services.connections.database.SampleDataStorageConfig",
                           "properties": {
                             "config": {
-                              "oneOf": [
-                                {
-                                  "title": "No Sample Data Storage Config",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "title": "OpenMetadata Storage",
-                                  "type": "object",
-                                  "additionalProperties": false
-                                }
-                              ]
+                              "title": "OpenMetadata Storage",
+                              "type": "object",
+                              "additionalProperties": false
                             }
                           },
                           "additionalProperties": false
