@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../../../assets/svg/ic-suggestions.svg';
 import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
@@ -66,16 +66,19 @@ function ConfigurationSql({ value }: Readonly<{ value: string }>) {
 
 /**
  * A parameter value can be far longer than the rail is wide — a `tableDiff`
- * test's `table2` is a fully-qualified table name — so the value truncates and
- * the full text stays reachable through the tooltip.
+ * test's `table2` is a fully-qualified table name — so it wraps instead of
+ * truncating. Wrapping keeps the whole value readable; an ellipsis would hide
+ * the part that distinguishes one table from another.
+ *
+ * Deliberately not wrapped in `Tooltip`: its trigger is a `w-max` `<button>`,
+ * which cannot shrink below max-content, so the row overflowed and the card's
+ * `overflow-hidden` clipped it — and it made a non-interactive value focusable.
  */
 function ConfigurationValue({ value }: Readonly<{ value: string }>) {
   return (
-    <Tooltip placement="bottom left" title={value}>
-      <span className="tw:min-w-0 tw:truncate tw:font-mono tw:text-xs tw:font-semibold tw:text-primary">
-        {value}
-      </span>
-    </Tooltip>
+    <span className="tw:min-w-0 tw:break-words tw:text-right tw:font-mono tw:text-xs tw:font-semibold tw:text-primary">
+      {value}
+    </span>
   );
 }
 
