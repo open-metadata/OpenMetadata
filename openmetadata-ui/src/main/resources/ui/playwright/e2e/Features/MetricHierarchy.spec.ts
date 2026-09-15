@@ -224,6 +224,12 @@ const attachScreenshot = async (page: Page, testId: string, name: string) => {
   });
 };
 
+const openAddMetricDrawer = async (page: Page) => {
+  await page.goto('/metrics');
+  await page.getByTestId('create-metric').click();
+  await expect(page.getByTestId('add-metric-container')).toBeVisible();
+};
+
 const fillRequiredMetricFields = async (page: Page, name: string) => {
   await page.getByTestId('name').fill(name);
   await page.getByTestId('metric-code').getByRole('textbox').fill('COUNT(*)');
@@ -724,7 +730,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     let group: MetricGroupResponse | undefined;
 
     try {
-      await page.goto('/metrics/add-metric');
+      await openAddMetricDrawer(page);
       await fillRequiredMetricFields(page, rootName);
       const groupCombo = page
         .getByTestId('metric-group-select')
@@ -776,7 +782,8 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(groupResponse.ok()).toBeTruthy();
       group = (await groupResponse.json()) as MetricGroupResponse;
 
-      await page.getByRole('link', { name: 'Add Child Metric' }).click();
+      await page.getByTestId('add-child-metric').click();
+      await expect(page.getByTestId('add-metric-container')).toBeVisible();
       await expect(page.getByTestId('metric-group-inherited')).toContainText(
         rootName
       );
@@ -1013,7 +1020,7 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         )
         .toBeGreaterThan(0);
 
-      await page.goto('/metrics/add-metric');
+      await openAddMetricDrawer(page);
       await fillRequiredMetricFields(page, metricName);
       await page
         .getByRole('textbox', { name: 'Description' })

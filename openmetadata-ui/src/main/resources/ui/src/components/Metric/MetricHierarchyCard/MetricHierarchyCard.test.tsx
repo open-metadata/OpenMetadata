@@ -25,6 +25,14 @@ jest.mock('./useMetricHierarchyCard', () => ({
   useMetricHierarchyCard: jest.fn(),
 }));
 
+jest.mock('../../../hooks/useMetricCreateDrawer', () => ({
+  useMetricCreateDrawer: () => ({
+    formDrawer: null,
+    openDrawer: jest.fn(),
+    closeDrawer: jest.fn(),
+  }),
+}));
+
 jest.mock('../MetricListHealth/MetricListHealth.component', () => ({
   __esModule: true,
   default: ({ metricId }: { metricId: string }) => (
@@ -92,19 +100,11 @@ describe('MetricHierarchyCard', () => {
         .querySelector('[data-featured-icon]')
     ).not.toBeInTheDocument();
 
-    const addChildLink = screen.getByRole('link', {
+    const addChildButton = screen.getByRole('button', {
       name: 'label.add-child-metric',
     });
 
-    expect(addChildLink).toHaveAttribute(
-      'href',
-      expect.stringContaining('parent=gross_margin_rate')
-    );
-    expect(addChildLink).toHaveClass(
-      'tw:border-dashed',
-      'tw:shadow-none',
-      'tw:py-1'
-    );
+    expect(addChildButton).toBeEnabled();
   });
 
   it('renders the complete grouped hierarchy with compact metadata and trailing health', () => {
@@ -274,7 +274,7 @@ describe('MetricHierarchyCard', () => {
     renderCard(false);
 
     expect(
-      screen.queryByRole('link', { name: 'label.add-child-metric' })
+      screen.queryByRole('button', { name: 'label.add-child-metric' })
     ).not.toBeInTheDocument();
   });
 

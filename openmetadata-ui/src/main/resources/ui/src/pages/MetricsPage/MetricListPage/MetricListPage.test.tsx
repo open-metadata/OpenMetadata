@@ -389,6 +389,13 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../hooks/useMetricHierarchy');
+jest.mock('../../../hooks/useMetricCreateDrawer', () => ({
+  useMetricCreateDrawer: () => ({
+    formDrawer: null,
+    openDrawer: jest.fn(),
+    closeDrawer: jest.fn(),
+  }),
+}));
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../rest/metricsAPI', () => ({
   deleteMetricAsync: jest.fn(),

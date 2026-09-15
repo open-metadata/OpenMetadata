@@ -70,7 +70,6 @@ import {
 import MetricListHealth from '../../../components/Metric/MetricListHealth/MetricListHealth.component';
 import MetricStatusPill from '../../../components/Metric/MetricStatusPill/MetricStatusPill.component';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -80,6 +79,7 @@ import { EntityStatus } from '../../../generated/entity/data/metric';
 import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
+import { useMetricCreateDrawer } from '../../../hooks/useMetricCreateDrawer';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,
@@ -324,6 +324,14 @@ const MetricListPage = () => {
     pageSize: METRIC_PAGE_SIZE,
     query: debouncedSearch,
   });
+
+  const refreshMetrics = useCallback(() => {
+    refetchSearch();
+    refetchTree();
+  }, [refetchSearch, refetchTree]);
+
+  const { formDrawer: metricCreateDrawer, openDrawer: openMetricCreateDrawer } =
+    useMetricCreateDrawer(refreshMetrics);
 
   const treeRows = useMemo(
     () => buildRows(topLevelNodes),
@@ -1095,7 +1103,7 @@ const MetricListPage = () => {
                     label: t('label.new-metric'),
                     color: 'primary',
                     iconLeading: Plus,
-                    onPress: () => navigate(ROUTES.ADD_METRIC),
+                    onPress: () => openMetricCreateDrawer(),
                   },
                 ]
               : undefined
@@ -1169,7 +1177,7 @@ const MetricListPage = () => {
             color="primary"
             data-testid="create-metric"
             iconLeading={Plus}
-            onPress={() => navigate(ROUTES.ADD_METRIC)}>
+            onPress={() => openMetricCreateDrawer()}>
             {t('label.add-entity', { entity: t('label.metric') })}
           </Button>
         </LimitWrapper>
@@ -1538,6 +1546,7 @@ const MetricListPage = () => {
           </Dialog>
         </Modal>
       </ModalOverlay>
+      {metricCreateDrawer}
     </main>
   );
 };

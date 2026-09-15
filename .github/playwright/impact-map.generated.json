@@ -6745,6 +6745,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Metric/AddMetric/AddMetricForm.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/MetricHierarchy.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricDefinitionCard/MetricDefinitionCard.tsx"
       ],
       "specs": [
@@ -10607,6 +10615,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/LineageConfigPage/LineageConfigPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/MetricHierarchy.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
@@ -10618,15 +10627,6 @@
       "specs": [
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
         "playwright/e2e/Pages/Login.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/AddMetricPage/AddMetricPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
-        "playwright/e2e/Features/MetricHierarchy.spec.ts"
       ]
     },
     {
