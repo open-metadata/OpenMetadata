@@ -52,11 +52,35 @@ const mockShowErrorToast = jest.fn();
 const mockShowModal = jest.fn();
 const mockGetOperationPermissions = jest.fn();
 const mockDebouncedSearchCallback = jest.fn();
+const mockSetLineageConfig = jest.fn();
+
+// Captures the last props LineageConfigModal was rendered with so tests can
+// exercise its onSave/onCancel callbacks — enough to prove the modal is wired
+// to the store setter (the fix) without depending on antd's real modal DOM.
+let lastLineageConfigModalProps:
+  | {
+      config: unknown;
+      visible: boolean;
+      onSave: (config: unknown) => void;
+      onCancel: () => void;
+    }
+  | undefined;
 
 let mockFqn = 'test.fqn';
 let mockEntityType = EntityType.TABLE;
 let mockLocationSearch = '';
 let mockAppPreferences = MOCK_APP_PREFERENCES;
+let mockStoreLineageConfig: {
+  upstreamDepth: number;
+  downstreamDepth: number;
+  nodesPerLayer: number;
+  pipelineViewMode: PipelineViewMode;
+} = {
+  upstreamDepth: 3,
+  downstreamDepth: 3,
+  nodesPerLayer: 50,
+  pipelineViewMode: PipelineViewMode.Node,
+};
 
 jest.mock('@openmetadata/ui-core-components', () => {
   type GridProps = { children?: React.ReactNode };
@@ -120,6 +144,16 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     appPreferences: mockAppPreferences,
   })),
+}));
+
+jest.mock('../../hooks/useLineageStore', () => ({
+  // Zustand selector-hook shape: called with `(state) => state.field`.
+  useLineageStore: jest.fn((selector: (state: unknown) => unknown) =>
+    selector({
+      lineageConfig: mockStoreLineageConfig,
+      setLineageConfig: mockSetLineageConfig,
+    })
+  ),
 }));
 
 jest.mock('../../utils/Assets/AssetsUtils', () => ({
@@ -226,9 +260,11 @@ const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
 
 jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
   __esModule: true,
-  default: jest.fn(() => (
-    <div data-testid="lineage-config-modal">Config Modal</div>
-  )),
+  default: jest.fn((props: typeof lastLineageConfigModalProps) => {
+    lastLineageConfigModalProps = props;
+
+    return <div data-testid="lineage-config-modal">Config Modal</div>;
+  }),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -292,6 +328,13 @@ describe('PlatformLineage Component Logic', () => {
     mockEntityType = EntityType.TABLE;
     mockLocationSearch = '';
     mockAppPreferences = MOCK_APP_PREFERENCES;
+    mockStoreLineageConfig = {
+      upstreamDepth: 3,
+      downstreamDepth: 3,
+      nodesPerLayer: 50,
+      pipelineViewMode: PipelineViewMode.Node,
+    };
+    lastLineageConfigModalProps = undefined;
     mockGetEntityAPIfromSource.mockResolvedValue(MOCK_TABLE_ENTITY);
     mockGetEntityPermissionByFqn.mockResolvedValue({
       permissions: ['ViewAll', 'EditLineage'],
@@ -862,6 +905,66 @@ describe('PlatformLineage Component Logic', () => {
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
       });
+    });
+  });
+
+  // Regression: on /lineage the settings modal used to write into local
+  // page state instead of the shared Zustand store the LineageProvider fetch
+  // effect listens to, so upstream/downstream depth changes silently produced
+  // no network call. These tests pin PlatformLineage to the store's
+  // lineageConfig / setLineageConfig so the wiring can't drift back.
+  describe('Lineage Store Integration', () => {
+    it('should pass the store lineageConfig to LineageConfigModal', async () => {
+      mockStoreLineageConfig = {
+        upstreamDepth: 5,
+        downstreamDepth: 7,
+        nodesPerLayer: 42,
+        pipelineViewMode: PipelineViewMode.Node,
+      };
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      expect(lastLineageConfigModalProps?.config).toEqual({
+        upstreamDepth: 5,
+        downstreamDepth: 7,
+        nodesPerLayer: 42,
+        pipelineViewMode: PipelineViewMode.Node,
+      });
+    });
+
+    it('should call store setLineageConfig when modal onSave is invoked', async () => {
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      const newConfig = {
+        upstreamDepth: 4,
+        downstreamDepth: 4,
+        nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
+      };
+      lastLineageConfigModalProps?.onSave(newConfig);
+
+      expect(mockSetLineageConfig).toHaveBeenCalledTimes(1);
+      expect(mockSetLineageConfig).toHaveBeenCalledWith(newConfig);
+    });
+
+    it('should not call store setLineageConfig when modal is cancelled', async () => {
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      lastLineageConfigModalProps?.onCancel();
+
+      expect(mockSetLineageConfig).not.toHaveBeenCalled();
     });
   });
 });

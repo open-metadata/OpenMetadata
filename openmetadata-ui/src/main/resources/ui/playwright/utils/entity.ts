@@ -230,10 +230,15 @@ export const addOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    const ownerItem = page.getByRole('listitem', { name: owner });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner });
 
     await expect
       .poll(
@@ -322,10 +327,18 @@ export const addOwnerWithoutValidation = async ({
     .fill(owner);
   await searchUser;
 
+  // Scope the option to the open picker panel — some pages (e.g. the Data
+  // Contract form) render more than one owner list, so a page-wide match is
+  // ambiguous.
+  const ownerOption = page
+    .getByTestId(`owner-select-${lowerCase(type)}-panel`)
+    .locator('[data-testid="owner-option"]')
+    .filter({ hasText: owner });
+
   if (type === 'Teams') {
-    await page.getByRole('listitem', { name: owner }).click();
+    await ownerOption.click();
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await ownerOption.click();
     await page.getByTestId('selectable-list-update-btn').click();
   }
 };
@@ -357,10 +370,16 @@ export const updateOwner = async ({
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
     await patchRequest;
   } else {
-    await page.getByRole('listitem', { name: owner }).click();
+    await page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
 
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
     await page.getByTestId('selectable-list-update-btn').click();
@@ -387,10 +406,9 @@ export const removeOwnersFromList = async ({
   await waitForAllLoadersToDisappear(page);
 
   for (const ownerName of ownerNames) {
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
 
     await ownerItem.click();
   }
@@ -486,7 +504,7 @@ export const addMultiOwner = async (data: {
 
   const isClearButtonVisible = await page
     .getByTestId('select-owner-tabs')
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .locator('[data-testid="owner-select-users-panel"]')
     .getByTestId('clear-all-button')
     .isVisible();
 
@@ -506,7 +524,7 @@ export const addMultiOwner = async (data: {
 
   if (clearAll && isMultipleOwners) {
     const clearButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('clear-all-button');
 
     await clearButton.click();
@@ -531,10 +549,9 @@ export const addMultiOwner = async (data: {
       .first()
       .waitFor({ state: 'detached' });
 
-    const ownerItem = page.getByRole('listitem', {
-      name: ownerName,
-      exact: true,
-    });
+    const ownerItem = page
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: ownerName });
     await ownerItem.waitFor({ state: 'visible' });
 
     // Wait for the item to exist and be visible before clicking
@@ -554,7 +571,7 @@ export const addMultiOwner = async (data: {
 
   if (isMultipleOwners) {
     const updateButton = page
-      .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+      .locator('[data-testid="owner-select-users-panel"]')
       .getByTestId('selectable-list-update-btn');
 
     if (isSelectableInsideForm) {
@@ -2092,13 +2109,24 @@ export const checkForEditActions = async ({
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
   // Click the lineage tab
-  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?fqn=*');
+  const lineageApi = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page.click('[data-testid="lineage"]');
 
   // Ensure the response has been received and check the status code
   await lineageApi;
 
   await waitForAllLoadersToDisappear(page);
+
+  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
+  const hasSeenOnboarding = (await page.context().cookies()).some(
+    ({ name, value }) =>
+      name === 'lineageMapsOnboardingSeen' && value === 'true'
+  );
+  if (!hasSeenOnboarding) {
+    await expect(onboardingDialog).toBeVisible();
+    await onboardingDialog.getByRole('button').click();
+    await expect(onboardingDialog).not.toBeVisible();
+  }
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {

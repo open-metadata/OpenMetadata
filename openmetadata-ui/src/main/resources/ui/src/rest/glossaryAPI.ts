@@ -170,12 +170,14 @@ export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
 // by the backend, so callers should compare response length to input.
 export const getGlossaryTermsByIds = async (
   ids: string[],
-  params?: ListParams
+  params?: ListParams,
+  signal?: AbortSignal
 ): Promise<GlossaryTerm[]> => {
   if (ids.length === 0) {
     return [];
   }
   const response = await APIClient.get<GlossaryTerm[]>('/glossaryTerms/byIds', {
+    signal,
     params: {
       ...params,
       ids: ids.join(','),

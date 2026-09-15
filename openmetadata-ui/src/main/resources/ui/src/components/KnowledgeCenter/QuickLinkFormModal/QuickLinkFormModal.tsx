@@ -40,6 +40,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import {
   LabelType,
   State,
+  Style,
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
@@ -67,6 +68,7 @@ import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {
@@ -226,6 +228,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
             displayName?: string;
             fullyQualifiedName?: string;
             name?: string;
+            style?: Style;
           };
           if (!tag?.fullyQualifiedName) {
             return null;
@@ -239,6 +242,7 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
             displayName: tag.displayName,
             name: tag.name,
             description: tag.description,
+            style: tag.style,
           });
         })
         .filter((opt): opt is QuickLinkFormSelectItem => opt !== null);
@@ -488,6 +492,23 @@ export const QuickLinkFormModal: FC<QuickLinkFormModalProps> = ({
           supportingText={item.supportingText}
         />
       ),
+      renderTag: (item: FormSelectItem, onRemove: () => void) => {
+        const tagValue = (item as QuickLinkFormSelectItem).value;
+        const style =
+          tagValue && 'style' in tagValue ? tagValue.style : undefined;
+
+        return (
+          <ClassificationTag
+            color={style?.color}
+            icon={style?.iconURL}
+            key={item.id}
+            label={item.label || ''}
+            maxWidth={150}
+            tooltip={item.label || ''}
+            onDelete={onRemove}
+          />
+        );
+      },
     },
     placeholder: t(SELECT_FIELD_LABEL_KEY, { field: t('label.tag-plural') }),
   };
