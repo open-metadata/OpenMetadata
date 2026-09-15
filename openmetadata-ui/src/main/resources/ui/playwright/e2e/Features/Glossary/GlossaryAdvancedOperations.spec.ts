@@ -219,10 +219,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
@@ -301,10 +299,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
