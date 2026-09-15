@@ -660,6 +660,12 @@
                   "default": true,
                   "title": "Include Data Models"
                 },
+                "includeMetrics": {
+                  "title": "Include Metrics",
+                  "description": "Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML measures) as first-class Metric entities. Metric names are unique across the whole OpenMetadata instance, so this is disabled by default.",
+                  "type": "boolean",
+                  "default": false
+                },
                 "includeDraftDashboard": {
                   "title": "Include Draft Dashboards",
                   "description": "Optional Configuration to include/exclude draft dashboards. By default it will include draft dashboards",

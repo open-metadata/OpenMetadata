@@ -26,6 +26,13 @@ class LookMlField(BaseModel):
     type: str | None = Field(None, description="Field type to be mapped to OM")
     name: str = Field(..., description="Field name")
     sql: str | None = Field(None, description="Field SQL")
+    # `lkml` emits both filter syntaxes under `filters__all`, so the attribute name has to match
+    # that key exactly. Declaring an alias instead would need `populate_by_name` to stay usable
+    # from Python, and silently yield None without it.
+    filters__all: list | None = Field(None, description="Measure filters, in either LookML syntax")
+    value_format_name: str | None = Field(None, description="Named value format, e.g. usd or percent_2")
+    hidden: str | None = Field(None, description="LookML `hidden` flag, a yes/no string")
+    tags: list[str] | None = Field(None, description="Tags for the field")
 
 
 class LookMlDerivedTableField(BaseModel):
@@ -42,6 +49,9 @@ class LookMlView(BaseModel):
     sql_table_name: str | None = Field(None, description="To track lineage with the source")
     measures: list[LookMlField] = Field([], description="Measures to ingest as cols")
     dimensions: list[LookMlField] = Field([], description="Dimensions to ingest as cols")
+    # `_extract_column_lineage` has always iterated "dimension_groups"; without this field the
+    # getattr returned [] and dimension-group column lineage never ran.
+    dimension_groups: list[LookMlField] = Field([], description="Dimension groups to ingest as cols")
     source_file: Includes | None = Field(None, description="lkml file path")
     derived_table: LookMlDerivedTableField | None = Field(None, description="To track lineage with the source")
     tags: list[str] | None = Field(None, description="Tags for the view")
