@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -31,6 +32,7 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -48,6 +50,10 @@ import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.auth.ServiceTokenType;
@@ -164,6 +170,20 @@ class JwtFilterTest {
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  @Test
+  void testCatalogSecurityContextDefaultsToNoActivePersona() {
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+
+    CatalogSecurityContext securityContext = jwtFilter.getCatalogSecurityContext(jwt);
+
+    assertEquals("sam", securityContext.getUserPrincipal().getName());
+    assertNull(securityContext.activePersona());
   }
 
   @Test
@@ -321,65 +341,84 @@ class JwtFilterTest {
         .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
   }
 
-  @Test
-  void sessionBoundUserTokenRequiresActiveMatchingSession() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
-            .withClaim(JWTTokenGenerator.SESSION_ID_CLAIM, "session-1")
-            .sign(algorithm);
-    SessionService sessionService = mock(SessionService.class);
-    when(sessionService.getFreshSessionById("session-1"))
-        .thenReturn(
-            Optional.of(
-                UserSession.builder()
-                    .id("session-1")
-                    .username("sam")
-                    .status(SessionStatus.ACTIVE)
-                    .expiresAt(System.currentTimeMillis() + 60_000)
-                    .idleExpiresAt(System.currentTimeMillis() + 60_000)
-                    .build()));
-    AuthServeletHandlerRegistry.setSessionService(null, sessionService);
-
+  @ParameterizedTest
+  @EnumSource(
+      value = SessionStatus.class,
+      names = {"ACTIVE", "REFRESHING"})
+  void sessionBoundUserTokenAcceptsAuthenticatedSessionDuringRefresh(final SessionStatus status) {
+    final UserSession session =
+        activeSession("session-1", "sam", "basic").toBuilder()
+            .status(status)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
+            .build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(session));
     try {
-      ContainerRequestContext context = createRequestContextWithJwt(jwt);
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
       jwtFilter.filter(context);
-      verify(context, times(1))
-          .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
-      verify(sessionService, times(1))
-          .recordSessionAccess(org.mockito.ArgumentMatchers.any(UserSession.class));
+      final ArgumentCaptor<SecurityContext> securityContext =
+          ArgumentCaptor.forClass(SecurityContext.class);
+      verify(context).setSecurityContext(securityContext.capture());
+      assertEquals("sam", securityContext.getValue().getUserPrincipal().getName());
     } finally {
       AuthServeletHandlerRegistry.setSessionService(null, null);
     }
   }
 
-  @Test
-  void sessionBoundUserTokenRejectsRevokedSession() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("sub", "sam")
-            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
-            .withClaim(JWTTokenGenerator.SESSION_ID_CLAIM, "session-1")
-            .sign(algorithm);
-    SessionService sessionService = mock(SessionService.class);
-    when(sessionService.getFreshSessionById("session-1"))
-        .thenReturn(
-            Optional.of(
-                UserSession.builder()
-                    .id("session-1")
-                    .username("sam")
-                    .status(SessionStatus.REVOKED)
-                    .build()));
-    AuthServeletHandlerRegistry.setSessionService(null, sessionService);
-
+  @ParameterizedTest
+  @EnumSource(
+      value = SessionStatus.class,
+      names = {"PENDING", "REVOKED", "EXPIRED"})
+  void sessionBoundUserTokenRejectsUnauthenticatedSession(final SessionStatus status) {
+    final UserSession session =
+        activeSession("session-1", "sam", "basic").toBuilder().status(status).build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(session));
     try {
-      ContainerRequestContext context = createRequestContextWithJwt(jwt);
-      Exception exception =
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      final Exception exception =
           assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
       assertTrue(exception.getMessage().toLowerCase(Locale.ROOT).contains("invalid session"));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void refreshingSessionCannotBypassSessionExpiry(final boolean idleExpiry) {
+    final UserSession session = activeSession("session-1", "sam", "basic");
+    final UserSession expired =
+        session.toBuilder()
+            .status(SessionStatus.REFRESHING)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
+            .expiresAt(idleExpiry ? session.getExpiresAt() : 0L)
+            .idleExpiresAt(idleExpiry ? 0L : session.getIdleExpiresAt())
+            .build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(expired));
+    try {
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    } finally {
+      AuthServeletHandlerRegistry.setSessionService(null, null);
+    }
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = "another-user")
+  void refreshingSessionMustMatchTokenUser(final String username) {
+    final UserSession session =
+        activeSession("session-1", username, "basic").toBuilder()
+            .status(SessionStatus.REFRESHING)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
+            .build();
+    AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(session));
+    try {
+      final ContainerRequestContext context =
+          createRequestContextWithJwt(sessionBoundJwt("sam", "session-1"));
+      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     } finally {
       AuthServeletHandlerRegistry.setSessionService(null, null);
     }
@@ -544,9 +583,13 @@ class JwtFilterTest {
     }
   }
 
-  @Test
-  void sessionIssuedByDecommissionedProviderIsRejected() {
-    UserSession googleSession = activeSession("session-1", "sam", "google");
+  @ParameterizedTest
+  @EnumSource(
+      value = SessionStatus.class,
+      names = {"ACTIVE", "REFRESHING"})
+  void sessionIssuedByDecommissionedProviderIsRejected(final SessionStatus status) {
+    UserSession googleSession =
+        activeSession("session-1", "sam", "google").toBuilder().status(status).build();
     AuthServeletHandlerRegistry.setSessionService(null, sessionServiceReturning(googleSession));
     JwtFilter basicProviderFilter =
         new JwtFilter(
@@ -561,5 +604,99 @@ class JwtFilterTest {
     } finally {
       AuthServeletHandlerRegistry.setSessionService(null, null);
     }
+  }
+
+  @Test
+  void rolesClaimAbsentLeavesContextRolesNull() throws Exception {
+    // Regression guard: an empty set here would tell the role sync the provider revoked every
+    // role, wiping the roles of every user on a deployment that never configured a roles claim.
+    JwtFilter filter = filterWithRolesFromProvider(true);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(rolesClaimJwt(null));
+
+    assertNull(context.userRoles());
+  }
+
+  @Test
+  void emptyRolesClaimYieldsEmptySetSoRevocationIsVisible() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(true);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(rolesClaimJwt(List.of()));
+
+    assertEquals(Set.of(), context.userRoles());
+  }
+
+  @Test
+  void populatedRolesClaimIsCarriedIntoTheSecurityContext() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(true);
+
+    CatalogSecurityContext context =
+        filter.getCatalogSecurityContext(rolesClaimJwt(List.of("DataSteward", "DataConsumer")));
+
+    assertEquals(Set.of("DataSteward", "DataConsumer"), context.userRoles());
+  }
+
+  @Test
+  void scalarRolesClaimIsReadAsASingleRole() throws Exception {
+    // Providers that emit a lone role as a string rather than a one-element array used to be read
+    // as "no roles" because Claim.asList returns null for a scalar.
+    JwtFilter filter = filterWithRolesFromProvider(true);
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .withClaim("roles", "DataSteward")
+            .sign(algorithm);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(jwt);
+
+    assertEquals(Set.of("DataSteward"), context.userRoles());
+  }
+
+  @Test
+  void rolesClaimIsIgnoredWhenUseRolesFromProviderIsOff() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(false);
+
+    CatalogSecurityContext context =
+        filter.getCatalogSecurityContext(rolesClaimJwt(List.of("DataSteward")));
+
+    assertNull(context.userRoles());
+  }
+
+  @Test
+  void botTokensNeverCarryProviderRoles() throws Exception {
+    JwtFilter filter = filterWithRolesFromProvider(true);
+    String jwt =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "ingestion-bot")
+            .withClaim("isBot", true)
+            .withClaim("roles", List.of("DataSteward"))
+            .sign(algorithm);
+
+    CatalogSecurityContext context = filter.getCatalogSecurityContext(jwt);
+
+    assertNull(context.userRoles());
+  }
+
+  private static String rolesClaimJwt(List<String> roles) {
+    var builder =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam");
+    if (roles != null) {
+      builder = builder.withClaim("roles", roles);
+    }
+    return builder.sign(algorithm);
+  }
+
+  private static JwtFilter filterWithRolesFromProvider(boolean useRolesFromProvider)
+      throws Exception {
+    JwtFilter filter =
+        new JwtFilter(jwkProvider, List.of("sub", "email"), "openmetadata.org", false);
+    Field field = JwtFilter.class.getDeclaredField("useRolesFromProvider");
+    field.setAccessible(true);
+    field.setBoolean(filter, useRolesFromProvider);
+    return filter;
   }
 }

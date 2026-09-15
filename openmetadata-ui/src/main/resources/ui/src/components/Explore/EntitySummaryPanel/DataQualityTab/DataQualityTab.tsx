@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Owner } from '@openmetadata/ui-core-components';
 import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -41,13 +42,13 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../../../utils/Owner/ownerConversionUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
@@ -160,8 +161,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           label: t('label.assignee'),
           value: (
             <div className="assignee-info">
-              <OwnerLabel
-                owners={assignee ? [assignee] : []}
+              <Owner
+                owners={toOwnerRefs(assignee ? [assignee] : [])}
                 placeHolder={t('label.no-entity', {
                   entity: t('label.assignee'),
                 })}

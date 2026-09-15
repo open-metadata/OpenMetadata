@@ -12,10 +12,9 @@
  */
 
 import { type Locator, type Page } from '@playwright/test';
-import { SidebarItem } from '../../../constant/sidebar';
 import { expect, test as base } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
-import { clickOutside, redirectToHomePage } from '../../../utils/common';
+import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 /**
@@ -45,30 +44,14 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
-async function navigateToWorkflowsListPage(page: Page) {
-  await page.hover('[data-testid="left-sidebar"]');
-  await page.click(`[data-testid="${SidebarItem.GOVERNANCE}"]`);
-
-  const listResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/governance/workflowDefinitions') &&
-      response.request().method() === 'GET'
-  );
-
-  await page.click('[data-testid="app-bar-item-workflows"]');
-  await listResponse;
-  await waitForAllLoadersToDisappear(page);
-}
-
 async function navigateToSeededWorkflowDetailPage(page: Page) {
-  await navigateToWorkflowsListPage(page);
-  await clickOutside(page);
-
   const detailResponse = page.waitForResponse(
     '/api/v1/governance/workflowDefinitions/name/*'
   );
 
-  await page.getByTestId(SEEDED_WORKFLOW_NAME).click();
+  await page.goto(
+    `/workflows/${encodeURIComponent(SEEDED_WORKFLOW_NAME)}/workflow`
+  );
   await detailResponse;
   await waitForAllLoadersToDisappear(page);
 }

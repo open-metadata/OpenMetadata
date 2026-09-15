@@ -684,13 +684,13 @@ class TestGrafana:
         assert sql_panel.type == "graph"
         assert sql_panel.datasource == {"uid": "postgres-ds", "type": "postgres"}
         assert len(sql_panel.targets) == 2
-        assert sql_panel.targets[0].rawSql.startswith("SELECT * FROM users")
+        assert sql_panel.targets[0].raw_sql.startswith("SELECT * FROM users")
         assert sql_panel.targets[0].format == "time_series"
         assert sql_panel.targets[0].datasource == {
             "uid": "postgres-ds",
             "type": "postgres",
         }
-        assert sql_panel.targets[1].rawSql == "SELECT COUNT(*) FROM orders"
+        assert sql_panel.targets[1].raw_sql == "SELECT COUNT(*) FROM orders"
         # format=0 is a valid, falsy value and must survive as 0, not coerced to None.
         assert sql_panel.targets[1].format == 0
         assert sql_panel.targets[1].format is not None
@@ -699,7 +699,7 @@ class TestGrafana:
         prom_panel = dashboard.panels[1]
         assert prom_panel.datasource == "prometheus-ds"
         assert prom_panel.targets[0].expr == "rate(http_requests_total[5m])"
-        assert prom_panel.targets[0].rawSql is None
+        assert prom_panel.targets[0].raw_sql is None
         assert prom_panel.targets[0].format is None
         assert prom_panel.targets[0].datasource == "prometheus-ds"
 
