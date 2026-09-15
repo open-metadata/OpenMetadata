@@ -318,23 +318,30 @@ export const testCommonOperations = async (
   }
 
   if (effect === 'deny') {
-    // Both controls render on every entity measured, in both modes, so an
-    // `isVisible()` guard here could only ever skip the check on a page that had
-    // not finished rendering -- which is indistinguishable from passing. Require
-    // them, then assert the picker they open stays closed. Absence rather than
-    // invisibility: measured across all fourteen entities, clicking either
-    // control under deny leaves zero cards in the DOM.
+    // Tier renders on every surface measured -- fourteen data-asset entities
+    // and eight service types, both modes -- so requiring it can only fail on a
+    // page that never rendered, which is what we want. Then assert the picker
+    // it opens stays closed: absence rather than invisibility, since clicking
+    // it under deny leaves zero cards in the DOM.
     const tierLocator = testUserPage.getByTestId('Tier');
     await expect(tierLocator).toBeVisible();
     await tierLocator.click();
     await expect(testUserPage.getByTestId('cards')).toHaveCount(0);
 
+    // Certification is not offered on every surface these tests cover: all
+    // eight service types render no certification-value at all, in either mode,
+    // while every data-asset entity has one. So branch on whether it exists --
+    // but branch on a settled page. The header anchor above has already run, so
+    // a count of zero here means the surface does not offer certification
+    // rather than "not drawn yet", which is what made the original
+    // `isVisible()` guard indistinguishable from passing.
     const certLocator = testUserPage.getByTestId('certification-value');
-    await expect(certLocator).toBeVisible();
-    await certLocator.click();
-    await expect(testUserPage.getByTestId('certification-cards')).toHaveCount(
-      0
-    );
+    if ((await certLocator.count()) > 0) {
+      await certLocator.click();
+      await expect(testUserPage.getByTestId('certification-cards')).toHaveCount(
+        0
+      );
+    }
   }
 
   // Check custom properties
@@ -342,9 +349,13 @@ export const testCommonOperations = async (
     '[data-testid="custom_properties"]'
   );
 
-  // The tab renders on every entity in both modes, so guarding this on
-  // `isVisible()` could only skip the check on an unrendered page. Require it.
-  await expect(customPropertiesLocator).toBeVisible();
+  // Same as certification: every data-asset entity has a custom-properties tab
+  // in both modes, no service page has one, and the header anchor above means a
+  // count of zero is a real absence rather than an unrendered page.
+  if ((await customPropertiesLocator.count()) === 0) {
+    return;
+  }
+
   await customPropertiesLocator.click();
 
   const customPropertyCard = testUserPage.locator(
