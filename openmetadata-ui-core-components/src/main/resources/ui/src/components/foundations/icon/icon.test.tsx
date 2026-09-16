@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import { Icon } from './Icon';
+import { describe, expect, it } from 'vitest';
+import { Icon } from './icon';
 
 describe('Icon', () => {
   describe('icon name and empty/invalid values', () => {
