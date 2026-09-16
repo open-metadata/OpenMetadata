@@ -32,6 +32,12 @@ public class CompiledRule extends Rule {
   private static final Set<MetadataOperation> EXPLICIT_GRANT_ONLY_OPERATIONS =
       Set.of(MetadataOperation.IMPERSONATE);
 
+  // Operations an allow rule must name, while deny rules still match them through ALL subsumption.
+  // Agent SPARQL reads the whole RDF dataset without asset-level filtering, so an existing All/All
+  // policy must not open it, yet a broad deny must keep closing it.
+  private static final Set<MetadataOperation> EXPLICIT_ALLOW_OPERATIONS =
+      Set.of(MetadataOperation.EXECUTE_SPARQL_QUERY);
+
   @JsonIgnore private Expression expression;
 
   public CompiledRule(Rule rule) {
@@ -222,7 +228,8 @@ public class CompiledRule extends Rule {
 
   private boolean matchOperation(MetadataOperation operation) {
     boolean matched;
-    if (EXPLICIT_GRANT_ONLY_OPERATIONS.contains(operation)) {
+    if (EXPLICIT_GRANT_ONLY_OPERATIONS.contains(operation)
+        || (EXPLICIT_ALLOW_OPERATIONS.contains(operation) && getEffect() != Effect.DENY)) {
       matched = getOperations().contains(operation);
     } else {
       matched = matchesBySubsumption(operation) || getOperations().contains(operation);
