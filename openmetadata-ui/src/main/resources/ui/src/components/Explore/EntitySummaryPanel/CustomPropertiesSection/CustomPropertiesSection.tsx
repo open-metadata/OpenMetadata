@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -81,22 +82,25 @@ const CustomPropertiesSection = ({
           icon={<AddPlaceHolderIcon height={100} width={100} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <div className="p-t-md text-justify no-data-placeholder">
-            <Transi18next
-              i18nKey="message.no-custom-properties-entity"
-              renderElement={
-                <a
-                  aria-label={t('label.documentation')}
-                  href={CUSTOM_PROPERTIES_DOCS}
-                  rel="noreferrer"
-                  target="_blank"
-                  title="Custom properties documentation"
+            <Tooltip title={t('label.documentation')}>
+              <span>
+                <Transi18next
+                  i18nKey="message.no-custom-properties-entity"
+                  renderElement={
+                    <a
+                      aria-label={t('label.documentation')}
+                      href={CUSTOM_PROPERTIES_DOCS}
+                      rel="noreferrer"
+                      target="_blank"
+                    />
+                  }
+                  values={{
+                    entity: emptyStateMessage ?? t('label.entity'),
+                    docs: t('label.doc-plural-lowercase'),
+                  }}
                 />
-              }
-              values={{
-                entity: emptyStateMessage ?? t('label.entity'),
-                docs: t('label.doc-plural-lowercase'),
-              }}
-            />
+              </span>
+            </Tooltip>
           </div>
         </ErrorPlaceHolderNew>
       </div>
