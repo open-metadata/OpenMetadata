@@ -14,6 +14,7 @@ import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { Typography } from '@/components/foundations/typography';
 import { Input } from '@/components/base/input/input';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
@@ -773,14 +774,18 @@ export const FilterSelect = ({
           )}
 
           {isEmpty && (
-            <div className="tw:px-4 tw:py-2 tw:text-sm tw:text-tertiary">
-              {emptyState ?? t('label.no-data-found')}
+            <div className="tw:px-4 tw:py-2">
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {emptyState ?? t('label.no-data-found')}
+              </Typography>
             </div>
           )}
 
           {helperText !== undefined && (
-            <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2 tw:text-xs tw:text-tertiary">
-              {helperText}
+            <div className="tw:border-t tw:border-secondary tw:px-3 tw:py-2">
+              <Typography className="tw:text-tertiary" size="text-xs">
+                {helperText}
+              </Typography>
             </div>
           )}
 
@@ -817,13 +822,15 @@ export const FilterSelect = ({
 
           {showStatusFooter && (
             <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
-              <span
-                className="tw:text-xs tw:font-normal tw:text-tertiary"
-                data-testid="selected-count">
+              <Typography
+                className="tw:text-tertiary"
+                data-testid="selected-count"
+                size="text-xs"
+                weight="regular">
                 {selectedValues.length === 0
                   ? t('label.none-selected')
                   : t('label.count-selected', { count: selectedValues.length })}
-              </span>
+              </Typography>
               <Button
                 color="tertiary"
                 data-testid="clear-filter-btn"
