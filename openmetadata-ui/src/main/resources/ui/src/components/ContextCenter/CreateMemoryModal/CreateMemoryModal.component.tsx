@@ -17,6 +17,7 @@ import {
   Button,
   ButtonUtility,
   Card,
+  ClassificationTag,
   Dialog,
   FieldProp,
   FieldTypes,
@@ -97,7 +98,6 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { ClassificationTag } from '../../common/atoms/Tag';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import {
   CreateMemoryModalProps,

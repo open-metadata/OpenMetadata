@@ -37,6 +37,11 @@
       "types": "./dist/types/src/icons/index.d.ts",
       "import": "./dist/icons/index.es.js",
       "require": "./dist/icons/index.cjs.js"
+    },
+    "./icon": {
+      "types": "./dist/types/src/icon/index.d.ts",
+      "import": "./dist/icon/index.es.js",
+      "require": "./dist/icon/index.cjs.js"
     }
   },
   "files": [

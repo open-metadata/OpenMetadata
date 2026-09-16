@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,17 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
 
-export interface IconProps {
-  iconValue: string | undefined;
-  size?: number;
-  className?: string;
-  /** Cosmetic styles for the rendered icon/image itself (e.g. borderRadius). Never
-   * applied to the loading skeleton. */
-  imageStyle?: React.CSSProperties;
-  imageClassName?: string;
-  strokeWidth?: number;
-  alt?: string;
-  fallback?: ReactNode;
-}
+// Separate build entry (@openmetadata/ui-core-components/icon) so Icon and the
+// ICON_MAP it carries (a plain object referencing ~44 icon components, which a
+// bundler cannot tree-shake key-by-key) stay out of the main `.`/`./components`
+// barrel — consumers only pay for this when they actually import it, ideally
+// via React.lazy.
+export * from '../components/foundations/icon/icon';
+export * from '../components/foundations/icon/icon.types';
