@@ -885,6 +885,7 @@
     "domain-lowercase": "домен",
     "domain-lowercase-plural": "домены",
     "domain-plural": "Домены",
+    "domain-scope": "Область домена",
     "domain-type": "Тип домена",
     "domain_access": "Доступ к домену",
     "done": "Готово",

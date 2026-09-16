@@ -69,13 +69,14 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('../atoms/Tag/ClassificationTag', () =>
-  jest
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
     .fn()
     .mockImplementation(({ label, 'data-testid': testId }) => (
       <div data-testid={testId ?? 'classification-tag'}>{label}</div>
-    ))
-);
+    )),
+}));
 
 // Mock SVG components
 jest.mock('../../../assets/svg/edit-new.svg', () => ({

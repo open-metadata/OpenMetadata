@@ -25,17 +25,12 @@ const tags = [
   { tagFQN: `test.tags.term_3`, source: 'Glossary' },
 ];
 
-jest.mock('../../common/atoms/Tag/ClassificationTag', () => {
-  return jest.fn().mockReturnValue(<p>TagsV1</p>);
-});
-
-jest.mock('../../common/atoms/Tag/GlossaryTag', () => {
-  return jest.fn().mockReturnValue(<p>TagsV1</p>);
-});
-
-jest.mock('../../common/atoms/Tag/AutoClassificationTag', () => {
-  return jest.fn().mockReturnValue(<p>TagsV1</p>);
-});
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest.fn().mockReturnValue(<p>TagsV1</p>),
+  GlossaryTag: jest.fn().mockReturnValue(<p>TagsV1</p>),
+  AutoClassificationTag: jest.fn().mockReturnValue(<p>TagsV1</p>),
+}));
 
 describe('Test TagsViewer Component', () => {
   it('Should render placeholder if tags is empty', () => {

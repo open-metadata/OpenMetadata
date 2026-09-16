@@ -368,7 +368,10 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
           await page.getByTestId('filters-button').click();
           await page.getByTestId(`search-dropdown-${filterTestId}`).click();
 
-          await page.getByTitle(filterValue).click();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByLabel(filterValue)
+            .click();
 
           const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
           await page.getByRole('button', { name: 'Update' }).click();
@@ -412,7 +415,10 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
             .getByTestId('drop-down-menu')
             .getByTestId('loader')
             .waitFor({ state: 'hidden' });
-          await page.getByTitle(filterValue).click();
+          await page
+            .getByTestId('drop-down-menu')
+            .getByLabel(filterValue)
+            .click();
 
           const lineageRes = page.waitForResponse(
             '/api/v1/lineage/getLineageByEntityCount?*'
@@ -900,7 +906,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.database.name',
         ''
       );
-      await page.getByTitle(databaseName).click();
+      await page.getByTestId('drop-down-menu').getByLabel(databaseName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByRole('button', { name: 'Update' }).click();
@@ -945,7 +951,10 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.databaseSchema.name',
         ''
       );
-      await page.getByTitle(databaseSchemaName).click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByLabel(databaseSchemaName)
+        .click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByRole('button', { name: 'Update' }).click();
@@ -990,7 +999,7 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         'entityResponseData.columns[0].name',
         ''
       );
-      await page.getByTitle(columnName).click();
+      await page.getByTestId('drop-down-menu').getByLabel(columnName).click();
 
       const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByRole('button', { name: 'Update' }).click();

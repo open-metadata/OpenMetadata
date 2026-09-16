@@ -3,6 +3,8 @@ package org.openmetadata.mcp.tools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
@@ -24,6 +26,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -352,6 +356,172 @@ class SearchMetadataToolTest {
       verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
       assertEquals("chart_search_index", captor.getValue().getIndex());
       assertEquals("test", captor.getValue().getQuery());
+    }
+  }
+
+  /**
+   * Tool-calling models fill every optional string in the schema, using "" or "null" for the ones
+   * they have nothing for. A filter that carries no clause has to read as an omitted filter, or the
+   * degenerate value is wrapped into {"query": null} and sent to the engine, which rejects it and
+   * fails the search the model actually asked for.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "",
+        "   ",
+        "null",
+        "NULL",
+        "{}",
+        "{\"query\":null}",
+        "{\"query\":{}}",
+        "{\"query\":\"\"}",
+        "\"\"",
+        "\"   \""
+      })
+  void testBlankQueryFilterIsTreatedAsAbsent(String blankFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "mart_cash_collections");
+      params.put("queryFilter", blankFilter);
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertNull(
+          captor.getValue().getQueryFilter(),
+          "a filter with no clause must fall through to the keyword search, not be wrapped and sent");
+      assertEquals("mart_cash_collections", captor.getValue().getQuery());
+    }
+  }
+
+  /**
+   * The exclusion filter is built only when the caller supplied no filter of their own, so a blank
+   * filter must leave queryFilter null rather than empty - otherwise excludeEntityTypes silently
+   * stops being applied.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"", "{}", "{\"query\":null}"})
+  void testBlankQueryFilterStillAppliesEntityTypeExclusions(String blankFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", blankFilter);
+      params.put("excludeEntityTypes", List.of("tableColumn"));
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      JsonNode bool = JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/query/bool");
+      assertEquals("tableColumn", bool.at("/must_not/0/term/entityType").asText());
+      assertTrue(
+          bool.path("must").isMissingNode(),
+          "the blank filter must leave no clause behind - a null 'must' is rejected by the engine");
+    }
+  }
+
+  /**
+   * A filter that is present but cannot be a query clause is the caller's mistake to correct, so it
+   * has to say so. Sending it on produces an opaque backend rejection the model cannot act on.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"[]", "42", "\"text\"", "hello", "{\"query\":[]}", "{\"query\":42}"})
+  void testUnusableQueryFilterIsRejectedByName(String badFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", badFilter);
+
+      IllegalArgumentException thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> searchMetadataTool.execute(authorizer, securityContext, params));
+
+      assertTrue(
+          thrown.getMessage().contains("queryFilter"),
+          "the message must name the parameter the model has to fix, got: " + thrown.getMessage());
+      verify(searchRepository, never()).search(any(), any(SubjectContext.class));
+    }
+  }
+
+  /**
+   * The guard unwraps the DSL wrapper key once and no further. A clause that is a real object
+   * carrying wrong DSL is malformed, not absent, so it stays the engine's rejection to report -
+   * swallowing it would leave the model believing a filter applied when it never did.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"{\"query\":{\"query\":null}}", "{\"query\":{\"bool\":null}}"})
+  void testMalformedClauseIsLeftForTheEngine(String malformedFilter) throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", malformedFilter);
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(malformedFilter, captor.getValue().getQueryFilter());
+    }
+  }
+
+  @Test
+  void testSiblingKeysSurviveAlongsideARealClause() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", "{\"query\":{\"match_all\":{}},\"size\":5}");
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertEquals(5, JsonUtils.readTree(captor.getValue().getQueryFilter()).at("/size").asInt());
+    }
+  }
+
+  /** Siblings follow the clause: with nothing to qualify, the whole filter goes rather than half. */
+  @Test
+  void testSiblingKeysGoWithAnAbsentClause() throws Exception {
+    try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
+      subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "orders");
+      params.put("queryFilter", "{\"query\":null,\"size\":5}");
+
+      when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
+      stubEmptySearch();
+
+      searchMetadataTool.execute(authorizer, securityContext, params);
+
+      ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+      verify(searchRepository).search(captor.capture(), any(SubjectContext.class));
+      assertNull(captor.getValue().getQueryFilter());
     }
   }
 

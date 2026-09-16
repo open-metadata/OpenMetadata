@@ -373,6 +373,7 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
+export const CERTIFICATION_CATEGORY = 'Certification';
 
 export const ENTITY_PATH = {
   tables: 'table',
