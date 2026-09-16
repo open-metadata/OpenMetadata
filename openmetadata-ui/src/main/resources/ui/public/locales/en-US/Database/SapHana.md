@@ -24,6 +24,8 @@ ALTER USER openmetadata DISABLE PASSWORD LIFETIME;
 
 Lineage is read from three places, and each needs its own access. Run metadata ingestion before the lineage workflow, because lineage is resolved against the tables and views already ingested.
 
+On a service that was ingested before upgrading, run metadata ingestion again before the lineage workflow. Column-level view lineage is derived from the view definition captured at ingestion time, so views already stored from an earlier run produce table-level lineage only until they are re-ingested.
+
 | Lineage | Read from | Grant required |
 |---|---|---|
 | View lineage, including column level | View definitions captured by metadata ingestion | `SELECT` on `SYS`, already required above |

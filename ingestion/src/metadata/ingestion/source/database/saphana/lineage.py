@@ -139,14 +139,23 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
             # directly, so all three shapes have to be counted.
             if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest):
                 sql_edges += 1
+            # Only the query pass emits these, one per edge it produces, so this is the
+            # share of the total that came from query history rather than a count of
+            # distinct statements.
             elif isinstance(either.right, CreateQueryRequest):
                 sql_queries += 1
             yield either
+        # Every count the run has, because whoever reads this log is the one diagnosing
+        # it. Edges alone cannot say whether a thin result means little input, a failing
+        # parser, or one source contributing nothing.
         logger.info(
             "Found %d lineage edges from view definitions (SYS.VIEWS) and query history "
-            "(SYS.M_SQL_PLAN_CACHE), and ingested %d query records",
+            "(SYS.M_SQL_PLAN_CACHE). %d came from query history, read from %d statements, "
+            "%d of which failed.",
             sql_edges,
             sql_queries,
+            self.statements_read,
+            self.query_failures,
         )
 
         cdata_edges = 0
