@@ -23,7 +23,12 @@ import classNames from 'classnames';
 import { CSSProperties, FC, MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Icon } from '../../Icon/Icon';
-import { DEFAULT_TAG_COLOR, ICON_PX, SIZE_CLASS } from './Tag.constant';
+import {
+  DEFAULT_TAG_COLOR,
+  DEFAULT_TAG_MAX_WIDTH,
+  ICON_PX,
+  SIZE_CLASS,
+} from './Tag.constant';
 import { BaseTagProps } from './Tag.interface';
 import './Tag.style.less';
 
@@ -40,7 +45,7 @@ const GlossaryTag: FC<BaseTagProps> = ({
   size = 'sm',
   onDelete,
   href,
-  maxWidth,
+  maxWidth = DEFAULT_TAG_MAX_WIDTH,
   disabled,
   className,
   tooltip,

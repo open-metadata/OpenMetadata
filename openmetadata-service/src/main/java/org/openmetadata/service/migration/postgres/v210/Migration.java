@@ -14,6 +14,7 @@
 package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.addCreateConversationRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignHybridSearchWeightsWithDefaults;
@@ -46,5 +47,6 @@ public class Migration extends MigrationProcessImpl {
     // packaged JSON default; existing installs only through this migration.
     exemptQueryFromMultiDomainRules();
     backfillSourceConfigTypes(collectionDAO);
+    backfillTestCaseDimensions(handle, POSTGRES);
   }
 }
