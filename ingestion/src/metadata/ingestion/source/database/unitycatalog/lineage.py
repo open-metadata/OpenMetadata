@@ -44,14 +44,15 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
     run_test_connection,
     test_connection_common,
 )
-from metadata.ingestion.source.database.unitycatalog.metric_view_lineage_mixin import (
-    UnitycatalogMetricViewLineageMixin,
+from metadata.ingestion.source.database.unitycatalog.metric_view_lineage import (
+    UnitycatalogMetricViewLineage,
 )
 from metadata.ingestion.source.database.unitycatalog.path_utils import (
     container_path_candidates,
@@ -76,7 +77,7 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 
-class UnitycatalogLineageSource(UnitycatalogMetricViewLineageMixin, Source):
+class UnitycatalogLineageSource(Source):
     """
     Lineage Unity Catalog Source
     """
@@ -101,8 +102,34 @@ class UnitycatalogLineageSource(UnitycatalogMetricViewLineageMixin, Source):
         self.external_location_map: dict[str, str] = {}
         self.path_to_table_map: dict[str, set[str]] = defaultdict(set)
         self.path_lineage_map: dict[str, set[str]] = defaultdict(set)
+        # Composed, not inherited: metric-view lineage is a self-contained pass that
+        # needs this source only for its three I/O seams.
+        self.metric_view_lineage = UnitycatalogMetricViewLineage(
+            service_name=model_str(self.config.serviceName),
+            source_config=self.source_config,
+            status=self.status,
+            run_query=self._run_sql,
+            resolve_table_by_fqn=self._get_table_by_fqn,
+            list_databases=self._list_databases,
+        )
         with close_on_failure(self._connection):
             self.test_connection()
+
+    def _run_sql(self, query: str) -> list[tuple]:
+        """Run one statement on the SQL warehouse and materialize the rows."""
+        with self.engine.connect() as connection:
+            return [tuple(row) for row in connection.execute(text(query))]
+
+    def _get_table_by_fqn(self, table_fqn: str) -> Table | None:
+        try:
+            return self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.debug("Failed to resolve Table [%s]: %s", table_fqn, exc)
+            return None
+
+    def _list_databases(self) -> Iterable[Database]:
+        return self.metadata.list_all_entities(entity=Database, params={"service": model_str(self.config.serviceName)})
 
     def close(self):
         if self._connection is not None:
@@ -481,7 +508,7 @@ class UnitycatalogLineageSource(UnitycatalogMetricViewLineageMixin, Source):
 
         # Metric views last: their definition is YAML rather than the SQL the system
         # tables record, so nothing above can see the relations they read.
-        yield from self.yield_metric_view_lineage()
+        yield from self.metric_view_lineage.iter_lineage()
 
     def test_connection(self) -> None:
         if self._connection is not None:

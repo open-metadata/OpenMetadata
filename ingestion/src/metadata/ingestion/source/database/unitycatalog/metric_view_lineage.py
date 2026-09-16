@@ -29,6 +29,7 @@ from collections.abc import Callable, Iterable
 from cachetools import LRUCache
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
     DatabaseServiceQueryLineagePipeline,
@@ -57,7 +58,7 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -77,32 +78,43 @@ TABLE_CACHE_MAX_SIZE = 100
 class UnitycatalogMetricViewLineage:
     """Builds lineage from Unity Catalog metric views to the relations they read.
 
-    How to run a SQL query and which catalogs are in scope are supplied by the caller
-    rather than read off the source, so the extraction can be exercised on its own.
+    Composed by :class:`UnitycatalogLineageSource` rather than mixed into it. The three
+    things it cannot do for itself -- run a query on the SQL warehouse, resolve a Table
+    by FQN, and list the service's catalogs -- arrive as callables, so the source keeps
+    its I/O and this class stays exercisable on its own. Everything between them, the
+    filtering and the parsing and the edge building, lives here and is tested here.
     """
 
     def __init__(
         self,
         service_name: str,
-        run_query: Callable[[str], list[tuple]],
-        resolve_table_by_fqn: Callable[[str], Table | None],
-        databases: Iterable[str],
         source_config: DatabaseServiceQueryLineagePipeline,
         status: Status,
+        run_query: Callable[[str], list[tuple]],
+        resolve_table_by_fqn: Callable[[str], Table | None],
+        list_databases: Callable[[], Iterable[Database]],
     ):
         self.service_name = service_name
-        self.run_query = run_query
-        self.resolve_table_by_fqn = resolve_table_by_fqn
-        self.databases = databases
         self.source_config = source_config
         self.status = status
+        self.run_query = run_query
+        self.resolve_table_by_fqn = resolve_table_by_fqn
+        self.list_databases = list_databases
         self._table_cache: LRUCache = LRUCache(maxsize=TABLE_CACHE_MAX_SIZE)
 
     # ------------------------------------------------------------------ entry point
 
     def iter_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """Yield every resolvable ``source relation -> metric view`` edge."""
-        for database in self.databases:
+        """Yield every resolvable ``source relation -> metric view`` edge.
+
+        Gated on the same ``processViewLineage`` flag as every other view-derived edge
+        -- a metric view is a view -- so a run that turns view lineage off does not pay
+        for the per-catalog queries below.
+        """
+        if not self.source_config.processViewLineage:
+            return
+        logger.info("Processing Unity Catalog Metric View Lineage")
+        for database in self._databases():
             self._table_cache.clear()
             try:
                 rows = self._view_definitions(database)
@@ -130,6 +142,22 @@ class UnitycatalogMetricViewLineage:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             self._warn(schema, view, f"lineage could not be built: {exc}")
+
+    def _databases(self) -> list[str]:
+        """The catalogs in scope, taken from what the metadata workflow ingested.
+
+        Listing from OpenMetadata rather than from ``SHOW CATALOGS`` keeps the pass to
+        catalogs that actually have entities to attach lineage to, and applies the run's
+        own database filter on top.
+        """
+        databases = []
+        for database in self.list_databases():
+            name = model_str(database.name)
+            if filter_by_database(self.source_config.databaseFilterPattern, name):
+                self.status.filter(model_str(database.fullyQualifiedName), "Catalog Filtered Out")
+                continue
+            databases.append(name)
+        return databases
 
     # -------------------------------------------------------------------- discovery
 

@@ -18,11 +18,11 @@ from types import SimpleNamespace
 import pytest
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.ingestion.source.database.unitycatalog.lineage import (
+    UnitycatalogLineageSource,
+)
 from metadata.ingestion.source.database.unitycatalog.metric_view_lineage import (
     UnitycatalogMetricViewLineage,
-)
-from metadata.ingestion.source.database.unitycatalog.metric_view_lineage_mixin import (
-    UnitycatalogMetricViewLineageMixin,
 )
 from metadata.ingestion.source.database.unitycatalog.metric_views import (
     extract_column_refs,
@@ -122,14 +122,19 @@ def _extractor(rows, tables=ALL_TABLES, source_config=None, status=None, metric_
 
     extractor = UnitycatalogMetricViewLineage(
         service_name=SERVICE,
-        run_query=run_query,
-        resolve_table_by_fqn=by_fqn.get,
-        databases=[CATALOG],
         source_config=source_config or FakeSourceConfig(),
         status=status or FakeStatus(),
+        run_query=run_query,
+        resolve_table_by_fqn=by_fqn.get,
+        list_databases=_databases(CATALOG),
     )
     extractor.queries = queries
     return extractor
+
+
+def _databases(*names: str):
+    """The ``Database`` listing the source hands the extractor."""
+    return lambda: [SimpleNamespace(name=name, fullyQualifiedName=f"{SERVICE}.{name}") for name in names]
 
 
 def _edges(extractor):
@@ -275,11 +280,11 @@ def test_a_catalog_whose_views_cannot_be_listed_does_not_stop_the_run():
 
     extractor = UnitycatalogMetricViewLineage(
         service_name=SERVICE,
-        run_query=exploding_query,
-        resolve_table_by_fqn=lambda _: None,
-        databases=[CATALOG, "other"],
         source_config=FakeSourceConfig(),
         status=FakeStatus(),
+        run_query=exploding_query,
+        resolve_table_by_fqn=lambda _: None,
+        list_databases=_databases(CATALOG, "other"),
     )
 
     assert list(extractor.iter_lineage()) == []
@@ -391,11 +396,11 @@ def test_a_source_table_is_resolved_once_per_catalog():
 
     extractor = UnitycatalogMetricViewLineage(
         service_name=SERVICE,
-        run_query=lambda _: [(SCHEMA, VIEW, ORDERS_YAML), (SCHEMA, VIEW, ORDERS_YAML)],
-        resolve_table_by_fqn=resolve,
-        databases=[CATALOG],
         source_config=FakeSourceConfig(),
         status=FakeStatus(),
+        run_query=lambda _: [(SCHEMA, VIEW, ORDERS_YAML), (SCHEMA, VIEW, ORDERS_YAML)],
+        resolve_table_by_fqn=resolve,
+        list_databases=_databases(CATALOG),
     )
     list(extractor.iter_lineage())
 
@@ -405,48 +410,29 @@ def test_a_source_table_is_resolved_once_per_catalog():
 # ----------------------------------------------------------------- the wiring
 
 
-class FakeLineageSource(UnitycatalogMetricViewLineageMixin):
-    """A lineage source with only what the mixin contracts for."""
-
-    def __init__(self, process_view_lineage=True, databases=(CATALOG,)):
-        self.config = SimpleNamespace(serviceName=SERVICE)
-        self.source_config = FakeSourceConfig()
-        self.source_config.processViewLineage = process_view_lineage
-        self.status = FakeStatus()
-        self.metadata = SimpleNamespace(
-            list_all_entities=lambda entity, params: [
-                SimpleNamespace(name=name, fullyQualifiedName=f"{SERVICE}.{name}") for name in databases
-            ],
-            get_by_name=lambda entity, fqn: {table.fullyQualifiedName.root: table for table in ALL_TABLES}.get(fqn),
-        )
-        self.engine = _FakeEngine([(SCHEMA, VIEW, ORDERS_YAML)])
+def _composed(process_view_lineage=True, databases=(CATALOG,), rows=((SCHEMA, VIEW, ORDERS_YAML),)):
+    """The collaborator wired the way ``UnitycatalogLineageSource`` wires it."""
+    source_config = FakeSourceConfig()
+    source_config.processViewLineage = process_view_lineage
+    by_fqn = {table.fullyQualifiedName.root: table for table in ALL_TABLES}
+    return UnitycatalogMetricViewLineage(
+        service_name=SERVICE,
+        source_config=source_config,
+        status=FakeStatus(),
+        run_query=lambda _: list(rows),
+        resolve_table_by_fqn=by_fqn.get,
+        list_databases=_databases(*databases),
+    )
 
 
-class _FakeEngine:
-    def __init__(self, rows):
-        self.rows = rows
-
-    def connect(self):
-        return self
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_):
-        return False
-
-    def execute(self, _):
-        return self.rows
-
-
-def test_the_lineage_hook_is_gated_on_process_view_lineage():
+def test_the_pass_is_gated_on_process_view_lineage():
     """A metric view is a view, so the flag that turns off view lineage has to turn
     this off too -- otherwise the pass runs a query per catalog for nothing."""
-    assert list(FakeLineageSource(process_view_lineage=False).yield_metric_view_lineage()) == []
+    assert list(_composed(process_view_lineage=False).iter_lineage()) == []
 
 
-def test_the_lineage_hook_emits_edges_for_the_services_catalogs():
-    edges = [either.right for either in FakeLineageSource().yield_metric_view_lineage()]
+def test_the_pass_emits_edges_for_the_services_catalogs():
+    edges = [either.right for either in _composed().iter_lineage()]
 
     assert {request.edge.fromEntity.id.root for request in edges} == {
         ORDERS_TABLE.id.root,
@@ -455,8 +441,15 @@ def test_the_lineage_hook_emits_edges_for_the_services_catalogs():
 
 
 def test_a_filtered_out_catalog_is_never_queried():
-    source = FakeLineageSource()
-    source.source_config.databaseFilterPattern = _deny(CATALOG)
+    extractor = _composed()
+    extractor.source_config.databaseFilterPattern = _deny(CATALOG)
 
-    assert list(source.yield_metric_view_lineage()) == []
-    assert source.status.filtered == [(f"{SERVICE}.{CATALOG}", "Catalog Filtered Out")]
+    assert list(extractor.iter_lineage()) == []
+    assert extractor.status.filtered == [(f"{SERVICE}.{CATALOG}", "Catalog Filtered Out")]
+
+
+def test_the_source_composes_the_collaborator_rather_than_inheriting_it():
+    """The seam this refactor bought: the source owns the pass as a collaborator, so
+    nothing about metric views appears in its own method namespace."""
+    assert not hasattr(UnitycatalogLineageSource, "yield_metric_view_lineage")
+    assert UnitycatalogMetricViewLineage not in UnitycatalogLineageSource.__mro__
