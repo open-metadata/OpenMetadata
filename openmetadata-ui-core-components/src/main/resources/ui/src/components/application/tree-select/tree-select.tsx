@@ -344,7 +344,11 @@ export const TreeSelect = <T = unknown,>({
             showCheckbox={showCheckbox && !hasExclusiveChildren}
             showConnectorLines={showConnectorLines}
             showIcon={showIcon}
-            onNodeClick={() => handleNodeAction(node, parentNode)}
+            onNodeClick={() => {
+              if (!hasExclusiveChildren) {
+                handleNodeAction(node, parentNode);
+              }
+            }}
           />
           {node.children && renderNodes(node.children, node)}
         </Tree.Item>
@@ -430,14 +434,19 @@ export const TreeSelect = <T = unknown,>({
     selectableNodes.length > 0 && allSelectedCount === selectableNodes.length;
 
   const handleSelectAll = useCallback(
-    (checked: boolean) => {
-      if (checked) {
-        onChange?.(multiple ? selectableNodes : null);
-      } else {
+    async (checked: boolean) => {
+      if (!checked) {
         onChange?.(multiple ? [] : null);
+        return;
+      }
+      if (cascadeSelection && lazyLoad) {
+        const deep = await Promise.all(treeData.map(loadAllDescendants));
+        onChange?.(multiple ? collectSelectableNodes(deep) : null);
+      } else {
+        onChange?.(multiple ? selectableNodes : null);
       }
     },
-    [selectableNodes, multiple, onChange]
+    [selectableNodes, multiple, onChange, cascadeSelection, lazyLoad, treeData, loadAllDescendants]
   );
 
   const showSelectAllRow = showSelectAll && multiple && selectableNodes.length > 0;

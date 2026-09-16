@@ -73,17 +73,12 @@ export const TreeSelectTreeItemContent = <T,>({
                 return (
                   <span key={`line-${i}`} aria-hidden="true">
                     <span
-                      className={cx(
-                        'tw:pointer-events-none tw:absolute tw:w-3 tw:border-l tw:border-b tw:border-gray-300 tw:rounded-bl-md',
-                        isLastChild
-                          ? 'tw:-top-2.5 tw:h-[calc(50%+12px)]'
-                          : 'tw:-top-2.5 tw:h-[calc(50%+12px)]'
-                      )}
+                      className="tw:pointer-events-none tw:absolute tw:w-3 tw:border-l tw:border-b tw:border-secondary tw:rounded-bl-md tw:-top-2.5 tw:h-[calc(50%+12px)]"
                       style={{ left: `${left}px` }}
                     />
                     {!isLastChild && (
                       <span
-                        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-gray-300"
+                        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-secondary"
                         style={{ left: `${left}px` }}
                       />
                     )}
@@ -95,7 +90,7 @@ export const TreeSelectTreeItemContent = <T,>({
                 <span
                   key={`line-${i}`}
                   aria-hidden="true"
-                  className="tw:pointer-events-none tw:absolute tw:-top-2.5 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-gray-300"
+                  className="tw:pointer-events-none tw:absolute tw:-top-2.5 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-secondary"
                   style={{ left: `${left}px` }}
                 />
               );
