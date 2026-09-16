@@ -341,7 +341,9 @@ Choices made while implementing that refine, but do not change, the decisions ab
   query form only — so Jena's dynamic class loading for `java:` IRIs (any `Function` or
   `PropertyFunction` on the classpath, no configuration) is closed at the validator
   instead: the inspector rejects `java:`-scheme function IRIs and predicate IRIs,
-  including inside property paths, as `QUERY_FORM_NOT_ALLOWED`. Validation itself never
+  including inside property paths, as `QUERY_FORM_NOT_ALLOWED`. Calls whose name is
+  computed at run time cannot be allowlisted that way, so `CALL` of any shape and the
+  `eval` function in both ARQ namespaces are rejected outright. Validation itself never
   touches data (parse-only).
 - **Test profile uses the supported image.** `postgres-rdf-tests` no longer pins
   `secoresearch/fuseki:5.5.0`: with no `rdfContainerImage` set, `TestSuiteBootstrap`
