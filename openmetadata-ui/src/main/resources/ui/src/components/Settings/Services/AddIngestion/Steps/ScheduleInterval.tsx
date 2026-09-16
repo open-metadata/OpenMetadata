@@ -50,6 +50,18 @@ import { ScheduleIntervalProps, StateValue } from './ScheduleInterval.types';
 import { validateCronExpression } from './ScheduleInterval.utils';
 import ScheduleSelectionCards from './ScheduleSelectionCards';
 
+// Keep the fallback outside this already complex component so restoring a
+// saved schedule does not add another branch to its interaction logic.
+const getScheduleRestoreValue = (
+  savedCron: string | undefined,
+  defaultSchedule: string | undefined,
+  includePeriodOptions: string[] | undefined
+) =>
+  savedCron ||
+  getDefaultScheduleValue({ defaultSchedule, includePeriodOptions });
+
+/* eslint-disable sonarjs/cyclomatic-complexity -- This shared form predates the
+complexity budget; keep the exception scoped to it to avoid an unrelated UI refactor. */
 const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   value,
   onChange,
@@ -108,6 +120,9 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
   // the custom field. Normalized because consumers store a cleared cron as an
   // empty string but hand it back as undefined.
   const lastEmittedValueRef = useRef(value || undefined);
+  // Preserve external schedule state across the controlled undefined echo
+  // emitted by On Demand. External resets still replace this restore target.
+  const savedCronRef = useRef(lastEmittedValueRef.current);
 
   const emitChange = useCallback(
     (cron?: string) => {
@@ -150,12 +165,13 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
         setState((prev) => ({ ...prev, cron: undefined }));
         emitChange(undefined);
       } else {
-        // When switching to schedule, use default schedule
-        const nonEmptyScheduleValue = getDefaultScheduleValue({
-          includePeriodOptions,
-          defaultSchedule,
-        });
-        const newState = getStateValue(nonEmptyScheduleValue);
+        const newState = getStateValue(
+          getScheduleRestoreValue(
+            savedCronRef.current,
+            defaultSchedule,
+            includePeriodOptions
+          )
+        );
         setState(newState);
         emitChange(newState.cron);
       }
@@ -320,6 +336,7 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
     }
 
     lastEmittedValueRef.current = normalizedValue;
+    savedCronRef.current = normalizedValue;
 
     if (isEmpty(value)) {
       setSelectedSchedular(SchedularOptions.ON_DEMAND);
@@ -512,5 +529,6 @@ const ScheduleInterval: React.FC<ScheduleIntervalProps> = ({
     </div>
   );
 };
+/* eslint-enable sonarjs/cyclomatic-complexity */
 
 export default ScheduleInterval;

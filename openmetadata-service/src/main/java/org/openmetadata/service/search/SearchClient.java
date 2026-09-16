@@ -696,6 +696,12 @@ public interface SearchClient
           }
           """;
 
+  String RECONCILE_COLUMN_LINEAGE_SCRIPT =
+      UPDATE_COLUMN_LINEAGE_SCRIPT
+          + "if (!params.deletedFQNs.isEmpty()) {\n"
+          + DELETE_COLUMN_LINEAGE_SCRIPT
+          + "}\n";
+
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   String ENTITY_RELATIONSHIP_DIRECTION_ENTITY = "entityRelationship.entity.fqnHash.keyword";

@@ -2441,41 +2441,45 @@ public class TableRepository extends EntityRepository<Table> {
       deleteConstraintRelationship(origTable, deleted);
     }
 
+    /**
+     * Reconcile stored and indexed column lineage with a column rename/delete.
+     *
+     * <p>Both stores mirror the persisted table, so the only diff pass that yields a delta they can
+     * apply is the one baselined on it. Session consolidation replays the diff up to three more
+     * times against reverted baselines: those renames name FQNs neither store holds, and — the
+     * destructive case — the revert pass diffs the persisted table against the pre-session version,
+     * so a column added by an earlier request in the same session reads as deleted and its lineage
+     * is dropped even though the column still exists.
+     */
     @Override
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
       boolean hasDeletes = !deletedColumns.isEmpty();
 
-      // Update lineage relationships stored in the database
-      if (hasRenames || hasDeletes) {
+      if (isIndexBaselinePass() && (hasRenames || hasDeletes)) {
         LineageRepository lineageRepository = Entity.getLineageRepository();
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
               updated.getId(),
-              hasRenames ? originalUpdatedColumnFqnMap : Collections.emptyMap(),
-              hasDeletes ? deletedColumns : Collections.emptyList(),
+              originalUpdatedColumnFqnMap,
+              deletedColumns,
               updated.getSchemaDefinition(),
               updated.getUpdatedBy());
         }
+        List<String> deletedColumnFqns = List.copyOf(deletedColumns);
+        HashMap<String, String> renamedColumnFqns = new HashMap<>(originalUpdatedColumnFqnMap);
+        deferReactOperation(
+            () -> flushColumnLineageSearchUpdates(deletedColumnFqns, renamedColumnFqns));
       }
+    }
 
-      if (hasRenames) {
-        HashMap<String, String> renames = new HashMap<>(originalUpdatedColumnFqnMap);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .updateColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, renames));
-      }
-      if (hasDeletes) {
-        List<String> deletedColumnsCopy = List.copyOf(deletedColumns);
-        deferReactOperation(
-            () ->
-                searchRepository
-                    .getSearchClient()
-                    .deleteColumnsInUpstreamLineage(GLOBAL_SEARCH_ALIAS, deletedColumnsCopy));
-      }
+    private void flushColumnLineageSearchUpdates(
+        List<String> deletedColumnFqns, HashMap<String, String> renamedColumnFqns) {
+      searchRepository
+          .getSearchClient()
+          .reconcileColumnsInUpstreamLineage(
+              GLOBAL_SEARCH_ALIAS, renamedColumnFqns, deletedColumnFqns);
     }
   }
 

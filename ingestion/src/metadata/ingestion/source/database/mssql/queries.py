@@ -345,7 +345,8 @@ SELECT
   ROUTINE_BODY AS language,
   l.definition AS definition
 FROM INFORMATION_SCHEMA.ROUTINES r
-JOIN sys.procedures p ON p.name = r.ROUTINE_NAME 
+JOIN sys.procedures p ON p.name = r.ROUTINE_NAME
+JOIN sys.schemas sch ON p.schema_id = sch.schema_id AND sch.name = r.ROUTINE_SCHEMA
 JOIN sys.sql_modules l on l.object_id = p.object_id
  WHERE ROUTINE_TYPE = 'PROCEDURE'
    AND ROUTINE_CATALOG = '{database_name}'
@@ -427,7 +428,7 @@ order by PROCEDURE_START_TIME desc
     """  # noqa: W291
 )
 
-MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
+MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state, readonly_reason FROM sys.database_query_store_options"
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
     """

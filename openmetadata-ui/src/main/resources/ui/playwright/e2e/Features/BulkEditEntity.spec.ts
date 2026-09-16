@@ -269,9 +269,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId('column-name').filter({ hasText: table.database.name })
       ).toHaveText(`${table.database.name}${databaseDetails.displayName}`);
 
-      await expect(
-        page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
-      ).toContainText('Playwright Database description.');
+      await expect(page.locator(`td ${descriptionBoxReadOnly}`)).toContainText(
+        'Playwright Database description.'
+      );
 
       // Verify Owners
       await expect(
@@ -413,9 +413,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId('column-name').filter({ hasText: table.schema.name })
       ).toHaveText(`${table.schema.name}${databaseSchemaDetails1.displayName}`);
 
-      await expect(
-        page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
-      ).toContainText('Playwright Database Schema description.');
+      await expect(page.locator(`td ${descriptionBoxReadOnly}`)).toContainText(
+        'Playwright Database Schema description.'
+      );
 
       // Verify Owners
       await expect(
@@ -557,9 +557,9 @@ test.describe('Bulk Edit Entity', () => {
         page.getByTestId('column-name').filter({ hasText: table.entity.name })
       ).toHaveText(`${table.entity.name}${tableDetails1.displayName}`);
 
-      await expect(
-        page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
-      ).toContainText('Playwright Table description');
+      await expect(page.locator(`td ${descriptionBoxReadOnly}`)).toContainText(
+        'Playwright Table description'
+      );
 
       // Go to Table Page
       await page
