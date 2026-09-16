@@ -1,11 +1,16 @@
 package org.openmetadata.service.rdf;
 
+import static java.util.Map.entry;
+import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.rdf.SanitizedModelBuilder.CONSISTENCY_FAILURE;
+import static org.openmetadata.service.rdf.SanitizedModelBuilder.MAX_REFERENCE_LOOKUPS;
+import static org.openmetadata.service.rdf.SanitizedModelBuilder.SCOPE_ERROR;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.BASE;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.DOMAIN_RESTRICTED;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.DOMAIN_VISIBLE;
@@ -17,6 +22,9 @@ import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_A;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_B;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_C;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_D;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_DELETED;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_OUTSIDE_READABLE;
+import static org.openmetadata.service.rdf.SanitizedModelFixture.TABLE_OUTSIDE_RESTRICTED;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.domainIri;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.tableIri;
 import static org.openmetadata.service.rdf.SanitizedModelFixture.tagIri;
@@ -43,8 +51,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CallerPermissions;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.EntityIri;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.FactAdmissionException;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.KnowledgeSource;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.ReferenceState;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.ReferenceStates;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.RetrievalBudgetExceededException;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.SanitizedModel;
 
@@ -55,21 +66,29 @@ import org.openmetadata.service.rdf.SanitizedModelBuilder.SanitizedModel;
  */
 class SanitizedModelExperimentTest {
   private static final int TRIPLE_BUDGET = 1_000;
+  private static final int LOOKUP_LIMIT_TRIPLE_BUDGET = 10_000;
+  private static final String STALE_SIGNALS_ON_C =
+      """
+      ASK { { <C> om:isDeleted ?deleted }
+            UNION { <C> <http://www.w3.org/ns/prov#invalidatedAtTime> ?invalidatedAt } }
+      """;
   private static final String PREFIXES =
       """
       PREFIX om: <https://open-metadata.org/ontology/>
       PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
       """;
   private static final Map<String, String> PLACEHOLDERS =
-      Map.of(
-          "<A>", "<" + tableIri(TABLE_A) + ">",
-          "<B>", "<" + tableIri(TABLE_B) + ">",
-          "<C>", "<" + tableIri(TABLE_C) + ">",
-          "<D>", "<" + tableIri(TABLE_D) + ">",
-          "<T_RESTRICTED>", "<" + tagIri(RESTRICTED_TAG_ID) + ">",
-          "<T_SHARED>", "<" + tagIri(SHARED_TAG_ID) + ">",
-          "<D_VISIBLE>", "<" + domainIri(DOMAIN_VISIBLE) + ">",
-          "<D_RESTRICTED>", "<" + domainIri(DOMAIN_RESTRICTED) + ">");
+      Map.ofEntries(
+          entry("<A>", "<" + tableIri(TABLE_A) + ">"),
+          entry("<B>", "<" + tableIri(TABLE_B) + ">"),
+          entry("<C>", "<" + tableIri(TABLE_C) + ">"),
+          entry("<D>", "<" + tableIri(TABLE_D) + ">"),
+          entry("<E>", "<" + tableIri(TABLE_DELETED) + ">"),
+          entry("<OUTSIDE_RESTRICTED>", "<" + tableIri(TABLE_OUTSIDE_RESTRICTED) + ">"),
+          entry("<T_RESTRICTED>", "<" + tagIri(RESTRICTED_TAG_ID) + ">"),
+          entry("<T_SHARED>", "<" + tagIri(SHARED_TAG_ID) + ">"),
+          entry("<D_VISIBLE>", "<" + domainIri(DOMAIN_VISIBLE) + ">"),
+          entry("<D_RESTRICTED>", "<" + domainIri(DOMAIN_RESTRICTED) + ">"));
   private static final String TABLE_SCALAR_ATTRIBUTES =
       """
       ASK { %s om:hasServiceType "Postgres" ; om:entityStatus "Approved" ;
@@ -259,9 +278,133 @@ class SanitizedModelExperimentTest {
   }
 
   @Test
-  void deletedFlagStaysUnmappedUntilIncludeSemanticsAreDecided() {
+  void edgesToADeletedEntityLeaveTheNonDeletedDataset() {
+    SanitizedModelFixture.addDeletedUpstream(store);
+    final Model model = sanitized().model();
+    assertTrue(ask(knowledgeGraph(), "ASK { <A> om:upstream <E> . <E> om:isDeleted true }"));
+    assertFalse(ask(model, "ASK { { <A> ?p <E> } UNION { <E> ?p ?o } }"));
+    assertEquals(1, count(model, "SELECT (COUNT(?x) AS ?n) WHERE { <A> om:upstream ?x }"));
+  }
+
+  @Test
+  void nonDeletedFlagOnACandidateIsAdmitted() {
     SanitizedModelFixture.addDeletedFlag(store);
-    assertFailsClosedOn(BASE + "ontology/isDeleted");
+    assertTrue(ask(sanitized().model(), "ASK { <C> om:isDeleted false }"));
+  }
+
+  @Test
+  void candidateDeletedInTheProjectionIsAConsistencyFailure() {
+    SanitizedModelFixture.markCandidateDeletedInProjection(store);
+    assertFailsClosedOn(CONSISTENCY_FAILURE + "candidate " + tableIri(TABLE_C));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "<C> om:isDeleted true",
+        "<C> <http://www.w3.org/ns/prov#invalidatedAtTime>"
+            + " \"2026-09-15T00:00:00Z\"^^<http://www.w3.org/2001/XMLSchema#dateTime>"
+      })
+  void eachStaleProjectionSignalAloneRejectsANonDeletedCandidate(final String signal) {
+    assertFalse(ask(knowledgeGraph(), STALE_SIGNALS_ON_C));
+    insertKnowledge(signal);
+    assertFailsClosedOn(CONSISTENCY_FAILURE + "candidate " + tableIri(TABLE_C));
+  }
+
+  @Test
+  void referenceLookupAcceptsExactlyTheLimitOfDistinctEntities() {
+    insertKnowledge(outsideUpstreams(MAX_REFERENCE_LOOKUPS, "<A>"));
+    final List<Set<EntityIri>> lookups = new ArrayList<>();
+    final Model model = sanitized(allDeleted(lookups), LOOKUP_LIMIT_TRIPLE_BUDGET).model();
+    assertEquals(List.of(MAX_REFERENCE_LOOKUPS), lookups.stream().map(Set::size).toList());
+    assertEquals(1, count(model, "SELECT (COUNT(?x) AS ?n) WHERE { <A> om:upstream ?x }"));
+  }
+
+  @Test
+  void referenceLookupBeyondTheLimitFailsWithoutAPartialModel() {
+    insertKnowledge(outsideUpstreams(MAX_REFERENCE_LOOKUPS + 1, "<A>"));
+    final List<Set<EntityIri>> lookups = new ArrayList<>();
+    final RetrievalBudgetExceededException failure =
+        assertThrows(
+            RetrievalBudgetExceededException.class,
+            () -> sanitized(allDeleted(lookups), LOOKUP_LIMIT_TRIPLE_BUDGET));
+    assertTrue(failure.getMessage().contains("partial lookup"), failure.getMessage());
+    assertTrue(lookups.isEmpty(), "the lookup must not run for part of the references");
+  }
+
+  @Test
+  void repeatedReferencesToOneEntityUseOneLookupSlot() {
+    insertKnowledge(outsideUpstreams(MAX_REFERENCE_LOOKUPS, "<A>", "<C>"));
+    assertEquals(
+        MAX_REFERENCE_LOOKUPS,
+        count(knowledgeGraph(), "SELECT (COUNT(?x) AS ?n) WHERE { <C> om:upstream ?x }"));
+    final List<Set<EntityIri>> lookups = new ArrayList<>();
+    final Model model = sanitized(allDeleted(lookups), LOOKUP_LIMIT_TRIPLE_BUDGET).model();
+    assertEquals(List.of(MAX_REFERENCE_LOOKUPS), lookups.stream().map(Set::size).toList());
+    assertFalse(ask(model, "ASK { <C> om:upstream ?x }"));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @CsvSource(
+      delimiter = '|',
+      textBlock =
+          """
+          https://open-metadata.org/entity/notAnEntityType/0b000000-0000-4000-8000-000000000000 | does not name a registered entity type
+          https://open-metadata.org/entity/table/0B000000-0000-4000-8000-000000000000           | does not carry a canonical entity id
+          https://open-metadata.org/entity/table/1-1-1-1-1                                      | does not carry a canonical entity id
+          """)
+  void invalidReferenceIdentityFailsBeforeAnyLookup(final String reference, final String reason) {
+    insertKnowledge("<A> om:upstream <%s>".formatted(reference));
+    final List<Set<EntityIri>> lookups = new ArrayList<>();
+    final FactAdmissionException failure =
+        assertThrows(
+            FactAdmissionException.class, () -> sanitized(allDeleted(lookups), TRIPLE_BUDGET));
+    assertTrue(
+        failure
+            .getMessage()
+            .contains(CONSISTENCY_FAILURE + "reference " + reference + " " + reason),
+        failure.getMessage());
+    assertTrue(lookups.isEmpty(), "an invalid reference must not reach the catalog lookup");
+  }
+
+  @Test
+  void inconsistentCatalogAnswerIsAConsistencyFailure() {
+    SanitizedModelFixture.addUpstream(store, TABLE_A, TABLE_OUTSIDE_READABLE);
+    final ReferenceStates withoutDeletionState =
+        SanitizedModelFixture.referenceStates(
+            references ->
+                references.stream()
+                    .collect(
+                        toMap(
+                            EntityIri::iri,
+                            reference ->
+                                (ReferenceState)
+                                    new ReferenceState.Inconsistent("no deletion state"))));
+    final FactAdmissionException failure =
+        assertThrows(
+            FactAdmissionException.class, () -> sanitized(withoutDeletionState, TRIPLE_BUDGET));
+    assertTrue(
+        failure
+            .getMessage()
+            .contains(
+                CONSISTENCY_FAILURE
+                    + "reference "
+                    + tableIri(TABLE_OUTSIDE_READABLE)
+                    + ": no deletion state"),
+        failure.getMessage());
+  }
+
+  @Test
+  void readableEntityOutsideTheCandidatesIsAScopeErrorNotHidden() {
+    SanitizedModelFixture.addUpstream(store, TABLE_A, TABLE_OUTSIDE_READABLE);
+    assertFailsClosedOn(SCOPE_ERROR + tableIri(TABLE_OUTSIDE_READABLE));
+  }
+
+  @Test
+  void unreadableEntityOutsideTheCandidatesIsHidden() {
+    SanitizedModelFixture.addUpstream(store, TABLE_A, TABLE_OUTSIDE_RESTRICTED);
+    assertTrue(ask(knowledgeGraph(), "ASK { <A> om:upstream <OUTSIDE_RESTRICTED> }"));
+    assertFalse(ask(sanitized().model(), "ASK { <A> ?p <OUTSIDE_RESTRICTED> }"));
   }
 
   @Test
@@ -326,7 +469,7 @@ class SanitizedModelExperimentTest {
   }
 
   @Test
-  void referenceToAResourceOutsideTheCatalogFailsClosed() {
+  void referenceToAMissingEntityIsAConsistencyFailure() {
     final String unknown = tableIri(UUID.fromString("f0000000-0000-4000-8000-000000000000"));
     UpdateAction.parseExecute(
         resolve(
@@ -337,7 +480,7 @@ class SanitizedModelExperimentTest {
                 + unknown
                 + "> } }"),
         store);
-    assertFailsClosedOn(unknown);
+    assertFailsClosedOn(CONSISTENCY_FAILURE + "referenced entity " + unknown);
   }
 
   @Test
@@ -399,6 +542,41 @@ class SanitizedModelExperimentTest {
         resolve(PREFIXES + "INSERT DATA { GRAPH <" + KNOWLEDGE + "> { " + triples + " } }"), store);
   }
 
+  /** {@code <subject> om:upstream <x>} for each subject and {@code count} distinct non-candidates. */
+  private static String outsideUpstreams(final int count, final String... subjects) {
+    final StringBuilder triples = new StringBuilder();
+    for (int index = 0; index < count; index++) {
+      final String target =
+          tableIri(new UUID(0x0b00_0000_0000_4000L, 0x8000_0000_0000_0000L | index));
+      for (String subject : subjects) {
+        triples.append(subject).append(" om:upstream <").append(target).append("> .\n");
+      }
+    }
+    return triples.toString();
+  }
+
+  /** Records every lookup and reports each requested entity as soft-deleted. */
+  private static ReferenceStates allDeleted(final List<Set<EntityIri>> lookups) {
+    return SanitizedModelFixture.referenceStates(
+        references -> {
+          lookups.add(references);
+          return references.stream()
+              .collect(
+                  toMap(
+                      EntityIri::iri, reference -> (ReferenceState) new ReferenceState.Deleted()));
+        });
+  }
+
+  private SanitizedModel sanitized(final ReferenceStates references, final int budget) {
+    return new SanitizedModelBuilder(
+            source(store),
+            SanitizedModelFixture.catalog(),
+            references,
+            SanitizedModelFixture.restrictedTablesHidden(),
+            budget)
+        .build();
+  }
+
   private static String columnIri(final String fullyQualifiedName) {
     return BASE + "entity/column/" + fullyQualifiedName;
   }
@@ -421,6 +599,7 @@ class SanitizedModelExperimentTest {
     return new SanitizedModelBuilder(
             source(store),
             SanitizedModelFixture.catalogWithDomains(),
+            SanitizedModelFixture.references(),
             SanitizedModelFixture.restrictedTablesAndDomainsHidden(),
             TRIPLE_BUDGET)
         .build();
@@ -428,7 +607,11 @@ class SanitizedModelExperimentTest {
 
   private SanitizedModel sanitized(final CallerPermissions permissions, final int budget) {
     return new SanitizedModelBuilder(
-            source(store), SanitizedModelFixture.catalog(), permissions, budget)
+            source(store),
+            SanitizedModelFixture.catalog(),
+            SanitizedModelFixture.references(),
+            permissions,
+            budget)
         .build();
   }
 

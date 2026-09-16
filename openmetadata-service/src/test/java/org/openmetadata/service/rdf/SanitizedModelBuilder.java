@@ -4,6 +4,7 @@ import static java.util.Map.entry;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toUnmodifiableMap;
+import static java.util.stream.Collectors.toUnmodifiableSet;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -13,6 +14,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.RDFNode;
@@ -49,6 +53,15 @@ final class SanitizedModelBuilder {
   private static final String MODIFIED = "http://purl.org/dc/terms/modified";
   private static final String VERSION = "http://www.w3.org/ns/dcat#version";
   private static final String HAS_VERSION = "http://purl.org/dc/terms/hasVersion";
+  private static final String IS_DELETED = OM + "isDeleted";
+  private static final String INVALIDATED_AT = "http://www.w3.org/ns/prov#invalidatedAtTime";
+  static final String CONSISTENCY_FAILURE = "Consistency failure: ";
+  static final String SCOPE_ERROR = "Scope error: ";
+  private static final Pattern ENTITY_IRI =
+      Pattern.compile(Pattern.quote(BASE + "entity/") + "([^/]+)/([^/]+)");
+  private static final Pattern CANONICAL_UUID =
+      Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+  static final int MAX_REFERENCE_LOOKUPS = 1_000;
   private static final int SUBJECTS_PER_QUERY = 100;
   private static final int MAX_OWNERSHIP_DEPTH = 8;
 
@@ -99,6 +112,7 @@ final class SanitizedModelBuilder {
               entry(OM + "hasServiceType", ViewField.CORE),
               entry(OM + "entityStatus", ViewField.CORE),
               entry(OM + "processedLineage", ViewField.CORE),
+              entry(IS_DELETED, ViewField.CORE),
               entry(OM + "hasTag", ViewField.TAGS),
               entry(OM + "domains", ViewField.DOMAINS),
               entry(OM + "hasColumn", ViewField.COLUMNS),
@@ -134,7 +148,8 @@ final class SanitizedModelBuilder {
               entry(VERSION, ViewField.CORE),
               entry(HAS_VERSION, ViewField.CORE),
               entry(OM + "domainType", ViewField.CORE),
-              entry(OM + "entityStatus", ViewField.CORE)),
+              entry(OM + "entityStatus", ViewField.CORE),
+              entry(IS_DELETED, ViewField.CORE)),
           NodeKind.COLUMN,
           Map.of(
               TYPE,
@@ -180,17 +195,26 @@ final class SanitizedModelBuilder {
 
   private final KnowledgeSource source;
   private final Map<String, CatalogResource> catalogByIri;
+  private final ReferenceStates references;
   private final CallerPermissions permissions;
   private final int tripleBudget;
 
+  /**
+   * @param catalog the candidates: catalog entities loaded as non-deleted, whether or not the caller
+   *     may read them
+   * @param references deletion state, from the catalog, of entities that facts reference but that
+   *     are not candidates
+   */
   SanitizedModelBuilder(
       final KnowledgeSource source,
       final List<CatalogResource> catalog,
+      final ReferenceStates references,
       final CallerPermissions permissions,
       final int tripleBudget) {
     this.source = source;
     this.catalogByIri =
         catalog.stream().collect(toUnmodifiableMap(CatalogResource::iri, identity()));
+    this.references = references;
     this.permissions = permissions;
     this.tripleBudget = tripleBudget;
   }
@@ -203,7 +227,52 @@ final class SanitizedModelBuilder {
       retrieval.govern(frontier);
       frontier = ownedChildren(fetch(List.copyOf(frontier.keySet()), retrieval), retrieval);
     }
-    return new SanitizedModel(admit(retrieval), retrieval.triples, retrieval.queries);
+    final Map<String, ReferenceState> referenced = resolveReferences(retrieval);
+    return new SanitizedModel(admit(retrieval, referenced), retrieval.triples, retrieval.queries);
+  }
+
+  /**
+   * One bounded catalog lookup for every referenced entity that is not a candidate. References come
+   * from all retrieved facts, including facts the mapping later rejects, so an over-limit or invalid
+   * reference fails the build before any mapping violation is reported.
+   */
+  private Map<String, ReferenceState> resolveReferences(final Retrieval retrieval) {
+    final Set<String> iris = new TreeSet<>();
+    for (RDFNode object : retrieval.facts.listObjects().toList()) {
+      if (isNonCandidateEntity(object, retrieval)) {
+        iris.add(object.asResource().getURI());
+      }
+    }
+    if (iris.size() > MAX_REFERENCE_LOOKUPS) {
+      throw new RetrievalBudgetExceededException(
+          "More than %d referenced entities outside the candidates; no answer is computed from a partial lookup"
+              .formatted(MAX_REFERENCE_LOOKUPS));
+    }
+    final Set<EntityIri> validated =
+        iris.stream().map(this::requireValidReference).collect(toUnmodifiableSet());
+    return validated.isEmpty() ? Map.of() : references.resolve(validated);
+  }
+
+  /** A reference must name a registered entity type and a canonical UUID before it is looked up. */
+  private EntityIri requireValidReference(final String iri) {
+    final Matcher parts = ENTITY_IRI.matcher(iri);
+    if (!parts.matches() || !references.entityTypes().contains(parts.group(1))) {
+      throw new FactAdmissionException(
+          CONSISTENCY_FAILURE
+              + "reference %s does not name a registered entity type".formatted(iri));
+    }
+    if (!CANONICAL_UUID.matcher(parts.group(2)).matches()) {
+      throw new FactAdmissionException(
+          CONSISTENCY_FAILURE + "reference %s does not carry a canonical entity id".formatted(iri));
+    }
+    return new EntityIri(iri, parts.group(1), UUID.fromString(parts.group(2)));
+  }
+
+  private boolean isNonCandidateEntity(final RDFNode object, final Retrieval retrieval) {
+    return object.isURIResource()
+        && ENTITY_IRI.matcher(object.asResource().getURI()).matches()
+        && !catalogByIri.containsKey(object.asResource().getURI())
+        && retrieval.governanceOf(object).isEmpty();
   }
 
   private Map<Resource, Governance> visibleResources() {
@@ -289,12 +358,12 @@ final class SanitizedModelBuilder {
     return node.asResource();
   }
 
-  private Model admit(final Retrieval retrieval) {
+  private Model admit(final Retrieval retrieval, final Map<String, ReferenceState> referenced) {
     final Model sanitized = ModelFactory.createDefaultModel();
     final Set<String> violations = new TreeSet<>();
     for (Statement statement : retrieval.facts.listStatements().toList()) {
       try {
-        if (isAdmitted(statement, retrieval)) {
+        if (isAdmitted(statement, retrieval, referenced)) {
           sanitized.add(statement);
         }
       } catch (FactAdmissionException violation) {
@@ -312,11 +381,35 @@ final class SanitizedModelBuilder {
     }
   }
 
-  private boolean isAdmitted(final Statement statement, final Retrieval retrieval) {
+  private boolean isAdmitted(
+      final Statement statement,
+      final Retrieval retrieval,
+      final Map<String, ReferenceState> referenced) {
     final Governance subject = retrieval.requireGovernance(statement.getSubject());
+    requireCandidateNotDeleted(statement, subject);
     final ViewField field = requireField(subject.kind(), statement.getPredicate().getURI());
     return permissions.allows(subject.owner(), field.operation())
-        && isAdmittedObject(statement, retrieval);
+        && isAdmittedObject(statement, retrieval, referenced);
+  }
+
+  /** Candidates were loaded as non-deleted, so RDF saying otherwise is not a fact to admit. */
+  private static void requireCandidateNotDeleted(
+      final Statement statement, final Governance subject) {
+    final String predicate = statement.getPredicate().getURI();
+    final boolean deletedInProjection =
+        INVALIDATED_AT.equals(predicate)
+            || (IS_DELETED.equals(predicate) && !isFalse(statement.getObject()));
+    if (deletedInProjection && subject.owner().iri().equals(statement.getSubject().getURI())) {
+      throw new FactAdmissionException(
+          CONSISTENCY_FAILURE
+              + "candidate %s is deleted in the RDF projection".formatted(subject.owner().iri()));
+    }
+  }
+
+  private static boolean isFalse(final RDFNode node) {
+    return node.isLiteral()
+        && XSDDatatype.XSDboolean.equals(node.asLiteral().getDatatype())
+        && !node.asLiteral().getBoolean();
   }
 
   private static ViewField requireField(final NodeKind kind, final String predicate) {
@@ -328,12 +421,15 @@ final class SanitizedModelBuilder {
     return field;
   }
 
-  private boolean isAdmittedObject(final Statement statement, final Retrieval retrieval) {
+  private boolean isAdmittedObject(
+      final Statement statement,
+      final Retrieval retrieval,
+      final Map<String, ReferenceState> referenced) {
     final RDFNode object = statement.getObject();
     return object.isLiteral()
         || (statement.getPredicate().equals(RDF.type)
             ? isTypeVocabulary(object)
-            : isVisible(object, retrieval));
+            : isVisible(object, retrieval, referenced));
   }
 
   private static boolean isTypeVocabulary(final RDFNode type) {
@@ -343,20 +439,56 @@ final class SanitizedModelBuilder {
     return true;
   }
 
-  private boolean isVisible(final RDFNode object, final Retrieval retrieval) {
-    final Governance governance =
-        retrieval.governanceOf(object).orElseGet(() -> catalogGovernance(object));
-    return permissions.allows(governance.owner(), governance.kind().field.operation());
+  private boolean isVisible(
+      final RDFNode object,
+      final Retrieval retrieval,
+      final Map<String, ReferenceState> referenced) {
+    final Optional<Governance> governance =
+        retrieval.governanceOf(object).or(() -> candidateGovernance(object));
+    return governance
+        .map(known -> permissions.allows(known.owner(), known.kind().field.operation()))
+        .orElseGet(() -> isAdmittedReference(object, referenced));
   }
 
-  private Governance catalogGovernance(final RDFNode object) {
-    final CatalogResource resource =
-        object.isURIResource() ? catalogByIri.get(object.asResource().getURI()) : null;
-    if (resource == null) {
+  private Optional<Governance> candidateGovernance(final RDFNode object) {
+    return Optional.ofNullable(
+            object.isURIResource() ? catalogByIri.get(object.asResource().getURI()) : null)
+        .map(resource -> new Governance(resource, kindOf(resource)));
+  }
+
+  /**
+   * Non-deleted scope for a referenced catalog entity that is not a candidate. A deleted target
+   * leaves the dataset together with the edges to it. A missing one means the projection disagrees
+   * with the catalog. A live one is dropped only when the caller may not read it: absence from the
+   * candidates is not denial, so a readable one means the candidates were incomplete.
+   */
+  private boolean isAdmittedReference(
+      final RDFNode object, final Map<String, ReferenceState> referenced) {
+    final String iri = requireCatalogEntityIri(object);
+    return switch (referenced.getOrDefault(iri, new ReferenceState.Missing())) {
+      case ReferenceState.Deleted deleted -> false;
+      case ReferenceState.Missing missing -> throw new FactAdmissionException(
+          CONSISTENCY_FAILURE + "referenced entity %s does not exist".formatted(iri));
+      case ReferenceState.Live live -> requireUnreadable(live.resource());
+      case ReferenceState.Inconsistent inconsistent -> throw new FactAdmissionException(
+          CONSISTENCY_FAILURE + "reference %s: %s".formatted(iri, inconsistent.reason()));
+    };
+  }
+
+  private static String requireCatalogEntityIri(final RDFNode object) {
+    if (!object.isURIResource() || !ENTITY_IRI.matcher(object.asResource().getURI()).matches()) {
       throw new FactAdmissionException(
           "Object " + object + " is neither a catalog resource nor a retrieved owned node");
     }
-    return new Governance(resource, kindOf(resource));
+    return object.asResource().getURI();
+  }
+
+  private boolean requireUnreadable(final CatalogResource resource) {
+    if (permissions.allows(resource, MetadataOperation.VIEW_BASIC)) {
+      throw new FactAdmissionException(
+          SCOPE_ERROR + "%s is readable but not a candidate".formatted(resource.iri()));
+    }
+    return false;
   }
 
   private static NodeKind kindOf(final CatalogResource resource) {
@@ -374,6 +506,30 @@ final class SanitizedModelBuilder {
 
   interface CallerPermissions {
     boolean allows(CatalogResource resource, MetadataOperation operation);
+  }
+
+  /**
+   * The catalog's view of referenced entities that are not candidates. The result is keyed by IRI; a
+   * reference it leaves out counts as missing.
+   */
+  interface ReferenceStates {
+    Set<String> entityTypes();
+
+    Map<String, ReferenceState> resolve(Set<EntityIri> references);
+  }
+
+  /** A catalog entity IRI already checked for a registered type and a canonical id. */
+  record EntityIri(String iri, String type, UUID id) {}
+
+  sealed interface ReferenceState {
+    record Live(CatalogResource resource) implements ReferenceState {}
+
+    record Deleted() implements ReferenceState {}
+
+    record Missing() implements ReferenceState {}
+
+    /** The catalog answered, but in a form that does not establish the entity's deletion state. */
+    record Inconsistent(String reason) implements ReferenceState {}
   }
 
   /** Policy attributes the catalog (not the RDF projection) holds for one resource. */

@@ -1,9 +1,13 @@
 package org.openmetadata.service.rdf;
 
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toUnmodifiableSet;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
@@ -66,10 +70,14 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CallerPermissions;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CatalogResource;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.EntityIri;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.FactAdmissionException;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.KnowledgeSource;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.ReferenceState;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.ReferenceStates;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.SanitizedModel;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -122,15 +130,13 @@ class RdfAuthorizationAlignmentIT {
 
   /**
    * Deferred facts that must keep rejecting the build until reviewed: domain membership and domain
-   * lineage reference other assets, container links reference other entities, and the soft-delete
-   * flag depends on undecided include semantics.
+   * lineage reference other assets, and container links reference other entities.
    */
   private static final Set<String> DEFERRED_FACT_VIOLATIONS =
       Set.of(
           UNMAPPED_PREDICATE + OM + "has on DOMAIN",
           UNMAPPED_PREDICATE + OM + "upstream on DOMAIN",
-          UNMAPPED_PREDICATE + OM + "belongsToSchema on TABLE",
-          UNMAPPED_PREDICATE + OM + "isDeleted on TABLE");
+          UNMAPPED_PREDICATE + OM + "belongsToSchema on TABLE");
 
   /** Scalar attributes and types the builder now maps; live facts using them must be admitted. */
   private static final Set<String> MAPPED_SCALAR_TERMS =
@@ -142,6 +148,7 @@ class RdfAuthorizationAlignmentIT {
           OM + "hasServiceType",
           OM + "entityStatus",
           OM + "processedLineage",
+          OM + "isDeleted",
           OM + "domainType",
           OM + "Domain",
           "http://www.w3.org/2004/02/skos/core#Collection");
@@ -175,7 +182,9 @@ class RdfAuthorizationAlignmentIT {
   @Test
   void sanitizedModelBuildRejectsUnmappedLiveFacts(final TestNamespace namespace) {
     final Fixture fixture = createFixture(namespace);
+    final Table retired = createSoftDeletedUpstreamOfA(fixture, namespace);
     awaitProjectedFacts(fixture);
+    verifyDeletionStateContract(fixture, retired);
     final FactAdmissionException rejection =
         assertThrows(FactAdmissionException.class, () -> inFreshRequest(() -> buildModel(fixture)));
     final Set<String> violations = Set.copyOf(rejection.getMessage().lines().toList());
@@ -191,7 +200,66 @@ class RdfAuthorizationAlignmentIT {
         () ->
             assertTrue(
                 violations.stream().allMatch(RdfAuthorizationAlignmentIT::isMappingGap),
-                "every violation must be a mapping gap: " + violations));
+                "every violation must be a mapping gap: " + violations),
+        () ->
+            assertTrue(
+                violations.stream().noneMatch(violation -> violation.contains(tableIri(retired))),
+                "the soft-deleted reference must be excluded, not rejected: " + violations));
+  }
+
+  /** Soft-deleted table E upstream of A, whose lineage edge must stay projected after the delete. */
+  private static Table createSoftDeletedUpstreamOfA(
+      final Fixture fixture, final TestNamespace namespace) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final Table retired =
+        createTable(admin, fixture.schema(), namespace.prefix("e"), fixture.visibleDomain());
+    addUpstream(admin, fixture.a(), retired);
+    final String edge =
+        "<%s> <%supstream> <%s>".formatted(tableIri(fixture.a()), OM, tableIri(retired));
+    awaitProjection(edge);
+    admin.tables().delete(retired.getId());
+    awaitProjection("<%s> <%sisDeleted> true".formatted(tableIri(retired), OM));
+    assertTrue(
+        askRemote("ASK { GRAPH <%s> { %s } }".formatted(SanitizedModelBuilder.KNOWLEDGE, edge)),
+        "a soft delete must leave the lineage edge projected, or the exclusion is not exercised");
+    return retired;
+  }
+
+  /**
+   * Establishes on live data what the database adapter relies on: the batch API reports an explicit
+   * deleted flag for a soft-deleted and a live table, and the adapter classifies them accordingly.
+   */
+  private static void verifyDeletionStateContract(final Fixture fixture, final Table retired) {
+    final List<UUID> ids = List.of(retired.getId(), fixture.a().getId());
+    final Map<UUID, String> flags =
+        inFreshRequest(
+            () ->
+                Entity.getEntityReferencesByIds(Entity.TABLE, ids, Include.ALL).stream()
+                    .collect(
+                        toMap(
+                            EntityReference::getId,
+                            reference -> String.valueOf(reference.getDeleted()))));
+    final EntityIri retiredIri = new EntityIri(tableIri(retired), Entity.TABLE, retired.getId());
+    final EntityIri liveIri =
+        new EntityIri(tableIri(fixture.a()), Entity.TABLE, fixture.a().getId());
+    final Map<String, ReferenceState> states =
+        inFreshRequest(() -> catalogReferences().resolve(Set.of(retiredIri, liveIri)));
+    record(
+        "model",
+        "deletion-state-contract",
+        Map.of(
+            "deletedFlags",
+            Map.of("retired", flags.get(retired.getId()), "live", flags.get(fixture.a().getId())),
+            "states",
+            Map.of(
+                "retired", String.valueOf(states.get(retiredIri.iri())),
+                "live", String.valueOf(states.get(liveIri.iri())))));
+    assertEquals(
+        Map.of(retired.getId(), "true", fixture.a().getId(), "false"),
+        flags,
+        "the batch API must report an explicit deleted flag for both tables");
+    assertEquals(new ReferenceState.Deleted(), states.get(retiredIri.iri()));
+    assertInstanceOf(ReferenceState.Live.class, states.get(liveIri.iri()));
   }
 
   private static boolean namesMappedScalarTerm(final String violation) {
@@ -241,6 +309,7 @@ class RdfAuthorizationAlignmentIT {
             () ->
                 inFreshRequest(() -> fixture.decisions(table -> canViewAsRestGet(fixture, table))));
     recordDecisionDiagnostics(fixture, phase, Map.of("expected", expected, "rest", rest));
+    recordContainerDecisions(fixture, phase);
     assertEquals(expected, rest, phase + ": REST decisions");
     assertEquals(rest, freshRequest, phase + ": fresh-request decisions must match REST");
   }
@@ -266,6 +335,50 @@ class RdfAuthorizationAlignmentIT {
     cells.put(
         "reusedThreadCacheShaped", fixture.decisions(table -> canViewCacheShaped(fixture, table)));
     record(phase, "decisions", cells);
+  }
+
+  /**
+   * Recorded, never asserted: whether the caller can read the service, database and schema in this
+   * phase, through REST and through a fresh-request in-process check. Containment stays unmapped.
+   */
+  private void recordContainerDecisions(final Fixture fixture, final String phase) {
+    final Map<String, Boolean> rest = new LinkedHashMap<>();
+    fixture
+        .containers()
+        .forEach(container -> rest.put(container.getType(), restCanRead(fixture, container)));
+    final Map<String, Boolean> freshRequest = inFreshRequest(() -> containerDecisions(fixture));
+    record(phase, "container-decisions", Map.of("rest", rest, "freshRequest", freshRequest));
+  }
+
+  private Map<String, Boolean> containerDecisions(final Fixture fixture) {
+    final Map<String, Boolean> decisions = new LinkedHashMap<>();
+    for (EntityReference container : fixture.containers()) {
+      decisions.put(
+          container.getType(),
+          isPermittedAsRestGet(
+              fixture.securityContext(),
+              container.getType(),
+              container.getId(),
+              MetadataOperation.VIEW_BASIC));
+    }
+    return decisions;
+  }
+
+  private static boolean restCanRead(final Fixture fixture, final EntityReference container) {
+    final OpenMetadataClient client = fixture.userClient();
+    final String id = container.getId().toString();
+    boolean readable = true;
+    try {
+      switch (container.getType()) {
+        case Entity.DATABASE_SERVICE -> client.databaseServices().get(id);
+        case Entity.DATABASE -> client.databases().get(id);
+        case Entity.DATABASE_SCHEMA -> client.databaseSchemas().get(id);
+        default -> throw new IllegalArgumentException("Not a fixture container: " + container);
+      }
+    } catch (ForbiddenException denied) {
+      readable = false;
+    }
+    return readable;
   }
 
   private boolean restCanView(final Fixture fixture, final Table table) {
@@ -353,8 +466,76 @@ class RdfAuthorizationAlignmentIT {
         (resource, operation) ->
             isPermittedAsRestGet(
                 fixture.securityContext(), resource.type(), resource.id(), operation);
-    return new SanitizedModelBuilder(suiteFuseki(), fixture.catalog(), permissions, TRIPLE_BUDGET)
+    return new SanitizedModelBuilder(
+            suiteFuseki(), fixture.catalog(), catalogReferences(), permissions, TRIPLE_BUDGET)
         .build();
+  }
+
+  private static ReferenceStates catalogReferences() {
+    return new DatabaseReferences();
+  }
+
+  /**
+   * Deletion state of referenced entities outside the candidates, from one batched database read
+   * per entity type. Live resources carry no tags because this test's permission check reloads
+   * every authorization attribute itself.
+   */
+  private static final class DatabaseReferences implements ReferenceStates {
+    @Override
+    public Set<String> entityTypes() {
+      return Entity.getEntityList();
+    }
+
+    @Override
+    public Map<String, ReferenceState> resolve(final Set<EntityIri> references) {
+      final Map<String, ReferenceState> states = new LinkedHashMap<>();
+      references.stream()
+          .collect(groupingBy(EntityIri::type))
+          .forEach((type, ofType) -> states.putAll(statesOfType(type, ofType)));
+      return states;
+    }
+  }
+
+  /**
+   * Every requested reference gets an explicit state: an id the batch omits is missing, and a
+   * reference without a deleted flag does not establish that the entity is live. A not-found error
+   * from the batch cannot be attributed to one id, so it marks the whole type inconsistent.
+   */
+  private static Map<String, ReferenceState> statesOfType(
+      final String type, final List<EntityIri> references) {
+    final List<UUID> ids = references.stream().map(EntityIri::id).toList();
+    try {
+      final Map<UUID, EntityReference> found =
+          Entity.getEntityReferencesByIds(type, ids, Include.ALL).stream()
+              .collect(toMap(EntityReference::getId, identity(), (first, second) -> first));
+      return references.stream()
+          .collect(
+              toMap(EntityIri::iri, reference -> stateOf(reference, found.get(reference.id()))));
+    } catch (EntityNotFoundException unattributed) {
+      return references.stream()
+          .collect(
+              toMap(
+                  EntityIri::iri,
+                  reference ->
+                      (ReferenceState)
+                          new ReferenceState.Inconsistent(
+                              "the batch lookup reported a missing " + type)));
+    }
+  }
+
+  private static ReferenceState stateOf(final EntityIri reference, final EntityReference found) {
+    final ReferenceState state;
+    if (found == null) {
+      state = new ReferenceState.Missing();
+    } else if (found.getDeleted() == null) {
+      state = new ReferenceState.Inconsistent("the catalog returned no deleted flag");
+    } else if (found.getDeleted()) {
+      state = new ReferenceState.Deleted();
+    } else {
+      state =
+          new ReferenceState.Live(new CatalogResource(reference.type(), reference.id(), List.of()));
+    }
+    return state;
   }
 
   private static KnowledgeSource suiteFuseki() {
@@ -509,7 +690,7 @@ class RdfAuthorizationAlignmentIT {
     addUpstream(admin, tables.a(), tables.b());
     addUpstream(admin, tables.b(), tables.c());
     addUpstream(admin, tables.a(), tables.d());
-    return new Fixture(caller, visible, hidden, tables);
+    return new Fixture(caller, visible, hidden, schema, tables);
   }
 
   private static Domain createDomain(final OpenMetadataClient admin, final String name) {
@@ -572,7 +753,16 @@ class RdfAuthorizationAlignmentIT {
   private record LineageTables(Table a, Table b, Table c, Table d) {}
 
   private record Fixture(
-      Caller caller, Domain visibleDomain, Domain hiddenDomain, LineageTables lineage) {
+      Caller caller,
+      Domain visibleDomain,
+      Domain hiddenDomain,
+      DatabaseSchema schema,
+      LineageTables lineage) {
+    /** The service, database and schema containing every fixture table. */
+    List<EntityReference> containers() {
+      return List.of(schema.getService(), schema.getDatabase(), schema.getEntityReference());
+    }
+
     User user() {
       return caller.user();
     }

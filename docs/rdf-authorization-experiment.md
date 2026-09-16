@@ -74,6 +74,7 @@ The fixture: tables A, B, C and D, with `A om:upstream B`, `B om:upstream C`, `A
 | table | `om:domains` | domains → `VIEW_BASIC`; the domain object must be visible | `EntityResource` constructor |
 | table | `dct:hasVersion`, `om:hasServiceType`, `om:entityStatus`, `om:processedLineage` | core → `VIEW_BASIC` | see "Scalar attribute evidence" |
 | domain | `rdf:type`, `rdfs:label`, `om:fullyQualifiedName`, `dct:description`, `dct:modified`, `dcat:version`, `dct:hasVersion`, `om:domainType`, `om:entityStatus` | core → `VIEW_BASIC` on the **domain** resource | see "Scalar attribute evidence" |
+| table, domain | `om:isDeleted`, admitted only as `false` on a candidate | core → `VIEW_BASIC`, under the local non-deleted scope experiment (Finding 12) | [`rdf-authorization-scope-proposal.md`](rdf-authorization-scope-proposal.md) |
 
 Approved `rdf:type` objects: `om:Table`, `om:Tag`, `om:Domain`, `om:Column`, `om:Extension`, `om:ExtensionProperty`, `dcat:Dataset`, `skos:Concept`, `skos:Collection`, `prov:Entity`.
 
@@ -96,7 +97,8 @@ A predicate is mapped to core only when both links below are traced in code. `En
 Open semantics, not resolved by this mapping:
 - **Free text:** `description` is markdown and can embed entity links. It is admitted with the same `VIEW_BASIC` the REST GET needs, which reproduces what REST returns; whether SPARQL should follow that is undecided.
 - **Explicitly requested fields:** a GET that names one of these fields in `fields=` asks `getViewOperations` for `VIEW_ALL`, because the resources do not register them. The mapping follows the default GET response instead.
-- **Deferred:** `om:isDeleted` (from `deleted`) stays unmapped because whether deleted entities appear is an include question. `om:childrenCount` stays unmapped because `DomainRepository.clearFields` returns it only when requested.
+- **Deleted flag:** `om:isDeleted` (from `deleted`) is mapped only within the local non-deleted scope experiment (Finding 12), not as a production decision.
+- **Deferred:** `om:childrenCount` stays unmapped because `DomainRepository.clearFields` returns it only when requested.
 
 ## Results
 
@@ -226,7 +228,7 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
    - OpenMetadata normally populates these attributes, so realistic catalogs would fail closed until the projection or the mapping is decided.
    - Related, unproven: label-copied tag facts (`rdfs:label`, `dct:description`, `om:tagFQN`, `om:tagSource`) exist because some asset uses the tag. If they diverge from the tag's own projection, they could hint at hidden usage.
 4. **Lineage details are edge-owned and fail closed.** `om:hasLineageDetails` hangs off the *source* entity. The details node links `prov:used`, the SQL plan and column lineage for an edge that involves two assets. No single resource or field governs it.
-5. **Soft-deleted projection.** A deleted entity emits `prov:invalidatedAtTime`. It was left unmapped, because whether deleted entities appear is an include-semantics question, not a field permission. The fixture uses non-deleted entities.
+5. **Soft-deleted projection.** A deleted entity emits `prov:invalidatedAtTime`. Whether deleted entities appear is an include-semantics question, not a field permission. Finding 12 experiments locally with a non-deleted-only scope; that is not the production contract.
 6. **Field-level distinctions were not exercised.** Every mapped predicate here resolves to `VIEW_BASIC`. `VIEW_USAGE`, `VIEW_SAMPLE_DATA`, `VIEW_TESTS`, `VIEW_QUERIES`, and custom-property or domain rules did not come up.
 7. **Retrieval shape.** 5 visible resources needed 3 queries: resources, then columns and extension, then extension properties. That is asserted.
 8. **Structured-node ownership must not depend on order.** Without the ownership check:
@@ -238,8 +240,52 @@ mvn -pl openmetadata-integration-tests -am verify -Ppostgres-rdf-tests \
    - `"0.1"^^xsd:double` comes back from Fuseki as `"0.1e0"`, which a separate throwaway container probe confirmed. The value is the same, but the RDF term differs.
    - Comparisons by term must therefore use a reference read through the same store; comparing against the in-memory fixture instead makes whole-model comparisons fail.
    - The tests read the unrestricted reference through the same source as the sanitized build.
-10. **Live projections carry facts outside the map (blocking).** On API-created tables and domains the build failed closed with 22 violations (see "Integration run"). The scalar slice resolves 12 of them, traced in "Scalar attribute evidence": 10 predicate violations (4 on tables, 6 on domains) and the 2 domain-type violations. Still rejected: the container links, `om:joins`, `om:isDeleted`, `om:childrenCount`, domain membership and domain lineage. An integration run on 2026-09-15 confirmed this on live data. No violation named a mapped term, the four asserted deferred facts were still rejected, and every violation was a mapping gap. That run did not record the full remaining list.
+10. **Live projections carry facts outside the map (blocking).** On API-created tables and domains the build failed closed with 22 violations (see "Integration run"). The scalar slice resolves 12 of them, traced in "Scalar attribute evidence": 10 predicate violations (4 on tables, 6 on domains) and the 2 domain-type violations. Still rejected at that point: the container links, `om:joins`, `om:isDeleted`, `om:childrenCount`, domain membership and domain lineage. Finding 12 later maps `om:isDeleted` locally. An integration run on 2026-09-15 confirmed this on live data. No violation named a mapped term, the four asserted deferred facts were still rejected, and every violation was a mapping gap. That run did not record the full remaining list.
 11. **Relationship and shared facts need target-aware rules, not field mappings.** Domain membership (`om:has`) and domain-level lineage, which `LineageRepository.addDomainLineage` derives from asset lineage, both reference other assets. `om:joins` is a JSON literal naming other tables. Container links point at service, database and schema entities. A visible domain must not reveal hidden members. These rules are undecided.
+12. **Non-deleted scope (local experiment, not the production contract).** Proposed in [`rdf-authorization-scope-proposal.md`](rdf-authorization-scope-proposal.md).
+    - **Candidates** are catalog entities loaded as non-deleted, readable or not.
+    - **References outside the candidates.** A catalog entity that a retrieved fact references but that is not a candidate is resolved through one catalog lookup, bounded at 1,000 entities; above the bound the build fails. Its state decides the result:
+      - soft-deleted: the entity leaves the dataset together with the edges to it;
+      - missing: consistency failure;
+      - live but not readable: dropped as hidden;
+      - live and readable: scope error, because absence from the candidates is not denial.
+    - **Reference identity** is validated before any lookup. An `entity/<type>/<id>` object must name a type the catalog registers and carry a canonical lower-case UUID; otherwise the build fails with a consistency failure. A catalog answer that does not establish deletion state is also a consistency failure.
+    - **Error order (accepted):** references are collected from every retrieved fact, including facts the mapping later rejects. An over-limit or invalid reference therefore fails the build before any mapping violation is reported.
+    - **Database adapter in the integration test:**
+      - It makes one `Entity.getEntityReferencesByIds(type, ids, Include.ALL)` call per referenced type.
+      - An id the batch omits is classified as missing; `EntityDAO.findReferencesByIds` returns only the rows it finds.
+      - The deleted flag comes from `EntityReferenceRow`, where it is a primitive `boolean`. A reference without a flag is inconsistent, not live; the time-series branch of `getEntityReferencesByIds` builds such references.
+      - Live resources carry no tags. That is safe only because this test's permission check reloads every authorization attribute.
+    - **`om:isDeleted`** is admitted only as `false` on a candidate. `om:isDeleted true` or `prov:invalidatedAtTime` on a candidate is a consistency failure.
+    - **Literals, vocabulary terms and owned structures** get no deletion check.
+    - **Tests:**
+      - `edgesToADeletedEntityLeaveTheNonDeletedDataset`
+      - `nonDeletedFlagOnACandidateIsAdmitted`
+      - `candidateDeletedInTheProjectionIsAConsistencyFailure`
+      - `readableEntityOutsideTheCandidatesIsAScopeErrorNotHidden`
+      - `unreadableEntityOutsideTheCandidatesIsHidden`
+      - `referenceToAMissingEntityIsAConsistencyFailure`
+      - `eachStaleProjectionSignalAloneRejectsANonDeletedCandidate`: `om:isDeleted true` alone, and `prov:invalidatedAtTime` alone
+      - `referenceLookupAcceptsExactlyTheLimitOfDistinctEntities`: 1,000 distinct references, one lookup of 1,000
+      - `referenceLookupBeyondTheLimitFailsWithoutAPartialModel`: 1,001 fail before any lookup runs
+      - `repeatedReferencesToOneEntityUseOneLookupSlot`: 1,000 entities referenced from two tables, one lookup of 1,000
+      - `invalidReferenceIdentityFailsBeforeAnyLookup`: an unregistered type, an upper-case UUID and a non-canonical UUID each fail before any lookup
+      - `inconsistentCatalogAnswerIsAConsistencyFailure`
+    - **Local result:** `SanitizedModelExperimentTest` 72 tests, 0 failures, 0 errors, 0 skipped.
+    - **Not covered:**
+      - a successful complete model on real data, and the two-second target;
+      - deletion or restoration during a build, where version comparison remains an unverified hypothesis;
+      - container targets, which stay deferred;
+      - latency or scale of any kind;
+      - identity-only container exposure, which this fixture cannot exercise because its containers are readable;
+      - the time-series branch of `getEntityReferencesByIds`, which builds references without a deleted flag.
+    - **Caller-facing errors:** translating them to generic reasons is a production requirement; the builder keeps detailed test diagnostics.
+    - **Live run, 2026-09-16** (one guarded run, same command and 6.2.0 image as the verification run): `RdfAuthorizationAlignmentIT` 2 tests, 0 failures, 0 errors, 0 skipped; `SanitizedModelExperimentTest` 72 tests, 0 failures, 0 errors, 0 skipped; Maven exit 0.
+      - **Soft-deleted reference:** a table E was created upstream of A and soft-deleted. The lineage edge stayed projected, the batch API reported `deleted=true` for E and `deleted=false` for A, and the adapter classified E as deleted and A as live. No violation named E, so the edge left the dataset by scope rather than by rejection.
+      - **Deletion-state contract:** confirmed live for regular entities. The time-series branch of `getEntityReferencesByIds`, which builds references without a flag, is still untested.
+      - **Six authorization phases:** all passed, with REST matching the expected result and fresh-request decisions matching REST.
+      - **Container permissions (recorded, not asserted):** the caller could read the service, database and schema in every phase, through REST and in-process alike, including the phase where an unconditional deny hid every table. This matches the code-level expectation in [`rdf-authorization-scope-proposal.md`](rdf-authorization-scope-proposal.md), so this fixture exercises readable containers only.
+      - **Diagnostics, not latency evidence:** REST checks took 52–88 ms per phase, fresh-request checks 13–18 ms. Container peaks: OpenSearch 2,744 MiB, Fuseki 721 MiB, Postgres 267 MiB. Free RAM stayed at or above 43%, with no swap-outs.
 
 ## Proven vs not proven
 

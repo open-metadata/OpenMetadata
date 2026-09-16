@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf;
 
+import static java.util.stream.Collectors.toMap;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -8,7 +9,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
@@ -25,7 +29,10 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CallerPermissions;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.CatalogResource;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.EntityIri;
 import org.openmetadata.service.rdf.SanitizedModelBuilder.KnowledgeSource;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.ReferenceState;
+import org.openmetadata.service.rdf.SanitizedModelBuilder.ReferenceStates;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.security.AuthorizationException;
@@ -53,6 +60,15 @@ final class SanitizedModelFixture {
   static final UUID SHARED_TAG_ID = UUID.fromString("e0000000-0000-4000-8000-000000000002");
   static final UUID DOMAIN_VISIBLE = UUID.fromString("f0000000-0000-4000-8000-000000000001");
   static final UUID DOMAIN_RESTRICTED = UUID.fromString("f0000000-0000-4000-8000-000000000002");
+  static final UUID TABLE_DELETED = UUID.fromString("de000000-0000-4000-8000-000000000000");
+  static final UUID TABLE_OUTSIDE_READABLE =
+      UUID.fromString("0a000000-0000-4000-8000-000000000001");
+  static final UUID TABLE_OUTSIDE_RESTRICTED =
+      UUID.fromString("0a000000-0000-4000-8000-000000000002");
+
+  /** Entity types the fixture's catalog registers; a reference naming any other type is invalid. */
+  static final Set<String> REGISTERED_TYPES = Set.of(Entity.TABLE, Entity.TAG, Entity.DOMAIN);
+
   static final String HIDDEN_COLUMN_PREFIX = BASE + "entity/column/service.db.schema.secret_b.";
 
   private static final ObjectMapper JSON = new ObjectMapper();
@@ -118,10 +134,25 @@ final class SanitizedModelFixture {
     knowledge.add(project(Entity.DOMAIN, DOMAIN_RESTRICTED, domain("Secret")));
   }
 
-  /** The soft-delete flag, whose visibility depends on undecided include semantics. */
+  /** The soft-delete flag as a non-deleted candidate carries it. */
   static void addDeletedFlag(final Dataset store) {
     final ObjectNode fields = table("customers");
     fields.put("deleted", false);
+    store.getNamedModel(KNOWLEDGE).add(project(Entity.TABLE, TABLE_C, fields));
+  }
+
+  /** Soft-deleted table E keeps its projection, and {@code A om:upstream E} remains. */
+  static void addDeletedUpstream(final Dataset store) {
+    final ObjectNode fields = table("retired_e");
+    fields.put("deleted", true);
+    store.getNamedModel(KNOWLEDGE).add(project(Entity.TABLE, TABLE_DELETED, fields));
+    addUpstream(store, TABLE_A, TABLE_DELETED);
+  }
+
+  /** Candidate C as projected after a soft delete that the candidate load did not see. */
+  static void markCandidateDeletedInProjection(final Dataset store) {
+    final ObjectNode fields = table("customers");
+    fields.put("deleted", true);
     store.getNamedModel(KNOWLEDGE).add(project(Entity.TABLE, TABLE_C, fields));
   }
 
@@ -155,6 +186,44 @@ final class SanitizedModelFixture {
                 new CatalogResource(Entity.DOMAIN, DOMAIN_VISIBLE, List.of()),
                 new CatalogResource(Entity.DOMAIN, DOMAIN_RESTRICTED, labels(RESTRICTED_TAG))))
         .toList();
+  }
+
+  /**
+   * Catalog state of entities outside the candidates: E is soft-deleted, one live table is
+   * readable, one carries the restricted tag. Anything else is unknown, so the builder treats it as
+   * missing.
+   */
+  static ReferenceStates references() {
+    final Map<String, ReferenceState> known =
+        Map.of(
+            tableIri(TABLE_DELETED),
+            new ReferenceState.Deleted(),
+            tableIri(TABLE_OUTSIDE_READABLE),
+            new ReferenceState.Live(
+                new CatalogResource(Entity.TABLE, TABLE_OUTSIDE_READABLE, List.of())),
+            tableIri(TABLE_OUTSIDE_RESTRICTED),
+            new ReferenceState.Live(
+                new CatalogResource(
+                    Entity.TABLE, TABLE_OUTSIDE_RESTRICTED, labels(RESTRICTED_TAG))));
+    return referenceStates(
+        references ->
+            references.stream()
+                .filter(reference -> known.containsKey(reference.iri()))
+                .collect(toMap(EntityIri::iri, reference -> known.get(reference.iri()))));
+  }
+
+  static ReferenceStates referenceStates(
+      final Function<Set<EntityIri>, Map<String, ReferenceState>> resolver) {
+    return new FixtureReferences(REGISTERED_TYPES, resolver);
+  }
+
+  private record FixtureReferences(
+      Set<String> entityTypes, Function<Set<EntityIri>, Map<String, ReferenceState>> resolver)
+      implements ReferenceStates {
+    @Override
+    public Map<String, ReferenceState> resolve(final Set<EntityIri> references) {
+      return resolver.apply(references);
+    }
   }
 
   static KnowledgeSource local(final Dataset store) {
@@ -301,7 +370,7 @@ final class SanitizedModelFixture {
     entity.setId(id);
     entity.setName(fields.get("name").asText());
     entity.setFullyQualifiedName(fields.get("fullyQualifiedName").asText());
-    entity.setDeleted(false);
+    entity.setDeleted(fields.path("deleted").asBoolean(false));
     return TRANSLATOR.toRdf(entity);
   }
 
