@@ -208,6 +208,20 @@ describe('FilterSelect', () => {
     expect(screen.getByText('MYSQL')).toBeInTheDocument();
   });
 
+  it('single select marks the chosen row brand-blue with no tick icon', () => {
+    renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
+
+    const row = screen.getByTestId('snowflake');
+
+    // No check glyph any more: these options carry no icons, so the selected
+    // row must contain no svg at all (the tick used to render one).
+    expect(row.querySelector('svg')).toBeNull();
+    expect(row.className).toContain('bg-utility-brand-50');
+    expect(
+      screen.getByTitle('Snowflake').parentElement?.className ?? ''
+    ).toContain('text-fg-brand-primary');
+  });
+
   it('single select applies the clicked value and reports one value', () => {
     const { onChange } = renderFilter({ selectionMode: 'single' });
 
