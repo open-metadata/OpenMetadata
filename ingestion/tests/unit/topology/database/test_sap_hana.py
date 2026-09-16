@@ -57,6 +57,7 @@ from metadata.ingestion.models.ometa_lineage import (
     OMetaLineageRequest,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
 from metadata.ingestion.source.database.saphana import lineage as saphana_lineage
 from metadata.ingestion.source.database.saphana.cdata_parser import (
@@ -1659,13 +1660,17 @@ def test_view_pass_failure_still_surfaces() -> None:
     On SAP HANA Cloud the view pass is the entire result, so hiding its failure would
     report success while producing no lineage at all.
     """
-    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+    source = _lineage_source_with(
+        DatabaseServiceQueryLineagePipeline(processQueryLineage=False, processStoredProcedureLineage=False)
+    )
 
     def explode(*_, **__):
         raise RuntimeError("view definition parsing blew up")
 
+    # The real LineageSource._iter runs, so this also proves the view pass is reached at
+    # all. Patching _iter itself would stay green if the pass were skipped entirely.
     with (
-        patch.object(LineageSource, "_iter", side_effect=explode),
+        patch.object(LineageSource, "yield_view_lineage", side_effect=explode),
         pytest.raises(RuntimeError, match="view definition parsing blew up"),
     ):
         list(source._iter())
@@ -1939,11 +1944,17 @@ def test_a_plan_cache_statement_becomes_a_lineage_edge() -> None:
     source.engine.connect.return_value.__exit__ = Mock(return_value=False)
 
     def table(name: str) -> Table:
+        fqn = f"test_sap_hana.H00.GE370603.{name}"
         return Table(
             id=uuid.uuid4(),
             name=name,
-            fullyQualifiedName=f"test_sap_hana.H00.GE370603.{name}",
-            columns=[Column(name=column, dataType=DataType.BIGINT) for column in ("ORDER_ID", "AMOUNT")],
+            fullyQualifiedName=fqn,
+            # Column FQNs are what the column-level pairs are built from, so a column
+            # carrying only a name yields an edge with no column lineage at all.
+            columns=[
+                Column(name=column, dataType=DataType.BIGINT, fullyQualifiedName=f"{fqn}.{column}")
+                for column in ("ORDER_ID", "AMOUNT")
+            ],
         )
 
     known = {"lt_order_archive": table("LT_ORDER_ARCHIVE"), "lt_order": table("LT_ORDER")}
@@ -1967,3 +1978,18 @@ def test_a_plan_cache_statement_becomes_a_lineage_edge() -> None:
         if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest)
     ]
     assert len(edges) == 1
+
+    # Direction matters: the archive is written from the order table, not the reverse.
+    edge = edges[0]
+    assert isinstance(edge, OMetaFQNLineageRequest)
+    assert edge.from_entity_fqn == "test_sap_hana.H00.GE370603.LT_ORDER"
+    assert edge.to_entity_fqn == "test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE"
+    # Sorted because the parser does not preserve the SELECT order.
+    pairs = sorted(
+        (model_str(column.toColumn), [model_str(source) for source in column.fromColumns or []])
+        for column in (edge.lineage_details.columnsLineage or [])
+    )
+    assert pairs == [
+        ("test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE.AMOUNT", ["test_sap_hana.H00.GE370603.LT_ORDER.AMOUNT"]),
+        ("test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE.ORDER_ID", ["test_sap_hana.H00.GE370603.LT_ORDER.ORDER_ID"]),
+    ]

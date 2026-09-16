@@ -161,12 +161,19 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 "first. If lineage has run before, the queries may simply have been processed already.",
                 self.statements_read,
             )
-        else:
+        # CATALOG READ is only worth raising when the query pass actually ran. A view-only
+        # run would otherwise be sent to fix a privilege it never needed.
+        elif self.source_config.processQueryLineage:  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
             logger.warning(
                 "No lineage was created and no queries were found to analyse. Check that metadata "
-                "ingestion has run for this service, that View Lineage or Query Lineage is enabled, and "
-                "that the ingestion user has CATALOG READ, without which SYS.M_SQL_PLAN_CACHE only "
-                "reports queries the ingestion user ran itself."
+                "ingestion has run for this service, and that the ingestion user has CATALOG READ, "
+                "without which SYS.M_SQL_PLAN_CACHE only reports queries the ingestion user ran itself."
+            )
+        else:
+            logger.warning(
+                "No lineage was created. Query Lineage is disabled, so only view definitions were "
+                "read. Check that metadata ingestion has run for this service and that its views are "
+                "in scope."
             )
 
     def query_lineage_producer(self) -> Iterator[TableQuery]:
