@@ -13,8 +13,7 @@
 import {
   ClassificationTag,
   GlossaryTag,
-  Tooltip,
-  TooltipTrigger,
+  Tooltip
 } from '@openmetadata/ui-core-components';
 import {
   Button,
@@ -235,7 +234,7 @@ const AsyncSelectList: FC<
         EntityType.GLOSSARY_TERM;
     const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
-    const chip = (
+    return (
       <TagComponent
         closeButtonTestId="remove-tags"
         color={tag.style?.color}
@@ -243,6 +242,7 @@ const AsyncSelectList: FC<
         icon={tag.style?.iconURL}
         label={tagLabel}
         size="sm"
+        tooltip={isDerived ? t('message.derived-tag-warning'): undefined}
         onDelete={
           isDerived
             ? undefined
@@ -252,14 +252,6 @@ const AsyncSelectList: FC<
               }
         }
       />
-    );
-
-    return isDerived ? (
-      <Tooltip title={t('message.derived-tag-warning')}>
-        <TooltipTrigger>{chip}</TooltipTrigger>
-      </Tooltip>
-    ) : (
-      chip
     );
   };
 
