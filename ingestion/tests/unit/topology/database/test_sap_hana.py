@@ -1997,6 +1997,70 @@ def test_a_plan_cache_statement_becomes_a_lineage_edge() -> None:
     ]
 
 
+def test_a_view_definition_becomes_a_lineage_edge() -> None:
+    """The view path end to end, which is the whole of lineage on HANA Cloud.
+
+    The plan-cache test covers the query path. This covers the other one, so a change
+    that left Cloud view lineage empty cannot pass while the query path still works.
+    """
+    sql_lineage.search_cache.clear()
+
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processQueryLineage=False, threads=1))
+
+    view = TableView(
+        table_name="LT_V_CUSTOMER_SIMPLE",
+        schema_name="GE370603",
+        db_name="H00",
+        view_definition='SELECT CUSTOMER_ID, CUSTOMER_NAME FROM "LT_CUSTOMER"',
+    )
+
+    def table(name: str) -> Table:
+        fqn = f"test_sap_hana.H00.GE370603.{name}"
+        return Table(
+            id=uuid.uuid4(),
+            name=name,
+            fullyQualifiedName=fqn,
+            columns=[
+                Column(name=column, dataType=DataType.STRING, fullyQualifiedName=f"{fqn}.{column}")
+                for column in ("CUSTOMER_ID", "CUSTOMER_NAME")
+            ],
+        )
+
+    known = {"lt_v_customer_simple": table("LT_V_CUSTOMER_SIMPLE"), "lt_customer": table("LT_CUSTOMER")}
+
+    def resolve(fqn_search_string: str | None = None, **_) -> list[Table] | None:
+        for name in sorted(known, key=len, reverse=True):
+            if name in (fqn_search_string or "").lower():
+                return [known[name]]
+        return None
+
+    source.metadata.es_search_from_fqn.side_effect = resolve
+
+    # The view pass resolves its own target by FQN rather than through the search index.
+    def get_by_name(fqn: str | None = None, **_) -> Table | None:
+        for name in sorted(known, key=len, reverse=True):
+            if name in str(fqn).lower():
+                return known[name]
+        return None
+
+    source.metadata.get_by_name.side_effect = get_by_name
+
+    with patch.object(LineageSource, "view_lineage_producer", return_value=iter([view])):
+        produced = list(source._iter())
+
+    edges = [
+        either.right
+        for either in produced
+        if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest)
+    ]
+    assert len(edges) == 1
+    edge = edges[0]
+    request = edge.lineage_request if isinstance(edge, OMetaLineageRequest) else edge
+    assert isinstance(request, OMetaFQNLineageRequest)
+    assert request.from_entity_fqn == "test_sap_hana.H00.GE370603.LT_CUSTOMER"
+    assert request.to_entity_fqn == "test_sap_hana.H00.GE370603.LT_V_CUSTOMER_SIMPLE"
+
+
 def test_a_non_database_failure_is_not_disguised_as_a_privilege_error() -> None:
     """The query guard covers the database read, not the parsing that follows it.
 

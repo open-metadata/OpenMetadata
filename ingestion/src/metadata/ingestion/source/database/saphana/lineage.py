@@ -129,17 +129,23 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         self.query_pass_failed = False
         sql_edges = 0
         sql_queries = 0
+        sql_failures = 0
         for either in super()._iter():
+            # A pass that reports a failure this way rather than raising still leaves the
+            # run without lineage it should have had, so the diagnosis below must not
+            # then blame the catalog.
+            if either.left:
+                sql_failures += 1
             # The shared passes wrap lineage rather than yielding AddLineageRequest
             # directly, so all three shapes have to be counted.
-            if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest):
+            elif isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest):
                 sql_edges += 1
             elif isinstance(either.right, CreateQueryRequest):
                 sql_queries += 1
             yield either
         logger.info(
             "Found %d lineage edges from view definitions (SYS.VIEWS) and query history "
-            "(SYS.M_SQL_PLAN_CACHE), and ingested %d queries",
+            "(SYS.M_SQL_PLAN_CACHE), and ingested %d query records",
             sql_edges,
             sql_queries,
         )
@@ -159,9 +165,10 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         if sql_edges or cdata_edges:
             return
 
-        # The query pass already reported the real cause on the workflow status, so a
-        # second guess here would only talk over it.
-        if self.query_pass_failed:
+        # A pass that already reported the real cause, either by raising or by yielding a
+        # failure, has said more than the guesses below can. Adding to it would only
+        # point the reader somewhere less accurate.
+        if self.query_pass_failed or sql_failures:
             return
 
         view_lineage = self.source_config.processViewLineage  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
@@ -179,8 +186,16 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 "first. If lineage has run before, the queries may simply have been processed already.",
                 self.statements_read,
             )
-        # CATALOG READ is only worth raising when the query pass actually ran. A view-only
-        # run would otherwise be sent to fix a privilege it never needed.
+        # CATALOG READ governs the plan cache and nothing else, so it is only raised when
+        # the query pass ran and actually read from there. A view-only run, or one reading
+        # a query log file, would otherwise be sent to fix a privilege it never needed.
+        elif query_lineage and self.source_config.queryLogFilePath:  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+            logger.warning(
+                "No lineage was created and the configured query log file yielded no queries to "
+                "analyse. Check that metadata ingestion has run for this service, and that the file "
+                "at %s is readable and holds the statements you expect.",
+                self.source_config.queryLogFilePath,  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+            )
         elif query_lineage:
             logger.warning(
                 "No lineage was created and no queries were found to analyse. Check that metadata "
@@ -244,8 +259,8 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                     name="Query history lineage",
                     error=(
                         "Could not read the SAP HANA query history (SYS.M_SQL_PLAN_CACHE), so no "
-                        "lineage was created from queries. Check that the ingestion user has "
-                        f"CATALOG READ. Cause: {exc}"
+                        "lineage was created from queries. A missing CATALOG READ privilege is the "
+                        f"usual cause, though the error below is what SAP HANA reported. Cause: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
                 ),

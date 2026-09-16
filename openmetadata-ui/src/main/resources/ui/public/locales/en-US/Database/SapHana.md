@@ -20,6 +20,32 @@ And, if you have password policies forcing users to reset the password, you can 
 ALTER USER openmetadata DISABLE PASSWORD LIFETIME;
 ```
 
+### Lineage
+
+Lineage is read from three places, and each needs its own access. Run metadata ingestion before the lineage workflow, because lineage is resolved against the tables and views already ingested.
+
+| Lineage | Read from | Grant required |
+|---|---|---|
+| View lineage, including column level | View definitions captured by metadata ingestion | `SELECT` on `SYS`, already required above |
+| Table to table, from `INSERT INTO ... SELECT` and similar | `SYS.M_SQL_PLAN_CACHE` | `CATALOG READ` |
+| Calculation, Analytic and Attribute View lineage | `_SYS_REPO.ACTIVE_OBJECT` | `SELECT` on that object |
+
+```SQL
+-- Table-to-table lineage. Without this the ingestion user sees only the statements it
+-- ran itself, so the workflow finds nothing to parse. This is a system privilege: it
+-- lifts row filtering from the monitoring and system views the user can reach, not just
+-- SYS.M_SQL_PLAN_CACHE. Grant it deliberately.
+GRANT CATALOG READ TO openmetadata;
+
+-- Calculation, Analytic and Attribute Views. On-premise and HANA Express only, and
+-- granted on the single object the connector reads rather than the whole schema.
+GRANT SELECT ON _SYS_REPO.ACTIVE_OBJECT TO openmetadata;
+```
+
+On SAP HANA Cloud the classic `_SYS_REPO` repository does not exist, so that grant does not apply and the workflow logs an informational message saying the schema is absent. View and table-to-table lineage are unaffected.
+
+`CREATE TABLE ... AS SELECT` is not captured. SAP HANA records lineage-relevant statements in the plan cache, which holds execution plans and therefore never contains DDL. Populating a table with `INSERT INTO ... SELECT` instead makes the relationship visible.
+
 ### Profiler & Data Quality
 
 Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
