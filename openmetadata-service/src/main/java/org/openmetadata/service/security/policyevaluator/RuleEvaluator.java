@@ -243,6 +243,43 @@ public class RuleEvaluator {
   }
 
   @Function(
+      name = "matchAnyDomain",
+      input = "List of comma separated Domain fully qualified names",
+      description =
+          "Returns true if the entity being accessed belongs to at least one of the domains given as input",
+      examples = {"matchAnyDomain('Domain.Finance', 'Domain.Procurement')"})
+  @SuppressWarnings("unused")
+  public boolean matchAnyDomain(String... domainFQNs) {
+    if (expressionValidation) {
+      for (String domainFQN : domainFQNs) {
+        validateEntityReference(Entity.DOMAIN, domainFQN);
+      }
+      return false;
+    }
+    if (resourceContext == null) {
+      return false;
+    }
+    List<EntityReference> domains = resourceContext.getDomains();
+    if (nullOrEmpty(domains)) {
+      LOG.debug("No Domains found for resource");
+      return false;
+    }
+    LOG.debug(
+        "matchAnyDomain {} resourceDomains {}",
+        Arrays.toString(domainFQNs),
+        Arrays.toString(domains.toArray()));
+    for (String domainFQN : domainFQNs) {
+      boolean found =
+          domains.stream()
+              .anyMatch(d -> domainFQN.equals(d.getFullyQualifiedName()));
+      if (found) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Function(
       name = "matchAllTags",
       input = "List of comma separated tag or glossary fully qualified names",
       description = "Returns true if the entity being accessed has all the tags given as input",
