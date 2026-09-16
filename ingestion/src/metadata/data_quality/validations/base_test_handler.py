@@ -79,6 +79,16 @@ class ThresholdUnit(str, Enum):
     PERCENTAGE = "PERCENTAGE"
 
 
+class RowThreshold(BaseModel):
+    """How many violating rows a test case tolerates, and in which unit
+
+    The defaults are the pre-threshold verdict: no violation at all is tolerated.
+    """
+
+    value: float = 0.0
+    unit: ThresholdUnit = ThresholdUnit.ABSOLUTE
+
+
 class TestEvaluation(TypedDict, total=False):
     """Result of evaluating a test condition
 
@@ -112,6 +122,10 @@ class BaseTestValidator(ABC):
     The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
     This can be useful to resolve complex test parameters based on the parameters given by the user.
     """
+
+    # Memoized reading of the failure threshold parameters. Declared on the class so that
+    # validators overriding __init__ without calling super() still get the default.
+    _row_threshold: RowThreshold | None = None
 
     def __init__(
         self,
@@ -351,39 +365,60 @@ class BaseTestValidator(ABC):
         """
         raise NotImplementedError(f"{self.__class__.__name__} must implement _evaluate_test_condition()")
 
-    def get_row_threshold(self) -> tuple[float, ThresholdUnit]:
+    def get_row_threshold(self) -> RowThreshold:
         """Read the failure threshold and the unit it is expressed in
 
         Both parameters are optional. A test case that does not set them tolerates no
         violation at all (`0` ABSOLUTE), which is the verdict tests had before thresholds
         were introduced.
 
+        The parameters cannot change while the test case runs, so the reading is memoized:
+        it is asked for once per dimension row, and a misconfigured test case would
+        otherwise log the same warning once per call.
+
         Returns:
-            Tuple[float, ThresholdUnit]: the tolerated number of violations and its unit
+            RowThreshold: the tolerated number of violations and its unit
         """
+        threshold = self._row_threshold
+        if threshold is None:
+            threshold = self._row_threshold = self._read_row_threshold()
+        return threshold
+
+    def _read_row_threshold(self) -> RowThreshold:
+        """Parse the threshold parameters, falling back to tolerating no violation"""
         param_values = self.test_case.parameterValues or []
 
         try:
-            threshold = self.get_test_case_param_value(param_values, THRESHOLD_PARAM, float, default=0.0) or 0.0
+            raw_threshold = self.get_test_case_param_value(param_values, THRESHOLD_PARAM, float, default=0.0)
         except (TypeError, ValueError):
             logger.warning(
-                f"Unreadable {THRESHOLD_PARAM} for {self.test_case.fullyQualifiedName}. Tolerating no violation."
+                "Unreadable %s for %s. Tolerating no violation.",
+                THRESHOLD_PARAM,
+                self.test_case.fullyQualifiedName,
             )
-            return 0.0, ThresholdUnit.ABSOLUTE
+            return RowThreshold()
 
-        unit_value = self.get_test_case_param_value(
+        # The parameter is read through `float`, so anything else is a test case without the
+        # parameter set and tolerates no violation.
+        threshold = raw_threshold if isinstance(raw_threshold, float) else 0.0
+
+        raw_unit = self.get_test_case_param_value(
             param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
         )
+        unit_value = raw_unit if isinstance(raw_unit, str) else ThresholdUnit.ABSOLUTE.value
         try:
             unit = ThresholdUnit(unit_value.upper())
         except ValueError:
             logger.warning(
-                f"Unknown {THRESHOLD_UNIT_PARAM} '{unit_value}' for {self.test_case.fullyQualifiedName}. "
-                f"Reading the threshold as {ThresholdUnit.ABSOLUTE.value}."
+                "Unknown %s '%s' for %s. Reading the threshold as %s.",
+                THRESHOLD_UNIT_PARAM,
+                unit_value,
+                self.test_case.fullyQualifiedName,
+                ThresholdUnit.ABSOLUTE.value,
             )
             unit = ThresholdUnit.ABSOLUTE
 
-        return threshold, unit
+        return RowThreshold(value=threshold, unit=unit)
 
     def _needs_row_count(self) -> bool:
         """Whether the total row count has to be computed
@@ -393,7 +428,7 @@ class BaseTestValidator(ABC):
         """
         if self.test_case.computePassedFailedRowCount:
             return True
-        return self.get_row_threshold()[1] is ThresholdUnit.PERCENTAGE
+        return self.get_row_threshold().unit is ThresholdUnit.PERCENTAGE
 
     def _apply_row_threshold(self, violations: int | None, denominator: int | None) -> bool:
         """Check a violation count against the test case failure threshold
@@ -412,14 +447,14 @@ class BaseTestValidator(ABC):
             bool: True if the test passes
         """
         violations = violations or 0
-        threshold, unit = self.get_row_threshold()
+        threshold = self.get_row_threshold()
 
-        if unit is ThresholdUnit.PERCENTAGE:
+        if threshold.unit is ThresholdUnit.PERCENTAGE:
             if not denominator:
                 return True
-            return violations / denominator * 100 <= threshold
+            return violations / denominator * 100 <= threshold.value
 
-        return violations <= threshold
+        return violations <= threshold.value
 
     def _format_result_message(
         self,

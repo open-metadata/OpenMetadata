@@ -132,6 +132,15 @@ class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
         stay within the failure threshold, counted against the table row count. With the
         default threshold, that means not_match_count == 0.
 
+        The denominator is the table row count here while columnValuesToMatchRegex counts
+        against the non-null values, and that asymmetry is intended. NULLs violate neither
+        test, but they sit on opposite sides of the two metric pairs: notRegexCount only
+        counts the rows that actually match the forbidden pattern, so keeping NULLs in the
+        denominator leaves them as non-violating rows, exactly as the passed/failed row
+        counts below report them. columnValuesToMatchRegex instead counts the values that
+        failed to match, which NULLs never do, so dividing those by the row count would
+        report a mostly NULL column as mostly failing.
+
         Args:
             metric_values: Dictionary with keys from Metrics enum names
                           e.g., {"NOT_REGEX_COUNT": 5, "ROW_COUNT": 100}
