@@ -1,2 +1,2 @@
--- Schema changes for OpenMetadata 2.0.2
+-- Schema changes for OpenMetadata 2.0.3
 -- No DDL changes; data backfill runs in the Java migration step.
