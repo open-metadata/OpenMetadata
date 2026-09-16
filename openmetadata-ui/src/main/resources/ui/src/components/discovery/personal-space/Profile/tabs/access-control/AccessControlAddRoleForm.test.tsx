@@ -125,6 +125,24 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       })}
     </>
   ),
+  FormItemLabel: ({
+    label,
+    required,
+  }: {
+    label?: React.ReactNode;
+    required?: boolean;
+  }) => (
+    <label>
+      {label}
+      {required && ' *'}
+    </label>
+  ),
+  HintText: ({
+    children,
+  }: {
+    children: React.ReactNode;
+    isInvalid?: boolean;
+  }) => <span>{children}</span>,
 }));
 
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';
