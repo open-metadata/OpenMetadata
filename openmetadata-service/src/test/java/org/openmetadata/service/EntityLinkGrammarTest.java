@@ -78,6 +78,9 @@ class EntityLinkGrammarTest {
           Entity.QUERY_COST_RECORD,
           Entity.AGENT_EXECUTION,
           Entity.DATA_CONTRACT_RESULT,
+          // Classification label for test cases, referenced by name/relationship rather than being
+          // the subject or target of an EntityLink
+          Entity.DATA_QUALITY_DIMENSION,
           // Internal entities - used for feeds/suggestions, not linkable targets
           Entity.THREAD,
           Entity.SUGGESTION,
