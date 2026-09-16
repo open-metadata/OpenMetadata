@@ -1052,12 +1052,8 @@ export const verifyExportLineagePNG = async (
 
   try {
     const [download] = await Promise.all([
-      // PNG export is client-side (DOM clone + canvas rasterization, see
-      // ExportUtils.ts) and scales with node count and pixelRatio (adaptively
-      // capped at 2, not a fixed value) — give it headroom before the
-      // download event fires. Callers keep their graph small (e.g.
-      // PlatformLineage.spec.ts caps at 40 nodes) so this budget holds even
-      // under CI worker contention.
+      // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+      // render enough headroom before the download event fires.
       page.waitForEvent('download', { timeout: 120_000 }),
       page.click(
         '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'

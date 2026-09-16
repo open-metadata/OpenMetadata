@@ -230,13 +230,8 @@ test.describe('Platform Lineage page (/lineage)', () => {
     // the download event -- the test timed out mid-render every time.
     test.slow();
 
-    // Keep PNG rendering within the download-event budget on CI runners. 100
-    // nodes still left the render tight against the 120s download-wait under
-    // 3-way CI worker contention (playwright.config.ts workers: 3); 40 keeps
-    // the DOM-clone + rasterization step (the dominant cost, see
-    // ExportUtils.ts) well inside budget while still exercising multi-node
-    // rendering and edge-overlay compositing.
-    const MAX_NODES = 40;
+    // Keep PNG rendering within the download-event budget on CI runners.
+    const MAX_NODES = 100;
 
     await page.route('**/api/v1/lineage/scene?*', async (route) => {
       const requestUrl = new URL(route.request().url());

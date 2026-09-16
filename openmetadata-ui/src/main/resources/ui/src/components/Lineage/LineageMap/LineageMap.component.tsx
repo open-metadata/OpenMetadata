@@ -1122,7 +1122,8 @@ const LineageMapCanvas = ({
       if (cachedScene) {
         setScene(cachedScene);
         setSceneError(undefined);
-        setLoading(false);
+        // setLoading(false) deferred to layoutNodes.then() in the scene useEffect
+        // so the loader stays visible until nodes are positioned in the DOM.
 
         return cachedScene;
       }
@@ -1137,14 +1138,17 @@ const LineageMapCanvas = ({
         if (sceneRequestIdRef.current === requestId) {
           setScene(response);
           setSceneError(undefined);
+          // setLoading(false) deferred to layoutNodes.then() in the scene
+          // useEffect — the loader must stay up until ELK finishes positioning
+          // nodes so that waitForAllLoadersToDisappear (in tests) and any
+          // user-visible spinner correctly represent "graph ready", not just
+          // "HTTP response received".
         }
       } catch (error) {
         if (sceneRequestIdRef.current === requestId) {
           setSceneError(error as AxiosError);
           showErrorToast(error as AxiosError);
-        }
-      } finally {
-        if (sceneRequestIdRef.current === requestId) {
+          // Error — no layout will run; clear the loader immediately.
           setLoading(false);
         }
       }
@@ -1424,6 +1428,12 @@ const LineageMapCanvas = ({
       if (isMounted) {
         setNodes(layoutedNodes);
         setEdges(nextEdges);
+        // Nodes are now positioned and will appear in the DOM after this
+        // render — safe to clear the loader here. Deferring from fetchScene
+        // prevents waitForAllLoadersToDisappear from returning before ELK
+        // finishes, which was the source of intermittent "element not found"
+        // failures in Playwright tests.
+        setLoading(false);
         if (preserveViewportRef.current) {
           preserveViewportRef.current = false;
         } else {

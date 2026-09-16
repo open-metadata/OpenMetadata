@@ -124,7 +124,7 @@ const getSearchIndexForEntity = (entity: EntityClassUnion) => {
   return searchIndex;
 };
 
-test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
+test.describe('Lineage Filters', () => {
   const lineageEntity = new TableClass();
   const entities = Object.values(allEntities).map(
     (EntityClass) => new EntityClass()
