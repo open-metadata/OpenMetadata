@@ -13,7 +13,7 @@
 import {
   ClassificationTag,
   GlossaryTag,
-  Tooltip
+  Tooltip,
 } from '@openmetadata/ui-core-components';
 import {
   Button,
@@ -242,7 +242,7 @@ const AsyncSelectList: FC<
         icon={tag.style?.iconURL}
         label={tagLabel}
         size="sm"
-        tooltip={isDerived ? t('message.derived-tag-warning'): undefined}
+        tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
         onDelete={
           isDerived
             ? undefined

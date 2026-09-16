@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   ClassificationTag,
-  GlossaryTag
+  GlossaryTag,
 } from '@openmetadata/ui-core-components';
 import { Button, Empty, Form, Space, TreeSelect, TreeSelectProps } from 'antd';
 import { AxiosError } from 'axios';
@@ -353,14 +353,14 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
     const TagComponent = isGlossaryTerm ? GlossaryTag : ClassificationTag;
 
     return (
-    <TagComponent
+      <TagComponent
         closeButtonTestId="remove-tags"
         color={tag.style?.color}
         data-testid={`selected-tag-${tagDisplayName}`}
         icon={tag.style?.iconURL}
         label={tagLabel}
         size="sm"
-        tooltip={isDerived ? t('message.derived-tag-warning'): undefined}
+        tooltip={isDerived ? t('message.derived-tag-warning') : undefined}
         onDelete={
           isDerived
             ? undefined
