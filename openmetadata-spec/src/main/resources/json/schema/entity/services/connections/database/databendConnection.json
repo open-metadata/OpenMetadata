@@ -1,0 +1,111 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/databendConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DatabendConnection",
+  "description": "Databend Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DatabendConnection",
+  "definitions": {
+    "databendType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Databend"],
+      "default": "Databend"
+    },
+    "databendScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["databend"],
+      "default": "databend"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/databendType",
+      "default": "Databend"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/databendScheme",
+      "default": "databend"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Databend. The user must be able to read system and information_schema metadata.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Databend.",
+      "type": "string",
+      "format": "password"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the Databend HTTP query service. The default self-hosted port is 8000.",
+      "type": "string",
+      "default": "localhost:8000"
+    },
+    "database": {
+      "title": "Database",
+      "description": "Databend database used to establish the initial connection. This does not control the OpenMetadata database name.",
+      "type": "string",
+      "default": "default"
+    },
+    "catalog": {
+      "title": "Catalog",
+      "description": "Optional Databend catalog to ingest as an OpenMetadata database. When omitted, all accessible catalogs are scanned.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Optional Databend database to ingest. When omitted, all accessible Databend databases are scanned as OpenMetadata schemas.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "description": "Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS endpoint, set sslmode to enable.",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to include or exclude Databend databases.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$", "^system$", "^system_history$"]
+      }
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to include or exclude tables and views.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to include or exclude Databend catalogs.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "username", "password"]
+}

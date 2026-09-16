@@ -1368,6 +1368,7 @@ export enum DatabaseServiceType {
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Data360 = "Data360",
+    Databend = "Databend",
     Databricks = "Databricks",
     Datalake = "Datalake",
     Db2 = "Db2",

@@ -206,6 +206,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Prefect,
   DatabaseServiceType.Iomete,
   DatabaseServiceType.Clickzetta,
+  DatabaseServiceType.Databend,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
