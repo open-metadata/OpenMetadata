@@ -531,11 +531,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .click();
 
         const entitiesToShow = [entity];
@@ -635,11 +635,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceName}-checkbox`)
+          .getByTestId(serviceName)
           .click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];
@@ -714,11 +714,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .click();
 
         const entitiesToShow = [entity];
@@ -794,11 +794,11 @@ test.describe('Lineage Filters', { tag: '@quarantine' }, () => {
         await searchResponse;
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .waitFor();
         await page
           .getByTestId('drop-down-menu')
-          .getByTestId(`${serviceType}-checkbox`)
+          .getByTestId(serviceType)
           .click();
 
         const entitiesToShow = [lineageEntity, depth1Entity, entity];

@@ -993,7 +993,7 @@ const testFilterWithSpecificOption = async (
     await aggregateResponse;
   }
 
-  await page.locator(`[data-testid="${optionTestId}"]`).click();
+  await page.getByTestId('drop-down-menu').getByTestId(optionTestId).click();
 
   const filterResponse = page.waitForResponse(
     `/api/v1/search/query?*query_filter=*${expectedQueryFilterValue}*`
@@ -1023,7 +1023,7 @@ const testFilterWithFirstOption = async (
   const dropdownMenu = page.getByTestId('drop-down-menu');
   await dropdownMenu.waitFor();
 
-  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
+  const options = dropdownMenu.getByRole('menuitemcheckbox');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
@@ -1096,7 +1096,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'entityType',
-    'table-checkbox',
+    'table',
     'table'
   );
 
@@ -1104,7 +1104,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'mysql-checkbox',
+    'mysql',
     'mysql',
     'Mysql'
   );

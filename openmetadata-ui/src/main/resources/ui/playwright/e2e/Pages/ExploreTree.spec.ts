@@ -161,7 +161,10 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .getByRole('menuitemcheckbox', { name: 'glossaryterm' })
         .waitFor();
       // assert on checkbox state
-      await expect(page.getByTestId('glossaryterm-checkbox')).toBeChecked();
+      await expect(page.getByTestId('glossaryterm')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
 
       await page.getByTestId('explore-tree-title-Tags').click();
 
@@ -170,7 +173,10 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // assert on dropdown item visibility
       await page.getByRole('menuitemcheckbox', { name: 'tag' }).waitFor();
       // assert on checkbox state
-      await expect(page.getByTestId('tag-checkbox')).toBeChecked();
+      await expect(page.getByTestId('tag')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
     });
 
     await test.step('Click on tree item metrics and check quick filter', async () => {
@@ -181,7 +187,10 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // assert on dropdown item visibility
       await page.getByRole('menuitemcheckbox', { name: 'metric' }).waitFor();
       // assert on checkbox state
-      await expect(page.getByTestId('metric-checkbox')).toBeChecked();
+      await expect(page.getByTestId('metric')).toHaveAttribute(
+        'aria-checked',
+        'true'
+      );
     });
   });
 
@@ -696,8 +705,11 @@ test.describe('Explore page', () => {
     await page.getByTestId('search-dropdown-Data Assets').click();
     // The option renders a human-readable label ("Column") with the raw type as
     // a tooltip, so assert on the stable testid instead of the menuitem name.
-    await page.getByTestId('tablecolumn-checkbox').waitFor();
-    // assert on checkbox state
-    await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
+    await page.getByTestId('tablecolumn').waitFor();
+    // assert on selection state
+    await expect(page.getByTestId('tablecolumn')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
   });
 });

@@ -394,25 +394,36 @@ describe('FilterSelect', () => {
 
     expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
-    // Each row carries the bare value on the row and the checked state on a
-    // real input, exactly as the legacy markup did.
+    // Each row carries the bare value id and its checked state as
+    // aria-checked on the menu item itself.
     expect(screen.getByTestId('snowflake')).toBeInTheDocument();
-    expect(screen.getByTestId('snowflake-checkbox')).not.toBeChecked();
-    expect(screen.getByTestId('no-option-checkbox')).toBeInTheDocument();
+    expect(screen.getByTestId('snowflake')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+    expect(screen.getByTestId('OM_NULL_FIELD')).toBeInTheDocument();
     expect(screen.getByTestId('update-btn')).toBeInTheDocument();
     expect(screen.getByTestId('close-btn')).toBeInTheDocument();
   });
 
-  it('mirrors the selection into the hidden state input, radio for single select', () => {
+  it('reflects the selection as aria-checked, radio role for single select', () => {
     renderFilter({ selectedValues: ['snowflake'] });
 
-    expect(screen.getByTestId('snowflake-checkbox')).toBeChecked();
-    expect(screen.getByTestId('bigquery-checkbox')).not.toBeChecked();
+    expect(screen.getByTestId('snowflake')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    expect(screen.getByTestId('bigquery')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
 
     cleanup();
     renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
 
-    expect(screen.getByTestId('snowflake-radio')).toBeChecked();
+    expect(
+      screen.getByRole('menuitemradio', { name: /Snowflake/ })
+    ).toHaveAttribute('aria-checked', 'true');
   });
 
   it('shows the empty state when nothing is displayed', () => {

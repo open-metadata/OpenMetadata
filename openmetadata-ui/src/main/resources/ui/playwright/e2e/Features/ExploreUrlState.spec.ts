@@ -101,8 +101,7 @@ const selectOptionAndWaitForQuery = async (
     if (response.url().includes('/api/v1/search/query')) {
       const queryFilter =
         new URL(response.url()).searchParams.get('query_filter') ?? '';
-      // Match the quoted query value so checkbox test ids like "table-checkbox"
-      // still assert the actual filter term, e.g. "table".
+      // Match the quoted query value for the actual filter term, e.g. "table".
       isMatch = queryFilter.includes(`"${queryValue}"`);
     }
 
@@ -224,7 +223,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
   await selectOptionAndWaitForQuery(
     page,
     'Data Assets',
-    'table-checkbox',
+    'table',
     'table'
   );
   await page.keyboard.press('Escape');
@@ -314,7 +313,7 @@ test('selecting an asset type grays out and collapses incompatible categories', 
     await selectOptionAndWaitForQuery(
       page,
       'Data Assets',
-      'dashboard-checkbox',
+      'dashboard',
       'dashboard'
     );
     await page.keyboard.press('Escape');
@@ -354,7 +353,7 @@ test('an impossible filter combination shows the no-results placeholder and reco
     await selectOptionAndWaitForQuery(
       page,
       'Data Assets',
-      'topic-checkbox',
+      'topic',
       'topic'
     );
     await page.keyboard.press('Escape');
@@ -432,7 +431,7 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     await selectOptionAndWaitForQuery(
       page,
       'Data Assets',
-      'table-checkbox',
+      'table',
       'table'
     );
     await page.keyboard.press('Escape');
