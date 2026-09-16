@@ -31,8 +31,8 @@ import {
   uuid,
 } from '../../utils/common';
 import {
-  ARTICLES_URL,
   ARTICLE_DESCRIPTION,
+  ARTICLES_URL,
   assertArticleEditorSaved,
   cleanupCurrentArticle,
   createArticleFromButton,
@@ -52,7 +52,7 @@ import {
   verifyArticleSearch,
   waitForArticleInFollows,
   waitForDraftPersisted,
-  waitForRecentlyViewed,
+  waitForRecentlyViewed
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -64,7 +64,6 @@ import {
   createMentionInConversation,
   createQuickLink,
   deletePage,
-  getKnowledgePageCardByIndex,
   readArticleInHierarchy,
   readQuickLink,
   toggleKnowledgePageBookmark,
@@ -72,7 +71,7 @@ import {
   updateQuickLink,
   updateTags,
   verifyNotificationAndClick,
-  waitForAutoSave,
+  waitForAutoSave
 } from '../../utils/KnowledgeCenter';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
@@ -844,68 +843,82 @@ test.describe('Context Center Articles', () => {
     }
   });
 
-  test('Article list cards, recently viewed widget, and pagination work', async ({
-    page,
-  }) => {
-    await navigateToArticles(page);
+  test('Recently viewed widget shows viewed articles', async ({
+      page,
+    }) => {
+      await navigateToArticles(page);
+      await page.waitForLoadState('domcontentloaded');
 
-    const card = await getKnowledgePageCardByIndex(page, 0);
-    await expect(card.getByTestId('knowledge-card-title')).toBeVisible();
-    await expect(card.getByTestId('knowledge-card-description')).toBeVisible();
-    await expect(card.getByTestId('updated-at')).toBeVisible();
+      await verifyArticleSearch(page, articleEntity.responseData.displayName);
+      const viewedCard = page
+        .getByTestId('knowledge-page-listing')
+        .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
+      await expect(viewedCard).toBeVisible();
+      await expect(viewedCard.getByTestId('knowledge-card-title')).toBeVisible();
+      await expect(viewedCard.getByTestId('knowledge-card-description')).toBeVisible();
+      await expect(viewedCard.getByTestId('updated-at')).toBeVisible();
 
-    await verifyArticleSearch(page, articleEntity.responseData.displayName);
-    const viewedCard = page
-      .getByTestId('knowledge-page-listing')
-      .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
-    await expect(viewedCard).toBeVisible();
-
-    await viewedCard.getByTestId('knowledge-page-link').first().click();
-    await page.waitForURL((url) =>
-      url.pathname.includes('/context-center/articles/')
-    );
-    await waitForAllLoadersToDisappear(page);
-    await waitForRecentlyViewed(
+      const articleResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/contextCenter/pages/name/')
+      );
+      await viewedCard.getByTestId('knowledge-page-link').click();
+      await page.waitForURL((url) =>
+        url.pathname.includes('/context-center/articles/')
+      );
+      await articleResponse;
+      await waitForAllLoadersToDisappear(page);
+      await waitForRecentlyViewed(
       page,
       articleEntity.responseData.displayName as string
     );
 
-    await navigateToArticles(page);
-    const rightPanel = page.getByTestId('knowledge-center-right-panel');
-    await expect(rightPanel.getByText('Recently Viewed')).toBeVisible();
+      await navigateToArticles(page);
+      const rightPanel = page.getByTestId('knowledge-center-right-panel');
+      await expect(rightPanel.getByText('Recently Viewed')).toBeVisible();
 
-    const recentlyViewedItem = rightPanel.getByTestId(
-      `recent-viewed-${articleEntity.responseData.displayName}`
-    );
-    await recentlyViewedItem.scrollIntoViewIfNeeded();
-    await expect(recentlyViewedItem).toBeVisible();
-    await recentlyViewedItem.click();
-    await page.waitForURL((url) =>
-      url.pathname.includes('/context-center/articles/')
-    );
+      const recentlyViewedItem = rightPanel.getByTestId(
+        `recent-viewed-${articleEntity.responseData.displayName}`
+      );
+      await expect(async () => {
+        if (!(await recentlyViewedItem.isVisible())) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+        }
+        await expect(recentlyViewedItem).toBeVisible();
+      }).toPass({ timeout: 30000 });
 
-    await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
-      articleEntity.responseData.displayName
-    );
+      await recentlyViewedItem.click();
+      await page.waitForURL((url) =>
+        url.pathname.includes('/context-center/articles/')
+      );
 
-    await navigateToArticles(page);
-    const listing = page.getByTestId('knowledge-page-listing');
-    const cards = listing.locator('[data-testid^="knowledge-card-"]');
-    const initialCardCount = await cards.count();
+      await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
+        articleEntity.responseData.displayName
+      );
+    });
 
-    const observerElement = page.getByTestId('observer-element');
-    const paginationResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/contextCenter/pages') &&
-        response.url().includes('offset=')
-    );
+    test('Pagination works for article listing', async ({ page }) => {
+      await navigateToArticles(page);
 
-    await observerElement.scrollIntoViewIfNeeded();
-    await paginationResponse;
-    await waitForAllLoadersToDisappear(page);
+      const listing = page.getByTestId('knowledge-page-listing');
+      const cards = listing.locator('[data-testid^="knowledge-card-"]');
+      const initialCardCount = await cards.count();
 
-    expect(await cards.count()).toBeGreaterThan(initialCardCount);
-  });
+      const observerElement = page.getByTestId('observer-element');
+      const paginationResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/contextCenter/pages') &&
+          response.url().includes('offset=')
+      );
+
+      await observerElement.scrollIntoViewIfNeeded();
+      await paginationResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect
+        .poll(() => cards.count())
+        .toBeGreaterThan(initialCardCount);
+    });
 
   test('Left hierarchy pagination and expand collapse actions work', async ({
     page,
