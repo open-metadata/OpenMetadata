@@ -99,12 +99,12 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
-import { getOwnerPath } from '../../../utils/ownerUtils';
 import {
   getEntityBulkEditPath,
   getEntityImportPath,
 } from '../../../utils/EntityPureUtils';
+import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
