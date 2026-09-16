@@ -53,6 +53,66 @@ class RelationshipTypeValidatorTest {
   }
 
   @Test
+  void rejectsReflexiveAndIrreflexiveCombination() {
+    RelationshipType relationshipType =
+        relationshipType(UUID.randomUUID())
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.REFLEXIVE, RelationshipCharacteristic.IRREFLEXIVE));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void rejectsAsymmetricAndReflexiveCombination() {
+    // AsymmetricProperty(R) entails IrreflexiveProperty(R) in OWL 2 DL, so declaring a
+    // relationship both ASYMMETRIC and REFLEXIVE is exactly as contradictory as
+    // REFLEXIVE + IRREFLEXIVE and must be rejected by the validator.
+    RelationshipType relationshipType =
+        relationshipType(UUID.randomUUID())
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.REFLEXIVE));
+
+    assertThrows(
+        BadRequestException.class, () -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void acceptsAsymmetricWithIrreflexive() {
+    // Asymmetry entails irreflexivity, so the two together are consistent and must be accepted.
+    RelationshipType relationshipType =
+        relationshipType(UUID.randomUUID())
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.ASYMMETRIC, RelationshipCharacteristic.IRREFLEXIVE));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void acceptsTransitiveWithAsymmetric() {
+    // Transitive + asymmetric (a strict partial order) is satisfiable and not contradictory.
+    RelationshipType relationshipType =
+        relationshipType(UUID.randomUUID())
+            .withCharacteristics(
+                Set.of(
+                    RelationshipCharacteristic.TRANSITIVE, RelationshipCharacteristic.ASYMMETRIC));
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
+  void acceptsNullCharacteristics() {
+    // Defense for the PUT path which does not run applyDefaults() before validation.
+    RelationshipType relationshipType =
+        relationshipType(UUID.randomUUID()).withCharacteristics(null);
+
+    assertDoesNotThrow(() -> RelationshipTypeValidator.validate(relationshipType));
+  }
+
+  @Test
   void rejectsFunctionalDefinitionWithoutMaximumOne() {
     RelationshipType relationshipType =
         relationshipType(UUID.randomUUID())
