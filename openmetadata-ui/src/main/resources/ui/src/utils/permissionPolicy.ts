@@ -38,22 +38,22 @@ export const PERMISSION_POLICY = {
    * guards, create buttons: places with no specific entity yet, so the backend
    * could not evaluate `isOwner()` / `hasDomain()` conditions.
    *
-   * 'strict'  (current) — conditionalAllow counts as DENIED. Byte-for-byte the
-   *            pre-refactor behavior.
+   * 'strict'  — conditionalAllow counts as DENIED.
    * 'attempt' — conditionalAllow counts as PERMITTED ("can attempt"); the
    *            backend still enforces per entity on every real read/write.
-   *            This is the fix for OpenMetadata#31783 (domain-scoped users
-   *            wrongly blocked from Services lists).
+   *            Fixes OpenMetadata#31783 and OpenMetadata#33356: domain-scoped
+   *            users were wrongly blocked by route guards before any entity-level
+   *            permission call was made, because the bulk /permissions response
+   *            returns CONDITIONAL_ALLOW (no entity context) which strict mode
+   *            maps to false.
    *
-   * Flipping to 'attempt' is expected to fail
-   * playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts:163
-   * ("AutoPilot trigger button is hidden with view-only permission", 8 service
-   * types) — that suite encodes the strict semantics and must be updated in the
-   * same change. A future refinement could distinguish view/list gates from
-   * action buttons rather than being all-or-nothing.
+   * ServiceEntityPermissions.spec.ts:163 ("AutoPilot trigger button is hidden
+   * with view-only permission") is NOT affected: that test user holds a concrete
+   * ViewAll:ALLOW from VIEW_ALL_RULE, not a CONDITIONAL_ALLOW, so toAllowedBoolean
+   * is unchanged for it.
    *
    * ENTITY-level reads are always strict and deliberately NOT configurable:
    * there the backend has already evaluated the conditions for that entity.
    */
-  resourceLevelConditionalAllow: 'strict' as 'strict' | 'attempt',
+  resourceLevelConditionalAllow: 'attempt' as 'strict' | 'attempt',
 } as const;

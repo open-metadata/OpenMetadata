@@ -79,6 +79,30 @@ export const assignDomainToTable = async (
   });
 };
 
+export const assignDomainToGlossary = async (
+  apiContext: APIRequestContext,
+  glossaryId: string,
+  domain: Domain
+) => {
+  await apiContext.patch(`/api/v1/glossaries/${glossaryId}`, {
+    data: [
+      {
+        op: 'add',
+        path: '/domains',
+        value: [
+          {
+            id: domain.responseData.id,
+            type: 'domain',
+            name: domain.responseData.name,
+            fullyQualifiedName: domain.responseData.fullyQualifiedName,
+          },
+        ],
+      },
+    ],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
 export const safeDelete = async (deleteFn: () => Promise<unknown>) => {
   try {
     await deleteFn();
