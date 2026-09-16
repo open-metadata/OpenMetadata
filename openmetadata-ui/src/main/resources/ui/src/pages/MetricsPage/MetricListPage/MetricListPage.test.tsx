@@ -59,26 +59,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
-  Box: jest
-    .fn()
-    .mockImplementation(({ children, className, role, onClick }) =>
-      onClick ? (
-        <div
-          className={className}
-          role="button"
-          tabIndex={0}
-          onClick={onClick}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') onClick(e);
-          }}>
-          {children}
-        </div>
-      ) : (
-        <div className={className} role={role}>
-          {children}
-        </div>
-      )
-    ),
+  Box: jest.fn().mockImplementation(({ children, className, role, onClick }) =>
+    onClick ? (
+      <div
+        className={className}
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onClick(e);
+          }
+        }}>
+        {children}
+      </div>
+    ) : (
+      <div className={className} role={role}>
+        {children}
+      </div>
+    )
+  ),
   Button: jest
     .fn()
     .mockImplementation(
