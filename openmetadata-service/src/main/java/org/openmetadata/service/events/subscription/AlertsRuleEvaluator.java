@@ -929,19 +929,39 @@ public class AlertsRuleEvaluator {
       examples = {"filterByEntityNameDataContractBelongsTo({'service.database.schema.table1'})"},
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public Boolean filterByEntityNameDataContractBelongsTo(List<String> entityFqns) {
-    if (changeEvent == null || !changeEvent.getEntityType().equals(DATA_CONTRACT)) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
+    if (isFeedEvent()) {
+      return dataContractCovers(feedSubjectDataContract(), entityFqns);
+    }
+    if (!DATA_CONTRACT.equals(changeEvent.getEntityType())) {
+      return false;
+    }
+    return dataContractCovers(parseDataContract(), entityFqns);
+  }
+
+  // A feed event is scoped by the entity its subject contract covers: feed -> contract -> entity.
+  private DataContract feedSubjectDataContract() {
+    EntityReference subject = feedSubject();
+    if (subject == null || !DATA_CONTRACT.equals(subject.getType())) {
+      return null;
+    }
+    return Entity.getEntityOrNull(subject, "", Include.NON_DELETED);
+  }
+
+  private DataContract parseDataContract() {
     try {
-      DataContract dataContract =
-          JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
-      if (dataContract.getEntity() == null) {
-        return false;
-      }
-      return entityFqns.contains(dataContract.getEntity().getFullyQualifiedName());
+      return JsonUtils.readValue(changeEvent.getEntity().toString(), DataContract.class);
     } catch (Exception e) {
       LOG.warn("Failed to parse DataContract from change event", e);
-      return false;
+      return null;
     }
+  }
+
+  private static boolean dataContractCovers(DataContract dataContract, List<String> entityFqns) {
+    return dataContract != null
+        && dataContract.getEntity() != null
+        && entityFqns.contains(dataContract.getEntity().getFullyQualifiedName());
   }
 }
