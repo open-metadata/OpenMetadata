@@ -44,3 +44,11 @@ export const DEFAULT_TAG_COLOR = 'var(--tw-color-gray-cool-500)';
  * token (exact value match for the hex it replaces, so no visual change).
  */
 export const AUTO_CLASSIFICATION_TAG_COLOR = 'var(--tw-color-brand-900)';
+
+/**
+ * Single truncation width for every tag rendered in a flowing list. Call sites
+ * previously passed 120/130/140/nothing, so the same term truncated differently
+ * depending on which surface it appeared on. Override only where the container
+ * is genuinely wider (e.g. a full-width section).
+ */
+export const DEFAULT_TAG_MAX_WIDTH = 130;
