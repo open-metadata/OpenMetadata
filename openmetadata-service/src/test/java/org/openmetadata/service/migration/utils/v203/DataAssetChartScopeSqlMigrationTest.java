@@ -1,7 +1,8 @@
-package org.openmetadata.service.migration.utils.v1136;
+package org.openmetadata.service.migration.utils.v203;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,12 +19,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 /**
- * Guards the 1.13.6 data migration that re-scopes the Data Insights data-asset charts (#31478).
+ * Guards the 2.0.3 data migration that re-scopes the Data Insights data-asset charts (#31478).
  *
  * <p>The scope now lives in SQL rather than in a Java migration, because a Java {@code
  * runDataMigration()} attached to a version a deployment has already recorded never runs, while SQL
@@ -75,7 +78,7 @@ class DataAssetChartScopeSqlMigrationTest {
     assertEquals(
         JsonUtils.pojoToJson(DataInsightSystemChartRepository.NON_DATA_ASSET_ENTITY_TYPES),
         EXPECTED_EXCLUDE_GROUPS,
-        "NON_DATA_ASSET_ENTITY_TYPES changed; update the 1.13.6 excludeGroups literal to match");
+        "NON_DATA_ASSET_ENTITY_TYPES changed; update the 2.0.3 excludeGroups literal to match");
     assertTrue(read(dialect).contains(EXPECTED_EXCLUDE_GROUPS), dialect + " excludeGroups literal");
   }
 
@@ -136,11 +139,18 @@ class DataAssetChartScopeSqlMigrationTest {
   @MethodSource("dialects")
   void migrationParsesWithTheDialectParser(final String dialect) {
     // The workflow feeds these files to Flyway's dialect parser, which strips comments and expands
-    // ${...} placeholders. Parse them the same way to prove the statements survive intact.
-    final List<String> statements =
-        MigrationFile.parseSQLFile(
-            path(dialect).toFile(),
-            "mysql".equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES);
+    // ${...} placeholders. Drive the real MigrationFile the workflow uses so the statements are
+    // proven to survive the exact path that will run them. The mocked DAO reports nothing as
+    // previously run, so every parsed statement is retained.
+    final MigrationFile migrationFile =
+        new MigrationFile(
+            versionDir().toFile(),
+            mock(MigrationDAO.class),
+            "mysql".equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES,
+            mock(OpenMetadataApplicationConfig.class),
+            false);
+    migrationFile.parseSQLFiles();
+    final List<String> statements = migrationFile.getPostDDLScripts();
 
     assertEquals(2, statements.size(), dialect + " should parse into two UPDATE statements");
     assertTrue(
@@ -165,17 +175,18 @@ class DataAssetChartScopeSqlMigrationTest {
     return Files.readString(path(dialect));
   }
 
+  private static Path versionDir() {
+    return repositoryRoot().resolve("bootstrap/sql/migrations/native/2.0.3");
+  }
+
   private static Path path(final String dialect) {
-    return repositoryRoot()
-        .resolve("bootstrap/sql/migrations/native/1.13.6")
-        .resolve(dialect)
-        .resolve("postDataMigrationSQLScript.sql");
+    return versionDir().resolve(dialect).resolve("postDataMigrationSQLScript.sql");
   }
 
   private static String resource(final String name) throws IOException {
     return Files.readString(
         repositoryRoot()
-            .resolve("openmetadata-service/src/test/resources/migration/v1136")
+            .resolve("openmetadata-service/src/test/resources/migration/v203")
             .resolve(name + ".json"));
   }
 

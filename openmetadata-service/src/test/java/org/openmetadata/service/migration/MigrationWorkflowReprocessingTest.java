@@ -282,7 +282,8 @@ class MigrationWorkflowReprocessingTest {
     // The release-1-13 state: 1.13.5 shipped, was recorded, and 1.13.6 was recorded after it. A
     // Java data migration added to v1135 afterwards can never run — 1.13.5 is not the release
     // train's highest recorded version, so processNativeMigrations drops it outright. This is why
-    // the #31478 chart rewrite moved out of 1.13.5 (see the 1.13.6 SQL migration).
+    // the #31478 chart rewrite moved out of 1.13.5 -- on this train it is carried as SQL in the
+    // unrecorded 2.0.3 slot, since a 1.13.6 directory shipped here would hit the same wall.
     MigrationFile v1134 = createMigrationDir("1.13.4", "ALTER TABLE test ADD COLUMN a INT;");
     MigrationFile v1135 = createMigrationDir("1.13.5", "ALTER TABLE test ADD COLUMN b INT;");
     MigrationFile v1136 = createMigrationDir("1.13.6", "ALTER TABLE test ADD COLUMN c INT;");
