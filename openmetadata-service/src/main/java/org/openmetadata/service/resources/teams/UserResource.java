@@ -1157,20 +1157,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
         || path.contains(ROLES_PATCH_PATH_SEGMENT);
   }
 
-  // Fields on an update that only an admin may set, whoever the user being changed is.
+  // Fields on an update that only an admin may set, whoever the user being changed is. The teams
+  // are read from the request rather than from updatedUser: prepareInternal() substitutes the
+  // organization for an absent team list, and that default is the server's doing, not something
+  // the caller asked for.
   private boolean grantsPrivileges(CreateUser create, User existingUser, User updatedUser) {
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       return true;
     }
-    Set<UUID> closedTeamIds = closedTeamIds(updatedUser.getTeams());
-    if (nullOrEmpty(updatedUser.getRoles()) && closedTeamIds.isEmpty()) {
+    if (nullOrEmpty(updatedUser.getRoles()) && nullOrEmpty(create.getTeams())) {
       return false;
     }
     // Reading back what the user already holds only pays off once the request names a role or a
-    // team that is not open to everyone - nothing else can be an elevation.
+    // team - nothing else can be an elevation.
     User currentUser = loadPrivilegedFields(existingUser);
     return hasRoleElevation(currentUser, updatedUser)
-        || joinsClosedTeam(currentUser, closedTeamIds);
+        || joinsClosedTeam(currentUser, create.getTeams());
   }
 
   // findByNameOrNull() sets core fields only, so the roles and teams the user already holds have to
@@ -1197,17 +1199,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
   // policies, so joining a team that is not open to everyone grants privileges the same way naming
-  // a role does. PATCH has always required an admin for it.
-  private boolean joinsClosedTeam(User currentUser, Set<UUID> closedTeamIds) {
+  // a role does. PATCH has always required an admin for it. Teams the user is already in are
+  // dropped first so the joinable lookup only runs for the ones actually being added.
+  private boolean joinsClosedTeam(User currentUser, List<UUID> requestedTeamIds) {
     Set<UUID> currentTeamIds = currentUser == null ? Set.of() : entityIds(currentUser.getTeams());
-    return !currentTeamIds.containsAll(closedTeamIds);
-  }
-
-  private Set<UUID> closedTeamIds(List<EntityReference> teams) {
-    return listOrEmpty(teams).stream()
-        .map(EntityReference::getId)
-        .filter(this::isClosedTeam)
-        .collect(Collectors.toSet());
+    return listOrEmpty(requestedTeamIds).stream()
+        .filter(teamId -> !currentTeamIds.contains(teamId))
+        .anyMatch(this::isClosedTeam);
   }
 
   private boolean isClosedTeam(UUID teamId) {
@@ -1220,7 +1218,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
         || grantsRolesFromRequestBody(create)
-        || listOrEmpty(create.getTeams()).stream().anyMatch(this::isClosedTeam);
+        || joinsClosedTeam(null, create.getTeams());
   }
 
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
