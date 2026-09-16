@@ -41,9 +41,13 @@ export const useTagUsageCounts = (
 ): TagUsageCounts => {
   const [tagFQNs, fieldName] = useMemo(
     () => [
-      tags
-        .map(({ fullyQualifiedName }) => fullyQualifiedName)
-        .filter(Boolean) as string[],
+      tags.reduce<string[]>((acc, { fullyQualifiedName }) => {
+        if (fullyQualifiedName) {
+          acc.push(fullyQualifiedName);
+        }
+
+        return acc;
+      }, []),
       getTagUsageAggregationField(classificationName ?? ''),
     ],
     [tags, classificationName]
