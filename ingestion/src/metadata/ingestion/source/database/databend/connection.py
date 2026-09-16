@@ -167,8 +167,12 @@ class DatabendConnection(BaseConnection[DatabendConnectionConfig, Engine]):
                     ),
                     None,
                 )
-            if schema_name:
-                getattr(inspector, inspector_method)(schema_name)
+            if not schema_name:
+                raise RuntimeError(
+                    "No accessible Databend database is available to validate table metadata "
+                    "after applying the Schema Filter Pattern"
+                )
+            getattr(inspector, inspector_method)(schema_name)
 
         test_fn = {
             "CheckAccess": partial(check_connection_access, base_engine),
