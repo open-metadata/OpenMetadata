@@ -656,7 +656,10 @@ const MetricListPage = () => {
                 ? domains.map((domain) => (
                     <Link
                       key={domain.id}
-                      to={getDomainPath(domain.fullyQualifiedName)}>
+                      // A domain's FQN equals its name; the reference may omit it
+                      to={getDomainPath(
+                        domain.fullyQualifiedName ?? domain.name
+                      )}>
                       <Badge
                         className="metric-list-glossary-pill"
                         color="blue"
