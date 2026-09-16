@@ -15,7 +15,12 @@ import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../../generated/entity/teams/user';
+import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
@@ -91,6 +96,11 @@ export interface ProfileNavItem {
    * The header is still rendered by ProfilePage.
    */
   selfContainedLayout?: boolean;
+  /**
+   * When present, the item is shown only if this returns true.
+   * Receives the current UIPermission map from PermissionProvider.
+   */
+  isVisible?: (permissions: UIPermission) => boolean;
 }
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
@@ -143,6 +153,8 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
     icon: Settings02 as FC<{ className?: string }>,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <CustomPropertiesPanel onHeaderChange={onHeaderChange} />

@@ -13,10 +13,12 @@
 import { isString, omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
 import {
   ResourceEntity,
   type UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import type { Tag } from '../generated/entity/classification/tag';
@@ -27,6 +29,7 @@ import type {
 import { TagSource } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import type { Aggregations } from '../interface/search.interface';
 import { getEntityName } from './EntityNameUtils';
 import i18n from './i18next/LocalUtil';
 import { checkPermissionEntityResource } from './PermissionsUtils';
@@ -398,16 +401,47 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
   );
 };
 
-export const getTagAssetsQueryFilter = (fqn: string) => {
-  let fieldName = 'tags.tagFQN';
+const ES_REGEXP_RESERVED_CHARACTERS = /[.?+*|{}[\]()"\\#@&<>~]/g;
 
-  if (fqn.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)) {
-    fieldName = 'tier.tagFQN';
-  } else if (fqn.startsWith(`Certification${FQN_SEPARATOR_CHAR}`)) {
-    fieldName = 'certification.tagLabel.tagFQN';
+// Tier and Certification are indexed outside the `tags` array
+export const getTagUsageAggregationField = (
+  classificationName: string
+): EntityFields => {
+  if (classificationName === TIER_CATEGORY) {
+    return EntityFields.TIER;
   }
 
-  return getTermQuery({ [fieldName]: fqn });
+  if (classificationName === CERTIFICATION_CATEGORY) {
+    return EntityFields.CERTIFICATION;
+  }
+
+  return EntityFields.TAG;
+};
+
+// Terms `include` regex is fully anchored, and tagFQN is lowercase-normalized
+export const buildTagFqnIncludeRegex = (tagFQNs: string[]) =>
+  `(${tagFQNs
+    .map((fqn) =>
+      fqn.toLowerCase().replace(ES_REGEXP_RESERVED_CHARACTERS, '\\$&')
+    )
+    .join('|')})`;
+
+export const parseTagUsageBuckets = (
+  aggregations: Aggregations | undefined,
+  field: string
+): Record<string, number> =>
+  Object.fromEntries(
+    (aggregations?.[`sterms#${field}`]?.buckets ?? []).map(
+      ({ key, doc_count }) => [key.toLowerCase(), doc_count]
+    )
+  );
+
+export const getTagAssetsQueryFilter = (fqn: string) => {
+  const [classificationName] = fqn.split(FQN_SEPARATOR_CHAR);
+
+  return getTermQuery({
+    [getTagUsageAggregationField(classificationName)]: fqn,
+  });
 };
 
 export const isGlossaryTag = (tag: EntityTags): boolean => {
