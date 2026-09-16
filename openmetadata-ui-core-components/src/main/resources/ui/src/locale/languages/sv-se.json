@@ -15,7 +15,7 @@
     "edit-assignees": "Redigera tilldelade",
     "expand-navigation-menu": "Utöka navigeringsmeny",
     "field-documentation": "Fältdokumentation",
-    "hidden-breadcrumbs": "Dolda brödsmulor",
+    "hidden-breadcrumbs": "Dold navigering",
     "loading": "Läser in…",
     "next-page": "Gå till nästa sida",
     "no-data-found": "Ingen data hittades",
@@ -33,7 +33,7 @@
     "select-all": "Välj alla",
     "select-dates": "Välj datum",
     "select-only-one-row": "Välj en rad",
-    "show-hidden-breadcrumbs": "Visa dolda brödsmulor",
+    "show-hidden-breadcrumbs": "Visa dold navigering",
     "today": "Idag"
   }
 }
