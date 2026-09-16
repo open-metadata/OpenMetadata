@@ -15,6 +15,7 @@ import type { AxiosInstance } from 'axios';
 import { extractDetailsFromToken } from '../../../AuthProvider.util';
 import { getOidcToken } from '../../../SwTokenStorageUtils';
 import { AuthCoordinator } from '../AuthCoordinator';
+import { LockTimeoutError } from '../CrossTabLock';
 
 jest.mock('../../../SwTokenStorageUtils', () => ({
   clearOidcToken: jest.fn(),
@@ -29,13 +30,14 @@ jest.mock('../../../AuthProvider.util', () => ({
 
 // The doRefresh cross-tab paths (leader `done` payload / `failed` / lock
 // timeout → doLocalRefresh) need CrossTabLock.runExclusive to return a
-// chosen outcome per test. Rather than mocking the whole module (which
-// runs into a factory-hoist TDZ vs the module-level `new AuthCoordinator`
-// singleton at the bottom of AuthCoordinator.ts), swap the fields on the
-// coordinator's own lock instance after construction. TypeScript's
-// `private` is a type-level fence only — the runtime property is normal.
-import { LockTimeoutError } from '../CrossTabLock';
-
+// chosen outcome per test. Rather than mocking the whole CrossTabLock
+// module (which runs into a factory-hoist TDZ vs the module-level
+// `new AuthCoordinator` singleton at the bottom of AuthCoordinator.ts),
+// swap the fields on the coordinator's own lock instance after construction.
+// TypeScript's `private` is a type-level fence only — the runtime property
+// is normal. `LockTimeoutError` is a plain class so importing it above
+// alongside the other module imports does not trigger the same TDZ hazard
+// (organize-imports-cli hoists all imports to the top anyway).
 const mockRunExclusive = jest.fn();
 const mockNotifyDone = jest.fn();
 const mockNotifyFailed = jest.fn();
