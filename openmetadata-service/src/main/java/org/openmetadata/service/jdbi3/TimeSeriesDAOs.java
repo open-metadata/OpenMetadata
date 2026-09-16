@@ -127,23 +127,6 @@ public interface TimeSeriesDAOs {
       return "fqnHash";
     }
   }
-  
-  interface DataQualityDimensionDAO extends EntityDAO<DataQualityDimension> {
-    @Override
-    default String getTableName() {
-      return "data_quality_dimension";
-    }
-
-    @Override
-    default Class<DataQualityDimension> getEntityClass() {
-      return DataQualityDimension.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "fqnHash";
-    }
-  }
 
   /**
    * An absent or empty {@code supportedDataTypes} or {@code supportedServices} list means the test
