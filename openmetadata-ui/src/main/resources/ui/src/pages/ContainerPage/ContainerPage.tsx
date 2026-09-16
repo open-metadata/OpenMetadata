@@ -39,11 +39,7 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { Column } from '../../generated/entity/data/table';
@@ -96,6 +92,9 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { ServiceCategory } from '../../enums/service.enum';
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -566,8 +565,15 @@ const ContainerPage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.STORAGE_SERVICES,
+          getPartialNameFromTableFQN(decodedEntityFqn, [FqnPart.Service])
+        )
+      ),
+    [decodedEntityFqn]
   );
 
   const afterDomainUpdateAction = useCallback(

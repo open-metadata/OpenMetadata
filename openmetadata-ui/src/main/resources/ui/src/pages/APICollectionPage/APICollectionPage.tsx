@@ -44,7 +44,7 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -91,6 +91,9 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { ServiceCategory } from '../../enums/service.enum';
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -436,8 +439,15 @@ const APICollectionPage: FunctionComponent = () => {
   }, [currentVersion, decodedAPICollectionFQN, navigate]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.API_SERVICES,
+          getPartialNameFromTableFQN(decodedAPICollectionFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedAPICollectionFQN, navigate]
   );
 
   const afterDomainUpdateAction = useCallback(

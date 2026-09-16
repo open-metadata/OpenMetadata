@@ -37,7 +37,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -85,6 +85,9 @@ import {
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { ServiceCategory } from '../../enums/service.enum';
 
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -593,8 +596,15 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.SEARCH_SERVICES,
+          getPartialNameFromTableFQN(decodedSearchIndexFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedSearchIndexFQN]
   );
 
   const afterDomainUpdateAction = useCallback(

@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
 import { Operation as PermissionOperation } from '../../../generated/entity/policies/accessControl/resourcePermission';
@@ -65,6 +65,9 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { ServiceCategory } from '../../../enums/service.enum';
 const PipelineDetails = ({
   updatePipelineDetailsState,
   pipelineDetails,
@@ -304,8 +307,15 @@ const PipelineDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.PIPELINE_SERVICES,
+          getPartialNameFromTableFQN(pipelineFQN, [FqnPart.Service])
+        )
+      ),
+    [pipelineFQN]
   );
 
   useEffect(() => {

@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import type { Tag } from '../../../generated/entity/classification/tag';
 import type { Topic } from '../../../generated/entity/data/topic';
 import type { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -73,6 +73,9 @@ import type { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.in
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import type { SourceType } from '../../SearchedData/SearchedData.interface';
 import type { TopicDetailsProps } from './TopicDetails.interface';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { ServiceCategory } from '../../../enums/service.enum';
 
 type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
@@ -344,8 +347,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   }, [decodedTopicFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.MESSAGING_SERVICES,
+          getPartialNameFromTableFQN(decodedTopicFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedTopicFQN]
   );
 
   const {

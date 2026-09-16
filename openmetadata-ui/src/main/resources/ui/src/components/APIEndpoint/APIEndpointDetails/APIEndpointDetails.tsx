@@ -203,8 +203,15 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   }, [decodedApiEndpointFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(
+          EntityType.API_COLLECTION,
+          apiEndpointDetails.apiCollection?.fullyQualifiedName ?? ''
+        )
+      ),
+    [apiEndpointDetails.apiCollection?.fullyQualifiedName, navigate]
   );
 
   const {

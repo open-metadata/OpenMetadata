@@ -45,11 +45,7 @@ import {
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart, TabSpecificField } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Table, TableType } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -115,6 +111,8 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
+import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 const TableDetailsPageV1: React.FC = () => {
   const {
     isTourOpen,
@@ -866,8 +864,9 @@ const TableDetailsPageV1: React.FC = () => {
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete && navigate(getEntityDetailsPath(EntityType.DATABASE_SCHEMA, getPartialNameFromTableFQN(tableFqn, [FqnPart.Service, FqnPart.Database, FqnPart.Schema], FQN_SEPARATOR_CHAR))),
+    [tableFqn]
   );
 
   const updateTableDetailsState = useCallback(
