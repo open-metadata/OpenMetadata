@@ -318,7 +318,7 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
     ),
     [EntityType.MESSAGING_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
-      ResourceEntity.PIPELINE_SERVICE,
+      ResourceEntity.MESSAGING_SERVICE,
       permissions,
       true
     ),
