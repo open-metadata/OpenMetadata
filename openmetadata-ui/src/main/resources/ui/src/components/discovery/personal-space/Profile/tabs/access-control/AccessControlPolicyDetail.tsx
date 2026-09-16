@@ -48,6 +48,7 @@ import {
 } from '../../../../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import {
   getPolicyByName,
   getRoleByName,
@@ -58,7 +59,6 @@ import {
   getTeamByName,
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
-import { useAuth } from '../../../../../../hooks/authHooks';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';

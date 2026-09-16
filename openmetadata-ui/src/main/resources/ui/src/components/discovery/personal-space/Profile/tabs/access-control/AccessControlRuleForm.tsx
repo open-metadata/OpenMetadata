@@ -18,12 +18,12 @@ import {
   FieldTypes,
   FormField,
   FormItemLabel,
+  getField,
   HintText,
   HookForm,
   Select,
   SelectItemType,
   Typography,
-  getField,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, startCase, uniq } from 'lodash';

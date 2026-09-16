@@ -49,6 +49,7 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import {
   getPolicies,
   getRoleByName,
@@ -59,7 +60,6 @@ import {
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
-import { useAuth } from '../../../../../../hooks/authHooks';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
