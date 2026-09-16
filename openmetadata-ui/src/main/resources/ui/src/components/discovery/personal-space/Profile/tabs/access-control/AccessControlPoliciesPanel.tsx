@@ -28,7 +28,13 @@ import {
 import { Delete } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
@@ -62,6 +68,8 @@ import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { AccessControlView } from './AccessControl.types';
 
+const MAX_CURSOR_CACHE_PAGES = 100;
+
 type PolicyColumnId = 'name' | 'description' | 'roles' | 'actions';
 type PolicyColumn = { id: PolicyColumnId; label: string; className?: string };
 
@@ -83,6 +91,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
     new Map()
   );
+  const fetchRequestIdRef = useRef(0);
 
   const showPagination = useMemo(
     () => Boolean(paging.before || paging.after) || paging.total > pageSize,
@@ -119,6 +128,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     pagingParam?: Partial<Paging>,
     targetPage = 1
   ): Promise<Paging | undefined> => {
+    const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
       const data = await getPolicies(
@@ -128,9 +138,24 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         pageSize
       );
 
+      if (requestId !== fetchRequestIdRef.current) {
+        return undefined;
+      }
+
       setPolicies(data.data || []);
       setPaging(data.paging);
-      setCursorCache((prev) => new Map(prev).set(targetPage, data.paging));
+      setCursorCache((prev) => {
+        const next = new Map(prev).set(targetPage, data.paging);
+
+        if (next.size > MAX_CURSOR_CACHE_PAGES) {
+          [...next.keys()]
+            .sort((a, b) => a - b)
+            .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
+            .forEach((k) => next.delete(k));
+        }
+
+        return next;
+      });
 
       return data.paging;
     } catch (error) {
@@ -197,6 +222,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     // Sequential forward navigation through uncached pages
     if (newPage > currentPage) {
+      const requestId = ++fetchRequestIdRef.current;
       setIsLoading(true);
       try {
         let page = currentPage;
@@ -210,8 +236,24 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
             undefined,
             pageSize
           );
+
+          if (requestId !== fetchRequestIdRef.current) {
+            return;
+          }
+
           currentPaging = data.paging;
-          setCursorCache((prev) => new Map(prev).set(page, data.paging));
+          setCursorCache((prev) => {
+            const next = new Map(prev).set(page, data.paging);
+
+            if (next.size > MAX_CURSOR_CACHE_PAGES) {
+              [...next.keys()]
+                .sort((a, b) => a - b)
+                .slice(0, next.size - MAX_CURSOR_CACHE_PAGES)
+                .forEach((k) => next.delete(k));
+            }
+
+            return next;
+          });
 
           if (page === newPage) {
             setPolicies(data.data || []);

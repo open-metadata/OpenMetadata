@@ -79,6 +79,19 @@ const INITIAL_PAGING: Paging = {
   total: 0,
 };
 
+const MAX_PAGE_CURSORS = 100;
+
+function trimCursorCache(cache: Record<number, string>) {
+  const pages = Object.keys(cache).map(Number);
+
+  if (pages.length > MAX_PAGE_CURSORS) {
+    pages
+      .sort((a, b) => a - b)
+      .slice(0, pages.length - MAX_PAGE_CURSORS)
+      .forEach((p) => delete cache[p]);
+  }
+}
+
 async function walkToPageCursor(
   startCursor: string,
   startPage: number,
@@ -130,6 +143,7 @@ const AccessControlAuditLogsPanel: React.FC<
   // pageCursorsRef[N] = 'after' cursor returned when page N was fetched.
   // pageCursorsRef[N] is used as the 'after' param to fetch page N+1.
   const pageCursorsRef = useRef<Record<number, string>>({});
+  const fetchRequestIdRef = useRef(0);
 
   const [searchTerm, setSearchTerm] = useState('');
   const searchTermRef = useRef('');
@@ -157,6 +171,7 @@ const AccessControlAuditLogsPanel: React.FC<
       explicitFilterParams?: Partial<AuditLogListParams>,
       forPage?: number
     ) => {
+      const requestId = ++fetchRequestIdRef.current;
       setIsLoading(true);
       try {
         const queryParams: AuditLogListParams = {
@@ -168,11 +183,17 @@ const AccessControlAuditLogsPanel: React.FC<
         };
 
         const response: AuditLogListResponse = await getAuditLogs(queryParams);
+
+        if (requestId !== fetchRequestIdRef.current) {
+          return;
+        }
+
         setLogs(response.data);
         setPaging(response.paging ?? INITIAL_PAGING);
 
         if (forPage !== undefined && response.paging?.after) {
           pageCursorsRef.current[forPage] = response.paging.after;
+          trimCursorCache(pageCursorsRef.current);
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -258,6 +279,57 @@ const AccessControlAuditLogsPanel: React.FC<
     [activeFilters, fetchAuditLogs]
   );
 
+  const walkToPage = useCallback(
+    async (startCursor: string, startPage: number, newPage: number) => {
+      const requestId = ++fetchRequestIdRef.current;
+      setIsLoading(true);
+      try {
+        const { cursor, discoveredCursors } = await walkToPageCursor(
+          startCursor,
+          startPage,
+          newPage,
+          pageSize,
+          searchTermRef.current,
+          filterParamsRef.current
+        );
+
+        if (requestId !== fetchRequestIdRef.current) {
+          return;
+        }
+
+        Object.assign(pageCursorsRef.current, discoveredCursors);
+        trimCursorCache(pageCursorsRef.current);
+
+        if (cursor) {
+          const response: AuditLogListResponse = await getAuditLogs({
+            limit: pageSize,
+            after: cursor,
+            q: searchTermRef.current || undefined,
+            ...filterParamsRef.current,
+          });
+
+          if (requestId !== fetchRequestIdRef.current) {
+            return;
+          }
+
+          setLogs(response.data);
+          setPaging(response.paging ?? INITIAL_PAGING);
+          setCurrentPage(newPage);
+
+          if (response.paging?.after) {
+            pageCursorsRef.current[newPage] = response.paging.after;
+            trimCursorCache(pageCursorsRef.current);
+          }
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pageSize]
+  );
+
   const handlePageChange = useCallback(
     async (newPage: number) => {
       if (newPage === currentPage) {
@@ -295,39 +367,9 @@ const AccessControlAuditLogsPanel: React.FC<
         return;
       }
 
-      setIsLoading(true);
-      try {
-        const { cursor, discoveredCursors } = await walkToPageCursor(
-          startCursor,
-          startPage,
-          newPage,
-          pageSize,
-          searchTermRef.current,
-          filterParamsRef.current
-        );
-        Object.assign(pageCursorsRef.current, discoveredCursors);
-
-        if (cursor) {
-          const response: AuditLogListResponse = await getAuditLogs({
-            limit: pageSize,
-            after: cursor,
-            q: searchTermRef.current || undefined,
-            ...filterParamsRef.current,
-          });
-          setLogs(response.data);
-          setPaging(response.paging ?? INITIAL_PAGING);
-          setCurrentPage(newPage);
-          if (response.paging?.after) {
-            pageCursorsRef.current[newPage] = response.paging.after;
-          }
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
+      walkToPage(startCursor, startPage, newPage);
     },
-    [currentPage, pageSize, fetchAuditLogs]
+    [currentPage, fetchAuditLogs, walkToPage]
   );
 
   const handleExportDownload = useCallback((data: string) => {

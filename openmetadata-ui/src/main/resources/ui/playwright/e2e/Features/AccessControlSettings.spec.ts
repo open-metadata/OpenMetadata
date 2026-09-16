@@ -38,11 +38,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { getElementWithPagination } from '../../utils/roles';
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-// ─── Landing page ─────────────────────────────────────────────────────────────
 
 test.describe(
   'Access Control Settings — Landing',
@@ -127,8 +123,6 @@ test.describe(
     });
   }
 );
-
-// ─── Roles ────────────────────────────────────────────────────────────────────
 
 test.describe(
   'Access Control Settings — Roles',
@@ -661,8 +655,6 @@ test.describe(
     });
   }
 );
-
-// ─── Policies ─────────────────────────────────────────────────────────────────
 
 test.describe(
   'Access Control Settings — Policies',
@@ -1440,8 +1432,6 @@ test.describe(
   }
 );
 
-// ─── Permission Debugger ──────────────────────────────────────────────────────
-
 test.describe(
   'Access Control Settings — Permission Debugger',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
@@ -1527,8 +1517,6 @@ test.describe(
     });
   }
 );
-
-// ─── Audit Logs ───────────────────────────────────────────────────────────────
 
 test.describe(
   'Access Control Settings — Audit Logs',
