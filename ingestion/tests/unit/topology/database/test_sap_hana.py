@@ -2183,6 +2183,13 @@ def test_a_reported_query_failure_is_not_talked_over() -> None:
             "CREATE VIEW X AS SELECT A FROM T",
         ),
         ("CREATE OR REPLACE VIEW X AS SELECT A FROM T", "CREATE OR REPLACE VIEW X AS SELECT A FROM T"),
+        # The words also occur inside data. Reading this as a name would skip the prefix
+        # and cost the view exactly the column lineage the prefix exists to add.
+        (
+            "SELECT 'CREATE VIEW x AS' AS LABEL FROM T",
+            'CREATE VIEW "GE370603"."LT_V" AS SELECT \'CREATE VIEW x AS\' AS LABEL FROM T',
+        ),
+        ("  CREATE VIEW X AS SELECT A FROM T", "  CREATE VIEW X AS SELECT A FROM T"),
         # The upstream method raises rather than returning nothing, so this only guards
         # against that changing under us.
         ("", ""),

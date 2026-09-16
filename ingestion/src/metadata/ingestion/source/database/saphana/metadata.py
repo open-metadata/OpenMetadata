@@ -64,8 +64,10 @@ def _is_disconnect(self, e, connection, cursor):
 HANAHDBCLIDialect.is_disconnect = _is_disconnect
 
 
-# Mirrors the Redshift guard, so a definition that already names its target is left alone.
-_CREATE_VIEW = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?(MATERIALIZED\s+)?VIEW", re.IGNORECASE)
+# Leaves a definition that already names its target alone. Anchored, because the words
+# also turn up inside a string literal a view happens to select, and treating that as a
+# name would skip the prefix and cost the view the column lineage this exists to add.
+_CREATE_VIEW = re.compile(r"^\s*CREATE\s+(OR\s+REPLACE\s+)?(MATERIALIZED\s+)?VIEW\b", re.IGNORECASE)
 _sqlalchemy_hana_get_view_definition = HANAHDBCLIDialect.get_view_definition
 
 
