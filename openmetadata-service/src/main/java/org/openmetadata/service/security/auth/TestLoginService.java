@@ -157,14 +157,12 @@ public final class TestLoginService {
 
   private static List<String> resolveRoles(
       AuthorizerConfiguration authzConfig, Map<String, Claim> claims) {
-    List<String> roles = List.of();
-    if (authzConfig.getUseRolesFromProvider() && claims.containsKey(ROLES_CLAIM)) {
-      List<String> claimRoles = claims.get(ROLES_CLAIM).asList(String.class);
-      if (!nullOrEmpty(claimRoles)) {
-        roles = claimRoles;
-      }
+    if (!authzConfig.getUseRolesFromProvider() || !claims.containsKey(ROLES_CLAIM)) {
+      return List.of();
     }
-    return roles;
+    // Same reader as the login path - a provider that emits a lone role as a scalar string must
+    // not be reported here as having no roles when login would grant it.
+    return SecurityUtil.getClaimAsList(claims.get(ROLES_CLAIM));
   }
 
   private static String domainOf(String email) {

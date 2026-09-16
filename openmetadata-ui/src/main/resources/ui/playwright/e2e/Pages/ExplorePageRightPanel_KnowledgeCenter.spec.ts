@@ -25,6 +25,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForOwnerIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -70,28 +71,28 @@ export const test = baseTest.extend<{
 });
 
 /**
- * Assert the owner chip is in the summary panel, re-opening the entity if it is
- * not. The panel renders owners from the Explore search document, which is
- * refreshed asynchronously after the owner PATCH — a panel that rendered before
- * that refresh will never show the chip, so waiting on it is waiting on the
- * wrong thing. Re-navigating re-reads it.
+ * Wait for the search index to carry the owner (the panel renders owners from
+ * the search document), then re-open the entity and assert the chip.
  */
 async function expectOwnerInPanel(
   page: Page,
   entityName: string,
-  ownerName: string
+  owner: UserClass
 ) {
+  await waitForOwnerIndexed(
+    page,
+    knowledgeCenter.responseData.fullyQualifiedName,
+    'page',
+    owner.responseData.id,
+    true
+  );
+  await navigateToKCEntity(page, entityName);
+
   const ownerChip = page
     .locator('[data-testid="entity-summary-panel-container"]')
-    .getByTestId(ownerName);
+    .getByTestId(owner.getUserDisplayName());
 
-  await expect(async () => {
-    if (!(await ownerChip.isVisible())) {
-      await navigateToKCEntity(page, entityName);
-    }
-
-    await expect(ownerChip).toBeVisible({ timeout: 10_000 });
-  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
+  await expect(ownerChip).toBeVisible();
 }
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
@@ -202,7 +203,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         await expectOwnerInPanel(
           adminPage,
           getEntityDisplayName(knowledgeCenter.responseData),
-          user1.getUserDisplayName()
+          user1
         );
       });
     });
@@ -293,37 +294,44 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         ).not.toBeVisible();
       });
 
-      test(
-        'Should remove user owner for knowledgeCenter',
-        { tag: '@quarantine' },
-        async ({ adminPage, rightPanel, overview }) => {
-          await navigateToKCEntity(
-            adminPage,
-            getEntityDisplayName(knowledgeCenter.responseData)
-          );
-          await rightPanel.waitForPanelLoaded();
-          rightPanel.setEntityConfigByType('knowledgeCenter');
+      test('Should remove user owner for knowledgeCenter', async ({
+        adminPage,
+        rightPanel,
+        overview,
+      }) => {
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
+        await rightPanel.waitForPanelLoaded();
+        rightPanel.setEntityConfigByType('knowledgeCenter');
 
-          await addOwnerInKCPanel(adminPage, user1.getUserDisplayName());
-          await expectOwnerInPanel(
-            adminPage,
-            getEntityDisplayName(knowledgeCenter.responseData),
-            user1.getUserDisplayName()
-          );
+        await addOwnerInKCPanel(adminPage, user1.getUserDisplayName());
+        await expectOwnerInPanel(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData),
+          user1
+        );
 
-          await overview.removeOwner([user1.getUserDisplayName()], 'Users');
-          await waitForAllLoadersToDisappear(adminPage);
+        await overview.removeOwner([user1.getUserDisplayName()], 'Users');
+        await waitForAllLoadersToDisappear(adminPage);
+        await waitForOwnerIndexed(
+          adminPage,
+          knowledgeCenter.responseData.fullyQualifiedName,
+          'page',
+          user1.responseData.id,
+          false
+        );
 
-          await navigateToKCEntity(
-            adminPage,
-            getEntityDisplayName(knowledgeCenter.responseData)
-          );
-          const ownerElement = adminPage
-            .locator('.owners-section')
-            .getByText(user1.getUserDisplayName());
-          await expect(ownerElement).not.toBeVisible();
-        }
-      );
+        await navigateToKCEntity(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData)
+        );
+        const ownerElement = adminPage
+          .getByTestId('owners-section')
+          .getByText(user1.getUserDisplayName());
+        await expect(ownerElement).not.toBeVisible();
+      });
     });
 
     test.describe('Overview panel - Deleted entity verification', () => {

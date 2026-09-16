@@ -10,21 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ClassificationTag } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getTierTags } from '../../../utils/TablePureUtils';
-import { updateTierTag } from '../../../utils/TagsPureUtils';
+import {
+  getTagName,
+  getTagRedirectLink,
+  updateTierTag,
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import TierCard from '../TierCard/TierCard';
 import {
   WidgetEditButton,
@@ -70,28 +73,32 @@ const TierWidget = () => {
     [permissions, isVersionView]
   );
 
-  const headerExtra = canEdit ? (
-    tier ? (
-      <WidgetEditButton
-        data-testid="edit-tier"
-        title={t('label.edit-entity', { entity: t('label.tier') })}
-        onClick={() => setIsEditing(true)}
-      />
-    ) : (
-      <WidgetPlusButton
-        data-testid="add-tier"
-        title={t('label.add-entity', { entity: t('label.tier') })}
-        onClick={() => setIsEditing(true)}
-      />
-    )
-  ) : null;
+  const tierEditControl = tier ? (
+    <WidgetEditButton
+      data-testid="edit-tier"
+      title={t('label.edit-entity', { entity: t('label.tier') })}
+      onClick={() => setIsEditing(true)}
+    />
+  ) : (
+    <WidgetPlusButton
+      data-testid="add-tier"
+      title={t('label.add-entity', { entity: t('label.tier') })}
+      onClick={() => setIsEditing(true)}
+    />
+  );
+
+  const headerExtra = canEdit ? tierEditControl : null;
 
   const tierDisplay = tier ? (
-    <TagsV1
-      hideIcon
-      startWith={TAG_START_WITH.SOURCE_ICON}
-      tag={tier}
-      tagProps={{ 'data-testid': 'Tier' }}
+    <ClassificationTag
+      color={tier.style?.color}
+      data-testid="Tier"
+      href={getTagRedirectLink(tier)}
+      icon={tier.style?.iconURL}
+      label={getTagName(tier)}
+      maxWidth={200}
+      size="sm"
+      tooltip={getTagName(tier)}
     />
   ) : null;
 

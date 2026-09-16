@@ -57,6 +57,8 @@ import {
   formatInboxDateTime,
   getActivityBuckets,
   getActivityEventLabel,
+  getFeedSortTimestamp,
+  getFeedTimestamp,
   groupByRelativeDay,
   isTaskOpen,
   toggleActivityReaction,
@@ -211,6 +213,34 @@ describe('inbox.utils', () => {
 
     it('returns an empty array for no feeds', () => {
       expect(getActivityBuckets([])).toEqual([]);
+    });
+  });
+
+  describe('feed timestamps', () => {
+    // Locks the deliberate separation between the sort key (updatedAt-first,
+    // upstream parity) and the display timestamp (createdAt-first, "Posted on").
+    // See useInboxActivity for the sort consumer and ActivityDetailDrawer for the
+    // display consumer. Regression for the inbox sort precedence bug.
+    it('getFeedSortTimestamp prefers updatedAt (last activity) for sorting', () => {
+      const feed = {
+        id: 'c1',
+        createdAt: 200,
+        updatedAt: 400,
+      } as Conversation;
+
+      expect(getFeedSortTimestamp(feed)).toBe(400);
+    });
+
+    it('getFeedTimestamp prefers createdAt (posted time) for display', () => {
+      const feed = {
+        id: 'c1',
+        createdAt: 200,
+        updatedAt: 400,
+      } as Conversation;
+
+      // Same both-present shape as the sort test above: display stays createdAt,
+      // never updatedAt, so displayed "Posted on" time is unaffected by the fix.
+      expect(getFeedTimestamp(feed)).toBe(200);
     });
   });
 

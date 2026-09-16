@@ -20,6 +20,7 @@ import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getColumnByFQN } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnDetailPanel } from './ColumnDetailPanel.component';
 
 jest.mock('react-i18next', () => ({
@@ -136,20 +137,24 @@ jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
   __esModule: true,
   default: jest
     .fn()
-    .mockImplementation(({ onDescriptionUpdate, description }) => (
-      <div data-testid="description-section">
-        <span>Description: {description || 'No description'}</span>
-        {onDescriptionUpdate && (
-          <button
-            data-testid="update-description"
-            onClick={async () => {
-              await onDescriptionUpdate('Updated description');
-            }}>
-            Update Description
-          </button>
-        )}
-      </div>
-    )),
+    .mockImplementation(
+      ({ onDescriptionUpdate, description, hasPermission }) => (
+        <div
+          data-has-permission={String(hasPermission)}
+          data-testid="description-section">
+          <span>Description: {description || 'No description'}</span>
+          {onDescriptionUpdate && (
+            <button
+              data-testid="update-description"
+              onClick={async () => {
+                await onDescriptionUpdate('Updated description');
+              }}>
+              Update Description
+            </button>
+          )}
+        </div>
+      )
+    ),
 }));
 
 jest.mock('../../common/TagsSection/TagsSection', () => ({
@@ -1247,6 +1252,45 @@ describe('ColumnDetailPanel', () => {
       });
 
       expect(queryByTestId('alert-bar')).not.toBeInTheDocument();
+    });
+  });
+
+  // Task 8 Batch 3: hasEditPermission.description's raw
+  // `(permissions.EditDescription || permissions.EditAll) && !deleted` ->
+  // canEditDescription (getDerivedPermissionFlags). Documented explicit-deny-wins behavior
+  // change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit `EditDescription: false`
+  // now wins over a bare `EditAll: true` grant, where the old raw OR granted regardless.
+  describe('Permission derivation (explicit-deny-wins)', () => {
+    it('grants description edit access via EditAll when EditDescription is not present', async () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        permissions: { EditAll: true },
+        changeSummary: {},
+      });
+
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toHaveAttribute(
+          'data-has-permission',
+          'true'
+        );
+      });
+    });
+
+    it('denies description edit access when EditDescription is explicitly false, even with EditAll true', async () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        permissions: { EditAll: true, EditDescription: false },
+        changeSummary: {},
+      });
+
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toHaveAttribute(
+          'data-has-permission',
+          'false'
+        );
+      });
     });
   });
 });

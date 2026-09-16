@@ -26,8 +26,8 @@ import {
   getRoleWithFqnPath,
 } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import Table from '../../../common/Table/Table';
 import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 
 const ListEntities = ({
   list,

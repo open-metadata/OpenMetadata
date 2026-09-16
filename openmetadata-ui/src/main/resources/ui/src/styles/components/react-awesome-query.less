@@ -76,7 +76,9 @@
     }
 
     .rule--label {
-      font-weight: var(--om-font-weight-regular); // override the default font-weight of 600
+      font-weight: var(
+        --om-font-weight-regular
+      ); // override the default font-weight of 600
     }
   }
 
@@ -325,9 +327,4 @@
       .selectTextOverflow();
     }
   }
-}
-.advanced-search-modal .query-builder-container .rule--header {
-  align-self: flex-start;
-  margin-top: var(--om-space-40);
-
 }

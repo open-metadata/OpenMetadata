@@ -69,31 +69,13 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock antd components
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Button: jest
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  ClassificationTag: jest
     .fn()
-    .mockImplementation(
-      ({ children, onClick, className, size, type, ...props }) => (
-        <button
-          className={className}
-          data-size={size}
-          data-testid="button"
-          data-type={type}
-          onClick={onClick}
-          {...props}>
-          {children}
-        </button>
-      )
-    ),
-  Typography: {
-    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <span className={className} data-testid="typography-text" {...props}>
-        {children}
-      </span>
+    .mockImplementation(({ label, 'data-testid': testId }) => (
+      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
     )),
-  },
 }));
 
 // Mock SVG components
@@ -371,7 +353,6 @@ describe('TagsSection', () => {
     it('should render without crashing', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
     });
 
@@ -441,15 +422,15 @@ describe('TagsSection', () => {
     });
 
     it('should render tag items with correct structure', () => {
-      const { container } = render(<TagsSection {...defaultProps} />);
+      render(<TagsSection {...defaultProps} />);
 
-      const tagItems = container.querySelectorAll('.tag-item');
+      const visibleTags = mockTags.slice(0, defaultProps.maxDisplayCount);
 
-      expect(tagItems).toHaveLength(3); // maxDisplayCount
+      visibleTags.forEach((tag) => {
+        const tagItem = screen.getByTestId(`tag-${tag.tagFQN}`);
 
-      tagItems.forEach((item) => {
-        expect(item.querySelector('.tag-icon')).toBeInTheDocument();
-        expect(item.querySelector('.tag-name')).toBeInTheDocument();
+        expect(tagItem).toBeInTheDocument();
+        expect(tagItem).toHaveTextContent(tag.displayName ?? '');
       });
     });
   });

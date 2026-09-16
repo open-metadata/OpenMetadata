@@ -32,6 +32,13 @@ import {
 } from './EntityRightPanelVerticalNav.interface';
 import './EntityRightPanelVerticalNav.less';
 
+const shouldShowCustomPropertiesTab = (
+  entityType: EntityType,
+  isColumnDetailPanel: boolean
+) =>
+  (!isColumnDetailPanel && hasCustomPropertiesTab(entityType)) ||
+  (isColumnDetailPanel && entityType === EntityType.TABLE);
+
 const EntityRightPanelVerticalNav: React.FC<
   EntityRightPanelVerticalNavProps
 > = ({
@@ -105,10 +112,7 @@ const EntityRightPanelVerticalNav: React.FC<
     }
 
     // Add custom properties tab
-    if (
-      (!isColumnDetailPanel && hasCustomPropertiesTab(entityType)) ||
-      (isColumnDetailPanel && entityType === EntityType.TABLE)
-    ) {
+    if (shouldShowCustomPropertiesTab(entityType, isColumnDetailPanel)) {
       items.push({
         key: EntityRightPanelTab.CUSTOM_PROPERTIES,
         icon: <CustomPropertiesIcon />,

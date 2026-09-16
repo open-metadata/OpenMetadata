@@ -182,11 +182,11 @@ describe('PersonaSelectableList', () => {
   });
 
   it('retains a persona selected under a previous query when saving', async () => {
-    mockSearchPersonas.mockImplementation((query: string) =>
-      Promise.resolve(
-        query === 'ana' ? [PERSONAS[0]] : query === 'stew' ? [PERSONAS[1]] : []
-      )
-    );
+    mockSearchPersonas.mockImplementation((query: string) => {
+      const stewMatches = query === 'stew' ? [PERSONAS[1]] : [];
+
+      return Promise.resolve(query === 'ana' ? [PERSONAS[0]] : stewMatches);
+    });
     const onUpdate = jest.fn().mockResolvedValue(undefined);
 
     render(

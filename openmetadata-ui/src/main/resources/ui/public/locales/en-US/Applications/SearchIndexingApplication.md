@@ -12,7 +12,7 @@ $$
 $$section
 ### Payload Size $(id="payLoadSize")
 
-Maximum number of events entities in a batch (Default 100).
+Payload size in bytes (Default 104857600).
 
 $$
 
