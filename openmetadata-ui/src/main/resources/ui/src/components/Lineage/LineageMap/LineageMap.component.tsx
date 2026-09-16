@@ -812,6 +812,15 @@ const LineageMapBreadcrumbs = ({
       id: breadcrumb.id,
       icon: isRootBreadcrumb ? Home02 : undefined,
       label: (
+        // Native title, not the design-system <Tooltip>: Breadcrumbs renders a
+        // crumb's label inside an AriaLink whenever onAction is set and the
+        // crumb is not the current one, and TooltipTrigger wraps any child that
+        // is not natively focusable -- a span is not -- in an AriaButton. That
+        // would put a button inside a link: invalid HTML, and the breadcrumb
+        // would stop responding to presses. Breadcrumbs truncates the label
+        // itself via maxItemWidth without offering an overflow tooltip, so the
+        // native title is what reveals a clipped label.
+        // eslint-disable-next-line openmetadata-ui-patterns/no-raw-title-attribute -- see comment above
         <span data-testid={`lineage-map-breadcrumb-${index}`} title={label}>
           {label}
         </span>
