@@ -36,6 +36,23 @@ interface UseWorkflowLogicProps {
   initialConfig?: Record<string, unknown>;
 }
 
+// A freshly-dropped start node is only draggable once it has meaningful
+// content (saved/user-modified data, a name with data assets, or a
+// trigger/event/schedule configuration).
+const isStartNodeConfigured = (startNode: Node) => {
+  const hasNodeContent =
+    startNode.data?.lastSaved ||
+    startNode.data?.userModified ||
+    (startNode.data?.name && startNode.data?.dataAssets?.length > 0);
+
+  return Boolean(
+    hasNodeContent ||
+      startNode.data?.triggerType ||
+      startNode.data?.eventType ||
+      startNode.data?.scheduleType
+  );
+};
+
 export const useWorkflowLogic = ({
   fqn,
   initialConfig,
@@ -189,18 +206,7 @@ export const useWorkflowLogic = ({
       }
 
       if (reactFlowNodes.length <= 1) {
-        const hasNodeContent =
-          startNode.data?.lastSaved ||
-          startNode.data?.userModified ||
-          (startNode.data?.name && startNode.data?.dataAssets?.length > 0);
-        const isConfigured = Boolean(
-          hasNodeContent ||
-            startNode.data?.triggerType ||
-            startNode.data?.eventType ||
-            startNode.data?.scheduleType
-        );
-
-        return isConfigured;
+        return isStartNodeConfigured(startNode);
       }
 
       return true;

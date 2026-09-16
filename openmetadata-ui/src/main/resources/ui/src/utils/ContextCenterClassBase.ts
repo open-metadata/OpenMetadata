@@ -22,6 +22,7 @@ import {
 } from '../constants/constants';
 import { EntityTabs } from '../enums/entity.enum';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
+import { getEncodedFqn } from './StringUtils';
 
 export interface MemoryMetadataItem {
   key: string;
@@ -75,6 +76,17 @@ class ContextCenterClassBase {
 
   public getMemoriesListPath(): string {
     return ROUTES.CONTEXT_CENTER_MEMORIES;
+  }
+
+  public getAIContextListPath(): string {
+    return ROUTES.CONTEXT_CENTER_AI_CONTEXT;
+  }
+
+  public getAIContextPath(personaFqn: string): string {
+    return ROUTES.CONTEXT_CENTER_AI_CONTEXT_DETAIL.replace(
+      PLACEHOLDER_ROUTE_FQN,
+      getEncodedFqn(personaFqn)
+    );
   }
 
   public getArticlePath(

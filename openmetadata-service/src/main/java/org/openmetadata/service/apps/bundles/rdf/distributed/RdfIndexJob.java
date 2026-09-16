@@ -62,6 +62,9 @@ public class RdfIndexJob {
     private long processedRecords;
     private long successRecords;
     private long failedRecords;
+    private long readerTimeMs;
+    private long processTimeMs;
+    private long sinkTimeMs;
     private int totalPartitions;
     private int completedPartitions;
     private int failedPartitions;

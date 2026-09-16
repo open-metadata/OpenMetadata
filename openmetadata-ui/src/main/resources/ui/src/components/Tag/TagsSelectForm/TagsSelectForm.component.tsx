@@ -49,7 +49,9 @@ const TagSelectForm = ({
     <Form
       data-testid="tag-form"
       form={form}
-      initialValues={{ tags: defaultValue }}
+      initialValues={{
+        tags: multiSelect === false ? defaultValue?.[0] : defaultValue,
+      }}
       name="tagsForm"
       onFinish={handleSave}>
       <Form.Item noStyle name="tags">
@@ -63,7 +65,6 @@ const TagSelectForm = ({
             mode="multiple"
             optionClassName="tag-select-box"
             placeholder={placeholder}
-            tagType={tagType}
             onCancel={onCancel}
           />
         ) : (
@@ -74,7 +75,6 @@ const TagSelectForm = ({
             isSubmitLoading={isSubmitLoading}
             optionClassName="tag-select-box"
             placeholder={placeholder}
-            tagType={tagType}
             onCancel={onCancel}
           />
         )}

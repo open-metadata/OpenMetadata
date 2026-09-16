@@ -23,7 +23,7 @@ import {
 } from '../../utils/addTestCaseList';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -70,7 +70,7 @@ test(
       await page
         .locator('[data-testid="test-suite-name"] input')
         .fill(NEW_TEST_SUITE.name);
-      await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
+      await fillDescriptionBox(page, NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
         { state: 'detached' }

@@ -97,6 +97,14 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
+  const standaloneBreadcrumb = useMemo(
+    () =>
+      !renderPageHeader && !isAiMode ? (
+        <HeaderBreadcrumb items={breadcrumbItems} />
+      ) : null,
+    [renderPageHeader, isAiMode, breadcrumbItems]
+  );
+
   const showHeaderSearch = isAiMode;
 
   const { searchInputProps } = useListSearchInput({
@@ -108,10 +116,12 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <Input className="tw:w-72" {...searchInputProps} />
   ) : undefined;
 
+  const canCreateDomain = permissions.domain?.Create || false;
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
-    createPermission: permissions.domain?.Create || false,
+    createPermission: canCreateDomain,
     addButtonLabelKey: 'label.add-domain',
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
@@ -291,13 +301,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         'tw:h-[var(--om-page-height)]': isTreeView && !isAiMode,
       })}
       direction="col">
-      {!renderPageHeader && !isAiMode && (
-        <HeaderBreadcrumb items={breadcrumbItems} />
-      )}
+      {standaloneBreadcrumb}
       {renderPageHeader
         ? renderPageHeader({
             onAddClick: openDrawer,
-            createPermission: permissions.domain?.Create || false,
+            createPermission: canCreateDomain,
             count: domainListing.totalEntities,
             breadcrumb: headerBreadcrumb,
             search: headerSearch,
@@ -314,9 +322,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {!showHeaderSearch && titleAndCount}
             {!showHeaderSearch && (
-              <Input className="tw:max-w-86" {...searchInputProps} />
+              <>
+                {titleAndCount}
+                <Input className="tw:max-w-86" {...searchInputProps} />
+              </>
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />

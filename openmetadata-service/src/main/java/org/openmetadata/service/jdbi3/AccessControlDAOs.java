@@ -20,10 +20,12 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
@@ -49,12 +51,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
+import org.openmetadata.service.util.ChangeEventJsonUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindJson;
@@ -595,9 +597,24 @@ public interface AccessControlDAOs {
       return User.class;
     }
 
+    /**
+     * Optional subtree filter set by {@code UserResource.list}: when the requested team is a
+     * non-Group team, {@code teamIds} carries the ids of its whole subtree so its Users tab/export
+     * include the members inherited from its sub-group descendants. Bypasses the single-team
+     * {@code te.nameHash = :team} equality. The ids are server-computed UUIDs, safe to inline.
+     */
+    private static String subtreeTeamsCondition(String teamIdsCsv) {
+      String inList =
+          Arrays.stream(teamIdsCsv.split(","))
+              .map(id -> "'" + id + "'")
+              .collect(Collectors.joining(","));
+      return " AND te.id IN (" + inList + ") ";
+    }
+
     @Override
     default int listCount(ListFilter filter) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -650,7 +667,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -658,13 +681,18 @@ public interface AccessControlDAOs {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
-          getTableName(), mySqlCondition, postgresCondition, team, Relationship.HAS.ordinal());
+          getTableName(),
+          mySqlCondition,
+          postgresCondition,
+          teamIdsCsv != null ? null : team,
+          Relationship.HAS.ordinal());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -717,7 +745,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -728,7 +762,7 @@ public interface AccessControlDAOs {
           getTableName(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamIdsCsv != null ? null : team,
           limit,
           beforeName,
           beforeId,
@@ -738,6 +772,7 @@ public interface AccessControlDAOs {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+      String teamIdsCsv = filter.getQueryParam("teamIds");
       String isBotStr = filter.getQueryParam("isBot");
       String isAdminStr = filter.getQueryParam("isAdmin");
       String lastLoginTimeGreaterThan = filter.getQueryParam("lastLoginTimeGreaterThan");
@@ -790,7 +825,13 @@ public interface AccessControlDAOs {
                 "%s AND ((ue.lastActivityTime IS NOT NULL AND ue.lastActivityTime > %s) OR (ue.lastLoginTime IS NOT NULL AND ue.lastLoginTime > %s)) ",
                 postgresCondition, lastActivityTimeGreaterThan, lastActivityTimeGreaterThan);
       }
+      if (teamIdsCsv != null) {
+        String subtreeCondition = subtreeTeamsCondition(teamIdsCsv);
+        mySqlCondition = mySqlCondition + subtreeCondition;
+        postgresCondition = postgresCondition + subtreeCondition;
+      }
       if (team == null
+          && teamIdsCsv == null
           && isAdminStr == null
           && isBotStr == null
           && lastLoginTimeGreaterThan == null
@@ -801,7 +842,7 @@ public interface AccessControlDAOs {
           getTableName(),
           mySqlCondition,
           postgresCondition,
-          team,
+          teamIdsCsv != null ? null : team,
           limit,
           afterName,
           afterId,
@@ -1197,12 +1238,15 @@ public interface AccessControlDAOs {
     @Override
     public FailedEventResponse map(ResultSet rs, StatementContext ctx) throws SQLException {
       FailedEventResponse response = new FailedEventResponse();
-      FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
-      response.setFailingSubscriptionId(failedEvent.getFailingSubscriptionId());
-      response.setChangeEvent(failedEvent.getChangeEvent());
-      response.setReason(failedEvent.getReason());
       response.setSource(rs.getString("source"));
-      response.setTimestamp(failedEvent.getTimestamp());
+      FailedEvent failedEvent =
+          ChangeEventJsonUtils.readOrNull(rs.getString("json"), FailedEvent.class);
+      if (failedEvent != null) {
+        response.setFailingSubscriptionId(failedEvent.getFailingSubscriptionId());
+        response.setChangeEvent(failedEvent.getChangeEvent());
+        response.setReason(failedEvent.getReason());
+        response.setTimestamp(failedEvent.getTimestamp());
+      }
       return response;
     }
   }
@@ -1212,16 +1256,16 @@ public interface AccessControlDAOs {
     public TypedEvent map(ResultSet rs, StatementContext ctx) throws SQLException {
       TypedEvent response = new TypedEvent();
       String status = rs.getString("status").toLowerCase();
+      boolean isFailed = TypedEvent.Status.FAILED.value().equalsIgnoreCase(status);
 
-      if (TypedEvent.Status.FAILED.value().equalsIgnoreCase(status)) {
-        FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
-        response.setData(List.of(failedEvent));
-        response.setStatus(TypedEvent.Status.FAILED);
-      } else {
-        ChangeEvent changeEvent = JsonUtils.readValue(rs.getString("json"), ChangeEvent.class);
-        response.setData(List.of(changeEvent));
-        response.setStatus(TypedEvent.Status.fromValue(status));
-      }
+      // An unreadable payload still yields a row: the status and timestamp columns say an event
+      // happened, and one stale payload must not fail the whole page.
+      Object event =
+          isFailed
+              ? ChangeEventJsonUtils.readOrNull(rs.getString("json"), FailedEvent.class)
+              : ChangeEventJsonUtils.readOrNull(rs.getString("json"), ChangeEvent.class);
+      response.setData(event == null ? List.of() : List.of(event));
+      response.setStatus(isFailed ? TypedEvent.Status.FAILED : TypedEvent.Status.fromValue(status));
 
       long timestampMillis = rs.getLong("timestamp");
       response.setTimestamp((double) timestampMillis);

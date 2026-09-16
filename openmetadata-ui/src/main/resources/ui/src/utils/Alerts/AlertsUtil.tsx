@@ -269,8 +269,6 @@ export const getFieldByArgumentType = (
   containerEntities: string[] = [],
   supportedEventTypes: EventType[] = []
 ) => {
-  let field: JSX.Element;
-
   const getEntityByFQN = async (searchText: string) => {
     if (selectedTrigger === EntityType.DATA_CONTRACT) {
       return getDataContractSuggestions(searchText);
@@ -333,239 +331,192 @@ export const getFieldByArgumentType = (
     })
   );
 
-  switch (argument) {
-    case 'fqnList':
-      field = (
-        <FQNListSelect
-          api={getEntityByFQN}
-          className="w-full"
-          containerEntities={containerEntities}
-          data-testid="fqn-list-select"
-          mode="multiple"
-          optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
-            type: t('label.fqn-uppercase'),
-          })}
-          searchIndex={getFqnSearchIndexes(selectedTrigger, containerEntities)}
-        />
-      );
+  const fieldRenderers: Record<string, () => JSX.Element> = {
+    fqnList: () => (
+      <FQNListSelect
+        api={getEntityByFQN}
+        className="w-full"
+        containerEntities={containerEntities}
+        data-testid="fqn-list-select"
+        mode="multiple"
+        optionFilterProp="label"
+        placeholder={t('label.search-by-type', {
+          type: t('label.fqn-uppercase'),
+        })}
+        searchIndex={getFqnSearchIndexes(selectedTrigger, containerEntities)}
+      />
+    ),
+    domainList: () => (
+      <AsyncSelect
+        api={getDomainOptions}
+        className="w-full"
+        data-testid="domain-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.domain-lowercase'),
+        })}
+      />
+    ),
+    tableNameList: () => (
+      <AsyncSelect
+        api={getTableSuggestions}
+        className="w-full"
+        data-testid="table-name-select"
+        maxTagTextLength={45}
+        mode="multiple"
+        optionFilterProp="label"
+        placeholder={t('label.search-by-type', {
+          type: t('label.table-lowercase'),
+        })}
+      />
+    ),
+    entityNameList: () => (
+      <AsyncSelect
+        api={getTableSuggestions}
+        className="w-full"
+        data-testid="entity-name-select"
+        maxTagTextLength={45}
+        mode="multiple"
+        optionFilterProp="label"
+        placeholder={t('label.search-by-type', {
+          type: t('label.entity-lowercase'),
+        })}
+      />
+    ),
+    ownerNameList: () => (
+      <AsyncSelect
+        api={getOwnerOptions}
+        className="w-full"
+        data-testid="owner-name-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.owner-lowercase-plural'),
+        })}
+      />
+    ),
+    // For updateByUserList, we need to show bot users as well; for userList,
+    // which is an argument for `conversation` filters, only non-bot users.
+    updateByUserList: () => (
+      <AsyncSelect
+        api={getUserBotOptions}
+        className="w-full"
+        data-testid="user-name-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.user'),
+        })}
+      />
+    ),
+    userList: () => (
+      <AsyncSelect
+        api={getUserOptions}
+        className="w-full"
+        data-testid="user-name-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.user'),
+        })}
+      />
+    ),
+    eventTypeList: () => (
+      <Select
+        className="w-full"
+        data-testid="event-type-select"
+        mode="multiple"
+        options={
+          isEmpty(supportedEventTypes)
+            ? getSelectOptionsFromEnum(EventType)
+            : getSelectOptionsFromValues(supportedEventTypes)
+        }
+        placeholder={t('label.search-by-type', {
+          type: t('label.event-type-lowercase'),
+        })}
+      />
+    ),
+    entityIdList: () => (
+      <AsyncSelect
+        api={getEntityByIdSuggestions}
+        className="w-full"
+        data-testid="entity-id-select"
+        maxTagTextLength={45}
+        mode="multiple"
+        optionLabelProp="uuid"
+        placeholder={t('label.search-by-type', {
+          type: t('label.entity-id', {
+            entity: t('label.data-asset'),
+          }),
+        })}
+      />
+    ),
+    pipelineStateList: () => (
+      <Select
+        className="w-full"
+        data-testid="pipeline-status-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(StatusType)}
+        placeholder={t('label.select-field', {
+          field: t('label.pipeline-state'),
+        })}
+      />
+    ),
+    ingestionPipelineStateList: () => (
+      <Select
+        className="w-full"
+        data-testid="pipeline-status-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(PipelineState)}
+        placeholder={t('label.select-field', {
+          field: t('label.pipeline-state'),
+        })}
+      />
+    ),
+    testStatusList: () => (
+      <Select
+        className="w-full"
+        data-testid="test-status-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(TestCaseStatus)}
+        placeholder={t('label.select-field', {
+          field: t('label.test-suite-status'),
+        })}
+      />
+    ),
+    testResultList: () => (
+      <Select
+        className="w-full"
+        data-testid="test-result-select"
+        mode="multiple"
+        options={getSelectOptionsFromEnum(TestCaseStatus)}
+        placeholder={t('label.select-field', {
+          field: t('label.test-case-result'),
+        })}
+      />
+    ),
+    contractStatusList: () => (
+      <Select
+        className="w-full"
+        data-testid="contract-status-select"
+        mode="multiple"
+        options={translatedContractStatusOptions}
+        placeholder={t('label.select-field', {
+          field: t('label.data-contract-status'),
+        })}
+      />
+    ),
+    testSuiteList: () => (
+      <AsyncSelect
+        api={getTestSuiteSuggestions}
+        className="w-full"
+        data-testid="test-suite-select"
+        mode="multiple"
+        placeholder={t('label.search-by-type', {
+          type: t('label.test-suite'),
+        })}
+      />
+    ),
+  };
 
-      break;
-
-    case 'domainList':
-      field = (
-        <AsyncSelect
-          api={getDomainOptions}
-          className="w-full"
-          data-testid="domain-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.domain-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'tableNameList':
-      field = (
-        <AsyncSelect
-          api={getTableSuggestions}
-          className="w-full"
-          data-testid="table-name-select"
-          maxTagTextLength={45}
-          mode="multiple"
-          optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
-            type: t('label.table-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'entityNameList':
-      field = (
-        <AsyncSelect
-          api={getTableSuggestions}
-          className="w-full"
-          data-testid="entity-name-select"
-          maxTagTextLength={45}
-          mode="multiple"
-          optionFilterProp="label"
-          placeholder={t('label.search-by-type', {
-            type: t('label.entity-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'ownerNameList':
-      field = (
-        <AsyncSelect
-          api={getOwnerOptions}
-          className="w-full"
-          data-testid="owner-name-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.owner-lowercase-plural'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'updateByUserList':
-    case 'userList':
-      field = (
-        <AsyncSelect
-          api={
-            argument === 'updateByUserList'
-              ? getUserBotOptions // For updateByUserList, we need to show bot users as well
-              : getUserOptions // For userList, which is an argument for `conversation` filters we need to show only non-bot users
-          }
-          className="w-full"
-          data-testid="user-name-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.user'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'eventTypeList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="event-type-select"
-          mode="multiple"
-          options={
-            isEmpty(supportedEventTypes)
-              ? getSelectOptionsFromEnum(EventType)
-              : getSelectOptionsFromValues(supportedEventTypes)
-          }
-          placeholder={t('label.search-by-type', {
-            type: t('label.event-type-lowercase'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'entityIdList':
-      field = (
-        <AsyncSelect
-          api={getEntityByIdSuggestions}
-          className="w-full"
-          data-testid="entity-id-select"
-          maxTagTextLength={45}
-          mode="multiple"
-          optionLabelProp="uuid"
-          placeholder={t('label.search-by-type', {
-            type: t('label.entity-id', {
-              entity: t('label.data-asset'),
-            }),
-          })}
-        />
-      );
-
-      break;
-
-    case 'pipelineStateList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="pipeline-status-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(StatusType)}
-          placeholder={t('label.select-field', {
-            field: t('label.pipeline-state'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'ingestionPipelineStateList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="pipeline-status-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(PipelineState)}
-          placeholder={t('label.select-field', {
-            field: t('label.pipeline-state'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'testStatusList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="test-status-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(TestCaseStatus)}
-          placeholder={t('label.select-field', {
-            field: t('label.test-suite-status'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'testResultList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="test-result-select"
-          mode="multiple"
-          options={getSelectOptionsFromEnum(TestCaseStatus)}
-          placeholder={t('label.select-field', {
-            field: t('label.test-case-result'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'contractStatusList':
-      field = (
-        <Select
-          className="w-full"
-          data-testid="contract-status-select"
-          mode="multiple"
-          options={translatedContractStatusOptions}
-          placeholder={t('label.select-field', {
-            field: t('label.data-contract-status'),
-          })}
-        />
-      );
-
-      break;
-
-    case 'testSuiteList':
-      field = (
-        <AsyncSelect
-          api={getTestSuiteSuggestions}
-          className="w-full"
-          data-testid="test-suite-select"
-          mode="multiple"
-          placeholder={t('label.search-by-type', {
-            type: t('label.test-suite'),
-          })}
-        />
-      );
-
-      break;
-    default:
-      field = <></>;
-  }
+  const field = fieldRenderers[argument]?.() ?? <></>;
 
   return (
     <>

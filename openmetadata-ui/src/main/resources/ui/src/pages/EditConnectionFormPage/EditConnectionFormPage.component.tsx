@@ -262,6 +262,7 @@ function EditConnectionFormPage() {
   }
 
   const isSavingService = saveServiceState === 'waiting';
+  const resolvedServiceType = serviceDetails?.serviceType ?? '';
 
   const handleFooterBack = () => {
     if (activeServiceStep === 1) {
@@ -314,7 +315,7 @@ function EditConnectionFormPage() {
         <div className="tw:mt-6">
           <div className="tw:flex tw:items-center tw:gap-3 tw:pb-0">
             {getServiceLogo(
-              serviceDetails?.serviceType ?? '',
+              resolvedServiceType,
               'tw:size-10 tw:max-w-10 tw:max-h-10 tw:object-contain'
             )}
             <Typography
@@ -342,7 +343,7 @@ function EditConnectionFormPage() {
                   data={serviceDetails}
                   ref={connectionFormRef}
                   serviceCategory={serviceCategory}
-                  serviceType={serviceDetails?.serviceType ?? ''}
+                  serviceType={resolvedServiceType}
                   status={saveServiceState}
                   onFocus={handleFieldFocus}
                   onSave={async (e) => {
@@ -358,7 +359,7 @@ function EditConnectionFormPage() {
                   data={serviceDetails}
                   ref={filtersFormRef}
                   serviceCategory={serviceCategory}
-                  serviceType={serviceDetails?.serviceType ?? ''}
+                  serviceType={resolvedServiceType}
                   showConnectedMessage={isConnectionVerified}
                   status={saveServiceState}
                   onFocus={handleFieldFocus}
@@ -397,7 +398,7 @@ function EditConnectionFormPage() {
                   focusedMode
                   activeField={activeField}
                   activeFieldMeta={activeFieldMeta}
-                  serviceName={serviceDetails?.serviceType ?? ''}
+                  serviceName={resolvedServiceType}
                   serviceType={getServiceType(serviceCategory)}
                 />
               </Suspense>

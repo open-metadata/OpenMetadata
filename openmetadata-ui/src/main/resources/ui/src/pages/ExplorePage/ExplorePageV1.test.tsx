@@ -20,6 +20,7 @@ import {
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getExploreTabPath } from '../../utils/RouterUtils';
 import ExplorePageV1 from './ExplorePageV1.component';
@@ -49,6 +50,19 @@ jest.mock('../../hoc/withPageLayout', () => ({
 jest.mock('../../components/ExploreV1/ExploreV1.component', () => {
   return jest.fn().mockReturnValue(<p>ExploreV1</p>);
 });
+
+jest.mock(
+  '../../components/discovery/explore/ExploreHeader/ExploreSearchCard',
+  () => ({
+    ExploreSearchCard: () => (
+      <div data-testid="explore-search-card">Explore search</div>
+    ),
+  })
+);
+
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
+}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -101,6 +115,7 @@ describe('ExplorePageV1', () => {
         globalPageSize: 25,
       },
     });
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   it('renders without crashing', async () => {
@@ -108,6 +123,16 @@ describe('ExplorePageV1', () => {
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
     expect(usePaging).toHaveBeenCalledWith(25);
+  });
+
+  it('stretches the AI search header wrapper across the Explore page', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+
+    render(<ExplorePageV1 {...mockProps} />);
+
+    expect(
+      (await screen.findByTestId('explore-search-card')).parentElement
+    ).toHaveClass('tw:w-full');
   });
 
   it('calls navigate exactly once with quickFilter when filter changes', async () => {

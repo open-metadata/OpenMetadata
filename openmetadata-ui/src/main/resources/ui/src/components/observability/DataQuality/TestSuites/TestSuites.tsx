@@ -22,6 +22,8 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TestSuiteListPanel } from '../../../DataQuality/TestSuite/TestSuiteList/TestSuiteListPanel.component';
@@ -77,6 +79,20 @@ const TestSuites = () => {
     testCaseSummary,
   } = useTestSuitesListPage();
 
+  // testSuitePermission is a resource-level permission (usePermissionProvider().permissions.
+  // testSuite, threaded through useTestSuitesListPage/useTestSuitesData). Itself
+  // OperationPermission-shaped, so it runs through getDerivedPermissionFlags exactly like an
+  // entity-level fetch, mirroring the classic TestSuites.component.tsx precedent. Falls back
+  // to DEFAULT_ENTITY_PERMISSION (all-false) to reproduce the old `?.` optional-chaining
+  // undefined-is-falsy behavior.
+  const testSuiteFlags = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        testSuitePermission ?? DEFAULT_ENTITY_PERMISSION
+      ),
+    [testSuitePermission]
+  );
+
   const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
     let action: EmptyPlaceholderAction | undefined;
     if (
@@ -95,7 +111,7 @@ const TestSuites = () => {
     return action;
   }, [createActions?.canCreateBundleSuite, createActions?.onAddBundleSuite, t]);
 
-  if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
+  if (!testSuiteFlags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
