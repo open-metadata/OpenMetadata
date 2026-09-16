@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { cx } from '@/utils/cx';
-import { FC, MouseEvent } from 'react';
+import { CSSProperties, FC, MouseEvent } from 'react';
 import { AutomatedTag } from '../../../icons/AutomatedTag';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
-import { DEFAULT_TAG_MAX_WIDTH, ICON_PX } from './tag.constants';
+import { AUTO_CLASSIFICATION_TAG_COLOR, DEFAULT_TAG_MAX_WIDTH, ICON_PX } from './tag.constants';
 import { EntityTagProps } from './tag.types';
 
 /**
@@ -41,9 +41,10 @@ export const AutoClassificationTag: FC<
   closeButtonTestId,
   ...otherProps
 }) => {
-  // const tagColorStyle = {
-  //   '--tag-color': AUTO_CLASSIFICATION_TAG_COLOR,
-  // } as CSSProperties;
+
+  const tagColorStyle = {
+    '--tag-color': AUTO_CLASSIFICATION_TAG_COLOR,
+  } as CSSProperties;
 
   const content = (
     <TagChipContent
@@ -81,6 +82,7 @@ export const AutoClassificationTag: FC<
         buttonTestId={closeButtonTestId}
         className={cx(sharedProps.className, 'tag-tinted__close-icon')}
         isDisabled={disabled}
+        style={tagColorStyle}
         onButtonClick={(e: MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           onDelete(e.nativeEvent);

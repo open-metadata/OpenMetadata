@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { cx } from '@/utils/cx';
 import { FC, lazy, ReactNode, Suspense } from 'react';
 import { Link as AriaLink } from 'react-aria-components';
 
@@ -62,7 +63,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
 
   const labelNode = (
     <div style={{ maxWidth }}>
-      <span className={`tw:block tw:truncate ${labelClassName}`}>{label}</span>
+      <span className={cx('tw:block tw:truncate', labelClassName)}>{label}</span>
     </div>
   );
 
