@@ -18,16 +18,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.jdbi.v3.core.statement.SqlLogger;
-import org.jdbi.v3.core.statement.SqlStatements;
-import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -197,18 +193,19 @@ class IngestionPipelineSecretsIT {
     final IngestionPipeline original = pipeline;
     managed.writes.clear();
     final String etag = "W/\"" + original.getVersion() + "\"";
-    final CountDownLatch secondWriter = new CountDownLatch(1);
-    final SqlLogger originalLogger = Entity.getJdbi().getConfig(SqlStatements.class).getSqlLogger();
+    managed.watchedPipeline = original.getId();
     managed.blockedValue = ACCEPTED_SECRET;
     try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
       try {
         final var accepted =
             executor.submit(() -> patch(original, SECRET_PATH, ACCEPTED_SECRET, etag));
         assertTrue(managed.entered.await(TIMEOUT.toSeconds(), TimeUnit.SECONDS));
-        Entity.getJdbi().setSqlLogger(writerArrivalLogger(secondWriter));
         final var rejected =
             executor.submit(() -> patch(original, SECRET_PATH, REJECTED_SECRET, etag));
-        assertTrue(secondWriter.await(TIMEOUT.toSeconds(), TimeUnit.SECONDS));
+        assertTrue(
+            managed.concurrentRead.await(TIMEOUT.toSeconds(), TimeUnit.SECONDS),
+            "The second writer must read the pipeline while the first writer is blocked");
+        assertEquals(original.getVersion(), managed.concurrentVersion);
         managed.release.countDown();
         assertEquals(200, accepted.get(TIMEOUT.toSeconds(), TimeUnit.SECONDS).statusCode());
         assertEquals(412, rejected.get(TIMEOUT.toSeconds(), TimeUnit.SECONDS).statusCode());
@@ -224,24 +221,8 @@ class IngestionPipelineSecretsIT {
         assertMaskedHistory(original);
       } finally {
         managed.release.countDown();
-        Entity.getJdbi().setSqlLogger(originalLogger);
       }
     }
-  }
-
-  private static SqlLogger writerArrivalLogger(CountDownLatch arrived) {
-    return new SqlLogger() {
-      @Override
-      public void logBeforeExecution(StatementContext context) {
-        final String sql = context.getRenderedSql().toLowerCase(Locale.ROOT);
-        // Synchronize at the real database write boundary on MySQL and PostgreSQL.
-        if ((sql.contains("ingestion_pipeline_entity") && sql.contains("for update"))
-            || (sql.contains("entity_extension")
-                && (sql.contains("insert") || sql.contains("replace")))) {
-          arrived.countDown();
-        }
-      }
-    };
   }
 
   private IngestionPipeline createPipeline(TestNamespace namespace, String credential) {
@@ -383,10 +364,24 @@ class IngestionPipelineSecretsIT {
     private final List<String> writes = new CopyOnWriteArrayList<>();
     private final CountDownLatch entered = new CountDownLatch(1);
     private final CountDownLatch release = new CountDownLatch(1);
+    private final CountDownLatch concurrentRead = new CountDownLatch(1);
     private volatile String blockedValue;
+    private volatile UUID watchedPipeline;
+    private Double concurrentVersion;
 
     ControlledSecretsManager() {
       super(new SecretsConfig("test", "", List.of(), null));
+    }
+
+    @Override
+    public void decryptIngestionPipeline(IngestionPipeline pipeline) {
+      super.decryptIngestionPipeline(pipeline);
+      if (pipeline.getId().equals(watchedPipeline)
+          && entered.getCount() == 0
+          && release.getCount() != 0) {
+        concurrentVersion = pipeline.getVersion();
+        concurrentRead.countDown();
+      }
     }
 
     @Override
