@@ -20,6 +20,7 @@ import {
   Dialog,
   Modal,
   ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowsUp, Home02, LayersThree01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -812,9 +813,11 @@ const LineageMapBreadcrumbs = ({
       id: breadcrumb.id,
       icon: isRootBreadcrumb ? Home02 : undefined,
       label: (
-        <span data-testid={`lineage-map-breadcrumb-${index}`} title={label}>
+        <Typography
+          data-testid={`lineage-map-breadcrumb-${index}`}
+          tooltip={label}>
           {label}
-        </span>
+        </Typography>
       ),
     };
   });
@@ -983,6 +986,7 @@ const LineageMapCanvas = ({
   const onProviderNodeClickRef = useRef(onProviderNodeClick);
   const sceneRef = useRef<LineageScene>();
   const sceneRequestIdRef = useRef(0);
+  const pendingFetchRef = useRef(false);
   const preserveViewportRef = useRef(false);
   const lastSemanticZoomAtRef = useRef(0);
   const previousZoomRef = useRef<number>();
@@ -1127,6 +1131,7 @@ const LineageMapCanvas = ({
 
         return cachedScene;
       }
+      pendingFetchRef.current = true;
       setLoading(true);
       let response: LineageScene | undefined;
       try {
@@ -1136,6 +1141,9 @@ const LineageMapCanvas = ({
           options.bypassCache
         );
         if (sceneRequestIdRef.current === requestId) {
+          // Clear before setScene so the layout effect's .then() sees
+          // pendingFetchRef.current === false and is allowed to clear the loader.
+          pendingFetchRef.current = false;
           setScene(response);
           setSceneError(undefined);
           // setLoading(false) deferred to layoutNodes.then() in the scene
@@ -1146,6 +1154,7 @@ const LineageMapCanvas = ({
         }
       } catch (error) {
         if (sceneRequestIdRef.current === requestId) {
+          pendingFetchRef.current = false;
           setSceneError(error as AxiosError);
           showErrorToast(error as AxiosError);
           // Error — no layout will run; clear the loader immediately.
@@ -1370,6 +1379,7 @@ const LineageMapCanvas = ({
   useEffect(() => {
     if (!scene) {
       setSceneNodes([]);
+      setLoading(false);
 
       return;
     }
@@ -1424,23 +1434,31 @@ const LineageMapCanvas = ({
     });
     setSceneNodes(nextNodes);
     let isMounted = true;
-    layoutNodes(nextNodes, nextEdges, scene.band).then((layoutedNodes) => {
-      if (isMounted) {
-        setNodes(layoutedNodes);
-        setEdges(nextEdges);
-        // Nodes are now positioned and will appear in the DOM after this
-        // render — safe to clear the loader here. Deferring from fetchScene
-        // prevents waitForAllLoadersToDisappear from returning before ELK
-        // finishes, which was the source of intermittent "element not found"
-        // failures in Playwright tests.
-        setLoading(false);
-        if (preserveViewportRef.current) {
-          preserveViewportRef.current = false;
-        } else {
-          setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+    layoutNodes(nextNodes, nextEdges, scene.band)
+      .then((layoutedNodes) => {
+        // Guard against both stale layout runs (isMounted) and spurious
+        // re-layouts triggered while a newer fetch is still in flight
+        // (pendingFetchRef). Without the pendingFetchRef check, deps like
+        // removeSceneNode changing simultaneously with a fetchScene call can
+        // re-run this effect against the old scene; if that layout finishes
+        // before the HTTP response, setLoading(false) fires prematurely and
+        // waitForAllLoadersToDisappear returns before the new graph is ready.
+        if (isMounted && !pendingFetchRef.current) {
+          setNodes(layoutedNodes);
+          setEdges(nextEdges);
+          setLoading(false);
+          if (preserveViewportRef.current) {
+            preserveViewportRef.current = false;
+          } else {
+            setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+          }
         }
-      }
-    });
+      })
+      .catch(() => {
+        if (isMounted && !pendingFetchRef.current) {
+          setLoading(false);
+        }
+      });
 
     return () => {
       isMounted = false;
