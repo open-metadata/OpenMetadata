@@ -20,11 +20,12 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { getApiContext, uuid } from '../../utils/common';
 import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -70,28 +71,61 @@ export const test = baseTest.extend<{
 });
 
 /**
- * Assert the owner chip is in the summary panel, re-opening the entity if it is
- * not. The panel renders owners from the Explore search document, which is
- * refreshed asynchronously after the owner PATCH — a panel that rendered before
- * that refresh will never show the chip, so waiting on it is waiting on the
- * wrong thing. Re-navigating re-reads it.
+ * The summary panel renders owners from the Explore search document, which is
+ * refreshed asynchronously after the owner PATCH — a panel that rendered
+ * before that refresh can never show (or drop) the chip. Gate on the search
+ * document actually reflecting the owner state before any UI read.
+ * `owners` is a nested field in knowledge_page_search_index — a plain term
+ * query would silently match nothing.
+ */
+async function waitForOwnerIndexed(
+  page: Page,
+  owner: UserClass,
+  present: boolean
+) {
+  const ownerQuery = {
+    nested: {
+      path: 'owners',
+      query: { term: { 'owners.id': owner.responseData.id } },
+    },
+  };
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await waitForSearchIndexed(
+      apiContext,
+      knowledgeCenter.responseData.fullyQualifiedName,
+      'page',
+      {
+        timeout: 60_000,
+        queryFilter: JSON.stringify({
+          query: present ? ownerQuery : { bool: { must_not: [ownerQuery] } },
+        }),
+      }
+    );
+  } finally {
+    await afterAction();
+  }
+}
+
+/**
+ * Assert the owner chip is in the summary panel: wait for the search index to
+ * carry the owner, then re-open the entity so the panel re-reads the fresh
+ * document.
  */
 async function expectOwnerInPanel(
   page: Page,
   entityName: string,
-  ownerName: string
+  owner: UserClass
 ) {
+  await waitForOwnerIndexed(page, owner, true);
+  await navigateToKCEntity(page, entityName);
+
   const ownerChip = page
     .locator('[data-testid="entity-summary-panel-container"]')
-    .getByTestId(ownerName);
+    .getByTestId(owner.getUserDisplayName());
 
-  await expect(async () => {
-    if (!(await ownerChip.isVisible())) {
-      await navigateToKCEntity(page, entityName);
-    }
-
-    await expect(ownerChip).toBeVisible({ timeout: 10_000 });
-  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
+  await expect(ownerChip).toBeVisible();
 }
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
@@ -202,7 +236,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         await expectOwnerInPanel(
           adminPage,
           getEntityDisplayName(knowledgeCenter.responseData),
-          user1.getUserDisplayName()
+          user1
         );
       });
     });
@@ -295,7 +329,6 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
       test(
         'Should remove user owner for knowledgeCenter',
-        { tag: '@quarantine' },
         async ({ adminPage, rightPanel, overview }) => {
           await navigateToKCEntity(
             adminPage,
@@ -308,11 +341,12 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
           await expectOwnerInPanel(
             adminPage,
             getEntityDisplayName(knowledgeCenter.responseData),
-            user1.getUserDisplayName()
+            user1
           );
 
           await overview.removeOwner([user1.getUserDisplayName()], 'Users');
           await waitForAllLoadersToDisappear(adminPage);
+          await waitForOwnerIndexed(adminPage, user1, false);
 
           await navigateToKCEntity(
             adminPage,
