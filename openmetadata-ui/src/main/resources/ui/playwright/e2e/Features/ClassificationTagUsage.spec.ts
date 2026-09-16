@@ -104,9 +104,10 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
 
       const usedCount = page.getByTestId(`usage-count-${usedTag.data.name}`);
-      const usedText = await usedCount.textContent();
 
-      expect(Number(usedText)).toBeGreaterThanOrEqual(USED_TAG_MIN_COUNT);
+      await expect
+        .poll(async () => Number(await usedCount.textContent()))
+        .toBeGreaterThanOrEqual(USED_TAG_MIN_COUNT);
       await expect(usedCount).toHaveAttribute('href', /.+/);
 
       const unusedCount = page.getByTestId(
@@ -125,9 +126,10 @@ test.describe(
 
       await test.step('Follow the count through to the assets', async () => {
         const usageCount = page.getByTestId(`usage-count-${usedTag.data.name}`);
-        const countText = await usageCount.textContent();
 
-        expect(Number(countText)).toBeGreaterThanOrEqual(USED_TAG_MIN_COUNT);
+        await expect
+          .poll(async () => Number(await usageCount.textContent()))
+          .toBeGreaterThanOrEqual(USED_TAG_MIN_COUNT);
         await usageCount.click();
 
         await expect(
@@ -136,14 +138,16 @@ test.describe(
           )
         ).toBeVisible({ timeout: 30_000 });
 
-        const assetsCountText = await page
-          .getByTestId('assets')
-          .getByTestId('count')
-          .textContent();
-
-        expect(Number(assetsCountText)).toBeGreaterThanOrEqual(
-          USED_TAG_MIN_COUNT
-        );
+        await expect
+          .poll(async () =>
+            Number(
+              await page
+                .getByTestId('assets')
+                .getByTestId('count')
+                .textContent()
+            )
+          )
+          .toBeGreaterThanOrEqual(USED_TAG_MIN_COUNT);
       });
     });
   }
