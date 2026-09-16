@@ -13,10 +13,12 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.ReflectionException;
 
 /**
  * Currently when an object is converted into a specific class using `JsonUtils.convertValue` there`Object` fields that
@@ -67,6 +69,36 @@ public abstract class ClassConverter {
   }
 
   // method called when and Object field can expect a HashMap or a specific class
+  /**
+   * Reads {@code property} off {@code target}, converts it against {@code candidates} and writes it
+   * back.
+   *
+   * <p>Only for {@code Object}-typed properties, i.e. the ones jsonschema2pojo emits for a JSON
+   * Schema {@code oneOf}. Jackson leaves a {@code LinkedHashMap} in such a field, and neither the
+   * password masker nor the secrets manager descends into a non-{@code org.openmetadata} value, so
+   * every {@code format: password} leaf below it stays in the clear until it is typed again here.
+   */
+  protected void convertProperty(Object target, String property, List<Class<?>> candidates) {
+    String accessorSuffix = Character.toUpperCase(property.charAt(0)) + property.substring(1);
+    try {
+      Method getter = target.getClass().getMethod("get" + accessorSuffix);
+      tryToConvert(getter.invoke(target), candidates)
+          .ifPresent(
+              value -> {
+                try {
+                  target
+                      .getClass()
+                      .getMethod("set" + accessorSuffix, Object.class)
+                      .invoke(target, value);
+                } catch (ReflectiveOperationException e) {
+                  throw new ReflectionException(e.getMessage());
+                }
+              });
+    } catch (ReflectiveOperationException e) {
+      throw new ReflectionException(e.getMessage());
+    }
+  }
+
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {
     if (object != null) {
       Optional<Object> converted =
