@@ -55,8 +55,9 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
-import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
@@ -572,8 +573,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
   browseQueryFilter,
   onTreeSelect = noop,
 }) => {
-  const tabsInfo = searchClassBase.getTabsInfo();
+  const tabsInfo = useMemo(() => searchClassBase.getTabsInfo(), []);
   const { t } = useTranslation();
+  // The router location, not the global: the global's `search` is not a valid
+  // hook dependency (mutating it never re-renders), so the memo below went
+  // stale across in-app navigation.
+  const location = useCustomLocation();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([] as ExploreQuickFilterField[]);
@@ -595,7 +600,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const searchQueryParam = useMemo(
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
-    [location.search]
+    [parsedSearch.search]
   );
   const totalValue = searchResults?.hits.total.value ?? 0;
 
@@ -718,6 +723,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     queryFilter,
     browseQueryFilter,
     searchIndex,
+    isSearchMode,
   ]);
 
   const handleExportScopeConfirm = useCallback(async () => {
@@ -787,6 +793,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
   }, [
     exportScope,
+    t,
     searchIndex,
     allAssetsCount,
     visibleResultCount,
@@ -813,7 +820,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       ...field,
       name: t(field.name),
     }));
-  }, [searchIndex, t]);
+  }, [searchIndex, t, tabsInfo]);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -1117,7 +1124,12 @@ const ExploreV1: React.FC<ExploreProps> = ({
       setShowSummaryPanel(false);
       setEntityDetails(undefined);
     }
-  }, [searchResults]);
+  }, [
+    searchResults,
+    firstEntity?._source,
+    firstEntity?.highlight,
+    handleSummaryPanelDisplay,
+  ]);
 
   const exportModalTitle = useMemo(
     () => (
