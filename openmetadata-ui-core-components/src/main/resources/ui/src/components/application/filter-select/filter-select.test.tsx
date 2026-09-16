@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FilterSelect } from './filter-select';
 import type { FilterSelectProps } from './filter-select.types';
@@ -206,6 +212,49 @@ describe('FilterSelect', () => {
     });
 
     expect(screen.getByText('MYSQL')).toBeInTheDocument();
+  });
+
+  it('single select marks the chosen row brand-blue with no tick icon', () => {
+    renderFilter({ selectionMode: 'single', selectedValues: ['snowflake'] });
+
+    const row = screen.getByTestId('snowflake');
+
+    // No check glyph any more: these options carry no icons, so the selected
+    // row must contain no svg at all (the tick used to render one).
+    expect(row.querySelector('svg')).toBeNull();
+    expect(row.className).toContain('bg-utility-brand-50');
+    expect(
+      screen.getByTitle('Snowflake').parentElement?.className ?? ''
+    ).toContain('text-fg-brand-primary');
+  });
+
+  it('single select brands the icon and count pill of the chosen row', () => {
+    const IconStub = (props: { className?: string }) => (
+      <svg data-testid="opt-icon" {...props} />
+    );
+    renderFilter({
+      selectionMode: 'single',
+      selectedValues: ['snowflake'],
+      options: [
+        { value: 'snowflake', label: 'Snowflake', count: 1204, icon: IconStub },
+        { value: 'bigquery', label: 'BigQuery', count: 867, icon: IconStub },
+      ],
+    });
+
+    const selected = screen.getByTestId('snowflake');
+    const other = screen.getByTestId('bigquery');
+
+    // The row-level override recolors the option's svg on selection…
+    expect(selected.className).toContain('[&_svg]:text-fg-brand-primary');
+    expect(other.className).not.toContain('[&_svg]:text-fg-brand-primary');
+    // …and the count pill flips to the brand border and text.
+    const selectedPill = within(selected).getByTestId('filter-count');
+    const otherPill = within(other).getByTestId('filter-count');
+
+    expect(selectedPill.className).toContain('border-utility-brand-200');
+    expect(selectedPill.className).toContain('text-fg-brand-primary');
+    expect(otherPill.className).toContain('border-secondary');
+    expect(otherPill.className).not.toContain('text-fg-brand-primary');
   });
 
   it('single select applies the clicked value and reports one value', () => {
