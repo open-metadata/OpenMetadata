@@ -14,7 +14,7 @@
 import { Checkbox, Form, Modal } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -54,6 +54,7 @@ const ChangeParentHierarchy = ({
   const [selectedParent, setSelectedParent] =
     useState<DefaultOptionType | null>(null);
   const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
+  const submittedJobId = useRef<string>();
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
@@ -127,6 +128,8 @@ const ChangeParentHierarchy = ({
         fullyQualifiedName: parent.fullyQualifiedName,
       });
 
+      submittedJobId.current = response.jobId;
+
       const jobData: MoveGlossaryTermWebsocketResponse = {
         jobId: response.jobId,
         message: response.message,
@@ -140,13 +143,17 @@ const ChangeParentHierarchy = ({
     }
   };
 
-  // WebSocket listener for move job updates
   useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL, (moveResponse) => {
         if (moveResponse) {
           const moveResponseData = JSON.parse(moveResponse);
-          handleMoveJobUpdate(moveResponseData);
+          if (
+            submittedJobId.current &&
+            moveResponseData.jobId === submittedJobId.current
+          ) {
+            handleMoveJobUpdate(moveResponseData);
+          }
         }
       });
     }
