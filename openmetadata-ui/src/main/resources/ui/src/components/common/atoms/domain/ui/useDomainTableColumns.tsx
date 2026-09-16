@@ -14,6 +14,7 @@
 import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../../generated/entity/domains/domain';
+import { useOwnerDisplayProps } from '../../../../../hooks/useOwnerDisplayProps';
 import { ColumnDef } from '../../../EntityListingTable/EntityListingTable.interface';
 import {
   renderDomainClassificationTagsCell,
@@ -25,16 +26,15 @@ import {
 
 interface UseDomainTableColumnsOptions {
   nameLabelKey?: string;
-  tagSize?: 'sm' | 'lg';
   onEntityClick?: (entity: Domain) => void;
 }
 
 export const useDomainTableColumns = ({
   nameLabelKey = 'label.domain',
-  tagSize = 'sm',
   onEntityClick,
 }: UseDomainTableColumnsOptions = {}) => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const columns: ColumnDef[] = useMemo(
     () => [
@@ -58,16 +58,21 @@ export const useDomainTableColumns = ({
         case 'domainType':
           return renderDomainTypeCell(entity);
         case 'owners':
-          return renderDomainOwnersCell(entity);
+          return renderDomainOwnersCell(
+            entity,
+            toOwnersWithHref,
+            renderOwnerContent,
+            { showDashPlaceholder: true }
+          );
         case 'glossaryTerms':
-          return renderDomainGlossaryTagsCell(entity, { size: tagSize });
+          return renderDomainGlossaryTagsCell(entity);
         case 'tags':
-          return renderDomainClassificationTagsCell(entity, { size: tagSize });
+          return renderDomainClassificationTagsCell(entity);
         default:
           return null;
       }
     },
-    [tagSize, onEntityClick]
+    [onEntityClick, toOwnersWithHref, renderOwnerContent]
   );
 
   return { columns, renderCell };

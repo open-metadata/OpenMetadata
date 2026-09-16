@@ -17,35 +17,40 @@ import {
   DialogTrigger,
   Modal,
   ModalOverlay,
+  Owner,
   Tabs,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { toString } from 'lodash';
+import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
 import { HeaderDotSeparator } from '../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
+import { AddTestCaseModalProps } from '../../DataQuality/AddTestCaseList/AddTestCaseList.interface';
 import TestSuitePipelineTab from '../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
@@ -55,6 +60,109 @@ const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
 
+const TestSuiteTitle = ({
+  displayName,
+  name,
+}: {
+  displayName?: string;
+  name?: string;
+}) => (
+  <Box className="tw:min-w-0" direction="col">
+    {displayName && (
+      <Typography
+        as="h2"
+        className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
+        data-testid="entity-header-display-name"
+        ellipsis={{
+          tooltip: breakableTooltipText(displayName),
+        }}
+        size="text-lg"
+        weight="bold">
+        {displayName}
+      </Typography>
+    )}
+    <Typography
+      as={displayName ? 'span' : 'h2'}
+      className={classNames(
+        'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
+        {
+          'tw:text-primary': !displayName,
+          'tw:text-tertiary': displayName,
+        }
+      )}
+      data-testid="entity-header-name"
+      ellipsis={{
+        tooltip: breakableTooltipText(name),
+      }}
+      size={displayName ? 'text-sm' : 'text-lg'}
+      weight={displayName ? 'medium' : 'bold'}>
+      {name}
+    </Typography>
+  </Box>
+);
+
+interface TestSuiteAddTestCaseDialogProps {
+  /** Prioritized EditTests (falls back to EditAll when the payload carries no EditTests) —
+   * one derived flag rather than the raw editAll/editTests pair it replaces. */
+  canAddTestCase?: boolean;
+  isOpen: boolean;
+  existingTests?: AddTestCaseModalProps['existingTest'];
+  onOpenChange: (open: boolean) => void;
+  onSubmit?: AddTestCaseModalProps['onSubmit'];
+  onClose: () => void;
+}
+
+const TestSuiteAddTestCaseDialog = ({
+  canAddTestCase,
+  isOpen,
+  existingTests,
+  onOpenChange,
+  onSubmit,
+  onClose,
+}: TestSuiteAddTestCaseDialogProps) => {
+  const { t } = useTranslation();
+
+  if (!canAddTestCase) {
+    return null;
+  }
+
+  return (
+    <DialogTrigger isOpen={isOpen} onOpenChange={onOpenChange}>
+      <Button color="primary" data-testid="add-test-case-btn" size="md">
+        {t('label.add-entity', {
+          entity: t('label.test-case-plural'),
+        })}
+      </Button>
+      <ModalOverlay>
+        <Modal>
+          <Dialog
+            showCloseButton
+            title={t('label.add-entity', {
+              entity: t('label.test-case-plural'),
+            })}
+            onClose={onClose}>
+            <Dialog.Content>
+              <AddTestCaseList
+                existingTest={existingTests ?? []}
+                getPopupContainer={(trigger) =>
+                  (trigger.closest('[role="dialog"]') as HTMLElement) ??
+                  document.body
+                }
+                onCancel={onClose}
+                onSubmit={onSubmit}
+              />
+            </Dialog.Content>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
+    </DialogTrigger>
+  );
+};
+
+// Extracted so the empty-count fallback of the two tab badges doesn't add to
+// TestSuiteDetail's own cyclomatic complexity.
+const getTabBadge = (count?: number) => toString(count) || undefined;
+
 /**
  * App-mode (bundle) test suite details page. Follows the same design as the
  * app-mode test case detail page: boxed table-details header, Domains/Owners
@@ -63,6 +171,7 @@ const breakableTooltipText = (text?: string) => (
  */
 const TestSuiteDetail = () => {
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const navigate = useNavigate();
   const {
     testSuite,
@@ -96,6 +205,14 @@ const TestSuiteDetail = () => {
     handleTestSuiteUpdate,
   } = useTestSuiteDetailsPage();
 
+  // Consumer via the hook's raw `testSuitePermissions: OperationPermission` field, mirroring
+  // the classic TestSuiteDetailsPage.component.tsx precedent — derive named flags locally
+  // instead of reading `.EditAll`/`.ViewAll`/`.ViewBasic` directly.
+  const flags = useMemo(
+    () => getDerivedPermissionFlags(testSuitePermissions),
+    [testSuitePermissions]
+  );
+
   const afterDeleteAction = () => {
     navigate(
       observabilityRouterClassBase.getDataQualityPagePath(
@@ -126,6 +243,11 @@ const TestSuiteDetail = () => {
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
 
+  const getCopyTooltipTitle = () =>
+    hasCopied
+      ? t('message.link-copy-to-clipboard')
+      : t('label.copy-item', { item: t('label.url-uppercase') });
+
   const activeTabContent = useMemo(() => {
     const renderDescription = () => (
       <div className="tw:w-full">
@@ -153,8 +275,7 @@ const TestSuiteDetail = () => {
     const removeFromTestSuite = testSuite
       ? {
           testSuite,
-          isAllowed:
-            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+          isAllowed: flags.can(Operation.EditTests),
         }
       : undefined;
 
@@ -185,7 +306,7 @@ const TestSuiteDetail = () => {
     descriptionChangeSummaryEntry,
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
-    testSuitePermissions,
+    flags,
     fetchTestCases,
     incidentUrlState,
     handleSortTestCase,
@@ -201,7 +322,7 @@ const TestSuiteDetail = () => {
     return <Loader />;
   }
 
-  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+  if (!flags.hasViewAccess) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -213,12 +334,16 @@ const TestSuiteDetail = () => {
     );
   }
 
+  if (isUndefined(testSuite)) {
+    return <ErrorPlaceHolder />;
+  }
+
   return (
     <ObservabilityPageShell
       data-testid="test-suite-detail-page"
       header={
         <Box
-          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
+          className="tw:relative tw:mx-4 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
           data-testid="test-suite-header-container"
           direction="col"
           gap={4}>
@@ -254,47 +379,11 @@ const TestSuiteDetail = () => {
                   className="tw:min-w-0"
                   data-testid="entity-header-title"
                   gap={3}>
-                  <Box className="tw:min-w-0" direction="col">
-                    {testSuite?.displayName && (
-                      <Typography
-                        as="h2"
-                        className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
-                        data-testid="entity-header-display-name"
-                        ellipsis={{
-                          tooltip: breakableTooltipText(testSuite.displayName),
-                        }}
-                        size="text-lg"
-                        weight="bold">
-                        {testSuite.displayName}
-                      </Typography>
-                    )}
-                    <Typography
-                      as={testSuite?.displayName ? 'span' : 'h2'}
-                      className={classNames(
-                        'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
-                        {
-                          'tw:text-primary': !testSuite?.displayName,
-                          'tw:text-tertiary': testSuite?.displayName,
-                        }
-                      )}
-                      data-testid="entity-header-name"
-                      ellipsis={{
-                        tooltip: breakableTooltipText(testSuite?.name),
-                      }}
-                      size={testSuite?.displayName ? 'text-sm' : 'text-lg'}
-                      weight={testSuite?.displayName ? 'medium' : 'bold'}>
-                      {testSuite?.name}
-                    </Typography>
-                  </Box>
-                  <Tooltip
-                    placement="top"
-                    title={
-                      hasCopied
-                        ? t('message.link-copy-to-clipboard')
-                        : t('label.copy-item', {
-                            item: t('label.url-uppercase'),
-                          })
-                    }>
+                  <TestSuiteTitle
+                    displayName={testSuite?.displayName}
+                    name={testSuite?.name}
+                  />
+                  <Tooltip placement="top" title={getCopyTooltipTitle()}>
                     <Button
                       aria-label={t('label.copy-item', {
                         item: t('label.url-uppercase'),
@@ -310,44 +399,14 @@ const TestSuiteDetail = () => {
                 </Box>
               </Box>
               <Box align="center" className="tw:shrink-0" gap={2}>
-                {(testSuitePermissions.EditAll ||
-                  testSuitePermissions.EditTests) && (
-                  <DialogTrigger
-                    isOpen={isTestCaseModalOpen}
-                    onOpenChange={setIsTestCaseModalOpen}>
-                    <Button
-                      color="primary"
-                      data-testid="add-test-case-btn"
-                      size="md">
-                      {t('label.add-entity', {
-                        entity: t('label.test-case-plural'),
-                      })}
-                    </Button>
-                    <ModalOverlay>
-                      <Modal>
-                        <Dialog
-                          showCloseButton
-                          title={t('label.add-entity', {
-                            entity: t('label.test-case-plural'),
-                          })}
-                          onClose={() => setIsTestCaseModalOpen(false)}>
-                          <Dialog.Content>
-                            <AddTestCaseList
-                              existingTest={testSuite?.tests ?? []}
-                              getPopupContainer={(trigger) =>
-                                (trigger.closest(
-                                  '[role="dialog"]'
-                                ) as HTMLElement) ?? document.body
-                              }
-                              onCancel={() => setIsTestCaseModalOpen(false)}
-                              onSubmit={handleAddTestCaseSubmit}
-                            />
-                          </Dialog.Content>
-                        </Dialog>
-                      </Modal>
-                    </ModalOverlay>
-                  </DialogTrigger>
-                )}
+                <TestSuiteAddTestCaseDialog
+                  canAddTestCase={flags.can(Operation.EditTests)}
+                  existingTests={testSuite?.tests}
+                  isOpen={isTestCaseModalOpen}
+                  onClose={() => setIsTestCaseModalOpen(false)}
+                  onOpenChange={setIsTestCaseModalOpen}
+                  onSubmit={handleAddTestCaseSubmit}
+                />
                 <ManageButton
                   isRecursiveDelete
                   afterDeleteAction={afterDeleteAction}
@@ -355,10 +414,7 @@ const TestSuiteDetail = () => {
                   canDelete={permissions.hasDeletePermission}
                   deleted={testSuite?.deleted}
                   displayName={getEntityName(testSuite)}
-                  editDisplayNamePermission={
-                    testSuitePermissions.EditAll ||
-                    testSuitePermissions.EditDisplayName
-                  }
+                  editDisplayNamePermission={flags.canEditDisplayName}
                   entityId={testSuite?.id}
                   entityName={testSuite?.fullyQualifiedName as string}
                   entityType={EntityType.TEST_SUITE}
@@ -375,25 +431,32 @@ const TestSuiteDetail = () => {
                 entityFqn={testSuite?.fullyQualifiedName ?? ''}
                 entityId={testSuite?.id ?? ''}
                 entityType={EntityType.TEST_SUITE}
-                hasPermission={Boolean(testSuitePermissions.EditAll)}
+                hasPermission={flags.canEditAll}
                 multiple={canAddMultipleDomains}
                 textClassName="render-domain-lebel-style"
                 onUpdate={handleDomainUpdate}
               />
               <HeaderDotSeparator />
-              <OwnerLabel
+              <Owner
                 showDashPlaceholder
                 avatarSize={24}
                 className="header-owner-heading"
                 hasPermission={Boolean(permissions.hasEditOwnerPermission)}
                 isCompactView={false}
                 maxVisibleOwners={3}
-                multiple={{
-                  user: canAddMultipleUserOwners,
-                  team: canAddMultipleTeamOwner,
-                }}
-                owners={testOwners}
-                onUpdate={onUpdateOwner}
+                owners={toOwnersWithHref(testOwners ?? [])}
+                renderOwnerContent={renderOwnerContent}
+                selectorContent={
+                  <UserTeamSelectableList
+                    hasPermission={Boolean(permissions.hasEditOwnerPermission)}
+                    multiple={{
+                      user: canAddMultipleUserOwners,
+                      team: canAddMultipleTeamOwner,
+                    }}
+                    owner={testOwners}
+                    onUpdate={onUpdateOwner}
+                  />
+                }
               />
             </div>
           </Box>
@@ -411,13 +474,13 @@ const TestSuiteDetail = () => {
             onSelectionChange={(key) => setActiveTab(String(key))}>
             <Tabs.List size="sm" type="underline">
               <Tabs.Item
-                badge={toString(pagingData.paging.total) || undefined}
+                badge={getTabBadge(pagingData.paging.total)}
                 data-testid={EntityTabs.TEST_CASES}
                 id={EntityTabs.TEST_CASES}
                 label={t('label.test-case-plural')}
               />
               <Tabs.Item
-                badge={toString(ingestionPipelineCount) || undefined}
+                badge={getTabBadge(ingestionPipelineCount)}
                 data-testid={EntityTabs.PIPELINE}
                 id={EntityTabs.PIPELINE}
                 label={t('label.pipeline-plural')}

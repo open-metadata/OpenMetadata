@@ -124,6 +124,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
 
+jest.mock('../../../utils/ColorUtils', () => ({
+  reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
+}));
+
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),

@@ -96,9 +96,13 @@ export const useRouteActivation = (
         lastEpoch = epoch;
         lastFocus = focus; // a focus that coincides with activation shouldn't double-fire
         lastDirty = dirty;
-        onActivateRef.current(
-          becameDirty ? 'dirty' : isAged() ? 'maxAge' : 'activation'
-        );
+        let reason: RouteActivationReason = 'activation';
+        if (becameDirty) {
+          reason = 'dirty';
+        } else if (isAged()) {
+          reason = 'maxAge';
+        }
+        onActivateRef.current(reason);
 
         return;
       }

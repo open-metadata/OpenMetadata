@@ -173,129 +173,146 @@ const ManageButton: FC<ManageButtonProps> = ({
     return <div data-testid="manage-dropdown-list-container">{menus}</div>;
   }, []);
 
-  const items: ItemType[] = [
-    ...(deleted
-      ? ([
-          {
-            label: (
-              <Tooltip title={canRestore ? '' : t(NO_PERMISSION_FOR_ACTION)}>
+  const items: ItemType[] = useMemo(
+    () => [
+      ...(deleted
+        ? ([
+            {
+              label: (
+                <Tooltip title={canRestore ? '' : t(NO_PERMISSION_FOR_ACTION)}>
+                  <ManageButtonItemLabel
+                    description={t('message.restore-action-description', {
+                      entityType,
+                    })}
+                    icon={IconRestore}
+                    id="restore-button"
+                    name={t('label.restore')}
+                  />
+                </Tooltip>
+              ),
+              onClick: (e) => {
+                if (canRestore) {
+                  e.domEvent.stopPropagation();
+                  setIsDropdownOpen(false);
+                  setShowReactiveModal(true);
+                }
+              },
+              key: 'restore-button',
+            },
+          ] as ItemType[])
+        : []),
+
+      ...(showAnnouncementOption
+        ? ([
+            {
+              label: (
                 <ManageButtonItemLabel
-                  description={t('message.restore-action-description', {
-                    entityType,
-                  })}
-                  icon={IconRestore}
-                  id="restore-button"
-                  name={t('label.restore')}
+                  description={t('message.announcement-action-description')}
+                  icon={IconAnnouncementsBlack}
+                  id="announcement-button"
+                  name={t('label.announcement-plural')}
                 />
-              </Tooltip>
-            ),
-            onClick: (e) => {
-              if (canRestore) {
+              ),
+              onClick: (e) => {
                 e.domEvent.stopPropagation();
                 setIsDropdownOpen(false);
-                setShowReactiveModal(true);
-              }
+                !isUndefined(onAnnouncementClick) && onAnnouncementClick();
+              },
+              key: 'announcement-button',
             },
-            key: 'restore-button',
-          },
-        ] as ItemType[])
-      : []),
+          ] as ItemType[])
+        : []),
 
-    ...(showAnnouncementOption
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
-                id="announcement-button"
-                name={t('label.announcement-plural')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsDropdownOpen(false);
-              !isUndefined(onAnnouncementClick) && onAnnouncementClick();
-            },
-            key: 'announcement-button',
-          },
-        ] as ItemType[])
-      : []),
-
-    ...(showRenameOption
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.update-displayName-entity', {
-                  entity: entityName,
-                })}
-                icon={EditIcon}
-                id="rename-button"
-                name={t('label.rename')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsDropdownOpen(false);
-              setIsDisplayNameEditing(true);
-            },
-            key: 'rename-button',
-          },
-        ] as ItemType[])
-      : []),
-    ...(extraDropdownContent ?? []),
-    ...(isProfilerSupported
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={
-                  deleteButtonDescription ??
-                  t('message.update-profiler-settings')
-                }
-                icon={IconSetting}
-                id="profiler-setting-button"
-                name={t('label.profiler-setting-plural')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              setIsDropdownOpen(false);
-              onProfilerSettingUpdate?.();
-            },
-            key: 'profiler-setting-button',
-          },
-        ] as ItemType[])
-      : []),
-    ...(canDelete
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={
-                  deleteButtonDescription ??
-                  t('message.delete-entity-type-action-description', {
-                    entityType,
-                  })
-                }
-                icon={IconDelete}
-                id="delete-button"
-                name={t('label.delete')}
-              />
-            ),
-            onClick: (e) => {
-              if (canDelete) {
+      ...(showRenameOption
+        ? ([
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={t('message.update-displayName-entity', {
+                    entity: entityName,
+                  })}
+                  icon={EditIcon}
+                  id="rename-button"
+                  name={t('label.rename')}
+                />
+              ),
+              onClick: (e) => {
                 e.domEvent.stopPropagation();
                 setIsDropdownOpen(false);
-                setIsDelete(true);
-              }
+                setIsDisplayNameEditing(true);
+              },
+              key: 'rename-button',
             },
-            key: 'delete-button',
-          },
-        ] as ItemType[])
-      : []),
-  ];
+          ] as ItemType[])
+        : []),
+      ...(extraDropdownContent ?? []),
+      ...(isProfilerSupported
+        ? ([
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={
+                    deleteButtonDescription ??
+                    t('message.update-profiler-settings')
+                  }
+                  icon={IconSetting}
+                  id="profiler-setting-button"
+                  name={t('label.profiler-setting-plural')}
+                />
+              ),
+              onClick: (e) => {
+                e.domEvent.stopPropagation();
+                setIsDropdownOpen(false);
+                onProfilerSettingUpdate?.();
+              },
+              key: 'profiler-setting-button',
+            },
+          ] as ItemType[])
+        : []),
+      ...(canDelete
+        ? ([
+            {
+              label: (
+                <ManageButtonItemLabel
+                  description={
+                    deleteButtonDescription ??
+                    t('message.delete-entity-type-action-description', {
+                      entityType,
+                    })
+                  }
+                  icon={IconDelete}
+                  id="delete-button"
+                  name={t('label.delete')}
+                />
+              ),
+              onClick: (e) => {
+                if (canDelete) {
+                  e.domEvent.stopPropagation();
+                  setIsDropdownOpen(false);
+                  setIsDelete(true);
+                }
+              },
+              key: 'delete-button',
+            },
+          ] as ItemType[])
+        : []),
+    ],
+    [
+      deleted,
+      canRestore,
+      t,
+      entityType,
+      showAnnouncementOption,
+      onAnnouncementClick,
+      showRenameOption,
+      entityName,
+      extraDropdownContent,
+      isProfilerSupported,
+      deleteButtonDescription,
+      onProfilerSettingUpdate,
+      canDelete,
+    ]
+  );
 
   const formattedEntityType = useMemo(
     () => entityUtilClassBase.getFormattedEntityType(entityType),
@@ -354,43 +371,69 @@ const ManageButton: FC<ManageButtonProps> = ({
     );
   };
 
+  const deleteModal = useMemo(() => {
+    if (!isDelete) {
+      return null;
+    }
+
+    return allowSoftDelete === false ? (
+      <DeleteModal
+        entityTitle={displayName ?? entityName}
+        isDeleting={isDeleting}
+        message={
+          deleteMessage ??
+          t('message.permanently-delete-common-message', {
+            entity: (displayName ?? entityName)?.toLowerCase() ?? '',
+          })
+        }
+        open={isDelete}
+        onCancel={() => setIsDelete(false)}
+        onDelete={handleHardDelete}
+      />
+    ) : (
+      <DeleteEntityModal
+        afterDeleteAction={afterDeleteAction}
+        allowSoftDelete={allowSoftDelete}
+        deleteMessage={deleteMessage}
+        deleteOptions={deleteOptions}
+        entityId={entityId ?? ''}
+        entityName={displayName ?? entityName}
+        entityType={entityType}
+        hardDeleteMessagePostFix={hardDeleteMessagePostFix}
+        isAsyncDelete={isAsyncDelete}
+        isRecursiveDelete={isRecursiveDelete}
+        prepareType={prepareType}
+        softDeleteMessagePostFix={softDeleteMessagePostFix}
+        successMessage={successMessage}
+        visible={isDelete}
+        onCancel={() => setIsDelete(false)}
+      />
+    );
+  }, [
+    isDelete,
+    allowSoftDelete,
+    displayName,
+    entityName,
+    isDeleting,
+    deleteMessage,
+    t,
+    handleHardDelete,
+    afterDeleteAction,
+    deleteOptions,
+    entityId,
+    entityType,
+    hardDeleteMessagePostFix,
+    isAsyncDelete,
+    isRecursiveDelete,
+    prepareType,
+    softDeleteMessagePostFix,
+    successMessage,
+  ]);
+
   return (
     <>
       {items.length ? renderDropdownTrigger() : null}
-      {isDelete &&
-        (allowSoftDelete === false ? (
-          <DeleteModal
-            entityTitle={displayName ?? entityName}
-            isDeleting={isDeleting}
-            message={
-              deleteMessage ??
-              t('message.permanently-delete-common-message', {
-                entity: (displayName ?? entityName)?.toLowerCase() ?? '',
-              })
-            }
-            open={isDelete}
-            onCancel={() => setIsDelete(false)}
-            onDelete={handleHardDelete}
-          />
-        ) : (
-          <DeleteEntityModal
-            afterDeleteAction={afterDeleteAction}
-            allowSoftDelete={allowSoftDelete}
-            deleteMessage={deleteMessage}
-            deleteOptions={deleteOptions}
-            entityId={entityId ?? ''}
-            entityName={displayName ?? entityName}
-            entityType={entityType}
-            hardDeleteMessagePostFix={hardDeleteMessagePostFix}
-            isAsyncDelete={isAsyncDelete}
-            isRecursiveDelete={isRecursiveDelete}
-            prepareType={prepareType}
-            softDeleteMessagePostFix={softDeleteMessagePostFix}
-            successMessage={successMessage}
-            visible={isDelete}
-            onCancel={() => setIsDelete(false)}
-          />
-        ))}
+      {deleteModal}
       {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}

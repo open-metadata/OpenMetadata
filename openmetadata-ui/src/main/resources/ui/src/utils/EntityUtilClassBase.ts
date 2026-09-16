@@ -22,7 +22,6 @@ import {
   type OperationPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategoryPlural } from '../enums/service.enum';
 import type { APICollection } from '../generated/entity/data/apiCollection';
 import type { Database } from '../generated/entity/data/database';
@@ -78,6 +77,7 @@ import {
 } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
+import { getOwnHandler } from './RecordUtils';
 import {
   getApplicationDetailsPath,
   getBotsPath,
@@ -107,6 +107,177 @@ type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<unknown>;
 const SERVICE_ROUTE_CATEGORIES: Set<string> = new Set(
   Object.values(ServiceCategoryPlural)
 );
+
+// Index/entity types whose link is a standard entity-details path, mapped to the
+// EntityType passed to getEntityDetailsPath.
+const ENTITY_DETAILS_PATH_TYPE_MAP: Record<string, EntityType> = {
+  [EntityType.TOPIC]: EntityType.TOPIC,
+  [EntityType.DASHBOARD]: EntityType.DASHBOARD,
+  [EntityType.CHART]: EntityType.CHART,
+  [EntityType.PIPELINE]: EntityType.PIPELINE,
+  [EntityType.DATABASE]: EntityType.DATABASE,
+  [EntityType.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
+  [EntityType.MLMODEL]: EntityType.MLMODEL,
+  [EntityType.CONTAINER]: EntityType.CONTAINER,
+  [EntityType.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
+  [EntityType.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
+  [EntityType.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+  [EntityType.API_COLLECTION]: EntityType.API_COLLECTION,
+  [EntityType.API_ENDPOINT]: EntityType.API_ENDPOINT,
+  [EntityType.METRIC]: EntityType.METRIC,
+  [EntityType.DIRECTORY]: EntityType.DIRECTORY,
+  [EntityType.FILE]: EntityType.FILE,
+  [EntityType.SPREADSHEET]: EntityType.SPREADSHEET,
+  [EntityType.WORKSHEET]: EntityType.WORKSHEET,
+};
+
+interface EntityLinkParams {
+  indexType: string;
+  fullyQualifiedName: string;
+  tab?: string;
+  subTab?: string;
+  isExecutableTestSuite?: boolean;
+  isObservabilityAlert?: boolean;
+  serviceFqn?: string;
+  serviceRouteCategory?: string;
+}
+
+const glossaryLinkHandler = ({
+  fullyQualifiedName,
+  tab,
+  subTab,
+}: EntityLinkParams) =>
+  getGlossaryTermDetailsPath(fullyQualifiedName, tab, subTab);
+
+const serviceLinkHandler = ({
+  fullyQualifiedName,
+  indexType,
+}: EntityLinkParams) =>
+  getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
+
+// Index/entity types whose link needs a dedicated builder.
+const ENTITY_LINK_HANDLERS: Record<
+  string,
+  (params: EntityLinkParams) => string
+> = {
+  [EntityType.GLOSSARY]: glossaryLinkHandler,
+  [EntityType.GLOSSARY_TERM]: glossaryLinkHandler,
+  [EntityType.DATABASE_SERVICE]: serviceLinkHandler,
+  [EntityType.DASHBOARD_SERVICE]: serviceLinkHandler,
+  [EntityType.MESSAGING_SERVICE]: serviceLinkHandler,
+  [EntityType.PIPELINE_SERVICE]: serviceLinkHandler,
+  [EntityType.MLMODEL_SERVICE]: serviceLinkHandler,
+  [EntityType.METADATA_SERVICE]: serviceLinkHandler,
+  [EntityType.STORAGE_SERVICE]: serviceLinkHandler,
+  [EntityType.SEARCH_SERVICE]: serviceLinkHandler,
+  [EntityType.API_SERVICE]: serviceLinkHandler,
+  [EntityType.DRIVE_SERVICE]: serviceLinkHandler,
+  [EntityType.SECURITY_SERVICE]: serviceLinkHandler,
+  [EntityType.WEBHOOK]: ({ fullyQualifiedName }) =>
+    getEditWebhookPath(fullyQualifiedName),
+  [EntityType.TYPE]: ({ fullyQualifiedName }) =>
+    getSettingPath(
+      GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+      `${fullyQualifiedName}s`
+    ),
+  [EntityType.TAG]: ({ fullyQualifiedName, tab, subTab }) =>
+    getClassificationTagPath(fullyQualifiedName, tab, subTab),
+  [EntityType.CLASSIFICATION]: ({ fullyQualifiedName }) =>
+    getTagsDetailsPath(fullyQualifiedName),
+  [EntityType.TEST_CASE]: ({ fullyQualifiedName }) =>
+    getTestCaseDetailPagePath(fullyQualifiedName),
+  [EntityType.TEST_SUITE]: ({ fullyQualifiedName, isExecutableTestSuite }) =>
+    getTestSuiteDetailsPath({ isExecutableTestSuite, fullyQualifiedName }),
+  [EntityType.DOMAIN]: ({ fullyQualifiedName, tab, subTab }) =>
+    getDomainDetailsPath(fullyQualifiedName, tab, subTab),
+  [EntityType.DATA_PRODUCT]: ({ fullyQualifiedName, tab, subTab }) =>
+    getDataProductDetailsPath(fullyQualifiedName, tab, subTab),
+  [EntityType.APPLICATION]: ({ fullyQualifiedName }) =>
+    getApplicationDetailsPath(fullyQualifiedName),
+  [EntityType.USER]: ({ fullyQualifiedName, tab, subTab }) =>
+    getUserPath(fullyQualifiedName, tab, subTab),
+  [EntityType.TEAM]: ({ fullyQualifiedName }) =>
+    getTeamsWithFqnPath(fullyQualifiedName),
+  [EntityType.EVENT_SUBSCRIPTION]: ({
+    fullyQualifiedName,
+    isObservabilityAlert,
+  }) =>
+    isObservabilityAlert
+      ? getObservabilityAlertDetailsPath(fullyQualifiedName)
+      : getNotificationAlertDetailsPath(fullyQualifiedName),
+  [EntityType.ROLE]: ({ fullyQualifiedName }) =>
+    getRoleWithFqnPath(fullyQualifiedName),
+  [EntityType.POLICY]: ({ fullyQualifiedName }) =>
+    getPolicyWithFqnPath(fullyQualifiedName),
+  [EntityType.PERSONA]: ({ fullyQualifiedName }) =>
+    getPersonaDetailsPath(fullyQualifiedName),
+  [EntityType.BOT]: ({ fullyQualifiedName }) => getBotsPath(fullyQualifiedName),
+  [EntityType.KPI]: ({ fullyQualifiedName }) => getKpiPath(fullyQualifiedName),
+  [EntityType.KNOWLEDGE_PAGE]: ({ fullyQualifiedName, tab, subTab }) =>
+    getKnowledgePagePath(fullyQualifiedName, tab, subTab),
+  // No standalone detail page for a pipeline: route to the owning service's agents
+  // tab. Callers without service context (prepareFeedLink) and unrecognised
+  // categories fall back to the table-details default.
+  [EntityType.INGESTION_PIPELINE]: ({
+    serviceFqn,
+    serviceRouteCategory,
+    fullyQualifiedName,
+    tab,
+    subTab,
+  }) =>
+    serviceFqn && serviceRouteCategory
+      ? getServiceDetailsPath(
+          serviceFqn,
+          serviceRouteCategory,
+          EntityTabs.AGENTS
+        )
+      : getEntityDetailsPath(EntityType.TABLE, fullyQualifiedName, tab, subTab),
+};
+
+const RESOURCE_ENTITY_BY_TYPE: Record<string, ResourceEntity> = {
+  [EntityType.TABLE]: ResourceEntity.TABLE,
+  [EntityType.TOPIC]: ResourceEntity.TOPIC,
+  [EntityType.DASHBOARD]: ResourceEntity.DASHBOARD,
+  [EntityType.CHART]: ResourceEntity.CHART,
+  [EntityType.PIPELINE]: ResourceEntity.PIPELINE,
+  [EntityType.MLMODEL]: ResourceEntity.ML_MODEL,
+  [EntityType.CONTAINER]: ResourceEntity.CONTAINER,
+  [EntityType.SEARCH_INDEX]: ResourceEntity.SEARCH_INDEX,
+  [EntityType.DASHBOARD_DATA_MODEL]: ResourceEntity.DASHBOARD_DATA_MODEL,
+  [EntityType.STORED_PROCEDURE]: ResourceEntity.STORED_PROCEDURE,
+  [EntityType.DATABASE]: ResourceEntity.DATABASE,
+  [EntityType.DATABASE_SCHEMA]: ResourceEntity.DATABASE_SCHEMA,
+  [EntityType.GLOSSARY_TERM]: ResourceEntity.GLOSSARY_TERM,
+  [EntityType.DATA_PRODUCT]: ResourceEntity.DATA_PRODUCT,
+  [EntityType.API_COLLECTION]: ResourceEntity.API_COLLECTION,
+  [EntityType.API_ENDPOINT]: ResourceEntity.API_ENDPOINT,
+  [EntityType.METRIC]: ResourceEntity.METRIC,
+  [EntityType.DIRECTORY]: ResourceEntity.DRIVE_SERVICE,
+  [EntityType.FILE]: ResourceEntity.FILE,
+  [EntityType.SPREADSHEET]: ResourceEntity.SPREADSHEET,
+  [EntityType.WORKSHEET]: ResourceEntity.WORKSHEET,
+  [EntityType.KNOWLEDGE_PAGE]: ResourceEntity.KNOWLEDGE_PAGE,
+  'knowledge-center': ResourceEntity.KNOWLEDGE_PAGE,
+};
+
+// Number of leading FQN parts that make up the parent entity FQN for a given type;
+// anything beyond that is the column FQN.
+const FQN_PARENT_LEVEL_BY_TYPE: Record<string, number> = {
+  [EntityType.TABLE]: 4,
+  [EntityType.STORED_PROCEDURE]: 4,
+  [EntityType.API_ENDPOINT]: 3,
+  [EntityType.DATABASE_SCHEMA]: 3,
+  [EntityType.DASHBOARD_DATA_MODEL]: 3,
+  [EntityType.TOPIC]: 2,
+  [EntityType.SEARCH_INDEX]: 2,
+  [EntityType.METRIC]: 2,
+  [EntityType.WORKSHEET]: 2,
+  [EntityType.PIPELINE]: 2,
+  [EntityType.DASHBOARD]: 2,
+  [EntityType.MLMODEL]: 2,
+  [EntityType.CHART]: 2,
+  [EntityType.DATABASE]: 2,
+};
 
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;
@@ -232,264 +403,33 @@ class EntityUtilClassBase {
   ) {
     const serviceRouteCategory = this.getServiceRouteCategory(serviceCategory);
 
-    switch (indexType) {
-      case SearchIndex.TOPIC:
-      case EntityType.TOPIC:
-        return getEntityDetailsPath(
-          EntityType.TOPIC,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
+    const detailsType = ENTITY_DETAILS_PATH_TYPE_MAP[indexType];
 
-      case SearchIndex.DASHBOARD:
-      case EntityType.DASHBOARD:
-        return getEntityDetailsPath(
-          EntityType.DASHBOARD,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.CHART:
-        return getEntityDetailsPath(
-          EntityType.CHART,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case SearchIndex.PIPELINE:
-      case EntityType.PIPELINE:
-        return getEntityDetailsPath(
-          EntityType.PIPELINE,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.DATABASE:
-        return getEntityDetailsPath(
-          EntityType.DATABASE,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.DATABASE_SCHEMA:
-        return getEntityDetailsPath(
-          EntityType.DATABASE_SCHEMA,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.GLOSSARY:
-      case SearchIndex.GLOSSARY:
-      case EntityType.GLOSSARY_TERM:
-      case SearchIndex.GLOSSARY_TERM:
-        return getGlossaryTermDetailsPath(fullyQualifiedName, tab, subTab);
-
-      case EntityType.DATABASE_SERVICE:
-      case EntityType.DASHBOARD_SERVICE:
-      case EntityType.MESSAGING_SERVICE:
-      case EntityType.PIPELINE_SERVICE:
-      case EntityType.MLMODEL_SERVICE:
-      case EntityType.METADATA_SERVICE:
-      case EntityType.STORAGE_SERVICE:
-      case EntityType.SEARCH_SERVICE:
-      case EntityType.API_SERVICE:
-      case EntityType.DRIVE_SERVICE:
-      case EntityType.SECURITY_SERVICE:
-        return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
-
-      case EntityType.WEBHOOK:
-        return getEditWebhookPath(fullyQualifiedName);
-
-      case EntityType.TYPE:
-        return getSettingPath(
-          GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-          `${fullyQualifiedName}s`
-        );
-
-      case EntityType.MLMODEL:
-      case SearchIndex.MLMODEL:
-        return getEntityDetailsPath(
-          EntityType.MLMODEL,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.CONTAINER:
-      case SearchIndex.CONTAINER:
-        return getEntityDetailsPath(
-          EntityType.CONTAINER,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-      case SearchIndex.TAG:
-      case EntityType.TAG:
-        return getClassificationTagPath(fullyQualifiedName, tab, subTab);
-      case EntityType.CLASSIFICATION:
-        return getTagsDetailsPath(fullyQualifiedName);
-
-      case SearchIndex.DASHBOARD_DATA_MODEL:
-      case EntityType.DASHBOARD_DATA_MODEL:
-        return getEntityDetailsPath(
-          EntityType.DASHBOARD_DATA_MODEL,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case SearchIndex.STORED_PROCEDURE:
-      case EntityType.STORED_PROCEDURE:
-        return getEntityDetailsPath(
-          EntityType.STORED_PROCEDURE,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.TEST_CASE:
-        return getTestCaseDetailPagePath(fullyQualifiedName);
-
-      case EntityType.TEST_SUITE:
-        return getTestSuiteDetailsPath({
-          isExecutableTestSuite,
-          fullyQualifiedName,
-        });
-
-      case EntityType.SEARCH_INDEX:
-      case SearchIndex.SEARCH_INDEX:
-        return getEntityDetailsPath(
-          EntityType.SEARCH_INDEX,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.DOMAIN:
-      case SearchIndex.DOMAIN:
-        return getDomainDetailsPath(fullyQualifiedName, tab, subTab);
-
-      case EntityType.DATA_PRODUCT:
-      case SearchIndex.DATA_PRODUCT:
-        return getDataProductDetailsPath(fullyQualifiedName, tab, subTab);
-      case EntityType.APPLICATION:
-        return getApplicationDetailsPath(fullyQualifiedName);
-
-      case EntityType.USER:
-      case SearchIndex.USER:
-        return getUserPath(fullyQualifiedName, tab, subTab);
-
-      case EntityType.TEAM:
-      case SearchIndex.TEAM:
-        return getTeamsWithFqnPath(fullyQualifiedName);
-
-      case EntityType.EVENT_SUBSCRIPTION:
-        return isObservabilityAlert
-          ? getObservabilityAlertDetailsPath(fullyQualifiedName)
-          : getNotificationAlertDetailsPath(fullyQualifiedName);
-
-      case EntityType.ROLE:
-        return getRoleWithFqnPath(fullyQualifiedName);
-
-      case EntityType.POLICY:
-        return getPolicyWithFqnPath(fullyQualifiedName);
-
-      case EntityType.PERSONA:
-        return getPersonaDetailsPath(fullyQualifiedName);
-
-      case SearchIndex.API_COLLECTION:
-      case EntityType.API_COLLECTION:
-        return getEntityDetailsPath(
-          EntityType.API_COLLECTION,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case SearchIndex.API_ENDPOINT:
-      case EntityType.API_ENDPOINT:
-        return getEntityDetailsPath(
-          EntityType.API_ENDPOINT,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-      case SearchIndex.METRIC:
-      case EntityType.METRIC:
-        return getEntityDetailsPath(
-          EntityType.METRIC,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-      case EntityType.DIRECTORY:
-        return getEntityDetailsPath(
-          EntityType.DIRECTORY,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-      case EntityType.FILE:
-        return getEntityDetailsPath(
-          EntityType.FILE,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-      case EntityType.SPREADSHEET:
-        return getEntityDetailsPath(
-          EntityType.SPREADSHEET,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-      case EntityType.WORKSHEET:
-        return getEntityDetailsPath(
-          EntityType.WORKSHEET,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
-
-      case EntityType.BOT:
-        return getBotsPath(fullyQualifiedName);
-
-      case EntityType.KPI:
-        return getKpiPath(fullyQualifiedName);
-
-      case EntityType.KNOWLEDGE_PAGE:
-        return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
-
-      case EntityType.INGESTION_PIPELINE:
-        // No standalone detail page for a pipeline: route to the owning service's agents
-        // tab. Callers without service context (prepareFeedLink) and unrecognised
-        // categories must fall through, or the URL matches no route.
-        if (serviceFqn && serviceRouteCategory) {
-          return getServiceDetailsPath(
-            serviceFqn,
-            serviceRouteCategory,
-            EntityTabs.AGENTS
-          );
-        }
-
-      // falls through
-
-      case SearchIndex.TABLE:
-      case EntityType.TABLE:
-      default:
-        return getEntityDetailsPath(
-          EntityType.TABLE,
-          fullyQualifiedName,
-          tab,
-          subTab
-        );
+    if (detailsType) {
+      return getEntityDetailsPath(detailsType, fullyQualifiedName, tab, subTab);
     }
+
+    const handler = getOwnHandler(ENTITY_LINK_HANDLERS, indexType);
+
+    if (handler) {
+      return handler({
+        indexType,
+        fullyQualifiedName,
+        tab,
+        subTab,
+        isExecutableTestSuite,
+        isObservabilityAlert,
+        serviceFqn,
+        serviceRouteCategory,
+      });
+    }
+
+    return getEntityDetailsPath(
+      EntityType.TABLE,
+      fullyQualifiedName,
+      tab,
+      subTab
+    );
   }
 
   public getEntityPatchAPI(entityType: EntityType): PatchAPIFunction {
@@ -517,79 +457,7 @@ class EntityUtilClassBase {
   }
 
   public getResourceEntityFromEntityType(entityType: string): string {
-    switch (entityType) {
-      case EntityType.TABLE: {
-        return ResourceEntity.TABLE;
-      }
-      case EntityType.TOPIC: {
-        return ResourceEntity.TOPIC;
-      }
-      case EntityType.DASHBOARD: {
-        return ResourceEntity.DASHBOARD;
-      }
-      case EntityType.CHART: {
-        return ResourceEntity.CHART;
-      }
-      case EntityType.PIPELINE: {
-        return ResourceEntity.PIPELINE;
-      }
-      case EntityType.MLMODEL: {
-        return ResourceEntity.ML_MODEL;
-      }
-      case EntityType.CONTAINER: {
-        return ResourceEntity.CONTAINER;
-      }
-      case EntityType.SEARCH_INDEX: {
-        return ResourceEntity.SEARCH_INDEX;
-      }
-      case EntityType.DASHBOARD_DATA_MODEL: {
-        return ResourceEntity.DASHBOARD_DATA_MODEL;
-      }
-      case EntityType.STORED_PROCEDURE: {
-        return ResourceEntity.STORED_PROCEDURE;
-      }
-      case EntityType.DATABASE: {
-        return ResourceEntity.DATABASE;
-      }
-      case EntityType.DATABASE_SCHEMA: {
-        return ResourceEntity.DATABASE_SCHEMA;
-      }
-      case EntityType.GLOSSARY_TERM: {
-        return ResourceEntity.GLOSSARY_TERM;
-      }
-      case EntityType.DATA_PRODUCT: {
-        return ResourceEntity.DATA_PRODUCT;
-      }
-      case EntityType.API_COLLECTION: {
-        return ResourceEntity.API_COLLECTION;
-      }
-      case EntityType.API_ENDPOINT: {
-        return ResourceEntity.API_ENDPOINT;
-      }
-      case EntityType.METRIC: {
-        return ResourceEntity.METRIC;
-      }
-      case EntityType.DIRECTORY: {
-        return ResourceEntity.DRIVE_SERVICE;
-      }
-      case EntityType.FILE: {
-        return ResourceEntity.FILE;
-      }
-      case EntityType.SPREADSHEET: {
-        return ResourceEntity.SPREADSHEET;
-      }
-      case EntityType.WORKSHEET: {
-        return ResourceEntity.WORKSHEET;
-      }
-      case EntityType.KNOWLEDGE_PAGE:
-      case 'knowledge-center': {
-        return ResourceEntity.KNOWLEDGE_PAGE;
-      }
-
-      default: {
-        return ResourceEntity.TABLE;
-      }
-    }
+    return RESOURCE_ENTITY_BY_TYPE[entityType] ?? ResourceEntity.TABLE;
   }
 
   public getEntityFloatingButton(_: EntityType): FC | null {
@@ -603,55 +471,23 @@ class EntityUtilClassBase {
     if (!type) {
       return { entityFqn: fqn, columnFqn: undefined };
     }
-    const fqnParts = Fqn.split(fqn);
-    let entityFqn = fqn;
-    let columnFqn;
 
-    switch (type) {
-      case EntityType.TABLE:
-      case EntityType.STORED_PROCEDURE:
-        // Service.Database.Schema.Table
-        if (fqnParts.length > 4) {
-          entityFqn = Fqn.build(...fqnParts.slice(0, 4));
-          columnFqn = Fqn.build(...fqnParts.slice(4));
-        }
+    const parentLevel = FQN_PARENT_LEVEL_BY_TYPE[type];
 
-        break;
-
-      case EntityType.API_ENDPOINT:
-      case EntityType.DATABASE_SCHEMA:
-      case EntityType.DASHBOARD_DATA_MODEL:
-        // 3-level parent FQN (e.g. Service.Database.Schema)
-        if (fqnParts.length > 3) {
-          entityFqn = Fqn.build(...fqnParts.slice(0, 3));
-          columnFqn = Fqn.build(...fqnParts.slice(3));
-        }
-
-        break;
-
-      case EntityType.TOPIC:
-      case EntityType.SEARCH_INDEX:
-      case EntityType.METRIC:
-      case EntityType.WORKSHEET:
-      case EntityType.PIPELINE:
-      case EntityType.DASHBOARD:
-      case EntityType.MLMODEL:
-      case EntityType.CHART:
-      case EntityType.DATABASE:
-        // Service.Topic
-        if (fqnParts.length > 2) {
-          entityFqn = Fqn.build(...fqnParts.slice(0, 2));
-          columnFqn = Fqn.build(...fqnParts.slice(2));
-        }
-
-        break;
-
-      default:
-        // Default behavior if needed, or just return as is
-        break;
+    if (!parentLevel) {
+      return { entityFqn: fqn, columnFqn: undefined };
     }
 
-    return { entityFqn, columnFqn };
+    const fqnParts = Fqn.split(fqn);
+
+    if (fqnParts.length > parentLevel) {
+      return {
+        entityFqn: Fqn.build(...fqnParts.slice(0, parentLevel)),
+        columnFqn: Fqn.build(...fqnParts.slice(parentLevel)),
+      };
+    }
+
+    return { entityFqn: fqn, columnFqn: undefined };
   }
 
   public getManageExtraOptions(

@@ -25,6 +25,7 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
 } from '../../utils/common';
 import {
@@ -107,11 +108,11 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
     description: string
   ): Promise<void> {
     await page.getByTestId('edit-description').click();
+    const editor = await resolveDescriptionBox(page);
 
-    const descriptionBox = '.om-block-editor[contenteditable="true"]';
-    await page.locator(descriptionBox).first().click();
-    await page.locator(descriptionBox).first().clear();
-    await page.locator(descriptionBox).first().fill(description);
+    await editor.click();
+    await editor.clear();
+    await editor.fill(description);
 
     const patchResponse = page.waitForResponse(
       (response) =>
@@ -382,7 +383,10 @@ test.describe('Data Product Rename + Field Update Consolidation', () => {
       await searchResponse;
 
       // Click on the user in the list
-      await page.getByRole('listitem', { name: ownerDisplayName }).click();
+      await page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: ownerDisplayName })
+        .click();
 
       const patchResponse = page.waitForResponse(
         (response) =>

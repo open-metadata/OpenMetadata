@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
+import { Dispatch, SetStateAction } from 'react';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
   ContextMemory,
+  EntityReference,
+  MemoryType,
   ShareVisibility,
+  TagLabel,
 } from '../../../generated/entity/context/contextMemory';
 
 export interface CreateMemoryModalProps {
@@ -37,4 +42,72 @@ export interface MemoryFormValues {
   memory: string;
   memoryType: FormSelectItem | null;
   visibility: ShareVisibility;
+}
+
+export type TFunc = (key: string, options?: Record<string, unknown>) => string;
+
+export interface MemoryModalHeaderProps {
+  modalTitle: string;
+  memoryToEdit?: ContextMemory;
+  memorySource?: EntityReference;
+  memorySourceLink?: string;
+  t: TFunc;
+}
+
+export interface ReadOnlyBannerProps {
+  isViewOnly: boolean;
+  isOwner: boolean;
+  canDelete: boolean;
+  memoryToEdit?: ContextMemory;
+  t: TFunc;
+}
+
+export interface LinkedAssetsSectionProps {
+  isViewOnly: boolean;
+  linkedAssets: DataAssetOption[];
+  setLinkedAssets: Dispatch<SetStateAction<DataAssetOption[]>>;
+  handleAssetChange: (option?: DataAssetOption | DataAssetOption[]) => void;
+  t: TFunc;
+}
+
+export interface MemoryModalFooterProps {
+  memoryToEdit?: ContextMemory;
+  canDelete: boolean;
+  isDeleting: boolean;
+  isSubmitting: boolean;
+  handleDelete: () => void;
+  handleClose: () => void;
+  showEditButton: boolean | undefined;
+  handleSwitchToEdit: () => void;
+  showSubmitButton: boolean | undefined;
+  isSubmitDisabled: boolean;
+  submitLabel: string;
+  t: TFunc;
+}
+
+export interface SubmitMemoryFields {
+  title: string;
+  memory: string;
+  memoryTypeValue: MemoryType | undefined;
+  visibility: ShareVisibility;
+  selectedTags: TagLabel[];
+  primaryEntity: EntityReference | undefined;
+  relatedEntities: EntityReference[];
+}
+
+export interface SubmitMemoryUpdateParams extends SubmitMemoryFields {
+  memoryToEdit: ContextMemory;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  onUpdated?: () => void;
+}
+
+export interface SubmitMemoryCreateParams extends SubmitMemoryFields {
+  t: (key: string, options?: Record<string, unknown>) => string;
+  onCreated: () => void;
+}
+
+export interface MemoryFormState {
+  formValues: MemoryFormValues;
+  tags: TagLabel[];
+  assets: DataAssetOption[];
 }

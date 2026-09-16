@@ -107,34 +107,21 @@ const toRequestCategory = (category: EntityCategory): Category => {
   return requestCategory;
 };
 
-const toRequestPalette = (palette: EntityPaletteKey): PaletteKey => {
-  const requestPalette = (() => {
-    switch (palette) {
-      case EntityPaletteKey.Amber:
-        return PaletteKey.Amber;
-      case EntityPaletteKey.Blue:
-        return PaletteKey.Blue;
-      case EntityPaletteKey.Gray:
-        return PaletteKey.Gray;
-      case EntityPaletteKey.Green:
-        return PaletteKey.Green;
-      case EntityPaletteKey.Indigo:
-        return PaletteKey.Indigo;
-      case EntityPaletteKey.Pink:
-        return PaletteKey.Pink;
-      case EntityPaletteKey.Purple:
-        return PaletteKey.Purple;
-      case EntityPaletteKey.Rose:
-        return PaletteKey.Rose;
-      case EntityPaletteKey.Teal:
-        return PaletteKey.Teal;
-      case EntityPaletteKey.Violet:
-        return PaletteKey.Violet;
-    }
-  })();
-
-  return requestPalette;
+const REQUEST_PALETTE_MAP: Record<EntityPaletteKey, PaletteKey> = {
+  [EntityPaletteKey.Amber]: PaletteKey.Amber,
+  [EntityPaletteKey.Blue]: PaletteKey.Blue,
+  [EntityPaletteKey.Gray]: PaletteKey.Gray,
+  [EntityPaletteKey.Green]: PaletteKey.Green,
+  [EntityPaletteKey.Indigo]: PaletteKey.Indigo,
+  [EntityPaletteKey.Pink]: PaletteKey.Pink,
+  [EntityPaletteKey.Purple]: PaletteKey.Purple,
+  [EntityPaletteKey.Rose]: PaletteKey.Rose,
+  [EntityPaletteKey.Teal]: PaletteKey.Teal,
+  [EntityPaletteKey.Violet]: PaletteKey.Violet,
 };
+
+const toRequestPalette = (palette: EntityPaletteKey): PaletteKey =>
+  REQUEST_PALETTE_MAP[palette];
 
 const toRequestCharacteristic = (
   characteristic: EntityCharacteristic

@@ -74,6 +74,66 @@ const INITIAL_PAGE_SIZE = 15;
 const SCROLL_TRIGGER_THRESHOLD = 200;
 const LOAD_MORE_ITEM_SUFFIX = '__load_more';
 
+type ChildPagingState = Record<
+  string,
+  { offset: number; limit: number; total: number }
+>;
+
+// Derived, per-node tree-rendering flags pulled out of the `.map` callback so
+// that callback keeps only rendering branches, not these lookups too.
+const getTreeNodeMeta = (
+  node: Domain,
+  childPaging: ChildPagingState,
+  loadingChildren: Record<string, boolean>
+) => {
+  const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+  const childDomains = (node?.children as unknown as Domain[]) ?? [];
+  const childrenCount = node?.childrenCount || childDomains?.length || 0;
+  const hasChildren = childDomains?.length > 0 || childrenCount > 0;
+  const isLoading = loadingChildren?.[identifier as string] ?? false;
+  const paging = childPaging?.[identifier as string];
+  const hasMoreChildren =
+    paging != null && paging?.offset + paging?.limit < paging?.total;
+
+  return {
+    identifier,
+    childDomains,
+    childrenCount,
+    hasChildren,
+    isLoading,
+    hasMoreChildren,
+  };
+};
+
+const LoadMoreTreeItem = ({
+  identifier,
+  isLoading,
+  t,
+  onLoadMore,
+}: {
+  identifier: string;
+  isLoading: boolean;
+  t: (key: string) => string;
+  onLoadMore: (identifier: string) => void;
+}) => (
+  <Tree.Item
+    id={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+    key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+    textValue={t('label.load-more')}>
+    <Tree.ItemContent showExpandIcon={false}>
+      <button
+        className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onLoadMore(identifier);
+        }}>
+        {isLoading ? <Loader size="small" /> : t('label.load-more')}
+      </button>
+    </Tree.ItemContent>
+  </Tree.Item>
+);
+
 const DomainTreeView = ({
   searchQuery,
   filters,
@@ -791,19 +851,18 @@ const DomainTreeView = ({
   const renderTreeItems = useCallback(
     (nodes: Domain[]) => {
       return nodes.map((node) => {
-        const identifier = node?.fullyQualifiedName || node?.name || node?.id;
+        const {
+          identifier,
+          childDomains,
+          childrenCount,
+          hasChildren,
+          isLoading,
+          hasMoreChildren,
+        } = getTreeNodeMeta(node, childPaging, loadingChildren);
 
         if (!identifier) {
           return null;
         }
-
-        const childDomains = (node?.children as unknown as Domain[]) ?? [];
-        const childrenCount = node?.childrenCount || childDomains?.length || 0;
-        const hasChildren = childDomains?.length > 0 || childrenCount > 0;
-        const isLoading = loadingChildren?.[identifier] ?? false;
-        const paging = childPaging?.[identifier];
-        const hasMoreChildren =
-          paging != null && paging?.offset + paging?.limit < paging?.total;
 
         return (
           <Tree.Item
@@ -837,26 +896,12 @@ const DomainTreeView = ({
             </Tree.ItemContent>
             {childDomains.length > 0 && renderTreeItems(childDomains)}
             {hasMoreChildren && (
-              <Tree.Item
-                id={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
-                key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
-                textValue={t('label.load-more')}>
-                <Tree.ItemContent showExpandIcon={false}>
-                  <button
-                    className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      loadDomains(identifier, true);
-                    }}>
-                    {loadingChildren[identifier] ? (
-                      <Loader size="small" />
-                    ) : (
-                      t('label.load-more')
-                    )}
-                  </button>
-                </Tree.ItemContent>
-              </Tree.Item>
+              <LoadMoreTreeItem
+                identifier={identifier}
+                isLoading={isLoading}
+                t={t}
+                onLoadMore={(id) => loadDomains(id, true)}
+              />
             )}
           </Tree.Item>
         );

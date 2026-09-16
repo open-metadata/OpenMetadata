@@ -12,6 +12,7 @@
  */
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import { Owner } from '@openmetadata/ui-core-components';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -28,6 +29,7 @@ import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useOwnerDisplayProps } from '../../../hooks/useOwnerDisplayProps';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import DescriptionTaskFromTask from '../../../pages/TasksPage/shared/DescriptionTaskFromTask';
 import TagsTaskFromTask from '../../../pages/TasksPage/shared/TagsTaskFromTask';
@@ -58,9 +60,48 @@ import {
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
+
+const getTaskRowGutter = (
+  isTaskTestCaseResult: boolean,
+  isTaskApprovalRequest: boolean,
+  isTaskDescription: boolean
+): [number, number] | undefined => {
+  if (isTaskTestCaseResult || isTaskApprovalRequest) {
+    return [0, 6];
+  }
+
+  return isTaskDescription ? undefined : [0, 14];
+};
+
+const getTaskStatusIcon = (status?: TaskEntityStatus) =>
+  status === TaskEntityStatus.Open ? TaskOpenIcon : TaskCloseIcon;
+
+const getReplyCountLabelKey = (commentsCount: number) =>
+  commentsCount === 1 ? 'label.one-reply' : 'label.number-reply-plural';
+
+const getHasTaskEditAccess = ({
+  isAdminUser,
+  isTaskApprovalRequest,
+  isAssignee,
+  isPartOfAssigneeTeam,
+  isCreator,
+}: {
+  isAdminUser?: boolean;
+  isTaskApprovalRequest: boolean;
+  isAssignee?: boolean;
+  isPartOfAssigneeTeam?: boolean;
+  isCreator: boolean;
+}): boolean => {
+  const isAdminNonApproval = isAdminUser && !isTaskApprovalRequest;
+
+  return (
+    isAdminNonApproval ||
+    Boolean(isAssignee) ||
+    (Boolean(isPartOfAssigneeTeam) && !isCreator)
+  );
+};
 
 interface TaskFeedCardFromTaskProps {
   task: Task;
@@ -83,6 +124,7 @@ const TaskFeedCardFromTask = ({
 }: TaskFeedCardFromTaskProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
   const { setActiveTask, showTaskDrawer } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -269,17 +311,86 @@ const TaskFeedCardFromTask = ({
   const isPartOfAssigneeTeam = task.assignees?.some((assignee) =>
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id ?? '') : false
   );
-  const isAdminNonApproval = isAdminUser && !isTaskApprovalRequest;
-  const hasEditAccess =
-    isAdminNonApproval ||
-    isAssignee ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+  const hasEditAccess = getHasTaskEditAccess({
+    isAdminUser,
+    isTaskApprovalRequest,
+    isAssignee,
+    isPartOfAssigneeTeam,
+    isCreator,
+  });
 
   const showReplies = useCallback(() => {
     showTaskDrawer?.(task);
   }, [showTaskDrawer, task]);
 
   const commentsCount = task.comments?.length ?? 0;
+
+  // Kept as a closure so the footer's own branching (reply count, edit
+  // access, per-status action buttons) stays out of the component's own
+  // cyclomatic complexity.
+  const renderTaskFooter = () => (
+    <Col
+      className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
+      span={24}>
+      <Col className="d-flex">
+        <Col className="d-flex flex-center">
+          <ReplyIcon
+            className="m-r-xs"
+            height={20}
+            width={20}
+            onClick={showReplies}
+          />
+          {commentsCount > 0 ? (
+            <Button
+              className="posts-length m-r-xss p-0 remove-button-default-styling"
+              data-testid="replies-count"
+              type="link"
+              onClick={showReplies}>
+              {t(getReplyCountLabelKey(commentsCount), {
+                number: commentsCount,
+              })}
+            </Button>
+          ) : null}
+        </Col>
+
+        <Col
+          className={`flex items-center gap-2 text-grey-muted ${
+            commentsCount > 0 ? 'task-card-assignee' : ''
+          }`}>
+          <Owner
+            isCompactView={false}
+            owners={toOwnersWithHref(task.assignees ?? [])}
+            renderOwnerContent={renderOwnerContent}
+            showLabel={false}
+          />
+        </Col>
+      </Col>
+
+      {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
+        <Col className="d-flex gap-2">
+          {task.status === TaskEntityStatus.Open && (
+            <Button
+              className="task-card-approve-btn d-flex items-center"
+              data-testid="approve-button"
+              icon={<CheckCircleFilled />}
+              onClick={onTaskResolve}>
+              {t('label.approve')}
+            </Button>
+          )}
+          {task.status === TaskEntityStatus.Open && (
+            <Button
+              className="task-card-reject-btn d-flex items-center"
+              data-testid="reject-button"
+              icon={<CloseCircleFilled />}
+              type="default"
+              onClick={onTaskReject}>
+              {t('label.reject')}
+            </Button>
+          )}
+        </Col>
+      )}
+    </Col>
+  );
 
   return (
     <Button
@@ -293,22 +404,16 @@ const TaskFeedCardFromTask = ({
         })}
         data-testid="task-feed-card">
         <Row
-          gutter={
-            isTaskTestCaseResult || isTaskApprovalRequest
-              ? [0, 6]
-              : isTaskDescription
-              ? undefined
-              : [0, 14]
-          }>
+          gutter={getTaskRowGutter(
+            isTaskTestCaseResult,
+            isTaskApprovalRequest,
+            isTaskDescription
+          )}>
           <Col className="d-flex flex-col align-start">
             <Col>
               <Icon
                 className="m-r-xss m-t-xss text-md"
-                component={
-                  task.status === TaskEntityStatus.Open
-                    ? TaskOpenIcon
-                    : TaskCloseIcon
-                }
+                component={getTaskStatusIcon(task.status)}
                 data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
               />
               {taskLinkTitleElement}
@@ -351,71 +456,7 @@ const TaskFeedCardFromTask = ({
           {isTaskDescription && (
             <DescriptionTaskFromTask hasEditAccess={false} task={task} />
           )}
-          {!isOpenInDrawer && (
-            <Col
-              className="task-feed-card-footer  d-flex flex-wrap align-center justify-between"
-              span={24}>
-              <Col className="d-flex">
-                <Col className="d-flex flex-center">
-                  <ReplyIcon
-                    className="m-r-xs"
-                    height={20}
-                    width={20}
-                    onClick={showReplies}
-                  />
-                  {commentsCount > 0 ? (
-                    <Button
-                      className="posts-length m-r-xss p-0 remove-button-default-styling"
-                      data-testid="replies-count"
-                      type="link"
-                      onClick={showReplies}>
-                      {t(
-                        commentsCount === 1
-                          ? 'label.one-reply'
-                          : 'label.number-reply-plural',
-                        { number: commentsCount }
-                      )}
-                    </Button>
-                  ) : null}
-                </Col>
-
-                <Col
-                  className={`flex items-center gap-2 text-grey-muted ${
-                    commentsCount > 0 ? 'task-card-assignee' : ''
-                  }`}>
-                  <OwnerLabel
-                    isCompactView={false}
-                    owners={task.assignees}
-                    showLabel={false}
-                  />
-                </Col>
-              </Col>
-
-              {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-                <Col className="d-flex gap-2">
-                  {task.status === TaskEntityStatus.Open && (
-                    <Button
-                      className="task-card-approve-btn d-flex items-center"
-                      data-testid="approve-button"
-                      icon={<CheckCircleFilled />}
-                      onClick={onTaskResolve}>
-                      {t('label.approve')}
-                    </Button>
-                  )}
-                  {task.status === TaskEntityStatus.Open && (
-                    <Button
-                      className="task-card-reject-btn d-flex items-center"
-                      data-testid="reject-button"
-                      icon={<CloseCircleFilled />}
-                      type="default"
-                      onClick={onTaskReject}>
-                      {t('label.reject')}
-                    </Button>
-                  )}
-                </Col>
-              )}
-            </Col>
-          )}
+          {!isOpenInDrawer && renderTaskFooter()}
         </Row>
       </div>
     </Button>

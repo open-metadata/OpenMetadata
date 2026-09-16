@@ -443,9 +443,10 @@
               "default": false
             },
             "tokenValidity": {
-              "description": "Validity for the JWT Token created from SAML Response",
+              "description": "Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.",
               "type": "integer",
-              "default": "3600"
+              "default": 3600,
+              "minimum": 1
             },
             "sendEncryptedNameId": {
               "description": "Encrypt Name Id while sending requests from SP.",
@@ -581,9 +582,10 @@
               "default": false
             },
             "tokenValidity": {
-              "description": "Validity for the JWT Token created from SAML Response",
+              "description": "Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.",
               "type": "integer",
-              "default": "3600"
+              "default": 3600,
+              "minimum": 1
             },
             "sendEncryptedNameId": {
               "description": "Encrypt Name Id while sending requests from SP.",
@@ -714,9 +716,10 @@
           ]
         },
         "tokenValidity": {
-          "description": "Validity for the JWT Token created from SAML Response",
+          "description": "Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.",
           "type": "integer",
-          "default": "3600"
+          "default": 3600,
+          "minimum": 1
         },
         "customParams": {
           "description": "Custom Params.",
@@ -746,7 +749,8 @@
         "sessionExpiry": {
           "description": "Validity for the Session in case of confidential clients",
           "type": "integer",
-          "default": "604800"
+          "default": 604800,
+          "minimum": 3600
         }
       },
       "required": [

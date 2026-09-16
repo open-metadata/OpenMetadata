@@ -61,7 +61,15 @@ const PAGES: {
   },
   { name: 'glossary', route: '/glossary' },
   { name: 'settings', route: '/settings' },
-  { name: 'database-services', route: '/settings/services/databases' },
+  {
+    name: 'database-services',
+    route: '/settings/services/databases',
+    // The services list contains playwright-seeded services with random name
+    // suffixes (pw-database-service-<hex>), so the table body is
+    // non-deterministic run-to-run. Mask the row body; the page chrome, search,
+    // and column headers stay under test.
+    mask: ['[data-testid="services-container"] tbody'],
+  },
   { name: 'data-quality', route: '/data-quality' },
   {
     name: 'incident-manager',
@@ -72,7 +80,15 @@ const PAGES: {
     maskColor: '#ffffff',
   },
   { name: 'users', route: '/settings/members/users' },
-  { name: 'teams', route: '/settings/members/teams' },
+  {
+    name: 'teams',
+    route: '/settings/members/teams',
+    // The Organization team list includes playwright-seeded teams with random
+    // name suffixes (PW Data Consumer Team <hex>), so the table body is
+    // non-deterministic run-to-run. Mask the row body; the org header (owners,
+    // description), tabs, search, and column headers stay under test.
+    mask: ['[data-testid="team-hierarchy-table"] tbody'],
+  },
   // 'roles' intentionally omitted: the roles listing renders seeded roles
   // with per-run random names, so it is non-deterministic run-to-run in CI
   // (no committed baseline can be stable). Re-add with a dedicated

@@ -134,6 +134,7 @@ jest.mock('../../../common/IconButtons/EditIconButton', () => ({
 
 jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
+  getGlossaryTermsByIds: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../../../rest/ontologyAPI', () => ({

@@ -487,7 +487,14 @@ const NavBar = () => {
   );
 
   const showAllDomains = !isDomainRestricted;
-  const isSingleDomainUser = isDomainRestricted && userDomains.length === 1;
+  const isSingleDomainUser = useMemo(
+    () => isDomainRestricted && userDomains.length === 1,
+    [isDomainRestricted, userDomains]
+  );
+  const restrictedDomains = useMemo(
+    () => (isDomainRestricted ? userDomains : undefined),
+    [isDomainRestricted, userDomains]
+  );
 
   const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
     await localUtilClassBase.loadLocales(key);
@@ -499,26 +506,55 @@ const NavBar = () => {
     ? upperCase(i18n.language.split('-')[0])
     : '';
 
+  const headerStyle = useMemo(
+    () =>
+      isDataMarketplacePage
+        ? {
+            background: 'transparent',
+            marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+            position: 'relative' as const,
+            zIndex: 10,
+          }
+        : undefined,
+    [isDataMarketplacePage]
+  );
+
+  const sidebarTooltipTitle = useMemo(
+    () => (isSidebarCollapsed ? t('label.expand') : t('label.collapse')),
+    [isSidebarCollapsed, t]
+  );
+
+  const versionMismatchAlert = useMemo(
+    () =>
+      showVersionMissMatchAlert ? (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                navigate(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={<RefreshIcon />}
+          message="A new version is available"
+          type="info"
+        />
+      ) : null,
+    [showVersionMissMatchAlert, navigate, t]
+  );
+
   return (
     <>
-      <Header
-        style={
-          isDataMarketplacePage
-            ? {
-                background: 'transparent',
-                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
-                position: 'relative' as const,
-                zIndex: 10,
-              }
-            : undefined
-        }>
+      <Header style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip
-              placement="right"
-              title={
-                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
-              }>
+            <Tooltip placement="right" title={sidebarTooltipTitle}>
               <Button
                 className="w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
@@ -548,9 +584,7 @@ const NavBar = () => {
                       setIsDomainDropdownOpen(open);
                     },
                   }}
-                  restrictedDomains={
-                    isDomainRestricted ? userDomains : undefined
-                  }
+                  restrictedDomains={restrictedDomains}
                   selectedDomain={activeDomainEntityRef}
                   showAllDomains={showAllDomains}
                   wrapInButton={false}
@@ -661,26 +695,7 @@ const NavBar = () => {
           </div>
         </div>
       </Header>
-      {showVersionMissMatchAlert && (
-        <Alert
-          showIcon
-          action={
-            <Button
-              size="small"
-              type="link"
-              onClick={() => {
-                navigate(0);
-              }}>
-              {t('label.refresh')}
-            </Button>
-          }
-          className="refresh-alert slide-in-top"
-          description="For a seamless experience recommend you to refresh the page"
-          icon={<RefreshIcon />}
-          message="A new version is available"
-          type="info"
-        />
-      )}
+      {versionMismatchAlert}
       {renderAlertCards}
     </>
   );

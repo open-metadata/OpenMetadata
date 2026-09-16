@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-import { Key01, ShieldTick, User01 } from '@untitledui/icons';
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
+import type { Key } from 'react';
 import React, { FC } from 'react';
 import { User } from '../../../../generated/entity/teams/user';
 import AccessTokenPanel from './components/AccessTokenPanel';
+import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
 import PermissionsTab from './tabs/PermissionsTab';
 
@@ -22,22 +25,38 @@ export type ProfileNavId =
   | 'profile'
   | 'permissions'
   | 'access-token'
-  | 'my-connections';
+  | 'my-connections'
+  | 'custom-properties';
 
-/** The two sidebar groups. Each maps to an uppercase header + breadcrumb root. */
-export type ProfileNavGroup = 'account' | 'credentials';
+/** The sidebar groups. Each maps to an uppercase header + breadcrumb root. */
+export type ProfileNavGroup = 'account' | 'workspace' | 'credentials';
 
 /** Translation key for each group's sidebar header + breadcrumb root. */
 export const PROFILE_NAV_GROUP_LABEL: Record<ProfileNavGroup, string> = {
   account: 'label.account',
+  workspace: 'label.workspace',
   credentials: 'label.credential-plural',
 };
 
 /** Group render order in the sidebar. */
 export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
   'account',
+  'workspace',
   'credentials',
 ];
+
+/**
+ * Dynamic overrides a panel can push up to ProfilePage so ProfileContentHeader
+ * can reflect the panel's internal state (e.g. multi-level breadcrumbs).
+ */
+export type HeaderOverride = {
+  title?: string;
+  description?: string;
+  breadcrumbs?: BreadcrumbItemType[];
+  onBreadcrumbAction?: (id: Key) => void;
+  iconNode?: React.ReactNode;
+  actions?: React.ReactNode;
+};
 
 /**
  * Context handed to each nav item's `render`. Mirrors the data ProfilePage
@@ -48,6 +67,12 @@ export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  /**
+   * Call this to push dynamic header state (breadcrumbs, icon, actions) up to
+   * ProfilePage so it can update ProfileContentHeader without the panel needing
+   * to render its own header.
+   */
+  onHeaderChange: (overrides: HeaderOverride) => void;
 }
 
 export interface ProfileNavItem {
@@ -60,6 +85,12 @@ export interface ProfileNavItem {
   description: string;
   icon: FC<{ className?: string }>;
   render: (ctx: ProfileNavRenderContext) => React.ReactNode;
+  /**
+   * When true, ProfilePage skips the standard content scroll wrapper
+   * (`overflow-y-auto p-8`) and lets the panel manage its own layout.
+   * The header is still rendered by ProfilePage.
+   */
+  selfContainedLayout?: boolean;
 }
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
@@ -103,6 +134,20 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
   // The "My Connections" tab is contributed by the Query Runner plugin through
   // the `profile.tabs` extension point (see ProfilePage), so the app-mode
   // profile works standalone in OSS when the plugin is absent.
+];
+
+export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
+  {
+    id: 'custom-properties',
+    group: 'workspace',
+    label: 'label.custom-property-plural',
+    description: 'message.custom-properties-settings-description',
+    icon: Settings02 as FC<{ className?: string }>,
+    selfContainedLayout: true,
+    render: ({ onHeaderChange }) => (
+      <CustomPropertiesPanel onHeaderChange={onHeaderChange} />
+    ),
+  },
 ];
 
 export const getProfileNavItem = (id: ProfileNavId): ProfileNavItem =>
