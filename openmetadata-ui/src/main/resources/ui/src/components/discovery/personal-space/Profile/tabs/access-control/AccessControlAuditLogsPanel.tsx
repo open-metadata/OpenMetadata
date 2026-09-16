@@ -28,7 +28,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchLg, XClose } from '@untitledui/icons';
-import type { DateValue } from 'react-aria-components';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
@@ -39,6 +38,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import type { DateValue } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../../../../../assets/svg/ic-download.svg';
 import AuditLogList from '../../../../../../components/AuditLog/AuditLogList.component';
@@ -78,6 +78,38 @@ import AccessControlAuditLogFilters from './AccessControlAuditLogFilters';
 const INITIAL_PAGING: Paging = {
   total: 0,
 };
+
+async function walkToPageCursor(
+  startCursor: string,
+  startPage: number,
+  targetPage: number,
+  pageSize: number,
+  searchTerm: string,
+  filterParams: Partial<AuditLogListParams>
+): Promise<{
+  cursor: string | undefined;
+  discoveredCursors: Record<number, string>;
+}> {
+  let p = startPage;
+  let cursor: string | undefined = startCursor;
+  const discoveredCursors: Record<number, string> = {};
+
+  while (p < targetPage - 1 && cursor) {
+    const response: AuditLogListResponse = await getAuditLogs({
+      limit: pageSize,
+      after: cursor,
+      q: searchTerm || undefined,
+      ...filterParams,
+    });
+    p++;
+    cursor = response.paging?.after;
+    if (cursor) {
+      discoveredCursors[p] = cursor;
+    }
+  }
+
+  return { cursor, discoveredCursors };
+}
 
 interface AccessControlAuditLogsPanelProps {
   /** Callback to inject action buttons into the page header. */
@@ -265,25 +297,16 @@ const AccessControlAuditLogsPanel: React.FC<
 
       setIsLoading(true);
       try {
-        let p = startPage;
-        let cursor: string | undefined = startCursor;
+        const { cursor, discoveredCursors } = await walkToPageCursor(
+          startCursor,
+          startPage,
+          newPage,
+          pageSize,
+          searchTermRef.current,
+          filterParamsRef.current
+        );
+        Object.assign(pageCursorsRef.current, discoveredCursors);
 
-        // Walk through intermediate pages without updating the UI
-        while (p < newPage - 1 && cursor) {
-          const response: AuditLogListResponse = await getAuditLogs({
-            limit: pageSize,
-            after: cursor,
-            q: searchTermRef.current || undefined,
-            ...filterParamsRef.current,
-          });
-          p++;
-          cursor = response.paging?.after;
-          if (cursor) {
-            pageCursorsRef.current[p] = cursor;
-          }
-        }
-
-        // Fetch and display the target page
         if (cursor) {
           const response: AuditLogListResponse = await getAuditLogs({
             limit: pageSize,

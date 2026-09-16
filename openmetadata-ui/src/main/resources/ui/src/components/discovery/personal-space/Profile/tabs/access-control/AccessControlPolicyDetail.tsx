@@ -246,7 +246,9 @@ const RuleCard: FC<RuleCardProps> = ({
   onEdit,
 }) => {
   const effectClass =
-    rule.effect === Effect.Allow ? 'tw:text-success-primary' : 'tw:text-error-primary';
+    rule.effect === Effect.Allow
+      ? 'tw:text-success-primary'
+      : 'tw:text-error-primary';
 
   return (
     <Box

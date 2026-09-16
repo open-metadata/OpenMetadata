@@ -14,14 +14,14 @@
 import {
   Autocomplete,
   Box,
-  HintText,
   Button,
   FieldProp,
   FieldTypes,
   FormField,
   FormFields,
-  HookForm,
   FormItemLabel,
+  HintText,
+  HookForm,
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -227,8 +227,8 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
                   )}
                 </Autocomplete>
                 {fieldState.error?.message && (
-                <HintText isInvalid>{fieldState.error.message}</HintText>
-              )}
+                  <HintText isInvalid>{fieldState.error.message}</HintText>
+                )}
               </Box>
             )}
           </FormField>

@@ -465,7 +465,9 @@ const AccessControlDebuggerPanel: FC = () => {
                     )}
                   </Select>
                   {formErrors.resource && (
-                    <Typography className="tw:text-error-primary" size="text-xs">
+                    <Typography
+                      className="tw:text-error-primary"
+                      size="text-xs">
                       {formErrors.resource}
                     </Typography>
                   )}
@@ -495,7 +497,9 @@ const AccessControlDebuggerPanel: FC = () => {
                     )}
                   </Select>
                   {formErrors.operation && (
-                    <Typography className="tw:text-error-primary" size="text-xs">
+                    <Typography
+                      className="tw:text-error-primary"
+                      size="text-xs">
                       {formErrors.operation}
                     </Typography>
                   )}
