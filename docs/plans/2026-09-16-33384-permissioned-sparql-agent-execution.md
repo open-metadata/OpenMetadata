@@ -278,33 +278,35 @@ internals). Shared HTTP statuses must not collapse distinct machine-readable cod
 - Open companion **draft** PR linking #33384, ai-platform #1299, epic #224, design PR #1310
   with exact verification results and any checks not run. Human merge only.
 
-## 4. Acceptance mapping (from #33384 — all must be demonstrably met)
+## 4. Acceptance mapping (from #33384 — all must be demonstrably met; see §7 for evidence)
 
-- [ ] Schemas + OpenAPI published for `KnowledgeGraphApi.executeQuery` (Steps 2, 6)
-- [ ] Permitted ordinary caller executes; unauthorized rejected (Step 4)
-- [ ] Bot-JWT + `X-Impersonate-User` tests: effective-user authz, per-user concurrency,
-      dual audit attribution, untrusted rejection (Step 4)
-- [ ] Pre-resource failures (missing/invalid JWT, nonexistent/denied/non-bot impersonation,
-      malformed body) return stable §2.5 codes via actual HTTP, other endpoints unchanged
-      (Steps 4, 6)
-- [ ] Admin/UI regression coverage, backward-compatible (Step 6)
-- [ ] Parsed-query rejection incl. nested forms (Step 3)
-- [ ] Fixture tests: empty, joins, aggregates, typed bindings (Step 6)
-- [ ] Boundaries: LIMIT 10, 1000-vs-1001, over-max, OFFSET, subquery limits, output
-      exhaustion without partial JSON (Step 5)
-- [ ] Timeout/capacity/unavailable/incompatible/failure + stable codes (Step 5)
-- [ ] Submitted-vs-protective limit distinction preserved through the shared service;
-      bounded serialization implemented below the endpoint wrapper (Steps 4–5)
-- [ ] Docs: fixed server-controlled dataset, no graph selection, inference `none`,
-      conservative readiness (not snapshot consistency), permission, NO persona/asset-level
-      authz (Step 6)
-- [ ] Readiness: non-READY → 503 `PROJECTION_NOT_READY`, post-execution re-check discards
-      results, repository unavailability distinct (Step 4)
-- [ ] Leakage tests stay conditional on #33224 — out of scope here
-- [ ] Wire contract + limitation in an OM decision record (Step 1)
-- [ ] Draft PR with links + exact verification (Step 6)
+- [x] Schemas + OpenAPI published for `KnowledgeGraphApi.executeQuery` (Steps 2, 6;
+  TS types via the `typescript-type-generation` workflow, pending bot commit)
+- [x] Permitted ordinary caller executes; unauthorized rejected (Step 4)
+- [x] Bot-JWT + `X-Impersonate-User` tests: effective-user authz, per-user concurrency,
+  dual audit attribution, untrusted rejection (Step 4)
+- [x] Pre-resource failures (missing/invalid JWT, nonexistent/denied/non-bot impersonation,
+  malformed body) return stable §2.5 codes via actual HTTP, other endpoints unchanged
+  (Steps 4, 6)
+- [x] Admin/UI regression coverage, backward-compatible (Step 6; one baseline-reproduced
+  error — `RdfResourceIT.testForeignKeyReferencesInRdf` fails identically on clean main)
+- [x] Parsed-query rejection incl. nested forms (Step 3)
+- [x] Fixture tests: empty, joins, aggregates, typed bindings (Step 6)
+- [x] Boundaries: LIMIT 10, 1000-vs-1001, over-max, OFFSET, subquery limits, output
+  exhaustion without partial JSON (Step 5)
+- [x] Timeout/capacity/unavailable/incompatible/failure + stable codes (Step 5)
+- [x] Submitted-vs-protective limit distinction preserved through the shared service;
+  serialized size checked before headers commit, memory not bounded per ADR §5 (Steps 4–5)
+- [x] Docs: fixed server-controlled dataset, no graph selection, inference `none`,
+  conservative readiness (not snapshot consistency), permission, NO persona/asset-level
+  authz (Step 6)
+- [x] Readiness: non-READY → 503 `PROJECTION_NOT_READY`, post-execution re-check discards
+  results, repository unavailability distinct (Step 4)
+- [x] Leakage tests stay conditional on #33224 — out of scope here
+- [x] Wire contract + limitation in an OM decision record (Step 1)
+- [x] Draft PR with links + exact verification (Step 6; #33428, draft)
 
-## 5. Verification commands (planned, not yet run)
+## 5. Verification commands (original plan; executed variants with results are in §7)
 
 ```bash
 mvn spotless:apply && mvn spotless:check && git diff --check
