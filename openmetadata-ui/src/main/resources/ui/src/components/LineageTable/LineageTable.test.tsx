@@ -1138,4 +1138,98 @@ describe('LineageTable', () => {
       });
     });
   });
+
+  describe('pagination reset on filter/search change', () => {
+    // Helper: read the latest props object passed to the (mocked)
+    // CustomControlsComponent across all re-renders.
+    const getCustomControlsProps = () => {
+      const calls = (CustomControlsComponent as unknown as jest.Mock).mock
+        .calls;
+
+      return calls[calls.length - 1][0] as {
+        onSearchValueChange?: (value: string) => void;
+        onPageReset?: () => void;
+      };
+    };
+
+    it('resets currentPage to 1 and forwards the term when the search value changes', () => {
+      const handlePageChange = jest.fn();
+      const setSearchValue = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 3,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+        searchValue: '',
+        setSearchValue,
+      });
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      const { onSearchValueChange } = getCustomControlsProps();
+      onSearchValueChange?.('narrow');
+
+      // The page must be reset before the new search term is committed, so the
+      // next fetch/slice for the narrowed set starts at page 1 (from = 0).
+      expect(handlePageChange).toHaveBeenCalledWith(1);
+      expect(setSearchValue).toHaveBeenCalledWith('narrow');
+    });
+
+    it('resets currentPage to 1 when the search value changes in column-level mode', () => {
+      const handlePageChange = jest.fn();
+      const setSearchValue = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 3,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.ColumnLevel,
+        searchValue: '',
+        setSearchValue,
+      });
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      const { onSearchValueChange } = getCustomControlsProps();
+      onSearchValueChange?.('column-term');
+
+      expect(handlePageChange).toHaveBeenCalledWith(1);
+      expect(setSearchValue).toHaveBeenCalledWith('column-term');
+    });
+
+    it('passes a page-reset handler for quick filter changes that resets currentPage to 1', () => {
+      const handlePageChange = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 3,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      const { onPageReset } = getCustomControlsProps();
+
+      expect(onPageReset).toEqual(expect.any(Function));
+
+      onPageReset?.();
+
+      expect(handlePageChange).toHaveBeenCalledWith(1);
+    });
+  });
 });

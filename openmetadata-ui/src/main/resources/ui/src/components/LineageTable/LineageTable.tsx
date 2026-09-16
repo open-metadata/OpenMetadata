@@ -17,6 +17,7 @@ import {
   ButtonGroupItem,
   Card,
   Dropdown,
+  Owner,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -52,6 +53,7 @@ import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
+import { useOwnerDisplayProps } from '../../hooks/useOwnerDisplayProps';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -78,7 +80,6 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
 import TableV2 from '../common/Table/TableV2';
@@ -114,6 +115,7 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
+  const { toOwnersWithHref, renderOwnerContent } = useOwnerDisplayProps();
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -214,6 +216,22 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       (prev ?? []).map((filter) => ({ ...filter, value: [] }))
     );
   }, [setSelectedQuickFilters]);
+
+  // Any narrowing/widening of the result set (search term or quick filter)
+  // must re-fetch starting from page 1 of the new set, otherwise a stale
+  // `currentPage` can request a `from` offset past the narrowed result count
+  // and render an empty table (with no pager at the default page size).
+  const handlePageReset = useCallback(() => {
+    handlePageChange(1);
+  }, [handlePageChange]);
+
+  const handleSearchValueChange = useCallback(
+    (value: string) => {
+      handlePageReset();
+      setSearchValue(value);
+    },
+    [handlePageReset, setSearchValue]
+  );
 
   const { upstreamCount, downstreamCount, pagingTotal } = useMemo(() => {
     if (impactLevel === EImpactLevel.ColumnLevel) {
@@ -668,7 +686,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         nodeDepthOptions={nodeDepthOptions}
         queryFilterNodeIds={filterNodeIds}
         searchValue={searchValue}
-        onSearchValueChange={setSearchValue}
+        onPageReset={handlePageReset}
+        onSearchValueChange={handleSearchValueChange}
       />
     );
   }, [
@@ -677,6 +696,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     nodeDepthOptions,
     filterNodeIds,
     impactLevel,
+    handleSearchValueChange,
+    handlePageReset,
   ]);
 
   // Render function for column names with search highlighting and popover
@@ -745,7 +766,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <OwnerLabel isCompactView={false} owners={owners} showLabel={false} />
+          <Owner
+            isCompactView={false}
+            owners={toOwnersWithHref(owners)}
+            renderOwnerContent={renderOwnerContent}
+            showLabel={false}
+          />
         ),
       },
       {
@@ -774,7 +800,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ) : (
             <TableTags
               isReadOnly
-              newLook
               entityFqn=""
               entityType={record.entityType as EntityType}
               handleTagSelection={() => Promise.resolve()}
@@ -801,7 +826,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ) : (
             <TableTags
               isReadOnly
-              newLook
               entityFqn=""
               entityType={record.entityType as EntityType}
               handleTagSelection={() => Promise.resolve()}

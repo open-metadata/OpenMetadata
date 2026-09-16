@@ -42,6 +42,7 @@ import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.DataQualityDimension;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
@@ -61,6 +62,9 @@ import org.openmetadata.service.util.jdbi.BindListFQN;
 public interface TimeSeriesDAOs {
   @CreateSqlObject
   TestDefinitionDAO testDefinitionDAO();
+
+  @CreateSqlObject
+  DataQualityDimensionDAO dataQualityDimensionDAO();
 
   @CreateSqlObject
   TestSuiteDAO testSuiteDAO();
@@ -107,10 +111,76 @@ public interface TimeSeriesDAOs {
   @CreateSqlObject
   TestCaseDimensionResultTimeSeriesDAO testCaseDimensionResultTimeSeriesDao();
 
+  interface DataQualityDimensionDAO extends EntityDAO<DataQualityDimension> {
+    @Override
+    default String getTableName() {
+      return "data_quality_dimension";
+    }
+
+    @Override
+    default Class<DataQualityDimension> getEntityClass() {
+      return DataQualityDimension.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
     @Override
     default String getTableName() {
       return "test_definition";
+    }
+
+    /**
+     * Test definitions classified under a given data quality dimension. Filtered in SQL rather
+     * than by scanning every definition in the JVM: the dimension is a plain string inside the
+     * json document, so the alternative is materialising every test definition to inspect one
+     * field. Bounded by the number of matches, which is normally a handful.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM test_definition "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.dataQualityDimension')) = :dimensionName "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM test_definition WHERE json ->> 'dataQualityDimension' = :dimensionName "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listByDataQualityDimension(
+        @Bind("dimensionName") String dimensionName, @Bind("limit") int limit);
+
+    /**
+     * Number of test definitions per dimension name, as a single grouped query. The settings page
+     * calls this on load, so it must not scale with the number of test definitions.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.dataQualityDimension')) AS dimensionName, "
+                + "COUNT(*) AS testDefinitionCount FROM test_definition "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.dataQualityDimension')) IS NOT NULL "
+                + "GROUP BY 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json ->> 'dataQualityDimension' AS dimensionName, "
+                + "COUNT(*) AS testDefinitionCount FROM test_definition "
+                + "WHERE json ->> 'dataQualityDimension' IS NOT NULL GROUP BY 1",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(DimensionCountMapper.class)
+    List<DimensionCount> countByDataQualityDimension();
+
+    record DimensionCount(String dimensionName, int testDefinitionCount) {}
+
+    class DimensionCountMapper implements RowMapper<DimensionCount> {
+      @Override
+      public DimensionCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new DimensionCount(rs.getString("dimensionName"), rs.getInt("testDefinitionCount"));
+      }
     }
 
     @Override

@@ -1,0 +1,55 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// Tint math for an arbitrary runtime hex, carried in via the --tag-color custom
+// property (the only inline style these components set). Values mirror the
+// opacities used across all tag variants: 5% bg, 32% border, 60% close-icon,
+// full opacity text.
+//
+// No fallback for browsers predating color-mix() support (~Chrome 109-110,
+// iOS Safari 15.6-15.8, a narrow sliver of traffic): those browsers simply
+// keep Badge's own default neutral border/background instead of the tint.
+
+.tag-tinted {
+  outline: none;
+  border: 1px solid color-mix(in srgb, var(--tag-color) 32%, transparent);
+  background-color: color-mix(in srgb, var(--tag-color) 5%, transparent);
+  color: var(--tag-color);
+}
+
+.tag-accent {
+  outline: none;
+  border: 1px solid color-mix(in srgb, var(--tag-color) 32%, transparent);
+  border-left: 4px solid var(--tag-color);
+  // !important: Badge's `type="modern"` root class always includes
+  // `tw:bg-primary`, which this variant must stay transparent under
+  // regardless of stylesheet load order.
+  background-color: transparent !important;
+  color: var(--tag-color);
+}
+
+.tag-tinted__close-icon,
+.tag-accent__close-icon {
+  button {
+    color: color-mix(in srgb, var(--tag-color) 60%, transparent);
+  }
+}
+
+// Typography wraps its content in a `.prose` div, which sets its own
+// unconditional `color` — that intermediate declaration silences inherited
+// `var(--tag-color)` from the badge span above it. Applied directly to the
+// label/icon elements so it wins regardless of the .prose/Tailwind cascade
+// order.
+.tag-color-text {
+  color: var(--tag-color) !important;
+}

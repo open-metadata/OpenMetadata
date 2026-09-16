@@ -24,9 +24,22 @@ import {
 import type { Domain } from '../generated/entity/domains/domain';
 import type { Task } from '../generated/entity/tasks/task';
 import type { User } from '../generated/entity/teams/user';
+import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import { getGlossaryPath } from './RouterUtils';
+
+export interface TreeNodeLike {
+  id?: string;
+  value?: string | number;
+  name?: string;
+  title?: string;
+  checkable?: boolean;
+  isLeaf?: boolean;
+  selectable?: boolean;
+  children?: TreeNodeLike[];
+  [key: string]: unknown;
+}
 
 export const buildTree = (
   data: GlossaryTerm[],
@@ -410,4 +423,66 @@ export const referenceURLValidator = (
   return Promise.reject(
     new Error(i18n.t('message.url-must-start-with-http-or-https'))
   );
+};
+
+export const findTreeNode = (
+  nodes: TreeNodeLike[],
+  targetValue: string
+): TreeNodeLike | null => {
+  for (const node of nodes) {
+    if (node.value === targetValue) {
+      return node;
+    }
+    if (node.children) {
+      const found = findTreeNode(node.children, targetValue);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+};
+
+export const injectMissingInitialOptions = (
+  tree: TreeNodeLike[],
+  options: {
+    value: string;
+    label: string;
+    data?: { name?: string; displayName?: string };
+  }[]
+) => {
+  for (const option of options) {
+    if (findTreeNode(tree, option.value)) {
+      continue;
+    }
+
+    const segments = Fqn.split(option.value);
+    if (segments.length < 2) {
+      continue;
+    }
+
+    const leafName = segments[segments.length - 1];
+    const parentFqn = Fqn.build(...segments.slice(0, -1));
+    const parentNode = findTreeNode(tree, parentFqn);
+
+    if (parentNode) {
+      const displayName = option.data ? getEntityName(option.data) : leafName;
+
+      const syntheticChild: TreeNodeLike = {
+        id: `initial-${option.value}`,
+        value: option.value,
+        name: leafName,
+        title: displayName,
+        checkable: true,
+        isLeaf: true,
+        selectable: true,
+      };
+
+      if (!parentNode.children) {
+        parentNode.children = [];
+      }
+      parentNode.children.push(syntheticChild);
+    }
+  }
 };
