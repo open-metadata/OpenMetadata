@@ -35,20 +35,38 @@ export class CrossTabLock {
     this.channel = new BroadcastChannel(channelName);
   }
 
-  // Runs `work` under an exclusive cross-tab lock. The leader broadcast is NOT
-  // sent from here — the caller is responsible for persisting any side-effects
-  // (e.g. `setOidcToken`) and then calling `notifyDone(payload)` so followers
-  // never observe a `done` signal before the fresh token is on disk.
-  // If `work` throws, followers are notified with `failed` so they can attempt
-  // their own refresh instead of waiting out the full timeout.
+  // Runs `work` under an exclusive cross-tab lock. The optional `publish`
+  // hook runs — still under the lock — immediately after `work` resolves
+  // and receives the work's value; use it to persist side-effects (e.g.
+  // `setOidcToken`) AND to broadcast the `done` signal so both happen
+  // atomically before the lock is released. Without `publish` doing both,
+  // a second tab whose `ifAvailable:true` probe lands in the microseconds
+  // between the leader's lock release and its own `notifyDone` call would
+  // acquire the freed lock, become another leader, and re-invoke the
+  // provider renewer — with rotating refresh tokens that duplicate
+  // renewal invalidates the first result. Callers that only need
+  // `notifyDone` (no persistence) can put just the broadcast in `publish`.
+  //
+  // If either `work` or `publish` throws, followers are notified with
+  // `failed` (also under the lock) so they can attempt their own refresh
+  // instead of waiting out the full timeout.
   async runExclusive<T>(
     work: () => Promise<T>,
-    options: { waitTimeoutMs?: number } = {}
+    options: {
+      waitTimeoutMs?: number;
+      publish?: (value: T) => Promise<void>;
+    } = {}
   ): Promise<LockResult<T>> {
     const waitTimeoutMs = options.waitTimeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
+    const { publish } = options;
     const locks = (navigator as unknown as { locks?: LockManager }).locks;
     if (!locks) {
-      return { role: 'leader', value: await this.runWithoutWebLocks(work) };
+      const value = await this.runWithoutWebLocks(work);
+      if (publish) {
+        await publish(value);
+      }
+
+      return { role: 'leader', value };
     }
     // Attach the follower listener BEFORE requesting the lock. Otherwise a
     // leader whose refresh completes in the microseconds between our
@@ -74,6 +92,9 @@ export class CrossTabLock {
           acquired = true;
           try {
             leaderValue = await work();
+            if (publish) {
+              await publish(leaderValue);
+            }
           } catch (err) {
             this.channel.postMessage({
               type: 'failed',

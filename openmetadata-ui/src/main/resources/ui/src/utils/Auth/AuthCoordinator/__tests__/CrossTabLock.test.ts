@@ -153,4 +153,57 @@ describe('CrossTabLock (Web Locks path)', () => {
       lock.runExclusive(async () => 42, { waitTimeoutMs: 50 })
     ).rejects.toBeInstanceOf(LockTimeoutError);
   });
+
+  // Greptile P1 (r4023829117): before the `publish` hook was added,
+  // AuthCoordinator's leader path released the lock (return from
+  // `runExclusive`) BEFORE awaiting `setOidcToken` + calling
+  // `notifyDone`. A sibling tab's `ifAvailable:true` probe landing in
+  // that gap would acquire the freed lock, become another leader, and
+  // re-invoke the provider renewer — a duplicate rotating-refresh call
+  // that invalidates the first leader's session. These two tests pin
+  // the invariant: the lock name is still `held` throughout the
+  // `publish` callback (so a concurrent `ifAvailable` probe would still
+  // see the lock as taken), and — regression guard — a probe that
+  // actually races the callback observes the lock as unavailable.
+  it('holds the lock while the publish callback runs', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    let heldDuringPublish = false;
+
+    await lock.runExclusive(async () => 'work-result', {
+      publish: async () => {
+        heldDuringPublish = held.has(TEST_LOCK_NAME);
+      },
+    });
+
+    expect(heldDuringPublish).toBe(true);
+  });
+
+  it('rejects a concurrent ifAvailable probe while publish is running', async () => {
+    const lock = new CrossTabLock(TEST_LOCK_NAME, TEST_CHANNEL_NAME);
+    let siblingBecameLeader: boolean | null = null;
+
+    await lock.runExclusive(async () => 'work-result', {
+      publish: async () => {
+        // A second tab wakes up here and probes with ifAvailable:true.
+        // The fake Locks API in this suite returns cb(null) when the
+        // name is in `held`, so the sibling's callback receives null
+        // and must NOT elevate itself to leader.
+        await (
+          navigator as unknown as {
+            locks: {
+              request: (
+                name: string,
+                opts: { ifAvailable?: boolean },
+                cb: (l: unknown | null) => Promise<void>
+              ) => Promise<void>;
+            };
+          }
+        ).locks.request(TEST_LOCK_NAME, { ifAvailable: true }, async (l) => {
+          siblingBecameLeader = l !== null;
+        });
+      },
+    });
+
+    expect(siblingBecameLeader).toBe(false);
+  });
 });

@@ -107,11 +107,19 @@ describe('AuthCoordinator', () => {
     installLockMock(coordinator);
     // Default the cross-tab lock to the leader path so existing tests that
     // don't care about follower behavior see runExclusive run their work
-    // and hand back {role:'leader'}.
-    mockRunExclusive.mockImplementation(async (work) => ({
-      role: 'leader',
-      value: await work(),
-    }));
+    // and hand back {role:'leader'}. The real runExclusive also invokes
+    // the caller's `publish` hook under the lock (see the CrossTabLock P1
+    // fix that folds `setOidcToken` + `notifyDone` inside the lock hold
+    // to prevent duplicate-leader renewals with rotating refresh tokens);
+    // the mock has to mirror that or the leader-path assertions on
+    // `setOidcToken` / `notifyDone` never fire.
+    mockRunExclusive.mockImplementation(async (work, options) => {
+      const value = await work();
+      if (options?.publish) {
+        await options.publish(value);
+      }
+      return { role: 'leader', value };
+    });
     mockNotifyDone.mockClear();
     mockNotifyFailed.mockClear();
   });

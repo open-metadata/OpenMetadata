@@ -274,7 +274,24 @@ export class AuthCoordinator {
   ): Promise<string> {
     let outcome;
     try {
-      outcome = await this.lock.runExclusive<RenewResult>(() => renewer());
+      // Persist + broadcast under the same lock the renewer holds. If we
+      // released the lock first and only THEN awaited setOidcToken +
+      // notifyDone, a second tab whose `ifAvailable:true` probe landed in
+      // that gap would acquire the freed lock and call renewer() again —
+      // and with IdPs that rotate refresh tokens on use (Auth0, some OIDC
+      // providers), the duplicate call would consume the just-rotated
+      // token and invalidate the first tab's fresh session. See the
+      // greptile P1 finding and the docblock on
+      // `CrossTabLock.runExclusive`.
+      outcome = await this.lock.runExclusive<RenewResult>(() => renewer(), {
+        publish: async (result) => {
+          // Persist BEFORE broadcasting so a sibling tab that immediately
+          // reads storage can never observe the old expired token behind
+          // a fresh `done`.
+          await setOidcToken(result.idToken);
+          this.lock.notifyDone(result);
+        },
+      });
     } catch (err) {
       // Follower timed out waiting for the leader (slow IdP, leader tab
       // closed mid-refresh, missed broadcast). Retry through the lock so
@@ -316,14 +333,10 @@ export class AuthCoordinator {
       throw new Error(reason);
     }
 
-    const result = outcome.value;
-    // Persist BEFORE broadcasting so a sibling tab that immediately reads
-    // storage can never observe the old expired token behind a fresh
-    // `done`.
-    await setOidcToken(result.idToken);
-    this.lock.notifyDone(result);
-
-    return this.applyRefreshed(result);
+    // Persistence + notify already ran under the lock via the `publish`
+    // hook above; here we only wire the coordinator-side side-effects
+    // (emit `refreshed`, schedule the proactive timer).
+    return this.applyRefreshed(outcome.value);
   }
 
   private applyRefreshed(result: RenewResult): string {
