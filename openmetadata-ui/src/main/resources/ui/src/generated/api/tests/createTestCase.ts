@@ -40,6 +40,11 @@ export interface CreateTestCase {
     displayName?: string;
     entityLink:   string;
     /**
+     * Tolerance applied when evaluating this test case. A deviation within the threshold is
+     * still reported as a success. Defaults to 0, which evaluates the test case strictly.
+     */
+    failureThreshold?: number;
+    /**
      * Name that identifies this test case.
      */
     name: string;
@@ -62,6 +67,10 @@ export interface CreateTestCase {
      */
     testDefinition: string;
     /**
+     * Unit `failureThreshold` is expressed in.
+     */
+    thresholdUnit?: ThresholdUnit;
+    /**
      * Number of top dimension values to show before grouping the rest as Others. Controls the
      * cardinality of dimensional test results. Defaults to 5 when not specified.
      */
@@ -70,6 +79,18 @@ export interface CreateTestCase {
      * If the test definition supports it, use dynamic assertion to evaluate the test case.
      */
     useDynamicAssertion?: boolean;
+}
+
+/**
+ * Unit `failureThreshold` is expressed in.
+ *
+ * Unit in which a test case failure threshold is expressed. `ABSOLUTE` is a raw deviation
+ * expressed in the unit of the metric being tested, `PERCENTAGE` is a deviation relative to
+ * the bound or to the expected value.
+ */
+export enum ThresholdUnit {
+    Absolute = "ABSOLUTE",
+    Percentage = "PERCENTAGE",
 }
 
 /**

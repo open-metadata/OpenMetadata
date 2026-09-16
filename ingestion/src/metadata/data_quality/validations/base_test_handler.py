@@ -29,7 +29,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from metadata.data_quality.api.models import TestCaseResultResponse  # noqa: TC001
-from metadata.data_quality.validations import utils
+from metadata.data_quality.validations import thresholds, utils
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     MAX_TOP_DIMENSIONS,
@@ -40,6 +40,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
+    ThresholdUnit,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue  # noqa: TC001
@@ -700,6 +701,59 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_failure_threshold(self) -> tuple[float, ThresholdUnit]:
+        """Failure threshold configured on the test case, and the unit it is expressed in.
+
+        Returns:
+            tuple[float, ThresholdUnit]: threshold (0 when unset) and its unit
+        """
+        return (
+            self.test_case.failureThreshold or 0,
+            self.test_case.thresholdUnit or ThresholdUnit.ABSOLUTE,
+        )
+
+    def get_bounds(self, min_param_name: str, max_param_name: str) -> tuple[float, float]:
+        """Resolve the test case bounds and widen them by the failure threshold.
+
+        The tolerance is applied here rather than in `get_min_bound`/`get_max_bound` so that it also
+        holds for validators that resolve their bounds dynamically by overriding those getters.
+
+        Args:
+            min_param_name: name of the parameter holding the lower bound
+            max_param_name: name of the parameter holding the upper bound
+
+        Returns:
+            tuple[float, float]: the effective bounds to evaluate the observed value against
+        """
+        return self.apply_bound_tolerance(self.get_min_bound(min_param_name), self.get_max_bound(max_param_name))
+
+    def apply_bound_tolerance(self, min_bound: float, max_bound: float) -> tuple[float, float]:
+        """Widen already resolved bounds by the failure threshold.
+
+        Args:
+            min_bound: resolved lower bound
+            max_bound: resolved upper bound
+
+        Returns:
+            tuple[float, float]: the effective bounds
+        """
+        threshold, unit = self.get_failure_threshold()
+        return thresholds.apply_bound_tolerance(min_bound, max_bound, threshold, unit)
+
+    def matches_expected(self, observed: float, expected: float, label: str = "the expected value") -> bool:
+        """Whether `observed` matches `expected` within the failure threshold.
+
+        Args:
+            observed: value computed against the data
+            expected: value the test case expects
+            label: what `expected` is, used for logging only
+
+        Returns:
+            bool: True when the deviation is tolerated
+        """
+        threshold, unit = self.get_failure_threshold()
+        return thresholds.within_deviation(observed, expected, threshold, unit, label)
 
     def get_predicted_value(self) -> str | None:
         """Get predicted value"""

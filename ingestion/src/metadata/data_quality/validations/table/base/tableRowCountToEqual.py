@@ -64,7 +64,7 @@ class BaseTableRowCountToEqualValidator(BaseTestValidator):
 
         return self.get_test_case_result_object(
             self.execution_date,
-            self.get_test_case_status(expected_count == res),
+            self.get_test_case_status(self.matches_expected(res, expected_count, "the expected rowCount")),
             f"Found rowCount={res} rows vs. the expected {expected_count}",
             [TestResultValue(name=ROW_COUNT, value=str(res))],
         )

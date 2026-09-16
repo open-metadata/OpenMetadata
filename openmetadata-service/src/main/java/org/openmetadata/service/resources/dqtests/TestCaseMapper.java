@@ -20,6 +20,8 @@ public class TestCaseMapper implements EntityMapper<TestCase, CreateTestCase> {
         .withEntityLink(create.getEntityLink())
         .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
         .withUseDynamicAssertion(create.getUseDynamicAssertion())
+        .withFailureThreshold(create.getFailureThreshold())
+        .withThresholdUnit(create.getThresholdUnit())
         .withDimensionColumns(create.getDimensionColumns())
         .withDataQualityDimension(
             getEntityReference(Entity.DATA_QUALITY_DIMENSION, create.getDataQualityDimension()))
