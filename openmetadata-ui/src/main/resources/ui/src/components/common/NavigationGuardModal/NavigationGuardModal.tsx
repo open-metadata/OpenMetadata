@@ -39,6 +39,7 @@ export const NavigationGuardModal = ({
         <Dialog
           showCloseButton
           aria-label={t('message.unsaved-changes')}
+          data-testid="navigation-guard-modal"
           width={480}
           onClose={onStay}>
           <Dialog.Header>
@@ -60,7 +61,11 @@ export const NavigationGuardModal = ({
             </div>
           </Dialog.Header>
           <Dialog.Footer className="tw:border-none tw:sm:mt-3">
-            <Button color="secondary" size="lg" onPress={onLeave}>
+            <Button
+              color="secondary"
+              data-testid="navigation-guard-discard"
+              size="lg"
+              onPress={onLeave}>
               {t('label.discard')}
             </Button>
             <Button color="primary" size="lg" onPress={onStay}>

@@ -93,6 +93,7 @@ import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProv
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
+import { useTagUsageCounts } from './useTagUsageCounts';
 
 // Stretch the antd table so its body fills the panel height even with only a
 // few rows — otherwise the body shrinks to its content (scroll.y sets
@@ -214,6 +215,13 @@ const ClassificationDetails = forwardRef(
       showPagination,
     } = usePaging();
 
+    // The version view has no usage column to fill
+    const { usageCounts, isUsageCountsLoading } = useTagUsageCounts(
+      currentClassification?.fullyQualifiedName,
+      tags,
+      !isVersionView
+    );
+
     const fetchClassificationChildren = async (
       currentClassificationName: string,
       paging?: Partial<Paging>
@@ -222,7 +230,7 @@ const ClassificationDetails = forwardRef(
       setTags([]);
       try {
         const { data, paging: tagPaging } = await getTags({
-          fields: `${TabSpecificField.USAGE_COUNT},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS}`,
           parent: currentClassificationName,
           after: paging?.after,
           before: paging?.before,
@@ -463,6 +471,8 @@ const ClassificationDetails = forwardRef(
           handleActionDeleteTag,
           isVersionView,
           handleToggleDisable,
+          usageCounts,
+          isUsageCountsLoading,
         }),
       [
         isClassificationDisabled,
@@ -473,6 +483,8 @@ const ClassificationDetails = forwardRef(
         handleActionDeleteTag,
         isVersionView,
         handleToggleDisable,
+        usageCounts,
+        isUsageCountsLoading,
       ]
     );
 
