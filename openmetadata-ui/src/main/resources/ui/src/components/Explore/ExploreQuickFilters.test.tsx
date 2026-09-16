@@ -880,6 +880,29 @@ describe('ExploreQuickFilters component', () => {
       expect(getAggregationOptions).toHaveBeenCalledTimes(1);
     });
 
+    it('re-fetches when NLP mode toggles, since it changes the endpoint', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockUseSearchStore.mockReturnValue({ isNLPActive: false });
+      mockGetAggregationOptions.mockResolvedValue(tierBucketsResponse);
+
+      const { rerender } = render(
+        <ExploreQuickFilters {...mockProps} fields={[tierField]} />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      mockUseSearchStore.mockReturnValue({ isNLPActive: true });
+      rerender(<ExploreQuickFilters {...mockProps} fields={[tierField]} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      expect(getAggregationOptions).toHaveBeenCalledTimes(2);
+    });
+
     it('does not cache an empty response, so a late-indexed value appears on reopen', async () => {
       mockUseCustomLocation.mockReturnValue({ search: '' });
       mockGetAggregationOptions

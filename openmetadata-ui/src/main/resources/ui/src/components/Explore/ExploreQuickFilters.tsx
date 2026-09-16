@@ -204,6 +204,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       key,
       String(index),
       String(showDeleted),
+      // NLP mode routes the aggregation to a different endpoint entirely, so
+      // options fetched in one mode must not answer opens in the other.
+      String(isNLPActive),
       searchText ?? '',
       JSON.stringify(getFacetQueryFilter(key) ?? {}),
     ].join('::');
