@@ -360,7 +360,7 @@ mvn -o -pl openmetadata-integration-tests verify -Ppostgres-rdf-tests \
   endpoint's `ErrorMessage` shape unchanged, parsed-query rejections, fixture
   joins/aggregates/typed bindings, LIMIT/OFFSET/completeness boundaries, and readiness
   transitions.
-- Unit lane `security.**`, `rdf.**`, `resources/rdf/**`, `exception.**`: **1613/1613 pass**.
+- Unit lane `security.**`, `rdf.**`, `resources/rdf/**`, `exception.**`: **1620/1620 pass**.
   New classes measure 94–100% line coverage; every touched shared-code line is covered by a
   unit test except the `JwtFilter`/`ImpersonationAuthorizer` throw-type swaps, which are
   covered by the impersonation IT cases instead. Operation matching lives in one shared

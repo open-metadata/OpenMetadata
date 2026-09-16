@@ -338,9 +338,11 @@ Choices made while implementing that refine, but do not change, the decisions ab
 - **Generated TypeScript** for the new schemas and operation enum is produced by the
   `typescript-type-generation` workflow on the PR, not committed by hand.
 - **Extension function IRIs are syntactically opaque to validation**, which constrains
-  query form only (including `java:`-scheme calls). Validation never touches data
-  (parse-only); execution happens on the shipped `docker/rdf-store/config.ttl`, which
-  registers no extension functions, so unresolvable calls fail closed at evaluation.
+  query form only — so Jena's dynamic class loading for `java:` IRIs (any `Function` or
+  `PropertyFunction` on the classpath, no configuration) is closed at the validator
+  instead: the inspector rejects `java:`-scheme function IRIs and predicate IRIs,
+  including inside property paths, as `QUERY_FORM_NOT_ALLOWED`. Validation itself never
+  touches data (parse-only).
 - **Test profile uses the supported image.** `postgres-rdf-tests` no longer pins
   `secoresearch/fuseki:5.5.0`: with no `rdfContainerImage` set, `TestSuiteBootstrap`
   builds `docker/rdf-store` (Fuseki 6.2.0 + union default graph + write extension). The
