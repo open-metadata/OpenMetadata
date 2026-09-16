@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.postgres.v202;
+package org.openmetadata.service.migration.mysql.v203;
 
-import static org.openmetadata.service.migration.utils.v202.SearchAllowedFieldsRepair.repairAllowedFields;
-import static org.openmetadata.service.migration.utils.v202.SearchNameKeywordRepair.repairNameKeywordSearchFields;
+import static org.openmetadata.service.migration.utils.v203.TableAliasesSearchSettingsMigration.addAliasesSearchSettings;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
     super(migrationFile);
@@ -26,11 +27,12 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
-    // Backfill the name.keyword search field on existing installs; the seed default alone never
-    // reaches already-migrated clusters. Idempotent.
-    repairNameKeywordSearchFields();
-    // Complete allowedFields from the seed so removed search fields stay re-addable on upgraded
-    // clusters (SettingsCache refreshes it in memory but never persists it). Idempotent.
-    repairAllowedFields();
+    // Log and continue rather than abort: alias search degrades to not matching synonyms, which
+    // is not worth failing an upgrade over. Matches v201's pattern.
+    try {
+      addAliasesSearchSettings();
+    } catch (Exception e) {
+      LOG.error("v203: failed to backfill the table 'aliases' search settings", e);
+    }
   }
 }
