@@ -1124,6 +1124,12 @@ const LineageMapCanvas = ({
         : sceneCache.get(cacheKey);
       preserveViewportRef.current = Boolean(options.preserveViewport);
       if (cachedScene) {
+        // Clear the flag so the scene-layout effect's layoutNodes.then() is
+        // allowed to call setLoading(false). Without this, a cache hit that
+        // races an in-flight fetch leaves pendingFetchRef true indefinitely:
+        // the stale response is dropped (request-id guard), the flag is never
+        // cleared, and the loader stays stuck.
+        pendingFetchRef.current = false;
         setScene(cachedScene);
         setSceneError(undefined);
         // setLoading(false) deferred to layoutNodes.then() in the scene useEffect
@@ -1379,7 +1385,13 @@ const LineageMapCanvas = ({
   useEffect(() => {
     if (!scene) {
       setSceneNodes([]);
-      setLoading(false);
+      // Only clear the loader when no fetch is in flight. On initial mount
+      // scene is undefined while the first HTTP request is pending, so an
+      // unconditional setLoading(false) here would dismiss the loader before
+      // the graph is ready — the race this pendingFetchRef pattern exists to prevent.
+      if (!pendingFetchRef.current) {
+        setLoading(false);
+      }
 
       return;
     }
