@@ -328,6 +328,45 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void testMatchAnyDomain() {
+    setupMockPolicies(
+        "matchAnyDomain('Domain.Finance', 'Domain.Procurement')", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should contain 'domains.fullyQualifiedName'.");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.fullyQualifiedName'].value=='Domain.Finance')]",
+        "Domain.Finance should be in a should (OR) clause");
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.term['domains.fullyQualifiedName'].value=='Domain.Procurement')]",
+        "Domain.Procurement should be in a should (OR) clause");
+  }
+
+  @Test
+  void testMatchAnyDomainWithSingleDomain() {
+    setupMockPolicies("matchAnyDomain('Domain.Finance')", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
+
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should contain 'domains.fullyQualifiedName'.");
+    assertTrue(
+        generatedQuery.contains("Domain.Finance"),
+        "The query should contain the requested domain FQN.");
+  }
+
+  @Test
   void testHasDomainWithMultipleDomains() {
     setupMockPolicies("hasDomain()", "ALLOW");
 
