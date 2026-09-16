@@ -35,6 +35,7 @@ import {
 import { getPopupContainer } from '../../../utils/formPureUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import { renderOwnerPopover } from '../../../utils/ownerRenderUtils';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -323,6 +324,8 @@ const AddGlossary = ({
                       <Owner
                         isCompactView={false}
                         owners={toOwnerRefs(ownersList)}
+                        renderOwnerContent={renderOwnerPopover}
+                        showLabel={false}
                       />
                     </Space>
                   )}
@@ -334,6 +337,8 @@ const AddGlossary = ({
                       <Owner
                         isCompactView={false}
                         owners={toOwnerRefs(reviewersList)}
+                        renderOwnerContent={renderOwnerPopover}
+                        showLabel={false}
                       />
                     </Space>
                   )}

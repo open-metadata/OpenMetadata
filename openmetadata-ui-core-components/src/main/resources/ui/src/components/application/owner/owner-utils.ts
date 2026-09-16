@@ -31,7 +31,12 @@ export const toOwnerRef = (ref: OwnerLike): OwnerRef => ({
   name: ref.name,
   displayName: ref.displayName,
   type: (ref.type ?? 'user') as OwnerRef['type'],
-  href: ref.href,
+  // `href` is intentionally NOT copied from the source ref: on an API
+  // EntityReference it is the backend self-link (/api/v1/users/<id>), and Owner
+  // renders the owner name as `<a href>`, so copying it makes the name navigate
+  // to the API and 401. Consumers that want a clickable owner must supply an
+  // in-app route via the app-level `getOwnersWithHref` helper, which sets `href`
+  // after this conversion. `profileUrl` (the avatar image) is safe to carry.
   profileUrl: ref.profileUrl,
 });
 

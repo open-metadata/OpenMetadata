@@ -34,3 +34,41 @@ describe('Owner empty placeholder', () => {
     expect(screen.queryByTestId('no-owner-icon')).not.toBeInTheDocument();
   });
 });
+
+describe('Owner inline editable mode (non-compact, no label, with selector)', () => {
+  const selector = <button data-testid="edit-selector">edit</button>;
+
+  it('renders owner name and the selector on a single row when an owner is present', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[
+          { id: 'u1', name: 'user1', displayName: 'User One', type: 'user' },
+        ]}
+        selectorContent={selector}
+        showLabel={false}
+      />
+    );
+
+    expect(screen.getByText('User One')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-selector')).toBeInTheDocument();
+    // No column label header is rendered in inline mode.
+    expect(screen.queryByText('No Assignee')).not.toBeInTheDocument();
+  });
+
+  it('renders the no-owner icon, placeholder and selector inline when empty', () => {
+    render(
+      <Owner
+        isCompactView={false}
+        owners={[]}
+        placeHolder="No Assignee"
+        selectorContent={selector}
+        showLabel={false}
+      />
+    );
+
+    expect(screen.getByTestId('no-owner-icon')).toBeInTheDocument();
+    expect(screen.getByText('No Assignee')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-selector')).toBeInTheDocument();
+  });
+});

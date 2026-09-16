@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { OwnerRef } from '@openmetadata/ui-core-components';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
+import { toOwnerRefs } from './Owner/ownerConversionUtils';
 import { getTeamAndUserDetailsPath, getUserPath } from './RouterUtils';
 
 /**
@@ -25,3 +27,21 @@ export const getOwnerPath = (owner: EntityReference): string => {
     ? getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
     : getUserPath(owner.name ?? '');
 };
+
+/**
+ * Converts owner EntityReferences into core-component OwnerRefs whose `href`
+ * points to the in-app profile route (getOwnerPath). `toOwnerRefs` alone copies
+ * EntityReference.href, which is the backend API self-link (/api/v1/users/<id>);
+ * <Owner> renders the owner name as `<a href>`, so a non-compact owner built
+ * from plain `toOwnerRefs` links to the API and returns 401 on click. Use this
+ * for any non-compact <Owner> whose names are rendered as links.
+ */
+export const getOwnersWithHref = (owners?: EntityReference[]): OwnerRef[] =>
+  toOwnerRefs(owners ?? []).map((owner) => ({
+    ...owner,
+    href: getOwnerPath({
+      id: owner.id,
+      name: owner.name,
+      type: owner.type,
+    } as EntityReference),
+  }));

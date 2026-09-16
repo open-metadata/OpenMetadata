@@ -61,6 +61,8 @@ import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { toOwnerRefs } from './Owner/ownerConversionUtils';
+import { renderOwnerPopover } from './ownerRenderUtils';
+import { getOwnersWithHref } from './ownerUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
@@ -103,7 +105,8 @@ const getCommonOverview = (
               <Owner
                 hasPermission={false}
                 isCompactView={false}
-                owners={toOwnerRefs(owners ?? [])}
+                owners={getOwnersWithHref(owners ?? [])}
+                renderOwnerContent={renderOwnerPopover}
                 showLabel={false}
               />
             ),

@@ -24,6 +24,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
 import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import { renderOwnerPopover } from '../../../utils/ownerRenderUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
@@ -106,6 +107,7 @@ function DataAssetsVersionHeader({
                 isCompactView={false}
                 ownerDisplayName={ownerDisplayName}
                 owners={toOwnerRefs(currentVersionData?.owners ?? ownerRef)}
+                renderOwnerContent={renderOwnerPopover}
                 showLabel={false}
               />
               <Divider className="self-center m-x-sm" type="vertical" />

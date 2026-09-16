@@ -48,7 +48,32 @@ export const Owner = ({
 }: OwnerProps) => {
   const { t } = useCoreTranslation();
 
+  // Inline editable mode: a non-compact owner with an edit selector but no label
+  // (e.g. the Incident Manager assignee cell). The column layout stacks the
+  // selector above the owner; this renders owner + selector on a single row so
+  // the edit control sits beside the owner, matching the pre-unification look.
+  const isInlineWithSelector = !showLabel && Boolean(selectorContent);
+
   if (owners.length === 0) {
+    if (!isCompactView && isInlineWithSelector) {
+      return (
+        <div
+          className={cx('tw:flex tw:items-center tw:gap-1', className)}
+          data-testid={dataTestId}>
+          {!showDashPlaceholder && (
+            <Owners
+              className="tw:size-4 tw:shrink-0 tw:text-quaternary"
+              data-testid="no-owner-icon"
+            />
+          )}
+          <span className="tw:text-quaternary tw:text-xs">
+            {showDashPlaceholder ? '--' : placeHolder ?? t('label.no-owners')}
+          </span>
+          {selectorContent}
+        </div>
+      );
+    }
+
     // Non-compact: always render the full column layout so the label + edit button are visible
     if (!isCompactView) {
       const hasLabelRow = showLabel || Boolean(selectorContent);
@@ -110,6 +135,28 @@ export const Owner = ({
         <span className="tw:text-quaternary tw:text-xs">
           {placeHolder ?? t('label.no-owners')}
         </span>
+      </div>
+    );
+  }
+
+  // Inline editable mode: owner avatar(s) + name with the edit selector beside
+  // them on a single row (see isInlineWithSelector above).
+  if (!isCompactView && isInlineWithSelector) {
+    return (
+      <div
+        className={cx('tw:flex tw:items-center tw:gap-2', className)}
+        data-testid={dataTestId}>
+        <OwnerAvatarStack
+          avatarSize={avatarSize}
+          className={ownerLabelClassName}
+          maxVisibleOwners={maxVisibleOwners}
+          ownerDisplayName={ownerDisplayName}
+          owners={owners}
+          placement={placement}
+          renderOwnerContent={renderOwnerContent}
+          showOverflowHeadings={showOverflowHeadings}
+        />
+        {selectorContent}
       </div>
     );
   }

@@ -39,7 +39,8 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
+import { renderOwnerPopover } from '../../utils/ownerRenderUtils';
+import { getOwnersWithHref } from '../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
@@ -135,10 +136,11 @@ const IncidentManagerTable = ({
             user: false,
             team: false,
           }}
-          owners={toOwnerRefs(value?.assignee ? [value.assignee] : [])}
+          owners={getOwnersWithHref(value?.assignee ? [value.assignee] : [])}
           placeHolder={t('label.no-entity', {
             entity: t('label.assignee'),
           })}
+          renderOwnerContent={renderOwnerPopover}
           selectorContent={
             <UserTeamSelectableList
               hasPermission={getRowEditPermission(
@@ -151,6 +153,7 @@ const IncidentManagerTable = ({
               }
             />
           }
+          showLabel={false}
         />
       </div>
     );

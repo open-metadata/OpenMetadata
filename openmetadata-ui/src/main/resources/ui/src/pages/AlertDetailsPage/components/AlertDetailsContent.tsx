@@ -28,7 +28,8 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/events/eventSubscription';
 import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
+import { renderOwnerPopover } from '../../../utils/ownerRenderUtils';
+import { getOwnersWithHref } from '../../../utils/ownerUtils';
 import { AlertDetailsContentProps } from '../AlertDetailsPage.interface';
 
 function AlertDetailsContent({
@@ -100,7 +101,8 @@ function AlertDetailsContent({
                       <Owner
                         hasPermission={editOwnersPermission}
                         isCompactView={false}
-                        owners={toOwnerRefs(alertDetails?.owners ?? [])}
+                        owners={getOwnersWithHref(alertDetails?.owners ?? [])}
+                        renderOwnerContent={renderOwnerPopover}
                         selectorContent={
                           <UserTeamSelectableList
                             hasPermission={Boolean(editOwnersPermission)}
