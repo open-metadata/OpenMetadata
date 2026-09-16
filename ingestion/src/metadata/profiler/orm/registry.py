@@ -65,6 +65,7 @@ class PythonDialects(Enum):
     ClickHouse = "clickhouse"
     Clickzetta = "clickzetta"
     Cockroach = "cockroachdb"
+    Databend = "databend"
     Databricks = "databricks"
     Db2 = "db2"
     Doris = "pydoris"

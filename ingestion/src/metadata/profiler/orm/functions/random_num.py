@@ -92,6 +92,15 @@ def _(*_, **__):
     return "ABS((RANDOM() * 100)::INTEGER)"
 
 
+@compiles(RandomNumFn, Dialects.Databend)
+def _(*_, **__):
+    """
+    Databend registers `rand` (0 <= n < 1) and has no `RANDOM` alias, so the
+    generic `ABS(RANDOM()) * 100` would fail to resolve the function name.
+    """
+    return "CAST(RAND() * 100 AS INT)"
+
+
 @compiles(RandomNumFn, Dialects.Oracle)
 def _(*_, **__):
     """Oracle random logic"""
