@@ -220,12 +220,17 @@ export const deleteEdge = async (
   await expect(page.locator('[role="dialog"]').first()).toBeVisible();
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
+  const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page
     .locator(
       '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
     )
     .click();
   await deleteRes;
+  await page
+    .getByTestId('delete-edge-confirmation-modal')
+    .waitFor({ state: 'detached' });
+  await sceneRes;
 };
 
 export const deleteEdgeBetweenNodesViaAPI = (
