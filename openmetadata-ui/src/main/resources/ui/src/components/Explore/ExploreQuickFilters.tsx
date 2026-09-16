@@ -228,6 +228,22 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       )
     );
 
+  // Staged selections outlive the shared options list: a search after staging
+  // repaints `options`, so at Apply time the staged key's option object (label,
+  // count) may be gone from both the field value and the current list. Remember
+  // every option published for a field so the commit keeps its label.
+  const seenOptionsRef = useRef(new Map<string, SearchDropdownOption>());
+  const SEEN_OPTIONS_CACHE_MAX = 500;
+  const publishOptions = (key: string, opts: SearchDropdownOption[]) => {
+    if (seenOptionsRef.current.size + opts.length > SEEN_OPTIONS_CACHE_MAX) {
+      seenOptionsRef.current.clear();
+    }
+    opts.forEach((option) =>
+      seenOptionsRef.current.set(`${key}::${option.key}`, option)
+    );
+    setOptions(opts);
+  };
+
   /** Initial options for one facet, answered from the per-context cache when
    *  this exact facet context has been fetched before. */
   const getCachedInitialOptions = async (
@@ -283,7 +299,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addOptionIcons(key, staticOptions));
+      publishOptions(key, addOptionIcons(key, staticOptions));
 
       return;
     }
@@ -304,7 +320,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       : undefined;
     if (pageBuckets) {
       if (isLatestOptionsRequest(requestId)) {
-        setOptions(buildBucketOptions(pageBuckets, key, sourceFields));
+        publishOptions(key, buildBucketOptions(pageBuckets, key, sourceFields));
       }
 
       return;
@@ -317,7 +333,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       sourceFields
     );
     if (isLatestOptionsRequest(requestId)) {
-      setOptions(options);
+      publishOptions(key, options);
     }
   };
 
@@ -330,7 +346,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     const requestId = startOptionsRequest();
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(addOptionIcons(key, staticOptions));
+      publishOptions(key, addOptionIcons(key, staticOptions));
       // Owns the newest request, so no in-flight fetch will clear the loader.
       setIsOptionsLoading(false);
 
@@ -374,7 +390,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             option.label.toLowerCase().includes(value.toLowerCase())
           )
         : staticOptions;
-      setOptions(addOptionIcons(key, filteredOptions));
+      publishOptions(key, addOptionIcons(key, filteredOptions));
       // Owns the newest request, so no in-flight fetch will clear the loader.
       setIsOptionsLoading(false);
 
@@ -413,7 +429,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
         return;
       }
 
-      setOptions(
+      publishOptions(
+        key,
         addOptionIcons(
           key,
           uniqWith(
@@ -489,7 +506,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
         const handleChange = (values: string[]) => {
           // Keep the option objects (labels, counts) for the values that stay
-          // selected; a value with no known option keeps its key as label.
+          // selected; a staged value whose option was repainted away by a
+          // later search falls back to the seen-options record, and only a
+          // value never published at all keeps its key as label.
           const knownOptions = new Map(
             [...selectedOptions, ...dropdownOptions].map((option) => [
               option.key,
@@ -503,7 +522,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
                 return { key: NULL_OPTION_KEY, label: nullOption.label };
               }
 
-              return knownOptions.get(value) ?? { key: value, label: value };
+              return (
+                knownOptions.get(value) ??
+                seenOptionsRef.current.get(`${field.key}::${value}`) ?? {
+                  key: value,
+                  label: value,
+                }
+              );
             }),
           });
         };

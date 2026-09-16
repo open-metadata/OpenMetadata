@@ -85,7 +85,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     const searchKey = (testId ?? '').replace('search-dropdown-', '');
 
     return (
-      <div data-testid={testId} title="search-dropdown">
+      <div data-testid={testId}>
         <span data-testid={`label-${searchKey}`}>{searchKey}</span>
         <span data-testid={`single-select-${searchKey}`}>
           {selectionMode === 'single' ? 'true' : 'false'}
@@ -126,6 +126,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
           data-testid={`onChange-${searchKey}`}
           onClick={() => onChange(['test-key'])}>
           Change
+        </button>
+        <button
+          data-testid={`onChangeStagedTier-${searchKey}`}
+          onClick={() => onChange(['tier.tier1'])}>
+          Change Staged Tier
         </button>
       </div>
     );
@@ -197,9 +202,11 @@ describe('ExploreQuickFilters component', () => {
     it('should render all filter fields', async () => {
       render(<ExploreQuickFilters {...mockProps} />);
 
-      const fields = screen.getAllByTitle('search-dropdown');
-
-      expect(fields).toHaveLength(mockFields.length);
+      mockFields.forEach((field) => {
+        expect(
+          screen.getByTestId(`search-dropdown-${field.key}`)
+        ).toBeInTheDocument();
+      });
     });
 
     it('should render correct labels for each field', () => {
@@ -843,6 +850,67 @@ describe('ExploreQuickFilters component', () => {
 
       expect(filterArg).not.toContain('Tier.Tier1');
       expect(filterArg).not.toContain('Tier.Tier2');
+    });
+  });
+
+  describe('staged label preservation', () => {
+    it('keeps the option label for a staged key repainted away by a later search', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      const tierField = {
+        label: 'Tier',
+        key: 'tier.tagFQN',
+        value: undefined,
+        sourceFields: 'tier.tagFQN',
+      };
+      mockGetAggregationOptions.mockResolvedValue({
+        data: {
+          aggregations: {
+            'sterms#tier.tagFQN': {
+              buckets: [{ key: 'tier.tier1', doc_count: 3 }],
+            },
+          },
+        },
+      });
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          fields={[tierField]}
+          onFieldValueSelect={mockOnFieldValueSelect}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+      const publishedLabel = screen
+        .getByTestId('option-tier.tagFQN-0')
+        .textContent?.replace(/ - \d+$/, '');
+
+      // A later search repaints the shared options list without the staged key.
+      mockGetAggregationOptions.mockResolvedValue({
+        data: { aggregations: { 'sterms#tier.tagFQN': { buckets: [] } } },
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-tier.tagFQN'));
+      });
+
+      expect(screen.queryByTestId('option-tier.tagFQN-0')).toBeNull();
+
+      // Apply commits the staged key: its label must come from the seen-options
+      // record, not fall back to the raw key.
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onChangeStagedTier-tier.tagFQN'));
+      });
+
+      expect(mockOnFieldValueSelect).toHaveBeenCalledWith({
+        ...tierField,
+        value: [
+          expect.objectContaining({ key: 'tier.tier1', label: publishedLabel }),
+        ],
+      });
+
+      expect(publishedLabel).not.toBe('tier.tier1');
     });
   });
 

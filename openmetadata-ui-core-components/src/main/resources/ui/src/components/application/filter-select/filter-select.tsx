@@ -363,7 +363,7 @@ export const FilterSelect = ({
   const popoverContentRef = useRef<HTMLDivElement>(null);
 
   const isMulti = selectionMode === 'multiple';
-  const isStaged = isMulti && commitMode === 'staged';
+  const isStaged = commitMode === 'staged';
   const isChips =
     isMulti && triggerVariant === 'input' && triggerDisplay === 'chips';
   const current = isStaged ? staged : selectedValues;
@@ -492,8 +492,12 @@ export const FilterSelect = ({
     if (isMulti) {
       commit(next);
     } else {
-      onChange(next.length > 0 ? [next[0]] : []);
-      handleOpenChange(false);
+      // Staged single-select keeps legacy parity: the pick waits for Apply
+      // and the popover stays open; immediate mode commits and closes.
+      commit(next.length > 0 ? [next[0]] : []);
+      if (!isStaged) {
+        handleOpenChange(false);
+      }
     }
   };
 
@@ -729,6 +733,10 @@ export const FilterSelect = ({
               disallowEmptySelection={false}
               selectedKeys={selectedKeySet}
               selectionMode={selectionMode}
+              // Closing is owned by this component (immediate single-select
+              // closes on commit; staged waits for Apply/Cancel), so the menu
+              // must never close itself on selection.
+              shouldCloseOnSelect={false}
               onSelectionChange={handleSelectionChange}>
               {displayedNullOption && (
                 <OptionRow

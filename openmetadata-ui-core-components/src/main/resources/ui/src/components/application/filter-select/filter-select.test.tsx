@@ -265,6 +265,37 @@ describe('FilterSelect', () => {
     expect(onChange).toHaveBeenCalledWith(['bigquery']);
   });
 
+  it('staged single select waits for Apply and keeps the popover open', () => {
+    const onOpenChange = vi.fn();
+    const { onChange } = renderFilter({
+      commitMode: 'staged',
+      onOpenChange,
+      selectionMode: 'single',
+    });
+
+    fireEvent.click(screen.getByText('BigQuery'));
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(['bigquery']);
+  });
+
+  it('staged single select replaces the staged pick instead of adding', () => {
+    const { onChange } = renderFilter({
+      commitMode: 'staged',
+      selectionMode: 'single',
+    });
+
+    fireEvent.click(screen.getByText('BigQuery'));
+    fireEvent.click(screen.getByText('Snowflake'));
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledWith(['snowflake']);
+  });
+
   it('shows the selection count in the trigger', () => {
     renderFilter({
       selectedValues: ['snowflake', 'bigquery'],
