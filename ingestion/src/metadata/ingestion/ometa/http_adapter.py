@@ -14,7 +14,7 @@ one urllib3 Retry for transient transport failures.
 """
 
 import socket
-from typing import Any
+from typing import Any, cast
 
 import requests
 from requests.adapters import DEFAULT_POOLBLOCK, HTTPAdapter
@@ -34,7 +34,8 @@ def _socket_optname(name: str) -> int:
 
 def build_keepalive_socket_options() -> list[tuple[int, int, int | bytes]]:
     """TCP keepalive socket options, guarded for platform differences."""
-    options = list(HTTPConnection.default_socket_options) + [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
+    # urllib3 2.8 uses ClassVar[Final[...]], which our Python 3.10 type checker cannot unwrap.
+    options = list(cast("Any", HTTPConnection.default_socket_options)) + [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
 
     if hasattr(socket, "TCP_KEEPIDLE"):
         options.append((socket.IPPROTO_TCP, _socket_optname("TCP_KEEPIDLE"), _KEEPALIVE_IDLE_SECONDS))
