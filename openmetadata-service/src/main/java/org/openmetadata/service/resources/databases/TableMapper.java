@@ -24,6 +24,7 @@ public class TableMapper implements EntityMapper<Table, CreateTable> {
                 .withFileFormat(create.getFileFormat())
                 .withSchemaDefinition(create.getSchemaDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
+                .withAliases(create.getAliases())
                 .withDatabaseSchema(
                     getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))

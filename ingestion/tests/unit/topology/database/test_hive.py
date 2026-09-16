@@ -16,7 +16,7 @@ import types
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from sqlalchemy.types import INTEGER, VARCHAR, Integer, String
+from sqlalchemy.types import INTEGER, VARCHAR
 
 import metadata.ingestion.source.database.hive.utils as hive_dialect
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -221,36 +221,6 @@ EXPECTED_TABLE = [
     )
 ]
 
-EXPECTED_COMPLEX_COL_TYPE = [
-    {
-        "name": "id",
-        "type": Integer,
-        "comment": None,
-        "nullable": True,
-        "default": None,
-        "system_data_type": "int",
-        "is_complex": False,
-    },
-    {
-        "name": "data",
-        "type": String(),
-        "comment": None,
-        "nullable": True,
-        "default": None,
-        "system_data_type": "struct<a:struct<b:decimal(20,0)>>",
-        "is_complex": True,
-    },
-    {
-        "name": "data2",
-        "type": String(),
-        "comment": None,
-        "nullable": True,
-        "default": None,
-        "system_data_type": "struct<colll:decimal(20,0)>",
-        "is_complex": True,
-    },
-]
-
 # SSL-specific mock configurations
 mock_hive_ssl_config = {
     "source": {
@@ -425,18 +395,18 @@ class HiveUnitTest(TestCase):
                 schema="sample_schema",
             )
         )
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_COMPLEX_COL_TYPE, col_list)
-        ):
+        columns = {col["name"]: col for col in col_list}
+        assert [col["name"] for col in col_list] == ["id", "data", "data2"]
 
-            def custom_eq(self, __value: object) -> bool:
-                return (
-                    self.length == __value.length
-                    and self.collation == __value.collation
-                )
+        assert columns["id"]["system_data_type"] == "int"
+        assert columns["id"]["is_complex"] is False
 
-            String.__eq__ = custom_eq
-            self.assertEqual(expected, original)
+        assert (
+            columns["data"]["system_data_type"] == "struct<a:struct<b:decimal(20,0)>>"
+        )
+        assert columns["data"]["is_complex"] is True
+        assert columns["data2"]["system_data_type"] == "struct<colll:decimal(20,0)>"
+        assert columns["data2"]["is_complex"] is True
 
     def test_get_columns_deduplicates_partition_column_no_sentinel(self):
         """

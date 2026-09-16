@@ -1,6 +1,6 @@
-package org.openmetadata.service.migration.postgres.v1135;
+package org.openmetadata.service.migration.mysql.v1136;
 
-import static org.openmetadata.service.migration.utils.v1135.DataInsightChartMigration.alignDataAssetChartScope;
+import static org.openmetadata.service.migration.utils.v1136.TableAliasesSearchSettingsMigration.addAliasesSearchSettings;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +17,12 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
+    // Log and continue rather than abort: alias search degrades to not matching synonyms, which
+    // is not worth failing an upgrade over.
     try {
-      alignDataAssetChartScope();
+      addAliasesSearchSettings();
     } catch (Exception e) {
-      LOG.error("v1135: failed to align the data asset scope of the Data Insights charts", e);
+      LOG.error("v1136: failed to backfill the table 'aliases' search settings", e);
     }
   }
 }

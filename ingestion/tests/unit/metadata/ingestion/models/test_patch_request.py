@@ -13,13 +13,14 @@
 Check the JSONPatch operations work as expected
 """
 
+import uuid
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
 import jsonpatch
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -28,7 +29,13 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.models.patch_request import JsonPatchUpdater, build_patch
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    ARRAY_ENTITY_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    JsonPatchUpdater,
+    build_patch,
+)
 
 
 class JsonPatchUpdaterTest(TestCase):
@@ -438,3 +445,67 @@ def test_build_patch_drops_nested_children_when_column_becomes_scalar():
         operation for operation in patch.patch if operation["path"] == "/columns"
     )
     assert "children" not in columns_operation["value"][0]
+
+
+class TestBuildPatchTableAliases:
+    """Table.aliases has to survive the allow-listed patch the sink actually sends.
+
+    `metadata_rest.patch_entity` passes ALLOWED_COMMON_PATCH_FIELDS, and `build_patch`
+    diffs the models through `include=allowed_fields`. A field missing from that list
+    can never produce an operation, so a connector that recomputes aliases every run
+    would silently drop them on every table that already exists in OpenMetadata.
+    """
+
+    @staticmethod
+    def _table(aliases):
+        return Table(
+            id=str(uuid.uuid4()),
+            name="orders",
+            columns=[],
+            fullyQualifiedName="svc.db.schema.orders",
+            aliases=aliases,
+        )
+
+    def _patch_ops(self, source_aliases, destination_aliases):
+        """Diff two alias states through the exact call the sink makes."""
+        result = build_patch(
+            source=self._table(source_aliases),
+            destination=self._table(destination_aliases),
+            allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+            restrict_update_fields=RESTRICT_UPDATE_LIST,
+            array_entity_fields=ARRAY_ENTITY_FIELDS,
+            skip_on_failure=False,
+        )
+
+        return result.patch if result else []
+
+    def test_aliases_are_patchable(self):
+        """The allow-list carries aliases at all."""
+        assert "aliases" in ALLOWED_COMMON_PATCH_FIELDS
+
+    def test_first_alias_is_added(self):
+        assert self._patch_ops(None, ["svc.db.schema.orders_syn"]) == [
+            {"op": "add", "path": "/aliases", "value": ["svc.db.schema.orders_syn"]}
+        ]
+
+    def test_further_alias_is_added(self):
+        ops = self._patch_ops(
+            ["svc.db.schema.orders_syn"],
+            ["svc.db.schema.orders_syn", "svc.db.reporting.orders_v"],
+        )
+
+        assert ops == [
+            {"op": "add", "path": "/aliases/1", "value": "svc.db.reporting.orders_v"}
+        ]
+
+    def test_dropped_alias_is_removed(self):
+        """Aliases are source-managed: dropping the synonym has to clear the field."""
+        ops = self._patch_ops(["svc.db.schema.orders_syn"], None)
+
+        assert ops == [{"op": "remove", "path": "/aliases"}]
+
+    def test_unchanged_aliases_produce_no_operation(self):
+        assert (
+            self._patch_ops(["svc.db.schema.orders_syn"], ["svc.db.schema.orders_syn"])
+            == []
+        )

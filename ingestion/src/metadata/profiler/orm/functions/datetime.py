@@ -113,6 +113,12 @@ def _(elements, compiler, **kwargs):
     return generic_function(elements, compiler, **kwargs)
 
 
+@compiles(DatetimeAddFn, Dialects.Doris)
+def _(elements, compiler, **kwargs):
+    """Doris date and datetime function"""
+    return doris_function(elements, compiler, **kwargs)
+
+
 @compiles(DatetimeAddFn, Dialects.MySQL)
 def _(elements, compiler, **kwargs):
     """MySQL date and datetime function"""
@@ -196,6 +202,12 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     )
 
 
+@compiles(TimestampAddFn, Dialects.Doris)
+def _(elements, compiler, **kwargs):
+    """Doris timestamp function"""
+    return doris_function(elements, compiler, **kwargs)
+
+
 @compiles(TimestampAddFn, Dialects.MySQL)
 def _(elements, compiler, **kwargs):
     """MySQL timestamp function"""
@@ -245,6 +257,13 @@ def generic_function(elements, compiler, **kwargs):
     return (
         f"CAST(CURRENT_TIMESTAMP - interval '{interval}' {interval_unit} AS TIMESTAMP)"
     )
+
+
+def doris_function(elements, compiler, **kwargs):
+    """Doris timestamp and datetime function"""
+    interval = elements.clauses.clauses[0].value
+    interval_unit = compiler.process(elements.clauses.clauses[1], **kwargs)
+    return f"CAST(CURRENT_TIMESTAMP - interval '{interval}' {interval_unit} AS DATETIME)"
 
 
 def mysql_function(elements, compiler, **kwargs):

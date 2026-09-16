@@ -172,6 +172,14 @@ const TableConstraints = withSuspenseFallback(
   )
 );
 
+const TableAliases = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../pages/TableDetailsPageV1/TableAliases/TableAliases.component'
+    ).then((m) => ({ default: m.TableAliases }))
+  )
+);
+
 export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.GLOSSARY_TERMS]: () => (
     <TagsViewer
@@ -307,6 +315,9 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => (
     <PartitionedKeys renderAsExpandableCard={false} />
+  ),
+  [DetailPageWidgetKeys.TABLE_ALIASES]: () => (
+    <TableAliases renderAsExpandableCard={false} />
   ),
   [DetailPageWidgetKeys.MARKETPLACE_DATA_PRODUCTS]: () => (
     <MarketplaceDataProductsWidget

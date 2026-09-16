@@ -97,6 +97,46 @@ def get_column_fqn(
 
 search_cache = LRUCache(LRU_CACHE_SIZE)
 database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
+alias_resolution_cache = LRUCache(LRU_CACHE_SIZE)
+
+# Connection field a connector sets to opt into alias resolution. Read by name
+# rather than by service type so any connector exposing alternate names (SQL
+# Server synonyms today, Oracle synonyms later) participates without this
+# service-agnostic module learning connector names.
+ALIAS_OPT_IN_FIELD = "includeSynonyms"
+
+
+def service_resolves_aliases(metadata: OpenMetadata, service_name: str) -> bool:
+    """
+    Whether this service's connection opts into resolving alternate table names.
+
+    Resolving an alias costs an extra exact-match search per unresolved name, so
+    connectors that cannot produce aliases must not pay for it. Absent field
+    means no.
+    """
+    if service_name in alias_resolution_cache:
+        return bool(alias_resolution_cache.get(service_name))
+
+    resolves = False
+    try:
+        service: DatabaseService | None = metadata.get_by_name(
+            entity=DatabaseService, fqn=service_name
+        )
+        if service:
+            resolves = bool(
+                getattr(service.connection.config, ALIAS_OPT_IN_FIELD, False)
+            )
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            "Could not read alias opt-in for service '%s', assuming disabled: %s",
+            service_name,
+            exc,
+        )
+
+    alias_resolution_cache.put(service_name, resolves)
+
+    return resolves
 
 
 def get_database_service_type(
@@ -179,6 +219,38 @@ def normalize_table_params_by_service(
     return database, database_schema
 
 
+def resolve_table_entities_from_alias(
+    metadata: OpenMetadata,
+    service_name: str,
+    database: Optional[str],
+    database_schema: Optional[str],
+    table: str,
+) -> Optional[List[Table]]:
+    """
+    Resolve a name that is an alternate name (alias) of a table to that table.
+
+    Matching is exact on the stored alias FQN: a fuzzy hit would silently attach
+    a lineage edge to the wrong table. Gated per service so connectors that
+    cannot produce aliases never pay for the extra search.
+    """
+    if not service_resolves_aliases(metadata, service_name):
+        return None
+
+    alias_fqn = fqn.build(
+        metadata,
+        entity_type=Table,
+        service_name=service_name,
+        database_name=database,
+        schema_name=database_schema,
+        table_name=table,
+        skip_es_search=True,
+    )
+    if not alias_fqn:
+        return None
+
+    return metadata.es_search_from_alias(entity_type=Table, alias_fqn=alias_fqn)
+
+
 def search_table_entities(
     metadata: OpenMetadata,
     service_names: Union[str, List[str]],
@@ -251,6 +323,11 @@ def search_table_entities(
                     table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
                     if table_entity:
                         table_entities.append(table_entity)
+
+            if not table_entities:
+                table_entities = resolve_table_entities_from_alias(
+                    metadata, service_name, normalized_db, normalized_schema, table
+                )
 
             # added the search tuple to the cache
             search_cache.put(search_tuple, table_entities)
