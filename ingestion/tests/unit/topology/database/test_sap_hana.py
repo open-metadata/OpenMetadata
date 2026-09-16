@@ -1602,24 +1602,30 @@ def test_iter_reaches_the_repository_pass_after_a_query_failure() -> None:
     the repository pass, which is the regression that actually costs lineage.
     """
     source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
-    reached = []
 
     def explode(*_, **__):
         # What a restricted read actually raises, and the only family the guard catches.
         raise ProgrammingError("SELECT 1", None, Exception("insufficient privilege: SYS.M_SQL_PLAN_CACHE"))
 
-    def record_cdata():
-        reached.append("cdata")
-        return iter([])
+    # A sentinel rather than a call recorder, so the repository pass has to reach _iter's
+    # output and not merely be invoked and discarded.
+    repository_edge = Either(
+        right=OMetaFQNLineageRequest(
+            from_entity_fqn="test_sap_hana.H00.GE370603.LT_CUSTOMER",
+            from_entity_type="table",
+            to_entity_fqn="test_sap_hana.H00._sys_bic.my-package/CV",
+            to_entity_type="table",
+        )
+    )
 
     with (
         patch.object(LineageSource, "yield_query_lineage", side_effect=explode),
         patch.object(LineageSource, "yield_view_lineage", return_value=iter([])),
-        patch.object(SaphanaLineageSource, "yield_cdata_lineage", side_effect=record_cdata),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([repository_edge])),
     ):
         results = list(source._iter())
 
-    assert reached == ["cdata"]
+    assert repository_edge in results
     assert any(either.left is not None for either in results)
 
 
@@ -1695,15 +1701,25 @@ def test_cdata_pass_honours_process_view_lineage() -> None:
     Calculation, Analytic and Attribute Views are views, so leaving this pass on
     would keep emitting view edges for a user who turned view lineage off.
     """
-    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+    # Both shared passes off, so the real base _iter runs and has nothing to do. Patching
+    # it out instead would hide a regression in the gating this test exists to protect.
+    source = _lineage_source_with(
+        DatabaseServiceQueryLineagePipeline(processViewLineage=False, processQueryLineage=False)
+    )
+    repository_edge = Either(
+        right=OMetaFQNLineageRequest(
+            from_entity_fqn="test_sap_hana.H00.GE370603.LT_CUSTOMER",
+            from_entity_type="table",
+            to_entity_fqn="test_sap_hana.H00._sys_bic.my-package/CV",
+            to_entity_type="table",
+        )
+    )
 
-    with (
-        patch.object(LineageSource, "_iter", return_value=iter([])),
-        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([])) as cdata,
-    ):
-        list(source._iter())
+    with patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([repository_edge])) as cdata:
+        results = list(source._iter())
 
     cdata.assert_not_called()
+    assert repository_edge not in results
 
 
 def test_plan_cache_row_becomes_a_table_query() -> None:
@@ -2079,11 +2095,10 @@ def test_no_lineage_warning_names_the_disabled_passes() -> None:
         DatabaseServiceQueryLineagePipeline(processViewLineage=False, processQueryLineage=False)
     )
 
-    with (
-        patch.object(LineageSource, "_iter", return_value=iter([])),
-        patch.object(saphana_lineage.logger, "warning") as warning,
-    ):
-        list(source._iter())
+    # The real base _iter runs. With both passes off it has no database work to do, so
+    # patching it out would only hide a regression in that gating.
+    with patch.object(saphana_lineage.logger, "warning") as warning:
+        assert list(source._iter()) == []
 
     assert "both View Lineage and Query Lineage are turned off" in warning.call_args[0][0]
 
