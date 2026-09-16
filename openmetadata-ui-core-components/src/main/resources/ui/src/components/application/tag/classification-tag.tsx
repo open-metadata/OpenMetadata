@@ -94,7 +94,7 @@ export const ClassificationTag: FC<EntityTagProps> = ({
   }
 
   return (
-    <Badge {...sharedProps} href={href} style={tagColorStyle}>
+    <Badge {...sharedProps} href={disabled ? undefined : href} style={tagColorStyle}>
       {content}
     </Badge>
   );
