@@ -31,6 +31,7 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
@@ -42,6 +43,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { visitClassificationPage } from '../../utils/tag';
 import {
   addUser,
   checkDataConsumerPermissions,
@@ -323,58 +325,108 @@ test.describe('User with Data Consumer Roles', () => {
   test('User should have only view permission for glossary and tags for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await redirectToHomePage(dataConsumerPage);
+    const { apiContext, afterAction } = await createAdminApiContext();
+    const userClassification = new ClassificationClass();
 
-    // Check CRUD for Glossary
-    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+    try {
+      await userClassification.create(apiContext);
+      await redirectToHomePage(dataConsumerPage);
 
-    await waitForAllLoadersToDisappear(dataConsumerPage);
+      // Check CRUD for Glossary
+      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-glossary"]')
-    ).not.toBeVisible();
+      await waitForAllLoadersToDisappear(dataConsumerPage);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
-    ).not.toBeVisible();
+      // Confirm the glossary page has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('glossary-details')
+      ).toBeVisible();
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-glossary"]')
+      ).not.toBeVisible();
 
-    // Glossary Term Table Action column
-    await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
+      ).not.toBeVisible();
 
-    // right panel
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-domain"]')
-    ).not.toBeVisible();
-    await expect(
-      dataConsumerPage.locator('[data-testid="edit-review-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
 
-    const hasAddOwnerButton = dataConsumerPage.locator(
-      '[data-testid="add-owner"]'
-    );
+      // Glossary Term Table Action column
+      await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
 
-    if (!hasAddOwnerButton) {
-      await checkEditOwnerButtonPermission(dataConsumerPage);
+      // right panel
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-domain"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="edit-review-button"]')
+      ).not.toBeVisible();
+
+      const hasAddOwnerButton = dataConsumerPage.locator(
+        '[data-testid="add-owner"]'
+      );
+
+      if (!hasAddOwnerButton) {
+        await checkEditOwnerButtonPermission(dataConsumerPage);
+      }
+
+      // Check CRUD for Tags — navigate to Tags sidebar to verify create permission is absent
+      await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
+
+      // Confirm the left panel has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('tags-left-panel')
+      ).toBeVisible();
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-classification"]')
+      ).not.toBeVisible();
+
+      // System classification (e.g. Certification): manage button must NOT be visible
+      await visitClassificationPage(
+        dataConsumerPage,
+        'Certification',
+        'Certification'
+      );
+
+      // Confirm the header has rendered before asserting button absence
+      await expect(dataConsumerPage.getByTestId('header')).toBeVisible();
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
+
+      // User-created classification: manage button MUST be visible but show only Export
+      await userClassification.visitPage(dataConsumerPage);
+
+      // Confirm the header has rendered before asserting button presence/absence
+      await expect(
+        dataConsumerPage.getByTestId('entity-header-display-name')
+      ).toContainText(userClassification.data.displayName);
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+
+      const manageButton = dataConsumerPage.getByTestId('manage-button');
+
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
+
+      await expect(dataConsumerPage.getByTestId('export-button')).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('import-button')
+      ).not.toBeVisible();
+    } finally {
+      await userClassification.delete(apiContext);
+      await afterAction();
     }
-
-    // Check CRUD for Tags
-    await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-classification"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
   });
 
   test('Operations for settings page for Data Consumer', async ({
@@ -1193,6 +1245,16 @@ test.describe('User Profile Persona Interactions', () => {
     await test.step('Navigate back to user profile', async () => {
       await visitOwnProfilePage(adminPage);
       await adminPage.getByTestId('persona-details-card').waitFor();
+
+      // The "Default Persona changed to …" success toast from the add step is a
+      // success variant with no close button, and its react-aria auto-dismiss
+      // timer can be starved by the intervening navigation churn. The toast
+      // region lives at the app root and survives SPA navigation, so the stale
+      // toast can still be on screen — which would make the removal step's
+      // "no notification appears" assertion resolve to it. Reload to guarantee a
+      // clean toast region before asserting the removal shows no notification.
+      await adminPage.reload();
+      await adminPage.getByTestId('persona-details-card').waitFor();
     });
 
     // Test removing default persona
@@ -1350,7 +1412,7 @@ base.describe(
           ).toBeVisible();
 
           const lineageResponse = page.waitForResponse(
-            `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
+            `**/api/v1/lineage/scene?*focusFqn=${entity.entityResponseData.fullyQualifiedName}*`
           );
 
           await page.getByTestId('lineage').click();

@@ -12,8 +12,14 @@
  */
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
-import { TEXT_GREY_MUTED } from '../../../constants/constants';
 import CustomPieChart from './CustomPieChart.component';
+
+jest.mock('../../../hooks/useChartColors', () => ({
+  useChartColors: jest.fn().mockReturnValue({
+    emptyFill: '#123456',
+    inactive: '#234567',
+  }),
+}));
 
 describe('CustomPieChart', () => {
   const mockData = [
@@ -39,7 +45,7 @@ describe('CustomPieChart', () => {
     const centerLabel = getByText(label);
 
     expect(centerLabel).toBeInTheDocument();
-    expect(centerLabel).toHaveAttribute('fill', TEXT_GREY_MUTED);
+    expect(centerLabel).toHaveAttribute('fill', '#234567');
   });
 
   it('renders the center label when label is a React element', () => {

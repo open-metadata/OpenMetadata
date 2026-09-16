@@ -108,6 +108,21 @@ class AppSchedulerTest {
     return appScheduler;
   }
 
+  @Test
+  void testOnDemandDispatchFailureIsReturnedToTheCaller() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    SchedulerException unavailable = new SchedulerException("job store unavailable");
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenThrow(unavailable);
+
+    UnhandledServerException failure =
+        assertThrows(
+            UnhandledServerException.class,
+            () -> appScheduler.triggerOnDemandApplication(testApp, Map.of()));
+
+    assertTrue(failure.getMessage().contains("Could not queue application " + testApp.getName()));
+    assertEquals(unavailable, failure.getCause());
+  }
+
   // --- Tests for getUniqueJobIdentifier ---
 
   @Test

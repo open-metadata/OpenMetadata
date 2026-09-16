@@ -46,4 +46,10 @@ export interface DataRetentionConfigurationClass {
      * two months).
      */
     testCaseResultsRetentionPeriod: number;
+    /**
+     * Enter the retention period in days for automation Workflows: the short-lived records left
+     * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
+     * forever.
+     */
+    workflowRetentionPeriod?: number;
 }
