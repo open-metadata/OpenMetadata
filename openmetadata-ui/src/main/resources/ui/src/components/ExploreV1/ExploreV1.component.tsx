@@ -573,8 +573,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
   browseQueryFilter,
   onTreeSelect = noop,
 }) => {
-  const tabsInfo = useMemo(() => searchClassBase.getTabsInfo(), []);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // getTabsInfo() bakes translated labels into its result, so recompute on a
+  // language switch rather than freezing the first language for the mount.
+  const tabsInfo = useMemo(
+    () => searchClassBase.getTabsInfo(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- result bakes in t() output
+    [i18n.language]
+  );
   // The router location, not the global: the global's `search` is not a valid
   // hook dependency (mutating it never re-renders), so the memo below went
   // stale across in-app navigation.
