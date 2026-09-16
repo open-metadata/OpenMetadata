@@ -449,6 +449,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
         {showPagination && (
           <PaginationCardWithControls
             page={currentPage}
+            pageSizeOptions={[15, 25, 50]}
             pageSize={pageSize}
             total={totalPages}
             onPageChange={handlePageNavigation}

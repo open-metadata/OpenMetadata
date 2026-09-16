@@ -14,12 +14,14 @@
 import {
   Autocomplete,
   Box,
+  HintText,
   Button,
   FieldProp,
   FieldTypes,
   FormField,
   FormFields,
   HookForm,
+  FormItemLabel,
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -195,12 +197,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
             }}>
             {({ field, fieldState }) => (
               <Box direction="col" gap={1}>
-                <Typography
-                  className="tw:text-secondary"
-                  size="text-sm"
-                  weight="medium">
-                  {t('label.select-a-policy')}
-                </Typography>
+                <FormItemLabel required label={t('label.select-a-policy')} />
                 <Autocomplete
                   data-testid="role-policies-select"
                   filterOption={(item, filterText) =>
@@ -230,12 +227,8 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
                   )}
                 </Autocomplete>
                 {fieldState.error?.message && (
-                  <Typography
-                    className="tw:text-error-primary"
-                    size="text-xs">
-                    {fieldState.error.message}
-                  </Typography>
-                )}
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
               </Box>
             )}
           </FormField>
