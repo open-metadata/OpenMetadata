@@ -961,7 +961,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   };
 
   return (
-    <Box className="tw:px-8 tw:pb-8" data-testid="role-detail-container" direction="col" gap={4}>
+    <Box
+      className="tw:px-8 tw:pb-8"
+      data-testid="role-detail-container"
+      direction="col"
+      gap={4}>
       <InlineDescriptionEditor
         canEdit={canEditAll}
         description={role.description}

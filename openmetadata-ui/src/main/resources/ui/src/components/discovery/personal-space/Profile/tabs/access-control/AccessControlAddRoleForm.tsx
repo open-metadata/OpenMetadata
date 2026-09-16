@@ -172,7 +172,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   }
 
   return (
-    <Box className="tw:h-full tw:min-h-0" direction="col" justify='between'>
+    <Box className="tw:h-full tw:min-h-0" direction="col" justify="between">
       {/* Scrollable form area */}
       <HookForm form={form}>
         <Box

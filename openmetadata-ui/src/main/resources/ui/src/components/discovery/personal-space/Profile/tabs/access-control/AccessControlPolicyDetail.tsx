@@ -128,10 +128,10 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         <ButtonUtility
           color="tertiary"
           data-testid="edit-description-btn"
-          size="xs"
           icon={Edit}
+          size="xs"
           tooltip={t('label.edit-entity', { entity: t('label.description') })}
-          onPress={onStartEdit} 
+          onPress={onStartEdit}
         />
       )}
     </Box>
@@ -1066,7 +1066,11 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   };
 
   return (
-    <Box className="tw:px-8 tw:pb-8" data-testid="policy-detail-container" direction="col" gap={4}>
+    <Box
+      className="tw:px-8 tw:pb-8"
+      data-testid="policy-detail-container"
+      direction="col"
+      gap={4}>
       <InlineDescriptionEditor
         canEdit={canEditAll}
         description={policy.description}
