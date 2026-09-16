@@ -10,133 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { addMultiOwner } from '../../utils/entity';
-import { waitForIngestionWorkflowForm } from '../../utils/serviceIngestion';
+import { createNewPage, uuid } from '../../utils/common';
+import {
+  assignServiceOwner,
+  clearAgentOwners,
+  openAddAgentForm,
+  openEditAgentForm,
+  selectAgentOwner,
+} from '../../utils/serviceIngestion';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-// Each describe owns its own service so the create and edit flows stay
-// independent and can run in any order.
-const createFlowService = new DatabaseServiceClass();
-const editFlowService = new DatabaseServiceClass();
-const serviceOwner = new UserClass();
-const newOwner = new UserClass();
+// The create and edit flows each own a service so they stay independent and can
+// run in any order. Constructed in `beforeAll` so each fixture is built by the
+// same hook that creates it, and torn down by its pair in `afterAll`.
+let createFlowService: DatabaseServiceClass;
+let editFlowService: DatabaseServiceClass;
+let serviceOwner: UserClass;
+let newOwner: UserClass;
 
 let editPipelineFqn = '';
-
-const assignServiceOwner = async (
-  apiContext: APIRequestContext,
-  service: DatabaseServiceClass,
-  owner: UserClass
-) => {
-  const response = await apiContext.patch(
-    `/api/v1/services/databaseServices/${service.entityResponseData.id}`,
-    {
-      data: [
-        {
-          op: 'add',
-          path: '/owners',
-          value: [{ id: owner.responseData.id, type: 'user' }],
-        },
-      ],
-      headers: { 'Content-Type': 'application/json-patch+json' },
-    }
-  );
-
-  expect(response.status()).toBe(200);
-};
-
-const openAgentsTab = async (page: Page, service: DatabaseServiceClass) => {
-  await redirectToHomePage(page);
-  await service.visitEntityPage(page);
-  await page.getByTestId('data-assets-header').waitFor();
-  await page.click('[role="tab"] [data-testid="agents"]');
-
-  const metadataSubTab = page.getByTestId('metadata-sub-tab');
-  if (await metadataSubTab.isVisible()) {
-    await metadataSubTab.click();
-  }
-};
-
-const openAddAgentForm = async (page: Page, service: DatabaseServiceClass) => {
-  await openAgentsTab(page, service);
-
-  await page.getByTestId('add-new-ingestion-button').waitFor();
-  await page.click('[data-testid="add-new-ingestion-button"]');
-  await page
-    .locator('.ant-dropdown:visible [data-menu-id*="metadata"]')
-    .waitFor();
-  await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
-
-  await waitForIngestionWorkflowForm(page);
-};
-
-const openEditAgentForm = async (page: Page, service: DatabaseServiceClass) => {
-  await openAgentsTab(page, service);
-
-  await page
-    .getByTestId(`agent-card-${editPipelineFqn}`)
-    .getByTestId('more-actions')
-    .click();
-  await page.getByTestId('edit-button').click();
-
-  await waitForIngestionWorkflowForm(page);
-};
-
-/**
- * Deselects every owner through the picker. Owners are mandatory, so this is
- * the only empty state a user can actually produce.
- */
-const clearAgentOwners = async (page: Page) => {
-  // Owners are always populated when this runs, so the trigger is the edit
-  // variant; the empty state swaps it for `add-owner`.
-  await page.getByTestId('edit-owner').click();
-
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
-
-  await page
-    .getByTestId('select-owner-tabs')
-    .getByRole('tab', { name: 'Users' })
-    .click();
-
-  const usersPanel = page.locator('[data-testid="owner-select-users-panel"]');
-
-  // The list loads async; the clear button only renders once it has, so waiting
-  // on it covers the load without reaching for a loader locator.
-  const clearAllButton = usersPanel.getByTestId('clear-all-button');
-  await expect(clearAllButton).toBeVisible();
-  await clearAllButton.click();
-
-  await usersPanel.getByTestId('selectable-list-update-btn').click();
-
-  await expect(page.getByTestId('select-owner-tabs')).not.toBeVisible();
-};
-
-const selectAgentOwner = async (
-  page: Page,
-  service: DatabaseServiceClass,
-  owner: UserClass
-) => {
-  await addMultiOwner({
-    page,
-    ownerNames: [owner.getUserDisplayName()],
-    activatorBtnDataTestId: 'add-owner',
-    resultTestId: 'ingestion-owners',
-    endpoint: service.endpoint,
-    isSelectableInsideForm: true,
-    type: 'Users',
-  });
-};
 
 test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+
+    createFlowService = new DatabaseServiceClass();
+    editFlowService = new DatabaseServiceClass();
+    serviceOwner = new UserClass();
+    newOwner = new UserClass();
 
     await serviceOwner.create(apiContext);
     await newOwner.create(apiContext);
@@ -184,8 +90,6 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test('create form prefills the service owners and requires them', async ({
     page,
   }) => {
-    test.slow();
-
     await openAddAgentForm(page, createFlowService);
 
     await test.step('Owners default to the service owners', async () => {
@@ -222,7 +126,16 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await page.getByTestId('next-button').click();
 
-      const created = await (await createResponse).json();
+      const createResult = await createResponse;
+      // Read the body once and reuse it as the failure message, so a non-201
+      // reports the server's actual error instead of just the status code.
+      // Truncated because the message prints above the status diff, and a full
+      // entity payload would bury it.
+      const createBody = await createResult.text();
+
+      expect(createResult.status(), createBody.slice(0, 500)).toBe(201);
+
+      const created = JSON.parse(createBody);
 
       expect(created.owners).toHaveLength(1);
       expect(created.owners[0].id).toBe(newOwner.responseData.id);
@@ -232,9 +145,7 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test('edit form shows the saved owners and replaces them on save', async ({
     page,
   }) => {
-    test.slow();
-
-    await openEditAgentForm(page, editFlowService);
+    await openEditAgentForm(page, editFlowService, editPipelineFqn);
 
     await test.step('Saved owners are loaded into the form', async () => {
       await expect(
@@ -253,20 +164,24 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateResponse = page.waitForResponse(
         (response) =>
           response.request().method() === 'PATCH' &&
-          response.url().includes('/services/ingestionPipelines/') &&
-          response.status() === 200
+          response.url().includes('/services/ingestionPipelines/')
       );
 
       await page.getByTestId('next-button').click();
 
-      const updated = await (await updateResponse).json();
+      const updateResult = await updateResponse;
+      const updateBody = await updateResult.text();
+
+      expect(updateResult.status(), updateBody.slice(0, 500)).toBe(200);
+
+      const updated = JSON.parse(updateBody);
 
       expect(updated.owners).toHaveLength(1);
       expect(updated.owners[0].id).toBe(serviceOwner.responseData.id);
     });
 
     await test.step('Reopening the agent shows the persisted owners', async () => {
-      await openEditAgentForm(page, editFlowService);
+      await openEditAgentForm(page, editFlowService, editPipelineFqn);
 
       await expect(
         page
