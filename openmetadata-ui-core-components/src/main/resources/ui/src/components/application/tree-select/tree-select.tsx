@@ -170,6 +170,9 @@ export const TreeSelect = <T = unknown,>({
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevValueRef = useRef<typeof value>(undefined);
+  // Stable root IDs captured before any search replaces treeData, so
+  // displayedSelectedCount is not zeroed out while the user is searching.
+  const [stableRootIds, setStableRootIds] = useState<Set<string>>(new Set());
 
   const isButtonVariant = triggerVariant === 'button';
 
@@ -204,6 +207,12 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
+  useEffect(() => {
+    if (!searchTerm && treeData.length > 0) {
+      setStableRootIds(new Set(treeData.map((n) => n.id)));
+    }
+  }, [treeData, searchTerm]);
+
   const loadAllDescendants = useCallback(
     async (node: TreeSelectNode<T>): Promise<TreeSelectNode<T>> => {
       if (node.children?.length) {
@@ -218,30 +227,21 @@ export const TreeSelect = <T = unknown,>({
         return node;
       }
 
-      try {
-        const response = await fetchData({ parentId: node.id });
-        loadChildren(node.id);
-        setExpandedKeys((prev) => {
-          const next = new Set(prev);
-          next.add(node.id);
+      // Fetch directly — do NOT call loadChildren here to avoid a duplicate
+      // API request (loadChildren would re-fetch the same parentId).
+      const response = await fetchData({ parentId: node.id });
 
-          return next;
-        });
+      if (response.nodes.length > 0) {
+        const deepChildren = await Promise.all(
+          response.nodes.map((child) => loadAllDescendants(child))
+        );
 
-        if (response.nodes.length > 0) {
-          const deepChildren = await Promise.all(
-            response.nodes.map((child) => loadAllDescendants(child))
-          );
-
-          return { ...node, children: deepChildren };
-        }
-      } catch {
-        // Fall back to node without children
+        return { ...node, children: deepChildren };
       }
 
       return node;
     },
-    [fetchData, lazyLoad, loadChildren]
+    [fetchData, lazyLoad]
   );
 
   const handleNodeAction = useCallback(
@@ -258,7 +258,12 @@ export const TreeSelect = <T = unknown,>({
         !isNodeSelected(node.id) &&
         node.isLeaf !== true
       ) {
-        nodeForSelection = await loadAllDescendants(node);
+        try {
+          nodeForSelection = await loadAllDescendants(node);
+        } catch {
+          // Fetch failed — skip selection rather than selecting a partial tree
+          return;
+        }
       }
 
       toggleNodeSelection(nodeForSelection, parentNode);
@@ -413,13 +418,9 @@ export const TreeSelect = <T = unknown,>({
   const resolvedNoDataMessage = noDataMessage ?? t('label.no-data-found');
   const resolvedLoadingMessage = loadingMessage ?? t('label.loading');
 
-  const rootNodeIds = useMemo(
-    () => new Set(treeData.map((n) => n.id)),
-    [treeData]
-  );
   const displayedSelectedCount = useMemo(
-    () => selectedData.filter((n) => !rootNodeIds.has(n.id)).length,
-    [selectedData, rootNodeIds]
+    () => selectedData.filter((n) => !stableRootIds.has(n.id)).length,
+    [selectedData, stableRootIds]
   );
 
   const selectableNodes = useMemo(

@@ -65,16 +65,19 @@ export const TreeSelectTreeItemContent = <T,>({
           }}>
           {showConnectorLines && renderProps.level >= 2 && (
             <span aria-hidden="true">
-              {/* L-shaped branch connecting this node to its parent's vertical line */}
+              {/* L-shaped branch — corner aligns with parent expand-button centre.
+                  Tree.ItemContent indent = (level-1)*16+2, expand=16px, gap=12px
+                  → our content left = marginLeft+28; parent expand centre = parentMarginLeft+8
+                  → Δ = -36px (constant for all depths) */}
               <span
                 className="tw:pointer-events-none tw:absolute tw:w-3 tw:border-l tw:border-b tw:border-secondary tw:rounded-bl-md tw:-top-2.5 tw:h-[calc(50%+12px)]"
-                style={{ left: '-40px' }}
+                style={{ left: '-36px' }}
               />
-              {/* Vertical continuation line down to the next sibling */}
+              {/* Vertical continuation line down to next sibling at same depth */}
               {!isLastChild && (
                 <span
                   className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-secondary"
-                  style={{ left: '-40px' }}
+                  style={{ left: '-36px' }}
                 />
               )}
             </span>
