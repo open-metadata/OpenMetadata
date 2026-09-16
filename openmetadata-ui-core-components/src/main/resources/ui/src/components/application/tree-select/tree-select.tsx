@@ -336,6 +336,7 @@ export const TreeSelect = <T = unknown,>({
             hasChildItems={
               Boolean(node.children?.length) || node.isLeaf === false
             }
+            isLastChild={index === visibleNodes.length - 1}
             isLoading={loadingNodes.has(node.id)}
             isSelected={isNodeSelected(node.id)}
             multiple={multiple}
@@ -552,11 +553,10 @@ export const TreeSelect = <T = unknown,>({
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:py-1.5 tw:pr-1.5 tw:pl-3">
           <button
             className={cx(
-              'tw:cursor-pointer tw:text-xs tw:font-normal tw:outline-brand',
-              displayedSelectedCount > 0 && !showSelectedOnly
-                ? 'tw:text-fg-brand-primary tw:underline'
-                : 'tw:text-tertiary',
-              showSelectedOnly && 'tw:text-fg-brand-primary tw:font-medium'
+              'tw:cursor-pointer tw:outline-brand',
+              displayedSelectedCount > 0
+                ? 'tw:inline-flex tw:items-center tw:rounded-full tw:bg-utility-brand-50 tw:px-2.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:transition-colors tw:hover:bg-utility-brand-100'
+                : 'tw:text-xs tw:font-normal tw:text-tertiary tw:cursor-default'
             )}
             data-testid="selected-count"
             disabled={displayedSelectedCount === 0}
