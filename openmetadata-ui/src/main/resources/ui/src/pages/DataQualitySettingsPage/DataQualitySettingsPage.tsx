@@ -30,7 +30,7 @@ import {
   EditIconButton,
 } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
-import Table from '../../components/common/Table/Table';
+import Table from '../../components/common/Table/TableV2';
 import { ColumnsType } from '../../components/common/Table/Table.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
