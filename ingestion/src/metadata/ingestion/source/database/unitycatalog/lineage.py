@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,  # noqa: TC001
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -47,6 +50,9 @@ from metadata.ingestion.source.connections import (
     create_connection,
     run_test_connection,
     test_connection_common,
+)
+from metadata.ingestion.source.database.unitycatalog.metric_view_lineage_mixin import (
+    UnitycatalogMetricViewLineageMixin,
 )
 from metadata.ingestion.source.database.unitycatalog.path_utils import (
     container_path_candidates,
@@ -77,7 +83,7 @@ TABLE_CACHE_MAX_SIZE = 500
 LINEAGE_ROW_BUFFER_SIZE = 1000
 
 
-class UnitycatalogLineageSource(Source):
+class UnitycatalogLineageSource(UnitycatalogMetricViewLineageMixin, Source):
     """
     Lineage Unity Catalog Source
     """
@@ -592,6 +598,10 @@ class UnitycatalogLineageSource(Source):
                 continue
 
             yield from self._process_external_location_lineage(databricks_table_fqn)
+
+        # Metric views last: their definition is YAML rather than the SQL the system
+        # tables record, so nothing above can see the relations they read.
+        yield from self.yield_metric_view_lineage()
 
     def test_connection(self) -> None:
         if self._connection is not None:

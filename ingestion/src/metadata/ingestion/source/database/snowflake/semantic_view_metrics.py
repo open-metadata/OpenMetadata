@@ -19,20 +19,26 @@ carrying its expression, inferred type, the view's dimensions/facts, and an
 because the ``Metric`` namespace is global (FQN == name).
 """
 
-import hashlib
-
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import (
     Language,
     MetricDimension,
     MetricExpression,
     MetricMeasure,
-    MetricType,
-    Type,
 )
 from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.source.database.semantic_metrics import (
+    aggregation_name,
+    describe,
+    dimension_type,
+    infer_metric_type,
+    unquote_name_part,
+)
+from metadata.ingestion.source.database.semantic_metrics import (
+    build_metric_name as build_semantic_metric_name,
+)
 
 # Column layout of INFORMATION_SCHEMA.SEMANTIC_{DIMENSIONS,FACTS,METRICS}:
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
@@ -45,53 +51,10 @@ SEMANTIC_EXPRESSION_IDX = 3
 SEMANTIC_COMMENT_IDX = 4
 SEMANTIC_SYNONYMS_IDX = 5
 
-# Snowflake data types that make a dimension a TIME dimension rather than CATEGORICAL.
-_TIME_TYPE_MARKERS = ("DATE", "TIME", "TIMESTAMP")
-
 # A metric name is prefixed with its service so the global Metric namespace stays
 # browsable by service; the digest after it carries the identity. Cap the prefix so a
 # long service name cannot push the name past the 256-character entityName limit.
-SERVICE_PREFIX_MAX_LEN = 64
 _FALLBACK_SERVICE_PREFIX = "snowflake"
-
-_METRIC_TYPE_BY_PREFIX = {
-    "SUM": MetricType.SUM,
-    "COUNT": MetricType.COUNT,
-    "AVG": MetricType.AVERAGE,
-    "MIN": MetricType.MIN,
-    "MAX": MetricType.MAX,
-}
-
-
-def _unquote_name_part(part: str) -> str:
-    """Normalize one identifier before hashing its canonical identity.
-
-    Every derivation of a metric name starts here, because the two call sites
-    disagree on quoting: the metadata stage passes the topology context value,
-    which may be quoted, while the lineage workflow passes the raw
-    INFORMATION_SCHEMA value, which never is. Normalizing before anything else
-    keeps both paths on the same name for the same metric. Snowflake represents
-    an embedded quote as ``""`` inside a quoted identifier; decode that wrapper
-    representation without removing quotes that belong to the identifier itself.
-    """
-    value = part or ""
-    if len(value) >= 2 and value.startswith('"') and value.endswith('"'):
-        return value[1:-1].replace('""', '"')
-    return value
-
-
-def _service_prefix(service: str) -> str:
-    """FQN-safe prefix derived from the OpenMetadata service name.
-
-    A service name is user-defined and may carry ``.``, spaces, or ``::``, any of
-    which would stop the metric name from being a single FQN segment --
-    ``MetricRepository`` assigns the FQN from the raw name without quoting it. Map
-    everything outside ``[alnum]``/``_``/``-`` to ``-``. This is deliberately lossy:
-    the digest is what makes the name unique, so two services that flatten to the
-    same prefix still produce different names.
-    """
-    safe = "".join(char if char.isalnum() or char in "_-" else "-" for char in _unquote_name_part(service))
-    return safe[:SERVICE_PREFIX_MAX_LEN].strip("-") or _FALLBACK_SERVICE_PREFIX
 
 
 def build_metric_name(service: str, database: str, schema: str, view: str, table: str, metric: str) -> str:
@@ -113,38 +76,9 @@ def build_metric_name(service: str, database: str, schema: str, view: str, table
     connector-defined truncation collision and stays well below the entity-name
     length limit.
     """
-    identity = tuple(_unquote_name_part(part) for part in (service, database, schema, view, table, metric))
-    digest = hashlib.sha256("\x00".join(identity).encode("utf-8")).hexdigest()
-    return f"{_service_prefix(service)}-{digest}"
-
-
-def infer_metric_type(expression: str | None) -> MetricType:
-    """Infer the MetricType from the aggregation head of the expression."""
-    result = MetricType.OTHER
-    if expression:
-        head = expression.strip().split("(")[0].strip().upper()
-        result = _METRIC_TYPE_BY_PREFIX.get(head, MetricType.OTHER)
-    return result
-
-
-def _semantic_description(row) -> str | None:
-    """Description for a dimension/measure: the Snowflake ``COMMENT``, plus any
-    synonyms, which have nowhere else to land."""
-    parts = []
-    if row[SEMANTIC_COMMENT_IDX]:
-        parts.append(str(row[SEMANTIC_COMMENT_IDX]))
-    if row[SEMANTIC_SYNONYMS_IDX]:
-        parts.append(f"Synonyms: {row[SEMANTIC_SYNONYMS_IDX]}.")
-    return " ".join(parts) or None
-
-
-def _dimension_type(data_type: str | None) -> Type | None:
-    """Classify a dimension as TIME or CATEGORICAL from its Snowflake data type."""
-    result = None
-    if data_type:
-        upper = data_type.upper()
-        result = Type.TIME if any(marker in upper for marker in _TIME_TYPE_MARKERS) else Type.CATEGORICAL
-    return result
+    return build_semantic_metric_name(
+        service, database, schema, view, table, metric, fallback_prefix=_FALLBACK_SERVICE_PREFIX
+    )
 
 
 def _child_name(row) -> str:
@@ -158,27 +92,29 @@ def _child_name(row) -> str:
     in the name. The server quotes dotted child names when building their FQNs, so
     the Snowflake name does not need the Metric name's UI-specific sanitization.
     """
-    return ".".join(_unquote_name_part(part) for part in (row[SEMANTIC_TABLE_IDX], row[SEMANTIC_NAME_IDX]))
+    return ".".join(unquote_name_part(part) for part in (row[SEMANTIC_TABLE_IDX], row[SEMANTIC_NAME_IDX]))
+
+
+def _row_description(row) -> str | None:
+    """A semantic object's description: its Snowflake ``COMMENT`` plus its synonyms."""
+    return describe(row[SEMANTIC_COMMENT_IDX], row[SEMANTIC_SYNONYMS_IDX])
 
 
 def _dimension(row) -> MetricDimension:
     return MetricDimension(  # pyright: ignore[reportCallIssue]
         name=_child_name(row),
-        type=_dimension_type(row[SEMANTIC_DATA_TYPE_IDX]),
-        description=_semantic_description(row),
+        type=dimension_type(row[SEMANTIC_DATA_TYPE_IDX]),
+        description=_row_description(row),
         expression=row[SEMANTIC_EXPRESSION_IDX] or None,
     )
 
 
 def _measure(row) -> MetricMeasure:
     expression = row[SEMANTIC_EXPRESSION_IDX]
-    aggregation = None
-    if infer_metric_type(expression) != MetricType.OTHER:
-        aggregation = expression.strip().split("(")[0].strip().upper()
     return MetricMeasure(  # pyright: ignore[reportCallIssue]
         name=_child_name(row),
-        aggregation=aggregation,
-        description=_semantic_description(row),
+        aggregation=aggregation_name(expression),
+        description=_row_description(row),
         expression=expression or None,
     )
 

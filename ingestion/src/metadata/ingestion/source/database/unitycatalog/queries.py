@@ -227,3 +227,29 @@ UNITY_CATALOG_TABLE_CONSTRAINTS = textwrap.dedent(
 UNITY_CATALOG_GET_ALL_SCHEMAS = """
 SELECT catalog_name, schema_name FROM system.information_schema.schemata
 """
+
+UNITY_CATALOG_GET_VIEW_DEFINITIONS_IN_CATALOG = textwrap.dedent(
+    """
+    SELECT
+        TABLE_SCHEMA,
+        TABLE_NAME,
+        VIEW_DEFINITION
+    FROM `{database_name}`.INFORMATION_SCHEMA.VIEWS
+    WHERE VIEW_DEFINITION IS NOT NULL
+    """
+)
+
+UNITY_CATALOG_GET_METRIC_VIEWS_IN_CATALOG = textwrap.dedent(
+    """
+    SELECT
+        TABLE_SCHEMA,
+        TABLE_NAME
+    FROM `{database_name}`.INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_TYPE = 'METRIC_VIEW'
+    """
+)
+
+# The only place a metric view's YAML survives in full: the SDK's ``TableInfo`` and
+# ``information_schema`` both hand back a copy stripped of the ``comment``,
+# ``synonyms`` and ``format`` entries the body declares.
+UNITY_CATALOG_DESCRIBE_TABLE_JSON = "DESCRIBE TABLE EXTENDED `{database_name}`.`{schema_name}`.`{table_name}` AS JSON"
