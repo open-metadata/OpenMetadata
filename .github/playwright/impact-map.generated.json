@@ -6805,14 +6805,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/Metric/MetricVersion/MetricVersion.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.component.tsx"
       ],
       "specs": [
