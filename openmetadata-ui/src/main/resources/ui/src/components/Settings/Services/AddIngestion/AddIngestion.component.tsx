@@ -55,6 +55,7 @@ import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderMod
 import ServiceFlowStepper from '../AddService/ServiceFlowStepper/ServiceFlowStepper';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
 import IngestionNameCard from './IngestionNameCard/IngestionNameCard';
+import IngestionOwnersField from './IngestionOwnersField/IngestionOwnersField';
 import {
   AddIngestionHandle,
   AddIngestionProps,
@@ -446,17 +447,19 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           {activeIngestionStep === 1 && (
             <div className="tw:flex tw:flex-col tw:gap-4">
               <IngestionNameCard
-                canEditOwners={canEditPipelineOwners}
                 displayName={workflowData?.displayName ?? ''}
-                isOwnersInvalid={isOwnersInvalid}
-                isOwnersRequired={isOwnersRequired}
-                owners={effectiveOwners}
                 onDisplayNameChange={(value) =>
                   handleDataChange({ ...workflowData, displayName: value })
                 }
-                onFocus={onFocus}
-                onOwnersChange={handleOwnersChange}
-              />
+                onFocus={onFocus}>
+                <IngestionOwnersField
+                  canEdit={canEditPipelineOwners}
+                  isInvalid={isOwnersInvalid}
+                  isRequired={isOwnersRequired}
+                  owners={effectiveOwners}
+                  onChange={handleOwnersChange}
+                />
+              </IngestionNameCard>
               <IngestionWorkflowForm
                 hideFooter={hideFooter}
                 okText={t('label.next')}

@@ -12,46 +12,13 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { EntityReference } from '../../../../../generated/entity/type';
 import IngestionNameCard from './IngestionNameCard';
 
-const mockOnOwnersChange = jest.fn();
-
-const mockOwners: EntityReference[] = [
-  { id: 'owner-id', type: 'user', name: 'owner-name' },
-];
-
-jest.mock('../../../../../hooks/useEntityRules', () => ({
-  useEntityRules: jest.fn().mockReturnValue({
-    entityRules: {
-      canAddMultipleUserOwners: true,
-      canAddMultipleTeamOwner: true,
-    },
-  }),
-}));
-
-jest.mock(
-  '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
-  () => ({
-    UserTeamSelectableList: jest
-      .fn()
-      .mockImplementation(({ onUpdate, multiple }) => (
-        <button
-          data-multiple={JSON.stringify(multiple)}
-          data-testid="mock-owner-selector"
-          onClick={() => onUpdate([{ id: 'new-owner', type: 'team' }])}>
-          select
-        </button>
-      )),
-  })
-);
+const mockOnDisplayNameChange = jest.fn();
 
 const mockProps = {
-  canEditOwners: true,
   displayName: 'agent name',
-  owners: mockOwners,
-  onDisplayNameChange: jest.fn(),
-  onOwnersChange: mockOnOwnersChange,
+  onDisplayNameChange: mockOnDisplayNameChange,
 };
 
 describe('IngestionNameCard', () => {
@@ -59,74 +26,38 @@ describe('IngestionNameCard', () => {
     jest.clearAllMocks();
   });
 
-  it('should render the owners field alongside the name field', () => {
+  it('should render the name field', () => {
     render(<IngestionNameCard {...mockProps} />);
 
+    expect(screen.getByTestId('ingestion-name-card')).toBeInTheDocument();
     expect(screen.getByTestId('ingestion-display-name')).toBeInTheDocument();
-    expect(screen.getByTestId('ingestion-owners-field')).toBeInTheDocument();
-    expect(screen.getByTestId('mock-owner-selector')).toBeInTheDocument();
   });
 
-  // `hasPermission` does not gate a consumer-supplied trigger, so the selector
-  // itself has to be withheld — otherwise the picker opens and the save 403s.
-  it('should withhold the owner selector without the edit-owners permission', () => {
-    render(<IngestionNameCard {...mockProps} canEditOwners={false} />);
-
-    expect(screen.getByTestId('ingestion-owners-field')).toBeInTheDocument();
-    expect(screen.getByTestId('ingestion-owners')).toBeInTheDocument();
-    expect(screen.queryByTestId('mock-owner-selector')).not.toBeInTheDocument();
-  });
-
-  it('should propagate an owner selection', () => {
+  it('should propagate a name change', () => {
     render(<IngestionNameCard {...mockProps} />);
 
-    fireEvent.click(screen.getByTestId('mock-owner-selector'));
+    fireEvent.change(screen.getByTestId('ingestion-display-name'), {
+      target: { value: 'renamed agent' },
+    });
 
-    expect(mockOnOwnersChange).toHaveBeenCalledWith([
-      { id: 'new-owner', type: 'team' },
-    ]);
+    expect(mockOnDisplayNameChange).toHaveBeenCalled();
   });
 
-  it('should allow selecting both multiple users and multiple teams', () => {
+  // The card is a container: fields are composed in by the caller, so adding
+  // one (tags, tier, …) costs no props here.
+  it('should render composed entity fields', () => {
+    render(
+      <IngestionNameCard {...mockProps}>
+        <div data-testid="composed-field" />
+      </IngestionNameCard>
+    );
+
+    expect(screen.getByTestId('composed-field')).toBeInTheDocument();
+  });
+
+  it('should render without any composed field', () => {
     render(<IngestionNameCard {...mockProps} />);
 
-    expect(
-      screen.getByTestId('mock-owner-selector').getAttribute('data-multiple')
-    ).toBe(JSON.stringify({ user: true, team: true }));
-  });
-
-  it('should show the error only when owners are required and invalid', () => {
-    const { rerender } = render(<IngestionNameCard {...mockProps} />);
-
-    expect(screen.queryByTestId('owners-error')).not.toBeInTheDocument();
-
-    rerender(<IngestionNameCard {...mockProps} isOwnersInvalid />);
-
-    expect(screen.queryByTestId('owners-error')).not.toBeInTheDocument();
-
-    rerender(
-      <IngestionNameCard {...mockProps} isOwnersInvalid isOwnersRequired />
-    );
-
-    expect(screen.getByTestId('owners-error')).toBeInTheDocument();
-  });
-
-  it('should link the error to the owners group for assistive tech', () => {
-    const { rerender } = render(<IngestionNameCard {...mockProps} />);
-
-    expect(screen.getByTestId('ingestion-owners-field')).not.toHaveAttribute(
-      'aria-describedby'
-    );
-
-    rerender(
-      <IngestionNameCard {...mockProps} isOwnersInvalid isOwnersRequired />
-    );
-
-    const describedBy = screen
-      .getByTestId('ingestion-owners-field')
-      .getAttribute('aria-describedby');
-
-    expect(describedBy).toBe(screen.getByTestId('owners-error').id);
-    expect(describedBy).toBeTruthy();
+    expect(screen.queryByTestId('composed-field')).not.toBeInTheDocument();
   });
 });

@@ -11,48 +11,28 @@
  *  limitations under the License.
  */
 
-import {
-  HintText,
-  Input,
-  Label,
-  Owner,
-} from '@openmetadata/ui-core-components';
-import { isEmpty } from 'lodash';
+import { Input } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { EntityReference } from '../../../../../generated/entity/type';
-import { useEntityRules } from '../../../../../hooks/useEntityRules';
-import { toOwnerRefs } from '../../../../../utils/Owner/ownerConversionUtils';
-import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../../common/WidgetActionButton/WidgetActionButton';
 
 interface IngestionNameCardProps {
   displayName: string;
-  owners: EntityReference[];
-  canEditOwners: boolean;
-  isOwnersRequired?: boolean;
-  isOwnersInvalid?: boolean;
   onDisplayNameChange: (value: string) => void;
-  onOwnersChange: (owners?: EntityReference[]) => void;
   onFocus?: (fieldName: string) => void;
+  /**
+   * Entity fields rendered under the name input. Composed by the caller so
+   * adding a field (tags, tier, …) costs no props on this card.
+   */
+  children?: ReactNode;
 }
 
 const IngestionNameCard = ({
   displayName,
-  owners,
-  canEditOwners,
-  isOwnersRequired = false,
-  isOwnersInvalid = false,
   onDisplayNameChange,
-  onOwnersChange,
   onFocus,
+  children,
 }: IngestionNameCardProps) => {
   const { t } = useTranslation();
-  const { entityRules } = useEntityRules(EntityType.INGESTION_PIPELINE);
-  const showOwnersError = isOwnersRequired && isOwnersInvalid;
 
   return (
     <div
@@ -76,66 +56,7 @@ const IngestionNameCard = ({
         onFocus={() => onFocus?.('displayName')}
       />
 
-      <fieldset
-        aria-describedby={
-          showOwnersError ? 'ingestion-owners-error' : undefined
-        }
-        aria-label={t('label.owner-plural')}
-        className="tw:mt-4"
-        data-testid="ingestion-owners-field">
-        <div className="tw:flex tw:items-center tw:gap-2">
-          <Label isRequired={isOwnersRequired}>{t('label.owner-plural')}</Label>
-          {/* `hasPermission` alone would not gate this: the picker only honours
-              it for its own default trigger, and a consumer-supplied trigger
-              (below) stays clickable. So the whole selector is withheld — the
-              same shape the Glossary/Classification owners widgets use. */}
-          {canEditOwners && (
-            <UserTeamSelectableList
-              hasPermission={canEditOwners}
-              listHeight={200}
-              multiple={{
-                user: entityRules.canAddMultipleUserOwners,
-                team: entityRules.canAddMultipleTeamOwner,
-              }}
-              owner={owners}
-              onUpdate={onOwnersChange}>
-              {isEmpty(owners) ? (
-                <WidgetPlusButton
-                  data-testid="add-owner"
-                  title={t('label.add-entity', {
-                    entity: t('label.owner-plural'),
-                  })}
-                />
-              ) : (
-                <WidgetEditButton
-                  data-testid="edit-owner"
-                  title={t('label.edit-entity', {
-                    entity: t('label.owner-plural'),
-                  })}
-                />
-              )}
-            </UserTeamSelectableList>
-          )}
-        </div>
-        <Owner
-          className="tw:mt-2"
-          data-testid="ingestion-owners"
-          isCompactView={false}
-          owners={toOwnerRefs(owners)}
-          showLabel={false}
-        />
-        {showOwnersError && (
-          <HintText
-            isInvalid
-            className="tw:mt-1"
-            data-testid="owners-error"
-            id="ingestion-owners-error">
-            {t('label.field-required-plural', {
-              field: t('label.owner-plural'),
-            })}
-          </HintText>
-        )}
-      </fieldset>
+      {children && <div className="tw:mt-4">{children}</div>}
     </div>
   );
 };

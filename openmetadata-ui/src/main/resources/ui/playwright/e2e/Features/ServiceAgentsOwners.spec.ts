@@ -127,13 +127,10 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.getByTestId('next-button').click();
 
       const createResult = await createResponse;
-      // Read the body once and reuse it as the failure message, so a non-201
-      // reports the server's actual error instead of just the status code.
-      const createBody = await createResult.text();
 
-      expect(createResult.status(), createBody).toBe(201);
+      expect(createResult.status()).toBe(201);
 
-      const created = JSON.parse(createBody);
+      const created = await createResult.json();
 
       expect(created.owners).toHaveLength(1);
       expect(created.owners[0].id).toBe(newOwner.responseData.id);
@@ -168,11 +165,10 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.getByTestId('next-button').click();
 
       const updateResult = await updateResponse;
-      const updateBody = await updateResult.text();
 
-      expect(updateResult.status(), updateBody).toBe(200);
+      expect(updateResult.status()).toBe(200);
 
-      const updated = JSON.parse(updateBody);
+      const updated = await updateResult.json();
 
       expect(updated.owners).toHaveLength(1);
       expect(updated.owners[0].id).toBe(serviceOwner.responseData.id);
