@@ -75,7 +75,7 @@ def _get_view_definition(
     view_name: str,
     schema: str | None = None,
     **kw: Any,
-) -> str | None:
+) -> str:
     # SYS.VIEWS.DEFINITION holds the SELECT body alone, without the CREATE VIEW that names
     # what it populates. The lineage parser only derives column-level pairs once the
     # statement has a target, so a bare SELECT produces a table-level edge and every SAP

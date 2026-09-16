@@ -2222,10 +2222,12 @@ def test_a_reported_query_failure_is_not_talked_over() -> None:
             "CREATE VIEW X AS SELECT A FROM T",
         ),
         ("CREATE OR REPLACE VIEW X AS SELECT A FROM T", "CREATE OR REPLACE VIEW X AS SELECT A FROM T"),
-        (None, None),
+        # The upstream method raises rather than returning nothing, so this only guards
+        # against that changing under us.
+        ("", ""),
     ],
 )
-def test_view_definitions_are_given_a_target(stored: str | None, expected: str | None) -> None:
+def test_view_definitions_are_given_a_target(stored: str, expected: str) -> None:
     """SYS.VIEWS.DEFINITION stores the SELECT body without the CREATE VIEW that names it.
 
     The parser only derives column-level pairs once a statement has a target, so a bare
