@@ -19,7 +19,7 @@ import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { Check, ChevronDown, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, SearchLg, XClose } from '@untitledui/icons';
 import {
   useEffect,
   useMemo,
@@ -240,10 +240,20 @@ const OptionRow = ({
   return (
     <Dropdown.Item
       checkboxSize="xs"
-      // Selection is conveyed by the checkbox alone — suppress the default
-      // selected background, keeping the hover/focus tint.
+      // Multi select: the checkbox alone conveys selection — suppress the
+      // default selected background, keeping the hover/focus tint. Single
+      // select has no checkbox, so the selected row itself goes brand: blue
+      // tint, blue label, blue icon.
       className={(state) =>
-        state.isSelected && !state.isFocused ? 'tw:[&>div]:bg-transparent!' : ''
+        cx(
+          showCheckbox &&
+            state.isSelected &&
+            !state.isFocused &&
+            'tw:[&>div]:bg-transparent!',
+          !showCheckbox &&
+            state.isSelected &&
+            'tw:[&>div]:bg-utility-brand-50! tw:[&_svg]:text-fg-brand-primary!'
+        )
       }
       data-testid={option.value}
       icon={iconComponent}
@@ -254,7 +264,9 @@ const OptionRow = ({
         <span
           className={cx(
             'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-xs tw:font-normal',
-            state.isSelected ? 'tw:text-primary' : 'tw:text-secondary'
+            !showCheckbox && state.isSelected && 'tw:text-fg-brand-primary',
+            showCheckbox && state.isSelected && 'tw:text-primary',
+            !state.isSelected && 'tw:text-secondary'
           )}>
           {/* The E2E suite reads each row's checked state off a real input
               (the visible checkbox is presentational) and also `.check()`s it,
@@ -286,18 +298,16 @@ const OptionRow = ({
           {!hideCounts && option.count !== undefined && (
             <span
               className={cx(
-                'tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
-                state.isSelected ? 'tw:text-tertiary' : 'tw:text-placeholder'
+                'tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums',
+                !showCheckbox && state.isSelected
+                  ? 'tw:border-utility-brand-200 tw:text-fg-brand-primary'
+                  : 'tw:border-secondary',
+                showCheckbox && state.isSelected && 'tw:text-tertiary',
+                !state.isSelected && 'tw:text-placeholder'
               )}
               data-testid="filter-count">
               {option.count.toLocaleString()}
             </span>
-          )}
-          {!showCheckbox && state.isSelected && (
-            <Check
-              aria-hidden="true"
-              className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
-            />
           )}
         </span>
       )}
