@@ -85,6 +85,10 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.database.unitycatalog.incremental_table_processor import (
     UnityCatalogIncrementalTableProcessor,
 )
+from metadata.ingestion.source.database.unitycatalog.metric_view_mixin import (
+    UnitycatalogMetricViewMixin,
+)
+from metadata.ingestion.source.database.unitycatalog.metric_views import is_metric_view
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
     ElementType,
@@ -92,6 +96,7 @@ from metadata.ingestion.source.database.unitycatalog.models import (
     Type,
 )
 from metadata.ingestion.source.database.unitycatalog.queries import (
+    UNITY_CATALOG_DESCRIBE_TABLE_JSON,
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
     UNITY_CATALOG_GET_ALL_SCHEMAS,
     UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
@@ -121,7 +126,7 @@ UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION = "Unity Catalog tags ingeste
 
 
 # pylint: disable=protected-access
-class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -581,6 +586,64 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _current_table_info(self, table_name: str) -> Any | None:
+        """The ``TableInfo`` the topology producer stashed for the table being
+        processed. ``getattr`` because ``table_data`` is a context extra: it is absent
+        until the first table of the run is produced."""
+        table = getattr(self.context.get(), "table_data", None)
+        return table if table is not None and getattr(table, "name", None) == table_name else None
+
+    def get_metric_view_text(self, table_name: str) -> str | None:
+        """A metric view's YAML body, as written.
+
+        The ``TableInfo`` the topology producer already fetched carries a *reduced*
+        copy of the body: Unity Catalog strips the ``comment``, ``synonyms``,
+        ``display_name`` and ``format`` entries it declares, and normalises ``fields``
+        to ``dimensions``. Metrics built from that copy come out with no description
+        and no unit of measurement. ``DESCRIBE TABLE EXTENDED ... AS JSON`` is the only
+        path that returns the text intact.
+
+        The reduced copy still declares ``measures``, which makes it a free and
+        reliable discriminator: the extra round-trip is paid once a table is known to
+        be a metric view, and never for the ordinary tables and SQL views that make up
+        the rest of the run. If it fails, the reduced copy is still returned -- a
+        metric with no description beats no metric at all.
+        """
+        table = self._current_table_info(table_name)
+        definition = getattr(table, "view_definition", None) if table is not None else None
+        if not is_metric_view(definition):
+            return definition
+        return self._describe_metric_view_text(table_name) or definition
+
+    def _describe_metric_view_text(self, table_name: str) -> str | None:
+        """One metric view's YAML body, read over the SQL warehouse."""
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        query = UNITY_CATALOG_DESCRIBE_TABLE_JSON.format(
+            database_name=database, schema_name=schema, table_name=table_name
+        )
+        try:
+            row = self.sql_connection.execute(text(query)).fetchone()
+            payload = json.loads(row[0]) if row else {}
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Metric view [%s.%s.%s]: could not read the full definition (%s); "
+                "falling back to the reduced copy, whose descriptions and units are absent",
+                database,
+                schema,
+                table_name,
+                exc,
+            )
+            return None
+        return payload.get("view_text") or payload.get("view_original_text")
+
+    def get_metric_view_column_types(self, table_name: str) -> dict[str, str]:
+        table = self._current_table_info(table_name)
+        if table is None:
+            return {}
+        return {column.name: column.type_text for column in table.columns or [] if column.name and column.type_text}
 
     def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> str | None:
         """

@@ -22,8 +22,10 @@ from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+from metadata.ingestion.source.database.semantic_metrics import (
     SERVICE_PREFIX_MAX_LEN,
+)
+from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_name,
     build_metric_request,
     infer_metric_type,
