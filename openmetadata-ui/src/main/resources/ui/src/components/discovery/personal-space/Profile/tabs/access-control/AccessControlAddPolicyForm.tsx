@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
-import React, { Dispatch, SetStateAction, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
@@ -59,7 +59,8 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
   const form = useForm<FormValues>({
     defaultValues: { name: '' },
   });
-  const { handleSubmit } = form;
+
+  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
 
   const nameFields: FieldProp[] = [
     {
@@ -75,52 +76,53 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
     },
   ];
 
-  const [ruleData, setRuleData] = useState<Rule>(INITIAL_RULE);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
 
-  const onSubmit = async (data: FormValues) => {
-    if (
-      !ruleData.name?.trim() ||
-      !ruleData.resources?.length ||
-      !ruleData.operations?.length
-    ) {
-      showErrorToast(t('label.field-required', { field: t('label.rule') }));
+  const handleCreate = async () => {
+    let ruleData: Rule | undefined;
 
-      return;
-    }
+    // Validate rule form first — sets isSubmitted=true so errors clear on change
+    await ruleForm.handleSubmit((data) => {
+      ruleData = data;
+    })();
 
-    const trimmedName = trim(data.name);
-    const description = descEditorRef.current?.getEditorContent() ?? '';
+    // Validate policy form separately — shows name error even if rule form was invalid
+    await form.handleSubmit(async (policyData) => {
+      if (!ruleData) {
+        return; // rule form invalid: its errors are already visible, abort save
+      }
 
-    setIsSaveLoading(true);
-    try {
-      const { condition, ...rest } = {
-        ...ruleData,
-        name: trim(ruleData.name),
-      };
-      const payload: CreatePolicy = {
-        name: trimmedName,
-        description,
-        rules: [condition ? { ...rest, condition } : rest],
-      };
-      await addPolicy(payload);
-      showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.policy') })
-      );
-      onNavigate({ type: 'policies' });
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.policy'),
-              entityPlural: t('label.policy-plural'),
-              name: trim(data.name),
-            })
-          : (error as AxiosError)
-      );
-    } finally {
-      setIsSaveLoading(false);
-    }
+      setIsSaveLoading(true);
+      try {
+        const description = descEditorRef.current?.getEditorContent() ?? '';
+        const { condition, ...rest } = {
+          ...ruleData,
+          name: trim(ruleData.name),
+        };
+        const payload: CreatePolicy = {
+          name: trim(policyData.name),
+          description,
+          rules: [condition ? { ...rest, condition } : rest],
+        };
+        await addPolicy(payload);
+        showSuccessToast(
+          t('server.create-entity-success', { entity: t('label.policy') })
+        );
+        onNavigate({ type: 'policies' });
+      } catch (error) {
+        showErrorToast(
+          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+            ? t('server.entity-already-exist', {
+                entity: t('label.policy'),
+                entityPlural: t('label.policy-plural'),
+                name: trim(policyData.name),
+              })
+            : (error as AxiosError)
+        );
+      } finally {
+        setIsSaveLoading(false);
+      }
+    })();
   };
 
   return (
@@ -162,10 +164,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
                   {t('label.add-entity', { entity: t('label.rule') })}
                 </Typography>
               </Box>
-              <AccessControlRuleForm
-                ruleData={ruleData}
-                setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
-              />
+              <AccessControlRuleForm form={ruleForm} />
             </Box>
           </Box>
         </HookForm>
@@ -188,7 +187,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
           color="primary"
           data-testid="submit-btn"
           isLoading={isSaveLoading}
-          onPress={() => handleSubmit(onSubmit)()}>
+          onPress={() => void handleCreate()}>
           {t('label.create')}
         </Button>
       </Box>

@@ -26,15 +26,14 @@ import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
-  Dispatch,
   FC,
-  SetStateAction,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -495,8 +494,8 @@ const usePolicyDetail = (fqn: string) => {
     useState<OperationPermission | null>(null);
   const [isAddingRule, setIsAddingRule] = useState(false);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
-  const [ruleData, setRuleData] = useState<Rule>(INITIAL_RULE);
   const [selectedEntity, setSelectedEntity] = useState<EntityReference>();
+  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
   const [removeKind, setRemoveKind] = useState<'role' | 'team'>('role');
 
   const fetchPolicy = useCallback(async () => {
@@ -521,49 +520,42 @@ const usePolicyDetail = (fqn: string) => {
     );
   }, [fqn, getEntityPermissionByFqn]);
 
-  const handleSaveRule = useCallback(async () => {
-    if (!policy) {
-      return;
-    }
+  const handleSaveRule = useCallback(
+    async (formData: Rule) => {
+      if (!policy) {
+        return;
+      }
 
-    if (
-      !ruleData.name?.trim() ||
-      !ruleData.resources?.length ||
-      !ruleData.operations?.length
-    ) {
-      showErrorToast(t('label.field-required', { field: t('label.rule') }));
+      const { condition, ...rest } = {
+        ...formData,
+        name: formData.name?.trim() ?? '',
+      };
+      const newRule = condition ? { ...rest, condition } : rest;
+      const updatedRules = editingRule
+        ? (policy.rules ?? []).map((r) =>
+            r.name === editingRule.name ? newRule : r
+          )
+        : [...(policy.rules ?? []), newRule];
+      const patch = compare(policy, { ...policy, rules: updatedRules });
 
-      return;
-    }
-
-    const { condition, ...rest } = {
-      ...ruleData,
-      name: ruleData.name?.trim() ?? '',
-    };
-    const newRule = condition ? { ...rest, condition } : rest;
-    const updatedRules = editingRule
-      ? (policy.rules ?? []).map((r) =>
-          r.name === editingRule.name ? newRule : r
-        )
-      : [...(policy.rules ?? []), newRule];
-    const patch = compare(policy, { ...policy, rules: updatedRules });
-
-    setIsLoadingOnSave(true);
-    try {
-      const saved = await patchPolicy(patch, policy.id);
-      setPolicy(saved);
-      setIsAddingRule(false);
-      setEditingRule(null);
-      setRuleData(INITIAL_RULE);
-      showSuccessToast(
-        t('server.entity-updated-success', { entity: t('label.policy') })
-      );
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoadingOnSave(false);
-    }
-  }, [policy, ruleData, editingRule, t]);
+      setIsLoadingOnSave(true);
+      try {
+        const saved = await patchPolicy(patch, policy.id);
+        setPolicy(saved);
+        setIsAddingRule(false);
+        setEditingRule(null);
+        ruleForm.reset(INITIAL_RULE);
+        showSuccessToast(
+          t('server.entity-updated-success', { entity: t('label.policy') })
+        );
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoadingOnSave(false);
+      }
+    },
+    [policy, editingRule, t, ruleForm]
+  );
 
   const handleDeleteRule = useCallback(
     async (ruleName: string) => {
@@ -668,22 +660,25 @@ const usePolicyDetail = (fqn: string) => {
     [policy, t]
   );
 
-  const handleEditRule = useCallback((rule: Rule) => {
-    setEditingRule(rule);
-    setRuleData(rule);
-    setIsAddingRule(false);
-  }, []);
+  const handleEditRule = useCallback(
+    (rule: Rule) => {
+      setEditingRule(rule);
+      ruleForm.reset(rule);
+      setIsAddingRule(false);
+    },
+    [ruleForm]
+  );
 
   const handleCancelRuleForm = useCallback(() => {
     setIsAddingRule(false);
     setEditingRule(null);
-    setRuleData(INITIAL_RULE);
-  }, []);
+    ruleForm.reset(INITIAL_RULE);
+  }, [ruleForm]);
 
   const handleStartAdd = useCallback(() => {
     setIsAddingRule(true);
-    setRuleData(INITIAL_RULE);
-  }, []);
+    ruleForm.reset(INITIAL_RULE);
+  }, [ruleForm]);
 
   const handleEntityRemove = useCallback(
     (item: EntityReference, kind: 'role' | 'team') => {
@@ -715,9 +710,8 @@ const usePolicyDetail = (fqn: string) => {
     isLoadingOnSave,
     policy,
     removeKind,
-    ruleData,
+    ruleForm,
     selectedEntity,
-    setRuleData,
     setSelectedEntity,
   };
 };
@@ -761,9 +755,8 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     isLoadingOnSave,
     policy,
     removeKind,
-    ruleData,
+    ruleForm,
     selectedEntity,
-    setRuleData,
     setSelectedEntity,
   } = usePolicyDetail(fqn);
 
@@ -951,10 +944,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
                 ? t('label.edit-entity', { entity: t('label.rule') })
                 : t('label.add-entity', { entity: t('label.rule') })}
             </Typography>
-            <AccessControlRuleForm
-              ruleData={ruleData}
-              setRuleData={setRuleData as Dispatch<SetStateAction<Rule>>}
-            />
+            <AccessControlRuleForm form={ruleForm} />
             <Box direction="row" gap={3} justify="end">
               <Button color="tertiary" size="sm" onPress={handleCancelRuleForm}>
                 {t('label.cancel')}
@@ -963,7 +953,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
                 color="primary"
                 isLoading={isLoadingOnSave}
                 size="sm"
-                onPress={handleSaveRule}>
+                onPress={() => ruleForm.handleSubmit(handleSaveRule)()}>
                 {t('label.save')}
               </Button>
             </Box>
@@ -1002,8 +992,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       isAddingRule,
       isLoadingOnSave,
       policy,
-      ruleData,
-      setRuleData,
+      ruleForm,
       t,
     ]
   );

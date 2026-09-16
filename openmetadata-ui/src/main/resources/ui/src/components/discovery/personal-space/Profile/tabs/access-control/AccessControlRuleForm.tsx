@@ -16,24 +16,20 @@ import {
   Box,
   FieldProp,
   FieldTypes,
-  FormFields,
+  FormField,
+  FormItemLabel,
+  HintText,
   HookForm,
   Select,
   SelectItemType,
   Typography,
+  getField,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, startCase, uniq } from 'lodash';
-import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
-import { useForm } from 'react-hook-form';
+import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
   Effect,
@@ -55,42 +51,23 @@ import { EFFECT_ITEMS } from './AccessControl.constants';
 import { buildConditionOptions } from './AccessControl.utils';
 
 export interface AccessControlRuleFormProps {
-  ruleData: Rule;
-  setRuleData: (value: React.SetStateAction<Rule>) => void;
-  description?: string;
+  form: UseFormReturn<Rule>;
 }
 
-const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
-  ruleData,
-  setRuleData,
-}) => {
+const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({ form }) => {
   const { t } = useTranslation();
 
-  const nameForm = useForm<{ name: string }>({
-    defaultValues: { name: ruleData.name ?? '' },
-  });
-
-  const nameFields: FieldProp[] = [
-    {
-      name: 'name',
-      label: t('label.rule-name'),
-      type: FieldTypes.TEXT,
-      required: true,
-      placeholder: t('label.rule-name'),
-      props: { 'data-testid': 'rule-name' },
-      rules: {
-        required: t('label.field-required', { field: t('label.rule-name') }),
-      },
+  const nameField: FieldProp = {
+    name: 'name',
+    label: t('label.rule-name'),
+    type: FieldTypes.TEXT,
+    required: true,
+    placeholder: t('label.rule-name'),
+    props: { 'data-testid': 'rule-name' },
+    rules: {
+      required: t('label.field-required', { field: t('label.rule-name') }),
     },
-  ];
-
-  useEffect(() => {
-    const subscription = nameForm.watch((values) =>
-      setRuleData((prev: Rule) => ({ ...prev, name: values.name ?? '' }))
-    );
-
-    return () => subscription.unsubscribe();
-  }, [nameForm, setRuleData]);
+  };
 
   const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
     []
@@ -103,6 +80,17 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   const [isValidatingCondition, setIsValidating] = useState(false);
   const [isValidCondition, setIsValidCondition] = useState(false);
   const currentConditionRef = useRef<string>('');
+
+  const selectedResources = useWatch({
+    control: form.control,
+    name: 'resources',
+    defaultValue: [],
+  });
+  const selectedOperations = useWatch({
+    control: form.control,
+    name: 'operations',
+    defaultValue: [],
+  });
 
   const resourceItems = useMemo<SelectItemType[]>(() => {
     const resources = policyResources.filter(
@@ -118,16 +106,16 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
   }, [policyResources, t]);
 
   const operationItems = useMemo<SelectItemType[]>(() => {
-    const selectedResources = policyResources.filter((r) => {
+    const filtered = policyResources.filter((r) => {
       if (ALL_TYPE_RESOURCE_LIST.includes(r.name || '')) {
         return ALL_TYPE_RESOURCE_LIST.some((v) =>
-          ruleData.resources?.includes(v)
+          selectedResources.includes(v)
         );
       }
 
-      return ruleData.resources?.includes(r.name || '');
+      return selectedResources.includes(r.name || '');
     });
-    const ops = selectedResources
+    const ops = filtered
       .reduce(
         (prev: Operation[], curr: ResourceDescriptor) =>
           uniq([...prev, ...(curr.operations || [])]),
@@ -145,99 +133,20 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
     }));
 
     return [allItem, ...childItems];
-  }, [ruleData.resources, policyResources, t]);
+  }, [selectedResources, policyResources, t]);
 
   const selectedResourceItems = useMemo<SelectItemType[]>(
     () =>
-      (ruleData.resources ?? []).map((r) => ({
+      selectedResources.map((r) => ({
         id: r,
         label: r === 'All' ? t('label.all') : startCase(r),
       })),
-    [ruleData.resources, t]
+    [selectedResources, t]
   );
 
   const selectedOperationItems = useMemo<SelectItemType[]>(
-    () =>
-      (ruleData.operations ?? []).map((op) => ({
-        id: op,
-        label: op,
-      })),
-    [ruleData.operations]
-  );
-
-  const handleResourceInserted = useCallback(
-    (key: Key) => {
-      const val = String(key);
-      if (val === 'All') {
-        setRuleData((prev: Rule) => ({
-          ...prev,
-          resources: ['All'],
-          operations: [],
-        }));
-      } else {
-        setRuleData((prev: Rule) => ({
-          ...prev,
-          resources: uniq([
-            ...(prev.resources ?? []).filter((r) => r !== 'All'),
-            val,
-          ]),
-          operations: [],
-        }));
-      }
-    },
-    [setRuleData]
-  );
-
-  const handleResourceCleared = useCallback(
-    (key: Key) => {
-      const val = String(key);
-      setRuleData((prev: Rule) => ({
-        ...prev,
-        resources:
-          val === 'All'
-            ? []
-            : (prev.resources ?? []).filter((r) => r !== val && r !== 'All'),
-        operations: [],
-      }));
-    },
-    [setRuleData]
-  );
-
-  const handleOperationInserted = useCallback(
-    (key: Key) => {
-      const val = String(key) as Operation;
-      if (val === Operation.All) {
-        setRuleData((prev: Rule) => ({
-          ...prev,
-          operations: [Operation.All],
-        }));
-      } else {
-        setRuleData((prev: Rule) => ({
-          ...prev,
-          operations: uniq([
-            ...(prev.operations ?? []).filter((op) => op !== Operation.All),
-            val,
-          ]),
-        }));
-      }
-    },
-    [setRuleData]
-  );
-
-  const handleOperationCleared = useCallback(
-    (key: Key) => {
-      const val = String(key) as Operation;
-      setRuleData((prev: Rule) => ({
-        ...prev,
-        operations:
-          val === Operation.All
-            ? []
-            : (prev.operations ?? []).filter(
-                (op) => op !== val && op !== Operation.All
-              ),
-      }));
-    },
-    [setRuleData]
+    () => selectedOperations.map((op) => ({ id: op, label: op })),
+    [selectedOperations]
   );
 
   const handleConditionSearch = (value: string) => {
@@ -326,171 +235,271 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
     setConditionOptions(buildConditionOptions(policyFunctions));
   }, [policyFunctions]);
 
+  const handleResourceInserted = useCallback(
+    (key: Key, currentValue: string[], onChange: (v: string[]) => void) => {
+      const val = String(key);
+      const newResources =
+        val === 'All'
+          ? ['All']
+          : uniq([...currentValue.filter((r) => r !== 'All'), val]);
+      onChange(newResources);
+      form.setValue('operations', [], { shouldValidate: false });
+    },
+    [form]
+  );
+
+  const handleResourceCleared = useCallback(
+    (key: Key, currentValue: string[], onChange: (v: string[]) => void) => {
+      const val = String(key);
+      const newResources =
+        val === 'All'
+          ? []
+          : currentValue.filter((r) => r !== val && r !== 'All');
+      onChange(newResources);
+      form.setValue('operations', [], { shouldValidate: false });
+    },
+    [form]
+  );
+
+  const handleOperationInserted = useCallback(
+    (
+      key: Key,
+      currentValue: Operation[],
+      onChange: (v: Operation[]) => void
+    ) => {
+      const val = String(key) as Operation;
+      const newOps =
+        val === Operation.All
+          ? [Operation.All]
+          : uniq([...currentValue.filter((op) => op !== Operation.All), val]);
+      onChange(newOps);
+    },
+    []
+  );
+
+  const handleOperationCleared = useCallback(
+    (
+      key: Key,
+      currentValue: Operation[],
+      onChange: (v: Operation[]) => void
+    ) => {
+      const val = String(key) as Operation;
+      const newOps =
+        val === Operation.All
+          ? []
+          : currentValue.filter((op) => op !== val && op !== Operation.All);
+      onChange(newOps);
+    },
+    []
+  );
+
   return (
-    <Box direction="col" gap={4}>
-      {/* Rule name */}
-      <HookForm form={nameForm}>
-        <FormFields fields={nameFields} />
-      </HookForm>
+    <HookForm form={form}>
+      <Box direction="col" gap={4}>
+        {/* Rule name */}
+        {getField(nameField)}
 
-      {/* Description */}
-      <Box direction="col" gap={1}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.description')}
-        </Typography>
-        <RichTextEditor
-          className="new-form-style"
-          data-testid="rule-description"
-          initialValue={ruleData.description ?? ''}
-          onTextChange={(value) =>
-            setRuleData((prev: Rule) => ({ ...prev, description: value }))
-          }
-        />
-      </Box>
+        {/* Description */}
+        <Box direction="col" gap={1}>
+          <Typography
+            className="tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {t('label.description')}
+          </Typography>
+          <RichTextEditor
+            className="new-form-style"
+            data-testid="rule-description"
+            initialValue={form.getValues('description') ?? ''}
+            onTextChange={(value) => form.setValue('description', value)}
+          />
+        </Box>
 
-      {/* Resources */}
-      <Box direction="col" gap={1}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {`${t('label.resource-plural')} *`}
-        </Typography>
-        <Autocomplete
-          data-testid="resources"
-          items={resourceItems}
-          placeholder={t('label.select-field', {
-            field: t('label.resource-plural'),
-          })}
-          selectedItems={selectedResourceItems}
-          onItemCleared={handleResourceCleared}
-          onItemInserted={handleResourceInserted}>
-          {(item) => (
-            <Autocomplete.Item id={item.id} key={item.id}>
-              {item.label}
-            </Autocomplete.Item>
-          )}
-        </Autocomplete>
-      </Box>
-
-      {/* Operations */}
-      <Box direction="col" gap={1}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {`${t('label.operation-plural')} *`}
-        </Typography>
-        <Autocomplete
-          data-testid="operations"
-          items={operationItems}
-          placeholder={t('label.select-field', {
-            field: t('label.operation-plural'),
-          })}
-          selectedItems={selectedOperationItems}
-          onItemCleared={handleOperationCleared}
-          onItemInserted={handleOperationInserted}>
-          {(item) => (
-            <Autocomplete.Item id={item.id} key={item.id}>
-              {item.label}
-            </Autocomplete.Item>
-          )}
-        </Autocomplete>
-      </Box>
-
-      {/* Effect */}
-      <Box direction="col" gap={1}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {`${t('label.effect')} *`}
-        </Typography>
-        <Select
-          data-testid="effect"
-          items={EFFECT_ITEMS}
-          placeholder={t('label.select-field', {
-            field: t('label.rule-effect'),
-          })}
-          selectedKey={ruleData.effect ?? null}
-          onSelectionChange={(key) =>
-            key &&
-            setRuleData((prev: Rule) => ({
-              ...prev,
-              effect: key as Effect,
-            }))
-          }>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id}>
-              {item.label}
-            </Select.Item>
-          )}
-        </Select>
-      </Box>
-
-      {/* Condition */}
-      <Box direction="col" gap={1}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.condition')}
-        </Typography>
-        <Select.ComboBox
-          allowsEmptyCollection
-          data-testid="condition"
-          items={conditionOptions}
-          placeholder={t('label.condition')}
-          onInputChange={(value) => {
-            setRuleData((prev: Rule) => ({ ...prev, condition: value }));
-            if (!value) {
-              setValidationError('');
-              setIsValidCondition(false);
-            }
-            handleConditionSearch(value);
-            currentConditionRef.current = value;
-            debouncedConditionValidation(value);
-          }}
-          onSelectionChange={(key) => {
-            if (key) {
-              const val = String(key);
-              setRuleData((prev: Rule) => ({ ...prev, condition: val }));
-              currentConditionRef.current = val;
-              debouncedConditionValidation(val);
-            }
+        {/* Resources */}
+        <FormField
+          control={form.control}
+          name="resources"
+          rules={{
+            validate: (v: string[] | undefined) =>
+              (v?.length ?? 0) > 0 ||
+              t('label.field-required-plural', {
+                field: t('label.resource-plural'),
+              }),
           }}>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id}>
-              {item.label}
-            </Select.Item>
+          {({ field, fieldState }) => (
+            <Box direction="col" gap={1}>
+              <FormItemLabel required label={t('label.resource-plural')} />
+              <Autocomplete
+                data-testid="resources"
+                items={resourceItems}
+                placeholder={t('label.select-field', {
+                  field: t('label.resource-plural'),
+                })}
+                selectedItems={selectedResourceItems}
+                onItemCleared={(key) =>
+                  handleResourceCleared(
+                    key,
+                    (field.value as string[]) ?? [],
+                    field.onChange
+                  )
+                }
+                onItemInserted={(key) =>
+                  handleResourceInserted(
+                    key,
+                    (field.value as string[]) ?? [],
+                    field.onChange
+                  )
+                }>
+                {(item) => (
+                  <Autocomplete.Item id={item.id} key={item.id}>
+                    {item.label}
+                  </Autocomplete.Item>
+                )}
+              </Autocomplete>
+              {fieldState.error?.message && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </Box>
           )}
-        </Select.ComboBox>
-        {validationError && (
+        </FormField>
+
+        {/* Operations */}
+        <FormField
+          control={form.control}
+          name="operations"
+          rules={{
+            validate: (v: Operation[] | undefined) =>
+              (v?.length ?? 0) > 0 ||
+              t('label.field-required-plural', {
+                field: t('label.operation-plural'),
+              }),
+          }}>
+          {({ field, fieldState }) => (
+            <Box direction="col" gap={1}>
+              <FormItemLabel required label={t('label.operation-plural')} />
+              <Autocomplete
+                data-testid="operations"
+                items={operationItems}
+                placeholder={t('label.select-field', {
+                  field: t('label.operation-plural'),
+                })}
+                selectedItems={selectedOperationItems}
+                onItemCleared={(key) =>
+                  handleOperationCleared(
+                    key,
+                    (field.value as Operation[]) ?? [],
+                    field.onChange
+                  )
+                }
+                onItemInserted={(key) =>
+                  handleOperationInserted(
+                    key,
+                    (field.value as Operation[]) ?? [],
+                    field.onChange
+                  )
+                }>
+                {(item) => (
+                  <Autocomplete.Item id={item.id} key={item.id}>
+                    {item.label}
+                  </Autocomplete.Item>
+                )}
+              </Autocomplete>
+              {fieldState.error?.message && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </Box>
+          )}
+        </FormField>
+
+        {/* Effect */}
+        <FormField control={form.control} name="effect">
+          {({ field, fieldState }) => (
+            <Box direction="col" gap={1}>
+              <FormItemLabel required label={t('label.effect')} />
+              <Select
+                data-testid="effect"
+                items={EFFECT_ITEMS}
+                placeholder={t('label.select-field', {
+                  field: t('label.rule-effect'),
+                })}
+                selectedKey={field.value ?? null}
+                onSelectionChange={(key) =>
+                  key && field.onChange(key as Effect)
+                }>
+                {(item) => (
+                  <Select.Item id={item.id} key={item.id}>
+                    {item.label}
+                  </Select.Item>
+                )}
+              </Select>
+              {fieldState.error?.message && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </Box>
+          )}
+        </FormField>
+
+        {/* Condition */}
+        <Box direction="col" gap={1}>
           <Typography
-            className="tw:text-red-500"
-            data-testid="condition-error"
-            size="text-xs">
-            {`❌ ${t('label.invalid-condition')}: ${validationError}`}
+            className="tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {t('label.condition')}
           </Typography>
-        )}
-        {isValidatingCondition && (
-          <Typography className="tw:text-secondary" size="text-xs">
-            {t('label.validating-condition')}
-          </Typography>
-        )}
-        {isValidCondition && !isValidatingCondition && !validationError && (
-          <Typography
-            className="tw:text-green-600"
-            data-testid="condition-success"
-            size="text-xs">
-            {`✅ ${t('label.valid-condition')}`}
-          </Typography>
-        )}
+          <Select.ComboBox
+            allowsEmptyCollection
+            data-testid="condition"
+            items={conditionOptions}
+            placeholder={t('label.condition')}
+            onInputChange={(value) => {
+              form.setValue('condition', value);
+              if (!value) {
+                setValidationError('');
+                setIsValidCondition(false);
+              }
+              handleConditionSearch(value);
+              currentConditionRef.current = value;
+              debouncedConditionValidation(value);
+            }}
+            onSelectionChange={(key) => {
+              if (key) {
+                const val = String(key);
+                form.setValue('condition', val);
+                currentConditionRef.current = val;
+                debouncedConditionValidation(val);
+              }
+            }}>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id}>
+                {item.label}
+              </Select.Item>
+            )}
+          </Select.ComboBox>
+          {validationError && (
+            <Typography
+              className="tw:text-red-500"
+              data-testid="condition-error"
+              size="text-xs">
+              {`❌ ${t('label.invalid-condition')}: ${validationError}`}
+            </Typography>
+          )}
+          {isValidatingCondition && (
+            <Typography className="tw:text-secondary" size="text-xs">
+              {t('label.validating-condition')}
+            </Typography>
+          )}
+          {isValidCondition && !isValidatingCondition && !validationError && (
+            <Typography
+              className="tw:text-green-600"
+              data-testid="condition-success"
+              size="text-xs">
+              {`✅ ${t('label.valid-condition')}`}
+            </Typography>
+          )}
+        </Box>
       </Box>
-    </Box>
+    </HookForm>
   );
 };
 

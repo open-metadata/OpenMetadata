@@ -17,21 +17,15 @@ import {
   Button,
   FieldProp,
   FieldTypes,
+  FormField,
   FormFields,
   HookForm,
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useFilter } from 'react-aria';
-import type { Key } from 'react-aria-components';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
@@ -50,6 +44,7 @@ import type { AccessControlView } from './AccessControl.types';
 
 interface FormValues {
   name: string;
+  policies: string[];
 }
 
 interface AccessControlAddRoleFormProps {
@@ -64,7 +59,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   const descEditorRef = useRef<EditorContentRef>(null);
 
   const form = useForm<FormValues>({
-    defaultValues: { name: '' },
+    defaultValues: { name: '', policies: [] },
   });
   const { handleSubmit } = form;
 
@@ -82,7 +77,6 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
     },
   ];
 
-  const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
@@ -118,25 +112,19 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
     [policies]
   );
 
+  const selectedPolicyFqns = form.watch('policies');
+
   const selectedPolicyItems = useMemo<SelectItemType[]>(
     () =>
-      selectedPolicies.map((fqn) => {
+      selectedPolicyFqns.map((fqn) => {
         const match = policies.find(
           (p) => p.fullyQualifiedName === fqn || p.name === fqn
         );
 
         return { id: fqn, label: match?.displayName || match?.name || fqn };
       }),
-    [selectedPolicies, policies]
+    [selectedPolicyFqns, policies]
   );
-
-  const handleItemInserted = useCallback((key: Key) => {
-    setSelectedPolicies((prev) => [...prev, String(key)]);
-  }, []);
-
-  const handleItemCleared = useCallback((key: Key) => {
-    setSelectedPolicies((prev) => prev.filter((id) => id !== String(key)));
-  }, []);
 
   const onSubmit = async (data: FormValues) => {
     const description = descEditorRef.current?.getEditorContent() ?? '';
@@ -146,7 +134,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
       await addRole({
         name: data.name.trim(),
         description,
-        policies: selectedPolicies,
+        policies: data.policies,
       });
       showSuccessToast(
         t('server.create-entity-success', { entity: t('label.role') })
@@ -197,31 +185,46 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
             />
           </Box>
 
-          <Box direction="col" gap={1}>
-            <Typography
-              className="tw:text-secondary"
-              size="text-sm"
-              weight="medium">
-              {t('label.select-a-policy')}
-            </Typography>
-            <Autocomplete
-              data-testid="role-policies-select"
-              filterOption={(item, filterText) =>
-                contains(item.label || '', filterText) ||
-                contains(String(item.id), filterText)
-              }
-              items={policyItems}
-              placeholder={t('label.select-a-policy')}
-              selectedItems={selectedPolicyItems}
-              onItemCleared={handleItemCleared}
-              onItemInserted={handleItemInserted}>
-              {(item) => (
-                <Autocomplete.Item id={item.id} key={item.id}>
-                  {item.label}
-                </Autocomplete.Item>
-              )}
-            </Autocomplete>
-          </Box>
+          <FormField control={form.control} name="policies">
+            {({ field }) => (
+              <Box direction="col" gap={1}>
+                <Typography
+                  className="tw:text-secondary"
+                  size="text-sm"
+                  weight="medium">
+                  {t('label.select-a-policy')}
+                </Typography>
+                <Autocomplete
+                  data-testid="role-policies-select"
+                  filterOption={(item, filterText) =>
+                    contains(item.label || '', filterText) ||
+                    contains(String(item.id), filterText)
+                  }
+                  items={policyItems}
+                  placeholder={t('label.select-a-policy')}
+                  selectedItems={selectedPolicyItems}
+                  onItemCleared={(key) =>
+                    field.onChange(
+                      ((field.value as string[]) ?? []).filter(
+                        (id) => id !== String(key)
+                      )
+                    )
+                  }
+                  onItemInserted={(key) =>
+                    field.onChange([
+                      ...((field.value as string[]) ?? []),
+                      String(key),
+                    ])
+                  }>
+                  {(item) => (
+                    <Autocomplete.Item id={item.id} key={item.id}>
+                      {item.label}
+                    </Autocomplete.Item>
+                  )}
+                </Autocomplete>
+              </Box>
+            )}
+          </FormField>
         </Box>
       </HookForm>
 

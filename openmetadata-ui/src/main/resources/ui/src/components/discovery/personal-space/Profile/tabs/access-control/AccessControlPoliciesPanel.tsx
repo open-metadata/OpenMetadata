@@ -80,6 +80,9 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
+  const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
+    new Map()
+  );
 
   const showPagination = useMemo(
     () => Boolean(paging.before || paging.after) || paging.total > pageSize,
@@ -112,7 +115,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     [t]
   );
 
-  const fetchPolicies = async (pagingParam?: Partial<Paging>) => {
+  const fetchPolicies = async (
+    pagingParam?: Partial<Paging>,
+    targetPage = 1
+  ): Promise<Paging | undefined> => {
     setIsLoading(true);
     try {
       const data = await getPolicies(
@@ -124,8 +130,13 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
       setPolicies(data.data || []);
       setPaging(data.paging);
+      setCursorCache((prev) => new Map(prev).set(targetPage, data.paging));
+
+      return data.paging;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return undefined;
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +144,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
   const handleAfterDeleteAction = useCallback(() => {
     setCurrentPage(1);
-    fetchPolicies();
+    setCursorCache(new Map());
+    fetchPolicies(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -163,23 +175,66 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     }
   };
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage + 1 && paging?.after) {
+  const handlePageNavigation = async (newPage: number) => {
+    if (newPage === currentPage) {
+      return;
+    }
+
+    if (newPage === 1) {
+      setCurrentPage(1);
+      fetchPolicies(undefined, 1);
+
+      return;
+    }
+
+    const cachedCursor = cursorCache.get(newPage - 1)?.after;
+    if (cachedCursor) {
       setCurrentPage(newPage);
-      fetchPolicies({ after: paging.after });
-    } else if (newPage === currentPage - 1 && paging?.before) {
-      setCurrentPage(newPage);
-      fetchPolicies({ before: paging.before });
+      fetchPolicies({ after: cachedCursor }, newPage);
+
+      return;
+    }
+
+    // Sequential forward navigation through uncached pages
+    if (newPage > currentPage) {
+      setIsLoading(true);
+      try {
+        let page = currentPage;
+        let currentPaging: Paging = paging;
+
+        while (page < newPage && currentPaging.after) {
+          page++;
+          const data = await getPolicies(
+            'roles',
+            currentPaging.after,
+            undefined,
+            pageSize
+          );
+          currentPaging = data.paging;
+          setCursorCache((prev) => new Map(prev).set(page, data.paging));
+
+          if (page === newPage) {
+            setPolicies(data.data || []);
+            setPaging(data.paging);
+            setCurrentPage(newPage);
+          }
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setCurrentPage(1);
+    setCursorCache(new Map());
   };
 
   useEffect(() => {
-    fetchPolicies();
+    fetchPolicies(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize]);
 

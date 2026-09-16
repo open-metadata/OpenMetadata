@@ -78,6 +78,9 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
+  const [cursorCache, setCursorCache] = useState<Map<number, Paging>>(
+    new Map()
+  );
 
   const showPagination = useMemo(
     () => Boolean(paging.before || paging.after) || paging.total > pageSize,
@@ -110,7 +113,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     [t]
   );
 
-  const fetchRoles = async (pagingParam?: Partial<Paging>) => {
+  const fetchRoles = async (
+    pagingParam?: Partial<Paging>,
+    targetPage = 1
+  ): Promise<Paging | undefined> => {
     setIsLoading(true);
     try {
       const data = await getRoles(
@@ -123,8 +129,13 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       setRoles(data.data || []);
       setPaging(data.paging);
+      setCursorCache((prev) => new Map(prev).set(targetPage, data.paging));
+
+      return data.paging;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return undefined;
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +143,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
   const handleAfterDeleteAction = useCallback(() => {
     setCurrentPage(1);
-    fetchRoles();
+    setCursorCache(new Map());
+    fetchRoles(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -162,23 +174,67 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     }
   };
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage + 1 && paging?.after) {
+  const handlePageNavigation = async (newPage: number) => {
+    if (newPage === currentPage) {
+      return;
+    }
+
+    if (newPage === 1) {
+      setCurrentPage(1);
+      fetchRoles(undefined, 1);
+
+      return;
+    }
+
+    const cachedCursor = cursorCache.get(newPage - 1)?.after;
+    if (cachedCursor) {
       setCurrentPage(newPage);
-      fetchRoles({ after: paging.after });
-    } else if (newPage === currentPage - 1 && paging?.before) {
-      setCurrentPage(newPage);
-      fetchRoles({ before: paging.before });
+      fetchRoles({ after: cachedCursor }, newPage);
+
+      return;
+    }
+
+    // Sequential forward navigation through uncached pages
+    if (newPage > currentPage) {
+      setIsLoading(true);
+      try {
+        let page = currentPage;
+        let currentPaging: Paging = paging;
+
+        while (page < newPage && currentPaging.after) {
+          page++;
+          const data = await getRoles(
+            'policies',
+            currentPaging.after,
+            undefined,
+            undefined,
+            pageSize
+          );
+          currentPaging = data.paging;
+          setCursorCache((prev) => new Map(prev).set(page, data.paging));
+
+          if (page === newPage) {
+            setRoles(data.data || []);
+            setPaging(data.paging);
+            setCurrentPage(newPage);
+          }
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setCurrentPage(1);
+    setCursorCache(new Map());
   };
 
   useEffect(() => {
-    fetchRoles();
+    fetchRoles(undefined, 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize]);
 
