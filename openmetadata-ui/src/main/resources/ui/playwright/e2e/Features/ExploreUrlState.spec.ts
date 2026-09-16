@@ -220,12 +220,7 @@ test('reloading the page preserves composed filters', async ({ page }) => {
 
   await selectOptionAndWaitForQuery(page, 'Tier', TIER1_KEY);
   await page.keyboard.press('Escape');
-  await selectOptionAndWaitForQuery(
-    page,
-    'Data Assets',
-    'table',
-    'table'
-  );
+  await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
   await page.keyboard.press('Escape');
 
   await expect(
@@ -350,12 +345,7 @@ test('an impossible filter combination shows the no-results placeholder and reco
     const ownerMust = readQuickFilterMust(page);
 
     await openExplore(page);
-    await selectOptionAndWaitForQuery(
-      page,
-      'Data Assets',
-      'topic',
-      'topic'
-    );
+    await selectOptionAndWaitForQuery(page, 'Data Assets', 'topic', 'topic');
     await page.keyboard.press('Escape');
     const topicMust = readQuickFilterMust(page);
 
@@ -428,12 +418,7 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     // The previous step left the owned table's name in the search box, which
     // scopes the Data Assets facet to nothing — clear it before opening it.
     await clearGlobalSearch(page);
-    await selectOptionAndWaitForQuery(
-      page,
-      'Data Assets',
-      'table',
-      'table'
-    );
+    await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
     await page.keyboard.press('Escape');
 
     await expect(
