@@ -48,6 +48,7 @@ import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import {
   ChangeEvent,
+  Fragment,
   Key,
   ReactNode,
   useCallback,
@@ -82,7 +83,11 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
+import {
+  EntityReference,
+  EntityStatus,
+  Metric,
+} from '../../../generated/entity/data/metric';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -186,6 +191,26 @@ const computeIsMetricListEmpty = (
   const hasNoFilters = !searchText && !statusFilter;
 
   return isNotFetchingOrPending && metricsCount === 0 && hasNoFilters;
+};
+
+const renderDomainBadge = (domain: EntityReference): ReactNode => {
+  const badge = (
+    <Badge
+      className="metric-list-glossary-pill"
+      color="blue"
+      size="sm"
+      type="color">
+      {domain.displayName ?? domain.name ?? domain.fullyQualifiedName}
+    </Badge>
+  );
+
+  return domain.fullyQualifiedName ? (
+    <Link key={domain.id} to={getDomainPath(domain.fullyQualifiedName)}>
+      {badge}
+    </Link>
+  ) : (
+    <Fragment key={domain.id}>{badge}</Fragment>
+  );
 };
 
 const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
@@ -652,26 +677,7 @@ const MetricListPage = () => {
         render: (domains: Metric['domains']) =>
           withNestedLinkGuard(
             <Box className="metric-list-glossary">
-              {domains?.length
-                ? domains.map((domain) => (
-                    <Link
-                      key={domain.id}
-                      // A domain's FQN equals its name; the reference may omit it
-                      to={getDomainPath(
-                        domain.fullyQualifiedName ?? domain.name
-                      )}>
-                      <Badge
-                        className="metric-list-glossary-pill"
-                        color="blue"
-                        size="sm"
-                        type="color">
-                        {domain.displayName ??
-                          domain.name ??
-                          domain.fullyQualifiedName}
-                      </Badge>
-                    </Link>
-                  ))
-                : emptyDash}
+              {domains?.length ? domains.map(renderDomainBadge) : emptyDash}
             </Box>
           ),
       },
