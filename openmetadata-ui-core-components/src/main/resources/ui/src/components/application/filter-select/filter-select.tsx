@@ -115,7 +115,9 @@ const TriggerButton = ({
     return (
       <AriaButton
         className={cx(
-          'tw:flex tw:w-44 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs tw:outline-brand',
+          // Sized like the toolbar selects this trigger replaces: 32px tall,
+          // filling the width its container gives it (constrain via className).
+          'tw:flex tw:h-8 tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-3 tw:shadow-xs tw:outline-brand',
           className
         )}
         data-testid={testId}>
