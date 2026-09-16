@@ -65,14 +65,16 @@ export const TreeSelectTreeItemContent = <T,>({
             }
           }}>
           {showConnectorLines && renderProps.level >= 2 && (
-            <span aria-hidden="true">
+            <span
+              aria-hidden="true"
+              className="tw:absolute tw:top-0 tw:left-0 tw:h-full tw:pointer-events-none">
               <span
-                className="tw:pointer-events-none tw:absolute tw:w-3 tw:border-l-[1.5px] tw:border-b-[1.5px] tw:border-primary tw:rounded-bl-md tw:-top-2.5 tw:h-[calc(50%+12px)]"
+                className="tw:pointer-events-none tw:absolute tw:w-3 tw:border-l-[1.5px] tw:border-b-[1.5px] tw:border-primary tw:rounded-bl-md tw:-top-[14px] tw:h-[calc(50%+14px)]"
                 style={{ left: '-42px' }}
               />
               {!isLastChild && (
                 <span
-                  className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-bottom-2.5 tw:w-px tw:border-l-[1.5px] tw:border-primary"
+                  className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-bottom-[14px] tw:w-px tw:border-l-[1.5px] tw:border-primary"
                   style={{ left: '-42px' }}
                 />
               )}
