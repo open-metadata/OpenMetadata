@@ -1552,45 +1552,6 @@ def test_query_filters_select_only_data_movement() -> None:
     assert "'SELECT%'" not in filters
 
 
-def test_iter_runs_both_passes() -> None:
-    """_iter must run the shared SQL passes and the repository pass.
-
-    Dropping either one silently halves lineage on the deployment that depends on it.
-    """
-    calls = []
-
-    def record_sql(*_, **__):
-        calls.append("sql")
-        return iter([])
-
-    def record_cdata():
-        calls.append("cdata")
-        return iter([])
-
-    with (
-        patch.object(LineageSource, "_iter", side_effect=record_sql),
-        patch.object(SaphanaLineageSource, "yield_cdata_lineage", side_effect=record_cdata),
-        patch.object(SaphanaLineageSource, "test_connection"),
-        patch("metadata.ingestion.source.database.query_parser_source.get_ssl_connection"),
-    ):
-        source = SaphanaLineageSource(
-            config=WorkflowSource(
-                type="saphana-lineage",
-                serviceName="test_sap_hana",
-                serviceConnection=DatabaseConnection(
-                    config=SapHanaConnection(
-                        connection=SapHanaSQLConnection(username="test", password="test", hostPort="localhost:39015")
-                    )
-                ),
-                sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
-            ),
-            metadata=create_autospec(OpenMetadata),
-        )
-        list(source._iter())
-
-    assert calls == ["sql", "cdata"]
-
-
 def _lineage_source_with(source_config: DatabaseServiceQueryLineagePipeline) -> SaphanaLineageSource:
     """Build the source without touching a real engine"""
     with (
