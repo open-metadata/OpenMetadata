@@ -22,11 +22,10 @@ const resourcePermission = (access: Access) => ({
 });
 
 describe('permissionPolicy — resourceLevelConditionalAllow seam', () => {
-  it('ships as "strict" — behavior parity with base commit 9cf866cd23', () => {
+  it('ships as "attempt" — fix for #31783 and #33356', () => {
     // Locks the live default. This is the assertion that fails loudly if
-    // someone flips the switch without meaning to (or without updating the
-    // Playwright suite documented in permissionPolicy.ts).
-    expect(PERMISSION_POLICY.resourceLevelConditionalAllow).toBe('strict');
+    // someone flips the switch without updating the surrounding documentation.
+    expect(PERMISSION_POLICY.resourceLevelConditionalAllow).toBe('attempt');
   });
 
   // Exercises the translation the same way PermissionProvider.tsx derives
@@ -69,7 +68,7 @@ describe('permissionPolicy — resourceLevelConditionalAllow seam', () => {
     });
   });
 
-  it('the live policy setting reproduces the "strict" row above end-to-end', () => {
+  it('the live policy setting reproduces the "attempt" row above end-to-end', () => {
     const allowConditional =
       PERMISSION_POLICY.resourceLevelConditionalAllow === 'attempt';
     const permissions = getOperationPermissions(
@@ -77,9 +76,9 @@ describe('permissionPolicy — resourceLevelConditionalAllow seam', () => {
       allowConditional
     );
 
-    // While the policy stays 'strict' this must be denied — the same
-    // observable behavior PermissionProvider.tsx's RESOURCE_ALLOW_CONDITIONAL
-    // produces for every logged-in-user / resource-level permission fetch.
-    expect(permissions[Operation.ViewAll]).toBe(false);
+    // Now that the policy is 'attempt', CONDITIONAL_ALLOW at resource level
+    // must be permitted — domain-scoped users can reach entity pages and the
+    // backend enforces per-entity access on every real read/write.
+    expect(permissions[Operation.ViewAll]).toBe(true);
   });
 });
