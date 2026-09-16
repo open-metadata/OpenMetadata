@@ -59,6 +59,7 @@ import {
   getTeamByName,
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -525,6 +526,16 @@ const usePolicyDetail = (fqn: string) => {
       return;
     }
 
+    if (
+      !ruleData.name?.trim() ||
+      !ruleData.resources?.length ||
+      !ruleData.operations?.length
+    ) {
+      showErrorToast(t('label.field-required', { field: t('label.rule') }));
+
+      return;
+    }
+
     const { condition, ...rest } = {
       ...ruleData,
       name: ruleData.name?.trim() ?? '',
@@ -731,6 +742,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
   const {
     canDelete,
     canEditAll,
@@ -999,7 +1011,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   const renderRolesTab = useCallback(
     () => (
       <RoleOrTeamTable
-        canEditAll={canEditAll}
+        canEditAll={Boolean(isAdminUser)}
         columns={detailColumns}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.role-plural'),
@@ -1020,9 +1032,9 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       />
     ),
     [
-      canEditAll,
       detailColumns,
       handleEntityRemove,
+      isAdminUser,
       isLoadingOnSave,
       onNavigate,
       policy,
@@ -1033,7 +1045,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   const renderTeamsTab = useCallback(
     () => (
       <RoleOrTeamTable
-        canEditAll={canEditAll}
+        canEditAll={Boolean(isAdminUser)}
         columns={detailColumns}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.team-plural'),
@@ -1046,7 +1058,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         onRemove={handleEntityRemove}
       />
     ),
-    [canEditAll, detailColumns, handleEntityRemove, isLoadingOnSave, policy, t]
+    [detailColumns, handleEntityRemove, isAdminUser, isLoadingOnSave, policy, t]
   );
 
   if (isLoading) {

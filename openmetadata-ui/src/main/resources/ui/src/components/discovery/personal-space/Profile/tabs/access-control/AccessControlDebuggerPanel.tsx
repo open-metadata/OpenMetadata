@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourcePermission';
@@ -47,6 +47,8 @@ const AccessControlDebuggerPanel: FC = () => {
   const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [loadingEvaluation, setLoadingEvaluation] = useState(false);
   const [userOptions, setUserOptions] = useState<SelectItemType[]>([]);
+
+  const permissionRequestIdRef = useRef(0);
 
   // Evaluation form state
   const [formResource, setFormResource] = useState<string | null>(null);
@@ -95,15 +97,23 @@ const AccessControlDebuggerPanel: FC = () => {
   );
 
   const handleUserSelect = async (username: string) => {
+    const requestId = ++permissionRequestIdRef.current;
     setSelectedUsername(username);
+    setPermissionInfo(undefined);
     setLoadingPermissions(true);
     try {
       const response = await getPermissionDebugInfo(username);
-      setPermissionInfo(response.data);
+      if (requestId === permissionRequestIdRef.current) {
+        setPermissionInfo(response.data);
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (requestId === permissionRequestIdRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setLoadingPermissions(false);
+      if (requestId === permissionRequestIdRef.current) {
+        setLoadingPermissions(false);
+      }
     }
   };
 

@@ -139,8 +139,12 @@ const ProfilePage: React.FC = () => {
   // contribution onto a credentials-group nav item; `isAiMode` lets a plugin
   // pick the app-mode variant of a tab it also contributes to classic pages.
   const navItems: ProfileNavItem[] = useMemo(() => {
+    const coreItems = PROFILE_NAV_ITEMS.filter(
+      (item) => item.id !== 'access-control' || currentUser?.isAdmin
+    );
+
     if (!userData) {
-      return PROFILE_NAV_ITEMS;
+      return coreItems;
     }
     const context: PluginEntityDetailsContext = {
       userData,
@@ -165,8 +169,8 @@ const ProfilePage: React.FC = () => {
         };
       });
 
-    return [...PROFILE_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS, ...contributed];
-  }, [extensionRegistry, userData]);
+    return [...coreItems, ...WORKSPACE_NAV_ITEMS, ...contributed];
+  }, [currentUser?.isAdmin, extensionRegistry, userData]);
 
   // Clear header override whenever the user switches nav items.
   const handleNavSelect = useCallback((id: ProfileNavId) => {

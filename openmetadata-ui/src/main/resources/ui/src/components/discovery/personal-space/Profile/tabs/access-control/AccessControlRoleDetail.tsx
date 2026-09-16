@@ -59,6 +59,7 @@ import {
   patchTeamDetail,
 } from '../../../../../../rest/teamsAPI';
 import { getUserById, updateUserDetail } from '../../../../../../rest/userAPI';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -384,6 +385,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { contains } = useFilter({ sensitivity: 'base' });
 
@@ -910,38 +912,38 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     () => (
       <EntityTable
         ariaLabel={t('label.team-plural')}
-        canEditAll={canEditAll}
+        canEditAll={Boolean(isAdminUser)}
         columns={columns}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.team-plural'),
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={role?.teams}
-        showRemove={canEditAll}
+        showRemove={Boolean(isAdminUser)}
         t={t}
         onRemove={(item) => handleEntityRemove(item, 'team')}
       />
     ),
-    [canEditAll, columns, handleEntityRemove, isLoadingOnSave, role, t]
+    [columns, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
   );
 
   const renderUsersTab = useCallback(
     () => (
       <EntityTable
         ariaLabel={t('label.user-plural')}
-        canEditAll={canEditAll}
+        canEditAll={Boolean(isAdminUser)}
         columns={columns}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.user-plural'),
         })}
         isLoadingOnSave={isLoadingOnSave}
         items={role?.users}
-        showRemove={canEditAll}
+        showRemove={Boolean(isAdminUser)}
         t={t}
         onRemove={(item) => handleEntityRemove(item, 'user')}
       />
     ),
-    [canEditAll, columns, handleEntityRemove, isLoadingOnSave, role, t]
+    [columns, handleEntityRemove, isAdminUser, isLoadingOnSave, role, t]
   );
 
   if (isLoading) {

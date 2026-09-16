@@ -79,6 +79,16 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
   const [isSaveLoading, setIsSaveLoading] = useState(false);
 
   const onSubmit = async (data: FormValues) => {
+    if (
+      !ruleData.name?.trim() ||
+      !ruleData.resources?.length ||
+      !ruleData.operations?.length
+    ) {
+      showErrorToast(t('label.field-required', { field: t('label.rule') }));
+
+      return;
+    }
+
     const trimmedName = trim(data.name);
     const description = descEditorRef.current?.getEditorContent() ?? '';
 

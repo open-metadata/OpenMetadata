@@ -132,6 +132,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   };
 
   const handleAfterDeleteAction = useCallback(() => {
+    setCurrentPage(1);
     fetchPolicies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -163,10 +164,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   };
 
   const handlePageNavigation = (newPage: number) => {
-    if (newPage > currentPage && paging?.after) {
+    if (newPage === currentPage + 1 && paging?.after) {
       setCurrentPage(newPage);
       fetchPolicies({ after: paging.after });
-    } else if (newPage < currentPage && paging?.before) {
+    } else if (newPage === currentPage - 1 && paging?.before) {
       setCurrentPage(newPage);
       fetchPolicies({ before: paging.before });
     }

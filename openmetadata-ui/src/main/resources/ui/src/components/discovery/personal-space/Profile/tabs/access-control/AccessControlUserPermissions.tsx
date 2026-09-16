@@ -157,15 +157,33 @@ const AccessControlUserPermissions: React.FC<
   const [permissionInfo, setPermissionInfo] = useState<PermissionDebugInfo>();
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
+    setPermissionInfo(undefined);
     const fetchFn = isLoggedInUser
       ? getMyPermissionDebugInfo()
       : getPermissionDebugInfo(username);
 
     fetchFn
-      .then((resp) => setPermissionInfo(resp.data))
-      .catch((error: AxiosError) => showErrorToast(error))
-      .finally(() => setLoading(false));
+      .then((resp) => {
+        if (!cancelled) {
+          setPermissionInfo(resp.data);
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (!cancelled) {
+          showErrorToast(error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [username, isLoggedInUser]);
 
   if (loading) {
