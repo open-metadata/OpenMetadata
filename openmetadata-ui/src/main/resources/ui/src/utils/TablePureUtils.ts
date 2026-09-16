@@ -22,6 +22,7 @@ import {
 } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import type { MlFeature } from '../generated/entity/data/mlmodel';
@@ -70,10 +71,10 @@ export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
 };
 
 export const isTierTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`);
+  tagFQN.startsWith(`${TIER_CATEGORY}${FQN_SEPARATOR_CHAR}`);
 
 export const isCertificationTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Certification${FQN_SEPARATOR_CHAR}`);
+  tagFQN.startsWith(`${CERTIFICATION_CATEGORY}${FQN_SEPARATOR_CHAR}`);
 
 export const getTierTags = (tags: Array<TagLabel>) => {
   return tags.find((item) => isTierTag(item.tagFQN));
