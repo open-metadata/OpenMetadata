@@ -19,17 +19,14 @@ import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import BotDetails from '../../components/Settings/Bot/BotDetails/BotDetails.component';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { useAuth } from '../../hooks/authHooks';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { getBotByName, updateBotDetail } from '../../rest/botsAPI';
 import {
@@ -37,40 +34,45 @@ import {
   revokeUserToken,
   updateUserDetail,
 } from '../../rest/userAPI';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotDetailsPage = () => {
   const { t } = useTranslation();
   const { fqn: botsName } = useFqn();
   const { isAdminUser } = useAuth();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botUserData, setBotUserData] = useState<User>({} as User);
   const [botData, setBotData] = useState<Bot>({} as Bot);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isBotDataLoading, setIsBotDataLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [botPermission, setBotPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
 
-  const fetchBotPermission = async (entityFqn: string) => {
-    setIsLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.BOT,
-        entityFqn
-      );
-      setBotPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
+  // Fetch-owner, by fqn. Ungated: Bot's page never referenced `deleted` for this raw read.
+  const {
+    permissions: botPermission,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewBotPermission,
+  } = useEntityPermissions(ResourceEntity.BOT, botsName, {
+    enabled: Boolean(botsName),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
     }
-  };
+  }, [permissionsError]);
+
+  // Combined loading flag: the old `isLoading` state doubled as both the permission-fetch
+  // loading flag AND the bot/user-data-fetch loading flag (fetchBotsData only ever runs when
+  // view access is granted, per the effect below) — same shape as ServiceVersionPage.tsx's
+  // `isLoading` fix (Task 8 Batch 10). Gated on `viewBotPermission` so `isBotDataLoading`'s
+  // initial value isn't counted while denied (fetchBotsData's own setIsBotDataLoading(false)
+  // never runs in that case).
+  const isLoading =
+    isPermissionsLoading || (viewBotPermission && isBotDataLoading);
 
   const fetchBotsData = async () => {
     try {
-      setIsLoading(true);
+      setIsBotDataLoading(true);
       const botResponse = await getBotByName(botsName, {
         include: Include.All,
       });
@@ -88,7 +90,7 @@ const BotDetailsPage = () => {
       showErrorToast(error as AxiosError);
       setIsError(true);
     } finally {
-      setIsLoading(false);
+      setIsBotDataLoading(false);
     }
   };
 
@@ -137,14 +139,10 @@ const BotDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (botPermission.ViewAll || botPermission.ViewBasic) {
+    if (viewBotPermission) {
       fetchBotsData();
     }
-  }, [botPermission, botsName]);
-
-  useEffect(() => {
-    fetchBotPermission(botsName);
-  }, [botsName]);
+  }, [viewBotPermission, botsName]);
 
   if (isLoading) {
     return <Loader />;

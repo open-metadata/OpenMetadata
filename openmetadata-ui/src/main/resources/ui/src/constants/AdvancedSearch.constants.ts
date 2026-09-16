@@ -113,6 +113,17 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TEAM_ASSETS_DROPDOWN_ITEMS = [
+  {
+    label: 'label.entity-type-plural',
+    labelKeyOptions: {
+      entity: 'label.entity',
+    },
+    key: EntityFields.ENTITY_TYPE,
+  },
+  ...COMMON_DROPDOWN_ITEMS,
+];
+
 export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: 'label.data-asset-plural',

@@ -30,6 +30,48 @@ interface SinkTaskFormProps {
   onDelete?: (nodeId: string) => void;
 }
 
+interface SinkNodeConfig {
+  repositoryUrl?: string;
+  branch?: string;
+  basePath?: string;
+  credentials?: { token?: string };
+  conflictResolution?: string;
+  commitConfig?: {
+    messageTemplate?: string;
+    authorName?: string;
+    authorEmail?: string;
+  };
+}
+
+interface SinkNodeData {
+  displayName?: string;
+  label?: string;
+  description?: string;
+  config?: { sinkConfig?: SinkNodeConfig };
+}
+
+const buildSinkConnectionValues = (sinkConfig: SinkNodeConfig) => ({
+  repositoryUrl: sinkConfig.repositoryUrl || '',
+  branch: sinkConfig.branch || 'main',
+  basePath: sinkConfig.basePath || 'metadata',
+  token: sinkConfig.credentials?.token || '',
+  conflictResolution: sinkConfig.conflictResolution || 'overwriteExternal',
+});
+
+const buildSinkMetaValues = (
+  data: SinkNodeData,
+  sinkConfig: SinkNodeConfig,
+  t: ReturnType<typeof useTranslation>['t']
+) => ({
+  displayName: data.displayName || data.label || '',
+  description: data.description || '',
+  commitMessageTemplate:
+    sinkConfig.commitConfig?.messageTemplate ||
+    'Sync {entityType}: {entityName}',
+  authorName: sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
+  authorEmail: sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
+});
+
 export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
   node,
   onSave,
@@ -77,25 +119,12 @@ export const SinkTaskForm: React.FC<SinkTaskFormProps> = ({
 
   useEffect(() => {
     if (node?.data) {
-      const nodeConfig = node.data.config || {};
-      const sinkConfig = nodeConfig.sinkConfig || {};
+      const data = node.data as SinkNodeData;
+      const sinkConfig = data.config?.sinkConfig ?? {};
 
       setFormData({
-        displayName: node.data.displayName || node.data.label || '',
-        description: node.data.description || '',
-        repositoryUrl: sinkConfig.repositoryUrl || '',
-        branch: sinkConfig.branch || 'main',
-        basePath: sinkConfig.basePath || 'metadata',
-        token: sinkConfig.credentials?.token || '',
-        conflictResolution:
-          sinkConfig.conflictResolution || 'overwriteExternal',
-        commitMessageTemplate:
-          sinkConfig.commitConfig?.messageTemplate ||
-          'Sync {entityType}: {entityName}',
-        authorName:
-          sinkConfig.commitConfig?.authorName || t('label.brand-name-bot'),
-        authorEmail:
-          sinkConfig.commitConfig?.authorEmail || 'bot@openmetadata.org',
+        ...buildSinkMetaValues(data, sinkConfig, t),
+        ...buildSinkConnectionValues(sinkConfig),
       });
     }
   }, [node]);

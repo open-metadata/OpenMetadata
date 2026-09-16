@@ -233,6 +233,25 @@ export function buildHierarchyGraphs({
         color?: string;
       }
     >();
+    const buildKeptEdge = (
+      sourceId: string,
+      targetId: string,
+      parentRelationType: string,
+      relationType: string
+    ) => {
+      const childRelationType = inverseMap[parentRelationType];
+
+      return {
+        from: sourceId,
+        to: targetId,
+        relationType: parentRelationType,
+        ...(childRelationType
+          ? { inverseRelationType: childRelationType }
+          : {}),
+        color:
+          relationColors[parentRelationType] ?? relationColors[relationType],
+      };
+    };
     hierarchicalEdges.forEach((edge) => {
       const { parent, child } = normalizeParentChild(
         edge.from,
@@ -261,18 +280,10 @@ export function buildHierarchyGraphs({
         return;
       }
       edgeKeys.add(pairKey);
-      const childRelationType = inverseMap[parentRelationType];
-      keptEdgesMap.set(pairKey, {
-        from: sourceId,
-        to: targetId,
-        relationType: parentRelationType,
-        ...(childRelationType
-          ? { inverseRelationType: childRelationType }
-          : {}),
-        color:
-          relationColors[parentRelationType] ??
-          relationColors[edge.relationType],
-      });
+      keptEdgesMap.set(
+        pairKey,
+        buildKeptEdge(sourceId, targetId, parentRelationType, edge.relationType)
+      );
     });
     const keptEdges = Array.from(keptEdgesMap.values());
 

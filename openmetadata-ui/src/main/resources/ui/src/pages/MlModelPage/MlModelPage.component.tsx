@@ -15,7 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -24,14 +24,13 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
 import { ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -46,10 +45,6 @@ import {
 import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -62,30 +57,33 @@ const MlModelPage = () => {
   const { entityFqn: mlModelFqn } = useFqn({ type: EntityType.MLMODEL });
   const USERId = currentUser?.id ?? '';
 
-  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
-  const [mlModelPermissions, setPipelinePermissions] = useState(
-    DEFAULT_ENTITY_PERMISSION
-  );
+  // Fetch-owner, by fqn. Deliberately kept even though MlModelDetailComponent (child) also
+  // calls useEntityPermissions itself (by id, for its own edit-tier flags) — this page's
+  // view-tier flags gate the ml-model entity query below (canViewUsage decides whether
+  // USAGE_SUMMARY is requested; hasViewAccess decides whether the query fires and drives
+  // the permission-denied placeholder), and the child only exists once mlModelId is known.
+  // NOTE: two network requests — this page fetches by fqn while MlModelDetailComponent
+  // fetches by id (different query keys, different REST calls — NOT the same shared-cache
+  // situation as TableDetailsPageV1's own two same-fqn calls). Consolidation candidate: pass
+  // one identifier form through or drop the page fetch if the child's data suffices.
+  const {
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    canViewUsage: viewUsagePermission,
+    hasViewAccess: canViewMlModel,
+  } = useEntityPermissions(ResourceEntity.ML_MODEL, mlModelFqn, {
+    enabled: Boolean(mlModelFqn),
+  });
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-
-  const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        mlModelPermissions,
-        PermissionOperation.ViewUsage
-      ),
-    [mlModelPermissions]
-  );
-
-  const canViewMlModel = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        mlModelPermissions,
-        PermissionOperation.ViewBasic
-      ) === true,
-    [mlModelPermissions]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: mlModelFqn,
+        })
+      );
+    }
+  }, [permissionsError]);
 
   const mlModelFields = useMemo(() => {
     let fields = defaultFields;
@@ -166,25 +164,6 @@ const MlModelPage = () => {
     () => followers.some(({ id }) => id === USERId),
     [followers, USERId]
   );
-
-  const fetchResourcePermission = async (entityFqn: string) => {
-    setPermissionsLoading(true);
-    try {
-      const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.ML_MODEL,
-        entityFqn
-      );
-      setPipelinePermissions(entityPermission);
-    } catch {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
-    } finally {
-      setPermissionsLoading(false);
-    }
-  };
 
   const saveUpdatedMlModelData = useCallback(
     (updatedData: Mlmodel) => {
@@ -397,10 +376,6 @@ const MlModelPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchResourcePermission(mlModelFqn);
-  }, [mlModelFqn]);
-
   if (permissionsLoading || mlModelLoading) {
     return <PageLoader />;
   }
@@ -413,7 +388,7 @@ const MlModelPage = () => {
     );
   }
 
-  if (!mlModelPermissions.ViewAll && !mlModelPermissions.ViewBasic) {
+  if (!canViewMlModel) {
     return (
       <ErrorPlaceHolder
         className="border-none"

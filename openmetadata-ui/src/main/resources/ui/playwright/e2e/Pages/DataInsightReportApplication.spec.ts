@@ -18,6 +18,12 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
+import {
+  expectScheduleFrequencySelected,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
+  setScheduleTime,
+} from '../../utils/scheduleInterval';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -62,14 +68,8 @@ test.describe.serial('Data Insight Report Application', () => {
     await page.click('[data-testid="save-button"]');
     await page.click('[data-testid="submit-btn"]');
 
-    await expect(
-      page.getByTestId('cron-type').getByText('Week')
-    ).toBeAttached();
-
-    await page
-      .locator('#schedular-form_dow .week-selector-buttons')
-      .getByText('F')
-      .click();
+    await expectScheduleFrequencySelected(page, 'week');
+    await selectScheduleDayOfWeek(page, 'Friday');
     await page.click('[data-testid="deploy-button"]');
 
     await toastNotification(page, 'Application installed successfully');
@@ -85,13 +85,13 @@ test.describe.serial('Data Insight Report Application', () => {
     );
 
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="cron-type"]');
-    await page
-      .locator('#schedular-form_dow .week-selector-buttons')
-      .getByText('W')
-      .click();
-    await page.click('[data-testid="hour-options"]');
-    await page.click('[title="01"]');
+    await selectScheduleFrequency(page, 'week');
+    await selectScheduleDayOfWeek(page, 'Wednesday');
+    await setScheduleTime(page, {
+      hour: '01',
+      minute: '00',
+      period: 'AM',
+    });
     await page.click('.ant-modal-body [data-testid="deploy-button"]');
     await toastNotification(page, 'Schedule saved successfully');
 

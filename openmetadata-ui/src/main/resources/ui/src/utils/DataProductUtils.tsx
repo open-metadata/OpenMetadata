@@ -166,6 +166,205 @@ export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   );
 };
 
+type DataProductNonVersionTabsProps = Pick<
+  DataProductDetailPageTabProps,
+  | 'activeTab'
+  | 'assetCount'
+  | 'assetTabRef'
+  | 'dataProduct'
+  | 'dataProductPermission'
+  | 'feedCount'
+  | 'getEntityFeedCount'
+  | 'handleAssetClick'
+  | 'handleAssetSave'
+  | 'labelMap'
+  | 'previewAsset'
+  | 'setAssetModalVisible'
+  | 'setPreviewAsset'
+> & { totalPortsCount: number };
+
+const getDataProductPreviewSecondPanel = (
+  previewAsset: DataProductDetailPageTabProps['previewAsset'],
+  setPreviewAsset: DataProductDetailPageTabProps['setPreviewAsset']
+) => ({
+  wrapInCard: false,
+  children: previewAsset && (
+    <EntitySummaryPanel
+      entityDetails={previewAsset}
+      handleClosePanel={() => setPreviewAsset(undefined)}
+      key={previewAsset.details.id ?? previewAsset.details.fullyQualifiedName}
+    />
+  ),
+  minWidth: 400,
+  flex: 0.33,
+  className:
+    'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
+});
+
+const getDataProductNonVersionTabs = ({
+  activeTab,
+  assetCount,
+  assetTabRef,
+  dataProduct,
+  dataProductPermission,
+  feedCount,
+  getEntityFeedCount,
+  handleAssetClick,
+  handleAssetSave,
+  labelMap,
+  previewAsset,
+  setAssetModalVisible,
+  setPreviewAsset,
+  totalPortsCount,
+}: DataProductNonVersionTabsProps) => [
+  {
+    label: (
+      <TabsLabel
+        count={feedCount.totalCount}
+        id={EntityTabs.ACTIVITY_FEED}
+        isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+        name={
+          labelMap?.[EntityTabs.ACTIVITY_FEED] ??
+          t('label.activity-feed-and-task-plural')
+        }
+      />
+    ),
+    key: EntityTabs.ACTIVITY_FEED,
+    children: (
+      <ActivityFeedProvider>
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.DATA_PRODUCT}
+          feedCount={feedCount}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          owners={dataProduct.owners}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={noop}
+        />
+      </ActivityFeedProvider>
+    ),
+  },
+  {
+    label: (
+      <TabsLabel
+        count={totalPortsCount}
+        id={EntityTabs.INPUT_OUTPUT_PORTS}
+        isActive={activeTab === EntityTabs.INPUT_OUTPUT_PORTS}
+        name={
+          labelMap?.[EntityTabs.INPUT_OUTPUT_PORTS] ??
+          t('label.input-output-port-plural')
+        }
+      />
+    ),
+    key: EntityTabs.INPUT_OUTPUT_PORTS,
+    children: (
+      <ResizablePanels
+        className="h-full domain-height-with-resizable-panel"
+        firstPanel={{
+          className: 'domain-resizable-panel-container tw:overflow-auto!',
+          wrapInCard: false,
+          children: (
+            <InputOutputPortsTab
+              assetCount={assetCount}
+              dataProduct={dataProduct}
+              dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
+              permissions={dataProductPermission}
+              onPortClick={handleAssetClick}
+              onPortsUpdate={handleAssetSave}
+            />
+          ),
+          minWidth: 800,
+          flex: 0.67,
+        }}
+        hideSecondPanel={!previewAsset}
+        pageTitle={t('label.data-product')}
+        secondPanel={getDataProductPreviewSecondPanel(
+          previewAsset,
+          setPreviewAsset
+        )}
+      />
+    ),
+  },
+  {
+    label: (
+      <TabsLabel
+        count={assetCount ?? 0}
+        id={EntityTabs.ASSETS}
+        isActive={activeTab === EntityTabs.ASSETS}
+        name={labelMap?.[EntityTabs.ASSETS] ?? t('label.asset-plural')}
+      />
+    ),
+    key: EntityTabs.ASSETS,
+    children: (
+      <ResizablePanels
+        className="h-full domain-height-with-resizable-panel"
+        firstPanel={{
+          className: 'domain-resizable-panel-container',
+          wrapInCard: false,
+          children: (
+            <AssetsTabs
+              assetCount={assetCount}
+              entityFqn={dataProduct.fullyQualifiedName}
+              isSummaryPanelOpen={Boolean(previewAsset)}
+              permissions={dataProductPermission}
+              ref={assetTabRef}
+              type={AssetsOfEntity.DATA_PRODUCT}
+              onAddAsset={() => setAssetModalVisible(true)}
+              onAssetClick={handleAssetClick}
+              onRemoveAsset={handleAssetSave}
+            />
+          ),
+          minWidth: 800,
+          flex: 0.67,
+        }}
+        hideSecondPanel={!previewAsset}
+        pageTitle={t('label.data-product')}
+        secondPanel={getDataProductPreviewSecondPanel(
+          previewAsset,
+          setPreviewAsset
+        )}
+      />
+    ),
+  },
+  {
+    label: (
+      <TabsLabel
+        id={EntityTabs.CONTRACT}
+        name={labelMap?.[EntityTabs.CONTRACT] ?? t('label.contract')}
+      />
+    ),
+    key: EntityTabs.CONTRACT,
+    children: <ContractTab />,
+  },
+  {
+    label: (
+      <TabsLabel
+        id={EntityTabs.DATA_OBSERVABILITY}
+        isActive={activeTab === EntityTabs.DATA_OBSERVABILITY}
+        name={
+          labelMap?.[EntityTabs.DATA_OBSERVABILITY] ??
+          t('label.data-observability')
+        }
+      />
+    ),
+    key: EntityTabs.DATA_OBSERVABILITY,
+    children: (
+      <DataQualityDashboard
+        isGovernanceView
+        hiddenFilters={['dataProducts']}
+        initialFilters={
+          dataProduct.fullyQualifiedName
+            ? {
+                dataProductFqns: [dataProduct.fullyQualifiedName],
+              }
+            : undefined
+        }
+      />
+    ),
+  },
+];
+
 export const getDataProductDetailTabs = ({
   dataProduct,
   isVersionsView,
@@ -201,181 +400,22 @@ export const getDataProductDetailTabs = ({
     },
     ...(isVersionsView
       ? []
-      : [
-          {
-            label: (
-              <TabsLabel
-                count={feedCount.totalCount}
-                id={EntityTabs.ACTIVITY_FEED}
-                isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                name={
-                  labelMap?.[EntityTabs.ACTIVITY_FEED] ??
-                  t('label.activity-feed-and-task-plural')
-                }
-              />
-            ),
-            key: EntityTabs.ACTIVITY_FEED,
-            children: (
-              <ActivityFeedProvider>
-                <ActivityFeedTab
-                  refetchFeed
-                  entityFeedTotalCount={feedCount.totalCount}
-                  entityType={EntityType.DATA_PRODUCT}
-                  feedCount={feedCount}
-                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
-                  owners={dataProduct.owners}
-                  onFeedUpdate={getEntityFeedCount}
-                  onUpdateEntityDetails={noop}
-                />
-              </ActivityFeedProvider>
-            ),
-          },
-          {
-            label: (
-              <TabsLabel
-                count={totalPortsCount}
-                id={EntityTabs.INPUT_OUTPUT_PORTS}
-                isActive={activeTab === EntityTabs.INPUT_OUTPUT_PORTS}
-                name={
-                  labelMap?.[EntityTabs.INPUT_OUTPUT_PORTS] ??
-                  t('label.input-output-port-plural')
-                }
-              />
-            ),
-            key: EntityTabs.INPUT_OUTPUT_PORTS,
-            children: (
-              <ResizablePanels
-                className="h-full domain-height-with-resizable-panel"
-                firstPanel={{
-                  className:
-                    'domain-resizable-panel-container tw:overflow-auto!',
-                  wrapInCard: false,
-                  children: (
-                    <InputOutputPortsTab
-                      assetCount={assetCount}
-                      dataProduct={dataProduct}
-                      dataProductFqn={dataProduct.fullyQualifiedName ?? ''}
-                      permissions={dataProductPermission}
-                      onPortClick={handleAssetClick}
-                      onPortsUpdate={handleAssetSave}
-                    />
-                  ),
-                  minWidth: 800,
-                  flex: 0.67,
-                }}
-                hideSecondPanel={!previewAsset}
-                pageTitle={t('label.data-product')}
-                secondPanel={{
-                  wrapInCard: false,
-                  children: previewAsset && (
-                    <EntitySummaryPanel
-                      entityDetails={previewAsset}
-                      handleClosePanel={() => setPreviewAsset(undefined)}
-                      key={
-                        previewAsset.details.id ??
-                        previewAsset.details.fullyQualifiedName
-                      }
-                    />
-                  ),
-                  minWidth: 400,
-                  flex: 0.33,
-                  className:
-                    'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
-                }}
-              />
-            ),
-          },
-          {
-            label: (
-              <TabsLabel
-                count={assetCount ?? 0}
-                id={EntityTabs.ASSETS}
-                isActive={activeTab === EntityTabs.ASSETS}
-                name={labelMap?.[EntityTabs.ASSETS] ?? t('label.asset-plural')}
-              />
-            ),
-            key: EntityTabs.ASSETS,
-            children: (
-              <ResizablePanels
-                className="h-full domain-height-with-resizable-panel"
-                firstPanel={{
-                  className: 'domain-resizable-panel-container',
-                  wrapInCard: false,
-                  children: (
-                    <AssetsTabs
-                      assetCount={assetCount}
-                      entityFqn={dataProduct.fullyQualifiedName}
-                      isSummaryPanelOpen={Boolean(previewAsset)}
-                      permissions={dataProductPermission}
-                      ref={assetTabRef}
-                      type={AssetsOfEntity.DATA_PRODUCT}
-                      onAddAsset={() => setAssetModalVisible(true)}
-                      onAssetClick={handleAssetClick}
-                      onRemoveAsset={handleAssetSave}
-                    />
-                  ),
-                  minWidth: 800,
-                  flex: 0.67,
-                }}
-                hideSecondPanel={!previewAsset}
-                pageTitle={t('label.data-product')}
-                secondPanel={{
-                  wrapInCard: false,
-                  children: previewAsset && (
-                    <EntitySummaryPanel
-                      entityDetails={previewAsset}
-                      handleClosePanel={() => setPreviewAsset(undefined)}
-                      key={
-                        previewAsset.details.id ??
-                        previewAsset.details.fullyQualifiedName
-                      }
-                    />
-                  ),
-                  minWidth: 400,
-                  flex: 0.33,
-                  className:
-                    'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
-                }}
-              />
-            ),
-          },
-          {
-            label: (
-              <TabsLabel
-                id={EntityTabs.CONTRACT}
-                name={labelMap?.[EntityTabs.CONTRACT] ?? t('label.contract')}
-              />
-            ),
-            key: EntityTabs.CONTRACT,
-            children: <ContractTab />,
-          },
-          {
-            label: (
-              <TabsLabel
-                id={EntityTabs.DATA_OBSERVABILITY}
-                isActive={activeTab === EntityTabs.DATA_OBSERVABILITY}
-                name={
-                  labelMap?.[EntityTabs.DATA_OBSERVABILITY] ??
-                  t('label.data-observability')
-                }
-              />
-            ),
-            key: EntityTabs.DATA_OBSERVABILITY,
-            children: (
-              <DataQualityDashboard
-                isGovernanceView
-                hiddenFilters={['dataProducts']}
-                initialFilters={
-                  dataProduct.fullyQualifiedName
-                    ? {
-                        dataProductFqns: [dataProduct.fullyQualifiedName],
-                      }
-                    : undefined
-                }
-              />
-            ),
-          },
-        ]),
+      : getDataProductNonVersionTabs({
+          activeTab,
+          assetCount,
+          assetTabRef,
+          dataProduct,
+          dataProductPermission,
+          feedCount,
+          getEntityFeedCount,
+          handleAssetClick,
+          handleAssetSave,
+          labelMap,
+          previewAsset,
+          setAssetModalVisible,
+          setPreviewAsset,
+          totalPortsCount,
+        })),
     {
       label: (
         <TabsLabel

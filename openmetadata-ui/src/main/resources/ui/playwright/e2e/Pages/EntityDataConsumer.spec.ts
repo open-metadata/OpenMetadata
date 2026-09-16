@@ -114,13 +114,9 @@ entities.forEach((EntityClass) => {
     // Only the Table variant is flaky (3 of 11 sampled merge_group runs); the
     // other 15 entity types are clean, so the tag is scoped rather than
     // quarantining the whole generated set. See playwright/QUARANTINE.md.
-    test(
-      'Update description',
-      entity.getType() === 'Table' ? { tag: '@quarantine' } : {},
-      async ({ page }) => {
-        await entity.descriptionUpdate(page);
-      }
-    );
+    test('Update description', async ({ page }) => {
+      await entity.descriptionUpdate(page);
+    });
 
     test('Tag Add, Update and Remove', async ({ page }) => {
       await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);

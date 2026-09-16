@@ -21,7 +21,7 @@ import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Table from '../../components/common/Table/Table';
+import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -57,6 +57,7 @@ import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
@@ -101,7 +102,8 @@ const NotificationListPage = () => {
       alertDetails.fullyQualifiedName ?? ''
     );
 
-    const editPermission = permission.EditAll;
+    // Pure rename — old raw read never referenced `deleted` here (ungated).
+    const editPermission = getDerivedPermissionFlags(permission).canEditAll;
     const deletePermission = permission.Delete;
 
     return {

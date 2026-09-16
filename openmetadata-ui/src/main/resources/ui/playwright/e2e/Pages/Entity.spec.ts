@@ -40,13 +40,13 @@ import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
-  descriptionBox,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
+  resolveDescriptionBox,
   toastNotification,
   uuid,
   verifyDomainPropagation,
@@ -152,7 +152,6 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
     });
 
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
       await entity.visitEntityPage(page);
     });
 
@@ -527,7 +526,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             .fill('PersonalData.SpecialCategory');
           await searchTag;
 
-          const tagOption = page.getByTitle('SpecialCategory');
+          const tagOption = page
+            .locator('.selectable-list-item')
+            .filter({ hasText: 'SpecialCategory' });
           await tagOption.waitFor({ state: 'visible' });
           await tagOption.click();
 
@@ -542,7 +543,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             page
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeVisible();
 
@@ -582,7 +583,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
           await expect(
             cleanupPanelContainer
-              .locator('.tags-list')
+              .getByTestId('tags-section-container')
               .getByTestId('tag-PersonalData.SpecialCategory')
           ).toBeHidden();
 
@@ -644,9 +645,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
-          const termOption = page.locator('.ant-list-item').filter({
-            hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-          });
+          const termOption = page
+            .locator('[data-testid="owner-option"]')
+            .filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            });
           await expect(termOption).toBeVisible();
           await termOption.click();
 
@@ -697,7 +700,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           // Wait for tag option to be visible before clicking
-          const tagOption = page.getByTitle('Sensitive', { exact: true });
+          const tagOption = page
+            .locator('.selectable-list-item')
+            .filter({ has: page.getByText('Sensitive', { exact: true }) });
           await expect(tagOption).toBeVisible();
           await tagOption.click();
 
@@ -769,10 +774,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           await page
-            .getByTitle(
-              EntityDataClass.glossaryTerm1.responseData.displayName,
-              { exact: true }
-            )
+            .locator('.selectable-list-item')
+            .filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            })
             .click();
           const glossaryCleanupResponse = page.waitForResponse(
             (response) =>
@@ -798,7 +803,10 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await searchTagCleanup2;
           await waitForAllLoadersToDisappear(page);
 
-          await page.getByTitle('Sensitive', { exact: true }).click();
+          await page
+            .locator('.selectable-list-item')
+            .filter({ has: page.getByText('Sensitive', { exact: true }) })
+            .click();
           const tagCleanupResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
@@ -1381,8 +1389,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+          // Match both engines without a positional pick: AntD rows live in
+          // a <table> nested inside .ant-table (excluded here, the wrapper
+          // matches instead); TableV2 renders one plain <table>.
           const childTable = page
-            .locator('.ant-table')
+            .locator('.ant-table, table:not(.ant-table table)')
             .filter({ has: taggedRow });
           const rows = childTable.locator(`[${rowSelector}]`);
 
@@ -1409,23 +1420,27 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           );
 
           const toggleTagFilter = async () => {
+            // TableV2 folds the filter trigger's label into the header's
+            // accessible name ("Tags filter"), so an exact match only works
+            // for the AntD engine — anchor on the title prefix instead.
             await page
-              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByRole('columnheader', { name: /^Tags\b/ })
               .getByTestId('filter-icon')
               .click();
 
-            await expect(
-              page.locator('.ant-table-filter-dropdown:visible')
-            ).toBeVisible();
+            // AntD mounts the dropdown as .ant-table-filter-dropdown;
+            // TableV2 mounts ColumnFilter inside a react-aria dialog popover.
+            const filterDropdown = page.locator(
+              '.ant-table-filter-dropdown:visible, [role="dialog"]:has(.ant-menu)'
+            );
 
-            await page
-              .locator('.ant-table-filter-dropdown:visible')
+            await expect(filterDropdown).toBeVisible();
+
+            await filterDropdown
               .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
               .click();
 
-            await expect(
-              page.locator('.ant-table-filter-dropdown:visible')
-            ).toBeHidden();
+            await expect(filterDropdown).toBeHidden();
           };
 
           await test.step('Apply tag filter and verify pruning', async () => {
@@ -1522,9 +1537,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           await waitForAllLoadersToDisappear(page);
 
           // Wait for term option to be visible before clicking
-          const termOption = page.locator('.ant-list-item').filter({
-            hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
-          });
+          const termOption = page
+            .locator('[data-testid="owner-option"]')
+            .filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            });
           await expect(termOption).toBeVisible();
           await termOption.click();
 
@@ -1624,8 +1641,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await editDescriptionButton.click();
 
             // Wait for description box to be visible and ready
-            const descBox = page.locator(descriptionBox).first();
-            await expect(descBox).toBeVisible();
+            const descBox = await resolveDescriptionBox(page);
             await descBox.clear();
             await descBox.fill(newDescription);
 

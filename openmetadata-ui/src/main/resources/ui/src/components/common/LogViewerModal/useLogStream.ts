@@ -68,12 +68,15 @@ const RESUMABLE_END_REASONS = new Set<LogStreamEndReason>([
  * carries query parameters, so an endpoint that takes its own does not lose them
  * — or silently drop the cursor — on reconnect.
  */
-export const withLogStreamCursor = (base: string, after?: string): string =>
-  after
-    ? `${base}${base.includes('?') ? '&' : '?'}after=${encodeURIComponent(
-        after
-      )}`
-    : base;
+export const withLogStreamCursor = (base: string, after?: string): string => {
+  if (!after) {
+    return base;
+  }
+
+  const separator = base.includes('?') ? '&' : '?';
+
+  return `${base}${separator}after=${encodeURIComponent(after)}`;
+};
 
 /**
  * Stream URL for one ingestion run's logs.

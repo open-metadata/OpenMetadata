@@ -47,21 +47,11 @@ const getUINodeType = (backendType: string, backendSubType: string): string => {
     return NodeType.EndEvent;
   }
   if (backendType === NodeType.AutomatedTask) {
-    switch (backendSubType) {
-      case NodeSubType.CheckEntityAttributesTask:
-        return NodeType.AutomatedTask;
-      case NodeSubType.CheckChangeDescriptionTask:
-        return NodeType.AutomatedTask;
-      case NodeSubType.SetEntityCertificationTask:
-      case NodeSubType.SetEntityAttributeTask:
-        return NodeType.AutomatedTask;
-      case NodeSubType.RollbackEntityTask:
-        return NodeType.AutomatedTask;
-      case NodeSubType.DataCompletenessTask:
-        return NodeType.AutomatedTask;
-      default:
-        return NodeType.AutomatedTask;
-    }
+    // Every known automated-task subtype (CheckEntityAttributesTask,
+    // CheckChangeDescriptionTask, SetEntityCertificationTask,
+    // SetEntityAttributeTask, RollbackEntityTask, DataCompletenessTask) maps
+    // to the same UI node type, so no subtype dispatch is needed here.
+    return NodeType.AutomatedTask;
   }
   if (backendType === NodeType.UserTask) {
     return NodeType.UserTask;
@@ -299,6 +289,59 @@ const findAllPredecessors = (
   return Array.from(predecessors);
 };
 
+const isEligibleForInputNamespaceMigration = (node: BackendNode): boolean =>
+  (node.subType === NodeSubType.SetEntityAttributeTask ||
+    node.subType === NodeSubType.RollbackEntityTask) &&
+  Boolean(node.input?.includes('updatedBy'));
+
+const shouldMigrateUpdatedBy = (
+  currentUpdatedBy: string | undefined,
+  allPredecessors: string[],
+  nodes: BackendNode[]
+): boolean => {
+  const isKnownGlobalUpdatedBy =
+    currentUpdatedBy === 'global' ||
+    currentUpdatedBy === 'ApproveGlossaryTerm' ||
+    currentUpdatedBy === 'ApprovalForUpdates';
+  const isMissingUpdatedByReference = Boolean(
+    currentUpdatedBy &&
+      (!nodes.some((n) => n.name === currentUpdatedBy) ||
+        !allPredecessors.includes(currentUpdatedBy))
+  );
+
+  return isKnownGlobalUpdatedBy || isMissingUpdatedByReference;
+};
+
+const resolveMigratedNode = (
+  node: BackendNode,
+  allPredecessors: string[],
+  userTasks: BackendNode[]
+): BackendNode => {
+  // Only use a user task that is actually a predecessor (comes before this node)
+  const predecessorUserTask = userTasks.find((userTask) =>
+    allPredecessors.includes(userTask.name)
+  );
+
+  if (predecessorUserTask) {
+    return {
+      ...node,
+      inputNamespaceMap: {
+        ...node.inputNamespaceMap,
+        updatedBy: predecessorUserTask.name, // Use the actual node name from the workflow
+      },
+    };
+  }
+
+  // If no predecessor user task exists, set to 'global'
+  return {
+    ...node,
+    inputNamespaceMap: {
+      ...node.inputNamespaceMap,
+      updatedBy: 'global',
+    },
+  };
+};
+
 const migrateWorkflowInputNamespaceMap = (
   nodes: BackendNode[],
   edges: BackendEdge[]
@@ -308,53 +351,18 @@ const migrateWorkflowInputNamespaceMap = (
   );
 
   return nodes.map((node) => {
-    if (
-      (node.subType === NodeSubType.SetEntityAttributeTask ||
-        node.subType === NodeSubType.RollbackEntityTask) &&
-      node.input?.includes('updatedBy')
-    ) {
-      const currentUpdatedBy = node.inputNamespaceMap?.updatedBy;
-      const allPredecessors = findAllPredecessors(node.name, edges);
-
-      const isKnownGlobalUpdatedBy =
-        currentUpdatedBy === 'global' ||
-        currentUpdatedBy === 'ApproveGlossaryTerm' ||
-        currentUpdatedBy === 'ApprovalForUpdates';
-      const isMissingUpdatedByReference =
-        currentUpdatedBy &&
-        (!nodes.some((n) => n.name === currentUpdatedBy) ||
-          !allPredecessors.includes(currentUpdatedBy));
-      const shouldMigrate =
-        isKnownGlobalUpdatedBy || isMissingUpdatedByReference;
-
-      if (shouldMigrate) {
-        // Only use a user task that is actually a predecessor (comes before this node)
-        const predecessorUserTask = userTasks.find((userTask) =>
-          allPredecessors.includes(userTask.name)
-        );
-
-        if (predecessorUserTask) {
-          return {
-            ...node,
-            inputNamespaceMap: {
-              ...node.inputNamespaceMap,
-              updatedBy: predecessorUserTask.name, // Use the actual node name from the workflow
-            },
-          };
-        }
-
-        // If no predecessor user task exists, set to 'global'
-        return {
-          ...node,
-          inputNamespaceMap: {
-            ...node.inputNamespaceMap,
-            updatedBy: 'global',
-          },
-        };
-      }
+    if (!isEligibleForInputNamespaceMigration(node)) {
+      return node;
     }
 
-    return node;
+    const currentUpdatedBy = node.inputNamespaceMap?.updatedBy;
+    const allPredecessors = findAllPredecessors(node.name, edges);
+
+    if (!shouldMigrateUpdatedBy(currentUpdatedBy, allPredecessors, nodes)) {
+      return node;
+    }
+
+    return resolveMigratedNode(node, allPredecessors, userTasks);
   });
 };
 

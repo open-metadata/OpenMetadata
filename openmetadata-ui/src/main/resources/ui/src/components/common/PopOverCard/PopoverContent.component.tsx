@@ -15,6 +15,7 @@ import { isEmpty } from 'lodash';
 import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OwnerType } from '../../../enums/user.enum';
+import { User } from '../../../generated/entity/teams/user';
 import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import Loader from '../Loader/Loader';
 import { PopoverContentProps } from './UserPopOverCard.interface';
@@ -36,8 +37,8 @@ export const PopoverContent = React.memo(
               <span>{t('message.no-data-available')}</span>
             ) : (
               <Fragment>
-                <UserTeams userName={userName} />
-                <UserRoles userName={userName} />
+                <UserTeams user={user as User} />
+                <UserRoles user={user as User} />
               </Fragment>
             )}
           </div>
