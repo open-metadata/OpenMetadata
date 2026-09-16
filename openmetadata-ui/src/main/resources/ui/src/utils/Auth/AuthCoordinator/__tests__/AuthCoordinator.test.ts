@@ -120,6 +120,7 @@ describe('AuthCoordinator', () => {
       if (options?.publish) {
         await options.publish(value);
       }
+
       return { role: 'leader', value };
     });
     mockNotifyDone.mockClear();
