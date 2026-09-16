@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -57,6 +57,8 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   apiEndpointDetails,
   apiEndpointPermissions,
@@ -202,16 +204,24 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     }
   }, [decodedApiEndpointFqn]);
 
+  // The endpoint FQN is service.collection.endpoint, so the positional
+  // Service+Database parts yield the collection FQN when the loaded entity
+  // doesn't carry its apiCollection reference.
+  const apiCollectionFqn =
+    apiEndpointDetails.apiCollection?.fullyQualifiedName ??
+    getPartialNameFromTableFQN(
+      decodedApiEndpointFqn,
+      [FqnPart.Service, FqnPart.Database],
+      FQN_SEPARATOR_CHAR
+    );
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) =>
       !isSoftDelete &&
       navigate(
-        getEntityDetailsPath(
-          EntityType.API_COLLECTION,
-          apiEndpointDetails.apiCollection?.fullyQualifiedName ?? ''
-        )
+        getEntityDetailsPath(EntityType.API_COLLECTION, apiCollectionFqn)
       ),
-    [apiEndpointDetails.apiCollection?.fullyQualifiedName, navigate]
+    [apiCollectionFqn, navigate]
   );
 
   const {
