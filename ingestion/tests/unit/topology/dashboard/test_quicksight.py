@@ -447,7 +447,8 @@ class TestQuickSightCrossDatabaseLineage:
         source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         return source
 
-    def test_source_tables_resolve_under_the_database_the_sql_names(self, quicksight_source):
+    @staticmethod
+    def _lineage_sources(quicksight_source, db_service_prefix: str, databases=(MOCK_CONNECTION_DATABASE,)) -> set[str]:
         catalog = build_cross_database_catalog()
         data_model = DashboardDataModel.model_construct(
             id=Uuid("6e781e63-e30f-4c6e-891a-389f1f982cab"),
@@ -467,7 +468,9 @@ class TestQuickSightCrossDatabaseLineage:
                     Name="mssql-source",
                     Type="SQLSERVER",
                     DataSourceId="ds-1",
-                    DataSourceParameters={"SqlServerParameters": {"Database": MOCK_CONNECTION_DATABASE}},
+                    DataSourceParameters={
+                        f"Parameters{index}": {"Database": database} for index, database in enumerate(databases)
+                    },
                     data_source_resp=DataSourceRespQuery(
                         DataSourceArn="arn:aws:quicksight:us-east-2:123456789012:datasource/ds-1",
                         SqlQuery=CROSS_DATABASE_QUERY,
@@ -481,11 +484,40 @@ class TestQuickSightCrossDatabaseLineage:
         results = list(
             quicksight_source.yield_dashboard_lineage_details(
                 dashboard_details=DashboardDetail(**MOCK_DASHBOARD_DETAILS),
-                db_service_prefix=MOCK_DATABASE_SERVICE.name.root,
+                db_service_prefix=db_service_prefix,
             )
         )
 
         assert [res.left for res in results if res.left] == []
         fqn_by_id = {table_id: table_fqn for table_fqn, table_id in CROSS_DATABASE_TABLES.items()}
-        lineage_sources = {str(res.right.edge.fromEntity.id.root) for res in results if res.right}
-        assert {fqn_by_id[table_id] for table_id in lineage_sources} == set(CROSS_DATABASE_TABLES)
+        lineage_sources = [str(res.right.edge.fromEntity.id.root) for res in results if res.right]
+        # one edge per resolved table, never a duplicate per configured connection database
+        assert len(lineage_sources) == len(set(lineage_sources))
+        return {fqn_by_id[table_id] for table_id in lineage_sources}
+
+    def test_source_tables_resolve_under_the_database_the_sql_names(self, quicksight_source):
+        resolved = self._lineage_sources(quicksight_source, MOCK_DATABASE_SERVICE.name.root)
+
+        assert resolved == set(CROSS_DATABASE_TABLES)
+
+    def test_database_prefix_is_matched_against_the_database_the_sql_names(self, quicksight_source):
+        resolved = self._lineage_sources(
+            quicksight_source,
+            f"{MOCK_DATABASE_SERVICE.name.root}.{MOCK_CONNECTION_DATABASE}",
+        )
+
+        # `Customers` is qualified to CRM_DB, so the SalesDB prefix must filter it out while the
+        # SalesDB-qualified and unqualified tables still resolve.
+        assert resolved == {
+            "mymssqlservice.salesdb.dbo.orders",
+            "mymssqlservice.salesdb.dbo.localorders",
+        }
+
+    def test_a_qualified_table_is_not_searched_once_per_connection_database(self, quicksight_source):
+        resolved = self._lineage_sources(
+            quicksight_source,
+            MOCK_DATABASE_SERVICE.name.root,
+            databases=(MOCK_CONNECTION_DATABASE, "OtherDB"),
+        )
+
+        assert resolved == set(CROSS_DATABASE_TABLES)

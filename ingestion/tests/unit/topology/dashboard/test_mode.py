@@ -371,7 +371,8 @@ class TestModeCrossDatabaseLineage:
     """A `database.schema.table` reference has to be looked up under the database the SQL
     names, not the data source's connection database (issue #28444)."""
 
-    def test_source_tables_resolve_under_the_database_the_sql_names(self, mode_source):
+    @staticmethod
+    def _lineage_sources(mode_source, db_service_prefix: str) -> set[str]:
         catalog = build_cross_database_catalog()
         mode_source.data_sources["source-id"]["database"] = MOCK_CONNECTION_DATABASE
         dashboard = Dashboard.model_construct(
@@ -384,9 +385,24 @@ class TestModeCrossDatabaseLineage:
         mode_source.metadata.search_in_any_service = MagicMock(side_effect=search_cross_database_catalog(catalog))
 
         details = _details(mode_source, [{**QUERY, "raw_query": CROSS_DATABASE_QUERY}])
-        results = list(mode_source.yield_dashboard_lineage_details(details, db_service_prefix=MOCK_DB_SERVICE_NAME))
+        results = list(mode_source.yield_dashboard_lineage_details(details, db_service_prefix=db_service_prefix))
 
         assert [res.left for res in results if res.left] == []
         fqn_by_id = {table_id: table_fqn for table_fqn, table_id in CROSS_DATABASE_TABLES.items()}
         lineage_sources = {str(res.right.edge.fromEntity.id.root) for res in results if res.right}
-        assert {fqn_by_id[table_id] for table_id in lineage_sources} == set(CROSS_DATABASE_TABLES)
+        return {fqn_by_id[table_id] for table_id in lineage_sources}
+
+    def test_source_tables_resolve_under_the_database_the_sql_names(self, mode_source):
+        resolved = self._lineage_sources(mode_source, MOCK_DB_SERVICE_NAME)
+
+        assert resolved == set(CROSS_DATABASE_TABLES)
+
+    def test_database_prefix_is_matched_against_the_database_the_sql_names(self, mode_source):
+        resolved = self._lineage_sources(mode_source, f"{MOCK_DB_SERVICE_NAME}.{MOCK_CONNECTION_DATABASE}")
+
+        # `customers` is qualified to crm_db, so the sales_db prefix must filter it out while the
+        # sales_db-qualified and unqualified tables still resolve.
+        assert resolved == {
+            "mock_warehouse.sales_db.public.orders",
+            "mock_warehouse.sales_db.public.local_orders",
+        }

@@ -760,7 +760,8 @@ class TestMetabaseCrossDatabaseLineage:
         source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
         return source
 
-    def test_source_tables_resolve_under_the_database_the_sql_names(self, metabase_source):
+    @staticmethod
+    def _lineage_sources(metabase_source, db_service_prefix: str) -> set[str]:
         catalog = build_cross_database_catalog()
         chart = MetabaseChart(
             id="2",
@@ -782,11 +783,29 @@ class TestMetabaseCrossDatabaseLineage:
         results = list(
             metabase_source.yield_dashboard_lineage_details(
                 dashboard_details=MetabaseDashboardDetails(name="test_db", id="1", card_ids=["2"]),
-                db_service_prefix=MOCK_MSSQL_SERVICE.name.root,
+                db_service_prefix=db_service_prefix,
             )
         )
 
         assert [res.left for res in results if res.left] == []
         fqn_by_id = {table_id: table_fqn for table_fqn, table_id in CROSS_DATABASE_TABLES.items()}
         lineage_sources = {str(res.right.edge.fromEntity.id.root) for res in results if res.right}
-        assert {fqn_by_id[table_id] for table_id in lineage_sources} == set(CROSS_DATABASE_TABLES)
+        return {fqn_by_id[table_id] for table_id in lineage_sources}
+
+    def test_source_tables_resolve_under_the_database_the_sql_names(self, metabase_source):
+        resolved = self._lineage_sources(metabase_source, MOCK_MSSQL_SERVICE.name.root)
+
+        assert resolved == set(CROSS_DATABASE_TABLES)
+
+    def test_database_prefix_is_matched_against_the_database_the_sql_names(self, metabase_source):
+        resolved = self._lineage_sources(
+            metabase_source,
+            f"{MOCK_MSSQL_SERVICE.name.root}.{MOCK_CONNECTION_DATABASE}",
+        )
+
+        # `Customers` is qualified to CRM_DB, so the SalesDB prefix must filter it out while the
+        # SalesDB-qualified and unqualified tables still resolve.
+        assert resolved == {
+            "mymssqlservice.salesdb.dbo.orders",
+            "mymssqlservice.salesdb.dbo.localorders",
+        }

@@ -273,6 +273,10 @@ class QuicksightSource(DashboardServiceSource):
             )
             query_hash = lineage_parser.query_hash
             lineage_details = LineageDetails(source=LineageSource.DashboardLineage, sqlQuery=sql_query)
+            # A table qualified by the query resolves to the same FQN for every connection database
+            # the data source exposes, so without this the same edge is searched and yielded once
+            # per database. Scoped to this dataset's source tables, so it stays small.
+            searched_fqns: set[str] = set()
             for db_name in source_database_names:
                 for table in lineage_parser.source_tables:
                     table_details = fqn.split_table_name(str(table))
@@ -319,6 +323,10 @@ class QuicksightSource(DashboardServiceSource):
                         service_name=db_service_name or "*",
                         table_name=prefix_table_name or table_name,
                     )
+                    if fqn_search_string in searched_fqns:
+                        continue
+                    searched_fqns.add(fqn_search_string)
+
                     from_entities = self.metadata.search_in_any_service(
                         entity_type=Table,
                         fqn_search_string=fqn_search_string,
