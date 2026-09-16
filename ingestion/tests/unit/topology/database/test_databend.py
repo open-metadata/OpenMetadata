@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pytest
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.databendConnection import (
     DatabendConnection as DatabendConnectionConfig,
@@ -42,6 +43,7 @@ def _catalog_source(catalog=None):
         useFqnForFiltering=False,
     )
     source.status = MagicMock()
+    source.database_entity_source_state = set()
     return source
 
 
@@ -186,6 +188,53 @@ def test_unavailable_catalog_is_recorded_and_other_catalogs_continue():
     assert catalogs == ["default"]
     assert source.status.failed.call_count == 1
     assert source.status.failed.call_args.args[0].name == "broken"
+    assert source.database_entity_source_state == {"databend_service.broken"}
+
+
+def test_unavailable_catalog_is_kept_in_database_deletion_live_set():
+    source = _catalog_source()
+    connection = MagicMock()
+    connection.execute.return_value = [("broken",), ("default",)]
+    source._validate_catalog = MagicMock(side_effect=[RuntimeError("denied"), None])
+
+    with (
+        patch.object(
+            DatabendSource,
+            "connection",
+            new_callable=PropertyMock,
+            return_value=connection,
+        ),
+        patch(
+            "metadata.ingestion.source.database.databend.metadata.fqn.build",
+            side_effect=["databend_service.broken", "databend_service.default"],
+        ),
+    ):
+        assert list(source.get_database_names()) == ["default"]
+
+    source.source_config.markDeletedDatabases = True
+    source._get_filtered_database_names = MagicMock(return_value=["default"])
+    with (
+        patch(
+            "metadata.ingestion.source.database.database_service.fqn.build",
+            return_value="databend_service.default",
+        ),
+        patch(
+            "metadata.ingestion.source.database.database_service.delete_entity_from_source",
+            return_value=iter(()),
+        ) as delete_entity_from_source,
+    ):
+        assert list(source.mark_databases_as_deleted()) == []
+
+    delete_entity_from_source.assert_called_once_with(
+        metadata=source.metadata,
+        entity_type=Database,
+        entity_source_state={
+            "databend_service.broken",
+            "databend_service.default",
+        },
+        recursive=True,
+        params={"service": "databend_service"},
+    )
 
 
 def test_all_selected_catalogs_failing_fails_ingestion():
