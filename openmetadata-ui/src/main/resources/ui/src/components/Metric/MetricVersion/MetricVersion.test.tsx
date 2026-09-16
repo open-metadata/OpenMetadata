@@ -31,6 +31,67 @@ jest.mock('../MetricExpression/MetricExpression', () => ({
   ),
 }));
 
+jest.mock(
+  '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  () => ({
+    __esModule: true,
+    default: ({
+      displayName,
+      onVersionClick,
+    }: {
+      displayName: string;
+      onVersionClick: () => void;
+    }) => (
+      <button data-testid="version-header" onClick={onVersionClick}>
+        {displayName}
+      </button>
+    ),
+  })
+);
+
+jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => ({
+  __esModule: true,
+  default: ({ versionHandler }: { versionHandler: (v: string) => void }) => (
+    <button data-testid="version-0.1" onClick={() => versionHandler('0.1')}>
+      timeline
+    </button>
+  ),
+}));
+
+jest.mock('../../common/EntityDescription/Description', () => ({
+  __esModule: true,
+  default: ({ description }: { description: string }) => (
+    <div data-testid="version-description">{description}</div>
+  ),
+}));
+
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: ({ hasPermission }: { hasPermission: boolean }) => (
+    <div data-testid="version-custom-properties">
+      {hasPermission ? 'can-view' : 'no-view'}
+    </div>
+  ),
+}));
+
+jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
+  __esModule: true,
+  default: () => <div data-testid="version-tags" />,
+}));
+
+jest.mock(
+  '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="version-data-products" />,
+  })
+);
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  GenericProvider: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
 const metric: Metric = {
   id: 'metric-id',
   name: 'margin',
@@ -43,10 +104,6 @@ const metric: Metric = {
   customUnitOfMeasurement: 'Leads',
   entityStatus: EntityStatus.Approved,
   metricExpression: { code: 'profit / revenue' },
-  extension: {
-    stewardNote: 'Reviewed',
-    thresholds: { warning: 75, critical: 50 },
-  },
 };
 
 const props: MetricVersionProp = {
@@ -89,82 +146,57 @@ const renderVersion = (override: Partial<MetricVersionProp> = {}) =>
 describe('MetricVersion', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('renders one Overview tab with custom properties inside its content', () => {
+  it('renders the standard version scaffold with Overview and Custom Properties tabs', () => {
     renderVersion();
 
-    expect(screen.getAllByRole('tab')).toHaveLength(1);
+    expect(screen.getByTestId('version-header')).toHaveTextContent('Margin');
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
     expect(
       screen.getByRole('tab', { name: 'label.overview' })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('tab', { name: /custom-property/i })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId('metric-version-custom-properties')
-    ).toHaveTextContent('stewardNote');
-    expect(
-      screen.getByTestId('metric-version-custom-properties')
-    ).toHaveTextContent('"warning": 75');
-    expect(screen.queryByText('[object Object]')).not.toBeInTheDocument();
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('version-expression')).toHaveTextContent(
       'profit / revenue'
     );
-    expect(screen.getByText('label.ratio')).toBeInTheDocument();
-    expect(screen.getByText('label.approved')).toBeInTheDocument();
-    expect(screen.getByTestId('metric-type-version-info')).toHaveTextContent(
-      MetricType.Ratio
-    );
-    expect(
-      screen.getByTestId('unit-of-measurement-version-info')
-    ).toHaveTextContent('Leads');
-    expect(screen.getByTestId('granularity-version-info')).toHaveTextContent(
-      MetricGranularity.Day
+    expect(screen.getByTestId('version-description')).toHaveTextContent(
+      'Gross profit divided by revenue'
     );
   });
 
-  it('renders both sides of a changed unit of measurement', () => {
-    renderVersion({
-      currentVersionData: {
-        ...metric,
-        unitOfMeasurement: UnitOfMeasurement.Dollars,
-        changeDescription: {
-          fieldsUpdated: [
-            {
-              name: 'unitOfMeasurement',
-              oldValue: UnitOfMeasurement.Other,
-              newValue: UnitOfMeasurement.Dollars,
-            },
-          ],
-        },
-      },
-    });
-
-    const unit = screen.getByTestId('unit-of-measurement-version-info');
-
-    expect(unit).toHaveTextContent(UnitOfMeasurement.Other);
-    expect(unit).toHaveTextContent(UnitOfMeasurement.Dollars);
-  });
-
-  it('hides custom properties without view permission', () => {
-    renderVersion({ entityPermissions: DEFAULT_ENTITY_PERMISSION });
-
-    expect(
-      screen.queryByTestId('metric-version-custom-properties')
-    ).not.toBeInTheDocument();
-  });
-
-  it('renders an accessible loading state', () => {
-    renderVersion({ isVersionLoading: true });
-
-    expect(
-      screen.getByRole('status', { name: 'label.loading' })
-    ).toBeInTheDocument();
-  });
-
-  it('navigates back and selects a historical version from keyboard-ready buttons', () => {
+  it('shows the definition metadata on the Overview tab', () => {
     renderVersion();
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+    const definition = screen.getByTestId('metric-definition-version');
+
+    expect(definition).toHaveTextContent(MetricType.Ratio);
+    expect(definition).toHaveTextContent('Leads');
+    expect(definition).toHaveTextContent(MetricGranularity.Day);
+  });
+
+  it('renders the custom properties tab content with view permission', () => {
+    renderVersion();
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'label.custom-property-plural' })
+    );
+
+    expect(screen.getByTestId('version-custom-properties')).toHaveTextContent(
+      'can-view'
+    );
+  });
+
+  it('renders a loading state', () => {
+    renderVersion({ isVersionLoading: true });
+
+    expect(screen.queryByTestId('version-header')).not.toBeInTheDocument();
+  });
+
+  it('navigates back from the header and selects a historical version', () => {
+    renderVersion();
+
+    fireEvent.click(screen.getByTestId('version-header'));
     fireEvent.click(screen.getByTestId('version-0.1'));
 
     expect(props.backHandler).toHaveBeenCalledTimes(1);

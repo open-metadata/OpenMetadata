@@ -114,9 +114,7 @@ const MetricTag: FC<BaseTagProps> = ({
         </TooltipTrigger>
       </Tooltip>
     ) : (
-      <div className="tw:flex tw:items-center tw:gap-1" title={tooltip}>
-        {innerContent}
-      </div>
+      <div className="tw:flex tw:items-center tw:gap-1">{innerContent}</div>
     );
 
   const sharedProps = {

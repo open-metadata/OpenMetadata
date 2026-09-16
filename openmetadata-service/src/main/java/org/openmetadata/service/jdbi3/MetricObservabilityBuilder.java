@@ -68,9 +68,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class MetricObservabilityBuilder {
   static final double HEALTHY_THRESHOLD = 90.0;
   static final double AT_RISK_THRESHOLD = 75.0;
-  // Default dimension name when a test definition is not classified. A data quality
-  // dimension is an entity now, so the value is the dimension's name.
-  private static final String NO_DIMENSION = "NoDimension";
 
   private final MetricRepository metricRepository;
   private final Timer latency;
@@ -330,7 +327,7 @@ public class MetricObservabilityBuilder {
             : definitions.get(testCase.getTestDefinition().getId());
     String dimension =
         definition == null || definition.getDataQualityDimension() == null
-            ? NO_DIMENSION
+            ? DataQualityDimensionRepository.NO_DIMENSION
             : definition.getDataQualityDimension();
     return new Observation(table, testCase, dimension, result);
   }

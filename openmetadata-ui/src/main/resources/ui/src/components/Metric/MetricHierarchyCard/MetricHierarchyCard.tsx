@@ -171,8 +171,7 @@ const MetricTreeRowTrailing = ({
           aria-label={getEntityName(owner)}
           data-testid={`metric-tree-owner-${metric.id}-${owner.id}`}
           key={owner.id}
-          role="img"
-          title={getEntityName(owner)}>
+          role="img">
           <Avatar initials={getOwnerInitials(owner)} size="xs" />
         </span>
       ))}
