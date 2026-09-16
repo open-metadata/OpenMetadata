@@ -541,3 +541,48 @@ def test_connection_test_skips_system_history_before_table_probe():
         connection.test_connection(MagicMock())
 
     inspector.get_table_names.assert_called_once_with("analytics")
+
+
+@pytest.mark.parametrize(
+    "schema_names,schema_filter_pattern",
+    [
+        (["information_schema", "system", "system_history"], None),
+        (["analytics"], {"excludes": ["^analytics$"]}),
+    ],
+)
+def test_connection_test_fails_table_probe_when_no_schema_is_available(
+    schema_names,
+    schema_filter_pattern,
+):
+    config_dict = {
+        "username": "openmetadata",
+        "password": "secret",
+        "hostPort": "localhost:8000",
+        "catalog": "default",
+    }
+    if schema_filter_pattern:
+        config_dict["schemaFilterPattern"] = schema_filter_pattern
+    config = DatabendConnectionConfig.model_validate(config_dict)
+    engine = MagicMock()
+    inspector = MagicMock()
+    inspector.get_schema_names.return_value = schema_names
+    connection = DatabendConnection(config)
+    connection._client = engine
+
+    def run_steps(**kwargs):
+        kwargs["test_fn"]["GetTables"]()
+
+    with (
+        patch(
+            "metadata.ingestion.source.database.databend.connection.test_connection_steps",
+            side_effect=run_steps,
+        ),
+        patch(
+            "metadata.ingestion.source.database.databend.connection.inspect",
+            return_value=inspector,
+        ),
+        pytest.raises(RuntimeError, match="No accessible Databend database"),
+    ):
+        connection.test_connection(MagicMock())
+
+    inspector.get_table_names.assert_not_called()
