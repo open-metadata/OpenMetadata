@@ -55,6 +55,8 @@ const ChangeParentHierarchy = ({
     useState<DefaultOptionType | null>(null);
   const [moveJob, setMoveJob] = useState<MoveGlossaryTermWebsocketResponse>();
   const submittedJobId = useRef<string>();
+  const awaitingResponse = useRef(false);
+  const bufferedEvent = useRef<MoveGlossaryTermWebsocketResponse>();
 
   const hasReviewers = Boolean(
     selectedData.reviewers && selectedData.reviewers.length > 0
@@ -119,6 +121,7 @@ const ChangeParentHierarchy = ({
 
     try {
       setLoadingState((prev) => ({ ...prev, isSaving: true }));
+      awaitingResponse.current = true;
       const parent = selectedParent.data as Glossary | GlossaryTerm;
       const response = await moveGlossaryTerm(selectedData.id, {
         id: parent.id,
@@ -129,6 +132,15 @@ const ChangeParentHierarchy = ({
       });
 
       submittedJobId.current = response.jobId;
+      awaitingResponse.current = false;
+
+      const early = bufferedEvent.current;
+      bufferedEvent.current = undefined;
+      if (early?.jobId === response.jobId) {
+        handleMoveJobUpdate(early);
+
+        return;
+      }
 
       const jobData: MoveGlossaryTermWebsocketResponse = {
         jobId: response.jobId,
@@ -138,6 +150,7 @@ const ChangeParentHierarchy = ({
 
       setMoveJob(jobData);
     } catch (error) {
+      awaitingResponse.current = false;
       showErrorToast(error as AxiosError);
       setLoadingState((prev) => ({ ...prev, isSaving: false }));
     }
@@ -147,12 +160,16 @@ const ChangeParentHierarchy = ({
     if (socket) {
       socket.on(SOCKET_EVENTS.MOVE_GLOSSARY_TERM_CHANNEL, (moveResponse) => {
         if (moveResponse) {
-          const moveResponseData = JSON.parse(moveResponse);
+          const data: MoveGlossaryTermWebsocketResponse =
+            JSON.parse(moveResponse);
+
           if (
             submittedJobId.current &&
-            moveResponseData.jobId === submittedJobId.current
+            data.jobId === submittedJobId.current
           ) {
-            handleMoveJobUpdate(moveResponseData);
+            handleMoveJobUpdate(data);
+          } else if (awaitingResponse.current) {
+            bufferedEvent.current = data;
           }
         }
       });
