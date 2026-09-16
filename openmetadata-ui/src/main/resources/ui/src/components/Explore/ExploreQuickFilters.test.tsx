@@ -846,6 +846,69 @@ describe('ExploreQuickFilters component', () => {
     });
   });
 
+  describe('Initial options cache', () => {
+    const tierField = {
+      label: 'Tier',
+      key: 'tier.tagFQN',
+      value: undefined,
+      sourceFields: 'tier.tagFQN',
+    };
+
+    it('answers a reopen from the cache instead of re-fetching', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(<ExploreQuickFilters {...mockProps} fields={[tierField]} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      expect(getAggregationOptions).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-fetches when the facet context changes', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      const { rerender } = render(
+        <ExploreQuickFilters {...mockProps} fields={[tierField]} />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      // Another field gaining a selection changes this facet's query filter,
+      // so the cached entry must not be served for the new context.
+      rerender(
+        <ExploreQuickFilters
+          {...mockProps}
+          fields={[
+            tierField,
+            {
+              label: 'Tag',
+              key: 'tags.tagFQN',
+              value: [{ key: 'PII.None', label: 'PII.None' }],
+            },
+          ]}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      expect(getAggregationOptions).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe('Combined query filter', () => {
     it('should combine quickFilter, queryFilter, and defaultQueryFilter', async () => {
       mockUseCustomLocation.mockReturnValue({

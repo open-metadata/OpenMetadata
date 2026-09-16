@@ -15,6 +15,7 @@ import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isEqual, uniqWith } from 'lodash';
 import Qs from 'qs';
+import type { Bucket } from 'Models';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
@@ -188,6 +189,81 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     [fields, showDeleted, queryFilter, defaultQueryFilter]
   );
 
+  // Initial (no search text) options per facet, keyed by everything that can
+  // change the facet's result — reopening a filter is instant, as it was when
+  // these came from the page aggregations, instead of re-running a top_hits
+  // aggregation per open. A context change (another selected value, deleted
+  // toggle, index, browse path) changes the key, so stale entries are simply
+  // never read again; the cap keeps abandoned contexts from accumulating.
+  const initialOptionsCacheRef = useRef(
+    new Map<string, SearchDropdownOption[]>()
+  );
+  const INITIAL_OPTIONS_CACHE_MAX = 50;
+  const getInitialOptionsCacheKey = (key: string) =>
+    [
+      key,
+      String(index),
+      String(showDeleted),
+      searchText ?? '',
+      JSON.stringify(getFacetQueryFilter(key) ?? {}),
+    ].join('::');
+
+  const buildBucketOptions = (
+    buckets: Bucket[],
+    key: string,
+    sourceFields?: string
+  ) =>
+    addOptionIcons(
+      key,
+      uniqWith(
+        getOptionsFromAggregationBucket(
+          buckets,
+          getOptionLabelFormatter(key, untitledDropdown),
+          sourceFields
+        ),
+        isEqual
+      )
+    );
+
+  /** Initial options for one facet, answered from the per-context cache when
+   *  this exact facet context has been fetched before. */
+  const getCachedInitialOptions = async (
+    key: string,
+    searchIndexToUse: SearchIndex | SearchIndex[],
+    searchKeyToUse: string,
+    sourceFields?: string
+  ): Promise<SearchDropdownOption[]> => {
+    const cacheKey = getInitialOptionsCacheKey(key);
+    const cached = initialOptionsCacheRef.current.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const res = await getAggregationOptions(
+      searchIndexToUse,
+      searchKeyToUse,
+      '',
+      JSON.stringify(getFacetQueryFilter(key)),
+      independent,
+      showDeleted,
+      optionPageSize,
+      isNLPActive,
+      searchText,
+      sourceFields
+    );
+    const options = buildBucketOptions(
+      res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [],
+      key,
+      sourceFields
+    );
+    if (initialOptionsCacheRef.current.size >= INITIAL_OPTIONS_CACHE_MAX) {
+      initialOptionsCacheRef.current.clear();
+    }
+    initialOptionsCacheRef.current.set(cacheKey, options);
+
+    return options;
+  };
+
   const fetchDefaultOptions = async (
     index: SearchIndex | SearchIndex[],
     key: string,
@@ -214,45 +290,26 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     // browse filter is active. A per-facet fetch is only needed once a field
     // value must be excluded from its own aggregation.
     const canUsePageAggregations = !hasSelectedFieldValues && !sourceFields;
-
-    let buckets = canUsePageAggregations
+    const pageBuckets = canUsePageAggregations
       ? aggregations?.[key]?.buckets
       : undefined;
-    if (!buckets) {
-      const res = await getAggregationOptions(
-        searchIndexToUse,
-        searchKeyToUse,
-        '',
-        JSON.stringify(getFacetQueryFilter(key)),
-        independent,
-        showDeleted,
-        optionPageSize,
-        isNLPActive,
-        searchText,
-        sourceFields
-      );
+    if (pageBuckets) {
+      if (isLatestOptionsRequest(requestId)) {
+        setOptions(buildBucketOptions(pageBuckets, key, sourceFields));
+      }
 
-      buckets =
-        res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
-    }
-
-    if (!isLatestOptionsRequest(requestId)) {
       return;
     }
 
-    setOptions(
-      addOptionIcons(
-        key,
-        uniqWith(
-          getOptionsFromAggregationBucket(
-            buckets,
-            getOptionLabelFormatter(key, untitledDropdown),
-            sourceFields
-          ),
-          isEqual
-        )
-      )
+    const options = await getCachedInitialOptions(
+      key,
+      searchIndexToUse,
+      searchKeyToUse,
+      sourceFields
     );
+    if (isLatestOptionsRequest(requestId)) {
+      setOptions(options);
+    }
   };
 
   const getInitialOptions = async (
