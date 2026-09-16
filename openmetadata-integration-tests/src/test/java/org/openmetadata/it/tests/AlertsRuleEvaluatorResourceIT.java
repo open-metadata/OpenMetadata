@@ -407,8 +407,9 @@ public class AlertsRuleEvaluatorResourceIT {
             "filterByTableNameTestCaseBelongsTo({'" + tableFqn + "'})", evaluationContext));
   }
 
+  // #31330: a filter that cannot evaluate an event must answer "does not match", never "deliver".
   @Test
-  void test_filterByTableNameTestCaseBelongsTo_nonTestCaseEntityPassesThrough() {
+  void test_filterByTableNameTestCaseBelongsTo_nonTestCaseEntityDoesNotMatch() {
     Table table = new Table().withName("t").withFullyQualifiedName("service.db.schema.t");
 
     ChangeEvent changeEvent = new ChangeEvent();
@@ -421,9 +422,12 @@ public class AlertsRuleEvaluatorResourceIT {
             .withRootObject(alertsRuleEvaluator)
             .build();
 
-    assertTrue(
+    assertFalse(
         evaluateExpression(
             "filterByTableNameTestCaseBelongsTo({'unrelated.fqn'})", evaluationContext));
+    assertFalse(
+        evaluateExpression(
+            "filterByTableNameTestCaseBelongsTo({'service.db.schema.t'})", evaluationContext));
   }
 
   @Test

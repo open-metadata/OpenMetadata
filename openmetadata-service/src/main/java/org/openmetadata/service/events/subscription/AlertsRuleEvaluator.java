@@ -62,8 +62,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * SpEL matchers for alert filtering rules. A matcher returns {@code false} when it cannot evaluate
- * and must never throw for a well-formed event: it runs inside a change-event batch whose offset is
- * committed either way, so an escaping exception silently discards every other event in that batch.
+ * and must never throw for a well-formed event: {@code AlertUtil.isChangeEventAllowed} treats an
+ * escaping exception as "not allowed" and dead-letters that event, so a throw silently costs the
+ * alert a delivery it should have made.
  */
 @Slf4j
 public class AlertsRuleEvaluator {
@@ -319,25 +320,54 @@ public class AlertsRuleEvaluator {
       },
       paramInputType = READ_FROM_PARAM_CONTEXT)
   public boolean filterByTableNameTestCaseBelongsTo(List<String> tableFqns) {
-    if (changeEvent == null) {
+    if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
-    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
-      return true;
+    if (isFeedEvent()) {
+      return feedSubjectTestCaseBelongsTo(tableFqns);
     }
-    TestCase testCase = (TestCase) getEntity(changeEvent);
+    if (!TEST_CASE.equals(changeEvent.getEntityType())) {
+      return false;
+    }
+    return testCaseBelongsTo((TestCase) getEntity(changeEvent), tableFqns);
+  }
+
+  // A feed event is scoped by the table its subject test case belongs to: feed -> test case ->
+  // table.
+  private boolean feedSubjectTestCaseBelongsTo(List<String> tableFqns) {
+    EntityReference subject = feedSubject();
+    if (subject == null || !TEST_CASE.equals(subject.getType())) {
+      return false;
+    }
+    TestCase testCase = Entity.getEntityOrNull(subject, "", Include.NON_DELETED);
+    return testCase != null && testCaseBelongsTo(testCase, tableFqns);
+  }
+
+  private boolean testCaseBelongsTo(TestCase testCase, List<String> tableFqns) {
     String parentFqn = resolveParentTableFqn(testCase);
     return parentFqn != null && tableFqns.contains(parentFqn);
   }
 
+  /**
+   * A test case's {@code entityFQN} is the subject it is attached to, which is the table for a
+   * table-level test but {@code <table>.<column>} for a column-level one. The parent table is the
+   * entity of its {@code entityLink}, so that is the authoritative source here.
+   */
   private String resolveParentTableFqn(TestCase testCase) {
-    if (testCase.getEntityFQN() != null) {
-      return testCase.getEntityFQN();
+    String tableFqn = parentTableFqnFromLink(testCase.getEntityLink());
+    return tableFqn != null ? tableFqn : testCase.getEntityFQN();
+  }
+
+  private static String parentTableFqnFromLink(String entityLink) {
+    if (entityLink == null) {
+      return null;
     }
-    if (testCase.getEntityLink() != null) {
-      return MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN();
+    try {
+      return MessageParser.EntityLink.parse(entityLink).getEntityFQN();
+    } catch (IllegalArgumentException e) {
+      LOG.debug("Unparseable test case entityLink '{}'", entityLink, e);
+      return null;
     }
-    return null;
   }
 
   @Function(
