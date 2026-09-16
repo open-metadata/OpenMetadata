@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -130,6 +131,11 @@ public class SearchMetadataTool implements McpTool {
               McpResponseTrim.VECTOR_NOISE_FIELDS.stream())
           .toList();
 
+  private static final String JSON_NULL_LITERAL = "null";
+
+  private static final String QUERY_FILTER_EXAMPLE =
+      "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}";
+
   /** Lucene match-anything query, mirroring the {@code @DefaultValue("*")} on the REST search API. */
   private static final String MATCH_ANY_QUERY = "*";
 
@@ -227,16 +233,8 @@ public class SearchMetadataTool implements McpTool {
     }
 
     String queryFilter = null;
-    Object queryFilterParam = params.get("queryFilter");
-    if (queryFilterParam != null) {
-      // LLM callers occasionally send the filter as a JSON object instead of a string; serialize
-      // non-string input back to JSON rather than failing on a cast.
-      String rawFilter =
-          queryFilterParam instanceof String stringValue
-              ? stringValue
-              : JsonUtils.pojoToJson(queryFilterParam);
-      JsonNode queryNode = JsonUtils.getObjectMapper().readTree(rawFilter);
-
+    JsonNode queryNode = queryFilterClause(params.get("queryFilter"));
+    if (queryNode != null) {
       if (!queryNode.has("query")) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
         queryWrapper.set("query", excludeTypesFrom(queryNode, excludedTypes));
@@ -606,6 +604,56 @@ public class SearchMetadataTool implements McpTool {
     result.put("returnedCount", 0);
     result.put("message", "No results found");
     return result;
+  }
+
+  /**
+   * The caller's {@code queryFilter} as a usable query clause, or null when they supplied none.
+   *
+   * <p>Tool-calling models fill every optional string the schema lists, sending {@code ""} or {@code
+   * "null"} for the ones they have no value for. Those carry no clause, so they have to read as an
+   * omitted filter: wrapped instead they become {@code {"query": null}}, which the engine rejects,
+   * failing the search the model actually asked for. A filter that is present but cannot be a clause
+   * at all is the caller's to correct, so it is named rather than sent on as an opaque backend
+   * rejection.
+   */
+  private static JsonNode queryFilterClause(Object queryFilterParam) {
+    String rawFilter = rawQueryFilter(queryFilterParam);
+    JsonNode clause = null;
+    if (!nullOrEmpty(rawFilter) && !JSON_NULL_LITERAL.equalsIgnoreCase(rawFilter)) {
+      clause = parsedQueryFilter(rawFilter);
+    }
+    return clause;
+  }
+
+  private static String rawQueryFilter(Object queryFilterParam) {
+    // LLM callers occasionally send the filter as a JSON object instead of a string; serialize
+    // non-string input back to JSON rather than failing on a cast.
+    String rawFilter = null;
+    if (queryFilterParam instanceof String stringValue) {
+      rawFilter = stringValue.trim();
+    } else if (queryFilterParam != null) {
+      rawFilter = JsonUtils.pojoToJson(queryFilterParam);
+    }
+    return rawFilter;
+  }
+
+  private static JsonNode parsedQueryFilter(String rawFilter) {
+    JsonNode parsed;
+    try {
+      parsed = JsonUtils.getObjectMapper().readTree(rawFilter);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(
+          "queryFilter is not valid JSON: " + e.getOriginalMessage(), e);
+    }
+    boolean absent = parsed.isMissingNode() || parsed.isNull();
+    if (!absent && !parsed.isObject()) {
+      throw new IllegalArgumentException(
+          "queryFilter must be a JSON object holding an OpenSearch query clause, e.g. "
+              + QUERY_FILTER_EXAMPLE
+              + " - got: "
+              + rawFilter);
+    }
+    return absent || parsed.isEmpty() ? null : parsed;
   }
 
   /**
