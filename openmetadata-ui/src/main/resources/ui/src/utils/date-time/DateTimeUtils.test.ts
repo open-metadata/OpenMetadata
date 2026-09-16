@@ -32,7 +32,18 @@ import {
   isValidDateFormat,
 } from './DateTimeUtils';
 
-// ✅ CORRECTED MOCKS: Use useCurrentUserPreferences with default return values
+// ✅ CORRECTED MOCKS: usePersistentStorage is a store (.getState), useCurrentUserPreferences is a hook (returns object)
+jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  usePersistentStorage: {
+    getState: jest.fn().mockReturnValue({
+      preferences: {},
+    }),
+  },
+  useCurrentUserPreferences: jest.fn().mockReturnValue({
+    preferences: {},
+  }),
+}));
+
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: {
     getState: jest.fn().mockReturnValue({
@@ -42,15 +53,7 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   },
 }));
 
-jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
-  useCurrentUserPreferences: {
-    getState: jest.fn().mockReturnValue({
-      preferences: {},
-    }),
-  },
-}));
-
-import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const systemLocale = Settings.defaultLocale;
@@ -855,7 +858,7 @@ describe('DateTimeUtils', () => {
 
   describe('getActiveTimeFormat', () => {
     const mockGetAppState = useApplicationStore.getState as jest.Mock;
-    const mockGetPersistState = useCurrentUserPreferences.getState as jest.Mock;
+    const mockGetPersistState = usePersistentStorage.getState as jest.Mock;
 
     beforeEach(() => {
       jest.clearAllMocks();
