@@ -23,6 +23,7 @@ export const OwnerAvatarStack = ({
   renderOwnerContent,
   placement = 'horizontal',
   className,
+  showOverflowHeadings,
 }: OwnerAvatarStackProps) => {
   // A single owner renders as avatar + name (+ link when a href is present),
   // regardless of placement, so the owner name stays visible in headers and
@@ -73,6 +74,7 @@ export const OwnerAvatarStack = ({
       ownerDisplayName={ownerDisplayName}
       owners={owners}
       renderOwnerContent={renderOwnerContent}
+      showOverflowHeadings={showOverflowHeadings}
     />
   );
 };
