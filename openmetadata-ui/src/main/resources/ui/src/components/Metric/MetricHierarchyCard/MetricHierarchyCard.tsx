@@ -44,7 +44,6 @@ import {
 } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import MetricListHealth from '../MetricListHealth/MetricListHealth.component';
 import { useMetricHierarchyCard } from './useMetricHierarchyCard';
 
 interface MetricHierarchyCardProps {
@@ -61,12 +60,14 @@ interface MetricTreeRowProps {
 
 // Each hierarchy level steps in by one padding stop. Kept as explicit classes
 // (not an interpolated value) so Tailwind's static scan keeps them.
+// One indent stop per depth equals the elbow column + gap (20px + 8px), so
+// each child row's connector arrow lands directly beneath its parent's icon.
 const INDENT_CLASS_BY_DEPTH = [
   '',
-  'tw:pl-8',
-  'tw:pl-16',
-  'tw:pl-24',
-  'tw:pl-32',
+  'tw:pl-[28px]',
+  'tw:pl-[56px]',
+  'tw:pl-[84px]',
+  'tw:pl-[112px]',
 ];
 
 const getIndentClass = (depth: number) =>
@@ -156,28 +157,27 @@ const MetricTreeRowTrailing = ({
     );
   }
 
+  if (!metric.owners || metric.owners.length === 0) {
+    return null;
+  }
+
   return (
-    <Box align="center" className="tw:shrink-0" gap={2}>
-      {metric.owners && metric.owners.length > 0 && (
-        <Box align="center" gap={1}>
-          {metric.owners.slice(0, 3).map((owner) => (
-            <span
-              aria-label={getEntityName(owner)}
-              data-testid={`metric-tree-owner-${metric.id}-${owner.id}`}
-              key={owner.id}
-              role="img"
-              title={getEntityName(owner)}>
-              <Avatar initials={getOwnerInitials(owner)} size="xs" />
-            </span>
-          ))}
-          {metric.owners.length > 3 && (
-            <Typography as="span" className="tw:text-tertiary" size="text-xs">
-              +{metric.owners.length - 3}
-            </Typography>
-          )}
-        </Box>
+    <Box align="center" className="tw:shrink-0" gap={1}>
+      {metric.owners.slice(0, 3).map((owner) => (
+        <span
+          aria-label={getEntityName(owner)}
+          data-testid={`metric-tree-owner-${metric.id}-${owner.id}`}
+          key={owner.id}
+          role="img"
+          title={getEntityName(owner)}>
+          <Avatar initials={getOwnerInitials(owner)} size="xs" />
+        </span>
+      ))}
+      {metric.owners.length > 3 && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          +{metric.owners.length - 3}
+        </Typography>
       )}
-      <MetricListHealth metricId={metric.id} />
     </Box>
   );
 };
@@ -193,7 +193,7 @@ const MetricTreeRow = ({
     <>
       <span
         aria-hidden="true"
-        className="tw:grid tw:w-5 tw:shrink-0 tw:place-items-center tw:text-fg-quaternary"
+        className="tw:grid tw:w-5 tw:shrink-0 tw:self-start tw:place-items-center tw:pt-1 tw:text-fg-quaternary"
         data-testid={isNested ? `${testId}-elbow` : undefined}>
         {isNested && <CornerDownRight className="tw:size-4" />}
       </span>

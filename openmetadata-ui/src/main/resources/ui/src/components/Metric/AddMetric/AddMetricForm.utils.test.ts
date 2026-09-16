@@ -52,7 +52,6 @@ const baseValues = (
   isNewMetricGroup: false,
   owners: [],
   reviewers: [],
-  experts: [],
   domains: [],
   relatedMetrics: [],
   ...overrides,
@@ -71,12 +70,7 @@ describe('transformMetricFormData', () => {
     expect(payload.reviewers).toEqual([reviewer]);
   });
 
-  it('should send experts, domains and relatedMetrics as name arrays', () => {
-    const expert = reference({
-      id: 'u2',
-      name: 'bob',
-      fullyQualifiedName: 'bob',
-    });
+  it('should send domains and relatedMetrics as name arrays', () => {
     const domain = reference({
       id: 'd1',
       type: 'domain',
@@ -92,13 +86,11 @@ describe('transformMetricFormData', () => {
 
     const payload = transformMetricFormData(
       baseValues({
-        experts: [item(expert)],
         domains: [item(domain)],
         relatedMetrics: [item(related)],
       })
     );
 
-    expect(payload.experts).toEqual(['bob']);
     expect(payload.domains).toEqual(['Sales.Domain']);
     expect(payload.relatedMetrics).toEqual(['group.cost']);
   });

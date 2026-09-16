@@ -47,7 +47,7 @@ describe('MetricDetailsClassBase', () => {
     ).toEqual([]);
   });
 
-  it('stacks dimensions and measures inside the wide left panel', () => {
+  it('stacks the hierarchy and definition widgets inside the wide left panel', () => {
     const layout = metricDetails.getDefaultLayout(EntityTabs.OVERVIEW);
     const leftPanel = layout.find(
       (widget) => widget.i === DetailPageWidgetKeys.LEFT_PANEL
@@ -61,26 +61,24 @@ describe('MetricDetailsClassBase', () => {
       DetailPageWidgetKeys.DESCRIPTION,
       DetailPageWidgetKeys.METRIC_HIERARCHY,
       DetailPageWidgetKeys.METRIC_DEFINITION,
-      DetailPageWidgetKeys.METRIC_DIMENSIONS,
-      DetailPageWidgetKeys.METRIC_MEASURES,
     ]);
   });
 
-  it('offers both widgets in the customization widget list', () => {
+  it('does not offer dimensions or measures in the customization widget list', () => {
     const widgetKeys = metricDetails
       .getCommonWidgetList()
       .map((widget) => widget.fullyQualifiedName);
 
-    expect(widgetKeys).toContain(DetailPageWidgetKeys.METRIC_DIMENSIONS);
-    expect(widgetKeys).toContain(DetailPageWidgetKeys.METRIC_MEASURES);
+    expect(widgetKeys).not.toContain(DetailPageWidgetKeys.METRIC_DIMENSIONS);
+    expect(widgetKeys).not.toContain(DetailPageWidgetKeys.METRIC_MEASURES);
   });
 
-  it('returns a configured height for both widgets', () => {
+  it('returns a configured height for the hierarchy and definition widgets', () => {
     expect(
-      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_DIMENSIONS)
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_HIERARCHY)
     ).toBeGreaterThan(1);
     expect(
-      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_MEASURES)
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_DEFINITION)
     ).toBeGreaterThan(1);
   });
 });

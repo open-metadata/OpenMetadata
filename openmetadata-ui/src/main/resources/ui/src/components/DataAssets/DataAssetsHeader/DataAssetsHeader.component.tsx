@@ -91,6 +91,7 @@ import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import tableClassBase from '../../../utils/TableClassBase';
@@ -854,7 +855,14 @@ export const DataAssetsHeader = ({
   };
 
   const renderServiceLogo = () => {
-    if (!serviceLogoUrl) {
+    // Metrics have no owning service, so fall back to the metric entity icon so
+    // the header still shows a leading glyph next to the title.
+    const entityIcon =
+      !serviceLogoUrl && entityType === EntityType.METRIC
+        ? searchClassBase.getEntityIcon(EntityType.METRIC, 'tw:size-5')
+        : null;
+
+    if (!serviceLogoUrl && !entityIcon) {
       return null;
     }
 
@@ -866,11 +874,17 @@ export const DataAssetsHeader = ({
             'tw:justify-center tw:overflow-hidden tw:rounded-full',
             'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
           )}>
-          <img
-            alt={get(dataAsset, 'service.displayName', '')}
-            className="tw:size-5 tw:object-contain"
-            src={serviceLogoUrl}
-          />
+          {serviceLogoUrl ? (
+            <img
+              alt={get(dataAsset, 'service.displayName', '')}
+              className="tw:size-5 tw:object-contain"
+              src={serviceLogoUrl}
+            />
+          ) : (
+            <span className="tw:flex tw:size-5 tw:items-center tw:justify-center tw:text-blue-700">
+              {entityIcon}
+            </span>
+          )}
         </div>
         {editStylePermission && (
           <EditIconButton

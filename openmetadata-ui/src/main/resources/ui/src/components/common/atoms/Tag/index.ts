@@ -16,4 +16,5 @@ export { default as ClassificationTag } from './ClassificationTag';
 export { default as DataProductTag } from './DataProductTag';
 export { default as DomainTag } from './DomainTag';
 export { default as GlossaryTag } from './GlossaryTag';
+export { default as MetricTag } from './MetricTag';
 export type { BaseTagProps, TagSize } from './Tag.interface';

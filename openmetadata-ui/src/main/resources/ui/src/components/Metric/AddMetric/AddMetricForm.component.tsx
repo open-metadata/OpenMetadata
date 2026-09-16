@@ -19,7 +19,6 @@ import {
   FieldTypes,
   getField,
   HookForm,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
@@ -65,7 +64,6 @@ export const METRIC_FORM_DEFAULTS: MetricFormValues = {
   isNewMetricGroup: false,
   owners: [],
   reviewers: [],
-  experts: [],
   domains: [],
   relatedMetrics: [],
 };
@@ -86,9 +84,6 @@ const AddMetricForm = ({
 }: AddMetricFormProps) => {
   const { t } = useTranslation();
   const [userTeamOptions, setUserTeamOptions] = useState<
-    MetricFormSelectItem[]
-  >([]);
-  const [userOnlyOptions, setUserOnlyOptions] = useState<
     MetricFormSelectItem[]
   >([]);
   const [domainOptions, setDomainOptions] = useState<MetricFormSelectItem[]>(
@@ -207,7 +202,6 @@ const AddMetricForm = ({
         EntityType.TEAM
       );
 
-      setUserOnlyOptions(userOptions);
       setUserTeamOptions([
         ...userOptions,
         ...teams.map((reference) => ({
@@ -216,7 +210,6 @@ const AddMetricForm = ({
         })),
       ]);
     } catch {
-      setUserOnlyOptions([]);
       setUserTeamOptions([]);
     }
   }, []);
@@ -493,22 +486,6 @@ const AddMetricForm = ({
     type: FieldTypes.USER_TEAM_SELECT_INPUT,
   };
 
-  const expertsField: FieldProp = {
-    id: 'root/experts',
-    label: t('label.expert-plural'),
-    name: 'experts',
-    placeholder: t('label.select-field', { field: t('label.expert-plural') }),
-    props: {
-      filterOption: () => true,
-      multiple: true,
-      onFocus: handleUserTeamFocus,
-      onSearchChange: (searchText: string) =>
-        debouncedUserTeamSearch(searchText),
-      options: userOnlyOptions,
-    },
-    type: FieldTypes.USER_TEAM_SELECT,
-  };
-
   const domainsField: FieldProp = {
     id: 'root/domains',
     label: t('label.domain-plural'),
@@ -583,22 +560,17 @@ const AddMetricForm = ({
           {parentMetricFqn}
         </Alert>
       ) : (
-        <Box data-testid="metric-group-field" direction="col" gap={2}>
-          <Typography size="text-sm" weight="medium">
-            {t('label.metric-group')}
-          </Typography>
+        <div data-testid="metric-group-field">
           <MetricGroupSelect
+            helperText={t('message.metric-group-optional')}
+            label={t('label.metric-group')}
             value={metricGroupValue}
             onChange={handleMetricGroupChange}
           />
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('message.metric-group-optional')}
-          </Typography>
-        </Box>
+        </div>
       )}
       <div>{getField(ownersField)}</div>
       <div>{getField(reviewersField)}</div>
-      <div>{getField(expertsField)}</div>
       <div>{getField(domainsField)}</div>
       <div>{getField(relatedMetricsField)}</div>
       <div>{getField(languageField)}</div>

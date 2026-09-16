@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { MetricTag } from '../../common/atoms/Tag';
 import {
   WidgetEditButton,
   WidgetPlusButton,
@@ -101,41 +100,19 @@ const RelatedMetrics: FC = () => {
   }, [isShowMore, hiddenRelatedMetrics]);
 
   const getRelatedMetricListing = useCallback(
-    (relatedMetrics: EntityReference[]) => {
-      return relatedMetrics.map((item) => {
-        return (
-          <div
-            className="right-panel-list-item flex items-center justify-between"
-            data-testid={getEntityName(item)}
-            key={item.id}>
-            <div className="flex items-center">
-              <Link
-                className="font-medium"
-                to={entityUtilClassBase.getEntityLink(
-                  item.type,
-                  item.fullyQualifiedName ?? ''
-                )}>
-                <Button
-                  className="metric-entity-button flex-center p-0 m--ml-1"
-                  icon={
-                    <div className="entity-button-icon m-r-xs">
-                      {getEntityIcon(item.type)}
-                    </div>
-                  }
-                  title={getEntityName(item)}
-                  type="text">
-                  <Typography.Text
-                    className="w-72 text-left text-xs"
-                    ellipsis={{ tooltip: true }}>
-                    {getEntityName(item)}
-                  </Typography.Text>
-                </Button>
-              </Link>
-            </div>
-          </div>
-        );
-      });
-    },
+    (relatedMetrics: EntityReference[]) =>
+      relatedMetrics.map((item) => (
+        <MetricTag
+          data-testid={getEntityName(item)}
+          href={entityUtilClassBase.getEntityLink(
+            item.type,
+            item.fullyQualifiedName ?? ''
+          )}
+          key={item.id}
+          label={getEntityName(item)}
+          tooltip={getEntityName(item)}
+        />
+      )),
     []
   );
 
@@ -216,7 +193,7 @@ const RelatedMetrics: FC = () => {
 
     return (
       <div
-        className="metric-entity-list-body"
+        className="metric-entity-list-body tw:flex tw:flex-wrap tw:items-center tw:gap-2"
         data-testid="metric-entity-list-body">
         {getRelatedMetricListing(visibleRelatedMetrics)}
         {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}

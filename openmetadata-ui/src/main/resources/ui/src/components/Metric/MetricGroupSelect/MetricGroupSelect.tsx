@@ -34,6 +34,10 @@ export interface MetricGroupSelectProps {
   /** The selected group's name, or a new name entered by the user. */
   value?: string;
   onChange?: (groupName?: string, isNewGroup?: boolean) => void;
+  /** Visible field label, rendered by the ComboBox to match the other fields. */
+  label?: string;
+  /** Helper text shown under the field. */
+  helperText?: string;
   'data-testid'?: string;
 }
 
@@ -102,6 +106,8 @@ const resolveNamedGroupSelection = (
 const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
   value,
   onChange,
+  label,
+  helperText,
   'data-testid': dataTestId = 'metric-group-select',
 }) => {
   const { t } = useTranslation();
@@ -255,19 +261,21 @@ const MetricGroupSelect: FC<MetricGroupSelectProps> = ({
     <Box direction="col" gap={2}>
       <ComboBox
         allowsCustomValue
-        aria-label={t('label.metric-group')}
+        aria-label={label ? undefined : t('label.metric-group')}
         data-testid={dataTestId}
         hint={
           isCurrentResolution && resolutionQuery.isFetching
             ? t('label.loading')
-            : undefined
+            : helperText
         }
         inputValue={inputValue}
         items={items}
+        label={label}
         placeholder={t('label.select-field', {
           field: t('label.metric-group'),
         })}
         selectedKey={value ?? null}
+        shortcut={false}
         showSearchIcon={false}
         onInputChange={setInputValue}
         onKeyDown={handleKeyDown}

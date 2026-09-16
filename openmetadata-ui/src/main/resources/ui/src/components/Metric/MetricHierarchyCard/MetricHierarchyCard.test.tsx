@@ -33,13 +33,6 @@ jest.mock('../../../hooks/useMetricCreateDrawer', () => ({
   }),
 }));
 
-jest.mock('../MetricListHealth/MetricListHealth.component', () => ({
-  __esModule: true,
-  default: ({ metricId }: { metricId: string }) => (
-    <span data-testid={`hierarchy-health-${metricId}`}>health</span>
-  ),
-}));
-
 const metric = {
   id: 'current-id',
   name: 'gross_margin_rate',
@@ -200,9 +193,6 @@ describe('MetricHierarchyCard', () => {
       'label.you-are-here'
     );
     expect(
-      screen.queryByTestId('hierarchy-health-current-id')
-    ).not.toBeInTheDocument();
-    expect(
       screen.queryByTestId('metric-tree-owner-current-id-owner-id')
     ).not.toBeInTheDocument();
     expect(
@@ -212,17 +202,15 @@ describe('MetricHierarchyCard', () => {
     expect(
       screen.getByTestId('metric-tree-owner-child-id-child-owner-id')
     ).toHaveTextContent('JL');
-    expect(screen.getByTestId('hierarchy-health-peer-id')).toBeInTheDocument();
-    expect(screen.getByTestId('hierarchy-health-child-id')).toBeInTheDocument();
     expect(screen.getByLabelText('4 label.metric-plural')).toBeInTheDocument();
 
     // Graduated indent by hierarchy depth: group(0) > ancestor(1) > peer/current(2) > child(3).
     (
       [
-        ['metric-tree-ancestor-root-id', 'tw:pl-8'],
-        ['metric-tree-peer-peer-id', 'tw:pl-16'],
-        ['metric-tree-current', 'tw:pl-16'],
-        ['metric-tree-child-child-id', 'tw:pl-24'],
+        ['metric-tree-ancestor-root-id', 'tw:pl-[28px]'],
+        ['metric-tree-peer-peer-id', 'tw:pl-[56px]'],
+        ['metric-tree-current', 'tw:pl-[56px]'],
+        ['metric-tree-child-child-id', 'tw:pl-[84px]'],
       ] as const
     ).forEach(([testId, indentClass]) => {
       expect(screen.getByTestId(testId)).toHaveClass(indentClass);

@@ -16,8 +16,8 @@ import { EntityReference } from '../../../generated/entity/type';
 
 /**
  * Select/autocomplete option that carries a typed payload on `value`:
- * an `EntityReference` for the entity pickers (owners, reviewers, experts,
- * domains, related metrics) and the raw enum string for the closed-list
+ * an `EntityReference` for the entity pickers (owners, reviewers, domains,
+ * related metrics) and the raw enum string for the closed-list
  * selects (metric type, granularity, unit of measurement, language). The
  * pure transform reads `value` and never touches the options list.
  */
@@ -39,7 +39,6 @@ export interface MetricFormValues {
   isNewMetricGroup: boolean;
   owners: MetricFormSelectItem[];
   reviewers: MetricFormSelectItem[];
-  experts: MetricFormSelectItem[];
   domains: MetricFormSelectItem[];
   relatedMetrics: MetricFormSelectItem[];
 }

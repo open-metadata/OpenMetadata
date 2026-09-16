@@ -75,15 +75,6 @@ const RelatedMetrics = withSuspenseFallback(
   lazy(() => import('../../components/Metric/RelatedMetrics/RelatedMetrics'))
 );
 
-const MetricDimensions = withSuspenseFallback(
-  lazy(
-    () => import('../../components/Metric/MetricDimensions/MetricDimensions')
-  )
-);
-
-const MetricMeasures = withSuspenseFallback(
-  lazy(() => import('../../components/Metric/MetricMeasures/MetricMeasures'))
-);
 
 const CustomPropertyTable = withSuspenseFallback(
   lazy(() =>
@@ -203,14 +194,6 @@ export const getMetricWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DEFINITION)) {
     return <MetricDefinitionCard />;
-  }
-
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_DIMENSIONS)) {
-    return <MetricDimensions />;
-  }
-
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.METRIC_MEASURES)) {
-    return <MetricMeasures />;
   }
 
   return (
