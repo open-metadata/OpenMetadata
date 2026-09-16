@@ -27,8 +27,6 @@ test.describe(
     test('should normalize an unsupported default sort to the Columns tab default', async ({
       browser,
     }) => {
-      test.slow(true);
-
       const { page, afterAction } = await performAdminLogin(browser, {
         navigate: true,
       });
@@ -61,8 +59,6 @@ test.describe(
     test('should preserve an explicit valid sort field on the Columns tab', async ({
       browser,
     }) => {
-      test.slow(true);
-
       const { page, afterAction } = await performAdminLogin(browser, {
         navigate: true,
       });
