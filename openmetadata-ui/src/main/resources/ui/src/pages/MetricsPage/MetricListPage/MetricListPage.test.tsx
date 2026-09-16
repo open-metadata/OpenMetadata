@@ -61,12 +61,24 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <span>{children}</span>),
   Box: jest
     .fn()
-    .mockImplementation(({ children, className, role, onClick }) => (
-      // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-      <div className={className} role={role} onClick={onClick}>
-        {children}
-      </div>
-    )),
+    .mockImplementation(({ children, className, role, onClick }) =>
+      onClick ? (
+        <div
+          className={className}
+          role="button"
+          tabIndex={0}
+          onClick={onClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') onClick(e);
+          }}>
+          {children}
+        </div>
+      ) : (
+        <div className={className} role={role}>
+          {children}
+        </div>
+      )
+    ),
   Button: jest
     .fn()
     .mockImplementation(
