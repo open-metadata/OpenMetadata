@@ -110,6 +110,27 @@ const getVersionedUnitValue = (
   return unit === UnitOfMeasurement.Other && customUnit ? customUnit : unit;
 };
 
+const getDefinitionEnumValue = (
+  t: TFunction,
+  field: 'metricType' | 'granularity',
+  value?: string,
+  changeDescription?: ChangeDescription
+): ReactNode =>
+  changeDescription
+    ? stringToHTML(
+        getEntityVersionByField(changeDescription, field, value ?? '')
+      )
+    : getOptionalMetricEnumLabel(t, value);
+
+const getDefinitionUnitDisplay = (
+  t: TFunction,
+  metric: Metric,
+  changeDescription?: ChangeDescription
+): ReactNode =>
+  changeDescription
+    ? stringToHTML(getVersionedUnitValue(metric, changeDescription))
+    : getMetricUnitLabel(t, metric);
+
 interface MetricDefinitionEditDialogProps {
   metric: Metric;
   open: boolean;
@@ -381,27 +402,19 @@ const MetricDefinitionCard = ({
   const allowEdit =
     canEdit ?? Boolean(canEditAll && !isVersionView && onUpdate);
 
-  const typeValue = changeDescription
-    ? stringToHTML(
-        getEntityVersionByField(
-          changeDescription,
-          'metricType',
-          metric.metricType ?? ''
-        )
-      )
-    : getOptionalMetricEnumLabel(t, metric.metricType);
-  const unitValue = changeDescription
-    ? stringToHTML(getVersionedUnitValue(metric, changeDescription))
-    : getMetricUnitLabel(t, metric);
-  const granularityValue = changeDescription
-    ? stringToHTML(
-        getEntityVersionByField(
-          changeDescription,
-          'granularity',
-          metric.granularity ?? ''
-        )
-      )
-    : getOptionalMetricEnumLabel(t, metric.granularity);
+  const typeValue = getDefinitionEnumValue(
+    t,
+    'metricType',
+    metric.metricType,
+    changeDescription
+  );
+  const unitValue = getDefinitionUnitDisplay(t, metric, changeDescription);
+  const granularityValue = getDefinitionEnumValue(
+    t,
+    'granularity',
+    metric.granularity,
+    changeDescription
+  );
 
   return (
     <Card className="tw:shadow-xs" data-testid="metric-definition-card">

@@ -25,7 +25,7 @@ jest.mock('./useMetricHierarchyCard', () => ({
   useMetricHierarchyCard: jest.fn(),
 }));
 
-jest.mock('../../../hooks/useMetricCreateDrawer', () => ({
+jest.mock('../AddMetric/useMetricCreateDrawer', () => ({
   useMetricCreateDrawer: () => ({
     formDrawer: null,
     openDrawer: jest.fn(),

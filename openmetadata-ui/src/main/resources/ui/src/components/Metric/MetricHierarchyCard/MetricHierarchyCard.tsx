@@ -34,7 +34,7 @@ import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
 import type { MetricGroup } from '../../../generated/entity/data/metricGroup';
-import { useMetricCreateDrawer } from '../../../hooks/useMetricCreateDrawer';
+import { useMetricCreateDrawer } from '../AddMetric/useMetricCreateDrawer';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getMetricEnumLabel,

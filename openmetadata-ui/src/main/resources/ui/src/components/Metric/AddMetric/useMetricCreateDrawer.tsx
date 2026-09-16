@@ -15,18 +15,44 @@ import { useCallback, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useFormDrawerWithHook } from '../components/common/atoms/drawer';
-import AddMetricForm, {
-  METRIC_FORM_DEFAULTS,
-} from '../components/Metric/AddMetric/AddMetricForm.component';
-import { MetricFormValues } from '../components/Metric/AddMetric/AddMetricForm.interface';
-import { transformMetricFormData } from '../components/Metric/AddMetric/AddMetricForm.utils';
-import { EntityType } from '../enums/entity.enum';
-import { createMetricGroup, deleteMetricGroup } from '../rest/metricGroupsAPI';
-import { createMetric } from '../rest/metricsAPI';
-import { submitAndClose } from '../utils/FormDrawerUtils';
-import { getEntityDetailsPath } from '../utils/RouterUtils';
-import { showErrorToast } from '../utils/ToastUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  createMetricGroup,
+  deleteMetricGroup,
+} from '../../../rest/metricGroupsAPI';
+import { createMetric } from '../../../rest/metricsAPI';
+import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import AddMetricForm, { METRIC_FORM_DEFAULTS } from './AddMetricForm.component';
+import { MetricFormValues } from './AddMetricForm.interface';
+import { transformMetricFormData } from './AddMetricForm.utils';
+
+/**
+ * Resolves the target metric group, creating a new one first when the form
+ * requests it. Returns the group's FQN (or name) plus the id of any group it
+ * created so the caller can roll it back if the metric create later fails.
+ */
+const resolveMetricGroup = async (
+  data: MetricFormValues,
+  parentMetricFqn?: string
+): Promise<{ metricGroup?: string; createdGroupId?: string }> => {
+  const metricGroup = parentMetricFqn
+    ? undefined
+    : data.metricGroup.trim() || undefined;
+
+  if (metricGroup && data.isNewMetricGroup) {
+    const group = await createMetricGroup({ name: metricGroup });
+
+    return {
+      metricGroup: group.fullyQualifiedName ?? group.name,
+      createdGroupId: group.id,
+    };
+  }
+
+  return { metricGroup };
+};
 
 /**
  * Encapsulates the "create metric" drawer — form, submit (with the optional
@@ -49,14 +75,9 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
       setIsLoading(true);
       let createdGroupId: string | undefined;
       try {
-        let metricGroup = parentMetricFqn
-          ? undefined
-          : data.metricGroup.trim() || undefined;
-        if (metricGroup && data.isNewMetricGroup) {
-          const group = await createMetricGroup({ name: metricGroup });
-          createdGroupId = group.id;
-          metricGroup = group.fullyQualifiedName ?? group.name;
-        }
+        const { metricGroup, createdGroupId: newGroupId } =
+          await resolveMetricGroup(data, parentMetricFqn);
+        createdGroupId = newGroupId;
 
         const payload = transformMetricFormData(
           { ...data, metricGroup: metricGroup ?? '' },

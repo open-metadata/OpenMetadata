@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Operation } from 'fast-json-patch';
-import APIClient from './index';
+import APIClient from './axiosAPIClient';
 import {
   addMetricsToGroup,
   createMetricGroup,
@@ -23,7 +23,7 @@ import {
   removeMetricsFromGroup,
 } from './metricGroupsAPI';
 
-jest.mock('./index', () => ({
+jest.mock('./axiosAPIClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
   patch: jest.fn(),
@@ -75,8 +75,10 @@ describe('metricGroupsAPI', () => {
       { params: { fields: 'owners' } }
     );
 
-    await addMetricsToGroup('Revenue / Growth', references);
-    await removeMetricsFromGroup('Revenue / Growth', references);
+    await Promise.all([
+      addMetricsToGroup('Revenue / Growth', references),
+      removeMetricsFromGroup('Revenue / Growth', references),
+    ]);
 
     expect(APIClient.put).toHaveBeenNthCalledWith(
       1,

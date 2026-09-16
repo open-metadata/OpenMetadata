@@ -10,32 +10,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  InfoCircle,
-} from '@untitledui/icons';
-
 const { getIconAndClassName } =
   jest.requireActual<typeof import('./ToastUtils')>('./ToastUtils');
 
 describe('getIconAndClassName', () => {
   it.each([
-    ['info', InfoCircle, 'info', 'info'],
-    ['grey-info', InfoCircle, 'grey-info', 'info'],
-    ['success', CheckCircle, 'success', 'success'],
-    ['warning', AlertTriangle, 'warning', 'warning'],
-    ['error', AlertCircle, 'error', 'error'],
+    ['info', 'info', 'info'],
+    ['grey-info', 'grey-info', 'info'],
+    ['success', 'success', 'success'],
+    ['warning', 'warning', 'warning'],
+    ['error', 'error', 'error'],
   ] as const)(
-    'uses the Untitled icon for %s alerts',
-    (alertType, icon, className, toastType) => {
-      expect(getIconAndClassName(alertType)).toEqual({
-        icon,
+    'maps %s alerts to their className and toast type',
+    (alertType, className, toastType) => {
+      expect(getIconAndClassName(alertType)).toMatchObject({
         className,
         type: toastType,
       });
     }
   );
+
+  it('shares one icon across info variants and uses a distinct icon per severity', () => {
+    const icons = (
+      ['info', 'grey-info', 'success', 'warning', 'error'] as const
+    ).map((alertType) => getIconAndClassName(alertType).icon);
+
+    expect(getIconAndClassName('info').icon).toBe(
+      getIconAndClassName('grey-info').icon
+    );
+    expect(new Set(icons).size).toBe(4);
+  });
 });

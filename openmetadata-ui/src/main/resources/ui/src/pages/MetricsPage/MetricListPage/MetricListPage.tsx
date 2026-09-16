@@ -79,7 +79,7 @@ import { EntityStatus } from '../../../generated/entity/data/metric';
 import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useMetricCreateDrawer } from '../../../hooks/useMetricCreateDrawer';
+import { useMetricCreateDrawer } from '../../../components/Metric/AddMetric/useMetricCreateDrawer';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
   deleteMetricAsync,

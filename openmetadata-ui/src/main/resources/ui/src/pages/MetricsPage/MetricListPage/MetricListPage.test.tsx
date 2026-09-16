@@ -420,7 +420,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../hooks/useMetricHierarchy');
-jest.mock('../../../hooks/useMetricCreateDrawer', () => ({
+jest.mock('../../../components/Metric/AddMetric/useMetricCreateDrawer', () => ({
   useMetricCreateDrawer: () => ({
     formDrawer: null,
     openDrawer: jest.fn(),
