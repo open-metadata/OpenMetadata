@@ -481,7 +481,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       for (SearchIndexField deleted : deletedFields) {
         if (addedFieldMap.containsKey(deleted.getName())) {
           SearchIndexField addedField = addedFieldMap.get(deleted.getName());
-          if (nullOrEmpty(addedField.getDescription()) && nullOrEmpty(deleted.getDescription())) {
+          if (nullOrEmpty(addedField.getDescription())) {
             addedField.setDescription(deleted.getDescription());
           }
           if (nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())) {

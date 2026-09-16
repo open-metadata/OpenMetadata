@@ -25,12 +25,13 @@ import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
-import { useAuth } from '../../../../../../hooks/authHooks';
 import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
+import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
@@ -52,7 +53,6 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { isAdminUser } = useAuth();
   const [subView, setSubView] = useState<CustomPropertiesSubView>({
     type: 'landing',
   });
@@ -92,20 +92,26 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     });
   }, []);
 
+  const hasTypeViewPermission = userPermissions.hasViewPermissions(
+    ResourceEntity.TYPE,
+    permissions
+  );
+
   const globalSettingsItems = useMemo<SettingMenuItem[]>(() => {
+    if (!hasTypeViewPermission) {
+      return [];
+    }
     const menu = globalSettingsClassBase.getGlobalSettingsMenuWithPermission(
       permissions,
-      isAdminUser
+      true
     );
     const customPropsCategory = menu.find(
       (m: SettingMenuItem) =>
         m.key === GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
     );
 
-    return (customPropsCategory?.items ?? []).filter(
-      (item: SettingMenuItem) => item.isProtected
-    );
-  }, [permissions, isAdminUser]);
+    return customPropsCategory?.items ?? [];
+  }, [permissions, hasTypeViewPermission]);
 
   const matchingSettingsItem = useMemo<SettingMenuItem | undefined>(() => {
     if (subView.type === 'landing') {

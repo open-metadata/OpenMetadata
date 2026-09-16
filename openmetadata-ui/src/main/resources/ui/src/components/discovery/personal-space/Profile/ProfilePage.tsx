@@ -19,6 +19,7 @@ import { isUndefined, omitBy } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
@@ -49,6 +50,7 @@ import ProfileSideNav from './ProfileSideNav';
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
   // Seed userData from the application store so the page chrome renders
   // immediately on tab switch. The getUserByName fetch below refreshes
@@ -171,8 +173,12 @@ const ProfilePage: React.FC = () => {
         };
       });
 
-    return [...coreItems, ...WORKSPACE_NAV_ITEMS, ...contributed];
-  }, [currentUser?.isAdmin, extensionRegistry, userData]);
+    const workspaceItems = WORKSPACE_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
+    );
+
+    return [...coreItems, ...workspaceItems, ...contributed];
+  }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
 
   // Clear header override whenever the user switches nav items.
   const handleNavSelect = useCallback((id: ProfileNavId) => {

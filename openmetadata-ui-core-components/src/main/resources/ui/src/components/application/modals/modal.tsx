@@ -103,7 +103,7 @@ interface DialogFooterProps {
 const DialogFooter = ({ children, className }: DialogFooterProps) => (
   <div
     className={cx(
-      'tw:z-10 tw:mt-6 tw:sm:mt-8 tw:border-t tw:border-secondary',
+      'tw:z-10 tw:mt-6 tw:sm:mt-8 tw:border-t tw:border-subtle',
       className
     )}>
     <div className="tw:flex tw:flex-1 tw:gap-3 tw:sm:px-6 tw:px-4 tw:py-4 tw:justify-end">
@@ -153,7 +153,7 @@ const DialogBase = ({
     {({ close }) => (
       <div
         className={cx(
-          'tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl',
+          'tw:relative tw:w-full tw:rounded-2xl tw:bg-overlay-surface tw:shadow-overlay',
           panelClassName
         )}
         style={{ maxWidth: width }}>
@@ -165,7 +165,7 @@ const DialogBase = ({
                 title={title}
               />
               <div className="tw:h-5 tw:w-full" />
-              <div className="tw:w-full tw:border-t tw:border-secondary" />
+              <div className="tw:w-full tw:border-t tw:border-subtle" />
             </>
           )}
           {children}

@@ -378,6 +378,17 @@ export const SERVICE_CREATOR_RULES: PolicyRulesType[] = [
     effect: 'allow',
     condition: 'isOwner()',
   },
+  // Creating a service surfaces the ingestion-runner picker, which lists
+  // runners from the permission-gated `ingestionRunner` resource. Without a
+  // view grant the dropdown never populates for this restricted user, so the
+  // Collate SaaS Runner option can't be selected. (Inert where the resource
+  // isn't registered — the rule only matches a registered resource.)
+  {
+    name: 'IngestionRunner-View-Rule',
+    resources: ['ingestionRunner'],
+    operations: ['ViewAll'],
+    effect: 'allow',
+  },
 ];
 
 export const SERVICE_VIEWER_RULES: PolicyRulesType[] = [
