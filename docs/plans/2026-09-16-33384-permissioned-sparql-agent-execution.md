@@ -253,9 +253,10 @@ internals). Shared HTTP statuses must not collapse distinct machine-readable cod
   materialized result string and checks its size afterward — wrapping that call cannot
   bound memory, and once HTTP 200 headers commit, overflow can no longer become a
   structured error. Plan an explicit shared result-production change: serialize the agent
-  response (full envelope — bindings **plus** head/metadata, not bindings alone) into a
-  bounded buffer **before** committing headers, returning `RESULT_OUTPUT_LIMIT_EXCEEDED`
-  when the envelope exceeds 10 MiB. Keep the admin path's behavior unchanged; if the
+  response (full envelope — bindings **plus** head/metadata, not bindings alone) and check
+  the serialized size **before** committing headers, returning `RESULT_OUTPUT_LIMIT_EXCEEDED`
+  when the envelope exceeds 10 MiB. Serialization memory itself is not bounded (ADR §5).
+  Keep the admin path's behavior unchanged; if the
   refactor must touch shared code, cover it with the existing admin regression tests.
   **v1 scope (ADR §5, §8):** the storage layer's materialized result and existing
   `requireBoundedOutput` check stay; no streaming/memory-bounded storage refactor.
@@ -348,9 +349,11 @@ mvn -o -pl openmetadata-integration-tests verify -Ppostgres-rdf-tests \
   permitted/unauthorized matrix, bot-JWT + `X-Impersonate-User` attribution to the effective
   user, dual-identity audit (`serviceActor=<bot> effectiveUser=<user>` in
   `AgentSparqlAudit`), per-effective-user concurrency (guard quota keyed by effective user:
-  same user shares one quota across callers, distinct users are independent — unit-proven
-  in `SparqlQueryExecutionGuardTest` plus the forwarding assertion in
-  `AgentSparqlServiceTest`), pre-resource 401/403 mapping with the neighboring admin
+  the same user shares one quota across callers, while users on different stripes are
+  independent — unit-proven in `SparqlQueryExecutionGuardTest` plus the forwarding
+  assertion in `AgentSparqlServiceTest`). Limitation: the guard stripes 64 hash buckets
+  over 2-permit semaphores, so two different users can collide on one stripe and share
+  it; no guard redesign in this ticket. Pre-resource 401/403 mapping with the neighboring admin
   endpoint's `ErrorMessage` shape unchanged, parsed-query rejections, fixture
   joins/aggregates/typed bindings, LIMIT/OFFSET/completeness boundaries, and readiness
   transitions.

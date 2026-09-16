@@ -141,8 +141,9 @@ class SparqlQueryExecutionGuardTest {
               () -> guard.execute("alice", () -> awaitRelease(started, release)), callerExecutor);
 
       assertTrue(started.await(1, TimeUnit.SECONDS));
-      // An impersonated second user is keyed independently of the first: the bot they share
-      // never enters the quota key, so alice's exhausted permit does not block bob.
+      // A second user on another stripe is keyed independently of the first: only the
+      // effective-user string enters the quota key, so alice's exhausted permit does not
+      // block bob. (Two different users can still collide on one stripe and share it.)
       assertEquals("bob", guard.execute(bob, () -> "bob"));
       release.countDown();
       assertEquals("finished", active.get(1, TimeUnit.SECONDS));

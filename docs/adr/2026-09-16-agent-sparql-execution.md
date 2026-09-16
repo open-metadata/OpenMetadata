@@ -226,10 +226,10 @@ itself fails closed to degraded when health cannot be read).
   Subquery/aggregate semantics are never rewritten to probe; unprovable shapes return
   `UNKNOWN`. Protective ceiling applies after OFFSET; explicit limits above the maximum
   are rejected.
-- **Bounded response output:** the agent path serializes the full envelope (head + bindings +
-  metadata) into a byte-capped buffer **before** any headers are committed, so overflow
-  returns structured `RESULT_OUTPUT_LIMIT_EXCEEDED` rather than cut-off JSON or a committed
-  200. The storage layer already materializes the backend result as a string and the shared
+- **Bounded response output:** the serialized response size is checked **before** any
+  headers are committed, so overflow returns structured `RESULT_OUTPUT_LIMIT_EXCEEDED`
+  rather than cut-off JSON or a committed 200; serialization memory is not bounded. The
+  storage layer already materializes the backend result as a string and the shared
   `SparqlQueryLimits.requireBoundedOutput` check runs on it (`RdfSparqlService.java:97-100`,
   `JenaFusekiStorage.java:1429-1442`); v1 keeps that and does **not** add streaming,
   memory-bounded result production in the storage layer (§8). Admin-path behavior stays
