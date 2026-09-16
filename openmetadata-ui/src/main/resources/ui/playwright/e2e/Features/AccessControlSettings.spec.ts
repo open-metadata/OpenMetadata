@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import {
   DEFAULT_POLICIES,
@@ -22,6 +21,15 @@ import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { expect, test } from '../../support/fixtures/base';
 import {
+  clickDetailTab,
+  navigateToPoliciesPanel,
+  navigateToPolicyDetail,
+  navigateToRoleDetail,
+  navigateToRolesPanel,
+  openAccessControlSettings,
+  waitUntilAccessible,
+} from '../../utils/accessControl';
+import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -29,105 +37,6 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { getElementWithPagination } from '../../utils/roles';
-import { enableAiAppMode } from '../Utils/appMode';
-
-// ─── API polling helper ───────────────────────────────────────────────────────
-
-const waitUntilAccessible = async (
-  apiContext: APIRequestContext,
-  path: string,
-  timeout = 10_000
-) => {
-  const intervals = [200, 500, 1_000, 2_000];
-  const start = Date.now();
-  let i = 0;
-  while (Date.now() - start < timeout) {
-    const r = await apiContext.get(path);
-    if (r.ok()) return;
-    await new Promise((res) =>
-      setTimeout(res, intervals[Math.min(i++, intervals.length - 1)])
-    );
-  }
-  throw new Error(`API path "${path}" not accessible after ${timeout}ms`);
-};
-
-// ─── Navigation helpers ───────────────────────────────────────────────────────
-
-/**
- * Enable AI app mode, navigate home, then open the personal-space modal and
- * navigate to the Access Control section.
- *
- * NOTE: This function calls redirectToHomePage internally, which populates
- * IndexedDB with the auth token. Call getApiContext AFTER this function, or
- * call redirectToHomePage first before getApiContext when pre-creating API data.
- */
-const openAccessControlSettings = async (page: Page): Promise<void> => {
-  await enableAiAppMode(page);
-  await redirectToHomePage(page);
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('ask-ai-user-menu-trigger').click();
-  await page.getByTestId('ai-user-menu-profile').click();
-  await page.getByTestId('ai-profile-page').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('profile-nav-access-control').click();
-  await page
-    .getByTestId('access-control-landing')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const navigateToRolesPanel = async (page: Page): Promise<void> => {
-  await page.getByTestId('access-control-card-roles').click();
-  await page.getByTestId('roles-list-container').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const navigateToPoliciesPanel = async (page: Page): Promise<void> => {
-  await page.getByTestId('access-control-card-policies').click();
-  await page
-    .getByTestId('policies-list-container')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-/**
- * Use getElementWithPagination scoped to the roles container to avoid strict-mode
- * violations from other paginated components on the page.
- */
-const navigateToRoleDetail = async (
-  page: Page,
-  roleName: string
-): Promise<void> => {
-  const container = page.getByTestId('roles-list-container');
-  const roleRow = container.getByTestId(`role-${roleName}`);
-  await getElementWithPagination(page, roleRow, false, 50, container);
-  await roleRow.getByTestId('role-name').click();
-  await page.getByTestId('role-detail-container').waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-/**
- * Use getElementWithPagination scoped to the policies container to avoid strict-mode
- * violations from other paginated components on the page.
- */
-const navigateToPolicyDetail = async (
-  page: Page,
-  policyName: string
-): Promise<void> => {
-  const container = page.getByTestId('policies-list-container');
-  const policyRow = container.getByTestId(`policy-${policyName}`);
-  await getElementWithPagination(page, policyRow, false, 50, container);
-  await policyRow.getByTestId('policy-name').click();
-  await page
-    .getByTestId('policy-detail-container')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const clickDetailTab = async (page: Page, tabText: string): Promise<void> => {
-  await page.getByRole('tab', { name: new RegExp(tabText, 'i') }).click();
-  await waitForAllLoadersToDisappear(page);
-};
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
@@ -260,11 +169,14 @@ test.describe(
       });
 
       await test.step('Submit and verify via toast', async () => {
-        const responsePromise = page.waitForResponse((r) =>
-          r.url().includes('/api/v1/roles')
+        const responsePromise = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/roles') &&
+            r.request().method() === 'POST'
         );
         await page.getByTestId('submit-btn').click();
-        await responsePromise;
+        const createResponse = await responsePromise;
+        expect(createResponse.status()).toBe(201);
 
         // No search in the list — verify via success toast
         await toastNotification(page, /successfully/i);
@@ -388,7 +300,8 @@ test.describe(
           .getByTestId('role-detail-container')
           .getByRole('button', { name: 'Save' })
           .click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Verify description updated', async () => {
@@ -442,7 +355,8 @@ test.describe(
           .getByTestId('profile-content-header')
           .getByRole('button', { name: 'Save' })
           .click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Verify new display name is shown', async () => {
@@ -504,7 +418,8 @@ test.describe(
           .getByTestId('role-detail-container')
           .getByRole('button', { name: 'Save' })
           .click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Verify new policy appears in the table', async () => {
@@ -567,7 +482,8 @@ test.describe(
             r.request().method() === 'PATCH'
         );
         await page.getByTestId('confirm-button').click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Policy is no longer listed', async () => {
@@ -637,7 +553,8 @@ test.describe(
         await page.getByTestId(`remove-${adminUser.name}`).click();
         await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
         await page.getByTestId('confirm-button').click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('User row is gone', async () => {
@@ -692,7 +609,8 @@ test.describe(
             r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
-        await deletePromise;
+        const deleteResponse = await deletePromise;
+        expect(deleteResponse.status()).toBe(200);
         await toastNotification(page, /successfully/i);
       });
 
@@ -733,7 +651,8 @@ test.describe(
             r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
-        await deletePromise;
+        const deleteResponse = await deletePromise;
+        expect(deleteResponse.status()).toBe(200);
         await page
           .getByTestId('roles-list-container')
           .waitFor({ state: 'visible' });
@@ -832,11 +751,14 @@ test.describe(
       });
 
       await test.step('Submit and verify via toast', async () => {
-        const responsePromise = page.waitForResponse((r) =>
-          r.url().includes('/api/v1/policies')
+        const responsePromise = page.waitForResponse(
+          (r) =>
+            r.url().includes('/api/v1/policies') &&
+            r.request().method() === 'POST'
         );
         await page.getByTestId('submit-btn').click();
-        await responsePromise;
+        const createResponse = await responsePromise;
+        expect(createResponse.status()).toBe(201);
 
         // No search in the list — verify via success toast
         await toastNotification(page, /successfully/i);
@@ -984,7 +906,8 @@ test.describe(
           .getByTestId('policy-detail-container')
           .getByRole('button', { name: 'Save' })
           .click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Verify description updated', async () => {
@@ -1038,7 +961,8 @@ test.describe(
           .getByTestId('profile-content-header')
           .getByRole('button', { name: 'Save' })
           .click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Verify new display name is shown', async () => {
@@ -1142,7 +1066,8 @@ test.describe(
           .getByTestId('policy-detail-container')
           .getByRole('button', { name: 'Save' })
           .click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
         await expect(page.getByTestId(`rule-${newRuleName}`)).toBeVisible();
         // Original seeded rule is still present
         await expect(
@@ -1198,7 +1123,8 @@ test.describe(
           .getByTestId('policy-detail-container')
           .getByRole('button', { name: 'Save' })
           .click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Verify updated rule card appears', async () => {
@@ -1249,7 +1175,8 @@ test.describe(
             r.request().method() === 'PATCH'
         );
         await page.getByTestId(`delete-rule-${extraRuleName}`).click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Rule card is gone', async () => {
@@ -1316,7 +1243,8 @@ test.describe(
             r.request().method() === 'PATCH'
         );
         await page.getByTestId('confirm-button').click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Role row is gone', async () => {
@@ -1403,7 +1331,8 @@ test.describe(
             r.request().method() === 'PATCH'
         );
         await page.getByTestId('confirm-button').click();
-        await patchPromise;
+        const patchResponse = await patchPromise;
+        expect(patchResponse.status()).toBe(200);
       });
 
       await test.step('Team row is gone', async () => {
@@ -1458,7 +1387,8 @@ test.describe(
             r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
-        await deletePromise;
+        const deleteResponse = await deletePromise;
+        expect(deleteResponse.status()).toBe(200);
         await toastNotification(page, /successfully/i);
       });
 
@@ -1499,7 +1429,8 @@ test.describe(
             r.request().method() === 'DELETE'
         );
         await page.getByTestId('confirm-button').click();
-        await deletePromise;
+        const deleteResponse = await deletePromise;
+        expect(deleteResponse.status()).toBe(200);
         await page
           .getByTestId('policies-list-container')
           .waitFor({ state: 'visible' });

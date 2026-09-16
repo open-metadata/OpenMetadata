@@ -49,6 +49,7 @@ const AccessControlDebuggerPanel: FC = () => {
   const [userOptions, setUserOptions] = useState<SelectItemType[]>([]);
 
   const permissionRequestIdRef = useRef(0);
+  const evaluationRequestIdRef = useRef(0);
 
   // Evaluation form state
   const [formResource, setFormResource] = useState<string | null>(null);
@@ -100,6 +101,7 @@ const AccessControlDebuggerPanel: FC = () => {
     const requestId = ++permissionRequestIdRef.current;
     setSelectedUsername(username);
     setPermissionInfo(undefined);
+    setEvaluationInfo(undefined);
     setLoadingPermissions(true);
     try {
       const response = await getPermissionDebugInfo(username);
@@ -148,6 +150,7 @@ const AccessControlDebuggerPanel: FC = () => {
       return;
     }
 
+    const requestId = ++evaluationRequestIdRef.current;
     setLoadingEvaluation(true);
     try {
       const response = await evaluatePermission(
@@ -156,11 +159,17 @@ const AccessControlDebuggerPanel: FC = () => {
         formOperation as Operation,
         formResourceId || undefined
       );
-      setEvaluationInfo(response.data);
+      if (requestId === evaluationRequestIdRef.current) {
+        setEvaluationInfo(response.data);
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (requestId === evaluationRequestIdRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setLoadingEvaluation(false);
+      if (requestId === evaluationRequestIdRef.current) {
+        setLoadingEvaluation(false);
+      }
     }
   };
 
