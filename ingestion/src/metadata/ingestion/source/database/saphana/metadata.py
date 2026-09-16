@@ -12,10 +12,13 @@
 SAP Hana source module
 """
 
+import re
 import traceback
 from collections.abc import Iterable
+from typing import Any
 
 from sqlalchemy import text
+from sqlalchemy.engine import Connection
 from sqlalchemy_hana.dialect import HANAHDBCLIDialect
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
@@ -59,6 +62,37 @@ def _is_disconnect(self, e, connection, cursor):
 
 
 HANAHDBCLIDialect.is_disconnect = _is_disconnect
+
+
+# Mirrors the Redshift guard, so a definition that already names its target is left alone.
+_CREATE_VIEW = re.compile(r"CREATE\s+(OR\s+REPLACE\s+)?(MATERIALIZED\s+)?VIEW", re.IGNORECASE)
+_sqlalchemy_hana_get_view_definition = HANAHDBCLIDialect.get_view_definition
+
+
+def _get_view_definition(
+    self: HANAHDBCLIDialect,
+    connection: Connection,
+    view_name: str,
+    schema: str | None = None,
+    **kw: Any,
+) -> str | None:
+    # SYS.VIEWS.DEFINITION holds the SELECT body alone, without the CREATE VIEW that names
+    # what it populates. The lineage parser only derives column-level pairs once the
+    # statement has a target, so a bare SELECT produces a table-level edge and every SAP
+    # HANA view loses its column lineage. Vertica and Redshift add the same prefix for the
+    # same reason. Done here rather than in the lineage pass so the definition OpenMetadata
+    # stores is the one that was parsed.
+    definition = _sqlalchemy_hana_get_view_definition(self, connection, view_name, schema=schema, **kw)
+    if not definition or _CREATE_VIEW.search(definition):
+        return definition
+
+    # Quoted because HANA names are case sensitive and routinely carry characters,
+    # hyphens above all, that would otherwise end the identifier early.
+    qualified = f'"{schema or self.default_schema_name}"."{view_name}"'
+    return f"CREATE VIEW {qualified} AS {definition}"
+
+
+HANAHDBCLIDialect.get_view_definition = _get_view_definition
 
 
 class SaphanaSource(CommonDbSourceService):

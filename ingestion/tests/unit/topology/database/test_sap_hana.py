@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 from sqlalchemy.exc import DBAPIError, ProgrammingError
+from sqlalchemy_hana.dialect import HANAHDBCLIDialect
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -64,6 +65,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
 from metadata.ingestion.source.database.saphana import lineage as saphana_lineage
+from metadata.ingestion.source.database.saphana import metadata as saphana_metadata
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
@@ -2011,11 +2013,15 @@ def test_a_view_definition_becomes_a_lineage_edge() -> None:
 
     source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processQueryLineage=False, threads=1))
 
+    # As metadata ingestion stores it: the dialect names the target, without which the
+    # parser has nothing to attach column pairs to.
     view = TableView(
         table_name="LT_V_CUSTOMER_SIMPLE",
         schema_name="GE370603",
         db_name="H00",
-        view_definition='SELECT CUSTOMER_ID, CUSTOMER_NAME FROM "LT_CUSTOMER"',
+        view_definition=(
+            'CREATE VIEW "GE370603"."LT_V_CUSTOMER_SIMPLE" AS SELECT CUSTOMER_ID, CUSTOMER_NAME FROM "LT_CUSTOMER"'
+        ),
     )
 
     def table(name: str) -> Table:
@@ -2063,6 +2069,23 @@ def test_a_view_definition_becomes_a_lineage_edge() -> None:
     assert isinstance(request, OMetaFQNLineageRequest)
     assert request.from_entity_fqn == "test_sap_hana.H00.GE370603.LT_CUSTOMER"
     assert request.to_entity_fqn == "test_sap_hana.H00.GE370603.LT_V_CUSTOMER_SIMPLE"
+
+    # Column level lineage is the reason the definition is given a target at all, so a
+    # table-level edge alone means the wrapping has stopped working.
+    pairs = sorted(
+        (model_str(column.toColumn), [model_str(source) for source in column.fromColumns or []])
+        for column in (request.lineage_details.columnsLineage or [])
+    )
+    assert pairs == [
+        (
+            "test_sap_hana.H00.GE370603.LT_V_CUSTOMER_SIMPLE.CUSTOMER_ID",
+            ["test_sap_hana.H00.GE370603.LT_CUSTOMER.CUSTOMER_ID"],
+        ),
+        (
+            "test_sap_hana.H00.GE370603.LT_V_CUSTOMER_SIMPLE.CUSTOMER_NAME",
+            ["test_sap_hana.H00.GE370603.LT_CUSTOMER.CUSTOMER_NAME"],
+        ),
+    ]
 
 
 def test_a_non_database_failure_is_not_disguised_as_a_privilege_error() -> None:
@@ -2184,3 +2207,53 @@ def test_a_reported_query_failure_is_not_talked_over() -> None:
 
     assert any(either.left is not None for either in results)
     warning.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        (
+            "SELECT A FROM T",
+            'CREATE VIEW "GE370603"."LT_V" AS SELECT A FROM T',
+        ),
+        # Already named, so prefixing again would nest one CREATE inside another.
+        (
+            "CREATE VIEW X AS SELECT A FROM T",
+            "CREATE VIEW X AS SELECT A FROM T",
+        ),
+        ("CREATE OR REPLACE VIEW X AS SELECT A FROM T", "CREATE OR REPLACE VIEW X AS SELECT A FROM T"),
+        (None, None),
+    ],
+)
+def test_view_definitions_are_given_a_target(stored: str | None, expected: str | None) -> None:
+    """SYS.VIEWS.DEFINITION stores the SELECT body without the CREATE VIEW that names it.
+
+    The parser only derives column-level pairs once a statement has a target, so a bare
+    SELECT costs every SAP HANA view its column lineage. Vertica and Redshift prefix the
+    same way for the same reason.
+    """
+    dialect = HANAHDBCLIDialect()
+    dialect.default_schema_name = "GE370603"
+
+    with patch.object(saphana_metadata, "_sqlalchemy_hana_get_view_definition", return_value=stored) as upstream:
+        result = saphana_metadata._get_view_definition(dialect, MagicMock(), "LT_V", schema="GE370603")
+
+    assert upstream.called
+    assert result == expected
+
+
+def test_a_named_view_definition_yields_column_pairs() -> None:
+    """The prefix exists for column lineage, so assert that is what it buys.
+
+    A bare SELECT resolves no target, and the shared path then emits a table-level edge
+    with no column pairs at all. This is the behaviour the whole change turns on.
+    """
+    bare = 'SELECT CUSTOMER_ID, CUSTOMER_NAME FROM "LT_CUSTOMER"'
+    named = f'CREATE VIEW "GE370603"."LT_V" AS {bare}'
+
+    assert LineageParser(bare, Dialect.ANSI, timeout_seconds=30).target_tables == []
+    assert not LineageParser(bare, Dialect.ANSI, timeout_seconds=30).column_lineage
+
+    parsed = LineageParser(named, Dialect.ANSI, timeout_seconds=30)
+    assert [str(target) for target in parsed.target_tables] == ["ge370603.lt_v"]
+    assert len(parsed.column_lineage) == 2
