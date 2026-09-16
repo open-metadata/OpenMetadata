@@ -132,10 +132,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     label?: React.ReactNode;
     required?: boolean;
   }) => (
-    <label>
+    <span>
       {label}
       {required && ' *'}
-    </label>
+    </span>
   ),
   HintText: ({
     children,
