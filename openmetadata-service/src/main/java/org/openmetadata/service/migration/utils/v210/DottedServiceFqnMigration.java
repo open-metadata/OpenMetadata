@@ -63,9 +63,10 @@ public final class DottedServiceFqnMigration {
 
   private DottedServiceFqnMigration() {}
 
-  // Bound the per-service work into fixed-size units: one batched read per chunk, capped rows in
-  // memory, so a large dotted-name-service catalog does not become one unbounded pass.
-  private static final int BATCH_SIZE = 100;
+  // Cap how many child entities are materialized at once. findEntitiesByIds chunks the SQL IN-list
+  // internally, so this only bounds in-memory rows per unit (kept large to avoid extra round
+  // trips).
+  private static final int BATCH_SIZE = 1000;
 
   private enum RepairOutcome {
     FIXED,
