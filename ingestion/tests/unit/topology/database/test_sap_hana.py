@@ -1508,6 +1508,12 @@ def test_query_history_statement_formats_into_valid_sql() -> None:
     ):
         assert f"AS {column}" in sql
 
+    # database_name has to resolve to the real database rather than being selected as
+    # NULL, because it becomes the database level of every FQN the parsed lineage
+    # resolves against. Nulled, the edges have nowhere to land.
+    assert "(SELECT DATABASE_NAME FROM SYS.M_DATABASE) AS database_name" in sql
+    assert "NULL AS database_name" not in sql
+
     assert "SYS.M_SQL_PLAN_CACHE" in sql
     assert "LIMIT 100" in sql
     # Escaped literal braces must not leak through as format placeholders.
@@ -1731,9 +1737,11 @@ def test_plan_cache_row_becomes_a_table_query() -> None:
             return dict(self)
 
     # The aliases here are exactly the ones SAPHANA_QUERY_HISTORY_STATEMENT selects.
+    # database_name carries what M_DATABASE reports, which becomes the database level of
+    # every FQN the parsed lineage resolves against. Left null, the edges land nowhere.
     row = Row(
         user_name=None,
-        database_name=None,
+        database_name="H00",
         schema_name="GE370603",
         aborted=None,
         query_text=statement,
@@ -1752,6 +1760,7 @@ def test_plan_cache_row_becomes_a_table_query() -> None:
 
     assert len(queries) == 1
     assert queries[0].query == statement
+    assert queries[0].databaseName == "H00"
     assert queries[0].databaseSchema == "GE370603"
     assert queries[0].serviceName == "test_sap_hana"
     # No HANA dialect exists, so the connector must hand the parser ANSI.
