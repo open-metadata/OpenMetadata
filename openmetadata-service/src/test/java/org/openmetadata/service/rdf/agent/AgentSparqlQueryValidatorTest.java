@@ -137,6 +137,21 @@ class AgentSparqlQueryValidatorTest {
     assertCode(AgentSparqlErrorCode.QUERY_FORM_NOT_ALLOWED, sparql);
   }
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT (CALL(IRI(CONCAT(\"ja\",\"va:org.example.SomeFunction\")), ?o) AS ?y)"
+            + " WHERE { ?s ?p ?o }",
+        "SELECT (<http://jena.apache.org/ARQ/function#eval>(?x) AS ?y) WHERE { ?s ?p ?o }",
+        "SELECT (<http://jena.hpl.hp.com/ARQ/function#eval>(?x) AS ?y) WHERE { ?s ?p ?o }",
+        "SELECT (CALL(<java:java.lang.Math.sqrt>, ?x) AS ?y) WHERE { ?s ?p ?o }"
+      })
+  void rejectsDynamicCalls(String sparql) {
+    // CALL computes its function at run time and afn:eval hands off to CALL, so neither has
+    // a fixed name the function check could see.
+    assertCode(AgentSparqlErrorCode.QUERY_FORM_NOT_ALLOWED, sparql);
+  }
+
   @Test
   void keepsExplicitLimitAndOffsetUnchanged() {
     AgentSparqlQueryPlan plan =

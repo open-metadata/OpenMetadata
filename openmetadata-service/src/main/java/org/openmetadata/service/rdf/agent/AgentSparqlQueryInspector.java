@@ -19,6 +19,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.SortCondition;
 import org.apache.jena.sparql.core.TriplePath;
+import org.apache.jena.sparql.expr.E_Call;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.ExprAggregator;
 import org.apache.jena.sparql.expr.ExprFunction;
@@ -90,6 +91,11 @@ final class AgentSparqlQueryInspector extends ElementVisitorBase {
   }
 
   private void inspectExpr(final Expr expr) {
+    if (expr instanceof E_Call) {
+      // The function name is computed at run time and resolved through the same registry
+      // that loads java: classes, so there is no fixed name to check.
+      throw formNotAllowed("CALL is not allowed");
+    }
     if (expr instanceof ExprFunctionOp patternExpr) {
       inspectElement(patternExpr.getElement());
     }
@@ -98,6 +104,7 @@ final class AgentSparqlQueryInspector extends ElementVisitorBase {
     }
     if (expr instanceof ExprFunction function) {
       rejectJavaScheme(function.getFunctionIRI());
+      rejectEval(function.getFunctionIRI());
       function.getArgs().forEach(this::inspectExpr);
     }
   }
@@ -181,6 +188,17 @@ final class AgentSparqlQueryInspector extends ElementVisitorBase {
     if (iri != null && iri.toLowerCase(Locale.ROOT).startsWith("java:")) {
       throw new AgentSparqlException(
           AgentSparqlErrorCode.QUERY_FORM_NOT_ALLOWED, "java: extension calls are not allowed");
+    }
+  }
+
+  private static final String ARQ_FUNCTION_LIBRARY = "http://jena.apache.org/ARQ/function#";
+  private static final String ARQ_FUNCTION_LIBRARY_LEGACY = "http://jena.hpl.hp.com/ARQ/function#";
+
+  private static void rejectEval(final String iri) {
+    if (iri != null
+        && (iri.equals(ARQ_FUNCTION_LIBRARY + "eval")
+            || iri.equals(ARQ_FUNCTION_LIBRARY_LEGACY + "eval"))) {
+      throw formNotAllowed("eval functions are not allowed");
     }
   }
 
@@ -272,5 +290,9 @@ final class AgentSparqlQueryInspector extends ElementVisitorBase {
 
   private static AgentSparqlException graphSelection(final String message) {
     return new AgentSparqlException(AgentSparqlErrorCode.GRAPH_SELECTION_NOT_ALLOWED, message);
+  }
+
+  private static AgentSparqlException formNotAllowed(final String message) {
+    return new AgentSparqlException(AgentSparqlErrorCode.QUERY_FORM_NOT_ALLOWED, message);
   }
 }
