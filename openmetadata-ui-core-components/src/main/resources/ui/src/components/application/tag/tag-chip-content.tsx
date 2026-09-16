@@ -63,7 +63,9 @@ export const TagChipContent: FC<TagChipContentProps> = ({
 
   const labelNode = (
     <div style={{ maxWidth }}>
-      <span className={cx('tw:block tw:truncate', labelClassName)}>{label}</span>
+      <span className={cx('tw:block tw:truncate', labelClassName)}>
+        {label}
+      </span>
     </div>
   );
 
