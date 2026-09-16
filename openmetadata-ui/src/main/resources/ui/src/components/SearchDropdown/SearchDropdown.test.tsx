@@ -279,6 +279,41 @@ describe('Search DropDown Component', () => {
     });
   });
 
+  it('Should apply an external selectedKeys change that arrives while open', async () => {
+    // Explore quick filters stay mounted and open across query-string-only
+    // navigation. When that navigation clears the filter, Update must not write
+    // the stale local selection back.
+    mockOnChange.mockClear();
+
+    const { rerender } = render(
+      <SearchDropdown
+        {...mockProps}
+        singleSelect
+        selectedKeys={[{ key: 'User 1', label: 'User 1' }]}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('search-dropdown-Owner'));
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    await act(async () => {
+      rerender(
+        <SearchDropdown {...mockProps} singleSelect selectedKeys={[]} />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('update-btn'));
+    });
+
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith([], 'owner.displayName');
+    });
+  });
+
   it('Selected option should unselect on next click', async () => {
     render(<SearchDropdown {...mockProps} />);
 
