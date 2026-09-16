@@ -7559,6 +7559,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/IngestionOwnersField/IngestionOwnersField.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddIngestion/Steps/ScheduleInterval.tsx"
       ],
       "specs": [
