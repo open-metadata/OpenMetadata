@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import TokenService from './Auth/TokenService/TokenServiceUtil';
+import { authCoordinator } from './Auth/AuthCoordinator';
 
 /**
  * Shared plumbing for the fetch-based SSE clients (service progress, ingestion
@@ -94,7 +94,15 @@ export const createStreamOpenHandler =
         throw new FatalStreamError('down');
       }
 
-      await TokenService.getInstance().refreshToken();
+      // A rejected refresh (no renewer registered, IdP transient failure,
+      // network blip) MUST NOT propagate raw to the caller — the stream's
+      // reconnect loop is keyed on `RetriableStreamError` vs
+      // `FatalStreamError`, and a bare Error would bypass both branches
+      // and break the "anything else is retriable" contract the docblock
+      // promises. Swallow-and-fall-through: the next attempt will re-hit
+      // the 401 with `consecutiveUnauthorized === 2` and escalate to
+      // `FatalStreamError('down')` if the refresh really is broken.
+      await authCoordinator.ensureFreshToken().catch(() => undefined);
     }
 
     throw new RetriableStreamError();
