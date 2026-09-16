@@ -29,6 +29,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
   fillDescriptionBox,
+  getApiContext,
   redirectToHomePage,
   removeSingleSelectDomain,
   toastNotification,
@@ -173,6 +174,111 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
   await expect(
     page.getByTestId('test-suite-table').getByText(tableFqn)
   ).not.toBeVisible();
+});
+
+test('Searching the bundle suites list from a later page resets to the first page', async ({
+  page,
+}) => {
+  test.slow();
+
+  const { apiContext, afterAction } = await getApiContext(page);
+  const runId = uuid();
+  // The list is sorted by last result, not relevance, so the target must be
+  // the only suite the search matches for its row to be on the first page.
+  const targetSuite = `pwpagingtarget${runId}`;
+  const suiteNames = [
+    targetSuite,
+    ...Array.from(
+      { length: 15 },
+      (_, index) => `pw-paging-suite-${runId}-${index + 1}`
+    ),
+  ];
+  const isBundleSuiteList = (url: URL) =>
+    url.pathname.endsWith('/api/v1/dataQuality/testSuites/search/list') &&
+    url.searchParams.get('testSuiteType') === 'logical';
+
+  try {
+    const createResponses = await Promise.all(
+      suiteNames.map((name) =>
+        apiContext.post('/api/v1/dataQuality/testSuites', { data: { name } })
+      )
+    );
+
+    for (const response of createResponses) {
+      expect(response.status()).toBe(201);
+    }
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            `/api/v1/dataQuality/testSuites/search/list?q=${encodeURIComponent(
+              targetSuite
+            )}&testSuiteType=logical&includeEmptyTestSuites=true`
+          );
+
+          return (await response.json())?.paging?.total ?? 0;
+        },
+        { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+      )
+      .toBeGreaterThan(0);
+
+    await test.step('Go to page 2 of the bundle suites list', async () => {
+      const listResponse = page.waitForResponse((response) =>
+        isBundleSuiteList(new URL(response.url()))
+      );
+      await page.goto('/data-quality/test-suites/bundle-suites');
+      await listResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      const nextPageResponse = page.waitForResponse((response) =>
+        isBundleSuiteList(new URL(response.url()))
+      );
+      await page.getByTestId('next').click();
+      await nextPageResponse;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('page-indicator')).toContainText('2 of');
+    });
+
+    await test.step('Search for a single suite', async () => {
+      const searchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          isBundleSuiteList(url) && url.searchParams.get('q') === targetSuite
+        );
+      });
+      await page.getByTestId('searchbar').fill(targetSuite);
+      expect((await searchResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      // Keeping the page-2 offset for this single-result search rendered the
+      // "No matching suites" empty state instead (issue #33399).
+      await expect(page.getByTestId(targetSuite)).toBeVisible();
+    });
+
+    await test.step('Clearing the search returns to the first page', async () => {
+      // No network wait: the unfiltered first page can be served from the
+      // list's 30s response cache, so the request may never be sent.
+      await page.getByTestId('searchbar').clear();
+
+      await expect(page.getByTestId('page-indicator')).toContainText('1 of');
+    });
+  } finally {
+    // Delete in parallel: a timed-out test gets a short teardown window, and
+    // serial deletes left most of these suites behind when it ran out.
+    await Promise.all(
+      suiteNames.map((name) =>
+        apiContext.delete(
+          `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+            name
+          )}?hardDelete=true&recursive=true`
+        )
+      )
+    );
+    await afterAction();
+  }
 });
 
 test(
