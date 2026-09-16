@@ -40,6 +40,10 @@ logger = ingestion_logger()
 class DatabendSource(CommonDbSourceService):
     """Extract databases, tables, views, columns, and comments from Databend."""
 
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.database_entity_source_state = set()
+
     @classmethod
     def create(
         cls,
@@ -108,6 +112,7 @@ class DatabendSource(CommonDbSourceService):
                 ingested_catalogs += 1
                 yield catalog_name
             except Exception as exc:  # pylint: disable=broad-except
+                self.database_entity_source_state.add(database_fqn)
                 stack_trace = traceback.format_exc()
                 logger.warning(f"Error trying to ingest catalog {catalog_name}: {exc}")
                 logger.debug(stack_trace)
