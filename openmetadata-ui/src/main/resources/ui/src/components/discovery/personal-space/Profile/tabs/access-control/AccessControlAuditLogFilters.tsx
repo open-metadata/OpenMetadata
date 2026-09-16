@@ -47,7 +47,6 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
 
   const botDisplayNameMap = useMemo<Record<string, string>>(
     () => ({
-      aiautomationapplicationbot: t('label.ai-automation-application-bot'),
       'autoclassification-bot': t('label.auto-classification-bot'),
       automatorapplicationbot: t('label.automator-application-bot'),
     }),
