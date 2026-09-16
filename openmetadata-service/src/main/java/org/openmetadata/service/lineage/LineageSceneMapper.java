@@ -32,9 +32,13 @@ import org.openmetadata.service.Entity;
 final class LineageSceneMapper {
   private LineageSceneMapper() {}
 
+  // dataModel is fetched as nested sub-paths (not the full object) so table-band nodes carry
+  // the dbt marker the UI needs for the dbt icon without dragging the model SQL and columns
+  // into every node payload.
   private static final String BASE_SOURCE_FIELDS =
       "id,name,displayName,fullyQualifiedName,entityType,service,serviceType,database,"
-          + "databaseSchema,domains,dataProducts,tags,tier,deleted,certification";
+          + "databaseSchema,domains,dataProducts,tags,tier,deleted,certification,"
+          + "dataModel.modelType,dataModel.resourceType";
 
   private static final String FIELD_BAND_SOURCE_FIELDS =
       BASE_SOURCE_FIELDS
@@ -297,8 +301,17 @@ final class LineageSceneMapper {
     return trimmed;
   }
 
+  // trimSourceEntity matches top-level document keys, so nested source paths
+  // ("dataModel.modelType") must be normalized to their root key ("dataModel") here.
   private static List<String> trimFields(List<String> sourceFields) {
-    List<String> fields = new ArrayList<>(sourceFields);
+    List<String> fields = new ArrayList<>();
+    for (String field : sourceFields) {
+      int dot = field.indexOf('.');
+      String topLevelField = dot == -1 ? field : field.substring(0, dot);
+      if (!fields.contains(topLevelField)) {
+        fields.add(topLevelField);
+      }
+    }
     fields.addAll(List.of("type", "lineageSceneCount", "lineageSceneSyntheticCount"));
     return List.copyOf(fields);
   }

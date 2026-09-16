@@ -798,6 +798,7 @@ class LineageSceneResolverTest {
     Map<String, Object> entity = table(ORDERS, SNOWFLAKE_SERVICE, List.of("id"));
     entity.put("owners", List.of(ref(Entity.USER, "owner", "owner")));
     entity.put("upstreamLineage", List.of(Map.of("docId", "edge-id")));
+    entity.put("dataModel", Map.of("modelType", "DBT", "resourceType", "model"));
 
     Map<String, Object> assetPayload =
         LineageSceneMapper.trimSourceEntity(entity, LineageBand.ASSET);
@@ -808,7 +809,10 @@ class LineageSceneResolverTest {
     assertFalse(assetPayload.containsKey("columns"));
     assertFalse(assetPayload.containsKey("owners"));
     assertFalse(assetPayload.containsKey("upstreamLineage"));
+    // The dbt marker must survive asset-band trimming — the UI's lineage dbt icon reads it.
+    assertTrue(assetPayload.containsKey("dataModel"));
     assertTrue(fieldPayload.containsKey("columns"));
+    assertTrue(fieldPayload.containsKey("dataModel"));
     assertFalse(fieldPayload.containsKey("upstreamLineage"));
   }
 
