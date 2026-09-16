@@ -383,3 +383,17 @@
     margin-top: @size-lg;
   }
 }
+
+// The live threshold preview sits under the parameter fields and restates, in
+// words, what the configured threshold and unit actually do.
+.test-case-form-v1 {
+  .threshold-preview {
+    display: flex;
+    flex-direction: column;
+    gap: @size-xs;
+
+    p {
+      margin-bottom: 0;
+    }
+  }
+}

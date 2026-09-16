@@ -38,6 +38,11 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../../../generated/tests/testDefinition';
+import {
+  getParamSelectOptions,
+  THRESHOLD_PARAM,
+  THRESHOLD_UNIT_PARAM,
+} from '../../../../utils/DataQuality/TestCaseThresholdUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { isSelectParam } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import {
@@ -226,9 +231,6 @@ export interface ParameterFieldsProps {
   testDefinitionDoc?: string;
 }
 
-const toSelectOptions = (values: string[]): FormSelectItem[] =>
-  values.map((value) => ({ id: value, label: value }));
-
 const ParameterFields: React.FC<ParameterFieldsProps> = ({
   form,
   definition,
@@ -345,7 +347,9 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
         placeholder: t('label.please-select-entity', { entity: label }),
         props: {
           ...baseField.props,
-          options: toSelectOptions(data.optionValues as string[]),
+          // Sentence labels; the option `id` stays the raw enum the backend
+          // stores, so nothing about the submitted value changes.
+          options: getParamSelectOptions(definition.name, data, t),
         },
       };
     }
@@ -388,9 +392,39 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     );
   }
 
+  // The threshold and the unit it is read in are one setting, so they render
+  // as one row — the unit is pulled up next to the threshold even when the
+  // definition declares it further down (tableCustomSQLQuery does).
+  const thresholdUnitParam = definition.parameterDefinition?.find(
+    (param) => param.name === THRESHOLD_UNIT_PARAM
+  );
+
   return (
     <>
       {definition.parameterDefinition?.map((data) => {
+        if (thresholdUnitParam && data.name === THRESHOLD_UNIT_PARAM) {
+          return null;
+        }
+
+        if (thresholdUnitParam && data.name === THRESHOLD_PARAM) {
+          const thresholdField = getFieldProp(data);
+          const unitField = getFieldProp(thresholdUnitParam);
+
+          return (
+            <div
+              className="tw:flex tw:items-start tw:gap-3"
+              data-testid="threshold-row"
+              key={data.name}>
+              <div className="tw:flex-1">
+                {thresholdField && getField(thresholdField)}
+              </div>
+              <div className="tw:flex-1">
+                {unitField && getField(unitField)}
+              </div>
+            </div>
+          );
+        }
+
         // Enum params (optionValues) render as a single select even when the
         // schema types them ARRAY, matching the legacy precedence.
         if (isArrayOrSet(data) && !data.optionValues?.length) {

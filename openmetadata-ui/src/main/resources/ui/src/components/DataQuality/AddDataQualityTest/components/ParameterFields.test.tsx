@@ -376,4 +376,68 @@ describe('ParameterFields', () => {
       'Selected test definition doc'
     );
   });
+  it('labels the custom SQL operator options as sentences, not symbols', () => {
+    const definition = {
+      name: 'tableCustomSQLQuery',
+      parameterDefinition: [
+        {
+          name: 'operator',
+          displayName: 'Operator',
+          dataType: TestDataType.String,
+          optionValues: ['<=', '>'],
+        },
+      ],
+    } as TestDefinition;
+
+    renderWithForm(definition);
+
+    const options = screen
+      .getAllByRole('option', { hidden: true })
+      .map((option) => option.textContent);
+
+    // The mocked `t` echoes the key back, which is the point: the label comes
+    // from the catalog while the stored id stays the raw symbol.
+    expect(options).toContain('label.threshold-operator-at-most');
+    expect(options).toContain('label.threshold-operator-more-than');
+    expect(options).not.toContain('<=');
+  });
+
+  it('renders the threshold and its unit as one row', () => {
+    const definition = {
+      name: 'columnValuesToBeNotNull',
+      parameterDefinition: [
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: TestDataType.Number,
+        },
+        {
+          name: 'dimensionFailurePolicy',
+          displayName: 'Dimension Failure Policy',
+          dataType: TestDataType.String,
+          optionValues: ['OVERALL_ONLY', 'ANY_DIMENSION'],
+        },
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: TestDataType.String,
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as TestDefinition;
+
+    renderWithForm(definition);
+
+    const thresholdRow = screen.getByTestId('threshold-row');
+
+    // The unit is declared after `dimensionFailurePolicy` but renders beside
+    // the threshold it qualifies, and only once.
+    expect(thresholdRow).toContainElement(
+      screen.getByTestId('parameter-threshold')
+    );
+    expect(thresholdRow).toContainElement(
+      screen.getByTestId('parameter-thresholdUnit')
+    );
+    expect(screen.getAllByTestId('parameter-thresholdUnit')).toHaveLength(1);
+  });
 });

@@ -27,8 +27,17 @@ import {
 import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { TFunction } from 'i18next';
 import { debounce, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -47,7 +56,10 @@ import { ResourceEntity } from '../../../../context/PermissionProvider/Permissio
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
-import { Table } from '../../../../generated/entity/data/table';
+import {
+  Table,
+  TableProfilerConfig,
+} from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   EntityType,
@@ -59,7 +71,10 @@ import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
+import {
+  getTableDetailsByFQN,
+  getTableProfilerConfig,
+} from '../../../../rest/tableAPI';
 import {
   getListTestCaseBySearch,
   getListTestDefinitions,
@@ -70,6 +85,10 @@ import {
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
+import {
+  getThresholdPreview,
+  hasThresholdUnitParam,
+} from '../../../../utils/DataQuality/TestCaseThresholdUtils';
 import { getDimensionSelectOptions } from '../../../../utils/DataQualityDimensionUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
@@ -244,6 +263,59 @@ const CustomQueryToggle: FC<{
   </div>
 );
 
+/**
+ * Live, plain-English restatement of what the configured threshold does, so
+ * the meaning of `threshold` + `thresholdUnit` is never left to the user to
+ * infer from two raw controls. Watches `params` so it follows every keystroke.
+ */
+const ThresholdPreview: FC<{
+  form: UseFormReturn<FormValues>;
+  definition: TestDefinition;
+  target?: string;
+  profilerConfig?: TableProfilerConfig;
+  t: TFunction;
+}> = ({ form, definition, target, profilerConfig, t }) => {
+  const params = useWatch({ control: form.control, name: 'params' });
+
+  const preview = useMemo(
+    () =>
+      getThresholdPreview(
+        {
+          definition,
+          params: (params ?? {}) as Record<string, unknown>,
+          target,
+          profileSample: profilerConfig?.profileSample,
+          profileSampleType: profilerConfig?.profileSampleType,
+        },
+        t
+      ),
+    [definition, params, target, profilerConfig, t]
+  );
+
+  if (!preview) {
+    return null;
+  }
+
+  return (
+    <div className="threshold-preview" data-testid="threshold-preview">
+      <FormItemLabel label={t('label.preview')} />
+      <p data-testid="threshold-preview-sentence">{preview.sentence}</p>
+      {preview.samplingNote && (
+        <p className="text-grey-muted" data-testid="threshold-sampling-warning">
+          {preview.samplingNote}
+        </p>
+      )}
+      {preview.zeroBoundWarning && (
+        <Alert
+          data-testid="threshold-zero-bound-warning"
+          title={preview.zeroBoundWarning}
+          variant="warning"
+        />
+      )}
+    </div>
+  );
+};
+
 const TestTypeCard: FC<{
   isEditMode: boolean;
   selectedTestLevel: TestLevel;
@@ -262,6 +334,7 @@ const TestTypeCard: FC<{
   isComputeRowCountFieldVisible: boolean;
   computeRowCountField: FieldProp;
   dataQualityDimensionField: FieldProp;
+  thresholdPreview: ReactNode;
 }> = ({
   isEditMode,
   selectedTestLevel,
@@ -280,6 +353,7 @@ const TestTypeCard: FC<{
   isComputeRowCountFieldVisible,
   computeRowCountField,
   dataQualityDimensionField,
+  thresholdPreview,
 }) => (
   <div
     className="form-card-section test-type-card test-type-section"
@@ -315,6 +389,7 @@ const TestTypeCard: FC<{
             selectedTestDefinition.description
           )}
         />
+        {thresholdPreview}
       </div>
     )}
 
@@ -1390,6 +1465,44 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
+  // A threshold is measured on whatever the profiler actually reads, so the
+  // preview has to say when that is a sample. `tableProfilerConfig` is not a
+  // `fields` option on GET /tables, hence its own request — and it is only
+  // worth making for a test that has a threshold at all. Any failure (most
+  // likely a missing ViewDataProfile permission) just drops the note.
+  const [tableProfilerConfig, setTableProfilerConfig] =
+    useState<TableProfilerConfig>();
+  const profiledTableId = hasThresholdUnitParam(selectedTestDefinition)
+    ? selectedTableData?.id
+    : undefined;
+
+  useEffect(() => {
+    if (!profiledTableId) {
+      setTableProfilerConfig(undefined);
+
+      return;
+    }
+
+    let cancelled = false;
+    const fetchProfilerConfig = async () => {
+      try {
+        const response = await getTableProfilerConfig(profiledTableId);
+        if (!cancelled) {
+          setTableProfilerConfig(response?.tableProfilerConfig);
+        }
+      } catch {
+        if (!cancelled) {
+          setTableProfilerConfig(undefined);
+        }
+      }
+    };
+    fetchProfilerConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profiledTableId]);
+
   const canShowSchedulerSection = getCanShowSchedulerSection(
     showOnlyParameter,
     isEditMode,
@@ -1449,6 +1562,21 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         showParameterFields={showParameterFields}
         t={t}
         testTypeField={testTypeField}
+        thresholdPreview={
+          selectedTestDefinition && (
+            <ThresholdPreview
+              definition={selectedTestDefinition}
+              form={form}
+              profilerConfig={tableProfilerConfig}
+              t={t}
+              target={
+                selectedTestLevel === TestLevel.COLUMN
+                  ? selectedColumn
+                  : selectedTableData?.name ?? selectedTableFqn
+              }
+            />
+          )
+        }
       />
 
       {!showOnlyParameter && (
