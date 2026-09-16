@@ -2116,13 +2116,15 @@ def test_one_bad_statement_does_not_silence_the_diagnosis() -> None:
     rows = [TableQuery(query="INSERT INTO A SELECT * FROM B", serviceName="test_sap_hana") for _ in range(3)]
     failure = Either(left=StackTraceError(name="one statement", error="could not parse"))
 
-    def drain_producer(*_, **__):
+    # Routed through the query pass rather than injected into _iter, because that is the
+    # only place the failure can be told apart from a view one.
+    def query_pass(*_, **__):
         list(source.query_lineage_producer())
         return iter([failure])
 
     with (
         patch.object(LineageSource, "query_lineage_producer", return_value=iter(rows)),
-        patch.object(LineageSource, "_iter", side_effect=drain_producer),
+        patch.object(LineageSource, "yield_query_lineage", side_effect=query_pass),
         patch.object(saphana_lineage.logger, "warning") as warning,
     ):
         list(source._iter())
@@ -2131,6 +2133,36 @@ def test_one_bad_statement_does_not_silence_the_diagnosis() -> None:
     assert "No lineage was created from 3 analysed queries" in message
     assert "1 of which reported an error above" in message
     assert "run metadata ingestion for this service first" in message
+
+
+def test_a_view_failure_is_not_counted_as_a_failed_query() -> None:
+    """Both passes report failures the same way, so attribution has to be deliberate.
+
+    _iter sees one interleaved stream, where a failed view definition and a failed
+    statement are indistinguishable. Counting there would let the warning tell an
+    operator that a query failed when no query did.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    rows = [TableQuery(query="INSERT INTO A SELECT * FROM B", serviceName="test_sap_hana")]
+    view_failure = Either(left=StackTraceError(name="a view", error="could not parse the definition"))
+
+    def query_pass(*_, **__):
+        list(source.query_lineage_producer())
+        return iter([])
+
+    with (
+        patch.object(LineageSource, "query_lineage_producer", return_value=iter(rows)),
+        patch.object(LineageSource, "yield_query_lineage", side_effect=query_pass),
+        # The shared view pass, so the failure reaches _iter the way a real one would.
+        patch.object(LineageSource, "yield_view_lineage", return_value=iter([view_failure])),
+        patch.object(SaphanaLineageSource, "yield_cdata_lineage", return_value=iter([])),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        list(source._iter())
+
+    assert source.query_failures == 0
+    assert "reported an error above" not in warning.call_args[0][0]
 
 
 def test_a_reported_query_failure_is_not_talked_over() -> None:

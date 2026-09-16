@@ -96,6 +96,10 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
     # stays quiet rather than guessing at a cause that has already been reported.
     query_pass_failed = False
 
+    # Failures the query pass reported for individual statements. Attributed to that
+    # pass alone, because by the time _iter sees them the view failures look identical.
+    query_failures = 0
+
     # Anchored rather than wildcarded, so a SELECT that merely quotes the keyword does
     # not match. Keyword pairs allow anything between them, because SQL permits any
     # whitespace there and formatted statements routinely wrap the line.
@@ -127,18 +131,13 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         """
         self.statements_read = 0
         self.query_pass_failed = False
+        self.query_failures = 0
         sql_edges = 0
         sql_queries = 0
-        sql_failures = 0
         for either in super()._iter():
-            # A pass that reports a failure this way rather than raising still leaves the
-            # run without lineage it should have had, so the diagnosis below must not
-            # then blame the catalog.
-            if either.left:
-                sql_failures += 1
             # The shared passes wrap lineage rather than yielding AddLineageRequest
             # directly, so all three shapes have to be counted.
-            elif isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest):
+            if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest):
                 sql_edges += 1
             elif isinstance(either.right, CreateQueryRequest):
                 sql_queries += 1
@@ -186,7 +185,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 "reference have not been ingested yet, so run metadata ingestion for this service "
                 "first. If lineage has run before, the queries may simply have been processed already.",
                 self.statements_read,
-                f", {sql_failures} of which reported an error above" if sql_failures else "",
+                f", {self.query_failures} of which reported an error above" if self.query_failures else "",
             )
         # CATALOG READ governs the plan cache and nothing else, so it is only raised when
         # the query pass ran and actually read from there. A view-only run, or one reading
@@ -250,7 +249,12 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         privilege problem and quietly drop the rest of the run's query lineage.
         """
         try:
-            yield from super().yield_query_lineage()
+            for either in super().yield_query_lineage():
+                # Counted here rather than in _iter, where the shared passes are already
+                # interleaved and a view failure is indistinguishable from a query one.
+                if either.left:
+                    self.query_failures += 1
+                yield either
         except SQLAlchemyError as exc:
             self.query_pass_failed = True
             # Recorded on the workflow status, not just logged, so the run is not
