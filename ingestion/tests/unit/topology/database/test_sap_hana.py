@@ -2244,6 +2244,32 @@ def test_view_definitions_are_given_a_target(stored: str, expected: str) -> None
     assert result == expected
 
 
+@pytest.mark.parametrize(
+    ("schema", "view", "expected"),
+    [
+        ("GE370603", "my-view", '"GE370603"."my-view"'),
+        # A double quote inside a name would otherwise close the identifier early and
+        # leave the parser with SQL it cannot read, costing that view its lineage.
+        ('sales"north', 'v"1', '"sales""north"."v""1"'),
+    ],
+)
+def test_awkward_view_names_survive_the_prefix(schema: str, view: str, expected: str) -> None:
+    """HANA allows hyphens and embedded quotes, so the prefix has to escape them.
+
+    Quoting by hand would turn `sales"north` into `"sales"north"`, which ends the
+    identifier at the second quote. The dialect's preparer doubles it instead.
+    """
+    dialect = HANAHDBCLIDialect()
+    dialect.default_schema_name = schema
+
+    with patch.object(saphana_metadata, "_sqlalchemy_hana_get_view_definition", return_value="SELECT A FROM T"):
+        result = saphana_metadata._get_view_definition(dialect, MagicMock(), view, schema=schema)
+
+    assert result == f"CREATE VIEW {expected} AS SELECT A FROM T"
+    # The point of escaping is that the parser can still read it.
+    assert LineageParser(result, Dialect.ANSI, timeout_seconds=30).target_tables
+
+
 def test_a_named_view_definition_yields_column_pairs() -> None:
     """The prefix exists for column lineage, so assert that is what it buys.
 

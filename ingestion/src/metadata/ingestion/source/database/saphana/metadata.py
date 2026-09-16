@@ -86,9 +86,12 @@ def _get_view_definition(
     if not definition or _CREATE_VIEW.search(definition):
         return definition
 
-    # Quoted because HANA names are case sensitive and routinely carry characters,
-    # hyphens above all, that would otherwise end the identifier early.
-    qualified = f'"{schema or self.default_schema_name}"."{view_name}"'
+    # Quoted because HANA names are case sensitive and routinely carry characters, hyphens
+    # above all, that would otherwise end the identifier early. The dialect's own preparer
+    # does the quoting, so a name containing a double quote is escaped rather than closing
+    # the identifier and producing SQL the parser cannot read.
+    quote = self.identifier_preparer.quote_identifier
+    qualified = f"{quote(schema or self.default_schema_name)}.{quote(view_name)}"
     return f"CREATE VIEW {qualified} AS {definition}"
 
 
