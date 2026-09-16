@@ -936,10 +936,14 @@ export const transformToTestCaseStatusByDimension = (
   );
 
   inputData.forEach((item) => {
+    // The report keys each row by the aggregated Elasticsearch field name, not by the
+    // bucketName -- see SearchAggregation, which collects `field` into `dimensions`. The
+    // sibling `testCaseResult.testCaseStatus` key is the same shape.
     const {
       document_count,
       'testCaseResult.testCaseStatus': status,
-      dataQualityDimension = DataQualityDimensions.NoDimension,
+      [DATA_QUALITY_DIMENSION_INDEX_FIELD]:
+        dataQualityDimension = DataQualityDimensions.NoDimension,
     } = item;
     const count = parseInt(document_count, 10);
 
