@@ -77,7 +77,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AgentType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -103,11 +102,8 @@ import org.openmetadata.service.monitoring.MicrometerBundle;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.secrets.SecretsManager;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
@@ -1586,44 +1582,17 @@ public class IngestionPipelineResource
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
-    PipelineServiceClientResponse response =
-        pipelineServiceClient.runPipeline(ingestionPipeline, service);
-    repository.recordQueuedPipelineStatus(
-        uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
-    return response;
+    return repository.runIngestionPipeline(uriInfo, ingestionPipeline, service);
   }
 
   private void decryptOrNullify(
       SecurityContext securityContext, IngestionPipeline ingestionPipeline, boolean forceNotMask) {
-    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
-    try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-          getResourceContextById(ingestionPipeline.getId()));
-    } catch (AuthorizationException e) {
-      ingestionPipeline.getSourceConfig().setConfig(null);
-    }
-    secretsManager.decryptIngestionPipeline(ingestionPipeline);
-
-    // SECURITY: Only include OpenMetadataServerConnection for deploy operations
-    // (forceNotMask=true).
-    // The connection contains the bot's JWT token which should NOT be exposed in GET/LIST
-    // responses.
-    // For API responses, we nullify this field to prevent token leakage.
-    if (forceNotMask) {
-      OpenMetadataConnection openMetadataServerConnection =
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline)
-              .build();
-      ingestionPipeline.setOpenMetadataServerConnection(
-          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
-    } else {
-      ingestionPipeline.setOpenMetadataServerConnection(null);
-    }
-
-    if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
-      EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
-    }
+    IngestionPipelineSecrets.decryptOrNullify(
+        authorizer,
+        securityContext,
+        openMetadataApplicationConfig,
+        ingestionPipeline,
+        forceNotMask);
   }
 
   @POST

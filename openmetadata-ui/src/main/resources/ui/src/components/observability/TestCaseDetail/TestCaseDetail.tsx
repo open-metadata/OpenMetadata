@@ -64,6 +64,7 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import { OBSERVABILITY_ROUTES } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import RunTestCaseButton from './RunTestCaseButton/RunTestCaseButton';
 import './test-case-detail.less';
 import { TestCaseDetailProps } from './TestCaseDetail.types';
 
@@ -438,24 +439,27 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>
                   {!isVersionPage && (
-                    <ManageButton
-                      isRecursiveDelete
-                      afterDeleteAction={() =>
-                        navigate(
-                          observabilityRouterClassBase.getDataQualityPagePath()
-                        )
-                      }
-                      allowSoftDelete={false}
-                      canDelete={hasDeletePermission}
-                      displayName={testCase.displayName}
-                      editDisplayNamePermission={editDisplayNamePermission}
-                      entityFQN={testCase.fullyQualifiedName}
-                      entityId={testCase.id}
-                      entityName={testCase.name}
-                      entityType={EntityType.TEST_CASE}
-                      extraDropdownContent={extraDropdownContent}
-                      onEditDisplayName={handleDisplayNameChange}
-                    />
+                    <>
+                      <RunTestCaseButton testCase={testCase} />
+                      <ManageButton
+                        isRecursiveDelete
+                        afterDeleteAction={() =>
+                          navigate(
+                            observabilityRouterClassBase.getDataQualityPagePath()
+                          )
+                        }
+                        allowSoftDelete={false}
+                        canDelete={hasDeletePermission}
+                        displayName={testCase.displayName}
+                        editDisplayNamePermission={editDisplayNamePermission}
+                        entityFQN={testCase.fullyQualifiedName}
+                        entityId={testCase.id}
+                        entityName={testCase.name}
+                        entityType={EntityType.TEST_CASE}
+                        extraDropdownContent={extraDropdownContent}
+                        onEditDisplayName={handleDisplayNameChange}
+                      />
+                    </>
                   )}
                 </Box>
               </Box>

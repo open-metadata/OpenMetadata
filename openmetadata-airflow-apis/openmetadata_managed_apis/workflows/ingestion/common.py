@@ -77,6 +77,8 @@ from openmetadata_managed_apis.utils.parser import (
 
 logger = workflow_logger()
 
+PIPELINE_RUN_ID_PARAM = "pipelineRunId"
+
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
     "databaseService": DatabaseService,
@@ -360,6 +362,19 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
 
 
 class CustomPythonOperator(PythonOperator):
+    def execute(self, context):
+        """
+        A run triggered from the server carries the run id the server already recorded as queued.
+        Reporting under that id, instead of the one minted when the DAG was parsed, makes the
+        workflow's statuses - and the failure callback's, which shares this config - update the
+        queued run rather than show up as a separate one.
+        """
+        run_id = (context.get("params") or {}).get(PIPELINE_RUN_ID_PARAM)
+        workflow_config = self.op_kwargs.get("workflow_config")
+        if run_id and workflow_config:
+            workflow_config.pipelineRunId = Uuid(run_id)
+        return super().execute(context)
+
     def on_kill(self) -> None:
         """
         Override this method to clean up subprocesses when a task instance
@@ -426,7 +441,8 @@ def build_dag(
         owner=ingestion_pipeline.owners.root[0].name
         if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
         else "openmetadata",
-        params=params,
+        # Declared so the trigger conf can override it; see CustomPythonOperator.execute
+        params={PIPELINE_RUN_ID_PARAM: None, **(params or {})},
         dag=dag,
     )
 

@@ -1092,6 +1092,42 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         configuredTimeout == null ? DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS : configuredTimeout);
   }
 
+  /**
+   * Whether a run of {@code ingestionPipeline} is queued or running. A run that outlived its timeout
+   * does not count: a queued run that never started, or a running one whose worker died, never
+   * reports again, and counting it would block on-demand runs of the pipeline for good.
+   */
+  public boolean hasRunInProgress(IngestionPipeline ingestionPipeline) {
+    long now = System.currentTimeMillis();
+    return hasRunInProgress(
+        getRecentPipelineStatuses(ingestionPipeline.getFullyQualifiedName()),
+        now - queuedStatusTimeoutMillis(),
+        now - runningStatusTimeoutMillis(ingestionPipeline));
+  }
+
+  static boolean hasRunInProgress(
+      List<PipelineStatus> pipelineStatuses, long queuedCutoff, long runningCutoff) {
+    return pipelineStatuses.stream()
+        .anyMatch(
+            pipelineStatus ->
+                isInStateSince(pipelineStatus, PipelineStatusType.QUEUED, queuedCutoff)
+                    || isInStateSince(pipelineStatus, PipelineStatusType.RUNNING, runningCutoff));
+  }
+
+  private static boolean isInStateSince(
+      PipelineStatus pipelineStatus, PipelineStatusType state, long cutoff) {
+    return state.equals(pipelineStatus.getPipelineState())
+        && pipelineStatus.getTimestamp() != null
+        && pipelineStatus.getTimestamp() >= cutoff;
+  }
+
+  private long runningStatusTimeoutMillis(IngestionPipeline ingestionPipeline) {
+    return Optional.ofNullable(ingestionPipeline.getAirflowConfig())
+        .map(AirflowConfig::getWorkflowTimeout)
+        .map(TimeUnit.SECONDS::toMillis)
+        .orElseGet(this::queuedStatusTimeoutMillis);
+  }
+
   /* Get the status of the external application by converting the configuration so that it can be
    * served like an App configuration */
   public ResultList<PipelineStatus> listExternalAppStatus(
@@ -1641,6 +1677,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     validateSourceConfigHasType(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+  }
+
+  public PipelineServiceClientResponse runIngestionPipeline(
+      UriInfo uriInfo, IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    if (pipelineServiceClient == null) {
+      return new PipelineServiceClientResponse()
+          .withCode(200)
+          .withReason("Pipeline Client Disabled");
+    }
+    PipelineServiceClientResponse response =
+        pipelineServiceClient.runPipeline(ingestionPipeline, service);
+    recordQueuedPipelineStatus(
+        uriInfo, ingestionPipeline.getFullyQualifiedName(), response.getRunId());
+    return response;
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.

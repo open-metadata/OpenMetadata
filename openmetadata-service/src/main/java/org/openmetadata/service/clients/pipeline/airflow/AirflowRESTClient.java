@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.clients.pipeline.airflow;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -26,8 +28,10 @@ import java.security.KeyStoreException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.net.ssl.SSLContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
@@ -40,6 +44,8 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
@@ -67,6 +73,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   private static final String DAG_ID = "dag_id";
   private static final String CONF = "conf";
   private static final String APP_CONFIG_OVERRIDE = "appConfigOverride";
+  private static final String TEST_CASES = "testCases";
+  private static final String PIPELINE_RUN_ID = "pipelineRunId";
   private String detectedAirflowVersion = null;
   private final Object detectionLock = new Object();
   private volatile String csrfToken = null;
@@ -401,12 +409,11 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
-      if (config != null) {
-        requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
-      }
+      String runId = UUID.randomUUID().toString();
+      requestPayload.put(CONF, buildRunConf(ingestionPipeline, config, runId));
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
-        return getResponse(200, response.body());
+        return getResponse(200, response.body()).withRunId(runId);
       }
     } catch (IOException | URISyntaxException e) {
       throw IngestionPipelineDeploymentException.byMessage(
@@ -422,6 +429,39 @@ public class AirflowRESTClient extends PipelineServiceClient {
         TRIGGER_ERROR,
         "Failed to trigger IngestionPipeline",
         Response.Status.fromStatusCode(response.statusCode()));
+  }
+
+  // Airflow bakes a DAG's config at deploy time, so anything specific to one run reaches it only
+  // through the trigger conf: the run id - which the worker reports under, so the queued status
+  // the server records for this id is the one that progresses - and an ad-hoc test case scope.
+  private Map<String, Object> buildRunConf(
+      IngestionPipeline ingestionPipeline, Map<String, Object> config, String runId) {
+    Map<String, Object> conf = new HashMap<>();
+    conf.put(PIPELINE_RUN_ID, runId);
+    if (config != null) {
+      conf.put(APP_CONFIG_OVERRIDE, config);
+    }
+    List<String> testCases = getScopedTestCases(ingestionPipeline);
+    if (!testCases.isEmpty()) {
+      conf.put(TEST_CASES, testCases);
+    }
+    return conf;
+  }
+
+  private List<String> getScopedTestCases(IngestionPipeline ingestionPipeline) {
+    if (!isTestSuitePipelineWithConfig(ingestionPipeline)) {
+      return Collections.emptyList();
+    }
+    TestSuitePipeline testSuitePipeline =
+        JsonUtils.convertValue(
+            ingestionPipeline.getSourceConfig().getConfig(), TestSuitePipeline.class);
+    return listOrEmpty(testSuitePipeline.getTestCases());
+  }
+
+  private boolean isTestSuitePipelineWithConfig(IngestionPipeline ingestionPipeline) {
+    return PipelineType.TEST_SUITE.equals(ingestionPipeline.getPipelineType())
+        && ingestionPipeline.getSourceConfig() != null
+        && ingestionPipeline.getSourceConfig().getConfig() != null;
   }
 
   @Override

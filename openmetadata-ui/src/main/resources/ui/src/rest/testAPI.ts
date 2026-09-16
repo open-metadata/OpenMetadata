@@ -24,6 +24,7 @@ import {
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
+import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
 import { DataQualityReportBatchResponse } from '../generated/tests/dataQualityReportBatchResponse';
@@ -197,6 +198,15 @@ export const getTestCaseByFqn = async (
       params,
     }
   );
+
+  return response.data;
+};
+
+export const runTestCase = async (id: string) => {
+  const response = await APIClient.post<
+    undefined,
+    AxiosResponse<PipelineServiceClientResponse>
+  >(`${testCaseUrl}/${id}/run`);
 
   return response.data;
 };

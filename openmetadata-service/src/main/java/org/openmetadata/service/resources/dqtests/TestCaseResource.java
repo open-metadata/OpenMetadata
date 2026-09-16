@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -19,10 +20,12 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -44,13 +47,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequest;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkAll;
 import org.openmetadata.schema.api.tests.BundleSuiteBulkAddRequestBulkByIds;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -65,12 +72,14 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.Filter;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineSecrets;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
@@ -728,6 +737,122 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
+  }
+
+  @POST
+  @Path("/{id}/run")
+  @Operation(
+      operationId = "runTestCase",
+      summary = "Run this test case on demand",
+      description =
+          "Trigger the ingestion pipeline of this test case's test suite, scoped to this test "
+              + "case so that the rest of the suite is not executed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Run request accepted by the pipeline service",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineServiceClientResponse.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description =
+                "Test suite of test case {id} has no enabled, deployed ingestion pipeline"),
+        @ApiResponse(
+            responseCode = "409",
+            description = "A run of the test suite's ingestion pipeline is already in progress")
+      })
+  public PipelineServiceClientResponse runTestCase(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    TestCase testCase = repository.get(uriInfo, id, getFields("testSuite"));
+    IngestionPipeline pipeline = runnablePipelineOf(testCase);
+    authorizeTrigger(securityContext, pipeline);
+    ensureNoRunInProgress(pipeline);
+    IngestionPipeline scopedPipeline =
+        scopePipelineToTestCase(pipeline, testCase.getName(), securityContext);
+    ServiceEntityInterface service =
+        Entity.getEntity(scopedPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
+    return ingestionPipelineRepository().runIngestionPipeline(uriInfo, scopedPipeline, service);
+  }
+
+  // Same check as the pipeline's own /trigger endpoint, so running a single test case is never a
+  // way around a policy that withholds Trigger on the suite's pipeline.
+  private void authorizeTrigger(SecurityContext securityContext, IngestionPipeline pipeline) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.INGESTION_PIPELINE, MetadataOperation.TRIGGER),
+        new ResourceContext<>(Entity.INGESTION_PIPELINE, pipeline.getId(), null));
+  }
+
+  private IngestionPipeline scopePipelineToTestCase(
+      IngestionPipeline pipeline, String testCaseName, SecurityContext securityContext) {
+    IngestionPipeline scopedPipeline = scopedToTestCase(pipeline, testCaseName);
+    IngestionPipelineSecrets.decryptOrNullify(
+        authorizer,
+        securityContext,
+        ingestionPipelineRepository().getOpenMetadataApplicationConfig(),
+        scopedPipeline,
+        true);
+    return scopedPipeline;
+  }
+
+  /**
+   * Returns a copy of {@code pipeline} whose test-suite source config runs only {@code
+   * testCaseName}. The copy matters: scoping the stored entity would narrow every future scheduled
+   * run of the whole suite, silently and permanently.
+   */
+  static IngestionPipeline scopedToTestCase(IngestionPipeline pipeline, String testCaseName) {
+    IngestionPipeline scopedPipeline = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
+    TestSuitePipeline sourceConfig =
+        JsonUtils.convertValue(
+            scopedPipeline.getSourceConfig().getConfig(), TestSuitePipeline.class);
+    // The ingestion source filters on test case name, not FQN - an FQN here would run nothing.
+    scopedPipeline.getSourceConfig().setConfig(sourceConfig.withTestCases(List.of(testCaseName)));
+    return scopedPipeline;
+  }
+
+  private IngestionPipeline runnablePipelineOf(TestCase testCase) {
+    TestSuite testSuite =
+        Entity.getEntity(testCase.getTestSuite(), "pipelines", Include.NON_DELETED);
+    return listOrEmpty(testSuite.getPipelines()).stream()
+        .<IngestionPipeline>map(
+            reference -> Entity.getEntity(reference, Entity.FIELD_OWNERS, Include.NON_DELETED))
+        .filter(TestCaseResource::isRunnable)
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new NotFoundException(
+                    String.format(
+                        "Test suite '%s' has no enabled, deployed ingestion pipeline to run.",
+                        testSuite.getFullyQualifiedName())));
+  }
+
+  // Same rule as the pipeline's own Run action: a disabled pipeline's schedule is paused, so a run
+  // would never start, and an undeployed one has nothing for the runner to execute.
+  private static boolean isRunnable(IngestionPipeline pipeline) {
+    return Boolean.TRUE.equals(pipeline.getEnabled())
+        && Boolean.TRUE.equals(pipeline.getDeployed());
+  }
+
+  // One run at a time per suite pipeline: Airflow would only queue a second one behind it, and
+  // Kubernetes and Argo would run both in parallel against the same source.
+  private static void ensureNoRunInProgress(IngestionPipeline pipeline) {
+    if (ingestionPipelineRepository().hasRunInProgress(pipeline)) {
+      throw new ClientErrorException(
+          String.format(
+              "A run of ingestion pipeline '%s' is already queued or running.",
+              pipeline.getFullyQualifiedName()),
+          Response.Status.CONFLICT);
+    }
+  }
+
+  private static IngestionPipelineRepository ingestionPipelineRepository() {
+    return (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
   }
 
   @POST
