@@ -133,6 +133,9 @@ public class SearchMetadataTool implements McpTool {
 
   private static final String JSON_NULL_LITERAL = "null";
 
+  /** The OpenSearch DSL wrapper key, distinct from the "query" search-text parameter. */
+  private static final String QUERY_KEY = "query";
+
   private static final String QUERY_FILTER_EXAMPLE =
       "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}}";
 
@@ -235,13 +238,13 @@ public class SearchMetadataTool implements McpTool {
     String queryFilter = null;
     JsonNode queryNode = queryFilterClause(params.get("queryFilter"));
     if (queryNode != null) {
-      if (!queryNode.has("query")) {
+      if (!queryNode.has(QUERY_KEY)) {
         ObjectNode queryWrapper = JsonUtils.getObjectMapper().createObjectNode();
-        queryWrapper.set("query", excludeTypesFrom(queryNode, excludedTypes));
+        queryWrapper.set(QUERY_KEY, excludeTypesFrom(queryNode, excludedTypes));
         queryFilter = JsonUtils.pojoToJson(queryWrapper);
       } else {
         ObjectNode wrapped = (ObjectNode) queryNode;
-        wrapped.set("query", excludeTypesFrom(wrapped.get("query"), excludedTypes));
+        wrapped.set(QUERY_KEY, excludeTypesFrom(wrapped.get(QUERY_KEY), excludedTypes));
         queryFilter = JsonUtils.pojoToJson(wrapped);
       }
       LOG.debug("Applied query filter to query: {}", queryFilter);
@@ -638,22 +641,40 @@ public class SearchMetadataTool implements McpTool {
   }
 
   private static JsonNode parsedQueryFilter(String rawFilter) {
-    JsonNode parsed;
-    try {
-      parsed = JsonUtils.getObjectMapper().readTree(rawFilter);
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException(
-          "queryFilter is not valid JSON: " + e.getOriginalMessage(), e);
-    }
-    boolean absent = parsed.isMissingNode() || parsed.isNull();
-    if (!absent && !parsed.isObject()) {
+    JsonNode parsed = readQueryFilter(rawFilter);
+    // A model that has seen one {"query": {...}} example sends the degenerate value pre-wrapped, so
+    // the clause is checked where it actually sits. Validating only the outer node lets
+    // {"query": null} straight through - the very payload the engine rejects.
+    JsonNode clause = parsed.has(QUERY_KEY) ? parsed.get(QUERY_KEY) : parsed;
+    if (!carriesNoClause(clause) && !clause.isObject()) {
       throw new IllegalArgumentException(
           "queryFilter must be a JSON object holding an OpenSearch query clause, e.g. "
               + QUERY_FILTER_EXAMPLE
               + " - got: "
               + rawFilter);
     }
-    return absent || parsed.isEmpty() ? null : parsed;
+    return carriesNoClause(clause) ? null : parsed;
+  }
+
+  private static JsonNode readQueryFilter(String rawFilter) {
+    try {
+      return JsonUtils.getObjectMapper().readTree(rawFilter);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(
+          "queryFilter is not valid JSON: " + e.getOriginalMessage(), e);
+    }
+  }
+
+  /**
+   * True when the node holds no query clause at all: a JSON null, a missing node, an empty object,
+   * or blank text. An array or a number is the wrong type rather than an absent value, so it is left
+   * for the caller to correct.
+   */
+  private static boolean carriesNoClause(JsonNode node) {
+    return node.isMissingNode()
+        || node.isNull()
+        || (node.isObject() && node.isEmpty())
+        || (node.isTextual() && node.asText().isBlank());
   }
 
   /**
@@ -665,7 +686,7 @@ public class SearchMetadataTool implements McpTool {
     String filter = null;
     if (!excluded.isEmpty()) {
       ObjectNode wrapper = JsonUtils.getObjectMapper().createObjectNode();
-      wrapper.set("query", excludeTypesFrom(null, excluded));
+      wrapper.set(QUERY_KEY, excludeTypesFrom(null, excluded));
       filter = JsonUtils.pojoToJson(wrapper);
     }
     return filter;

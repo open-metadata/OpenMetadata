@@ -366,7 +366,17 @@ class SearchMetadataToolTest {
    * fails the search the model actually asked for.
    */
   @ParameterizedTest
-  @ValueSource(strings = {"", "   ", "null", "NULL", "{}"})
+  @ValueSource(
+      strings = {
+        "",
+        "   ",
+        "null",
+        "NULL",
+        "{}",
+        "{\"query\":null}",
+        "{\"query\":{}}",
+        "{\"query\":\"\"}"
+      })
   void testBlankQueryFilterIsTreatedAsAbsent(String blankFilter) throws Exception {
     try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
@@ -394,14 +404,15 @@ class SearchMetadataToolTest {
    * filter must leave queryFilter null rather than empty - otherwise excludeEntityTypes silently
    * stops being applied.
    */
-  @Test
-  void testBlankQueryFilterStillAppliesEntityTypeExclusions() throws Exception {
+  @ParameterizedTest
+  @ValueSource(strings = {"", "{}", "{\"query\":null}"})
+  void testBlankQueryFilterStillAppliesEntityTypeExclusions(String blankFilter) throws Exception {
     try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
 
       Map<String, Object> params = new HashMap<>();
       params.put("query", "orders");
-      params.put("queryFilter", "");
+      params.put("queryFilter", blankFilter);
       params.put("excludeEntityTypes", List.of("tableColumn"));
 
       when(searchRepository.getIndexOrAliasName("dataAsset")).thenReturn("dataAsset");
@@ -424,7 +435,7 @@ class SearchMetadataToolTest {
    * has to say so. Sending it on produces an opaque backend rejection the model cannot act on.
    */
   @ParameterizedTest
-  @ValueSource(strings = {"[]", "42", "\"text\"", "hello"})
+  @ValueSource(strings = {"[]", "42", "\"text\"", "hello", "{\"query\":[]}", "{\"query\":42}"})
   void testUnusableQueryFilterIsRejectedByName(String badFilter) throws Exception {
     try (MockedStatic<SubjectCache> subjectCacheMock = mockStatic(SubjectCache.class)) {
       subjectCacheMock.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
