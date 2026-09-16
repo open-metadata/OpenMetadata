@@ -120,6 +120,7 @@
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/Metric.spec.ts",
         "playwright/e2e/Flow/Navbar.spec.ts",
@@ -753,6 +754,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/access-control/PoliciesClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -781,6 +783,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/access-control/RolesClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -1820,6 +1823,7 @@
         "playwright/e2e/Features/PersonaAIContext.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
         "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -2062,8 +2066,10 @@
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/ConditionalPermissions.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
@@ -2468,6 +2474,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/user/UserClass.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Features/ActivityStream.spec.ts",
@@ -2681,6 +2688,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/admin.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/ActivityAPI.spec.ts",
         "playwright/e2e/Features/ActivityFeed.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
@@ -3148,8 +3156,10 @@
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
@@ -3605,8 +3615,10 @@
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
         "playwright/e2e/Flow/IngestionBot.spec.ts",
@@ -4156,6 +4168,7 @@
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
@@ -5591,14 +5604,22 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseConfigurationCard/TestCaseConfigurationCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseResultPermissions.spec.ts",
-        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
-        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
-        "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
+        "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts"
       ]
     },
     {
@@ -6174,6 +6195,14 @@
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts",
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityVersionTimeLine/EntityVersionTimeLine.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
       ]
     },
     {
@@ -7611,7 +7640,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/ServiceConfig/ConnectionConfigForm.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
+        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts"
       ]
     },
     {
@@ -7619,7 +7649,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/ServiceConfig/EmbeddedConnectionConfigForm.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
+        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts"
       ]
     },
     {
@@ -7837,6 +7868,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/TestLibrary/TestDefinitionForm/TestDefinitionFormBody.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/TestDefinitionPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts"
       ]
     },
@@ -8482,6 +8514,7 @@
       "specs": [
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts"
       ]
     },
@@ -8540,16 +8573,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JSONSchemaTemplate/ConnectionObjectFieldTemplate.tsx"
       ],
       "specs": [
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/Form/JSONSchema/JsonSchemaWidgets/FileUploadWidget.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/BulkImport.spec.ts",
-        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts"
+        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts"
       ]
     },
     {
@@ -8646,6 +8671,14 @@
         "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
         "playwright/e2e/Pages/IngestionLogStreamLive.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NavigationGuardModal/NavigationGuardModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts"
       ]
     },
     {
@@ -9335,6 +9368,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/enums/DataQuality.enum.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/enums/common.enum.ts"
       ],
       "specs": [
@@ -9920,8 +9961,10 @@
         "playwright/e2e/Flow/Collect.spec.ts",
         "playwright/e2e/Flow/ConditionalPermissions.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
+        "playwright/e2e/Flow/EditConnectionNavigation.spec.ts",
         "playwright/e2e/Flow/ExploreAggregationCountsMatching.spec.ts",
         "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/FrequentlyJoined.spec.ts",
@@ -10260,14 +10303,6 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/tests/testCaseResolutionStatus.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/generated/tests/testDefinition.ts"
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"

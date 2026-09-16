@@ -108,6 +108,8 @@ export interface FormValues {
   parameterValues?: Array<{ name: string; value: string }>;
   dimensionColumns?: Array<string | FormSelectItem>;
   topDimensions?: number;
+  // Holds the name of the selected dimension entity, system or custom.
+  dataQualityDimension?: string | FormSelectItem;
   // Scheduler fields
   pipelineName?: string;
   cron?: string;
