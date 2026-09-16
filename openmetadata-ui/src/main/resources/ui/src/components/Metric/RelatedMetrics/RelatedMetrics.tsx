@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { MetricTag } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -21,7 +22,6 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { MetricTag } from '../../common/atoms/Tag';
 import {
   WidgetEditButton,
   WidgetPlusButton,
