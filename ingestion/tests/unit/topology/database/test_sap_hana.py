@@ -13,6 +13,7 @@ Test SAP Hana source
 """
 
 import datetime
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
@@ -23,10 +24,12 @@ from sqlalchemy.exc import DBAPIError
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureType,
 )
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
     SapHanaSQLConnection,
 )
@@ -46,8 +49,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.lineage import sql_lineage
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.ometa_lineage import (
+    OMetaFQNLineageRequest,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
 from metadata.ingestion.source.database.saphana import lineage as saphana_lineage
@@ -1861,15 +1869,15 @@ def test_an_unexpected_repository_error_still_surfaces() -> None:
 
 @pytest.mark.parametrize(
     ("statements_read", "expected"),
-    [(2, "2 statements were read from the plan cache"), (0, "read no statements from the plan cache")],
+    [(2, "No lineage was created from 2 analysed queries"), (0, "no queries were found to analyse")],
 )
-def test_no_edge_warning_distinguishes_an_empty_plan_cache(statements_read: int, expected: str) -> None:
+def test_no_edge_warning_distinguishes_an_empty_source(statements_read: int, expected: str) -> None:
     """The two no-edge diagnoses must be told apart by statements read, not by queries.
 
     A CreateQueryRequest is only ever emitted next to an edge, so counting those can
     never reach the "read something, resolved nothing" case: the early return fires
     first. Counting what the producer returned reaches it, and the two cases send a
-    reader to different places, an uningested schema against a missing CATALOG READ.
+    reader to different places, an uningested schema against a source with nothing in it.
     """
     source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
 
@@ -1889,5 +1897,73 @@ def test_no_edge_warning_distinguishes_an_empty_plan_cache(statements_read: int,
     ):
         list(source._iter())
 
-    assert source.plan_cache_statements == statements_read
+    assert source.statements_read == statements_read
     assert expected in warning.call_args[0][0] % warning.call_args[0][1:]
+
+
+def test_a_plan_cache_statement_becomes_a_lineage_edge() -> None:
+    """The whole query path, end to end, with nothing of ours mocked.
+
+    Every other test here stubs out a stage: the parser tests call LineageParser
+    directly, the orchestration tests patch LineageSource._iter, and the row test stops
+    at yield_table_query. None of them would catch the stages in between breaking. This
+    drives a real plan-cache row through the connector's own _iter and asserts an edge
+    comes out, mocking only the two boundaries, the database and the OpenMetadata client.
+    """
+    # Module-level LRU shared by every test in the process, so a stale entry from an
+    # earlier resolution would decide this one.
+    sql_lineage.search_cache.clear()
+
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False, threads=1))
+
+    statement = 'INSERT INTO "LT_ORDER_ARCHIVE" SELECT ORDER_ID, AMOUNT FROM "LT_ORDER"'
+
+    class Row(dict):
+        def _asdict(self):
+            return dict(self)
+
+    row = Row(
+        user_name=None,
+        database_name="H00",
+        schema_name="GE370603",
+        aborted=None,
+        query_text=statement,
+        start_time=datetime.datetime(2026, 9, 10, 12, 0),
+        duration=1.0,
+        end_time=datetime.datetime(2026, 9, 10, 12, 0),
+    )
+
+    mock_connection = MagicMock()
+    mock_connection.execute.return_value = iter([row])
+    source.engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+    source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+
+    def table(name: str) -> Table:
+        return Table(
+            id=uuid.uuid4(),
+            name=name,
+            fullyQualifiedName=f"test_sap_hana.H00.GE370603.{name}",
+            columns=[Column(name=column, dataType=DataType.BIGINT) for column in ("ORDER_ID", "AMOUNT")],
+        )
+
+    known = {"lt_order_archive": table("LT_ORDER_ARCHIVE"), "lt_order": table("LT_ORDER")}
+
+    def resolve(fqn_search_string: str | None = None, **_) -> list[Table] | None:
+        # Longest first, so LT_ORDER does not shadow LT_ORDER_ARCHIVE.
+        for name in sorted(known, key=len, reverse=True):
+            if name in (fqn_search_string or "").lower():
+                return [known[name]]
+        return None
+
+    source.metadata.es_search_from_fqn.side_effect = resolve
+
+    with patch.object(SaphanaLineageSource, "get_engine", return_value=iter([source.engine])):
+        produced = list(source._iter())
+
+    assert [either.left for either in produced if either.left] == []
+    edges = [
+        either.right
+        for either in produced
+        if isinstance(either.right, AddLineageRequest | OMetaLineageRequest | OMetaFQNLineageRequest)
+    ]
+    assert len(edges) == 1

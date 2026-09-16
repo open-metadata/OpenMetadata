@@ -87,10 +87,10 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
 
     sql_stmt = SAPHANA_QUERY_HISTORY_STATEMENT
 
-    # Statements read from the plan cache. Counted because a CreateQueryRequest is only
-    # ever emitted alongside an edge, so it cannot tell a cache that returned nothing
-    # from one whose statements returned rows that resolved to no ingested asset.
-    plan_cache_statements = 0
+    # Statements the query pass read, from the plan cache or from queryLogFilePath.
+    # Counted because a CreateQueryRequest is only ever emitted alongside an edge, so it
+    # cannot tell a source that returned nothing from one that returned rows.
+    statements_read = 0
 
     # Anchored rather than wildcarded, so a SELECT that merely quotes the keyword does
     # not match. Keyword pairs allow anything between them, because SQL permits any
@@ -121,7 +121,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         nothing is otherwise indistinguishable from one that worked. Edges and query
         records are counted apart, since the shared passes emit both.
         """
-        self.plan_cache_statements = 0
+        self.statements_read = 0
         sql_edges = 0
         sql_queries = 0
         for either in super()._iter():
@@ -133,8 +133,8 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 sql_queries += 1
             yield either
         logger.info(
-            "SAP HANA SQL lineage produced %d edges from view definitions and query history, "
-            "alongside %d query records",
+            "Found %d lineage edges from view definitions (SYS.VIEWS) and query history "
+            "(SYS.M_SQL_PLAN_CACHE), and ingested %d queries",
             sql_edges,
             sql_queries,
         )
@@ -146,36 +146,39 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
             for either in self.yield_cdata_lineage():
                 cdata_edges += 1 if isinstance(either.right, AddLineageRequest) else 0
                 yield either
-            logger.info("SAP HANA repository lineage produced %d edges from _SYS_REPO models", cdata_edges)
+            logger.info(
+                "Found %d lineage edges from calculation, analytic and attribute views (_SYS_REPO.ACTIVE_OBJECT)",
+                cdata_edges,
+            )
 
         if sql_edges or cdata_edges:
             return
 
-        if self.plan_cache_statements:
+        if self.statements_read:
             logger.warning(
-                "SAP HANA lineage finished with no edges, though %d statements were read from the plan "
-                "cache. Their endpoints did not resolve to ingested assets, so check that the metadata "
-                "workflow covers the schemas those statements reference.",
-                self.plan_cache_statements,
+                "No lineage was created from %d analysed queries. Most likely the tables they "
+                "reference have not been ingested yet, so run metadata ingestion for this service "
+                "first. If lineage has run before, the queries may simply have been processed already.",
+                self.statements_read,
             )
         else:
             logger.warning(
-                "SAP HANA lineage finished with no edges and read no statements from the plan cache. "
-                "Check that the metadata workflow has already ingested the tables and views, that "
-                "processViewLineage or processQueryLineage is enabled, and that the ingestion user holds "
-                "CATALOG READ, without which SYS.M_SQL_PLAN_CACHE only returns the ingestion user's own "
-                "statements."
+                "No lineage was created and no queries were found to analyse. Check that metadata "
+                "ingestion has run for this service, that View Lineage or Query Lineage is enabled, and "
+                "that the ingestion user has CATALOG READ, without which SYS.M_SQL_PLAN_CACHE only "
+                "reports queries the ingestion user ran itself."
             )
 
     def query_lineage_producer(self) -> Iterator[TableQuery]:
-        """Count what the plan cache actually returned.
+        """Count what the query pass actually read.
 
         The shared pass reports how many edges it produced, which says nothing about
         whether there was anything to read in the first place. That distinction is the
-        whole of the no-edge diagnosis, so it is counted here at the source.
+        whole of the no-edge diagnosis, so it is counted here at the source. The base
+        reads either the plan cache or queryLogFilePath, and both are counted.
         """
         for table_query in super().query_lineage_producer():
-            self.plan_cache_statements += 1
+            self.statements_read += 1
             yield table_query
 
     def view_lineage_producer(self) -> Iterable[TableView]:
@@ -189,7 +192,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         """
         for view in super().view_lineage_producer():
             if view.schema_name == SYS_BIC_SCHEMA_NAME:
-                self.status.filter(view.table_name, "Repository model, handled by the _SYS_REPO pass")
+                self.status.filter(view.table_name, "Lineage comes from the view's model (_SYS_REPO) instead")
                 continue
             yield view
 
@@ -210,8 +213,9 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 left=StackTraceError(
                     name="Query history lineage",
                     error=(
-                        "Could not read query history from SYS.M_SQL_PLAN_CACHE, so no table-to-table "
-                        f"lineage was produced. Check that the ingestion user holds CATALOG READ: {exc}"
+                        "Could not read the SAP HANA query history (SYS.M_SQL_PLAN_CACHE), so no "
+                        "lineage was created from queries. Check that the ingestion user has "
+                        f"CATALOG READ. Cause: {exc}"
                     ),
                     stackTrace=traceback.format_exc(),
                 ),
@@ -236,11 +240,12 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
                 if error_code not in (362, 259):
                     raise
                 logger.info(
-                    "_SYS_REPO is not present, so there are no repository models to read. This is normal on "
-                    "SAP HANA Cloud, where the classic repository was never carried over. View and query "
-                    "lineage are unaffected. Cause: %s",
-                    exc,
+                    "This instance has no classic repository (_SYS_REPO), so there are no calculation, "
+                    "analytic or attribute view models to read. That is normal on SAP HANA Cloud, and "
+                    "view and query lineage are unaffected."
                 )
+                # The driver error is only of interest when this guard misfires.
+                logger.debug("Reading _SYS_REPO.ACTIVE_OBJECT failed with %s", exc)
                 result = []
             for row in result:
                 try:

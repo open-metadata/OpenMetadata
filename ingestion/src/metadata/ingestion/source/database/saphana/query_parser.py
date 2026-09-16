@@ -13,6 +13,7 @@ SAP Hana query parsing module
 """
 
 from abc import ABC
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaConnection,
@@ -33,9 +34,16 @@ class SapHanaQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):  # pyright: ignore[reportMissingTypeArgument]
+    def create(
+        cls,
+        config_dict: dict[str, Any],
+        metadata: OpenMetadata,
+        pipeline_name: str | None = None,
+    ) -> "SapHanaQueryParserSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SapHanaConnection = config.serviceConnection.root.config  # pyright: ignore[reportAssignmentType, reportOptionalMemberAccess]
+        # The annotation above is what the schema promises, not what the config carries,
+        # so this stays a real runtime check even though it reads as unreachable.
         if not isinstance(connection, SapHanaConnection):
-            raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")
+            raise InvalidSourceException(f"Expected SapHanaConnection, but got {connection}")  # pyright: ignore[reportUnreachable]
         return cls(config, metadata)
