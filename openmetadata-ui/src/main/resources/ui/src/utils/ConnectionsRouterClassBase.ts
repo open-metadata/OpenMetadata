@@ -14,6 +14,7 @@
 import type { ServiceTypes } from 'Models';
 import { PLACEHOLDER_SETTING_CATEGORY, ROUTES } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
+import { ServiceCategory } from '../enums/service.enum';
 import {
   getAddServicePath,
   getEditConnectionPath,
@@ -73,16 +74,25 @@ class ConnectionsRouterClassBase {
   /**
    * Where an entity page returns after its entity is hard-deleted: the parent
    * service's asset-listing tab (the tab key is the lowercased count label,
-   * e.g. `databases` — see ServiceDetailsPage's tabs).
+   * e.g. `databases` — see ServiceDetailsPage's tabs). Metadata and security
+   * services have no asset-listing tab, so they land on the service page's
+   * default tab instead.
    */
   public getServiceDataAssetsTabPath(
     serviceCategory: string,
     fqn: string
   ): string {
+    const hasAssetTab = ![
+      ServiceCategory.METADATA_SERVICES,
+      ServiceCategory.SECURITY_SERVICES,
+    ].includes(serviceCategory as ServiceCategory);
+
     return getServiceDetailsPath(
       fqn,
       serviceCategory,
-      getCountLabel(serviceCategory as ServiceTypes).toLowerCase()
+      hasAssetTab
+        ? getCountLabel(serviceCategory as ServiceTypes).toLowerCase()
+        : undefined
     );
   }
 
