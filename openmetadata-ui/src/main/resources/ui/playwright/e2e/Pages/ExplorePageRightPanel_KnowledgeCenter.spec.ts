@@ -20,12 +20,12 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, uuid } from '../../utils/common';
+import { uuid } from '../../utils/common';
 import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { waitForSearchIndexed } from '../../utils/polling';
+import { waitForOwnerIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -71,54 +71,21 @@ export const test = baseTest.extend<{
 });
 
 /**
- * The summary panel renders owners from the Explore search document, which is
- * refreshed asynchronously after the owner PATCH — a panel that rendered
- * before that refresh can never show (or drop) the chip. Gate on the search
- * document actually reflecting the owner state before any UI read.
- * `owners` is a nested field in knowledge_page_search_index — a plain term
- * query would silently match nothing.
- */
-async function waitForOwnerIndexed(
-  page: Page,
-  owner: UserClass,
-  present: boolean
-) {
-  const ownerQuery = {
-    nested: {
-      path: 'owners',
-      query: { term: { 'owners.id': owner.responseData.id } },
-    },
-  };
-  const { apiContext, afterAction } = await getApiContext(page);
-
-  try {
-    await waitForSearchIndexed(
-      apiContext,
-      knowledgeCenter.responseData.fullyQualifiedName,
-      'page',
-      {
-        timeout: 60_000,
-        queryFilter: JSON.stringify({
-          query: present ? ownerQuery : { bool: { must_not: [ownerQuery] } },
-        }),
-      }
-    );
-  } finally {
-    await afterAction();
-  }
-}
-
-/**
- * Assert the owner chip is in the summary panel: wait for the search index to
- * carry the owner, then re-open the entity so the panel re-reads the fresh
- * document.
+ * Wait for the search index to carry the owner (the panel renders owners from
+ * the search document), then re-open the entity and assert the chip.
  */
 async function expectOwnerInPanel(
   page: Page,
   entityName: string,
   owner: UserClass
 ) {
-  await waitForOwnerIndexed(page, owner, true);
+  await waitForOwnerIndexed(
+    page,
+    knowledgeCenter.responseData.fullyQualifiedName,
+    'page',
+    owner.responseData.id,
+    true
+  );
   await navigateToKCEntity(page, entityName);
 
   const ownerChip = page
@@ -346,7 +313,13 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           await overview.removeOwner([user1.getUserDisplayName()], 'Users');
           await waitForAllLoadersToDisappear(adminPage);
-          await waitForOwnerIndexed(adminPage, user1, false);
+          await waitForOwnerIndexed(
+            adminPage,
+            knowledgeCenter.responseData.fullyQualifiedName,
+            'page',
+            user1.responseData.id,
+            false
+          );
 
           await navigateToKCEntity(
             adminPage,
