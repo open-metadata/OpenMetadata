@@ -43,6 +43,15 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
       List.of("COLUMN", "Column", "column", " Column ");
   private static final List<String> BLANK_ENTITY_TYPES = List.of("", " ");
   private static final int ENTITY_TYPE_FILTER_LIMIT = 1000000;
+  private static final List<String> NUMERIC_AGGREGATE_DEFINITIONS =
+      List.of(
+          "columnValueMaxToBeBetween",
+          "columnValueMeanToBeBetween",
+          "columnValueMedianToBeBetween",
+          "columnValueMinToBeBetween",
+          "columnValueStdDevToBeBetween",
+          "columnValuesSumToBeBetween");
+  private static final String REGEX_DEFINITION = "columnValuesToMatchRegex";
 
   // Disable tests that don't apply to TestDefinition
   {
@@ -361,6 +370,33 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
         response.getPaging().getTotal() > 0,
         "supportedDataType must produce a non-zero paging total, which is served by the DAO's"
             + " separate listCount query");
+  }
+
+  /**
+   * NUMERIC is what BigQuery, Postgres, Snowflake and DB2 numeric columns are ingested as, but the
+   * seeded aggregate definitions only ever listed NUMBER and DECIMAL. Since the listing filters on
+   * the column's exact data type, none of mean/min/max/median/stddev/sum could be picked for a
+   * NUMERIC column.
+   */
+  @Test
+  void list_supportedDataTypeNumericReturnsSeededAggregateDefinitions_200_OK() {
+    Set<String> fullyQualifiedNames =
+        fullyQualifiedNamesOf(
+            listBySupportedDataType(SdkClients.adminClient(), ColumnDataType.NUMERIC.value())
+                .getData());
+
+    assertTrue(
+        fullyQualifiedNames.containsAll(NUMERIC_AGGREGATE_DEFINITIONS),
+        () ->
+            "Every seeded numeric aggregate definition must be offered for a NUMERIC column, missing: "
+                + NUMERIC_AGGREGATE_DEFINITIONS.stream()
+                    .filter(name -> !fullyQualifiedNames.contains(name))
+                    .collect(Collectors.joining(", ")));
+    assertFalse(
+        fullyQualifiedNames.contains(REGEX_DEFINITION),
+        REGEX_DEFINITION
+            + " only supports string types, so returning it for NUMERIC would mean the filter"
+            + " stopped discriminating rather than that the data types were corrected");
   }
 
   private static ListResponse<TestDefinition> listBySupportedDataType(
