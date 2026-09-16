@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -31,7 +32,6 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { Icon as EntityStyleIcon } from '../../../components/common/Icon/Icon';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';

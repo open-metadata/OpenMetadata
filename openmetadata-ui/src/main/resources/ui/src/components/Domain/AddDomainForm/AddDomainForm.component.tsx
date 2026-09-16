@@ -15,6 +15,7 @@ import {
   Avatar,
   Box,
   Button,
+  ClassificationTag,
   Dot,
   FieldProp,
   FieldTypes,
@@ -85,7 +86,6 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ClassificationTag } from '../../common/atoms/Tag';
 import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
 import {
   AVAILABLE_ICONS,

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
+import { cx } from '@/utils/cx';
 import { FC, useEffect, useRef, useState } from 'react';
-import { getTagImageSrc, ICON_MAP, isImageUrl } from '../../../utils/IconUtils';
-import { IconProps } from './Icon.interface';
+import { Skeleton } from '../../base/skeleton/skeleton';
+import { ICON_MAP } from './icon.constants';
+import { IconProps } from './icon.types';
+import { getTagImageSrc, isImageUrl } from './icon.utils';
 
 type IconLoadState = 'loading' | 'loaded' | 'error';
 
@@ -63,7 +64,7 @@ export const Icon: FC<IconProps> = ({
   if (IconComponent) {
     return (
       <IconComponent
-        className={classNames(className, imageClassName)}
+        className={cx(className, imageClassName)}
         size={size}
         style={{ strokeWidth, ...imageStyle }}
       />
@@ -79,7 +80,6 @@ export const Icon: FC<IconProps> = ({
       {loadState === 'loading' && (
         <Skeleton height={size} variant="circular" width={size} />
       )}
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- img load lifecycle */}
       <img
         alt={alt}
         className={imageClassName}

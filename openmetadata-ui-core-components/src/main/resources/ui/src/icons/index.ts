@@ -35,6 +35,7 @@ export { Articles } from './Articles';
 export { AssetsOwned } from './AssetsOwned';
 export { AssetsType } from './AssetsType';
 export { Assets } from './Assets';
+export { AutomatedTag } from './AutomatedTag';
 export { AverageRuntime } from './AverageRuntime';
 export { BehaviorPersonality } from './BehaviorPersonality';
 export { ChangePreview } from './ChangePreview';
