@@ -328,35 +328,34 @@ export const TreeSelect = <T = unknown,>({
     ): ReactElement[] => {
       const visibleNodes = nodes.filter((node) => isNodeVisible(node.id));
 
-      return visibleNodes.map((node, index) => {
+      return visibleNodes.map((node) => {
         const hasExclusiveChildren =
           node.hasExclusiveChildren ??
           node.children?.some((c) => c.isParentMutuallyExclusive) ??
           false;
 
         return (
-        <Tree.Item id={node.id} key={node.id} textValue={node.label}>
-          <TreeSelectTreeItemContent
-            disabled={disabled}
-            hasChildItems={
-              Boolean(node.children?.length) || node.isLeaf === false
-            }
-            isLastChild={index === visibleNodes.length - 1}
-            isLoading={loadingNodes.has(node.id)}
-            isSelected={isNodeSelected(node.id)}
-            multiple={multiple}
-            node={node}
-            showCheckbox={showCheckbox && !hasExclusiveChildren}
-            showConnectorLines={showConnectorLines}
-            showIcon={showIcon}
-            onNodeClick={() => {
-              if (!hasExclusiveChildren) {
-                handleNodeAction(node, parentNode);
+          <Tree.Item id={node.id} key={node.id} textValue={node.label}>
+            <TreeSelectTreeItemContent
+              disabled={disabled}
+              hasChildItems={
+                Boolean(node.children?.length) || node.isLeaf === false
               }
-            }}
-          />
-          {node.children && renderNodes(node.children, node)}
-        </Tree.Item>
+              isLoading={loadingNodes.has(node.id)}
+              isSelected={isNodeSelected(node.id)}
+              multiple={multiple}
+              node={node}
+              showCheckbox={showCheckbox && !hasExclusiveChildren}
+              showConnectorLines={showConnectorLines}
+              showIcon={showIcon}
+              onNodeClick={() => {
+                if (!hasExclusiveChildren) {
+                  handleNodeAction(node, parentNode);
+                }
+              }}
+            />
+            {node.children && renderNodes(node.children, node)}
+          </Tree.Item>
         );
       });
     },
@@ -438,6 +437,7 @@ export const TreeSelect = <T = unknown,>({
     async (checked: boolean) => {
       if (!checked) {
         onChange?.(multiple ? [] : null);
+
         return;
       }
       if (cascadeSelection && lazyLoad) {
@@ -447,10 +447,19 @@ export const TreeSelect = <T = unknown,>({
         onChange?.(multiple ? selectableNodes : null);
       }
     },
-    [selectableNodes, multiple, onChange, cascadeSelection, lazyLoad, treeData, loadAllDescendants]
+    [
+      selectableNodes,
+      multiple,
+      onChange,
+      cascadeSelection,
+      lazyLoad,
+      treeData,
+      loadAllDescendants,
+    ]
   );
 
-  const showSelectAllRow = showSelectAll && multiple && selectableNodes.length > 0;
+  const showSelectAllRow =
+    showSelectAll && multiple && selectableNodes.length > 0;
 
   const selectedIdsSet = useMemo(
     () => new Set(selectedData.map((n) => n.id)),
@@ -541,7 +550,14 @@ export const TreeSelect = <T = unknown,>({
             selectionMode="none"
             onAction={(key) => {
               const node = findNode(treeData, String(key));
-              if (node) {
+              if (!node) {
+                return;
+              }
+              const isExclusiveParent =
+                node.hasExclusiveChildren ??
+                node.children?.some((c) => c.isParentMutuallyExclusive) ??
+                false;
+              if (!isExclusiveParent) {
                 handleNodeAction(node);
               }
             }}

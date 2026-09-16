@@ -448,8 +448,8 @@ export const GlossaryFilterBordered: StoryObj = {
         </div>
         <p style={{ fontSize: 13, color: '#667085', maxWidth: 500 }}>
           Finance &amp; Customer: checkboxes with cascade (selecting parent
-          selects all children). PII: radio buttons (mutually exclusive
-          — only one term can be selected).
+          selects all children). PII: radio buttons (mutually exclusive — only
+          one term can be selected).
         </p>
       </div>
     );
