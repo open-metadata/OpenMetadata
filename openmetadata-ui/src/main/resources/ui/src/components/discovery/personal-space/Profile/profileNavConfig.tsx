@@ -16,6 +16,7 @@ import { PermissionDebugger as AccessControlIcon } from '@openmetadata/ui-core-c
 import { Key01, Settings02, ShieldTick, User01 } from '@untitledui/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../../generated/entity/teams/user';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
@@ -104,6 +105,11 @@ export interface ProfileNavItem {
    * The header is still rendered by ProfilePage.
    */
   selfContainedLayout?: boolean;
+  /**
+   * When present, the item is shown only when this returns true.
+   * Receives the UIPermission map and the isAdmin flag of the current user.
+   */
+  isVisible?: (permissions: UIPermission, isAdmin: boolean) => boolean;
 }
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
@@ -150,6 +156,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.access-control',
     description: 'message.access-control-description',
     icon: AccessControlIcon,
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <AccessControlPanel onHeaderChange={onHeaderChange} />

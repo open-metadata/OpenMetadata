@@ -19,6 +19,7 @@ import { isUndefined, omitBy } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
@@ -139,8 +140,9 @@ const ProfilePage: React.FC = () => {
   // contribution onto a credentials-group nav item; `isAiMode` lets a plugin
   // pick the app-mode variant of a tab it also contributes to classic pages.
   const navItems: ProfileNavItem[] = useMemo(() => {
+    const isAdmin = Boolean(currentUser?.isAdmin);
     const coreItems = PROFILE_NAV_ITEMS.filter(
-      (item) => item.id !== 'access-control' || currentUser?.isAdmin
+      (item) => !item.isVisible || item.isVisible({} as UIPermission, isAdmin)
     );
 
     if (!userData) {
