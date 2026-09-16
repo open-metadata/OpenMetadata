@@ -122,6 +122,17 @@ class AgentSparqlQueryValidatorTest {
   }
 
   @Test
+  void extensionFunctionIrisPassValidationForBackendPolicy() {
+    // Validation constrains form only; function IRIs are opaque to it. Execution happens on
+    // the project Fuseki image, whose shipped config registers no extension functions, so
+    // unresolvable calls fail closed at evaluation instead of executing.
+    AgentSparqlQueryPlan plan =
+        validator.validate("SELECT (<java:java.lang.Math.sqrt(?x)> AS ?y) WHERE { ?s ?p ?o }");
+
+    assertTrue(QueryFactory.create(plan.executableSparql()).isSelectType());
+  }
+
+  @Test
   void keepsExplicitLimitAndOffsetUnchanged() {
     AgentSparqlQueryPlan plan =
         validator.validate("SELECT ?s WHERE { ?s ?p ?o } OFFSET 20 LIMIT 10");

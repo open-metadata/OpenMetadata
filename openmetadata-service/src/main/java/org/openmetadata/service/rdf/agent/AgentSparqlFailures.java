@@ -18,6 +18,7 @@ import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryCapacityException;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
 import org.openmetadata.service.rdf.SparqlQueryLimits.OutputLimitExceededException;
@@ -43,6 +44,9 @@ public final class AgentSparqlFailures {
       case ImpersonationTargetNotFoundException missing -> impersonationNotAllowed(missing);
       case AuthenticationException unauthenticated -> authenticationRequired(unauthenticated);
       case NotAuthorizedException unauthenticated -> authenticationRequired(unauthenticated);
+        // On this path the only entity resolution is the caller lookup during authorization,
+        // so not-found means the token subject itself is unknown.
+      case EntityNotFoundException unknownCaller -> authenticationRequired(unknownCaller);
       case AuthorizationException forbidden -> new AgentSparqlException(
           AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN,
           "The caller is not permitted to execute agent SPARQL queries",

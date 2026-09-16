@@ -261,6 +261,22 @@ public class AgentSparqlResourceIT {
   }
 
   @Test
+  void deletedUserTokenIsAuthenticationRequired() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ("agentsparqlgone" + suffix).toLowerCase(Locale.ROOT);
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String token = tokenFor(userName);
+    admin.users().delete(user.getId());
+
+    assertError(
+        post(token, query(selectFixture())), 401, AgentSparqlErrorCode.AUTHENTICATION_REQUIRED);
+  }
+
+  @Test
   void neighboringEndpointsKeepTheirErrorShape() throws Exception {
     HttpResponse<String> admin =
         send(SdkClients.getServerUrl() + "/v1/rdf/sparql", null, query(selectFixture()), null);
@@ -338,6 +354,7 @@ public class AgentSparqlResourceIT {
         AgentSparqlCompletenessReason.SERVER_ROW_LIMIT,
         overflow.getMetadata().getCompleteness().getReason());
     assertNull(overflow.getMetadata().getEffectiveLimits().getExplicitQueryLimit());
+    assertEquals(1000, offset.getResults().getBindings().size());
     assertEquals(
         AgentSparqlCompletenessStatus.COMPLETE, offset.getMetadata().getCompleteness().getStatus());
   }

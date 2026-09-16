@@ -21,10 +21,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -119,6 +125,26 @@ class AgentSparqlTransportTest {
     assertFalse(AgentSparqlTransport.isAgentSparqlRequest(uriInfo("v1/rdf/sparql")));
     assertFalse(AgentSparqlTransport.isAgentSparqlRequest(uriInfo("v1/rdf/sparql/update")));
     assertFalse(AgentSparqlTransport.isAgentSparqlRequest(null));
+  }
+
+  @Test
+  void documentedStatusesMatchTheContractMapping() throws Exception {
+    Operation operation =
+        RdfResource.class
+            .getMethod("queryAgentSparql", SecurityContext.class, String.class)
+            .getAnnotation(Operation.class);
+    Set<String> documented =
+        Arrays.stream(operation.responses())
+            .map(ApiResponse::responseCode)
+            .collect(Collectors.toSet());
+    Set<String> mapped =
+        Arrays.stream(AgentSparqlErrorCode.values())
+            .map(code -> String.valueOf(AgentSparqlTransport.status(code)))
+            .collect(Collectors.toSet());
+
+    assertTrue(documented.containsAll(mapped), "Every mapped status is documented: " + mapped);
+    documented.remove("200");
+    assertEquals(mapped, documented);
   }
 
   private static UriInfo uriInfo(String path) {

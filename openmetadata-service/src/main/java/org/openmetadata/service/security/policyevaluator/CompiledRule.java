@@ -227,18 +227,26 @@ public class CompiledRule extends Rule {
   }
 
   private boolean matchOperation(MetadataOperation operation) {
-    boolean matched;
-    if (EXPLICIT_GRANT_ONLY_OPERATIONS.contains(operation)
-        || (EXPLICIT_ALLOW_OPERATIONS.contains(operation) && getEffect() != Effect.DENY)) {
-      matched = getOperations().contains(operation);
-    } else {
-      matched = matchesBySubsumption(operation) || getOperations().contains(operation);
-    }
-    return matched;
+    return operationMatches(getOperations(), getEffect(), operation);
   }
 
-  private boolean matchesBySubsumption(MetadataOperation operation) {
-    List<MetadataOperation> operations = getOperations();
+  /**
+   * Shared with PermissionDebugService so the debug tool reports exactly what enforcement
+   * evaluates, including the explicit-match exemptions.
+   */
+  static boolean operationMatches(
+      final List<MetadataOperation> operations,
+      final Rule.Effect effect,
+      final MetadataOperation operation) {
+    if (EXPLICIT_GRANT_ONLY_OPERATIONS.contains(operation)
+        || (EXPLICIT_ALLOW_OPERATIONS.contains(operation) && effect != Rule.Effect.DENY)) {
+      return operations.contains(operation);
+    }
+    return matchesBySubsumption(operations, operation) || operations.contains(operation);
+  }
+
+  private static boolean matchesBySubsumption(
+      final List<MetadataOperation> operations, final MetadataOperation operation) {
     boolean matched = false;
     if (operations.contains(MetadataOperation.ALL)) {
       LOG.debug("matched all operations");

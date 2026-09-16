@@ -145,6 +145,25 @@ class CompiledRuleTest {
         listedAccess(rule(ALL_RESOURCES, MetadataOperation.ALL, Rule.Effect.DENY)));
   }
 
+  @Test
+  void sharedOperationMatcherModelsExplicitAndWildcardRules() {
+    assertTrue(CompiledRule.operationMatches(List.of(SPARQL), Rule.Effect.ALLOW, SPARQL));
+    assertFalse(
+        CompiledRule.operationMatches(List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, SPARQL));
+    assertTrue(
+        CompiledRule.operationMatches(List.of(MetadataOperation.ALL), Rule.Effect.DENY, SPARQL));
+    assertTrue(CompiledRule.operationMatches(List.of(IMPERSONATE), Rule.Effect.ALLOW, IMPERSONATE));
+    assertFalse(
+        CompiledRule.operationMatches(
+            List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, IMPERSONATE));
+    assertFalse(
+        CompiledRule.operationMatches(
+            List.of(MetadataOperation.ALL), Rule.Effect.DENY, IMPERSONATE));
+    assertTrue(
+        CompiledRule.operationMatches(
+            List.of(MetadataOperation.ALL), Rule.Effect.ALLOW, MetadataOperation.VIEW_BASIC));
+  }
+
   private static CompiledRule rule(
       String resource, MetadataOperation operation, Rule.Effect effect) {
     return new CompiledRule(

@@ -21,6 +21,7 @@ import jakarta.ws.rs.NotAcceptableException;
 import jakarta.ws.rs.NotAuthorizedException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryCapacityException;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
 import org.openmetadata.service.rdf.SparqlQueryLimits.OutputLimitExceededException;
@@ -56,6 +57,15 @@ class AgentSparqlFailuresTest {
     assertCode(
         AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN,
         new AuthorizationException("Principal is not allowed ExecuteSparqlQuery"));
+  }
+
+  @Test
+  void unknownCallerIsAuthenticationRequired() {
+    // On this path the only entity resolution is the caller lookup, so a deleted token
+    // subject surfaces here instead of as a backend failure.
+    assertCode(
+        AgentSparqlErrorCode.AUTHENTICATION_REQUIRED,
+        new EntityNotFoundException("user ghost not found"));
   }
 
   @Test

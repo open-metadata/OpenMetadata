@@ -87,13 +87,17 @@ public final class AgentSparqlTransport {
       case QUERY_INVALID,
           QUERY_FORM_NOT_ALLOWED,
           GRAPH_SELECTION_NOT_ALLOWED,
-          QUERY_LIMIT_EXCEEDED -> 400;
-      case AUTHENTICATION_REQUIRED -> 401;
-      case RDF_QUERY_FORBIDDEN, IMPERSONATION_NOT_ALLOWED, FEDERATION_NOT_ALLOWED -> 403;
-      case RESULT_OUTPUT_LIMIT_EXCEEDED -> 413;
-      case EXECUTION_CAPACITY_EXHAUSTED -> 429;
-      case RDF_BACKEND_FAILURE -> 500;
-      case EXECUTION_TIMEOUT, RDF_REPOSITORY_UNAVAILABLE, PROJECTION_NOT_READY -> 503;
+          QUERY_LIMIT_EXCEEDED -> Response.Status.BAD_REQUEST.getStatusCode();
+      case AUTHENTICATION_REQUIRED -> Response.Status.UNAUTHORIZED.getStatusCode();
+      case RDF_QUERY_FORBIDDEN, IMPERSONATION_NOT_ALLOWED, FEDERATION_NOT_ALLOWED -> Response.Status
+          .FORBIDDEN
+          .getStatusCode();
+      case RESULT_OUTPUT_LIMIT_EXCEEDED -> Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode();
+      case EXECUTION_CAPACITY_EXHAUSTED -> Response.Status.TOO_MANY_REQUESTS.getStatusCode();
+      case RDF_BACKEND_FAILURE -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
+      case EXECUTION_TIMEOUT, RDF_REPOSITORY_UNAVAILABLE, PROJECTION_NOT_READY -> Response.Status
+          .SERVICE_UNAVAILABLE
+          .getStatusCode();
     };
   }
 
