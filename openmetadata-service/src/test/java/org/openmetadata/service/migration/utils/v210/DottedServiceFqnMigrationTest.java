@@ -3,6 +3,8 @@ package org.openmetadata.service.migration.utils.v210;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -16,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.MlModel;
@@ -25,9 +28,11 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class DottedServiceFqnMigrationTest {
@@ -77,36 +82,20 @@ class DottedServiceFqnMigrationTest {
     stubServiceRows(handle, "messaging_service_entity", messagingServiceId);
     stubServiceRows(handle, "mlmodel_service_entity", mlModelServiceId);
 
-    when(relationshipDAO.findTo(
-            dashboardServiceId,
-            Entity.DASHBOARD_SERVICE,
-            Relationship.CONTAINS.ordinal(),
-            Entity.DASHBOARD))
-        .thenReturn(List.of(relationship(dashboardId, Entity.DASHBOARD)));
-    when(relationshipDAO.findTo(
-            dashboardServiceId,
-            Entity.DASHBOARD_SERVICE,
-            Relationship.CONTAINS.ordinal(),
-            Entity.CHART))
-        .thenReturn(List.of(relationship(chartId, Entity.CHART)));
-    when(relationshipDAO.findTo(
-            pipelineServiceId,
-            Entity.PIPELINE_SERVICE,
-            Relationship.CONTAINS.ordinal(),
-            Entity.PIPELINE))
-        .thenReturn(List.of(relationship(pipelineId, Entity.PIPELINE)));
-    when(relationshipDAO.findTo(
-            messagingServiceId,
-            Entity.MESSAGING_SERVICE,
-            Relationship.CONTAINS.ordinal(),
-            Entity.TOPIC))
-        .thenReturn(List.of(relationship(topicId, Entity.TOPIC)));
-    when(relationshipDAO.findTo(
-            mlModelServiceId,
-            Entity.MLMODEL_SERVICE,
-            Relationship.CONTAINS.ordinal(),
-            Entity.MLMODEL))
-        .thenReturn(List.of(relationship(mlModelId, Entity.MLMODEL)));
+    stubContains(
+        relationshipDAO,
+        dashboardServiceId,
+        Entity.DASHBOARD_SERVICE,
+        Entity.DASHBOARD,
+        dashboardId);
+    stubContains(
+        relationshipDAO, dashboardServiceId, Entity.DASHBOARD_SERVICE, Entity.CHART, chartId);
+    stubContains(
+        relationshipDAO, pipelineServiceId, Entity.PIPELINE_SERVICE, Entity.PIPELINE, pipelineId);
+    stubContains(
+        relationshipDAO, messagingServiceId, Entity.MESSAGING_SERVICE, Entity.TOPIC, topicId);
+    stubContains(
+        relationshipDAO, mlModelServiceId, Entity.MLMODEL_SERVICE, Entity.MLMODEL, mlModelId);
 
     String dashboardServiceFqn = "\"dash.service\"";
     String pipelineServiceFqn = "\"pipe.service\"";
@@ -156,20 +145,18 @@ class DottedServiceFqnMigrationTest {
             .withName("churn")
             .withFullyQualifiedName("ml.service.churn");
 
-    when(dashboardServiceDAO.findEntityById(dashboardServiceId)).thenReturn(dashboardService);
-    when(dashboardDAO.findEntityById(dashboardId)).thenReturn(dashboard);
-    when(chartDAO.findEntityById(chartId)).thenReturn(chart);
-    when(pipelineServiceDAO.findEntityById(pipelineServiceId)).thenReturn(pipelineService);
-    when(pipelineDAO.findEntityById(pipelineId)).thenReturn(pipeline);
-    when(messagingServiceDAO.findEntityById(messagingServiceId)).thenReturn(messagingService);
-    when(topicDAO.findEntityById(topicId)).thenReturn(topic);
-    when(mlModelServiceDAO.findEntityById(mlModelServiceId)).thenReturn(mlModelService);
-    when(mlModelDAO.findEntityById(mlModelId)).thenReturn(mlModel);
+    stubService(dashboardServiceDAO, dashboardServiceId, dashboardService);
+    stubService(pipelineServiceDAO, pipelineServiceId, pipelineService);
+    stubService(messagingServiceDAO, messagingServiceId, messagingService);
+    stubService(mlModelServiceDAO, mlModelServiceId, mlModelService);
+    when(dashboardDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(dashboard));
+    when(chartDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(chart));
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pipeline));
+    when(topicDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(topic));
+    when(mlModelDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(mlModel));
 
     DottedServiceFqnMigration.repairDottedServiceChildFqns(handle, collectionDAO);
 
-    // Observable outcome: each child now carries the canonical quoted-service FQN, and update()
-    // (which rewrites the @BindFQN-hashed fqnHash) was invoked for it.
     assertEquals(
         FullyQualifiedName.add(dashboardServiceFqn, "sales"), dashboard.getFullyQualifiedName());
     assertEquals(
@@ -186,6 +173,50 @@ class DottedServiceFqnMigrationTest {
     verify(pipelineDAO).update(pipeline);
     verify(topicDAO).update(topic);
     verify(mlModelDAO).update(mlModel);
+  }
+
+  @Test
+  void repairsSoftDeletedChildUnderDottedService() {
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO.DashboardServiceDAO dashboardServiceDAO =
+        mock(CollectionDAO.DashboardServiceDAO.class);
+    CollectionDAO.DashboardDAO dashboardDAO = mock(CollectionDAO.DashboardDAO.class);
+
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(collectionDAO.dashboardServiceDAO()).thenReturn(dashboardServiceDAO);
+    when(collectionDAO.dashboardDAO()).thenReturn(dashboardDAO);
+
+    UUID serviceId = UUID.randomUUID();
+    UUID dashboardId = UUID.randomUUID();
+    stubServiceRows(handle, "dashboard_service_entity", serviceId);
+    stubServiceRows(handle, "pipeline_service_entity");
+    stubServiceRows(handle, "messaging_service_entity");
+    stubServiceRows(handle, "mlmodel_service_entity");
+    stubContains(
+        relationshipDAO, serviceId, Entity.DASHBOARD_SERVICE, Entity.DASHBOARD, dashboardId);
+
+    DashboardService service =
+        new DashboardService()
+            .withId(serviceId)
+            .withName("dash.service")
+            .withFullyQualifiedName("\"dash.service\"");
+    // A soft-deleted child, only returned by Include.ALL — it must still be repaired.
+    Dashboard deleted =
+        new Dashboard()
+            .withId(dashboardId)
+            .withName("sales")
+            .withFullyQualifiedName("dash.service.sales")
+            .withDeleted(true);
+    stubService(dashboardServiceDAO, serviceId, service);
+    when(dashboardDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(deleted));
+
+    DottedServiceFqnMigration.repairDottedServiceChildFqns(handle, collectionDAO);
+
+    assertEquals("\"dash.service\".sales", deleted.getFullyQualifiedName());
+    verify(dashboardDAO).update(deleted);
   }
 
   @Test
@@ -228,7 +259,7 @@ class DottedServiceFqnMigrationTest {
             .withId(serviceId)
             .withName("dash.service")
             .withFullyQualifiedName("dash.service");
-    when(dashboardServiceDAO.findEntityById(serviceId)).thenReturn(service);
+    stubService(dashboardServiceDAO, serviceId, service);
 
     DottedServiceFqnMigration.repairDottedServiceChildFqns(handle, collectionDAO);
 
@@ -258,10 +289,8 @@ class DottedServiceFqnMigrationTest {
     stubServiceRows(handle, "pipeline_service_entity");
     stubServiceRows(handle, "messaging_service_entity");
     stubServiceRows(handle, "mlmodel_service_entity");
-
-    when(relationshipDAO.findTo(
-            serviceId, Entity.DASHBOARD_SERVICE, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD))
-        .thenReturn(List.of(relationship(dashboardId, Entity.DASHBOARD)));
+    stubContains(
+        relationshipDAO, serviceId, Entity.DASHBOARD_SERVICE, Entity.DASHBOARD, dashboardId);
 
     DashboardService service =
         new DashboardService()
@@ -273,8 +302,8 @@ class DottedServiceFqnMigrationTest {
             .withId(dashboardId)
             .withName("sales")
             .withFullyQualifiedName("dash.service.sales");
-    when(dashboardServiceDAO.findEntityById(serviceId)).thenReturn(service);
-    when(dashboardDAO.findEntityById(dashboardId)).thenReturn(dashboard);
+    stubService(dashboardServiceDAO, serviceId, service);
+    when(dashboardDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(dashboard));
     // A canonical row already occupies "dash.service".sales -> updating would violate the fqnHash
     // UNIQUE constraint, so the corrupted row must be left untouched (not silently
     // update-and-throw).
@@ -284,6 +313,11 @@ class DottedServiceFqnMigrationTest {
 
     verify(dashboardDAO, never()).update(any());
     assertEquals("dash.service.sales", dashboard.getFullyQualifiedName());
+  }
+
+  private static <T extends EntityInterface> void stubService(EntityDAO<T> dao, UUID id, T entity) {
+    // The migration loads services with Include.ALL so soft-deleted services are covered too.
+    when(dao.findEntityById(eq(id), eq(Include.ALL))).thenReturn(entity);
   }
 
   private static void stubServiceRows(Handle handle, String tableName, UUID... ids) {
@@ -298,6 +332,16 @@ class DottedServiceFqnMigrationTest {
                 })
             .toList();
     when(handle.createQuery(query).mapToMap().list()).thenReturn(rows);
+  }
+
+  private static void stubContains(
+      CollectionDAO.EntityRelationshipDAO relationshipDAO,
+      UUID fromId,
+      String fromType,
+      String toType,
+      UUID childId) {
+    when(relationshipDAO.findTo(fromId, fromType, Relationship.CONTAINS.ordinal(), toType))
+        .thenReturn(List.of(relationship(childId, toType)));
   }
 
   private static CollectionDAO.EntityRelationshipRecord relationship(UUID id, String type) {

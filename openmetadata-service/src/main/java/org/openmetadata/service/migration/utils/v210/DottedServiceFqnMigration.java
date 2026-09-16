@@ -33,6 +33,7 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
@@ -61,6 +62,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public final class DottedServiceFqnMigration {
 
   private DottedServiceFqnMigration() {}
+
+  // Bound the per-service work into fixed-size units: one batched read per chunk, capped rows in
+  // memory, so a large dotted-name-service catalog does not become one unbounded pass.
+  private static final int BATCH_SIZE = 100;
 
   private enum RepairOutcome {
     FIXED,
@@ -156,20 +161,23 @@ public final class DottedServiceFqnMigration {
       UUID serviceId,
       RepairTally tally) {
     try {
+      // Include.ALL so a soft-deleted service still has its (also soft-deleted) children repaired.
       EntityInterface service =
-          hierarchy.serviceDao().apply(collectionDAO).findEntityById(serviceId);
+          hierarchy.serviceDao().apply(collectionDAO).findEntityById(serviceId, Include.ALL);
       String serviceFqn = service == null ? null : service.getFullyQualifiedName();
       // Only a quoted service FQN could have produced the unquoted-dotted corruption.
       if (serviceFqn == null || !serviceFqn.contains("\"")) {
         return;
       }
       EntityDAO<?> childDao = hierarchy.childDao().apply(collectionDAO);
-      Set<UUID> childIds =
-          findChildEntityIds(
-              collectionDAO, serviceId, hierarchy.serviceType(), hierarchy.childType());
-      for (UUID childId : childIds) {
-        recordOutcome(
-            tally, childId, repairChild(childDao, hierarchy.childType(), serviceFqn, childId));
+      List<UUID> childIds =
+          new ArrayList<>(
+              findChildEntityIds(
+                  collectionDAO, serviceId, hierarchy.serviceType(), hierarchy.childType()));
+      // Process in bounded batches: one batched read per chunk, at most BATCH_SIZE rows in memory.
+      for (int start = 0; start < childIds.size(); start += BATCH_SIZE) {
+        List<UUID> batch = childIds.subList(start, Math.min(start + BATCH_SIZE, childIds.size()));
+        repairChildBatch(childDao, hierarchy.childType(), serviceFqn, batch, tally);
       }
     } catch (Exception e) {
       LOG.warn(
@@ -177,6 +185,20 @@ public final class DottedServiceFqnMigration {
           hierarchy.childType(),
           serviceId,
           e.getMessage());
+    }
+  }
+
+  private static void repairChildBatch(
+      EntityDAO<?> childDao,
+      String childType,
+      String serviceFqn,
+      List<UUID> childIds,
+      RepairTally tally) {
+    // Include.ALL so soft-deleted children (still linked to the service) are repaired too; a later
+    // restore would otherwise keep the invalid FQN/hash and duplicate on re-ingestion.
+    List<? extends EntityInterface> children = childDao.findEntitiesByIds(childIds, Include.ALL);
+    for (EntityInterface child : children) {
+      recordOutcome(tally, child.getId(), repairChild(childDao, childType, serviceFqn, child));
     }
   }
 
@@ -189,12 +211,8 @@ public final class DottedServiceFqnMigration {
   }
 
   private static RepairOutcome repairChild(
-      EntityDAO<?> childDao, String childType, String serviceFqn, UUID childId) {
+      EntityDAO<?> childDao, String childType, String serviceFqn, EntityInterface child) {
     try {
-      EntityInterface child = childDao.findEntityById(childId);
-      if (child == null) {
-        return RepairOutcome.UNCHANGED;
-      }
       String expectedFqn = FullyQualifiedName.add(serviceFqn, child.getName());
       if (expectedFqn.equals(child.getFullyQualifiedName())) {
         return RepairOutcome.UNCHANGED;
@@ -212,7 +230,7 @@ public final class DottedServiceFqnMigration {
       childDao.update(child);
       return RepairOutcome.FIXED;
     } catch (Exception e) {
-      LOG.warn("Error repairing {} entity {}: {}", childType, childId, e.getMessage());
+      LOG.warn("Error repairing {} entity {}: {}", childType, child.getId(), e.getMessage());
       return RepairOutcome.FAILED;
     }
   }
