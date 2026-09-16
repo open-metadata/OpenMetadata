@@ -73,8 +73,10 @@ import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
+  CERTIFICATION_CATEGORY,
   DE_ACTIVE_COLOR,
   ROUTES,
+  TIER_CATEGORY,
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
@@ -138,10 +140,10 @@ const EntitySummaryPanel = withSuspenseFallback(
 const getDqFilterKey = (
   classificationName?: string
 ): 'tier' | 'certification' | 'tags' => {
-  if (classificationName === 'Tier') {
+  if (classificationName === TIER_CATEGORY) {
     return 'tier';
   }
-  if (classificationName === 'Certification') {
+  if (classificationName === CERTIFICATION_CATEGORY) {
     return 'certification';
   }
 
@@ -326,7 +328,8 @@ const TagPage = () => {
   );
 
   const classificationName = tagItem?.classification?.name;
-  const isCertificationClassification = classificationName === 'Certification';
+  const isCertificationClassification =
+    classificationName === CERTIFICATION_CATEGORY;
 
   // Tier and Certification are first-class entity fields (entity.tier,
   // entity.certification), not entries in entity.tags[]. When this page
