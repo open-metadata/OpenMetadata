@@ -231,6 +231,11 @@ export interface TreeItemContentProps {
    * Defaults to `false`.
    */
   showGuideLines?: boolean;
+  /**
+   * Pixels of indentation added per tree level. Defaults to `22`.
+   * Increase to align nested expand icons with parent checkboxes.
+   */
+  indentPerLevel?: number;
 }
 
 const TreeItemContentComponent = ({
@@ -241,6 +246,7 @@ const TreeItemContentComponent = ({
   showExpandIcon = true,
   showGuideLines = false,
   hasChildItems: hasChildItemsProp,
+  indentPerLevel = 22,
 }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent>
@@ -257,12 +263,12 @@ const TreeItemContentComponent = ({
               'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
-            style={{ marginLeft: `${(level - 1) * 22 + 2}px` }}>
+            style={{ marginLeft: `${(level - 1) * indentPerLevel + 2}px` }}>
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"
                 className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:pointer-events-none"
-                style={{ left: '-10px' }}
+                style={{ left: `${-Math.round(indentPerLevel / 2)}px` }}
               />
             )}
             {showExpandIcon && (

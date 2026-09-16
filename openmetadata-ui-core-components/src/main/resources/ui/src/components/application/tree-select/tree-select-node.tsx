@@ -48,11 +48,12 @@ export const TreeSelectTreeItemContent = <T,>({
   return (
     <Tree.ItemContent
       className={cx(isSelected && 'tw:bg-utility-blue-50')}
-      hasChildItems={hasChildItems}>
+      hasChildItems={hasChildItems}
+      indentPerLevel={28}>
       {(renderProps) => (
         <div
           className={cx(
-            'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
+            'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3 tw:py-0.5',
             isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
           )}
           data-testid={`tree-node-${node.id}`}
@@ -67,7 +68,7 @@ export const TreeSelectTreeItemContent = <T,>({
             <span
               aria-hidden="true"
               className="tw:pointer-events-none tw:absolute tw:w-3.5 tw:border-l-[1.5px] tw:border-b-[1.5px] tw:border-primary tw:rounded-bl-md tw:-top-[6px] tw:h-[calc(50%+6px)]"
-              style={{ left: '-42px' }}
+              style={{ left: '-48px' }}
             />
           )}
           {showCheckbox && multiple && isSelectable && (
