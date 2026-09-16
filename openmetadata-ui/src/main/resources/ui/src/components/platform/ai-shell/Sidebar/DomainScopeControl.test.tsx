@@ -64,12 +64,9 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
     ref?.displayName ?? active,
 }));
 
-jest.mock('../../../../assets/svg/ic-domain.svg', () => ({
-  ReactComponent: () => <div data-testid="domain-icon" />,
-}));
-
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <div data-testid="chevron-down" />,
+  Domain: () => <div data-testid="domain-icon" />,
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -93,6 +90,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <Icon />
     </button>
   ),
+  Tooltip: ({
+    children,
+    title,
+  }: {
+    children: React.ReactNode;
+    title?: string;
+  }) => <div title={title}>{children}</div>,
 }));
 
 jest.mock('../../../AppRouter/withSuspenseFallback', () => ({
@@ -195,19 +199,36 @@ describe('DomainScopeControl', () => {
     expect(props.restrictedDomains).toBeUndefined();
   });
 
-  it('restricts the menu and disables the trigger for a single-domain user', async () => {
+  it('renders a disabled, menu-less affordance for a single-domain user', () => {
     storeState = {
       ...storeState,
       isDomainRestricted: true,
       userDomains: [complianceDomain],
+    };
+    render(<DomainScopeControl />);
+
+    const card = screen.getByTestId('ask-domain-scope-card');
+
+    expect(card).toHaveAttribute('aria-disabled');
+    expect(card.closest('[title]')).toHaveAttribute(
+      'title',
+      'message.domain-access-restricted'
+    );
+    expect(mockDomainSelectableList).not.toHaveBeenCalled();
+  });
+
+  it('restricts the menu to the user domains when access is restricted', async () => {
+    storeState = {
+      ...storeState,
+      isDomainRestricted: true,
+      userDomains: [complianceDomain, demoDomain],
     };
     await renderControl();
 
     const props = lastMenuProps();
 
     expect(props.showAllDomains).toBe(false);
-    expect(props.restrictedDomains).toEqual([complianceDomain]);
-    expect(screen.getByTestId('ask-domain-scope-card')).toBeDisabled();
+    expect(props.restrictedDomains).toEqual([complianceDomain, demoDomain]);
   });
 
   it('renders the rail variant as an icon-only trigger', async () => {

@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  Domain as DomainIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useDomainStore } from '../../../../hooks/useDomainStore';
@@ -81,12 +83,82 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
     [navigate, updateActiveDomain]
   );
 
+  const cardClassName = classNames(
+    'ask-domain-scope__card tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-left',
+    isActiveScope
+      ? 'tw:border-brand tw:bg-brand-primary'
+      : 'tw:border-secondary tw:bg-primary tw:hover:bg-secondary'
+  );
+
+  const cardInner = (
+    <>
+      <DomainIcon
+        className="tw:shrink-0 tw:text-brand-secondary"
+        height={20}
+        width={20}
+      />
+      <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+        <span className="tw:text-xs tw:font-medium tw:text-brand-secondary">
+          {t('label.domain-scope')}
+        </span>
+        <span
+          className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary"
+          data-testid="ask-domain-scope-name">
+          {domainDisplayName}
+        </span>
+      </span>
+      {isActiveScope && (
+        <span
+          aria-hidden
+          className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-success-primary"
+          data-testid="ask-domain-scope-dot"
+        />
+      )}
+      <ChevronDown
+        aria-hidden
+        className="tw:size-4 tw:shrink-0 tw:text-quaternary"
+      />
+    </>
+  );
+
+  // Restricted (single-domain) users cannot switch scope, so there is no menu
+  // to open. Render a disabled, non-interactive affordance that still explains
+  // the restriction — mirroring the navbar's disabled selector.
+  if (isSingleDomainUser) {
+    const restrictedMessage = t('message.domain-access-restricted');
+
+    return variant === 'rail' ? (
+      <ButtonUtility
+        isDisabled
+        aria-label={t('label.domain-scope')}
+        className="ask-domain-scope__rail-btn"
+        color="tertiary"
+        data-testid="ask-domain-scope-rail"
+        icon={DomainIcon}
+        size="sm"
+        tooltip={restrictedMessage}
+        tooltipPlacement="right"
+      />
+    ) : (
+      <Tooltip placement="top" title={restrictedMessage}>
+        <span
+          aria-disabled
+          className={classNames(
+            cardClassName,
+            'tw:cursor-not-allowed tw:opacity-60'
+          )}
+          data-testid="ask-domain-scope-card">
+          {cardInner}
+        </span>
+      </Tooltip>
+    );
+  }
+
   const trigger =
     variant === 'rail' ? (
-      // `ButtonUtility` is the focusable icon button and renders its own
-      // tooltip, so there is no nested trigger. The popover open state is
-      // controlled, so a click just toggles it.
       <ButtonUtility
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
         aria-label={t('label.domain-scope')}
         className={classNames('ask-domain-scope__rail-btn', {
           'ask-domain-scope__rail-btn--active': isActiveScope,
@@ -94,7 +166,6 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
         color="tertiary"
         data-testid="ask-domain-scope-rail"
         icon={DomainIcon}
-        isDisabled={isSingleDomainUser}
         size="sm"
         tooltip={domainDisplayName}
         tooltipPlacement="right"
@@ -102,49 +173,19 @@ const DomainScopeControl: React.FC<DomainScopeControlProps> = ({
       />
     ) : (
       <button
-        className={classNames(
-          'ask-domain-scope__card tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:rounded-lg tw:border tw:px-3 tw:py-2 tw:text-left',
-          isActiveScope
-            ? 'tw:border-brand tw:bg-brand-primary'
-            : 'tw:border-secondary tw:bg-primary tw:hover:bg-secondary'
-        )}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        className={cardClassName}
         data-testid="ask-domain-scope-card"
-        disabled={isSingleDomainUser}
         type="button"
         onClick={() => setIsOpen((open) => !open)}>
-        <DomainIcon
-          className="tw:shrink-0 tw:text-brand-secondary"
-          height={20}
-          width={20}
-        />
-        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-          <span className="tw:text-xs tw:font-medium tw:text-brand-secondary">
-            {t('label.domain-scope')}
-          </span>
-          <span
-            className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary"
-            data-testid="ask-domain-scope-name">
-            {domainDisplayName}
-          </span>
-        </span>
-        {isActiveScope && (
-          <span
-            aria-hidden
-            className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-success-primary"
-            data-testid="ask-domain-scope-dot"
-          />
-        )}
-        <ChevronDown
-          aria-hidden
-          className="tw:size-4 tw:shrink-0 tw:text-quaternary"
-        />
+        {cardInner}
       </button>
     );
 
   return (
     <DomainSelectableList
       hasPermission
-      disabled={isSingleDomainUser}
       popoverProps={{
         open: isOpen,
         placement: variant === 'rail' ? 'topLeft' : 'topRight',
