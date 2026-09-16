@@ -19,7 +19,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, ProgrammingError
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -1615,7 +1615,8 @@ def test_query_history_failure_is_contained() -> None:
     source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
 
     def explode(*_, **__):
-        raise RuntimeError("insufficient privilege: SYS.M_SQL_PLAN_CACHE")
+        # What a restricted read actually raises, and the only family the guard catches.
+        raise ProgrammingError("SELECT 1", None, Exception("insufficient privilege: SYS.M_SQL_PLAN_CACHE"))
 
     with patch.object(LineageSource, "yield_query_lineage", side_effect=explode):
         results = list(source.yield_query_lineage())
@@ -1637,7 +1638,8 @@ def test_iter_reaches_the_repository_pass_after_a_query_failure() -> None:
     reached = []
 
     def explode(*_, **__):
-        raise RuntimeError("insufficient privilege: SYS.M_SQL_PLAN_CACHE")
+        # What a restricted read actually raises, and the only family the guard catches.
+        raise ProgrammingError("SELECT 1", None, Exception("insufficient privilege: SYS.M_SQL_PLAN_CACHE"))
 
     def record_cdata():
         reached.append("cdata")
@@ -1993,3 +1995,62 @@ def test_a_plan_cache_statement_becomes_a_lineage_edge() -> None:
         ("test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE.AMOUNT", ["test_sap_hana.H00.GE370603.LT_ORDER.AMOUNT"]),
         ("test_sap_hana.H00.GE370603.LT_ORDER_ARCHIVE.ORDER_ID", ["test_sap_hana.H00.GE370603.LT_ORDER.ORDER_ID"]),
     ]
+
+
+def test_a_non_database_failure_is_not_disguised_as_a_privilege_error() -> None:
+    """The query guard covers the database read, not the parsing that follows it.
+
+    yield_query_lineage also runs the parser and the lineage pipeline. A guard catching
+    everything would report a parser regression as a missing CATALOG READ and drop the
+    rest of the run's query lineage, which is the kind of failure that has to be loud.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    def explode(*_, **__):
+        raise RuntimeError("the parser blew up")
+
+    with (
+        patch.object(LineageSource, "yield_query_lineage", side_effect=explode),
+        pytest.raises(RuntimeError, match="the parser blew up"),
+    ):
+        list(source.yield_query_lineage())
+
+
+def test_no_lineage_warning_is_silent_when_both_passes_are_off() -> None:
+    """Neither pass ran, so neither pass is worth diagnosing.
+
+    Telling an operator to check CATALOG READ, or that only view definitions were read,
+    is wrong when the pipeline was configured to read nothing at all.
+    """
+    source = _lineage_source_with(
+        DatabaseServiceQueryLineagePipeline(processViewLineage=False, processQueryLineage=False)
+    )
+
+    with (
+        patch.object(LineageSource, "_iter", return_value=iter([])),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        list(source._iter())
+
+    assert "both View Lineage and Query Lineage are turned off" in warning.call_args[0][0]
+
+
+def test_a_reported_query_failure_is_not_talked_over() -> None:
+    """A surfaced failure already carries the real cause.
+
+    The no-edge diagnosis guesses at a cause. Running it after the query pass has
+    already reported one would hand the operator a second, less accurate explanation.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+
+    def explode(*_, **__):
+        raise ProgrammingError("SELECT 1", None, Exception("insufficient privilege: SYS.M_SQL_PLAN_CACHE"))
+
+    with (
+        patch.object(LineageSource, "yield_query_lineage", side_effect=explode),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        results = list(source._iter())
+
+    assert any(either.left is not None for either in results)
+    warning.assert_not_called()

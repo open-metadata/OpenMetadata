@@ -16,7 +16,7 @@ import traceback
 from collections.abc import Iterable, Iterator
 
 from sqlalchemy import text
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -92,6 +92,10 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
     # cannot tell a source that returned nothing from one that returned rows.
     statements_read = 0
 
+    # Set when the query pass surfaced its own failure, so the no-edge diagnosis below
+    # stays quiet rather than guessing at a cause that has already been reported.
+    query_pass_failed = False
+
     # Anchored rather than wildcarded, so a SELECT that merely quotes the keyword does
     # not match. Keyword pairs allow anything between them, because SQL permits any
     # whitespace there and formatted statements routinely wrap the line.
@@ -122,6 +126,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         records are counted apart, since the shared passes emit both.
         """
         self.statements_read = 0
+        self.query_pass_failed = False
         sql_edges = 0
         sql_queries = 0
         for either in super()._iter():
@@ -154,7 +159,20 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         if sql_edges or cdata_edges:
             return
 
-        if self.statements_read:
+        # The query pass already reported the real cause on the workflow status, so a
+        # second guess here would only talk over it.
+        if self.query_pass_failed:
+            return
+
+        view_lineage = self.source_config.processViewLineage  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        query_lineage = self.source_config.processQueryLineage  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+
+        if not view_lineage and not query_lineage:
+            logger.warning(
+                "No lineage was created because both View Lineage and Query Lineage are turned off. "
+                "Enable at least one of them on the ingestion pipeline."
+            )
+        elif self.statements_read:
             logger.warning(
                 "No lineage was created from %d analysed queries. Most likely the tables they "
                 "reference have not been ingested yet, so run metadata ingestion for this service "
@@ -163,7 +181,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
             )
         # CATALOG READ is only worth raising when the query pass actually ran. A view-only
         # run would otherwise be sent to fix a privilege it never needed.
-        elif self.source_config.processQueryLineage:  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        elif query_lineage:
             logger.warning(
                 "No lineage was created and no queries were found to analyse. Check that metadata "
                 "ingestion has run for this service, and that the ingestion user has CATALOG READ, "
@@ -209,10 +227,15 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         yield_table_query does not guard its own execute, so an unreadable
         SYS.M_SQL_PLAN_CACHE raises. Only this pass is wrapped: a failure in the view
         pass must still surface, because on Cloud that pass is the whole result.
+
+        Narrowed to SQLAlchemyError because this call also runs the parser and the
+        lineage pipeline. Catching everything would report a parser regression as a
+        privilege problem and quietly drop the rest of the run's query lineage.
         """
         try:
             yield from super().yield_query_lineage()
-        except Exception as exc:
+        except SQLAlchemyError as exc:
+            self.query_pass_failed = True
             # Recorded on the workflow status, not just logged, so the run is not
             # reported as a clean success that happened to produce nothing.
             yield Either(
