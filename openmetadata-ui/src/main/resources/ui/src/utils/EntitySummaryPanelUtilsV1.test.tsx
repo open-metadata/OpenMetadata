@@ -88,7 +88,8 @@ jest.mock('./ColorUtils', () => ({
   reduceColorOpacity: jest.fn().mockReturnValue('rgba(0,0,0,0.05)'),
 }));
 
-jest.mock('../components/common/atoms/Tag', () => ({
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   ClassificationTag: jest
     .fn()
     .mockImplementation(({ label, color, icon, ...props }) => (

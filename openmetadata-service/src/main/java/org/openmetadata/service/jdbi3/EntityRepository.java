@@ -13366,7 +13366,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * response filter that records change events for synchronous operations. Without this, async
    * deletes and restores are invisible to audit logs, alerts, and webhooks. Recursive deletes pass
    * a single root event here; cascaded descendants are intentionally not recorded individually (see
-   * {@link #persistBulkUpdaters}).
+   * {@link #persistBulkUpdaters}). Writes that never produce a single-entity REST response, such as
+   * internal workflow transitions or per-item bulk updates, record their events here too.
    */
   public final void storeChangeEventForAsyncOperation(
       T entity, EventType eventType, boolean recursive, String userName) {
