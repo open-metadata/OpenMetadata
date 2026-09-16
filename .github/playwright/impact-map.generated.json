@@ -651,7 +651,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeCrossDevice.spec.ts",
         "playwright/e2e/Features/AppMode/AppModePrecedence.spec.ts",
@@ -2652,6 +2651,14 @@
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/utils/accessControl.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts"
       ]
     },
     {
@@ -9180,8 +9187,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/AIUserMenu/AIUserMenu.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
@@ -9208,8 +9214,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfilePage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
-        "playwright/e2e/Features/AccessControlSettings.spec.ts"
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"
       ]
     },
     {
