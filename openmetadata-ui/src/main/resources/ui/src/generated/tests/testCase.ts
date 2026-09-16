@@ -886,18 +886,6 @@ export enum TestCaseStatus {
 }
 
 /**
- * Unit `failureThreshold` is expressed in.
- *
- * Unit in which a test case failure threshold is expressed. `ABSOLUTE` is a raw deviation
- * expressed in the unit of the metric being tested, `PERCENTAGE` is a deviation relative to
- * the bound or to the expected value.
- */
-export enum ThresholdUnit {
-    Absolute = "ABSOLUTE",
-    Percentage = "PERCENTAGE",
-}
-
-/**
  * Schema to capture test case result values.
  */
 export interface TestResultValue {
@@ -1254,4 +1242,16 @@ export enum Status {
     Running = "Running",
     Skipped = "Skipped",
     Warning = "Warning",
+}
+
+/**
+ * Unit `failureThreshold` is expressed in.
+ *
+ * Unit in which a test case failure threshold is expressed. `ABSOLUTE` is a raw deviation
+ * expressed in the unit of the metric being tested, `PERCENTAGE` is a deviation relative to
+ * the bound or to the expected value.
+ */
+export enum ThresholdUnit {
+    Absolute = "ABSOLUTE",
+    Percentage = "PERCENTAGE",
 }

@@ -82,18 +82,6 @@ export interface CreateTestCase {
 }
 
 /**
- * Unit `failureThreshold` is expressed in.
- *
- * Unit in which a test case failure threshold is expressed. `ABSOLUTE` is a raw deviation
- * expressed in the unit of the metric being tested, `PERCENTAGE` is a deviation relative to
- * the bound or to the expected value.
- */
-export enum ThresholdUnit {
-    Absolute = "ABSOLUTE",
-    Percentage = "PERCENTAGE",
-}
-
-/**
  * Owners of this test
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
@@ -363,4 +351,16 @@ export interface CoverImage {
      * URL of the cover image.
      */
     url?: string;
+}
+
+/**
+ * Unit `failureThreshold` is expressed in.
+ *
+ * Unit in which a test case failure threshold is expressed. `ABSOLUTE` is a raw deviation
+ * expressed in the unit of the metric being tested, `PERCENTAGE` is a deviation relative to
+ * the bound or to the expected value.
+ */
+export enum ThresholdUnit {
+    Absolute = "ABSOLUTE",
+    Percentage = "PERCENTAGE",
 }
