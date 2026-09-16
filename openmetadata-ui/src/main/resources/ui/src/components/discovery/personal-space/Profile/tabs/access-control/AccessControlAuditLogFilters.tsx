@@ -207,32 +207,29 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
     }
   }, []);
 
-  const fetchBots = useCallback(
-    async (search: string) => {
-      setIsLoadingBots(true);
-      try {
-        const response = await searchQuery({
-          query: search,
-          pageNumber: 1,
-          pageSize: 10,
-          queryFilter: getTermQuery({ isBot: 'true' }),
-          searchIndex: SearchIndex.USER,
-        });
-        const bots: User[] = formatUsersResponse(response.hits.hits);
-        setBotOptions(
-          bots.map((bot) => ({
-            key: bot.name,
-            label: startCase(getEntityName(bot) || bot.name),
-          }))
-        );
-      } catch {
-        setBotOptions([]);
-      } finally {
-        setIsLoadingBots(false);
-      }
-    },
-    []
-  );
+  const fetchBots = useCallback(async (search: string) => {
+    setIsLoadingBots(true);
+    try {
+      const response = await searchQuery({
+        query: search,
+        pageNumber: 1,
+        pageSize: 10,
+        queryFilter: getTermQuery({ isBot: 'true' }),
+        searchIndex: SearchIndex.USER,
+      });
+      const bots: User[] = formatUsersResponse(response.hits.hits);
+      setBotOptions(
+        bots.map((bot) => ({
+          key: bot.name,
+          label: startCase(getEntityName(bot) || bot.name),
+        }))
+      );
+    } catch {
+      setBotOptions([]);
+    } finally {
+      setIsLoadingBots(false);
+    }
+  }, []);
 
   const debouncedFetchUsers = useMemo(
     () => debounce(fetchUsers, 300),

@@ -1089,7 +1089,7 @@ test.describe(
           .getByRole('textbox')
           .fill(newRuleName);
 
-         await expect
+        await expect
           .poll(async () => {
             const resourcesAutocomplete = page.getByTestId('resources');
 
