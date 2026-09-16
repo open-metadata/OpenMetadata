@@ -109,6 +109,16 @@ describe('ConnectionsRouterClassBase', () => {
         router.getServiceDataAssetsTabPath('databaseServices', 'my-db')
       ).toBe('/service/databaseServices/my-db/databases');
     });
+
+    // Metadata and security services have no asset-listing tab.
+    it.each(['metadataServices', 'securityServices'])(
+      'should fall back to the default tab for %s',
+      (serviceCategory) => {
+        expect(
+          router.getServiceDataAssetsTabPath(serviceCategory, 'my-service')
+        ).toBe(`/service/${serviceCategory}/my-service`);
+      }
+    );
   });
 
   describe('getEditConnectionPath', () => {
