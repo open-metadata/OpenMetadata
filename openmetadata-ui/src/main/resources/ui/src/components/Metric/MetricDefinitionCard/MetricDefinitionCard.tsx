@@ -12,7 +12,6 @@
  */
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Card,
@@ -24,7 +23,13 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Calendar, Edit03, Percent01, Variable } from '@untitledui/icons';
+import {
+  Calendar,
+  Edit03,
+  Percent01,
+  Tag01,
+  Variable,
+} from '@untitledui/icons';
 import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
@@ -37,11 +42,7 @@ import {
   UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  getMetricEnumLabel,
-  getMetricTypeBadgeColor,
-  METRIC_TYPE_BADGE_CLASS_NAME,
-} from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
+import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricExpression from '../MetricExpression/MetricExpression';
@@ -358,6 +359,7 @@ const MetricDefinitionCard = ({
   return (
     <Card className="tw:shadow-xs" data-testid="metric-definition-card">
       <Card.Header
+        className="tw:items-center"
         extra={
           allowEdit && !metric.deleted ? (
             <Button
@@ -391,13 +393,16 @@ const MetricDefinitionCard = ({
             <DefinitionField
               label={t('label.metric-type')}
               testId="metric-definition-type">
-              <Badge
-                className={METRIC_TYPE_BADGE_CLASS_NAME}
-                color={getMetricTypeBadgeColor(metric.metricType)}
-                size="xs"
-                type="color">
+              <Tag01
+                aria-hidden="true"
+                className="tw:size-4 tw:text-fg-quaternary"
+              />
+              <Typography
+                className="tw:font-mono tw:uppercase tw:tracking-wide"
+                size="text-sm"
+                weight="semibold">
                 {getOptionalMetricEnumLabel(t, metric.metricType)}
-              </Badge>
+              </Typography>
             </DefinitionField>
             <DefinitionField
               label={t('label.unit-of-measurement')}

@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Activity,
   Copy01,
   File02,
   RefreshCcw01,
@@ -91,7 +92,6 @@ import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
 import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import tableClassBase from '../../../utils/TableClassBase';
@@ -858,9 +858,9 @@ export const DataAssetsHeader = ({
     // Metrics have no owning service, so fall back to the metric entity icon so
     // the header still shows a leading glyph next to the title.
     const entityIcon =
-      !serviceLogoUrl && entityType === EntityType.METRIC
-        ? searchClassBase.getEntityIcon(EntityType.METRIC, 'tw:size-5')
-        : null;
+      !serviceLogoUrl && entityType === EntityType.METRIC ? (
+        <Activity aria-hidden="true" className="tw:size-5" />
+      ) : null;
 
     if (!serviceLogoUrl && !entityIcon) {
       return null;

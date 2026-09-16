@@ -60,14 +60,17 @@ interface MetricTreeRowProps {
 
 // Each hierarchy level steps in by one padding stop. Kept as explicit classes
 // (not an interpolated value) so Tailwind's static scan keeps them.
-// One indent stop per depth equals the elbow column + gap (20px + 8px), so
-// each child row's connector arrow lands directly beneath its parent's icon.
+// Root rows (depth 0) render no connector column, so their icon sits flush at
+// the base px-3 (12px). Depth 1 is set in by 20px; from there each deeper row's
+// connector arrow lands under its parent row's icon, which is 28px (icon 20px +
+// 8px gap) to the right of that parent's own connector — so padding steps by 28
+// per level: 20, 48, 76, 104.
 const INDENT_CLASS_BY_DEPTH = [
   '',
-  'tw:pl-[28px]',
-  'tw:pl-[56px]',
-  'tw:pl-[84px]',
-  'tw:pl-[112px]',
+  'tw:pl-5',
+  'tw:pl-[54px]',
+  'tw:pl-[82px]',
+  'tw:pl-[110px]',
 ];
 
 const getIndentClass = (depth: number) =>
@@ -191,12 +194,14 @@ const MetricTreeRow = ({
   const isNested = depth > 0;
   const content = (
     <>
-      <span
-        aria-hidden="true"
-        className="tw:grid tw:w-5 tw:shrink-0 tw:self-start tw:place-items-center tw:pt-1 tw:text-fg-quaternary"
-        data-testid={isNested ? `${testId}-elbow` : undefined}>
-        {isNested && <CornerDownRight className="tw:size-4" />}
-      </span>
+      {isNested && (
+        <span
+          aria-hidden="true"
+          className="tw:grid tw:w-5 tw:shrink-0 tw:place-items-center tw:text-fg-quaternary"
+          data-testid={`${testId}-elbow`}>
+          <CornerDownRight className="tw:size-4" />
+        </span>
+      )}
       <span className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:bg-utility-blue-50 tw:text-utility-blue-700 tw:outline-1 tw:-outline-offset-1 tw:outline-utility-blue-200">
         <Activity aria-hidden="true" className="tw:size-4" />
       </span>
@@ -244,7 +249,6 @@ const GroupRow = ({ group }: { group: MetricGroup }) => {
       to={`${ROUTES.METRICS}?highlight=${encodeURIComponent(
         group.fullyQualifiedName ?? ''
       )}`}>
-      <span aria-hidden="true" className="tw:w-5 tw:shrink-0" />
       <span className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:bg-utility-purple-50 tw:text-utility-purple-700">
         <Package aria-hidden="true" className="tw:size-4" />
       </span>
@@ -421,7 +425,7 @@ const MetricHierarchyCard: FC<MetricHierarchyCardProps> = ({
     <Card className="tw:shadow-xs" data-testid="metric-hierarchy-card">
       {formDrawer}
       <Card.Header
-        className="tw:flex-col tw:gap-3 tw:sm:flex-row tw:sm:gap-4"
+        className="tw:flex-col tw:gap-3 tw:sm:flex-row tw:sm:items-center tw:sm:gap-4"
         data-testid="metric-hierarchy-header"
         extra={
           allowAddChild ? (

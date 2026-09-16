@@ -205,12 +205,14 @@ describe('MetricHierarchyCard', () => {
     expect(screen.getByLabelText('4 label.metric-plural')).toBeInTheDocument();
 
     // Graduated indent by hierarchy depth: group(0) > ancestor(1) > peer/current(2) > child(3).
+    // The connector column supplies the first step, so extra padding only starts
+    // at depth 2 (peer/current), keeping each arrow beneath its parent's icon.
     (
       [
-        ['metric-tree-ancestor-root-id', 'tw:pl-[28px]'],
-        ['metric-tree-peer-peer-id', 'tw:pl-[56px]'],
-        ['metric-tree-current', 'tw:pl-[56px]'],
-        ['metric-tree-child-child-id', 'tw:pl-[84px]'],
+        ['metric-tree-ancestor-root-id', 'tw:pl-5'],
+        ['metric-tree-peer-peer-id', 'tw:pl-[54px]'],
+        ['metric-tree-current', 'tw:pl-[54px]'],
+        ['metric-tree-child-child-id', 'tw:pl-[82px]'],
       ] as const
     ).forEach(([testId, indentClass]) => {
       expect(screen.getByTestId(testId)).toHaveClass(indentClass);
