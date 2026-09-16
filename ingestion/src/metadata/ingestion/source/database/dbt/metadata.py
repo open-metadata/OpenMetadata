@@ -45,6 +45,7 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -167,6 +168,7 @@ class DbtSource(DbtServiceSource):
         self.omd_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
+        self.extracted_data_products = {}
         # Upstream nodes already reported as unresolved, so a dbt project whose source
         # database was never ingested reports each missing upstream once instead of once
         # per referencing model. Bounded by the number of distinct upstream nodes in the
@@ -409,6 +411,45 @@ class DbtSource(DbtServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
+
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Attach the table to every Data Product listed in
+        meta.openmetadata.dataProducts. Products are resolved through the
+        OpenMetadata API; unknown products are reported as warnings and never
+        created implicitly. Re-running is idempotent because the assets/add
+        endpoint only adds the relationship when it is missing.
+        """
+        table_entity: Table = data_model_link.table_entity
+
+        if not table_entity:
+            return
+
+        table_fqn = table_entity.fullyQualifiedName.root
+        product_names = self.extracted_data_products.get(table_fqn)
+
+        if not product_names:
+            return
+
+        asset_ref = EntityReference(id=table_entity.id, type="table")
+
+        for product_name in product_names:
+            try:
+                data_product = self.metadata.get_by_name(entity=DataProduct, fqn=product_name)
+
+                if not data_product:
+                    logger.warning(
+                        f"Data Product '{product_name}' not found in OpenMetadata for table "
+                        f"{table_fqn}; skipping assignment"
+                    )
+                    continue
+
+                self.metadata.add_assets_to_data_product(model_str(data_product.fullyQualifiedName), [asset_ref])
+                logger.info(f"Added table {table_fqn} to Data Product '{product_name}'")
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(f"Failed to assign Data Product '{product_name}' to {table_fqn}: {exc}")
+                logger.debug(traceback.format_exc())
 
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
@@ -1775,6 +1816,9 @@ class DbtSource(DbtServiceSource):
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.dataProducts:
+                self.extracted_data_products[table_fqn] = dbt_meta_info.openmetadata.dataProducts
 
             if self.source_config.includeTags and dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
                 for tag_fqn in dbt_meta_info.openmetadata.tags:

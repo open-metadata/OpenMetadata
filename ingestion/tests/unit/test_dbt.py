@@ -1844,6 +1844,73 @@ class DbtUnitTest(TestCase):
 
         self.dbt_source_obj.process_dbt_domain(data_model_link)
 
+    # Test Data Product processing functionality
+
+    def test_process_dbt_meta_extracts_data_products(self):
+        """meta.openmetadata.dataProducts is stored per table FQN"""
+        manifest_meta = {"openmetadata": {"dataProducts": ["Marketing", "Domain.Sales"]}}
+
+        self.dbt_source_obj.extracted_data_products = {}
+        self.dbt_source_obj.process_dbt_meta(manifest_meta, "service.db.schema.table1")
+
+        assert self.dbt_source_obj.extracted_data_products == {
+            "service.db.schema.table1": ["Marketing", "Domain.Sales"]
+        }
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.add_assets_to_data_product")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_process_dbt_data_products_success(self, mock_get_by_name, mock_add_assets):
+        """Existing data products get the table added as an asset"""
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+        mock_table.id = uuid.uuid4()
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        mock_product = MagicMock()
+        mock_product.fullyQualifiedName = "Marketing"
+        mock_get_by_name.return_value = mock_product
+
+        self.dbt_source_obj.extracted_data_products = {"service.db.schema.table1": ["Marketing"]}
+
+        self.dbt_source_obj.process_dbt_data_products(data_model_link)
+
+        mock_get_by_name.assert_called_once()
+        mock_add_assets.assert_called_once()
+        assert mock_add_assets.call_args.args[0] == "Marketing"
+
+    def test_process_dbt_data_products_no_products(self):
+        """No dataProducts declared leaves the unchanged path untouched"""
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        self.dbt_source_obj.extracted_data_products = {}
+
+        self.dbt_source_obj.process_dbt_data_products(data_model_link)
+
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.add_assets_to_data_product")
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
+    def test_process_dbt_data_products_not_found(self, mock_get_by_name, mock_add_assets):
+        """Unknown products are skipped, never created, and never assigned"""
+        mock_table = MagicMock()
+        mock_table.fullyQualifiedName.root = "service.db.schema.table1"
+        mock_table.id = uuid.uuid4()
+
+        data_model_link = MagicMock()
+        data_model_link.table_entity = mock_table
+
+        mock_get_by_name.return_value = None
+
+        self.dbt_source_obj.extracted_data_products = {"service.db.schema.table1": ["Ghost"]}
+
+        self.dbt_source_obj.process_dbt_data_products(data_model_link)
+
+        mock_add_assets.assert_not_called()
+
     # Test Custom Properties processing functionality
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
