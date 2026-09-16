@@ -24,7 +24,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
-import type { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
 import {
   getOptionsFromAggregationBucket,
   getQuickFilterLabelFormatter,
