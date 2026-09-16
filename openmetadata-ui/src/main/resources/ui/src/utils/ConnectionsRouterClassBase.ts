@@ -22,7 +22,10 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import {
+  getCountLabel,
+  getServiceRouteFromServiceType,
+} from './ServicePureUtils';
 
 class ConnectionsRouterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
@@ -65,6 +68,22 @@ class ConnectionsRouterClassBase {
     tab?: string
   ): string {
     return getServiceDetailsPath(fqn, serviceCategory, tab);
+  }
+
+  /**
+   * Where an entity page returns after its entity is hard-deleted: the parent
+   * service's asset-listing tab (the tab key is the lowercased count label,
+   * e.g. `databases` — see ServiceDetailsPage's tabs).
+   */
+  public getServiceDataAssetsTabPath(
+    serviceCategory: string,
+    fqn: string
+  ): string {
+    return getServiceDetailsPath(
+      fqn,
+      serviceCategory,
+      getCountLabel(serviceCategory as ServiceTypes).toLowerCase()
+    );
   }
 
   public getEditConnectionPath(serviceCategory: string, fqn: string): string {

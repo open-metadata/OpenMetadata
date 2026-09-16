@@ -31,6 +31,8 @@ jest.mock('./RouterUtils', () => ({
 }));
 
 jest.mock('./ServicePureUtils', () => ({
+  getCountLabel: (type: string) =>
+    type === 'databaseServices' ? 'Databases' : 'Assets',
   getServiceRouteFromServiceType: (type: string) => `${type}Route`,
 }));
 
@@ -98,6 +100,14 @@ describe('ConnectionsRouterClassBase', () => {
       expect(
         router.getServiceDetailsPath('databaseServices', 'my-db', 'connection')
       ).toBe('/service/databaseServices/my-db/connection');
+    });
+  });
+
+  describe('getServiceDataAssetsTabPath', () => {
+    it('should return the service asset-listing tab path', () => {
+      expect(
+        router.getServiceDataAssetsTabPath('databaseServices', 'my-db')
+      ).toBe('/service/databaseServices/my-db/databases');
     });
   });
 
