@@ -19,10 +19,6 @@ interface IngestionNameCardProps {
   displayName: string;
   onDisplayNameChange: (value: string) => void;
   onFocus?: (fieldName: string) => void;
-  /**
-   * Entity fields rendered under the name input. Composed by the caller so
-   * adding a field (tags, tier, …) costs no props on this card.
-   */
   children?: ReactNode;
 }
 
