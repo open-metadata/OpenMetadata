@@ -71,6 +71,47 @@ QUERY = {
     "data_source_id": "source-id",
 }
 
+MOCK_DB_SERVICE_NAME = "mock_warehouse"
+
+MOCK_CONNECTION_DATABASE = "sales_db"
+
+# `orders` is 3-part and matches the connection database, `customers` is 3-part and does not,
+# and `local_orders` is the 2-part control that has no database of its own to carry. Mode parses
+# without a dialect, so this stays plain ANSI.
+CROSS_DATABASE_QUERY = (
+    "SELECT o.order_id, c.name, l.total "
+    "FROM sales_db.public.orders o "
+    "LEFT JOIN crm_db.public.customers c ON c.customer_id = o.customer_id "
+    "LEFT JOIN public.local_orders l ON l.order_id = o.order_id"
+)
+
+CROSS_DATABASE_TABLES = {
+    "mock_warehouse.sales_db.public.orders": "3f6e5d4c-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+    "mock_warehouse.crm_db.public.customers": "4a7f6e5d-2b3c-4d5e-6f7a-8b9c0d1e2f3a",
+    "mock_warehouse.sales_db.public.local_orders": "5b8a7f6e-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
+}
+
+
+def build_cross_database_catalog() -> dict[str, Table]:
+    return {
+        table_fqn: Table.model_construct(
+            id=Uuid(table_id),
+            fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+            columns=[],
+        )
+        for table_fqn, table_id in CROSS_DATABASE_TABLES.items()
+    }
+
+
+def search_cross_database_catalog(catalog: dict[str, Table]):
+    """Stand-in for the ES lookup: a table is only found under the FQN it really has."""
+
+    def search(*_args, fqn_search_string: str = "", **_kwargs):
+        match = catalog.get(fqn_search_string.lower())
+        return [match] if match else []
+
+    return search
+
 
 def _embedded(name: str, values: list[dict]) -> dict:
     return {"_embedded": {name: values}}
@@ -324,3 +365,28 @@ class TestModeQueryLineage:
 
         assert result == []
         mode_source.metadata.search_in_any_service.assert_not_called()
+
+
+class TestModeCrossDatabaseLineage:
+    """A `database.schema.table` reference has to be looked up under the database the SQL
+    names, not the data source's connection database (issue #28444)."""
+
+    def test_source_tables_resolve_under_the_database_the_sql_names(self, mode_source):
+        catalog = build_cross_database_catalog()
+        mode_source.data_sources["source-id"]["database"] = MOCK_CONNECTION_DATABASE
+        dashboard = Dashboard.model_construct(
+            id=Uuid("4248eaa4-2183-4bc4-980a-26893311676f"),
+            fullyQualifiedName=FullyQualifiedEntityName("mock_mode.report-token"),
+        )
+
+        mode_source.metadata = MagicMock()
+        mode_source.metadata.get_by_name = MagicMock(return_value=dashboard)
+        mode_source.metadata.search_in_any_service = MagicMock(side_effect=search_cross_database_catalog(catalog))
+
+        details = _details(mode_source, [{**QUERY, "raw_query": CROSS_DATABASE_QUERY}])
+        results = list(mode_source.yield_dashboard_lineage_details(details, db_service_prefix=MOCK_DB_SERVICE_NAME))
+
+        assert [res.left for res in results if res.left] == []
+        fqn_by_id = {table_id: table_fqn for table_fqn, table_id in CROSS_DATABASE_TABLES.items()}
+        lineage_sources = {str(res.right.edge.fromEntity.id.root) for res in results if res.right}
+        assert {fqn_by_id[table_id] for table_id in lineage_sources} == set(CROSS_DATABASE_TABLES)

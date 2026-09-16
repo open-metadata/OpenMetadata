@@ -274,12 +274,28 @@ class QuicksightSource(DashboardServiceSource):
             query_hash = lineage_parser.query_hash
             lineage_details = LineageDetails(source=LineageSource.DashboardLineage, sqlQuery=sql_query)
             for db_name in source_database_names:
-                if prefix_database_name and db_name and prefix_database_name.lower() != str(db_name).lower():
-                    logger.debug(f"[{query_hash}] Database {db_name} does not match prefix {prefix_database_name}")
-                    continue
                 for table in lineage_parser.source_tables:
-                    database_schema_name, table = fqn.split(str(table))[-2:]  # noqa: PLW2901
-                    database_schema_name = self.check_database_schema_name(database_schema_name)
+                    table_details = fqn.split_table_name(str(table))
+                    # A `database.schema.table` reference carries its own database. Only fall back
+                    # to the data source's connection database when the query left it unqualified.
+                    database_name = table_details.get("database") or db_name
+                    database_schema_name = self.check_database_schema_name(table_details.get("database_schema"))
+                    table_name = table_details.get("table")
+                    if not table_name:
+                        continue
+
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != str(database_name).lower()
+                    ):
+                        logger.debug(
+                            "[%s] Database %s does not match prefix %s",
+                            query_hash,
+                            database_name,
+                            prefix_database_name,
+                        )
+                        continue
 
                     if (
                         prefix_schema_name
@@ -291,15 +307,17 @@ class QuicksightSource(DashboardServiceSource):
                         )
                         continue
 
-                    if prefix_table_name and table and prefix_table_name.lower() != table.lower():
-                        logger.debug(f"[{query_hash}] Table {table} does not match prefix {prefix_table_name}")
+                    if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
+                        logger.debug(
+                            "[%s] Table %s does not match prefix %s", query_hash, table_name, prefix_table_name
+                        )
                         continue
 
                     fqn_search_string = build_es_fqn_search_string(
-                        database_name=prefix_database_name or db_name,
+                        database_name=prefix_database_name or database_name,
                         schema_name=prefix_schema_name or database_schema_name,
                         service_name=db_service_name or "*",
-                        table_name=prefix_table_name or table,
+                        table_name=prefix_table_name or table_name,
                     )
                     from_entities = self.metadata.search_in_any_service(
                         entity_type=Table,
