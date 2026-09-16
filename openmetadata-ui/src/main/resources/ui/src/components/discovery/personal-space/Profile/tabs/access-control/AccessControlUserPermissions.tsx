@@ -336,12 +336,8 @@ const AccessControlUserPermissions: React.FC<
     rolePermission: RolePermission,
     index: number
   ) => (
-    <Box className="tw:mb-3" key={index} direction='col' gap={4}>
-      <Box
-        align="center"
-        direction="row"
-        gap={2}
-        wrap="wrap">
+    <Box className="tw:mb-3" direction="col" gap={4} key={index}>
+      <Box align="center" direction="row" gap={2} wrap="wrap">
         <Typography
           className="tw:text-secondary"
           size="text-sm"
@@ -417,12 +413,7 @@ const AccessControlUserPermissions: React.FC<
 
               {!isEmpty(teamPermission.teamHierarchy) &&
                 teamPermission.teamHierarchy.length > 1 && (
-                  <Box
-                    align="center"
-                
-                    direction="row"
-                    gap={1}
-                    wrap="wrap">
+                  <Box align="center" direction="row" gap={1} wrap="wrap">
                     <Typography className="tw:text-secondary" size="text-sm">
                       {`${t('label.hierarchy')}: `}
                     </Typography>
@@ -448,7 +439,7 @@ const AccessControlUserPermissions: React.FC<
                 )}
 
               {!isEmpty(teamPermission.rolePermissions) && (
-                <Box className="tw:mt-2 tw:mb-2" direction='col' gap={3}>
+                <Box className="tw:mt-2 tw:mb-2" direction="col" gap={3}>
                   <Typography
                     className="tw:text-primary"
                     size="text-sm"

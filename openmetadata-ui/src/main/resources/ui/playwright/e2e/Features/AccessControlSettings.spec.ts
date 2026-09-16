@@ -171,8 +171,7 @@ test.describe(
       await test.step('Submit and verify via toast', async () => {
         const responsePromise = page.waitForResponse(
           (r) =>
-            r.url().includes('/api/v1/roles') &&
-            r.request().method() === 'POST'
+            r.url().includes('/api/v1/roles') && r.request().method() === 'POST'
         );
         await page.getByTestId('submit-btn').click();
         const createResponse = await responsePromise;
