@@ -443,12 +443,12 @@ test.describe('Impact Analysis', () => {
     await expect(
       page
         .getByTestId('drop-down-menu')
-        .getByLabel(EntityDataClass.user1.responseData.name)
+        .getByRole('menuitemcheckbox', { name: EntityDataClass.user1.responseData.name })
     ).toBeVisible();
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(EntityDataClass.user1.responseData.name)
+      .getByRole('menuitemcheckbox', { name: EntityDataClass.user1.responseData.name })
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>
@@ -475,12 +475,12 @@ test.describe('Impact Analysis', () => {
     await expect(
       page
         .getByTestId('drop-down-menu')
-        .getByLabel(EntityDataClass.domain1.responseData.displayName)
+        .getByRole('menuitemcheckbox', { name: EntityDataClass.domain1.responseData.displayName })
     ).toBeVisible();
 
     await page
       .getByTestId('drop-down-menu')
-      .getByLabel(EntityDataClass.domain1.responseData.displayName)
+      .getByRole('menuitemcheckbox', { name: EntityDataClass.domain1.responseData.displayName })
       .click();
     const filterResponse = page.waitForResponse(
       (response) =>

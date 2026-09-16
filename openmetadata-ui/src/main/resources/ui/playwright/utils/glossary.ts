@@ -1104,7 +1104,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'Mysql-checkbox',
+    'mysql-checkbox',
     'mysql',
     'Mysql'
   );
