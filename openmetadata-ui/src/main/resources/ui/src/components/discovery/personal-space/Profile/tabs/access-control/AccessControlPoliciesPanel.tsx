@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   PaginationCardWithControls,
   Popover,
@@ -300,9 +301,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
       case 'actions':
         return (
-          <Button
+          <ButtonUtility
             color="tertiary"
             data-testid={`delete-action-${getEntityName(policy)}`}
+            icon={Delete}
             isDisabled={!deletePolicyPermission}
             size="xs"
             tooltip={
@@ -311,9 +313,8 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
                 : t(NO_PERMISSION_FOR_ACTION)
             }
             tooltipPlacement="left"
-            onPress={() => setSelectedPolicy(policy)}>
-            <Delete name={t('label.delete')} width="16px" />
-          </Button>
+            onPress={() => setSelectedPolicy(policy)}
+          />
         );
 
       default:
@@ -348,7 +349,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
   return (
     <Box
-      className="tw:pt-1 tw:h-full"
+      className="tw:pt-1 tw:h-full tw:px-8 tw:pb-8"
       data-testid="policies-list-container"
       direction="col"
       gap={4}>

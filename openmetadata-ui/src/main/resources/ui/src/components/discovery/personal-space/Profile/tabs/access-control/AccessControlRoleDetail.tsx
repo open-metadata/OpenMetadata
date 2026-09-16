@@ -15,6 +15,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   Input,
   SelectItemType,
@@ -131,18 +132,18 @@ const renderEntityCell = (
 
   if (colId === 'actions' && showRemove) {
     return (
-      <Button
+      <ButtonUtility
         color="tertiary"
         data-testid={`remove-${getEntityName(item)}`}
+        icon={Delete}
         isDisabled={!canEditAll || isLoadingOnSave}
         size="xs"
         tooltip={String(
           canEditAll ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
         )}
         tooltipPlacement="left"
-        onPress={() => onRemove(item)}>
-        <Delete name={String(t('label.remove'))} width="16px" />
-      </Button>
+        onPress={() => onRemove(item)}
+      />
     );
   }
 
@@ -266,17 +267,17 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         {t('label.description')}
       </Typography>
       {canEdit && !isEditing && (
-        <Button
+        <ButtonUtility
           color="tertiary"
           data-testid="edit-description-btn"
+          icon={Edit}
           size="xs"
           tooltip={String(
             t('label.edit-entity', { entity: t('label.description') })
           )}
           tooltipPlacement="right"
-          onPress={onStartEdit}>
-          <Edit name={t('label.edit')} width="14px" />
-        </Button>
+          onPress={onStartEdit}
+        />
       )}
     </Box>
 
@@ -495,11 +496,12 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     ) : undefined;
 
     const renameButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <Button
+      <ButtonUtility
         color="tertiary"
         data-testid="rename-role-btn"
+        icon={Edit}
         isDisabled={!canEditAll}
-        size="sm"
+        size="xs"
         tooltip={String(
           canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
         )}
@@ -507,24 +509,23 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         onPress={() => {
           setRenameValue(role.displayName || role.name || '');
           setIsRenameOpen(true);
-        }}>
-        <Edit name={t('label.rename')} width="16px" />
-      </Button>
+        }}
+      />
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
-      <Button
+      <ButtonUtility
         color="tertiary"
         data-testid="delete-role-btn"
+        icon={Delete}
         isDisabled={!canDelete}
-        size="sm"
+        size="xs"
         tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
         )}
         tooltipPlacement="left"
-        onPress={() => setIsDeleteRoleOpen(true)}>
-        <Delete name={t('label.delete')} width="16px" />
-      </Button>
+        onPress={() => setIsDeleteRoleOpen(true)}
+      />
     );
 
     onSetHeaderTitleSuffix?.(renameButtonNode);
@@ -960,7 +961,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   };
 
   return (
-    <Box data-testid="role-detail-container" direction="col" gap={4}>
+    <Box className="tw:px-8 tw:pb-8" data-testid="role-detail-container" direction="col" gap={4}>
       <InlineDescriptionEditor
         canEdit={canEditAll}
         description={role.description}

@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   PaginationCardWithControls,
   Popover,
@@ -299,9 +300,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
       case 'actions':
         return (
-          <Button
+          <ButtonUtility
             color="tertiary"
             data-testid={`delete-action-${getEntityName(role)}`}
+            icon={Delete}
             isDisabled={!deleteRolePermission}
             size="xs"
             tooltip={
@@ -310,9 +312,8 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
                 : t(NO_PERMISSION_FOR_ACTION)
             }
             tooltipPlacement="left"
-            onPress={() => setSelectedRole(role)}>
-            <Delete name={t('label.delete')} width="16px" />
-          </Button>
+            onPress={() => setSelectedRole(role)}
+          />
         );
 
       default:
@@ -347,7 +348,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
 
   return (
     <Box
-      className="tw:pt-1 tw:h-full"
+      className="tw:pt-1 tw:h-full tw:px-8 tw:pb-8"
       data-testid="roles-list-container"
       direction="col"
       gap={4}>

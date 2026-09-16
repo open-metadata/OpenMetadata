@@ -365,7 +365,7 @@ const AccessControlDebuggerPanel: FC = () => {
 
   return (
     <Box
-      className="tw:pt-0"
+      className="tw:pt-0 tw:px-8 tw:pb-8"
       data-testid="admin-permission-debugger"
       direction="col"
       gap={4}>

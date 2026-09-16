@@ -344,7 +344,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
   })();
 
   return (
-    <div className="tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0">{content}</div>
+    <div className="tw:flex-1 tw:overflow-y-auto">{content}</div>
   );
 };
 
