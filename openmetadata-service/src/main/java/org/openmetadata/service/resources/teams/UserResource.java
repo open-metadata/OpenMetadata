@@ -30,6 +30,7 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
 import static org.openmetadata.service.util.UserUtil.getUser;
@@ -126,6 +127,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -137,6 +139,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserPreferencesRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -320,6 +323,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
+    if (teamParam != null) {
+      // Non-Group teams (Department/Division/BusinessUnit) hold no direct members; list the members
+      // inherited from their sub-group descendants (empty for Group/Organization teams).
+      TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
+      List<String> subtreeTeamIds = teamRepository.getSubtreeTeamIds(teamParam);
+      if (!subtreeTeamIds.isEmpty()) {
+        filter.addQueryParam("teamIds", String.join(",", subtreeTeamIds));
+      }
+    }
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
     }
@@ -688,11 +700,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addRolesToBot(user, uriInfo);
     }
 
-    //
     try {
-      // Email Validation
       validateEmailAlreadyExists(user.getEmail());
       addUserAuthForBasic(user, create);
+      ensureUniqueUsername(user);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
           .type(MediaType.APPLICATION_JSON_TYPE)
@@ -747,6 +758,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
+    }
+  }
+
+  private void ensureUniqueUsername(User user) {
+    if (!isBasicAuth() && repository.checkUserNameExists(user.getName())) {
+      String username = generateUsernameFromEmail(user.getEmail(), repository::checkUserNameExists);
+      user.setName(username);
+      user.setFullyQualifiedName(EntityInterfaceUtil.quoteName(username));
     }
   }
 

@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ClassificationTag,
   Owner,
   Tooltip,
   TooltipTrigger,
@@ -100,7 +101,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';

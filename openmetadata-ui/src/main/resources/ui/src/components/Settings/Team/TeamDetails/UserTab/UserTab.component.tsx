@@ -49,7 +49,6 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../../utils/SearchPureUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -172,7 +171,28 @@ export const UserTab = ({
       query: text,
       pageNumber: currentPage,
       pageSize,
-      queryFilter: getTermQuery({ 'teams.id': currentTeam?.id }),
+      // Scope the search to this team's whole subtree: the team itself plus every descendant team
+      // (descendantTeams is computed on the team, empty for a Group team). A single `terms` (IN)
+      // clause over teams.id matches members inherited from sub-groups, mirroring the Users tab
+      // list — one clause regardless of subtree size (a per-id `should` list would risk ES/OS
+      // max_clause_count for a BusinessUnit with a very large subtree).
+      queryFilter: {
+        query: {
+          bool: {
+            must: [
+              {
+                terms: {
+                  'teams.id': [
+                    currentTeam.id,
+                    ...(currentTeam.descendantTeams?.map((team) => team.id) ??
+                      []),
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
       searchIndex: SearchIndex.USER,
     })
       .then((res) => {
@@ -316,7 +336,9 @@ export const UserTab = ({
         key: 'export-button',
       },
     ];
-    if (canEditAll) {
+    // Import adds users to the team, which is only allowed for Group teams. Export is offered for
+    // all team types so a non-Group team can export the users rolled up from its sub-groups.
+    if (isGroupType && canEditAll) {
       option.push({
         label: (
           <ManageButtonItemLabel
@@ -334,7 +356,7 @@ export const UserTab = ({
     }
 
     return option;
-  }, [handleUserExportClick, handleImportClick, canEditAll, t]);
+  }, [handleUserExportClick, handleImportClick, canEditAll, t, isGroupType]);
 
   const handleRemoveUser = () => {
     if (deletingUser?.id) {
@@ -406,11 +428,10 @@ export const UserTab = ({
     );
 
   const renderExtraTableFilters = () =>
-    !currentTeam.deleted &&
-    isGroupType && (
+    !currentTeam.deleted && (
       <Col>
         <Space>
-          {users.length > 0 && editUserPermission && (
+          {isGroupType && users.length > 0 && editUserPermission && (
             <UserSelectableList
               hasPermission
               includeBot

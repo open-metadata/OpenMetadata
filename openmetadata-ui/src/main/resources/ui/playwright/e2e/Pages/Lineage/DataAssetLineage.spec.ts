@@ -49,6 +49,7 @@ import {
   editLineageClick,
   fitToScreen,
   getEntityColumns,
+  openImpactAnalysisTab,
   rearrangeNodes,
   removeColumnLineage,
   verifyColumnLineageInCSV,
@@ -422,6 +423,96 @@ test.describe('Column Level Lineage', () => {
         await afterAction();
       });
     });
+  });
+
+  test('Column lineage between a table column and a metric', async ({
+    page,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table = new TableClass();
+    const metric = new MetricClass();
+
+    await Promise.all([table.create(apiContext), metric.create(apiContext)]);
+
+    try {
+      const tableCol = get(
+        getEntityColumns(table, 'table'),
+        '[0].fullyQualifiedName',
+        ''
+      );
+      // The metric has no columns -- it is its own column-lineage endpoint.
+      const metricCol = get(
+        getEntityColumns(metric, 'metric'),
+        '[0].fullyQualifiedName',
+        ''
+      );
+
+      await test.step('Add column lineage from table column to metric', async () => {
+        await addPipelineBetweenNodes(page, table, metric);
+        // The layer control is pointer-events:none inside edit mode, so leave
+        // edit mode to switch to the FIELD band, then re-enter it to draw the
+        // column edge. Same sequence the entity matrix above uses.
+        await editLineageClick(page);
+        await activateColumnLayer(page);
+        await editLineage(page);
+
+        await addColumnLineage(page, tableCol, metricCol);
+      });
+
+      await test.step('Verify column lineage survives a reload', async () => {
+        // Re-navigate instead of page.reload(): visitLineageTab waits on a
+        // fresh /lineage/scene response (which is what proves the edge
+        // persisted server-side) and handles the onboarding dialog and full
+        // screen view. fitToScreen matters because the canvas only draws
+        // edges for nodes inside the viewport.
+        await table.visitEntityPage(page);
+        await visitLineageTab(page);
+        await activateColumnLayer(page);
+        await fitToScreen(page);
+
+        await expect(
+          page.getByTestId(`column-edge-${tableCol}-${metricCol}`)
+        ).toBeVisible();
+      });
+
+      await test.step('Verify the metric shows up in column level Impact Analysis', async () => {
+        await openImpactAnalysisTab(page);
+
+        const columnLineageRes = page.waitForResponse(
+          '/api/v1/lineage/getLineage/Downstream?*'
+        );
+        await page.getByRole('button', { name: 'Impact On: Table' }).click();
+        await page.getByText('Column level').click();
+        await columnLineageRes;
+        await waitForAllLoadersToDisappear(page);
+
+        const row = page.locator(`[data-row-key="${tableCol}->${metricCol}"]`);
+
+        await expect(row).toBeVisible();
+        // Two cells, not one: the metric is both the impacted asset and -- being
+        // its own column endpoint -- the impacted column. Asserting the count
+        // pins that down and still catches the cell rendering NO_DATA.
+        await expect(
+          row.getByRole('gridcell', {
+            name: get(metric, 'entityResponseData.name', ''),
+          })
+        ).toHaveCount(2);
+      });
+
+      await test.step('Remove column lineage', async () => {
+        await table.visitEntityPage(page);
+        await visitLineageTab(page);
+        await activateColumnLayer(page);
+        await fitToScreen(page);
+        await editLineageClick(page);
+
+        await removeColumnLineage(page, tableCol, metricCol);
+      });
+    } finally {
+      await Promise.all([table.delete(apiContext), metric.delete(apiContext)]);
+      await afterAction();
+    }
   });
 
   test('Verify edit mode respects the active scene band', async ({ page }) => {

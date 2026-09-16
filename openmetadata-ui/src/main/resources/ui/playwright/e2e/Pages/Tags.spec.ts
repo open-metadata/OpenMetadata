@@ -133,6 +133,7 @@ test('Classification Page', async ({ page, browser }) => {
       'Enabled',
       'Tag',
       'Display Name',
+      'Usage',
       'Description',
       'Actions',
     ]);

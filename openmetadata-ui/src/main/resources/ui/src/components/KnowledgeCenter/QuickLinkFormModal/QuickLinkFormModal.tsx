@@ -13,6 +13,7 @@
 import {
   Autocomplete,
   Button,
+  ClassificationTag,
   Dialog,
   FieldProp,
   FieldTypes,
@@ -68,7 +69,6 @@ import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import ClassificationTag from '../../common/atoms/Tag/ClassificationTag';
 
 export interface QuickLinkFormModalFormData
   extends Pick<CreateKnowledgePage, 'description' | 'displayName'> {

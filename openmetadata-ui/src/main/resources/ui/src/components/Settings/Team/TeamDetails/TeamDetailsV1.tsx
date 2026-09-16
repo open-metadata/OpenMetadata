@@ -310,6 +310,8 @@ const TeamDetailsV1 = ({
   const searchTeams = async (text: string) => {
     setIsSearchLoading(true);
     try {
+      // Scope the Teams-tab search to this team's own child teams instead of searching every team
+      // in the instance (parents.id matches teams whose direct parent is the current team).
       const res = await searchQuery({
         query: `*${text}*`,
         pageNumber: 1,
@@ -317,6 +319,13 @@ const TeamDetailsV1 = ({
         queryFilter: {
           query: {
             bool: {
+              must: [
+                {
+                  term: {
+                    'parents.id': currentTeam.id,
+                  },
+                },
+              ],
               must_not: [
                 {
                   term: {
