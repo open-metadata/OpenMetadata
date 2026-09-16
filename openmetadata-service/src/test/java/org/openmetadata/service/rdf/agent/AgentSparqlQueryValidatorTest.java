@@ -121,15 +121,20 @@ class AgentSparqlQueryValidatorTest {
     assertCode(AgentSparqlErrorCode.QUERY_INVALID, "SELECT ?s WHERE { ?s ?p ?o }" + padding);
   }
 
-  @Test
-  void extensionFunctionIrisPassValidationForBackendPolicy() {
-    // Validation constrains form only; function IRIs are opaque to it. Execution happens on
-    // the project Fuseki image, whose shipped config registers no extension functions, so
-    // unresolvable calls fail closed at evaluation instead of executing.
-    AgentSparqlQueryPlan plan =
-        validator.validate("SELECT (<java:java.lang.Math.sqrt(?x)> AS ?y) WHERE { ?s ?p ?o }");
-
-    assertTrue(QueryFactory.create(plan.executableSparql()).isSelectType());
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT (<java:java.lang.Math.sqrt>(?x) AS ?y) WHERE { ?s ?p ?o }",
+        "SELECT (<JAVA:java.lang.Math.sqrt>(?x) AS ?y) WHERE { ?s ?p ?o }",
+        "SELECT ?s WHERE { ?s <java:evil.Foo> ?o }",
+        "SELECT ?s WHERE { ?s <java:evil.Foo>+ ?o }",
+        "SELECT ?s WHERE { { SELECT ?s WHERE { ?s <java:evil.Foo> ?o } } }",
+        "SELECT ?s WHERE { ?s ?p ?o FILTER EXISTS { ?s <java:evil.Foo> ?o } }"
+      })
+  void rejectsJavaSchemeCalls(String sparql) {
+    // Jena dynamically loads classpath classes for java: IRIs with no configuration, so
+    // function calls and predicate positions carrying the scheme are rejected up front.
+    assertCode(AgentSparqlErrorCode.QUERY_FORM_NOT_ALLOWED, sparql);
   }
 
   @Test

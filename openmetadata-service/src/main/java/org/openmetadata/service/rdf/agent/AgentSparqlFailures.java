@@ -44,8 +44,9 @@ public final class AgentSparqlFailures {
       case ImpersonationTargetNotFoundException missing -> impersonationNotAllowed(missing);
       case AuthenticationException unauthenticated -> authenticationRequired(unauthenticated);
       case NotAuthorizedException unauthenticated -> authenticationRequired(unauthenticated);
-        // On this path the only entity resolution is the caller lookup during authorization,
-        // so not-found means the token subject itself is unknown.
+        // Entity resolution on this path is the caller and policy lookup during authorization,
+        // so a failure here means the caller cannot be established; report it as unknown caller
+        // rather than a backend failure.
       case EntityNotFoundException unknownCaller -> authenticationRequired(unknownCaller);
       case AuthorizationException forbidden -> new AgentSparqlException(
           AgentSparqlErrorCode.RDF_QUERY_FORBIDDEN,
