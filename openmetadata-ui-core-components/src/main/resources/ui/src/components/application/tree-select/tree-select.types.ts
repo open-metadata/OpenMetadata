@@ -24,6 +24,14 @@ export interface TreeSelectNode<T = unknown> {
   allowSelection?: boolean;
   lazyLoad?: boolean;
   isParentMutuallyExclusive?: boolean;
+  /** Child count displayed as a trailing badge on parent nodes. */
+  count?: number;
+  /**
+   * When true, children of this node are mutually exclusive (radio buttons)
+   * and this node itself will not render a selection control.
+   * Use this on lazy-loaded parents whose children have `isParentMutuallyExclusive`.
+   */
+  hasExclusiveChildren?: boolean;
 }
 
 export interface TreeSelectDataFetcherParams {
@@ -43,6 +51,8 @@ export type TreeSelectDataFetcher<T = unknown> = (
   params: TreeSelectDataFetcherParams
 ) => Promise<TreeSelectDataResponse<T>>;
 
+export type TreeSelectTriggerVariant = 'input' | 'button';
+
 export interface TreeSelectProps<T = unknown> {
   /** Label text rendered above the field. */
   label?: string;
@@ -56,6 +66,7 @@ export interface TreeSelectProps<T = unknown> {
   isInvalid?: boolean;
   size?: 'sm' | 'md';
   autoFocus?: boolean;
+  className?: string;
   'data-testid'?: string;
   popoverClassName?: string;
 
@@ -84,6 +95,30 @@ export interface TreeSelectProps<T = unknown> {
   noDataMessage?: string;
   loadingMessage?: string;
   searchPlaceholder?: string;
+
+  /**
+   * Trigger style: 'input' (default) renders a combobox-like search field;
+   * 'button' renders a FilterSelect-style button (compact, suitable for
+   * filter bars and toolbars).
+   * @default 'input'
+   */
+  triggerVariant?: TreeSelectTriggerVariant;
+  /**
+   * Draw a border around the button-variant trigger. Only applies when
+   * `triggerVariant` is `'button'`. Defaults to `false` (borderless text
+   * button — the quick-filter look).
+   */
+  bordered?: boolean;
+  /**
+   * Draw curved connector lines between parent and child nodes in the tree
+   * dropdown, visualising the hierarchy. @default false
+   */
+  showConnectorLines?: boolean;
+  /**
+   * Show a "Select all" checkbox row at the top of the tree dropdown.
+   * Only applies when `multiple` is `true`. @default false
+   */
+  showSelectAll?: boolean;
 
   onNodeExpand?: (nodeId: string) => void;
   onNodeCollapse?: (nodeId: string) => void;

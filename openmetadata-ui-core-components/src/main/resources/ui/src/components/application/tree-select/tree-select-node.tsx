@@ -26,6 +26,8 @@ export interface TreeSelectTreeItemContentProps<T> {
   multiple: boolean;
   disabled: boolean;
   hasChildItems: boolean;
+  showConnectorLines?: boolean;
+  isLastChild?: boolean;
   onNodeClick: () => void;
 }
 
@@ -38,6 +40,8 @@ export const TreeSelectTreeItemContent = <T,>({
   multiple,
   disabled,
   hasChildItems,
+  showConnectorLines = false,
+  isLastChild = false,
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
@@ -45,10 +49,10 @@ export const TreeSelectTreeItemContent = <T,>({
 
   return (
     <Tree.ItemContent hasChildItems={hasChildItems}>
-      {() => (
+      {(renderProps) => (
         <div
           className={cx(
-            'tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
+            'tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:py-0.5',
             isRowDisabled ? 'tw:cursor-not-allowed' : 'tw:cursor-pointer'
           )}
           data-testid={`tree-node-${node.id}`}
@@ -59,6 +63,43 @@ export const TreeSelectTreeItemContent = <T,>({
               onNodeClick();
             }
           }}>
+          {showConnectorLines &&
+            renderProps.level >= 2 &&
+            Array.from({ length: renderProps.level - 1 }, (_, i) => {
+              const left = -40 - i * 16;
+              const isDirectParent = i === 0;
+
+              if (isDirectParent) {
+                return (
+                  <span key={`line-${i}`} aria-hidden="true">
+                    <span
+                      className={cx(
+                        'tw:pointer-events-none tw:absolute tw:w-3 tw:border-l tw:border-b tw:border-gray-300 tw:rounded-bl-md',
+                        isLastChild
+                          ? 'tw:-top-2.5 tw:h-[calc(50%+12px)]'
+                          : 'tw:-top-2.5 tw:h-[calc(50%+12px)]'
+                      )}
+                      style={{ left: `${left}px` }}
+                    />
+                    {!isLastChild && (
+                      <span
+                        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-gray-300"
+                        style={{ left: `${left}px` }}
+                      />
+                    )}
+                  </span>
+                );
+              }
+
+              return (
+                <span
+                  key={`line-${i}`}
+                  aria-hidden="true"
+                  className="tw:pointer-events-none tw:absolute tw:-top-2.5 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-gray-300"
+                  style={{ left: `${left}px` }}
+                />
+              );
+            })}
           {showCheckbox && multiple && isSelectable && (
             <span
               data-selected={isSelected}
@@ -93,6 +134,12 @@ export const TreeSelectTreeItemContent = <T,>({
             )}>
             {node.label}
           </span>
+
+          {node.count !== undefined && node.count > 0 && (
+            <span className="tw:ml-auto tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:font-normal tw:tabular-nums tw:text-tertiary">
+              {node.count}
+            </span>
+          )}
 
           {isLoading && (
             <RefreshCw01
