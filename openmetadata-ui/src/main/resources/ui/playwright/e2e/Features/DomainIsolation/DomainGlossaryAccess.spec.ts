@@ -49,63 +49,57 @@ const test = base.extend<{ domainUserPage: Page }>({
   },
 });
 
-test.describe(
-  'Domain isolation - glossary term direct navigation @domain-isolation',
-  () => {
-    test.beforeAll(
-      'Setup domain, user, glossary and term',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-
-        try {
-          await domain.create(apiContext);
-          await domainUser.create(apiContext);
-          await assignDomainOnlyAccess(apiContext, domainUser, [domain]);
-
-          await glossary.create(apiContext);
-          await assignDomainToGlossary(
-            apiContext,
-            glossary.responseData.id,
-            domain
-          );
-          await glossaryTerm.create(apiContext);
-        } finally {
-          await afterAction();
-        }
-      }
-    );
-
-    test.afterAll('Cleanup', async ({ browser }) => {
+test.describe('Domain isolation - glossary term direct navigation @domain-isolation', () => {
+  test.beforeAll(
+    'Setup domain, user, glossary and term',
+    async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       try {
-        await safeDelete(() => glossaryTerm.delete(apiContext));
-        await safeDelete(() => glossary.delete(apiContext));
-        await safeDelete(() => domainUser.delete(apiContext));
-        await safeDelete(() => domain.delete(apiContext));
+        await domain.create(apiContext);
+        await domainUser.create(apiContext);
+        await assignDomainOnlyAccess(apiContext, domainUser, [domain]);
+
+        await glossary.create(apiContext);
+        await assignDomainToGlossary(
+          apiContext,
+          glossary.responseData.id,
+          domain
+        );
+        await glossaryTerm.create(apiContext);
       } finally {
         await afterAction();
       }
-    });
+    }
+  );
 
-    test(
-      'domain-scoped user can view a glossary term page whose domain matches',
-      async ({ domainUserPage }) => {
-        const termFqn = glossaryTerm.responseData.fullyQualifiedName;
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-        await domainUserPage.goto(
-          `/glossary/${encodeURIComponent(termFqn)}`
-        );
-        await waitForAllLoadersToDisappear(domainUserPage);
+    try {
+      await safeDelete(() => glossaryTerm.delete(apiContext));
+      await safeDelete(() => glossary.delete(apiContext));
+      await safeDelete(() => domainUser.delete(apiContext));
+      await safeDelete(() => domain.delete(apiContext));
+    } finally {
+      await afterAction();
+    }
+  });
 
-        await expect(
-          domainUserPage.getByTestId('entity-header-display-name')
-        ).toBeVisible();
+  test('domain-scoped user can view a glossary term page whose domain matches', async ({
+    domainUserPage,
+  }) => {
+    const termFqn = glossaryTerm.responseData.fullyQualifiedName;
 
-        await expect(
-          domainUserPage.getByTestId('permission-error-placeholder')
-        ).not.toBeAttached();
-      }
-    );
-  }
-);
+    await domainUserPage.goto(`/glossary/${encodeURIComponent(termFqn)}`);
+    await waitForAllLoadersToDisappear(domainUserPage);
+
+    await expect(
+      domainUserPage.getByTestId('entity-header-display-name')
+    ).toBeVisible();
+
+    await expect(
+      domainUserPage.getByTestId('permission-error-placeholder')
+    ).not.toBeAttached();
+  });
+});
