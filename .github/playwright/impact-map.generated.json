@@ -3584,7 +3584,6 @@
         "playwright/e2e/Features/SchemaSearch.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
         "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsRefresh.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
@@ -5127,7 +5126,6 @@
         "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
         "playwright/e2e/Features/ServiceAgentsDeploymentSummary.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsRefresh.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
@@ -7368,7 +7366,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
@@ -7549,7 +7546,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Ingestion/AddIngestionButton.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts"
       ]
@@ -7583,7 +7579,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
@@ -8525,7 +8520,6 @@
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryCRUDOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
@@ -8923,7 +8917,6 @@
         "playwright/e2e/Features/Glossary/GlossaryMutualExclusivity.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -9119,7 +9112,6 @@
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
-        "playwright/e2e/Features/ServiceAgentsOwners.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts"
@@ -10056,6 +10048,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/AgentLogStreamHandover.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts",
         "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
@@ -10117,6 +10110,8 @@
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Features/SearchSeparation/DomainRenamePrefixCascade.spec.ts",
         "playwright/e2e/Features/SearchSeparation/Topic.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
+        "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/TableSearch.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
