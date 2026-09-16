@@ -149,9 +149,18 @@ class UnitycatalogMetricViewLineage:
         Listing from OpenMetadata rather than from ``SHOW CATALOGS`` keeps the pass to
         catalogs that actually have entities to attach lineage to, and applies the run's
         own database filter on top.
+
+        Total by construction: this pass runs *after* the source's own lineage, so a
+        failure here must cost the metric views and nothing that already succeeded.
         """
         databases = []
-        for database in self.list_databases():
+        try:
+            listing = list(self.list_databases())
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not list catalogs for metric view lineage: %s", exc)
+            return []
+        for database in listing:
             name = model_str(database.name)
             if filter_by_database(self.source_config.databaseFilterPattern, name):
                 self.status.filter(model_str(database.fullyQualifiedName), "Catalog Filtered Out")

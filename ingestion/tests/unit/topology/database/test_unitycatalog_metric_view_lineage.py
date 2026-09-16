@@ -453,3 +453,23 @@ def test_the_source_composes_the_collaborator_rather_than_inheriting_it():
     nothing about metric views appears in its own method namespace."""
     assert not hasattr(UnitycatalogLineageSource, "yield_metric_view_lineage")
     assert UnitycatalogMetricViewLineage not in UnitycatalogLineageSource.__mro__
+
+
+def test_a_failing_catalog_listing_costs_only_the_metric_views():
+    """This pass runs after the source's own lineage has already yielded edges, so a
+    failure listing catalogs must not take the run down with it."""
+    status = FakeStatus()
+    extractor = UnitycatalogMetricViewLineage(
+        service_name=SERVICE,
+        source_config=FakeSourceConfig(),
+        status=status,
+        run_query=lambda _: [],
+        resolve_table_by_fqn=lambda _: None,
+        list_databases=_explode,
+    )
+
+    assert list(extractor.iter_lineage()) == []
+
+
+def _explode():
+    raise RuntimeError("OpenMetadata is unreachable")
