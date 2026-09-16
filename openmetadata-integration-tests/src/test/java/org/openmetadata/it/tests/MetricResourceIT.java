@@ -71,7 +71,6 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ColumnLineage;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
@@ -120,6 +119,8 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
           + "metricGroup";
 
   private static final String HIERARCHY_FIELDS = "parent,children,childrenCount";
+  // Data quality dimensions are entities now; classify by the dimension's name.
+  private static final String CONSISTENCY_DIMENSION = "Consistency";
   private static final String RESTRICTED_TAG_FQN = "PII.Sensitive";
 
   private static final ObjectMapper JSON = new ObjectMapper();
@@ -2798,7 +2799,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                     .withDescription("Consistency dimension for Metric observability")
                     .withEntityType(TestDefinitionEntityType.TABLE)
                     .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA))
-                    .withDataQualityDimension(DataQualityDimensions.CONSISTENCY));
+                    .withDataQualityDimension(CONSISTENCY_DIMENSION));
     TestCase tableTest =
         TestCaseBuilder.create(client)
             .name(ns.uniqueShortId() + "_table")
@@ -2875,7 +2876,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(2, observability.get("statusCounts").get("terminal").asInt());
     JsonNode consistency = null;
     for (JsonNode dimension : observability.get("dimensions")) {
-      if (DataQualityDimensions.CONSISTENCY.value().equals(dimension.get("dimension").asText())) {
+      if (CONSISTENCY_DIMENSION.equals(dimension.get("dimension").asText())) {
         consistency = dimension;
         break;
       }
