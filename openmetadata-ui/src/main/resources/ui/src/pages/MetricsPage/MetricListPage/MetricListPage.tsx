@@ -18,7 +18,6 @@ import {
   ButtonGroup,
   ButtonGroupItem,
   Card,
-  Checkbox,
   Dialog,
   Dropdown,
   EmptyPlaceholder,
@@ -218,12 +217,6 @@ const getDepthClassName = (depth: number) => {
 
   return '';
 };
-
-const updateMetricSelection = (
-  ids: string[],
-  metricId: string,
-  isSelected: boolean
-) => (isSelected ? [...ids, metricId] : ids.filter((id) => id !== metricId));
 
 const MetricListPage = () => {
   const { t } = useTranslation();
@@ -990,25 +983,11 @@ const MetricListPage = () => {
       className={depth > 0 ? 'tw:border-l-4 tw:border-l-brand' : ''}
       data-metric-fqn={metric.fullyQualifiedName}
       data-testid={`metric-card-${metric.id}`}
-      isSelected={selectedMetricIds.includes(metric.id)}
       key={metric.id}
       size="sm">
       <Card.Content>
         <Box direction="col" gap={4}>
-          <Box align="start" gap={3} justify="between">
-            <Box className="tw:min-w-0" gap={2}>
-              <Checkbox
-                aria-label={`${t('label.select')} ${getEntityName(metric)}`}
-                isSelected={selectedMetricIds.includes(metric.id)}
-                onChange={(isSelected) =>
-                  setSelectedMetricIds((ids) =>
-                    updateMetricSelection(ids, metric.id, isSelected)
-                  )
-                }
-              />
-              {renderMetricName(metric, depth)}
-            </Box>
-          </Box>
+          {renderMetricName(metric, depth)}
           {renderMetricCardMetadata(metric)}
         </Box>
       </Card.Content>
@@ -1189,6 +1168,7 @@ const MetricListPage = () => {
           onOpenChange={setIsMetricActionsOpen}>
           <Dropdown.DotsButton
             aria-label={t('label.action-plural')}
+            className="tw:flex tw:size-10 tw:items-center tw:justify-center"
             data-testid="metric-actions"
           />
           <Dropdown.Popover>
@@ -1390,11 +1370,13 @@ const MetricListPage = () => {
             iconLeading={Settings01}>
             {t('label.customize')}
           </Button>
-          <Dropdown.Popover>
-            <Box className="tw:p-2" direction="col" gap={1}>
-              <Button
-                color="link-color"
-                onPress={() =>
+          <Dropdown.Popover className="tw:min-w-[260px]">
+            <div className="tw:flex tw:items-center tw:justify-between tw:border-b tw:border-secondary tw:px-3 tw:py-2.5 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary">
+              <span>{t('label.column')}</span>
+              <button
+                className="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-medium tw:normal-case tw:tracking-normal tw:text-brand-secondary"
+                type="button"
+                onClick={() =>
                   persistVisibleColumns(
                     areAllColumnsVisible ? [] : METRIC_COLUMN_ORDER
                   )
@@ -1402,17 +1384,31 @@ const MetricListPage = () => {
                 {areAllColumnsVisible
                   ? t('label.hide-all')
                   : t('label.view-all')}
-              </Button>
-              {METRIC_COLUMN_ORDER.map((columnId) => (
-                <Button
-                  color="tertiary"
-                  iconLeading={visibleColumns.includes(columnId) ? Eye : EyeOff}
-                  key={columnId}
-                  onPress={() => handleToggleColumn(columnId)}>
-                  {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
-                </Button>
-              ))}
-            </Box>
+              </button>
+            </div>
+            <div className="tw:flex tw:flex-col tw:p-1.5">
+              {METRIC_COLUMN_ORDER.map((columnId) => {
+                const isVisible = visibleColumns.includes(columnId);
+
+                return (
+                  <button
+                    className="tw:grid tw:grid-cols-[24px_1fr_20px] tw:items-center tw:rounded-lg tw:border-0 tw:bg-transparent tw:p-2 tw:text-left tw:text-sm tw:text-primary tw:hover:bg-secondary"
+                    key={columnId}
+                    type="button"
+                    onClick={() => handleToggleColumn(columnId)}>
+                    <span aria-hidden="true" className="tw:text-quaternary">
+                      ::
+                    </span>
+                    <span>{t(METRIC_COLUMN_LABEL_KEYS[columnId])}</span>
+                    {isVisible ? (
+                      <Eye className="tw:size-4 tw:text-quaternary" />
+                    ) : (
+                      <EyeOff className="tw:size-4 tw:text-quaternary" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </Dropdown.Popover>
         </Dropdown.Root>
       </>

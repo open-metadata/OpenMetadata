@@ -34,7 +34,10 @@ import type { TFunction } from 'i18next';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Metric } from '../../../generated/entity/data/metric';
+import type {
+  ChangeDescription,
+  Metric,
+} from '../../../generated/entity/data/metric';
 import {
   Language,
   MetricGranularity,
@@ -42,8 +45,10 @@ import {
   UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import { getMetricEnumLabel } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricExpression from '../MetricExpression/MetricExpression';
 
@@ -51,6 +56,7 @@ interface MetricDefinitionCardProps {
   metric?: Metric;
   onUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   canEdit?: boolean;
+  changeDescription?: ChangeDescription;
 }
 
 interface DefinitionFieldProps {
@@ -84,6 +90,24 @@ const getMetricUnitLabel = (t: TFunction, metric: Metric): string => {
   }
 
   return getOptionalMetricEnumLabel(t, metric.unitOfMeasurement);
+};
+
+const getVersionedUnitValue = (
+  metric: Metric,
+  changeDescription: ChangeDescription
+): string => {
+  const unit = getEntityVersionByField(
+    changeDescription,
+    'unitOfMeasurement',
+    metric.unitOfMeasurement ?? ''
+  );
+  const customUnit = getEntityVersionByField(
+    changeDescription,
+    'customUnitOfMeasurement',
+    metric.customUnitOfMeasurement ?? ''
+  );
+
+  return unit === UnitOfMeasurement.Other && customUnit ? customUnit : unit;
 };
 
 interface MetricDefinitionEditDialogProps {
@@ -341,6 +365,7 @@ const MetricDefinitionCard = ({
   metric: metricProp,
   onUpdate: onUpdateProp,
   canEdit,
+  changeDescription,
 }: MetricDefinitionCardProps) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -355,6 +380,28 @@ const MetricDefinitionCard = ({
   const { canEditAll } = getDerivedPermissionFlags(permissions);
   const allowEdit =
     canEdit ?? Boolean(canEditAll && !isVersionView && onUpdate);
+
+  const typeValue = changeDescription
+    ? stringToHTML(
+        getEntityVersionByField(
+          changeDescription,
+          'metricType',
+          metric.metricType ?? ''
+        )
+      )
+    : getOptionalMetricEnumLabel(t, metric.metricType);
+  const unitValue = changeDescription
+    ? stringToHTML(getVersionedUnitValue(metric, changeDescription))
+    : getMetricUnitLabel(t, metric);
+  const granularityValue = changeDescription
+    ? stringToHTML(
+        getEntityVersionByField(
+          changeDescription,
+          'granularity',
+          metric.granularity ?? ''
+        )
+      )
+    : getOptionalMetricEnumLabel(t, metric.granularity);
 
   return (
     <Card className="tw:shadow-xs" data-testid="metric-definition-card">
@@ -401,7 +448,7 @@ const MetricDefinitionCard = ({
                 className="tw:font-mono tw:uppercase tw:tracking-wide"
                 size="text-sm"
                 weight="semibold">
-                {getOptionalMetricEnumLabel(t, metric.metricType)}
+                {typeValue}
               </Typography>
             </DefinitionField>
             <DefinitionField
@@ -415,7 +462,7 @@ const MetricDefinitionCard = ({
                 className="tw:font-mono tw:uppercase tw:tracking-wide"
                 size="text-sm"
                 weight="semibold">
-                {getMetricUnitLabel(t, metric)}
+                {unitValue}
               </Typography>
             </DefinitionField>
             <DefinitionField
@@ -429,7 +476,7 @@ const MetricDefinitionCard = ({
                 className="tw:font-mono tw:uppercase tw:tracking-wide"
                 size="text-sm"
                 weight="semibold">
-                {getOptionalMetricEnumLabel(t, metric.granularity)}
+                {granularityValue}
               </Typography>
             </DefinitionField>
           </Box>

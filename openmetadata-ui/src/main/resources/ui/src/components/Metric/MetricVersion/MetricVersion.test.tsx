@@ -168,11 +168,38 @@ describe('MetricVersion', () => {
   it('shows the definition metadata on the Overview tab', () => {
     renderVersion();
 
-    const definition = screen.getByTestId('metric-definition-version');
+    const definition = screen.getByTestId('metric-definition-card');
 
-    expect(definition).toHaveTextContent(MetricType.Ratio);
+    expect(definition).toHaveTextContent('label.ratio');
     expect(definition).toHaveTextContent('Leads');
-    expect(definition).toHaveTextContent(MetricGranularity.Day);
+    expect(definition).toHaveTextContent('label.day');
+  });
+
+  it('highlights changed definition fields from changeDescription', () => {
+    renderVersion({
+      currentVersionData: {
+        ...metric,
+        changeDescription: {
+          fieldsAdded: [],
+          fieldsDeleted: [],
+          fieldsUpdated: [
+            {
+              name: 'metricType',
+              oldValue: MetricType.Average,
+              newValue: MetricType.Ratio,
+            },
+          ],
+          previousVersion: 0.1,
+        },
+      },
+    });
+
+    const definition = screen.getByTestId('metric-definition-card');
+
+    expect(definition).toHaveTextContent(MetricType.Average);
+    expect(definition).toHaveTextContent(MetricType.Ratio);
+    expect(screen.getByTestId('diff-added')).toBeInTheDocument();
+    expect(screen.getByTestId('diff-removed')).toBeInTheDocument();
   });
 
   it('renders the custom properties tab content with view permission', () => {

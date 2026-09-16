@@ -15,11 +15,7 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  Metric,
-  UnitOfMeasurement,
-} from '../../../generated/entity/data/metric';
+import { ChangeDescription } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
@@ -29,7 +25,6 @@ import {
 } from '../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import Description from '../../common/EntityDescription/Description';
@@ -41,65 +36,8 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-import MetricExpression from '../MetricExpression/MetricExpression';
+import MetricDefinitionCard from '../MetricDefinitionCard/MetricDefinitionCard';
 import { MetricVersionProp } from './MetricVersion.interface';
-
-const MetricDefinition = ({
-  changeDescription,
-  metric,
-}: {
-  changeDescription: ChangeDescription;
-  metric: Metric;
-}) => {
-  const { t } = useTranslation();
-  const metricType = getEntityVersionByField(
-    changeDescription,
-    'metricType',
-    metric.metricType
-  );
-  const unitOfMeasurement = getEntityVersionByField(
-    changeDescription,
-    'unitOfMeasurement',
-    metric.unitOfMeasurement
-  );
-  const customUnitOfMeasurement = getEntityVersionByField(
-    changeDescription,
-    'customUnitOfMeasurement',
-    metric.customUnitOfMeasurement
-  );
-  const granularity = getEntityVersionByField(
-    changeDescription,
-    'granularity',
-    metric.granularity
-  );
-  const displayUnit =
-    unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
-      ? customUnitOfMeasurement
-      : unitOfMeasurement;
-  const details = [
-    { label: t('label.metric-type'), value: metricType },
-    { label: t('label.unit-of-measurement'), value: displayUnit },
-    { label: t('label.granularity'), value: granularity },
-  ].filter(({ value }) => Boolean(value));
-
-  return (
-    <div className="m-b-md" data-testid="metric-definition-version">
-      <MetricExpression isEmbedded metric={metric} />
-      {details.length > 0 && (
-        <Space wrap className="m-t-sm" size="large">
-          {details.map(({ label, value }) => (
-            <Space key={label} size={4}>
-              <span className="text-grey-muted">{label}:</span>
-              <span data-testid={`metric-${label}-version`}>
-                {stringToHTML(value)}
-              </span>
-            </Space>
-          ))}
-        </Space>
-      )}
-    </div>
-  );
-};
 
 const MetricVersion: FC<MetricVersionProp> = ({
   version,
@@ -202,7 +140,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
                   />
                 </Col>
                 <Col span={24}>
-                  <MetricDefinition
+                  <MetricDefinitionCard
                     changeDescription={changeDescription}
                     metric={currentVersionData}
                   />
