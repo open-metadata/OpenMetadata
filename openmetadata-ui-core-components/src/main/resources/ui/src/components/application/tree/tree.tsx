@@ -257,7 +257,7 @@ const TreeItemContentComponent = ({
               'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
-            style={{ marginLeft: `${(level - 1) * 16 + 2}px` }}>
+            style={{ marginLeft: `${(level - 1) * 22 + 2}px` }}>
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"

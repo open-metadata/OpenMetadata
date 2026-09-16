@@ -489,14 +489,14 @@ export const TreeSelect = <T = unknown,>({
   const treeDropdown = (
     <div
       className={cx(
-        'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
+        'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:px-3',
         isButtonVariant ? 'tw:w-80' : 'tw:w-full tw:min-w-full',
         popoverClassName
       )}
       data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
       ref={popoverRef}>
       {isButtonVariant && searchable && (
-        <div className="tw:p-2">
+        <div className="tw:py-2">
           <Input
             icon={SearchInputIcon}
             placeholder={searchPlaceholder ?? t('label.search')}
@@ -508,7 +508,7 @@ export const TreeSelect = <T = unknown,>({
       )}
       {showSelectAllRow && (
         <div
-          className="tw:px-4 tw:py-2"
+          className="tw:pl-[10px] tw:py-2"
           onMouseDown={(event) => event.preventDefault()}>
           <Checkbox
             isIndeterminate={allSelectedCount > 0 && !allSelected}
@@ -520,7 +520,7 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:p-1"
+        className="tw:max-h-64 tw:overflow-y-auto tw:py-1 tw:pl-[7px]"
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:p-4 tw:text-sm tw:text-tertiary">
