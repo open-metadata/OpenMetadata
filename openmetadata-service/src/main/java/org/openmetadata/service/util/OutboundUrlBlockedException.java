@@ -13,17 +13,15 @@
 
 package org.openmetadata.service.util;
 
-import lombok.extern.slf4j.Slf4j;
+import jakarta.ws.rs.ProcessingException;
 
 /**
- * Validates a URL supplied through the API before it is stored. The decision itself lives in {@link
- * OutboundUrlPolicy}; the same policy is applied again when the request is dispatched.
+ * Raised when the outbound URL policy refuses a request that is about to leave the server. It
+ * extends ProcessingException so that it travels out of a client request filter unwrapped, which is
+ * what lets callers recognise a policy rejection rather than a transport failure.
  */
-@Slf4j
-public class URLValidator {
-  private URLValidator() {}
-
-  public static void validateURL(String urlString) {
-    OutboundUrlPolicy.getInstance().checkForSave(urlString);
+public class OutboundUrlBlockedException extends ProcessingException {
+  public OutboundUrlBlockedException(String message) {
+    super(message);
   }
 }

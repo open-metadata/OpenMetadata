@@ -23,6 +23,7 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -47,9 +49,17 @@ import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.URLValidator;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
+  private static final EnumSet<SubscriptionDestination.SubscriptionType> WEBHOOK_TYPES =
+      EnumSet.of(
+          SubscriptionDestination.SubscriptionType.WEBHOOK,
+          SubscriptionDestination.SubscriptionType.SLACK,
+          SubscriptionDestination.SubscriptionType.MS_TEAMS,
+          SubscriptionDestination.SubscriptionType.G_CHAT);
+
   static final String ALERT_PATCH_FIELDS =
       "trigger,enabled,batchSize,notificationTemplate,destinations";
   static final String ALERT_UPDATE_FIELDS =
@@ -142,7 +152,31 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       }
     }
 
+    validateDestinationEndpoints(entity);
     validateFilterRules(entity);
+  }
+
+  /**
+   * Runs for create, PUT and PATCH alike, and for every category rather than only External, so an
+   * endpoint cannot be introduced through a path that skips the resource's own checks.
+   */
+  private void validateDestinationEndpoints(EventSubscription entity) {
+    for (SubscriptionDestination destination : listOrEmpty(entity.getDestinations())) {
+      String endpoint = webhookEndpoint(destination);
+      if (endpoint != null) {
+        URLValidator.validateURL(endpoint);
+      }
+    }
+  }
+
+  private static String webhookEndpoint(SubscriptionDestination destination) {
+    if (!WEBHOOK_TYPES.contains(destination.getType()) || destination.getConfig() == null) {
+      return null;
+    }
+    Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
+    return webhook == null || webhook.getEndpoint() == null
+        ? null
+        : webhook.getEndpoint().toString();
   }
 
   private void validateFilterRules(EventSubscription entity) {
