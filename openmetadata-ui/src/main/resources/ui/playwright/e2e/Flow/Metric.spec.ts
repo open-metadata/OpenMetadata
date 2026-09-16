@@ -97,7 +97,7 @@ test.describe(
       const metricListHeader = page.getByTestId('metric-list-header');
 
       await expect(
-        metricListHeader.getByRole('heading', { name: 'Metrics', level: 1 })
+        metricListHeader.getByRole('heading', { name: 'Metrics' })
       ).toBeVisible();
       await expect(
         metricListHeader.getByText(

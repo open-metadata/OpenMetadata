@@ -169,34 +169,32 @@ const attachScreenshot = async (page: Page, testId: string, name: string) => {
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
-  const firstBounds = await target.boundingBox();
+  // Poll the bounding box until two consecutive reads agree, so an opening
+  // drawer or reflowing container settles before we capture the screenshot.
+  let stableBounds = await target.boundingBox();
+  await expect
+    .poll(
+      async () => {
+        const previous = stableBounds;
+        stableBounds = await target.boundingBox();
+        if (!previous || !stableBounds) {
+          return false;
+        }
 
-  expect(firstBounds).not.toBeNull();
-  expect(firstBounds?.width).toBeGreaterThan(0);
-  expect(firstBounds?.height).toBeGreaterThan(0);
-
-  await target.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      })
-  );
-
-  const stableBounds = await target.boundingBox();
+        return (
+          Math.abs(stableBounds.x - previous.x) <= 1 &&
+          Math.abs(stableBounds.y - previous.y) <= 1 &&
+          Math.abs(stableBounds.width - previous.width) <= 1 &&
+          Math.abs(stableBounds.height - previous.height) <= 1
+        );
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(true);
 
   expect(stableBounds).not.toBeNull();
-  expect(
-    Math.abs((stableBounds?.x ?? 0) - (firstBounds?.x ?? 0))
-  ).toBeLessThanOrEqual(1);
-  expect(
-    Math.abs((stableBounds?.y ?? 0) - (firstBounds?.y ?? 0))
-  ).toBeLessThanOrEqual(1);
-  expect(
-    Math.abs((stableBounds?.width ?? 0) - (firstBounds?.width ?? 0))
-  ).toBeLessThanOrEqual(1);
-  expect(
-    Math.abs((stableBounds?.height ?? 0) - (firstBounds?.height ?? 0))
-  ).toBeLessThanOrEqual(1);
+  expect(stableBounds?.width).toBeGreaterThan(0);
+  expect(stableBounds?.height).toBeGreaterThan(0);
 
   const body = await target.screenshot({ animations: 'disabled' });
   const devicePixelRatio = await page.evaluate(() => window.devicePixelRatio);
@@ -1025,20 +1023,17 @@ test.describe('Metric Hierarchy', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page
         .getByRole('textbox', { name: 'Description' })
         .fill(`Metric ${metricName}`);
+      const reviewerLabel = reviewer.responseData.displayName ?? reviewerName;
       const reviewerField = page.getByRole('combobox', { name: 'Reviewers' });
       await reviewerField.click();
       await reviewerField.fill(reviewerName);
-      const reviewerOption = page.getByRole('option', { name: reviewerName });
+      const reviewerOption = page.getByRole('option', { name: reviewerLabel });
       await expect(reviewerOption).toBeVisible();
       await reviewerOption.click();
       const reviewerGroup = reviewerField.locator(
         'xpath=ancestor::div[@role="group"]'
       );
-      await expect(
-        reviewerGroup.getByText(
-          reviewer.responseData.displayName ?? reviewerName
-        )
-      ).toBeVisible();
+      await expect(reviewerGroup.getByText(reviewerLabel)).toBeVisible();
 
       const createResponse = page.waitForResponse(
         (response) =>

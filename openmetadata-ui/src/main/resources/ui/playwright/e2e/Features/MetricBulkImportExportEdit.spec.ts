@@ -555,7 +555,9 @@ const waitForMetricsPage = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('metric-list-page')).toBeVisible();
   await expect(
-    page.getByRole('heading', { name: 'Metrics', level: 1 })
+    page.getByTestId('metric-list-header').getByRole('heading', {
+      name: 'Metrics',
+    })
   ).toBeVisible();
 };
 
