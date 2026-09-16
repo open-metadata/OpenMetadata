@@ -98,6 +98,7 @@
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/DescriptionSuggestion.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
+        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
@@ -1961,6 +1962,7 @@
         "playwright/e2e/Features/DomainIsolation/DomainTaskIsolation.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
         "playwright/e2e/Features/EntitySummaryPanel.spec.ts",
+        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
@@ -2716,6 +2718,7 @@
         "playwright/e2e/Features/DomainIsolation/DomainSearchIsolation.spec.ts",
         "playwright/e2e/Features/DomainIsolation/DomainTaskIsolation.spec.ts",
         "playwright/e2e/Features/DomainTierCertificationVoting.spec.ts",
+        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreSortOrderFilter.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/FeedEditorDuplicateId.spec.ts",
@@ -3531,6 +3534,7 @@
         "playwright/e2e/Features/DomainIsolation/DomainListingIsolation.spec.ts",
         "playwright/e2e/Features/DomainTierCertificationVoting.spec.ts",
         "playwright/e2e/Features/EntitySummaryPanel.spec.ts",
+        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
@@ -6335,6 +6339,14 @@
         "playwright/e2e/Pages/ExploreBrowse.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/SortingDropDown.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts"
       ]
     },
     {
@@ -9781,6 +9793,7 @@
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
         "playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts",
         "playwright/e2e/Features/EntitySummaryPanel.spec.ts",
+        "playwright/e2e/Features/ExploreColumnsSortLabel.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
         "playwright/e2e/Features/ExploreQueryBar.spec.ts",
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
