@@ -912,6 +912,88 @@ describe('ExploreQuickFilters component', () => {
 
       expect(publishedLabel).not.toBe('tier.tier1');
     });
+
+    it('evicts oldest seen options first instead of wiping the record', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      const tierField = {
+        label: 'Tier',
+        key: 'tier.tagFQN',
+        value: undefined,
+        sourceFields: 'tier.tagFQN',
+      };
+      mockGetAggregationOptions.mockResolvedValue({
+        data: {
+          aggregations: {
+            'sterms#tier.tagFQN': {
+              buckets: [{ key: 'tier.tier1', doc_count: 3 }],
+            },
+          },
+        },
+      });
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          fields={[tierField]}
+          onFieldValueSelect={mockOnFieldValueSelect}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+      const publishedLabel = screen
+        .getByTestId('option-tier.tagFQN-0')
+        .textContent?.replace(/ - \d+$/, '');
+
+      // Re-publish the staged option once mid-stream (refreshing its recency),
+      // then flood well past the 500-entry cap with distinct keys.
+      const flood = (from: number, count: number) => ({
+        data: {
+          aggregations: {
+            'sterms#tier.tagFQN': {
+              buckets: Array.from({ length: count }, (_, i) => ({
+                key: `flood.${from + i}`,
+                doc_count: 1,
+              })),
+            },
+          },
+        },
+      });
+      mockGetAggregationOptions.mockResolvedValueOnce(flood(0, 300));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-tier.tagFQN'));
+      });
+      mockGetAggregationOptions.mockResolvedValueOnce({
+        data: {
+          aggregations: {
+            'sterms#tier.tagFQN': {
+              buckets: [{ key: 'tier.tier1', doc_count: 3 }],
+            },
+          },
+        },
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-tier.tagFQN'));
+      });
+      mockGetAggregationOptions.mockResolvedValueOnce(flood(300, 400));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onSearch-tier.tagFQN'));
+      });
+
+      // 701 published keys total: a full-wipe strategy would have dropped the
+      // staged key; oldest-first eviction keeps it (refreshed at ~position 301).
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onChangeStagedTier-tier.tagFQN'));
+      });
+
+      expect(mockOnFieldValueSelect).toHaveBeenCalledWith({
+        ...tierField,
+        value: [
+          expect.objectContaining({ key: 'tier.tier1', label: publishedLabel }),
+        ],
+      });
+    });
   });
 
   describe('Initial options cache', () => {

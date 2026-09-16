@@ -235,12 +235,19 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   const seenOptionsRef = useRef(new Map<string, SearchDropdownOption>());
   const SEEN_OPTIONS_CACHE_MAX = 500;
   const publishOptions = (key: string, opts: SearchDropdownOption[]) => {
-    if (seenOptionsRef.current.size + opts.length > SEEN_OPTIONS_CACHE_MAX) {
-      seenOptionsRef.current.clear();
+    const seen = seenOptionsRef.current;
+    opts.forEach((option) => {
+      // Delete-then-set keeps insertion order as recency order, so eviction
+      // below drops the oldest entries first instead of wiping the map — a
+      // staged key's entry is recent (published when the user picked it) and
+      // survives far longer than under a full clear.
+      const seenKey = `${key}::${option.key}`;
+      seen.delete(seenKey);
+      seen.set(seenKey, option);
+    });
+    while (seen.size > SEEN_OPTIONS_CACHE_MAX) {
+      seen.delete(seen.keys().next().value as string);
     }
-    opts.forEach((option) =>
-      seenOptionsRef.current.set(`${key}::${option.key}`, option)
-    );
     setOptions(opts);
   };
 
