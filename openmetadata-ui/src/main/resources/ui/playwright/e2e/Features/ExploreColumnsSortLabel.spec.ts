@@ -16,14 +16,15 @@ import { performAdminLogin } from '../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // Regression for #32645: on the Columns Explore tab the default sort field
-// (totalVotes) is not a member of columnSortingFields, which made the sort
-// dropdown render a blank trigger label. A search term forces the Explore index
-// to resolve to COLUMN, and omitting the sort param exercises the default sort.
+// (totalVotes) is not a member of columnSortingFields. A search term forces the
+// Explore index to resolve to COLUMN; omitting the sort param exercises the
+// default sort. The active sort is normalized to the tab default so both the
+// search request and the dropdown label use a valid, matching Columns sort.
 test.describe(
   'Explore Columns sort dropdown label',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test('should never render a blank label on the Columns tab default sort', async ({
+    test('should normalize an unsupported default sort to the Columns tab default', async ({
       browser,
     }) => {
       test.slow(true);
@@ -33,21 +34,31 @@ test.describe(
       });
 
       try {
+        // The request must sort by the Columns default (displayName.keyword),
+        // never the URL default totalVotes which is invalid on this tab.
+        const columnSearch = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=tableColumn') &&
+            response.url().includes('sort_field=displayName.keyword')
+        );
+
         await page.goto('/explore/columns?search=id');
+        await columnSearch;
         await waitForAllLoadersToDisappear(page);
 
         const sortLabel = page.getByTestId('sorting-dropdown-label');
 
         await expect(sortLabel).toBeVisible();
         // The button contains a trailing chevron icon, so assert on text: a blank
-        // label (the bug) has no text node, only the icon.
-        await expect(sortLabel).toHaveText('Data Type');
+        // label (the original bug) has no text node, only the icon.
+        await expect(sortLabel).toHaveText('Name');
       } finally {
         await afterAction();
       }
     });
 
-    test('should reflect an explicit valid sort field on the Columns tab', async ({
+    test('should preserve an explicit valid sort field on the Columns tab', async ({
       browser,
     }) => {
       test.slow(true);
@@ -57,13 +68,21 @@ test.describe(
       });
 
       try {
-        await page.goto('/explore/columns?search=id&sort=displayName.keyword');
+        const columnSearch = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=tableColumn') &&
+            response.url().includes('sort_field=updatedAt')
+        );
+
+        await page.goto('/explore/columns?search=id&sort=updatedAt');
+        await columnSearch;
         await waitForAllLoadersToDisappear(page);
 
         const sortLabel = page.getByTestId('sorting-dropdown-label');
 
         await expect(sortLabel).toBeVisible();
-        await expect(sortLabel).toHaveText('Name');
+        await expect(sortLabel).toHaveText('Last Updated');
       } finally {
         await afterAction();
       }
