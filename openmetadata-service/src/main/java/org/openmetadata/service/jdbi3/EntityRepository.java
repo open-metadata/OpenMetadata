@@ -3025,6 +3025,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
     setDefaultStatus(entity, update);
+    if (!update) {
+      // Only on create: on PATCH the incoming entity carries the *stored* certification even when
+      // the patch never touched it, so validating there would start rejecting unrelated edits to
+      // every already-certified entity the moment an admin changes allowedClassification.
+      prepareCertification(entity);
+    }
     // Domain is already validated
   }
 
@@ -6249,6 +6255,65 @@ public abstract class EntityRepository<T extends EntityInterface> {
             tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null);
   }
 
+  /**
+   * Validate a request-supplied certification and replace its {@code appliedDate}/{@code
+   * expiryDate} with the server-computed validity window.
+   *
+   * <p>Both the create and the update paths have to run this. {@link
+   * EntityUpdater#updateCertification} reaches it for an entity that already exists, but create and
+   * bulk-create go straight from {@code storeRelationshipsInternal} to {@link #applyCertification}
+   * without ever constructing an updater — so without a second call site a certification supplied
+   * on a create request would be written to {@code tag_usage} with no classification check and with
+   * whatever dates the client happened to send.
+   */
+  protected void validateAndStampCertification(AssetCertification certification) {
+    AssetCertificationSettings settings =
+        Entity.getSystemRepository().getAssetCertificationSettingOrDefault();
+    validateCertification(certification.getTagLabel().getTagFQN(), settings);
+
+    long appliedDate = System.currentTimeMillis();
+    certification.setAppliedDate(appliedDate);
+    LocalDateTime appliedDateTime =
+        LocalDateTime.ofInstant(Instant.ofEpochMilli(appliedDate), ZoneOffset.UTC);
+    LocalDateTime expiryDateTime = appliedDateTime.plus(Period.parse(settings.getValidityPeriod()));
+    certification.setExpiryDate(expiryDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+  }
+
+  protected static void validateCertification(
+      String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
+    if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
+      throw new IllegalArgumentException(
+          "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
+    } else {
+      String allowedClassification = assetCertificationSettings.getAllowedClassification();
+      String[] fqnParts = FullyQualifiedName.split(certificationLabel);
+      String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
+      if (!allowedClassification.equals(parentFqn)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid Classification: %s is not valid for Certification.", certificationLabel));
+      }
+    }
+  }
+
+  /**
+   * Certification arriving on a create request never passes through {@link EntityUpdater}, so
+   * validate it and stamp the server-authoritative dates here instead. Mirrors {@link
+   * #applyCertification} in tolerating a certification with no usable tag rather than failing the
+   * create — that shape is already a no-op downstream.
+   */
+  private void prepareCertification(T entity) {
+    if (!supportsCertification || entity.getCertification() == null) {
+      return;
+    }
+    AssetCertification certification = entity.getCertification();
+    if (certification.getTagLabel() == null
+        || nullOrEmpty(certification.getTagLabel().getTagFQN())) {
+      return;
+    }
+    validateAndStampCertification(certification);
+  }
+
   protected void applyCertification(T entity) {
     if (!supportsCertification || entity.getCertification() == null) return;
     if (entity.getCertification().getTagLabel() == null
@@ -8804,6 +8869,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private final List<Runnable> deferredReactOperations = new ArrayList<>();
     private boolean deferredReactExecuted;
 
+    /**
+     * True while the diff pass being run has the persisted entity as its baseline — the state the
+     * search index and the stored lineage rows mirror. Consolidation replays the diff against
+     * reverted baselines (see {@link #flushUpdateBody}); side effects that reconcile an external
+     * store against {@code original} are only correct on a baseline pass. Defaults to true so the
+     * single-pass paths (no consolidation, bulk {@code updateWithDeferredStore}) need no opt-in.
+     */
+    private boolean indexBaselinePass = true;
+
     // Store the original FQN at construction time, before any modifications or revert.
     // This is needed because during change consolidation, revert() reassigns 'original' to
     // 'previous',
@@ -8905,6 +8979,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
       this.deferredReactExecuted = false;
+    }
+
+    /**
+     * Whether the diff pass currently running is baselined on the persisted entity. See {@link
+     * #indexBaselinePass}.
+     */
+    protected final boolean isIndexBaselinePass() {
+      return indexBaselinePass;
     }
 
     protected final void deferReactOperation(Runnable operation) {
@@ -9037,6 +9119,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // deferReactOperation; clear them so a deadlock replay does not double-enqueue.
       deferredReactOperations.clear();
       deferredReactExecuted = false;
+      indexBaselinePass = true;
       resetForRetryAttempt();
     }
 
@@ -9095,6 +9178,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChangeImport")) {
             incrementalChangeForImport();
           }
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevertImport")) {
             revertForImport();
           }
@@ -9102,6 +9186,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
           try (var ignored = phase("entityUpdateIncrementalChange")) {
             incrementalChange();
           }
+          // Everything from here on diffs against a reverted baseline the external stores never
+          // saw: revert() inverts this request, replays it, then rebases original onto the
+          // pre-session version.
+          indexBaselinePass = false;
           try (var ignored = phase("entityUpdateRevert")) {
             revert();
           }
@@ -10078,10 +10166,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
           origCertification,
           updatedCertification);
 
-      if (operation.isPut() && !nullOrEmpty(original.getCertification()) && updatedByBot()) {
-        // Revert change to non-empty certification if it is being updated by a bot
-        // This is to prevent bots from overwriting the certification. Certification need to be
-        // updated with a PATCH request
+      if (operation.isPut()
+          && !nullOrEmpty(original.getCertification())
+          && updatedByBot()
+          && !overrideMetadata) {
+        // Revert change to non-empty certification if it is being updated by a bot, matching the
+        // guard on description/owners: a stored value wins over anything a scheduled re-sync
+        // sends. Certification can still be updated with a PATCH request, or via the bulk path
+        // with overrideMetadata=true.
         updated.setCertification(original.getCertification());
         return;
       }
@@ -10093,49 +10185,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
-      if (Objects.equals(origCertification, updatedCertification)) {
+      // Compare by tagLabel.tagFQN only, not full-object equality: appliedDate/expiryDate are
+      // always recomputed server-side below and stored back, so a request that legitimately
+      // doesn't know the server's current dates (e.g. an ingestion connector re-sending the same
+      // certification every run) would otherwise never compare equal, causing a spurious
+      // version bump and re-apply on every non-bulk PUT. Other TagLabel fields (labelType,
+      // state, etc.) are ignored - only the certification tag's identity matters here.
+      boolean certificationTagUnchanged =
+          origCertification != null
+              && origCertification.getTagLabel() != null
+              && updatedCertification.getTagLabel() != null
+              && Objects.equals(
+                  origCertification.getTagLabel().getTagFQN(),
+                  updatedCertification.getTagLabel().getTagFQN());
+      if (certificationTagUnchanged) {
         LOG.debug("Certification unchanged");
+        // Restore the stored (server-authoritative) certification, including its real
+        // appliedDate/expiryDate, so the request's arbitrary date fields are never persisted -
+        // this method only skips the re-apply/recordChange, not the eventual entity write.
+        updated.setCertification(origCertification);
         return;
       }
 
-      SystemRepository systemRepository = Entity.getSystemRepository();
-      AssetCertificationSettings assetCertificationSettings =
-          systemRepository.getAssetCertificationSettingOrDefault();
-
-      String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
-
-      validateCertification(certificationLabel, assetCertificationSettings);
-
-      long certificationDate = System.currentTimeMillis();
-      updatedCertification.setAppliedDate(certificationDate);
-
-      LocalDateTime nowDateTime =
-          LocalDateTime.ofInstant(Instant.ofEpochMilli(certificationDate), ZoneOffset.UTC);
-      Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
-      LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
-      updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+      validateAndStampCertification(updatedCertification);
 
       applyCertification(updated);
 
       recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
-    }
-
-    private void validateCertification(
-        String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
-      if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
-        throw new IllegalArgumentException(
-            "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
-      } else {
-        String allowedClassification = assetCertificationSettings.getAllowedClassification();
-        String[] fqnParts = FullyQualifiedName.split(certificationLabel);
-        String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
-        if (!allowedClassification.equals(parentFqn)) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Invalid Classification: %s is not valid for Certification.",
-                  certificationLabel));
-        }
-      }
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -10881,6 +10957,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         List<Column> origColumns,
         List<Column> updatedColumns,
         BiPredicate<Column, Column> columnMatch) {
+      ColumnLineageChanges lineageChanges = new ColumnLineageChanges();
+      updateColumns(fieldName, origColumns, updatedColumns, columnMatch, lineageChanges);
+      handleColumnLineageUpdates(
+          lineageChanges.deletedColumnFqns(), lineageChanges.renamedColumnFqns());
+    }
+
+    private void updateColumns(
+        String fieldName,
+        List<Column> origColumns,
+        List<Column> updatedColumns,
+        BiPredicate<Column, Column> columnMatch,
+        ColumnLineageChanges lineageChanges) {
       origColumns = listOrEmpty(origColumns);
       updatedColumns = listOrEmpty(updatedColumns);
       UUID entityId = updated.getId();
@@ -10930,7 +11018,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
-        // Find stored column matching name, data type and ordinal position
         Column stored =
             origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
@@ -10969,19 +11056,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          updateColumns(columnPrefix, stored.getChildren(), updated.getChildren(), columnMatch);
+          updateColumns(
+              columnPrefix,
+              stored.getChildren(),
+              updated.getChildren(),
+              columnMatch,
+              lineageChanges);
         }
       }
 
       majorVersionChange = majorVersionChange || !deletedColumns.isEmpty();
-      List<String> deletedColumnFqnList =
-          deletedColumns.stream().map(Column::getFullyQualifiedName).toList();
-      handleColumnLineageUpdates(deletedColumnFqnList, originalUpdatedColumnFqns);
+      lineageChanges.include(deletedColumns, originalUpdatedColumnFqns);
     }
 
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       // NO-OP – to be overridden by entity-specific updaters when needed.
+    }
+
+    private static final class ColumnLineageChanges {
+      private final Set<String> deletedColumnFqns = new LinkedHashSet<>();
+      private final HashMap<String, String> renamedColumnFqns = new HashMap<>();
+
+      private void include(
+          List<Column> deletedColumns, HashMap<String, String> originalUpdatedColumnFqns) {
+        deletedColumns.stream()
+            .map(Column::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .forEach(deletedColumnFqns::add);
+        renamedColumnFqns.putAll(originalUpdatedColumnFqns);
+      }
+
+      private List<String> deletedColumnFqns() {
+        return List.copyOf(deletedColumnFqns);
+      }
+
+      private HashMap<String, String> renamedColumnFqns() {
+        return new HashMap<>(renamedColumnFqns);
+      }
     }
 
     private void updateColumnDescription(

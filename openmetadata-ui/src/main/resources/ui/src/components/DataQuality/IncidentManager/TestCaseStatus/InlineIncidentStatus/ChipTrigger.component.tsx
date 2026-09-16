@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import {
   ChevronDown as ArrowDownIcon,
   ChevronUp as ArrowUpIcon,
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { type RefObject } from 'react';
+import { Focusable } from 'react-aria-components';
 
 export type ChipPalette = {
   bg: string;
@@ -114,15 +115,27 @@ export const ChipTrigger = ({
           color: palette.color,
         }}>
         {/* Truncation is visual only — the full label stays in the DOM for the
-            button's accessible name, and `title` surfaces it on hover. Both are
-            gated on the bound: an unbounded chip cannot clip, so a tooltip there
-            would only repeat text the user can already read. */}
-        <span
-          className={isBounded ? 'tw:min-w-0 tw:truncate' : undefined}
-          data-testid={`${dataTestId}-label`}
-          title={isBounded ? chipLabel : undefined}>
-          {chipLabel}
-        </span>
+            button's accessible name, and the Tooltip surfaces it on hover. Both
+            are gated on the bound: an unbounded chip cannot clip, so a tooltip
+            there would only repeat text the user can already read (isDisabled).
+
+            The label lives inside the chip's core <Button>, so the Tooltip's
+            trigger must not be another button (nested buttons are invalid) and
+            must still open on hover. <Focusable> makes the label span consume
+            react-aria's FocusableContext — so the Tooltip opens on hover —
+            without rendering a button or a wrapper element that would break the
+            pill's flex/truncation chain (it clones props onto the span).
+            excludeFromTabOrder keeps the span out of the tab order; the chip
+            <Button> is the focusable control. */}
+        <Tooltip isDisabled={!isBounded} title={chipLabel}>
+          <Focusable excludeFromTabOrder>
+            <span
+              className={isBounded ? 'tw:min-w-0 tw:truncate' : undefined}
+              data-testid={`${dataTestId}-label`}>
+              {chipLabel}
+            </span>
+          </Focusable>
+        </Tooltip>
         {hasEditPermission && (
           <ChevronIcon
             aria-hidden

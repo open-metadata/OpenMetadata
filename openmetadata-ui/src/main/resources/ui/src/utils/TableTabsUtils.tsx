@@ -150,7 +150,7 @@ const TableConstraints = withSuspenseFallback(
 );
 
 const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D')),
+  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph')),
   TAB_CONTENT_FALLBACK
 );
 
@@ -173,6 +173,15 @@ const PartitionedKeys = withSuspenseFallback(
     import(
       '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
     ).then((module) => ({ default: module.PartitionedKeys }))
+  ),
+  <EntityDetailWidgetSkeleton lineCount={5} />
+);
+
+const TableAliases = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../pages/TableDetailsPageV1/TableAliases/TableAliases.component'
+    ).then((module) => ({ default: module.TableAliases }))
   ),
   <EntityDetailWidgetSkeleton lineCount={5} />
 );
@@ -392,7 +401,6 @@ export const getTableDetailPageBaseTabs = ({
       children: (
         <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <KnowledgeGraph
-            depth={1}
             entity={
               tableDetails
                 ? {
@@ -530,6 +538,8 @@ export const getTableWidgetFromKey = (
     return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
     return <PartitionedKeys />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_ALIASES)) {
+    return <TableAliases />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.ASSET_HEALTH)) {
     return <AssetHealthWidget />;
   } else {

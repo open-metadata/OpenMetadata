@@ -241,6 +241,12 @@ const ProfilerConfigurationPage = withPageSuspenseFallback(
   )
 );
 
+const DataQualitySettingsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/DataQualitySettingsPage/DataQualitySettingsPage')
+  )
+);
+
 const AddRolePage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
 );
@@ -872,6 +878,17 @@ const SettingsRouter = () => {
         path={getSettingPathRelative(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
+        )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <DataQualitySettingsPage />
+          </AdminProtectedRoute>
+        }
+        path={getSettingPathRelative(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.DATA_QUALITY
         )}
       />
 

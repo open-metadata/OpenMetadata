@@ -18,6 +18,7 @@ import {
   Dropdown,
   EmptyPlaceholder,
   Input,
+  PageLayout,
 } from '@openmetadata/ui-core-components';
 import {
   keepPreviousData,
@@ -47,7 +48,9 @@ import classNames from 'classnames';
 import { debounce, startCase } from 'lodash';
 import {
   ChangeEvent,
+  Fragment,
   Key,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -55,7 +58,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import TagChip from '../../../components/common/atoms/TagChip/TagChip';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import {
   CSV_JOBS_REFRESH_EVENT,
@@ -64,7 +66,6 @@ import {
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -72,6 +73,7 @@ import Table from '../../../components/common/Table/TableV2';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
@@ -81,7 +83,11 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
+import {
+  EntityReference,
+  EntityStatus,
+  Metric,
+} from '../../../generated/entity/data/metric';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -97,8 +103,14 @@ import {
   getEntityBulkEditPath,
   getEntityImportPath,
 } from '../../../utils/EntityPureUtils';
+import { stopPropagationIfInteractive } from '../../../utils/InteractiveTargetUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import {
+  getDomainPath,
+  getEntityDetailsPath,
+} from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -181,6 +193,35 @@ const computeIsMetricListEmpty = (
   return isNotFetchingOrPending && metricsCount === 0 && hasNoFilters;
 };
 
+const renderDomainBadge = (domain: EntityReference): ReactNode => {
+  const badge = (
+    <Badge
+      className="metric-list-glossary-pill"
+      color="blue"
+      size="sm"
+      type="color">
+      {domain.displayName ?? domain.name ?? domain.fullyQualifiedName}
+    </Badge>
+  );
+
+  return domain.fullyQualifiedName ? (
+    <Link key={domain.id} to={getDomainPath(domain.fullyQualifiedName)}>
+      {badge}
+    </Link>
+  ) : (
+    <Fragment key={domain.id}>{badge}</Fragment>
+  );
+};
+
+const withNestedLinkGuard = (cell: ReactNode): ReactNode => (
+  <Box
+    direction="col"
+    role="presentation"
+    onClick={stopPropagationIfInteractive}>
+    {cell}
+  </Box>
+);
+
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -235,7 +276,17 @@ const MetricListPage = () => {
     queryFn: () => getResourcePermission(ResourceEntity.METRIC),
   });
 
-  const hasViewPermission = permission.ViewAll || permission.ViewBasic;
+  // Resource-level permission (usePermissionProvider().getResourcePermission), not an
+  // entity-level fetch — but itself OperationPermission-shaped, so it runs through the same
+  // getDerivedPermissionFlags derivation as an entity-level fetch (Task 8 Batch 3
+  // DatabaseSchemaTable.tsx / Batch 5 ServiceMainTabContent.tsx precedent). No `deleted`
+  // argument: this is a list page with no single entity to gate on.
+  const permissionFlags = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
+  );
+
+  const hasViewPermission = permissionFlags.hasViewAccess;
 
   const {
     data: searchResponse,
@@ -484,22 +535,8 @@ const MetricListPage = () => {
       <span className="metric-list-empty-dash">{t('label.empty-dash')}</span>
     );
 
-    const renderTagPills = (tags: TagLabel[]) => (
-      <div className="metric-list-glossary">
-        {tags.length
-          ? tags.map((tag) => (
-              <TagChip
-                icon={tag.style?.iconURL}
-                key={tag.tagFQN}
-                label={tag.name ?? tag.tagFQN}
-                size="small"
-                tagColor={tag.style?.color}
-                variant="blueGray"
-              />
-            ))
-          : emptyDash}
-      </div>
-    );
+    const renderTagPills = (tags: TagLabel[]) =>
+      withNestedLinkGuard(<TagsViewer sizeCap={2} tags={tags} />);
 
     const metricColumn = {
       title: t('label.metric'),
@@ -599,22 +636,30 @@ const MetricListPage = () => {
         key: 'owners',
         width: 160,
         render: (owners: Metric['owners']) =>
-          owners?.length ? (
-            <div className="metric-owner-group">
-              {owners.slice(0, 3).map((owner) => (
-                <Avatar
-                  className="metric-owner-avatar"
-                  initials={getOwnerInitials(owner)}
-                  key={owner.id}
-                  size="sm"
-                />
-              ))}
-              {owners.length > 3 && (
-                <span className="metric-owner-extra">+{owners.length - 3}</span>
-              )}
-            </div>
-          ) : (
-            emptyDash
+          withNestedLinkGuard(
+            owners?.length ? (
+              <Box className="metric-owner-group">
+                {owners.slice(0, 3).map((owner) => (
+                  <Link
+                    aria-label={getEntityName(owner)}
+                    key={owner.id}
+                    to={getOwnerPath(owner)}>
+                    <Avatar
+                      className="metric-owner-avatar"
+                      initials={getOwnerInitials(owner)}
+                      size="sm"
+                    />
+                  </Link>
+                ))}
+                {owners.length > 3 && (
+                  <span className="metric-owner-extra">
+                    +{owners.length - 3}
+                  </span>
+                )}
+              </Box>
+            ) : (
+              emptyDash
+            )
           ),
       },
       tags: {
@@ -629,24 +674,12 @@ const MetricListPage = () => {
         dataIndex: 'domains',
         key: 'domains',
         width: 220,
-        render: (domains: Metric['domains']) => (
-          <div className="metric-list-glossary">
-            {domains?.length
-              ? domains.map((domain) => (
-                  <Badge
-                    className="metric-list-glossary-pill"
-                    color="blue"
-                    key={domain.id}
-                    size="sm"
-                    type="color">
-                    {domain.displayName ??
-                      domain.name ??
-                      domain.fullyQualifiedName}
-                  </Badge>
-                ))
-              : emptyDash}
-          </div>
-        ),
+        render: (domains: Metric['domains']) =>
+          withNestedLinkGuard(
+            <Box className="metric-list-glossary">
+              {domains?.length ? domains.map(renderDomainBadge) : emptyDash}
+            </Box>
+          ),
       },
       updatedAt: {
         title: t('label.last-updated'),
@@ -719,7 +752,7 @@ const MetricListPage = () => {
           </Button>
         </LimitWrapper>
       )}
-      {permission.EditAll && (
+      {permissionFlags.canEditAll && (
         <Dropdown.Root
           isOpen={isMetricActionsOpen}
           onOpenChange={setIsMetricActionsOpen}>
@@ -830,7 +863,7 @@ const MetricListPage = () => {
         </Button>
       </div>
       <div className="metric-list-selection-actions">
-        {permission.EditAll && (
+        {permissionFlags.canEditAll && (
           <Button
             className="metric-list-selection-action tw:text-brand-primary! tw:hover:text-brand-primary! tw:*:data-icon:text-fg-brand-primary!"
             color="link-color"
@@ -896,7 +929,7 @@ const MetricListPage = () => {
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown.Root>
-        {permission.EditAll && (
+        {permissionFlags.canEditAll && (
           <Button
             className="metric-list-toolbar-link tw:focus-visible:outline-none! tw:focus-visible:bg-brand-primary_alt"
             color="link-color"
@@ -1019,7 +1052,7 @@ const MetricListPage = () => {
   const renderHeaderSection = () => (
     <div>
       {isAiMode ? (
-        <HeaderShell
+        <PageLayout.PageHeader
           actions={renderMetricActions()}
           badge={<LearningIcon pageId={LEARNING_PAGE_IDS.METRICS} />}
           breadcrumb={
@@ -1033,7 +1066,6 @@ const MetricListPage = () => {
             />
           }
           className="tw:mb-0!"
-          padding="comfortable"
           subtitle={t('message.metric-description')}
           title={t('label.metric-plural')}
           variant="gradient"
