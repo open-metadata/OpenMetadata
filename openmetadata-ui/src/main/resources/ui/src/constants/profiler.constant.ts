@@ -15,6 +15,7 @@ import { map, startCase, values } from 'lodash';
 import { DateFilterType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';
+import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -26,10 +27,7 @@ import {
 } from '../generated/entity/data/table';
 import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import {
-  DataQualityDimensions,
-  TestPlatform,
-} from '../generated/tests/testDefinition';
+import { TestPlatform } from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
   getEndOfDayInMillis,
