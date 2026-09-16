@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Owner } from '@openmetadata/ui-core-components';
+import { ClassificationTag, Owner } from '@openmetadata/ui-core-components';
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
-import ClassificationTag from '../components/common/atoms/Tag/ClassificationTag';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';

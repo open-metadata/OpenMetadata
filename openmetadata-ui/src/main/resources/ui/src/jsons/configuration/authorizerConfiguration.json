@@ -17,22 +17,50 @@
     },
     "adminPrincipals": {
       "title": "Admin Principals",
-      "description": "List of unique admin principals.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "uniqueItems": true
-    },
-    "botPrincipals": {
-      "title": "Bot Principals",
-      "description": "**@Deprecated** List of unique bot principals",
+      "description": "[DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.",
       "type": "array",
       "items": {
         "type": "string"
       },
       "uniqueItems": true,
-      "default": null
+      "deprecated": true
+    },
+    "adminEmails": {
+      "title": "Admin Emails",
+      "description": "List of email addresses that should be granted admin privileges. Preferred over adminPrincipals.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "email"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "allowedEmailDomains": {
+      "title": "Allowed Email Domains",
+      "description": "List of email domains allowed to authenticate. If empty, all domains are allowed.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "botDomain": {
+      "title": "Bot Domain",
+      "description": "Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).",
+      "type": "string"
+    },
+    "botPrincipals": {
+      "title": "Bot Principals",
+      "description": "[DEPRECATED] List of unique bot principals.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": null,
+      "deprecated": true
     },
     "testPrincipals": {
       "title": "Test Principals",
@@ -54,22 +82,25 @@
     },
     "principalDomain": {
       "title": "Principal Domain",
-      "description": "Principal Domain",
-      "type": "string"
+      "description": "[DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions] Domain to use for constructing email addresses.",
+      "type": "string",
+      "deprecated": true
     },
     "allowedDomains": {
       "title": "Allowed Domains",
-      "description": "Allowed Domains to access",
+      "description": "[DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.",
       "type": "array",
       "items": {
         "type": "string"
       },
-      "uniqueItems": true
+      "uniqueItems": true,
+      "deprecated": true
     },
     "enforcePrincipalDomain": {
       "title": "Enable Enforce Principal Domain",
-      "description": "Enable Enforce Principal Domain",
-      "type": "boolean"
+      "description": "[DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.",
+      "type": "boolean",
+      "deprecated": true
     },
     "enableSecureSocketConnection": {
       "title": "Enable Secure Socket Connection.",
@@ -91,9 +122,6 @@
   "required": [
     "className",
     "containerRequestFilter",
-    "adminPrincipals",
-    "principalDomain",
-    "enforcePrincipalDomain",
     "enableSecureSocketConnection"
   ],
   "additionalProperties": false

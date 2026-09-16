@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TagSize } from './Tag.interface';
+import { TagSize } from './tag.types';
 
 /**
- * Tailwind classes for size variants applied to the Badge wrapper and label span.
- *
- * xs → 16px height / 10px font
- * sm → 20px height / 12px font
- * md → 24px height / 14px font
+ * Tailwind font-size classes for size variants, applied to the label span.
+ * Vertical sizing (padding/height) comes from Badge's own `size` prop instead
+ * of a fixed height class here — a fixed height overrides Badge's
+ * padding-driven sizing and misaligns its vertical padding.
  */
 export const SIZE_CLASS: Record<TagSize, string> = {
-  xs: 'tw:h-4 tw:text-[10px]',
-  sm: 'tw:h-5 tw:text-xs',
-  md: 'tw:h-6 tw:text-sm',
+  xs: 'tw:text-[10px]',
+  sm: 'tw:text-xs',
+  md: 'tw:text-sm',
 };
 
 /** Icon pixel size matching each tag size. */
@@ -34,16 +33,16 @@ export const ICON_PX: Record<TagSize, number> = { xs: 10, sm: 12, md: 14 };
  * user-colorable tag components share this default so they look consistent
  * when rendered without an explicit color. Consumed as a plain CSS custom
  * property value (`style={{ '--tag-color': DEFAULT_TAG_COLOR }}`); the nested
- * `var()` reference resolves automatically wherever `Tag.style.less` reads
+ * `var()` reference resolves automatically wherever the shared tag CSS reads
  * `var(--tag-color)`, so no runtime color resolution is needed here.
  */
-export const DEFAULT_TAG_COLOR = 'var(--tw-color-gray-cool-500)';
+export const DEFAULT_TAG_COLOR = 'var(--tw-color-gray-cool-600)';
 
 /**
  * Auto-classification brand identity — references the brand-900 design
  * token (exact value match for the hex it replaces, so no visual change).
  */
-export const AUTO_CLASSIFICATION_TAG_COLOR = 'var(--tw-color-brand-900)';
+export const AUTO_CLASSIFICATION_TAG_COLOR = 'var(--tw-color-brand-700)';
 
 /**
  * Single truncation width for every tag rendered in a flowing list. Call sites
