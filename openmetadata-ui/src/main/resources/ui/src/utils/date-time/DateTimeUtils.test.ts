@@ -32,7 +32,7 @@ import {
   isValidDateFormat,
 } from './DateTimeUtils';
 
-// ✅ CORRECTED MOCKS: Provide default return values so destructuring doesn't fail
+// ✅ CORRECTED MOCKS: Use useCurrentUserPreferences with default return values
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: {
     getState: jest.fn().mockReturnValue({
@@ -43,14 +43,14 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 }));
 
 jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
-  usePersistentStorage: {
+  useCurrentUserPreferences: {
     getState: jest.fn().mockReturnValue({
       preferences: {},
     }),
   },
 }));
 
-import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 
 const systemLocale = Settings.defaultLocale;
@@ -58,14 +58,11 @@ const systemZoneName = Settings.defaultZone;
 
 describe('DateTimeUtils tests', () => {
   beforeAll(() => {
-    // Explicitly set locale and time zone to make sure date time manipulations and literal
-    // results are consistent regardless of where tests are run
     Settings.defaultLocale = 'en-US';
     Settings.defaultZone = 'UTC';
   });
 
   afterAll(() => {
-    // Restore locale and time zone
     Settings.defaultLocale = systemLocale;
     Settings.defaultZone = systemZoneName;
   });
@@ -79,10 +76,10 @@ describe('DateTimeUtils tests', () => {
   });
 
   it(`formatMonth should format only the month`, () => {
-    expect(formatMonth(0)).toBe(`Jan`); // January 1970
-    expect(formatMonth(1677628800000)).toBe(`Mar`); // March 2023
-    expect(formatMonth(1704067200000)).toBe(`Jan`); // January 2024
-    expect(formatMonth(1717200000000)).toBe(`Jun`); // June 2024
+    expect(formatMonth(0)).toBe(`Jan`);
+    expect(formatMonth(1677628800000)).toBe(`Mar`);
+    expect(formatMonth(1704067200000)).toBe(`Jan`);
+    expect(formatMonth(1717200000000)).toBe(`Jun`);
   });
 
   it(`formatMonth should handle null/undefined values`, () => {
@@ -858,7 +855,7 @@ describe('DateTimeUtils', () => {
 
   describe('getActiveTimeFormat', () => {
     const mockGetAppState = useApplicationStore.getState as jest.Mock;
-    const mockGetPersistState = usePersistentStorage.getState as jest.Mock;
+    const mockGetPersistState = useCurrentUserPreferences.getState as jest.Mock;
 
     beforeEach(() => {
       jest.clearAllMocks();

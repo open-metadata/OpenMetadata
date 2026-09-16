@@ -12,6 +12,7 @@
  */
 import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
+import { useShallow } from 'zustand/react/shallow';
 import {
   DAY_SECONDS,
   HOUR_SECONDS,
@@ -20,7 +21,7 @@ import {
   YEAR_SECONDS,
 } from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
-import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
@@ -64,14 +65,41 @@ export const DATE_TIME_WITH_OFFSET_SHORT = "MMM dd, yyyy, hh:mm a '(UTC'ZZ')'"; 
  * Components using utility formatters directly will not automatically re-render
  * when the user toggles the time format preference. They will reflect the new
  * format on their next render cycle (e.g., via navigation or unrelated state changes).
- * For fully reactive time formatting, components should subscribe to the time
- * format preference via useCurrentUserPreferences() and pass it to customFormatDateTime.
+ * For fully reactive time formatting, use the {@link useActiveTimeFormat} hook
+ * and pass its result to customFormatDateTime / formatDateTime.
  */
 export const getActiveTimeFormat = (): '12h' | '24h' => {
   const { currentUser, timeFormat: globalTimeFormat } =
     useApplicationStore.getState();
   const userTimeFormat = currentUser?.name
-    ? usePersistentStorage.getState().preferences[currentUser.name]?.timeFormat
+    ? useCurrentUserPreferences.getState().preferences[currentUser.name]
+        ?.timeFormat
+    : undefined;
+
+  return userTimeFormat ?? globalTimeFormat ?? '12h';
+};
+
+/**
+ * Reactive hook that returns the active time format, re-evaluating whenever
+ * the user preference or global default changes. Use this in components that
+ * render timestamps and need to update live when the user toggles 12h/24h.
+ *
+ * Precedence: user preference -> global/tenant preference -> '12h' default.
+ *
+ * Example:
+ *   const timeFormat = useActiveTimeFormat();
+ *   const formatted = formatDateTime(timestamp, timeFormat);
+ */
+export const useActiveTimeFormat = (): '12h' | '24h' => {
+  const { currentUser, timeFormat: globalTimeFormat } = useApplicationStore(
+    useShallow((s) => ({
+      currentUser: s.currentUser,
+      timeFormat: s.timeFormat,
+    }))
+  );
+  const { preferences } = useCurrentUserPreferences();
+  const userTimeFormat = currentUser?.name
+    ? preferences[currentUser.name]?.timeFormat
     : undefined;
 
   return userTimeFormat ?? globalTimeFormat ?? '12h';
