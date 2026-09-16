@@ -258,6 +258,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         'Enabled',
         'Tag',
         'Display Name',
+        'Usage',
         'Description',
         'Actions',
       ]);
