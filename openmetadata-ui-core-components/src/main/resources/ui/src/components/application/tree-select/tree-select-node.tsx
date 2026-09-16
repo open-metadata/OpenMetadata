@@ -27,7 +27,6 @@ export interface TreeSelectTreeItemContentProps<T> {
   disabled: boolean;
   hasChildItems: boolean;
   showConnectorLines?: boolean;
-  isLastChild?: boolean;
   onNodeClick: () => void;
 }
 
@@ -41,7 +40,6 @@ export const TreeSelectTreeItemContent = <T,>({
   disabled,
   hasChildItems,
   showConnectorLines = false,
-  isLastChild = false,
   onNodeClick,
 }: TreeSelectTreeItemContentProps<T>) => {
   const isSelectable = node.allowSelection !== false;
@@ -63,38 +61,13 @@ export const TreeSelectTreeItemContent = <T,>({
               onNodeClick();
             }
           }}>
-          {showConnectorLines &&
-            renderProps.level >= 2 &&
-            Array.from({ length: renderProps.level - 1 }, (_, i) => {
-              const left = -40 - i * 16;
-              const isDirectParent = i === 0;
-
-              if (isDirectParent) {
-                return (
-                  <span key={`line-${i}`} aria-hidden="true">
-                    <span
-                      className="tw:pointer-events-none tw:absolute tw:w-3 tw:border-l tw:border-b tw:border-secondary tw:rounded-bl-md tw:-top-2.5 tw:h-[calc(50%+12px)]"
-                      style={{ left: `${left}px` }}
-                    />
-                    {!isLastChild && (
-                      <span
-                        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-secondary"
-                        style={{ left: `${left}px` }}
-                      />
-                    )}
-                  </span>
-                );
-              }
-
-              return (
-                <span
-                  key={`line-${i}`}
-                  aria-hidden="true"
-                  className="tw:pointer-events-none tw:absolute tw:-top-2.5 tw:-bottom-2.5 tw:w-px tw:border-l tw:border-secondary"
-                  style={{ left: `${left}px` }}
-                />
-              );
-            })}
+          {showConnectorLines && renderProps.level >= 2 && (
+            <span
+              aria-hidden="true"
+              className="tw:pointer-events-none tw:absolute tw:w-3 tw:border-l tw:border-b tw:border-secondary tw:rounded-bl-md tw:-top-2.5 tw:h-[calc(50%+12px)]"
+              style={{ left: `${-40 - (renderProps.level - 2) * 16}px` }}
+            />
+          )}
           {showCheckbox && multiple && isSelectable && (
             <span
               data-selected={isSelected}

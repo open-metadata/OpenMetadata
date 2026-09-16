@@ -336,7 +336,6 @@ export const TreeSelect = <T = unknown,>({
             hasChildItems={
               Boolean(node.children?.length) || node.isLeaf === false
             }
-            isLastChild={index === visibleNodes.length - 1}
             isLoading={loadingNodes.has(node.id)}
             isSelected={isNodeSelected(node.id)}
             multiple={multiple}
