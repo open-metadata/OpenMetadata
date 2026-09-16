@@ -1366,10 +1366,10 @@ public class RdfResource {
   }
 
   private static AgentSparqlCaller agentSparqlCaller(SecurityContext securityContext) {
-    // CatalogSecurityContext.impersonatedUser() carries the impersonating bot, but Jersey may
-    // have wrapped the context, so fall back to the request thread's ImpersonationContext the
-    // way DefaultAuthorizer does. JwtFilter sets both only for a validated impersonation
-    // session, so a non-null value here never reflects an untrusted header.
+    // The audit must attribute impersonated calls to the bot behind the validated swap, but
+    // Jersey may hand the resource a wrapped context; fall back to the request thread's
+    // ImpersonationContext the way DefaultAuthorizer does. JwtFilter sets both only after
+    // approving the swap, so a non-null value here never reflects an untrusted header.
     String serviceActor = ImpersonationContext.getImpersonatedBy();
     if (securityContext instanceof CatalogSecurityContext catalogSecurityContext
         && catalogSecurityContext.impersonatedUser() != null) {

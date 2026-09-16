@@ -51,6 +51,9 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
   @Override
   public Response toResponse(Throwable ex) {
     LOG.debug(ex.getMessage());
+    // Accepted layering exception: the shared mapper routes the agent path through the
+    // endpoint's transport so filter-stage failures keep the stable envelope. If a second
+    // endpoint ever needs this, introduce a mapper extension point instead of a second branch.
     if (AgentSparqlTransport.isAgentSparqlRequest(uriInfo)) {
       return AgentSparqlTransport.errorResponse(ex);
     }

@@ -346,11 +346,12 @@ mvn -o -pl openmetadata-integration-tests verify -Ppostgres-rdf-tests \
   -Dfailsafe.failIfNoSpecifiedTests=false -DfailIfNoTests=false
 ```
 
-- `AgentSparqlResourceIT`: **17/17 pass** (`BUILD SUCCESS`; failsafe report
+- `AgentSparqlResourceIT`: **18/18 pass** (`BUILD SUCCESS`; failsafe report
   `TEST-org.openmetadata.it.tests.AgentSparqlResourceIT.xml`, 0 skipped). Covers the
   permitted/unauthorized matrix, bot-JWT + `X-Impersonate-User` attribution to the effective
   user, dual-identity audit (`serviceActor=<bot> effectiveUser=<user>` in
-  `AgentSparqlAudit`), per-effective-user concurrency (guard quota keyed by effective user:
+  `AgentSparqlAudit`), a deleted-user token mapping to 401 `AUTHENTICATION_REQUIRED`
+  (unknown caller, not `QUERY_INVALID`), per-effective-user concurrency (guard quota keyed by effective user:
   the same user shares one quota across callers, while users on different stripes are
   independent — unit-proven in `SparqlQueryExecutionGuardTest` plus the forwarding
   assertion in `AgentSparqlServiceTest`). Limitation: the guard stripes 64 hash buckets
@@ -359,10 +360,12 @@ mvn -o -pl openmetadata-integration-tests verify -Ppostgres-rdf-tests \
   endpoint's `ErrorMessage` shape unchanged, parsed-query rejections, fixture
   joins/aggregates/typed bindings, LIMIT/OFFSET/completeness boundaries, and readiness
   transitions.
-- Unit lane `security.**`, `rdf.**`, `resources/rdf/**`, `exception.**`: **1609/1609 pass**.
+- Unit lane `security.**`, `rdf.**`, `resources/rdf/**`, `exception.**`: **1613/1613 pass**.
   New classes measure 94–100% line coverage; every touched shared-code line is covered by a
   unit test except the `JwtFilter`/`ImpersonationAuthorizer` throw-type swaps, which are
-  covered by the impersonation IT cases instead.
+  covered by the impersonation IT cases instead. Operation matching lives in one shared
+  static (`CompiledRule.operationMatches`) used by enforcement and the permission-debug
+  tool alike.
 - Regression lane on the same profile: `GlossaryRdfImportIT` 33/33,
   `GlossaryTermRelationFixesIT` 14/14, `GlossaryTermRelationIT` 5/5,
   `RdfGlossaryGraphIT` 11/11, `RdfResourceIT` 9/10 — i.e. **one baseline-reproduced error**,

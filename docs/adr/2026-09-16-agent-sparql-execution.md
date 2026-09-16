@@ -189,6 +189,12 @@ unchanged:
   configured default inference level — `rdf/RdfRepository.java:1601-1613`; the agent path
   uses the no-inference execution). Persona/relevance scope is never presented as
   authorization.
+- The parsed-tree inspector supersedes `SparqlFederationGuard` on this path rather than
+  reusing it: it descends into subqueries, EXISTS/NOT EXISTS, aggregates, and ORDER BY
+  expressions the guard's pattern-only walk does not cover, and it grants no endpoint
+  allowlist. Calling the guard in addition would add no detection — and, ordered before
+  the inspector, would misreport a `SERVICE` violation as `QUERY_INVALID` instead of
+  `FEDERATION_NOT_ALLOWED`.
 
 #### 4a. Conservative projection readiness (decided 2026-09-16)
 
@@ -331,6 +337,10 @@ Choices made while implementing that refine, but do not change, the decisions ab
   built.
 - **Generated TypeScript** for the new schemas and operation enum is produced by the
   `typescript-type-generation` workflow on the PR, not committed by hand.
+- **Extension function IRIs are syntactically opaque to validation**, which constrains
+  query form only (including `java:`-scheme calls). Validation never touches data
+  (parse-only); execution happens on the shipped `docker/rdf-store/config.ttl`, which
+  registers no extension functions, so unresolvable calls fail closed at evaluation.
 - **Test profile uses the supported image.** `postgres-rdf-tests` no longer pins
   `secoresearch/fuseki:5.5.0`: with no `rdfContainerImage` set, `TestSuiteBootstrap`
   builds `docker/rdf-store` (Fuseki 6.2.0 + union default graph + write extension). The
