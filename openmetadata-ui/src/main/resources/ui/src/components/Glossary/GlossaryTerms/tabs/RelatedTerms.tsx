@@ -13,6 +13,7 @@
 
 import {
   Button,
+  GlossaryTag,
   Tooltip,
   TooltipTrigger,
   Typography,
@@ -53,7 +54,6 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
-import GlossaryTag from '../../../common/atoms/Tag/GlossaryTag';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import {
   EditIconButton,
