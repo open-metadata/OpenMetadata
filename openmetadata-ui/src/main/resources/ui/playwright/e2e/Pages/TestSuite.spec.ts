@@ -18,7 +18,7 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  addTestCaseListFilterByFirstColumn,
+  addTestCaseListFilterByColumn,
   addTestCaseListFilterByStatus,
   addTestCaseListFilterByTable,
   addTestCaseListFilterByTestType,
@@ -236,13 +236,14 @@ test(
     });
 
     await test.step('Filter by Column and wait for API', async () => {
-      await addTestCaseListFilterByFirstColumn(page);
+      await addTestCaseListFilterByColumn(page, table.columnsName[0]);
     });
 
     await test.step('Reset Test Type to All and clear filters, wait for API', async () => {
       await addTestCaseListResetFilters(
         page,
-        table.entityResponseData?.fullyQualifiedName ?? ''
+        table.entityResponseData?.fullyQualifiedName ?? '',
+        table.columnsName[0]
       );
     });
 

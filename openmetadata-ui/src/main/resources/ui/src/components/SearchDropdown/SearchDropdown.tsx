@@ -332,7 +332,14 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     setNullOptionSelected(isNullOptionSelected);
   }, [isDropDownOpen]);
 
+  // Sync from props only while closed. Consumers often pass `selectedKeys` as a
+  // memo over server-fetched options, so a suggestions request resolving while
+  // the dropdown is open gives it a new identity; re-syncing then would discard
+  // the option the user clicked but has not applied, and Update emits nothing.
   useEffect(() => {
+    if (isDropDownOpen) {
+      return;
+    }
     setSelectedOptions(
       selectedKeys.filter((item) => item.key !== NULL_OPTION_KEY)
     );
