@@ -273,13 +273,22 @@
     flex-shrink: 0;
   }
 
-  // Footer (user card) sticks to the bottom of the panel. When a plugin
-  // contributes the recent-chats slot (`&__chats`), it fills the space
-  // between the nav and the footer; otherwise the footer sits directly
-  // under the nav via this auto margin.
+  // Domain scope card is the first footer item.
+  &__domain {
+    flex-shrink: 0;
+  }
+
+  // Footer (domain scope card + user card) sticks to the bottom of the panel.
+  // When a plugin contributes the recent-chats slot (`&__chats`), it fills the
+  // space between the nav and the footer; otherwise the footer sits directly
+  // under the nav via this auto margin. Items are stacked with the same 12px
+  // gap the rest of the footer uses.
   &__footer {
     margin-top: auto;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 }
 
@@ -979,6 +988,53 @@
       height: @ask-nav-item-icon-size;
       transition: width 150ms @ask-transition-ease,
         height 150ms @ask-transition-ease;
+    }
+  }
+
+  // Collapsed-rail domain scope trigger — pinned above the profile via
+  // First item in the rail footer (`&__profile`). The button mirrors
+  // `.ask-rail__item`: a 32x32 square with a centered 20x20 icon. The
+  // expanded-panel card is styled inline with `tw:` utilities in
+  // DomainScopeControl.tsx.
+  &__domain {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+
+    .ask-domain-scope__rail-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: @ask-rail-item-size;
+      height: @ask-rail-item-size;
+      padding: 0;
+      background: transparent;
+      border: 0;
+      border-radius: @ask-nav-item-radius;
+      color: @ask-text-quaternary;
+      cursor: pointer;
+      transition: background-color 150ms @ask-transition-ease,
+        color 150ms @ask-transition-ease;
+
+      svg {
+        width: @ask-nav-item-icon-size;
+        height: @ask-nav-item-icon-size;
+      }
+
+      &:not(:disabled):hover {
+        background: @ask-bg-hover;
+        color: @ask-text-tertiary;
+      }
+
+      &--active {
+        color: @ask-brand-active;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
     }
   }
 
