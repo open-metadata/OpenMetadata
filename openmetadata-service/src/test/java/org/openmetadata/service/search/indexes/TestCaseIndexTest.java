@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -89,6 +90,60 @@ class TestCaseIndexTest {
         .withFullyQualifiedName("svc.db.schema.table.columnValuesToBeBetween")
         .withEntityLink("<#E::table::svc.db.schema.table>")
         .withTestDefinition(testDefRef);
+  }
+
+  private TestCase createTestCaseWithDimensions(
+      String definitionDimension, String testCaseDimension) {
+    UUID testDefId = UUID.randomUUID();
+    EntityReference testDefRef =
+        new EntityReference().withId(testDefId).withType(Entity.TEST_DEFINITION);
+
+    TestDefinition testDef =
+        new TestDefinition()
+            .withId(testDefId)
+            .withTestPlatforms(List.of(TestPlatform.OPEN_METADATA))
+            .withEntityType(TestDefinitionEntityType.COLUMN)
+            .withDataQualityDimension(definitionDimension);
+
+    entityStaticMock
+        .when(() -> Entity.getEntity(eq(Entity.TEST_DEFINITION), eq(testDefId), anyString(), any()))
+        .thenReturn(testDef);
+
+    return new TestCase()
+        .withId(UUID.randomUUID())
+        .withName("columnValuesToBeBetween")
+        .withFullyQualifiedName("svc.db.schema.table.columnValuesToBeBetween")
+        .withEntityLink("<#E::table::svc.db.schema.table>")
+        .withTestDefinition(testDefRef)
+        .withDataQualityDimension(
+            testCaseDimension == null
+                ? null
+                : new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.DATA_QUALITY_DIMENSION)
+                    .withName(testCaseDimension));
+  }
+
+  @Test
+  void testDataQualityDimensionDoesNotFallBackToTestDefinition() {
+    // Every test case carries its own dimension relationship -- inherited ones are materialised at
+    // create time, backfilled for pre-2.1.0 rows and repointed when a test definition is
+    // reclassified -- so an absent dimension on the test case means it genuinely has none rather
+    // than that it should be read off the test definition.
+    TestCase tc = createTestCaseWithDimensions("Accuracy", null);
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
+
+    assertNull(result.get("dataQualityDimension"));
+  }
+
+  @Test
+  void testTestCaseDataQualityDimensionOverridesTestDefinition() {
+    TestCase tc = createTestCaseWithDimensions("Accuracy", "Timeliness");
+
+    Map<String, Object> result = new TestCaseIndex(tc).buildSearchIndexDocInternal(new HashMap<>());
+
+    assertEquals("Timeliness", result.get("dataQualityDimension"));
   }
 
   @Test
