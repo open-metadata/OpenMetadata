@@ -227,13 +227,10 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
-  inputTestId,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
-  /** Overrides the `<value>-checkbox|-radio` id on the hidden state input. */
-  inputTestId?: string;
 }) => {
   const iconComponent = isReactComponent(option.icon)
     ? (option.icon as FC<{ className?: string }>)
@@ -271,25 +268,6 @@ const OptionRow = ({
             showCheckbox && state.isSelected && 'tw:text-primary',
             !state.isSelected && 'tw:text-secondary'
           )}>
-          {/* The E2E suite reads each row's checked state off a real input
-              (the visible checkbox is presentational) and also `.check()`s it,
-              which clicks the input's box — so the input sits above the row as
-              a small invisible patch at its right edge. Its own box takes the
-              check() click (which bubbles to the menu item), while the rest of
-              the row stays unobstructed for clicks on the title span or the
-              row itself. */}
-          <input
-            readOnly
-            aria-hidden="true"
-            checked={state.isSelected}
-            className="tw:absolute tw:top-1/2 tw:right-0 tw:z-1 tw:m-0 tw:size-3.5 tw:-translate-y-1/2 tw:cursor-pointer tw:appearance-none tw:opacity-0"
-            data-testid={
-              inputTestId ??
-              `${option.value}-${showCheckbox ? 'checkbox' : 'radio'}`
-            }
-            tabIndex={-1}
-            type={showCheckbox ? 'checkbox' : 'radio'}
-          />
           {iconNode !== undefined && (
             <span aria-hidden="true" className="tw:flex tw:shrink-0">
               {iconNode}
@@ -755,9 +733,6 @@ export const FilterSelect = ({
               {displayedNullOption && (
                 <OptionRow
                   hideCounts={hideCounts}
-                  inputTestId={
-                    isMulti ? 'no-option-checkbox' : 'no-option-radio'
-                  }
                   option={displayedNullOption}
                   showCheckbox={isMulti}
                 />

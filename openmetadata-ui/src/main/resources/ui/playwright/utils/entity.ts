@@ -2434,8 +2434,11 @@ export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   await page.getByTestId('search-dropdown-Service Type').click();
   // assert on dropdown item visibility
   await page.getByRole('menuitemcheckbox', { name: serviceType }).waitFor();
-  // assert on checkbox state
-  await expect(page.getByTestId(`${serviceType}-checkbox`)).toBeChecked();
+  // assert on selection state
+  await expect(page.getByTestId(serviceType)).toHaveAttribute(
+    'aria-checked',
+    'true'
+  );
 
   await expect(
     page

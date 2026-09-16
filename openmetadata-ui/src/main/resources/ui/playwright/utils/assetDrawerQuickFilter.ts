@@ -42,7 +42,7 @@ export const toDrawerAsset = (entity: object): DrawerAsset => ({
 const popover = (page: Page): Locator => page.locator(POPOVER);
 
 const optionByValue = (page: Page, value: string): Locator =>
-  popover(page).getByTestId(`${value}-checkbox`);
+  popover(page).getByTestId(value);
 
 export const openQuickFilter = async (page: Page, searchKey: string) => {
   await page.getByTestId(`search-dropdown-${searchKey}`).click();
@@ -143,7 +143,7 @@ const assertCombineFilters = async (
 ) => {
   await openQuickFilter(page, tierKey);
   await popover(page)
-    .getByTestId(/tier1-checkbox$/i)
+    .getByTestId(/tier1$/i)
     .click();
   await applyQuickFilter(page);
 

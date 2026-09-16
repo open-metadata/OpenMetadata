@@ -858,7 +858,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${tier}-checkbox`);
+      const checkbox = page.getByTestId('drop-down-menu').getByTestId(tier);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(
@@ -898,7 +898,9 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await page.getByTestId('drop-down-menu').waitFor({
         state: 'visible',
       });
-      const checkbox = page.getByTestId(`${entityType}-checkbox`);
+      const checkbox = page
+        .getByTestId('drop-down-menu')
+        .getByTestId(entityType);
       await checkbox.waitFor({ state: 'visible' });
       await checkbox.click();
       const filterRes = page.waitForResponse(

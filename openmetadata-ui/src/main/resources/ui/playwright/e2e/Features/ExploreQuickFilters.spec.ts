@@ -324,7 +324,9 @@ test('Filter by column entity type shows only column results', async ({
 
   await page.getByRole('button', { name: 'Data Assets' }).click();
 
-  const columnCheckbox = page.getByTestId('tablecolumn-checkbox');
+  const columnRow = page
+    .getByTestId('drop-down-menu')
+    .getByTestId('tablecolumn');
 
   const dataAssetDropdownRequest = page.waitForResponse(
     '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*tableColumn*'
@@ -337,7 +339,7 @@ test('Filter by column entity type shows only column results', async ({
 
   await dataAssetDropdownRequest;
 
-  await columnCheckbox.check();
+  await columnRow.click();
 
   const updateButton = page.getByTestId('update-btn');
   if (await updateButton.isVisible().catch(() => false)) {
@@ -345,8 +347,10 @@ test('Filter by column entity type shows only column results', async ({
     await updateButton.click();
     await page.getByTestId('search-dropdown-Data Assets').click();
   }
-  // Immediate-apply leaves the dropdown open with the box already checked.
-  await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
+  // Immediate-apply leaves the dropdown open with the row already selected.
+  await expect(
+    page.getByTestId('drop-down-menu').getByTestId('tablecolumn')
+  ).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
 });
 
@@ -414,10 +418,8 @@ test.describe('Tier filter - aggregation-based options', () => {
         .getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
         .click();
       await expect(
-        page.getByTestId(
-          `${tier.responseData.fullyQualifiedName.toLowerCase()}-checkbox`
-        )
-      ).toBeChecked();
+        page.getByTestId(tier.responseData.fullyQualifiedName.toLowerCase())
+      ).toHaveAttribute('aria-checked', 'true');
     });
 
     await test.step('Apply filter and verify asset is visible in results', async () => {
