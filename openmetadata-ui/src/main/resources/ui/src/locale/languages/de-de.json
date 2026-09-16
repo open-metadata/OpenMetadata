@@ -885,6 +885,7 @@
     "domain-lowercase": "bereich",
     "domain-lowercase-plural": "bereiche",
     "domain-plural": "Bereiche",
+    "domain-scope": "Domänenbereich",
     "domain-type": "Bereichstyp",
     "domain_access": "Domänenzugriff",
     "done": "Fertig",
