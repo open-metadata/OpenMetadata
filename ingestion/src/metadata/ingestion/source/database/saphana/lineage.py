@@ -13,7 +13,7 @@ SAP Hana lineage module
 """
 
 import traceback
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_lineage import (
     OMetaFQNLineageRequest,
@@ -86,6 +87,11 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
 
     sql_stmt = SAPHANA_QUERY_HISTORY_STATEMENT
 
+    # Statements read from the plan cache. Counted because a CreateQueryRequest is only
+    # ever emitted alongside an edge, so it cannot tell a cache that returned nothing
+    # from one whose statements returned rows that resolved to no ingested asset.
+    plan_cache_statements = 0
+
     # Anchored rather than wildcarded, so a SELECT that merely quotes the keyword does
     # not match. Keyword pairs allow anything between them, because SQL permits any
     # whitespace there and formatted statements routinely wrap the line.
@@ -115,6 +121,7 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         nothing is otherwise indistinguishable from one that worked. Edges and query
         records are counted apart, since the shared passes emit both.
         """
+        self.plan_cache_statements = 0
         sql_edges = 0
         sql_queries = 0
         for either in super()._iter():
@@ -144,20 +151,32 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         if sql_edges or cdata_edges:
             return
 
-        if sql_queries:
+        if self.plan_cache_statements:
             logger.warning(
-                "SAP HANA lineage finished with no edges, though %d query records were emitted. The "
-                "statements parsed but their endpoints did not resolve to ingested assets, so check that "
-                "the metadata workflow covers the schemas those statements reference.",
-                sql_queries,
+                "SAP HANA lineage finished with no edges, though %d statements were read from the plan "
+                "cache. Their endpoints did not resolve to ingested assets, so check that the metadata "
+                "workflow covers the schemas those statements reference.",
+                self.plan_cache_statements,
             )
         else:
             logger.warning(
-                "SAP HANA lineage finished with no edges and emitted no query records. Check that the "
-                "metadata workflow has already ingested the tables and views, that processViewLineage or "
-                "processQueryLineage is enabled, and that the ingestion user holds CATALOG READ, without "
-                "which SYS.M_SQL_PLAN_CACHE only returns the ingestion user's own statements."
+                "SAP HANA lineage finished with no edges and read no statements from the plan cache. "
+                "Check that the metadata workflow has already ingested the tables and views, that "
+                "processViewLineage or processQueryLineage is enabled, and that the ingestion user holds "
+                "CATALOG READ, without which SYS.M_SQL_PLAN_CACHE only returns the ingestion user's own "
+                "statements."
             )
+
+    def query_lineage_producer(self) -> Iterator[TableQuery]:
+        """Count what the plan cache actually returned.
+
+        The shared pass reports how many edges it produced, which says nothing about
+        whether there was anything to read in the first place. That distinction is the
+        whole of the no-edge diagnosis, so it is counted here at the source.
+        """
+        for table_query in super().query_lineage_producer():
+            self.plan_cache_statements += 1
+            yield table_query
 
     def view_lineage_producer(self) -> Iterable[TableView]:
         """Leave the repository models to the CDATA pass.

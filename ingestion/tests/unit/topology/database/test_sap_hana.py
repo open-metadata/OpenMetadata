@@ -18,6 +18,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
+from sqlalchemy.exc import DBAPIError
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -44,10 +45,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource, TableView
+from metadata.ingestion.source.database.saphana import lineage as saphana_lineage
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
@@ -1815,3 +1818,76 @@ def test_query_history_excludes_sap_internal_schemas() -> None:
         result_limit=100,
     )
     assert sql.index(guard) > sql.index(filters.strip())
+
+
+def _cdata_source_raising(error_code: int | None) -> SaphanaLineageSource:
+    """A source whose _SYS_REPO read fails with a given HANA error code."""
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline())
+
+    orig = Mock()
+    orig.errorcode = error_code
+    connection = MagicMock()
+    connection.execution_options.return_value.execute.side_effect = DBAPIError("SELECT 1", None, orig)
+    source.engine.connect.return_value.__enter__ = Mock(return_value=connection)
+    source.engine.connect.return_value.__exit__ = Mock(return_value=False)
+    return source
+
+
+@pytest.mark.parametrize("error_code", [362, 259])
+def test_missing_sys_repo_is_not_a_failure(error_code: int) -> None:
+    """A missing _SYS_REPO is the normal state on HANA Cloud, not an error.
+
+    This is the whole Cloud path: the classic repository was never carried over, so the
+    read always fails there and the SQL passes carry the entire result. Were this to
+    escape, every Cloud run would abort instead of producing view and query lineage.
+    """
+    source = _cdata_source_raising(error_code)
+
+    assert list(source.yield_cdata_lineage()) == []
+    assert source.status.failures == []
+
+
+def test_an_unexpected_repository_error_still_surfaces() -> None:
+    """Only the two "it is not there" codes are swallowed.
+
+    A dropped connection, a timeout or a missing privilege must not be reported as a
+    clean run that happened to find no repository models.
+    """
+    source = _cdata_source_raising(258)
+
+    with pytest.raises(DBAPIError):
+        list(source.yield_cdata_lineage())
+
+
+@pytest.mark.parametrize(
+    ("statements_read", "expected"),
+    [(2, "2 statements were read from the plan cache"), (0, "read no statements from the plan cache")],
+)
+def test_no_edge_warning_distinguishes_an_empty_plan_cache(statements_read: int, expected: str) -> None:
+    """The two no-edge diagnoses must be told apart by statements read, not by queries.
+
+    A CreateQueryRequest is only ever emitted next to an edge, so counting those can
+    never reach the "read something, resolved nothing" case: the early return fires
+    first. Counting what the producer returned reaches it, and the two cases send a
+    reader to different places, an uningested schema against a missing CATALOG READ.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+
+    rows = [
+        TableQuery(query="INSERT INTO A SELECT * FROM B", serviceName="test_sap_hana") for _ in range(statements_read)
+    ]
+
+    def drain_producer(*_, **__):
+        # What the real pass does: pull every row, then emit no edge for any of them.
+        list(source.query_lineage_producer())
+        return iter([])
+
+    with (
+        patch.object(LineageSource, "query_lineage_producer", return_value=iter(rows)),
+        patch.object(LineageSource, "_iter", side_effect=drain_producer),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        list(source._iter())
+
+    assert source.plan_cache_statements == statements_read
+    assert expected in warning.call_args[0][0] % warning.call_args[0][1:]
