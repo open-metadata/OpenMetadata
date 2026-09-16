@@ -8,10 +8,8 @@ import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchC
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
 import org.openmetadata.service.apps.bundles.insights.search.EntityIndexMap;
 import org.openmetadata.service.apps.bundles.insights.search.IndexMappingTemplate;
-import org.openmetadata.service.apps.bundles.insights.search.IndexTemplate;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
-import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 
 public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface {
@@ -29,17 +27,23 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
     return clusterAlias;
   }
 
-  private os.org.opensearch.client.opensearch.generic.Response performRequest(
-      String method, String path) throws IOException {
-    OpenSearchGenericClient genericClient = client.generic();
-    return genericClient.execute(Requests.builder().method(method).endpoint(path).build());
+  private int performRequest(String method, String path) throws IOException {
+    return performRequest(method, path, null);
   }
 
-  private os.org.opensearch.client.opensearch.generic.Response performRequest(
-      String method, String path, String payload) throws IOException {
-    OpenSearchGenericClient genericClient = client.generic();
-    return genericClient.execute(
-        Requests.builder().method(method).endpoint(path).json(payload).build());
+  private int performRequest(String method, String path, String payload) throws IOException {
+    var builder = Requests.builder().method(method).endpoint(path);
+    if (payload != null) {
+      builder.json(payload);
+    }
+    try (var response = client.generic().execute(builder.build())) {
+      int status = response.getStatus();
+      if (status >= 300 && !("HEAD".equals(method) && status == 404)) {
+        throw new IOException(
+            "Data Insights request " + method + " " + path + " failed with " + status);
+      }
+      return status;
+    }
   }
 
   @Override
@@ -59,8 +63,7 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
 
   @Override
   public Boolean dataAssetDataStreamExists(String name) throws IOException {
-    var response = performRequest("HEAD", String.format("/%s", name));
-    return response.getStatus() == 200;
+    return performRequest("HEAD", String.format("/%s", name)) == 200;
   }
 
   @Override
@@ -71,18 +74,19 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
       String language,
       int retentionDays)
       throws IOException {
-    createComponentTemplate(
-        getStringWithClusterAlias("di-data-assets-mapping"),
-        buildMapping(
-            entityType,
-            entityIndexMapping,
-            language,
-            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
-    createIndexTemplate(
-        getStringWithClusterAlias("di-data-assets"),
-        IndexTemplate.getIndexTemplateWithClusterAlias(
-            getClusterAlias(), readResource(String.format("%s/indexTemplate.json", resourcePath))));
+    prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath);
     createDataStream(name);
+  }
+
+  @Override
+  public void updateDataAssetsDataStream(
+      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      throws IOException {
+    var mappings =
+        prepareDataAssetTemplates(name, entityType, entityIndexMapping, language, resourcePath)
+            .getTemplate()
+            .getMappings();
+    performRequest("PUT", "/" + name + "/_mapping", JsonUtils.pojoToJson(mappings));
   }
 
   @Override

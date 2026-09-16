@@ -55,16 +55,21 @@ export const getTemplateValidationAlert = (
     <AlertCircle color={color} height={14} width={14} />
   );
 
+  const subjectValidationMessage =
+    !isEmpty(subjectError) &&
+    !isNil(subjectError) &&
+    getTemplateValidationMessage(subjectError, color, icon);
+  const bodyValidationMessage =
+    !isEmpty(bodyError) &&
+    !isNil(bodyError) &&
+    getTemplateValidationMessage(bodyError, color, icon);
+
   const message = isValid ? (
     getTemplateValidationMessage(t('message.template-is-valid'), color, icon)
   ) : (
     <>
-      {!isEmpty(subjectError) &&
-        !isNil(subjectError) &&
-        getTemplateValidationMessage(subjectError, color, icon)}
-      {!isEmpty(bodyError) &&
-        !isNil(bodyError) &&
-        getTemplateValidationMessage(bodyError, color, icon)}
+      {subjectValidationMessage}
+      {bodyValidationMessage}
     </>
   );
 

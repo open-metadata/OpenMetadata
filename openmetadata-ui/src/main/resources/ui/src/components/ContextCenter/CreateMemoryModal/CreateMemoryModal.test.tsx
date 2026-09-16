@@ -55,8 +55,13 @@ jest.mock('../../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn(() => 'Jan 1, 2026'),
 }));
+
+jest.mock('../../common/atoms/Tag/ClassificationTag', () =>
+  jest.fn(() => <div data-testid="classification-tag" />)
+);
 
 jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
   jest.fn(({ userName }: { userName: string }) => <span>{userName}</span>)
@@ -169,8 +174,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
                 id={testId}
                 value={field.value?.id ?? ''}
                 onChange={(e) => {
-                  const next = options.find((opt) => opt.id === e.target.value);
-                  field.onChange(next ?? null);
+                  let next: { id: string; label: string } | null = null;
+                  for (const opt of options) {
+                    if (opt.id === e.target.value) {
+                      next = opt;
+
+                      break;
+                    }
+                  }
+                  field.onChange(next);
                 }}>
                 <option aria-label={testId} value="" />
                 {options.map((opt) => (

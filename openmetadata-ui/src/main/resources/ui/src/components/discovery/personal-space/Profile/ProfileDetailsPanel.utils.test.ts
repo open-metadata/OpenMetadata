@@ -15,7 +15,7 @@ import { AuthProvider } from '../../../../generated/settings/settings';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
 
 describe('canUserChangePassword', () => {
-  it.each([AuthProvider.Basic, AuthProvider.LDAP])(
+  it.each([AuthProvider.Basic])(
     'should allow the signed-in user on the %s provider',
     (provider) => {
       expect(canUserChangePassword({ provider, isSelf: true })).toBe(true);
@@ -26,8 +26,7 @@ describe('canUserChangePassword', () => {
   // AuthProvider later is asserted against instead of silently untested.
   it.each(
     Object.values(AuthProvider).filter(
-      (provider) =>
-        provider !== AuthProvider.Basic && provider !== AuthProvider.LDAP
+      (provider) => provider !== AuthProvider.Basic
     )
   )('should not allow an externally managed credential (%s)', (provider) => {
     expect(canUserChangePassword({ provider, isSelf: true })).toBe(false);

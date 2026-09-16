@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { nestedChildrenTestData } from '../../constant/nestedColumnUpdates';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   assignTagToChildren,
@@ -266,23 +267,29 @@ for (const [
   });
 }
 
+// check-click-confirm inside toPass: skips the click when the child is already
+// shown (Topic auto-expands its first level, so a blind click would toggle it
+// shut), and a click that lands wrong fails the confirm so the retry corrects
+// it. Also absorbs the row remount and below-the-fold scroll.
 const expandNestedColumn = async (
   page: Page,
   nestedColumnFqn: string,
   childKey?: string
 ) => {
+  const childRow = childKey
+    ? page.locator(`[data-row-key="${childKey}"]`)
+    : undefined;
   const expandIcon = page.locator(
     `[data-row-key="${nestedColumnFqn}"] [data-testid="expand-icon"]`
   );
-  await expandIcon.waitFor({ state: 'visible' });
-
-  if (childKey) {
-    const childRow = page.locator(`[data-row-key="${childKey}"]`);
-    if (await childRow.isVisible()) {
+  await expect(async () => {
+    if (childRow && (await childRow.isVisible())) {
       return;
     }
-  }
-
-  await expandIcon.scrollIntoViewIfNeeded();
-  await expandIcon.click();
+    await expandIcon.scrollIntoViewIfNeeded();
+    await expandIcon.click({ timeout: 10_000 });
+    if (childRow) {
+      await expect(childRow).toBeVisible({ timeout: 5_000 });
+    }
+  }).toPass({ timeout: 60_000 });
 };

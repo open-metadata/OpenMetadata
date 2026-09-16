@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@v1.9.1
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
@@ -141,7 +141,7 @@ jobs:
       # recent lockfile's cache so a lockfile change only fetches the delta.
       # RESTORE-ONLY: this workflow runs on PR refs whose exact key is never
       # reused; saving here would duplicate ~700 MB per run and evict main-scoped
-      # caches. The main-scoped copy is saved by populate-playwright-apt-cache.yml.
+      # caches. The main-scoped copy is saved by populate-playwright-caches.yml.
       - name: Restore yarn package cache
         uses: actions/cache/restore@v6
         with:

@@ -1,3 +1,4 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
@@ -13,6 +14,7 @@ import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
+import type { Placement } from 'react-aria';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
 export const styles = sortCx({
@@ -212,6 +214,10 @@ export interface CommonProps {
   ellipsis?: boolean;
   /** Omits the default focus outline when the surrounding UI intentionally does not use one */
   hideFocusOutline?: boolean;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the button */
+  tooltipPlacement?: Placement;
 }
 
 /**
@@ -270,6 +276,8 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       isDisabled: disabled,
       isLoading: loading,
       showTextWhileLoading,
+      tooltip,
+      tooltipPlacement = 'top',
       ...otherProps
     }: Props,
     ref
@@ -300,7 +308,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       };
     }
 
-    return (
+    const button = (
       <Component
         data-icon-only={isIcon ? true : undefined}
         data-loading={loading ? true : undefined}
@@ -390,5 +398,18 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
       </Component>
     );
+
+    if (tooltip) {
+      return (
+        <Tooltip
+          isDisabled={disabled}
+          placement={tooltipPlacement}
+          title={tooltip}>
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
   }
 );

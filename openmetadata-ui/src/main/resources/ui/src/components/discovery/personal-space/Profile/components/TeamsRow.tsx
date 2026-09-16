@@ -90,6 +90,16 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
     [options, draftTeamIds]
   );
 
+  const handleItemCleared = useCallback((key: React.Key) => {
+    setDraftTeamIds((prev) => prev.filter((id) => id !== key));
+  }, []);
+
+  const handleItemInserted = useCallback((key: React.Key) => {
+    setDraftTeamIds((prev) =>
+      prev.includes(key as string) ? prev : [...prev, key as string]
+    );
+  }, []);
+
   const handleSave = async () => {
     // Keep existing teams in their original order/refs and append only new ones:
     // the positional PATCH diff otherwise re-adds a current member ("already
@@ -132,14 +142,8 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
             />
           )}
           selectedItems={selectedItems}
-          onItemCleared={(key) =>
-            setDraftTeamIds((prev) => prev.filter((id) => id !== key))
-          }
-          onItemInserted={(key) =>
-            setDraftTeamIds((prev) =>
-              prev.includes(key as string) ? prev : [...prev, key as string]
-            )
-          }>
+          onItemCleared={handleItemCleared}
+          onItemInserted={handleItemInserted}>
           {(item) => (
             <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
           )}

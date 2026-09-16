@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -19,12 +20,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLSession;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
+import org.openmetadata.service.search.vector.client.EmbeddingClient.EmbeddingUsage;
 
 class OpenAIEmbeddingClientTest {
 
@@ -530,6 +533,38 @@ class OpenAIEmbeddingClientTest {
     assertEquals(0.1f, embedding[0], 0.001f);
     assertEquals(0.2f, embedding[1], 0.001f);
     assertEquals(0.3f, embedding[2], 0.001f);
+  }
+
+  @Test
+  void testUsageListenerReceivesPromptTokens() {
+    String response =
+        "{\"data\":[{\"embedding\":[0.1]}],\"model\":\"test\",\"usage\":{\"prompt_tokens\":7}}";
+    StubHttpClient httpClient = new StubHttpClient(response, 200);
+    OpenAIEmbeddingClient client =
+        new OpenAIEmbeddingClient(
+            httpClient, "test-key", "test-model", 1, "http://localhost/v1/embeddings", false);
+    AtomicReference<EmbeddingUsage> seen = new AtomicReference<>();
+    client.setUsageListener((modelId, text, usage, query) -> seen.set(usage));
+
+    client.embed("hello world");
+
+    assertNotNull(seen.get());
+    assertEquals(7L, seen.get().inputTokens());
+  }
+
+  @Test
+  void testEmptyUsageBlockReportsNoUsage() {
+    String response = "{\"data\":[{\"embedding\":[0.1]}],\"model\":\"test\",\"usage\":{}}";
+    StubHttpClient httpClient = new StubHttpClient(response, 200);
+    OpenAIEmbeddingClient client =
+        new OpenAIEmbeddingClient(
+            httpClient, "test-key", "test-model", 1, "http://localhost/v1/embeddings", false);
+    AtomicReference<EmbeddingUsage> seen = new AtomicReference<>(new EmbeddingUsage(-1L));
+    client.setUsageListener((modelId, text, usage, query) -> seen.set(usage));
+
+    client.embed("hello world");
+
+    assertNull(seen.get(), "an empty usage block must not become a fabricated 0");
   }
 
   @Test

@@ -167,6 +167,8 @@ export const ROUTES = {
   CONTEXT_CENTER_FILTER: '/context-center/filter',
   CONTEXT_CENTER_MEMORIES: '/context-center/memories',
   CONTEXT_CENTER_INTEGRATIONS: '/context-center/integrations',
+  CONTEXT_CENTER_AI_CONTEXT: '/context-center/ai-context',
+  CONTEXT_CENTER_AI_CONTEXT_DETAIL: `/context-center/ai-context/${PLACEHOLDER_ROUTE_FQN}`,
   CONTEXT_CENTER_ARCHIVE: '/context-center/archive',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
@@ -371,6 +373,7 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
+export const CERTIFICATION_CATEGORY = 'Certification';
 
 export const ENTITY_PATH = {
   tables: 'table',

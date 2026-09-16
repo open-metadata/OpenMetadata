@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import {
   ProjectionState,
   RDFStatus,
 } from '../../../src/generated/api/rdf/rdfStatus';
+import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { performAdminLogin } from '../../utils/admin';
 import { navigateToOntologyStudio } from '../../utils/ontologyStudio';

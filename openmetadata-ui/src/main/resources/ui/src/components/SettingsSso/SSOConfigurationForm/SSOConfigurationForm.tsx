@@ -1081,39 +1081,45 @@ const SSOConfigurationFormRJSF = ({
     setInternalData(freshFormData);
   };
 
-  const isOidcPublicClientProvider =
-    !!currentProvider &&
-    OIDC_TEST_LOGIN_PROVIDERS.includes(currentProvider as AuthProvider) &&
-    internalData?.authenticationConfiguration?.clientType === ClientType.Public;
+  const isOidcPublicClientProvider = useMemo(
+    () =>
+      !!currentProvider &&
+      OIDC_TEST_LOGIN_PROVIDERS.includes(currentProvider as AuthProvider) &&
+      internalData?.authenticationConfiguration?.clientType ===
+        ClientType.Public,
+    [currentProvider, internalData]
+  );
+
+  const renderConfigAlerts = () => {
+    const isTestSuccess = testResult?.status === 'success';
+
+    return !hasExistingConfig || testResult ? (
+      <div className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
+        {!hasExistingConfig && (
+          <InlineAlert
+            alertClassName="sso-save-warning"
+            description={t('message.sso-new-config-save-warning')}
+            heading={t('label.warning')}
+            type="warning"
+          />
+        )}
+        {testResult && (
+          <InlineAlert
+            alertClassName="sso-test-result"
+            description={getTestResultDescription(testResult)}
+            heading={isTestSuccess ? t('label.success') : t('label.failed')}
+            type={isTestSuccess ? 'success' : 'error'}
+            onClose={() => setTestResult(undefined)}
+          />
+        )}
+      </div>
+    ) : null;
+  };
 
   const renderFormActions = () =>
     isEditMode ? (
       <>
-        {(!hasExistingConfig || testResult) && (
-          <div className="tw:mt-4 tw:flex tw:flex-col tw:gap-4">
-            {!hasExistingConfig && (
-              <InlineAlert
-                alertClassName="sso-save-warning"
-                description={t('message.sso-new-config-save-warning')}
-                heading={t('label.warning')}
-                type="warning"
-              />
-            )}
-            {testResult && (
-              <InlineAlert
-                alertClassName="sso-test-result"
-                description={getTestResultDescription(testResult)}
-                heading={
-                  testResult.status === 'success'
-                    ? t('label.success')
-                    : t('label.failed')
-                }
-                type={testResult.status === 'success' ? 'success' : 'error'}
-                onClose={() => setTestResult(undefined)}
-              />
-            )}
-          </div>
-        )}
+        {renderConfigAlerts()}
         <div className="form-actions-bottom">
           <Button
             className="cancel-sso-configuration text-md"
@@ -1181,97 +1187,103 @@ const SSOConfigurationFormRJSF = ({
 
   const isSamlProvider = currentProvider === AuthProvider.Saml;
 
-  const formContent = (
-    <>
-      {isEditMode && showForm && isSamlProvider && (
-        <div className="m-b-md">
-          {metadataUploadStatus === null && (
-            <Upload.Dragger
-              accept=".xml,application/xml,text/xml"
-              beforeUpload={(file) => {
-                const dataTransfer = new DataTransfer();
-                dataTransfer.items.add(file);
-                handleMetadataFileUpload(dataTransfer.files);
+  const renderSamlUpload = () =>
+    isEditMode && showForm && isSamlProvider ? (
+      <div className="m-b-md">
+        {metadataUploadStatus === null && (
+          <Upload.Dragger
+            accept=".xml,application/xml,text/xml"
+            beforeUpload={(file) => {
+              const dataTransfer = new DataTransfer();
+              dataTransfer.items.add(file);
+              handleMetadataFileUpload(dataTransfer.files);
 
-                return false;
-              }}
-              className="saml-metadata-upload-drop-zone"
-              data-testid="file-uploader"
-              multiple={false}
-              showUploadList={false}>
+              return false;
+            }}
+            className="saml-metadata-upload-drop-zone"
+            data-testid="file-uploader"
+            multiple={false}
+            showUploadList={false}>
+            <div
+              className="flex flex-center flex-column gap-1"
+              data-testid="file-upload-drop-zone">
               <div
-                className="flex flex-center flex-column gap-1"
-                data-testid="file-upload-drop-zone">
-                <div
-                  className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
-                  style={{ width: '40px', height: '40px' }}>
-                  <UploadCloud02 className="text-grey-600" size={20} />
-                </div>
-                <div
-                  className="flex align-center flex-wrap gap-4 justify-center"
-                  style={{ maxWidth: '220px' }}>
-                  <Typography.Text className="font-medium">
-                    {t('label.click-to')}{' '}
-                    <Button
-                      className="h-auto p-0 font-semibold"
-                      size="small"
-                      type="link">
-                      {t('label.upload-lowercase')}
-                    </Button>{' '}
-                    {t('label.or-drag-and-drop-an-xml-file-here')}
-                  </Typography.Text>
-                </div>
-                <Typography.Text className="text-grey-muted text-xs">
-                  {t('message.upload-saml-metadata-xml-description')}
+                className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
+                style={{ width: '40px', height: '40px' }}>
+                <UploadCloud02 className="text-grey-600" size={20} />
+              </div>
+              <div
+                className="flex align-center flex-wrap gap-4 justify-center"
+                style={{ maxWidth: '220px' }}>
+                <Typography.Text className="font-medium">
+                  {t('label.click-to')}{' '}
+                  <Button
+                    className="h-auto p-0 font-semibold"
+                    size="small"
+                    type="link">
+                    {t('label.upload-lowercase')}
+                  </Button>{' '}
+                  {t('label.or-drag-and-drop-an-xml-file-here')}
                 </Typography.Text>
               </div>
-            </Upload.Dragger>
-          )}
-          {metadataUploadStatus !== null && (
-            <MetadataUploadStatusCard
-              fileName={metadataUploadFileName}
-              status={metadataUploadStatus}
-              onChangeFile={() => setMetadataUploadStatus(null)}
-            />
-          )}
-        </div>
-      )}
-      {isEditMode && showForm && (
-        <Form
-          focusOnFirstError
-          noHtml5Validate
-          className="rjsf no-header"
-          customValidate={customValidate}
-          fields={customFields}
-          formContext={{
-            clearFieldError: handleClearFieldError,
-          }}
-          formData={internalData}
-          idSeparator="/"
-          liveValidate={
-            Object.keys(fieldErrorsRef.current).length > 0 ||
-            errorClearTrigger > 0
-          }
-          schema={schema}
-          showErrorList={false}
-          templates={{
-            DescriptionFieldTemplate: DescriptionFieldTemplate,
-            FieldErrorTemplate: FieldErrorTemplate,
-            ObjectFieldTemplate: SSOGroupedFieldTemplate,
-          }}
-          transformErrors={transformErrors}
-          uiSchema={{
-            ...uiSchema,
-            'ui:submitButtonOptions': {
-              submitText: '',
-              norender: true,
-            },
-          }}
-          validator={validator}
-          widgets={widgets}
-          onChange={handleOnChange}
-        />
-      )}
+              <Typography.Text className="text-grey-muted text-xs">
+                {t('message.upload-saml-metadata-xml-description')}
+              </Typography.Text>
+            </div>
+          </Upload.Dragger>
+        )}
+        {metadataUploadStatus !== null && (
+          <MetadataUploadStatusCard
+            fileName={metadataUploadFileName}
+            status={metadataUploadStatus}
+            onChangeFile={() => setMetadataUploadStatus(null)}
+          />
+        )}
+      </div>
+    ) : null;
+
+  const renderSsoForm = () =>
+    isEditMode && showForm ? (
+      <Form
+        focusOnFirstError
+        noHtml5Validate
+        className="rjsf no-header"
+        customValidate={customValidate}
+        fields={customFields}
+        formContext={{
+          clearFieldError: handleClearFieldError,
+        }}
+        formData={internalData}
+        idSeparator="/"
+        liveValidate={
+          Object.keys(fieldErrorsRef.current).length > 0 ||
+          errorClearTrigger > 0
+        }
+        schema={schema}
+        showErrorList={false}
+        templates={{
+          DescriptionFieldTemplate: DescriptionFieldTemplate,
+          FieldErrorTemplate: FieldErrorTemplate,
+          ObjectFieldTemplate: SSOGroupedFieldTemplate,
+        }}
+        transformErrors={transformErrors}
+        uiSchema={{
+          ...uiSchema,
+          'ui:submitButtonOptions': {
+            submitText: '',
+            norender: true,
+          },
+        }}
+        validator={validator}
+        widgets={widgets}
+        onChange={handleOnChange}
+      />
+    ) : null;
+
+  const formContent = (
+    <>
+      {renderSamlUpload()}
+      {renderSsoForm()}
     </>
   );
 
@@ -1321,38 +1333,41 @@ const SSOConfigurationFormRJSF = ({
     );
   }
 
+  const renderProviderHeader = () =>
+    currentProvider ? (
+      <div className="sso-provider-form-header flex items-center justify-between">
+        <div className="flex align-items-center gap-2 flex items-center">
+          <div className="provider-icon-container">
+            {getProviderIcon(currentProvider) && (
+              <img
+                alt={getProviderDisplayName(currentProvider)}
+                height={22}
+                src={getProviderIcon(currentProvider) as string}
+                width={22}
+              />
+            )}
+          </div>
+          <Typography.Title className="m-0 text-md">
+            {getProviderDisplayName(currentProvider)} {t('label.set-up')}
+          </Typography.Title>
+        </div>
+        {hasExistingConfig && onChangeProvider && (
+          <Button
+            data-testid="change-provider-button"
+            type="link"
+            onClick={onChangeProvider}>
+            {t('label.change-provider')}
+          </Button>
+        )}
+      </div>
+    ) : null;
+
   const wrappedFormContent = (
     <Card
       className="sso-configuration-form-card flex-col p-0"
       data-testid="sso-configuration-form-card">
       {/* SSO Provider Header */}
-      {currentProvider && (
-        <div className="sso-provider-form-header flex items-center justify-between">
-          <div className="flex align-items-center gap-2 flex items-center">
-            <div className="provider-icon-container">
-              {getProviderIcon(currentProvider) && (
-                <img
-                  alt={getProviderDisplayName(currentProvider)}
-                  height={22}
-                  src={getProviderIcon(currentProvider) as string}
-                  width={22}
-                />
-              )}
-            </div>
-            <Typography.Title className="m-0 text-md">
-              {getProviderDisplayName(currentProvider)} {t('label.set-up')}
-            </Typography.Title>
-          </div>
-          {hasExistingConfig && onChangeProvider && (
-            <Button
-              data-testid="change-provider-button"
-              type="link"
-              onClick={onChangeProvider}>
-              {t('label.change-provider')}
-            </Button>
-          )}
-        </div>
-      )}
+      {renderProviderHeader()}
       {formContent}
     </Card>
   );

@@ -13,7 +13,7 @@
 
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Table } from './table';
+import { Table, TableCard } from './table';
 
 const ROWS = [
   { id: 'r1', name: 'alpha' },
@@ -40,6 +40,24 @@ const renderTable = (props: Partial<Parameters<typeof Table>[0]> = {}) =>
 
 const firstCell = () =>
   screen.getAllByRole('row')[1].querySelector('td, th') as HTMLElement;
+
+describe('Table header accessibility', () => {
+  it('names the columnheader from its title content', () => {
+    renderTable();
+
+    // The header content wrapper must stay a plain div: a role="group"
+    // wrapper makes Chromium compute an empty accessible name for the
+    // columnheader, breaking getByRole('columnheader', { name }).
+    expect(
+      screen.getByRole('columnheader', { name: 'Name' })
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('columnheader', { name: 'Name' })
+        .querySelector('[role="group"]')
+    ).toBeNull();
+  });
+});
 
 describe('Table sizes', () => {
   it('applies the compact scale', () => {
@@ -148,5 +166,68 @@ describe('Table', () => {
       'colspan',
       '3'
     );
+  });
+
+  it('can omit the selection cell for a full-width synthetic row in single-selection mode', () => {
+    // The same gate (`selectionBehavior === 'toggle'`) drives the selection
+    // cell for both selection modes, so a `hideSelectionCell` synthetic row
+    // must not crash under single selection either.
+    render(
+      <Table
+        aria-label="Metrics"
+        selectionBehavior="toggle"
+        selectionMode="single">
+        <Table.Header>
+          <Table.Head id="metric" label="Metric" />
+          <Table.Head id="description" label="Description" />
+        </Table.Header>
+        <Table.Body>
+          <Table.Row id="metric-row">
+            <Table.Cell>Gross margin</Table.Cell>
+            <Table.Cell>Margin after costs</Table.Cell>
+          </Table.Row>
+          <Table.Row hideSelectionCell id="group-row">
+            <Table.Cell colSpan={3}>Profitability</Table.Cell>
+          </Table.Row>
+        </Table.Body>
+      </Table>
+    );
+
+    const metricRow = screen.getByText('Gross margin').closest('tr');
+    const groupRow = screen.getByText('Profitability').closest('tr');
+
+    expect(metricRow).not.toBeNull();
+    expect(groupRow).not.toBeNull();
+    // A normal row still gets its single-selection control: the gate must
+    // hide the cell only for the `hideSelectionCell` row, not every row.
+    expect(
+      within(metricRow as HTMLElement).getByRole('checkbox')
+    ).toBeVisible();
+    // The synthetic row must not emit a selection cell — react-aria otherwise
+    // throws "Cell count must match column count" at render.
+    expect(
+      within(groupRow as HTMLElement).queryByRole('checkbox')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Profitability').closest('td')).toHaveAttribute(
+      'colspan',
+      '3'
+    );
+  });
+});
+
+describe('TableCard theme roles', () => {
+  it('uses shared surface and subtle-border roles', () => {
+    const { container } = render(
+      <TableCard.Root data-testid="table-card">
+        <TableCard.Header title="Assets" />
+      </TableCard.Root>
+    );
+    const header = container.firstElementChild?.firstElementChild;
+
+    expect(screen.getByTestId('table-card')).toHaveClass(
+      'tw:bg-surface',
+      'tw:outline-subtle'
+    );
+    expect(header).toHaveClass('tw:bg-surface', 'tw:border-subtle');
   });
 });

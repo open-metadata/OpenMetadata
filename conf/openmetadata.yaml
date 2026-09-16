@@ -612,6 +612,12 @@ elasticsearch:
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
+  # Context Center memory extraction (files + articles -> knowledge pills). Independent of
+  # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
+  # with extraction off. Unmetered here, so opt-in.
+  memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
+  # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
+  aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
     apiKey: ${LLM_OPENAI_API_KEY:-""}
@@ -876,6 +882,11 @@ rdf:
   bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
   bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-100}
   bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
+  maxUpdatePayloadBytes: ${RDF_MAX_UPDATE_PAYLOAD_BYTES:-4194304}
+  maxAppendPayloadBytes: ${RDF_MAX_APPEND_PAYLOAD_BYTES:-16777216}
+  bulkAppendEntityBatchSize: ${RDF_BULK_APPEND_ENTITY_BATCH_SIZE:-1000}
+  streamingAppendEnabled: ${RDF_STREAMING_APPEND_ENABLED:-true}
+  gzipRequests: ${RDF_GZIP_REQUESTS:-false}
   maxInMemoryInferenceTriples: ${RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES:-100000}
   materializedInferenceEnabled: ${RDF_MATERIALIZED_INFERENCE_ENABLED:-false}
   username: ${RDF_REMOTE_USERNAME:-"admin"}

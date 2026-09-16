@@ -46,6 +46,13 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = ingestion_logger()
 
+# ALL_TAB_COLS.CHAR_USED is 'C' when a column was declared with character length
+# semantics (VARCHAR2(10 CHAR)) and 'B' for byte semantics (VARCHAR2(10 BYTE), the
+# default). Oracle only renders the qualifier for VARCHAR2 and CHAR: NVARCHAR2 and
+# NCHAR are always character based and are never displayed with it.
+CHAR_SEMANTICS_FLAG = "C"
+CHAR_SEMANTICS_TYPES = ("VARCHAR2", "CHAR")
+
 
 def get_table_prefix_from_connection(service_connection) -> str:
     return "DBA" if getattr(service_connection, "useDBATable", True) else "ALL"
@@ -193,7 +200,9 @@ def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
     )
 
 
-def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches
+def _get_col_type(  # pylint: disable=too-many-branches
+    self, coltype, precision, scale, length, colname, char_used=None
+):
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
@@ -210,9 +219,10 @@ def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: 
         # TODO: support "precision" here as "binary_precision"
         coltype = FLOAT()
     elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
+        char_semantics = char_used == CHAR_SEMANTICS_FLAG and coltype in CHAR_SEMANTICS_TYPES
         coltype = self.ischema_names.get(coltype)(length)
         if length:
-            raw_type += f"({length})"
+            raw_type += f"({length} CHAR)" if char_semantics else f"({length})"
     elif "WITH TIME ZONE" in coltype or "TIMESTAMP" in coltype:
         coltype = TIMESTAMP(timezone=True)
     elif "INTERVAL" in coltype:
@@ -307,10 +317,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # noqa: C901
         default = row[6]
         comment = row[7]
         generated = row[8]
-        default_on_nul = row[9]
-        identity_options = row[10]
+        char_used = row[9]
+        default_on_nul = row[10]
+        identity_options = row[11]
 
-        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname)
+        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname, char_used)
 
         computed = None
         if generated == "YES":

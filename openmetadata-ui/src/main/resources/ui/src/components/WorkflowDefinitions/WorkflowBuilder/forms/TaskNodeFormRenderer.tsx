@@ -58,81 +58,71 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
   const nodeSubType: NodeSubType =
     node.data?.subType || node.data?.nodeSubType || '';
 
-  switch (nodeSubType) {
-    case NodeSubType.SetEntityAttributeTask:
-      return (
-        <SetActionForm
-          entityTypes={entityTypes}
-          node={node}
-          onClose={onClose}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
-      );
+  const formElements: Partial<Record<NodeSubType, React.ReactElement>> = {
+    [NodeSubType.SetEntityAttributeTask]: (
+      <SetActionForm
+        entityTypes={entityTypes}
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.CheckEntityAttributesTask]: (
+      <CheckConditionForm
+        entityTypes={entityTypes || [EntityType.ALL]}
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.CheckChangeDescriptionTask]: (
+      <CheckChangeDescriptionForm
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.DataCompletenessTask]: (
+      <DataCompletenessForm
+        entityTypes={entityTypes}
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.UserApprovalTask]: (
+      <UserApprovalForm
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.RollbackEntityTask]: (
+      <RevertBackForm
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.SinkTask]: (
+      <SinkTaskForm
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+  };
 
-    case NodeSubType.CheckEntityAttributesTask:
-      return (
-        <CheckConditionForm
-          entityTypes={entityTypes || [EntityType.ALL]}
-          node={node}
-          onClose={onClose}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
-      );
-
-    case NodeSubType.CheckChangeDescriptionTask:
-      return (
-        <CheckChangeDescriptionForm
-          node={node}
-          onClose={onClose}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
-      );
-
-    case NodeSubType.DataCompletenessTask:
-      return (
-        <DataCompletenessForm
-          entityTypes={entityTypes}
-          node={node}
-          onClose={onClose}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
-      );
-
-    case NodeSubType.UserApprovalTask:
-      return (
-        <UserApprovalForm
-          node={node}
-          onClose={onClose}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
-      );
-
-    case NodeSubType.RollbackEntityTask:
-      return (
-        <RevertBackForm
-          node={node}
-          onClose={onClose}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
-      );
-
-    case NodeSubType.SinkTask:
-      return (
-        <SinkTaskForm
-          node={node}
-          onClose={onClose}
-          onDelete={onDelete}
-          onSave={onSave}
-        />
-      );
-
-    default:
-      return <SchemaBasedNodeForm node={node} onClose={onClose} />;
-  }
+  return (
+    formElements[nodeSubType] ?? (
+      <SchemaBasedNodeForm node={node} onClose={onClose} />
+    )
+  );
 };

@@ -13,6 +13,7 @@
 import {
   Box,
   EmptyPlaceholder,
+  Owner,
   Skeleton,
   Table,
   Tooltip,
@@ -24,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { Table as TableType } from '../../generated/entity/data/table';
+import { Operation } from '../../generated/entity/policies/policy';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
   Assigned,
@@ -37,12 +39,15 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
+import { toOwnerRefs } from '../../utils/Owner/ownerConversionUtils';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import {
   ProfilerTabPath,
   TestCasePermission,
@@ -87,6 +92,29 @@ const IncidentManagerTable = ({
 }: IncidentManagerTableProps) => {
   const { t } = useTranslation();
 
+  // Per-row bulk permission lookup (DashboardChartTable.tsx precedent, Task 8 Batch 5): the
+  // bulk fetch itself (testCasePermissions, populated by the caller) is untouched — only the
+  // 3 flagged raw `.EditAll` reads convert, via one shared lookup+derivation helper. A test
+  // case with no permissions entry (fetch pending/not found) falls back to
+  // DEFAULT_ENTITY_PERMISSION, reproducing the old optional-chaining-is-falsy behavior.
+  //
+  // Incident actions (status, severity and assignee) are gated by `EditStatus` on the test
+  // case rather than `EditAll`, so a role can manage incidents while keeping read-only access
+  // to the test cases themselves. `can(EditStatus)` routes through the same
+  // getPrioritizedEditPermission path — falling back to `EditAll` when the payload carries no
+  // `EditStatus` — and applies the `deleted` gate, so it is equivalent to the
+  // hasIncidentEditPermission helper this replaces.
+  const getRowEditPermission = (fqn?: string) => {
+    const hasPermission = testCasePermissions.find(
+      (item) => item.fullyQualifiedName === fqn
+    );
+
+    return getDerivedPermissionFlags(
+      hasPermission ?? DEFAULT_ENTITY_PERMISSION,
+      Boolean(tableDetails?.deleted)
+    ).can(Operation.EditStatus);
+  };
+
   const testCaseResolutionStatusDetailsRender = (
     value?: Assigned,
     record?: TestCaseResolutionStatus
@@ -95,31 +123,33 @@ const IncidentManagerTable = ({
       return <Skeleton height={24} variant="rectangular" width={100} />;
     }
 
-    const hasPermission = testCasePermissions.find(
-      (item) =>
-        item.fullyQualifiedName ===
-        record?.testCaseReference?.fullyQualifiedName
-    );
-
     return (
       <div data-testid="assignee">
-        <OwnerLabel
-          isCompactView
+        <Owner
           className="m-0"
-          hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+          hasPermission={getRowEditPermission(
+            record?.testCaseReference?.fullyQualifiedName
+          )}
+          isCompactView={false}
           multiple={{
             user: false,
             team: false,
           }}
-          owners={value?.assignee ? [value.assignee] : []}
+          owners={toOwnerRefs(value?.assignee ? [value.assignee] : [])}
           placeHolder={t('label.no-entity', {
             entity: t('label.assignee'),
           })}
-          tooltipText={t('label.edit-entity', {
-            entity: t('label.assignee'),
-          })}
-          onUpdate={(assignees) =>
-            record && handleAssigneeUpdate(record, assignees)
+          selectorContent={
+            <UserTeamSelectableList
+              hasPermission={getRowEditPermission(
+                record?.testCaseReference?.fullyQualifiedName
+              )}
+              multiple={{ user: false, team: false }}
+              owner={value?.assignee ? [value.assignee] : []}
+              onUpdate={(assignees) =>
+                record && handleAssigneeUpdate(record, assignees)
+              }
+            />
           }
         />
       </div>
@@ -165,9 +195,7 @@ const IncidentManagerTable = ({
       [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
       '.'
     );
-    const hasPermission = testCasePermissions.find(
-      (item) => item.fullyQualifiedName === ref?.fullyQualifiedName
-    );
+    const canEditRow = getRowEditPermission(ref?.fullyQualifiedName);
 
     return (
       <Table.Row id={record.id ?? ''} key={record.id}>
@@ -217,7 +245,7 @@ const IncidentManagerTable = ({
             <TestCaseIncidentManagerStatus
               isInline
               data={record}
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+              hasPermission={canEditRow}
               onSubmit={handleStatusSubmit}
             />
           )}
@@ -228,7 +256,7 @@ const IncidentManagerTable = ({
           ) : (
             <Severity
               isInline
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
+              hasPermission={canEditRow}
               severity={record.severity}
               onSubmit={(severity) => handleSeveritySubmit(record, severity)}
             />

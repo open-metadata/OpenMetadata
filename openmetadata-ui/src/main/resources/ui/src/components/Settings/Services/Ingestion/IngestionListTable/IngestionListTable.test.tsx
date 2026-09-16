@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
@@ -65,11 +64,13 @@ jest.mock('./PipelineActions/PipelineActions', () =>
     <div data-disabled={isDisabled}>
       PipelineActions
       <button
-        onClick={handleDeleteSelection({
-          id: 'id',
-          name: 'name',
-          state: 'waiting',
-        })}>
+        onClick={() =>
+          handleDeleteSelection({
+            id: 'id',
+            name: 'name',
+            state: 'waiting',
+          })
+        }>
         handleDeleteSelection
       </button>
     </div>
@@ -380,7 +381,7 @@ describe('Ingestion', () => {
     const deleteSelection = screen.getByText('handleDeleteSelection');
 
     await act(async () => {
-      userEvent.click(deleteSelection);
+      fireEvent.click(deleteSelection);
     });
 
     const confirmButton = screen.getByText('DeleteModal');

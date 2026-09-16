@@ -17,15 +17,19 @@ import traceback
 from collections.abc import Iterable
 from urllib.parse import urlparse
 
+import requests
 from kafka_connect import KafkaConnect
+from pydantic import ValidationError
 
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
+from metadata.ingestion.source.pipeline.kafkaconnect import telemetry
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     ConnectorConfigKeys,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    ConfluentTelemetryRow,
     KafkaConnectColumnMapping,
     KafkaConnectPipelineDetails,
     KafkaConnectTopics,
@@ -169,6 +173,37 @@ def extract_internal_topic_names(connector_config: dict | None) -> set[str]:
     return names
 
 
+def confluent_managed_internal_topic_names(connector_config: dict | None, connector_id: str) -> set[str]:
+    """
+    Bookkeeping topic names a Confluent managed connector produces, which its configuration
+    does not state.
+
+    ``extract_internal_topic_names`` covers the names configuration declares. Confluent
+    derives these two from the connector id instead, which is assigned at runtime and
+    appears in no config key, so they can only be reconstructed.
+
+    The transaction topic is produced by the connector's own client, so attribution cannot
+    separate it and excluding it by name is the only thing that does.
+
+    Schema history arrives under a separate ``<prefix>-schemahistory`` client, which never
+    matches the connector producer pattern, so attribution already removes it and this name
+    is redundant today. It is returned anyway, because the client naming is Confluent's
+    convention rather than a guarantee, and were schema history ever to move onto the
+    connector's own client it would otherwise be emitted as lineage.
+    """
+    if not isinstance(connector_config, dict):
+        return set()
+
+    prefix = connector_config.get("topic.prefix") or connector_config.get("database.server.name")
+    if not prefix:
+        return set()
+
+    return {
+        f"{prefix}.{connector_id}.transaction",
+        f"dbhistory.{prefix}.{connector_id}",
+    }
+
+
 def _to_python_replacement(replacement: str) -> str:
     """Convert Java RegexRouter backreferences ($1, ${1}, ${name}) to Python \\g<...>."""
     replacement = JAVA_NAMED_BACKREF_PATTERN.sub(r"\\g<\1>", replacement)
@@ -240,6 +275,232 @@ class KafkaConnectClient:
         self.is_confluent_cloud = parsed_url.hostname == "api.confluent.cloud"
         # None until the /topics endpoint has been probed once for this cluster
         self._topics_endpoint_supported = None
+
+        self._host_port = url
+        # The telemetry call goes through requests directly rather than the Connect client,
+        # so it has to honour this itself.
+        self._verify_ssl = ssl_verify
+        # Both telemetry lookups describe the whole cluster, not one connector, so they are
+        # resolved once and reused. Each is a single snapshot replaced wholesale rather
+        # than a cache accumulating an entry per item, and each is reduced to the
+        # connectors this cluster actually has: the raw telemetry response also carries
+        # every unrelated producer on the cluster, which is discarded at fetch time rather
+        # than retained. Size is therefore bounded by the connector count, and the client
+        # lives for a single ingestion run. None means not yet fetched.
+        self._connector_ids: dict[str, str] | None = None
+        self._telemetry_topics_by_connector_id: dict[str, set[str]] | None = None
+        # Whether the Connect API accepted this credential, which an empty connector list
+        # cannot tell us: a cluster with no connectors and a cluster we cannot authenticate
+        # to both yield nothing. None until the call has been made.
+        self._connect_authenticated: bool | None = None
+        # The telemetry API takes the same Confluent Cloud key as the Connect API, so no
+        # separate credential is needed. Held as a tuple because that call is made with
+        # requests directly rather than through the Connect client. Both halves have to be
+        # present: telemetry has no anonymous mode, so half a credential is worth the same
+        # as none and is better refused here than sent.
+        self._telemetry_auth: tuple[str, str] | None = None
+        auth_config = config.KafkaConnectConfig
+        if auth_config and auth_config.username and auth_config.password:
+            self._telemetry_auth = (
+                auth_config.username,
+                auth_config.password.get_secret_value(),
+            )
+
+    def _confluent_kafka_cluster_id(self) -> str | None:
+        """The Kafka cluster id the Connect URL points at, which scopes the telemetry query."""
+        if not self.is_confluent_cloud:
+            return None
+        return telemetry.cluster_id_from_connect_url(self._host_port)
+
+    def _connector_id_by_name(self) -> dict[str, str]:
+        """
+        Map connector name to the Confluent connector id its producer client is named after.
+
+        `?expand=id` is served by the same Connect API already in use, so this needs no
+        extra credentials. Resolving against the live list also bounds the telemetry
+        result: a window wide enough to be useful still contains connectors deleted inside
+        it, and those must not be attributed to anything.
+        """
+        if self._connector_ids is not None:
+            return self._connector_ids
+
+        result: dict[str, str] = {}
+        try:
+            response = self.get_connectors_list(expand="id")
+            self._connect_authenticated = True
+            for name, block in (response or {}).items():
+                connector_id = ((block or {}).get("id") or {}).get("id")
+                if connector_id:
+                    result[name] = connector_id
+        except Exception as exc:
+            self._connect_authenticated = False
+            logger.debug(traceback.format_exc())
+            logger.debug("Unable to list Confluent connector ids: %s", exc)
+
+        self._connector_ids = result
+        return result
+
+    def _query_dataflow_topics_by_client(
+        self, cluster_id: str, max_pages: int = telemetry.MAX_PAGES
+    ) -> dict[str, set[str]]:
+        """
+        Topics each connector producer wrote to on this cluster, from the telemetry API.
+
+        Grouping by topic and client together is what makes the result attributable. The
+        metric value is discarded: presence of the pair is the whole signal.
+
+        Only clients named like a connector producer are kept. The query is cluster wide,
+        so the response also describes every application producing to the cluster, and
+        those can never be attributed to a connector.
+
+        ``max_pages`` exists for the test-connection step, which only needs to know that
+        the API answers. Resolution needs every page, but a reachability check that walked
+        them all would spend a request per page against an endpoint that rate limits by the
+        hour, for an answer the first response already gave.
+        """
+        payload = telemetry.build_dataflow_query(cluster_id)
+
+        by_client: dict[str, set[str]] = {}
+        page_token = None
+        for _ in range(max_pages):
+            response = requests.post(
+                telemetry.DATAFLOW_QUERY_URL,
+                json=payload,
+                params={"page_token": page_token} if page_token else None,
+                auth=self._telemetry_auth,
+                timeout=telemetry.TIMEOUT_SECONDS,
+                verify=self._verify_ssl,
+            )
+            response.raise_for_status()
+            body = response.json() or {}
+
+            skipped = 0
+            for row in body.get("data") or []:
+                try:
+                    entry = ConfluentTelemetryRow.model_validate(row)
+                except ValidationError:
+                    # A row missing either half attributes nothing, and the rest of the
+                    # page is still usable, so it is dropped rather than raised. Counted
+                    # per page rather than logged per row: a response that changes shape
+                    # would otherwise emit a line per pair on the whole cluster.
+                    skipped += 1
+                    continue
+                # Discarded here rather than after the loop, because this map is held
+                # across every page: on a busy cluster the applications producing to it
+                # far outnumber the connectors, and none of them can ever be attributed.
+                if not telemetry.connector_id_from_client_id(entry.client_id):
+                    continue
+                by_client.setdefault(entry.client_id, set()).add(entry.topic)
+
+            if skipped:
+                logger.debug(
+                    "Skipped %s unattributable Confluent telemetry rows out of %s for cluster %s",
+                    skipped,
+                    len(body.get("data") or []),
+                    cluster_id,
+                )
+
+            # A cluster with more producer/topic pairs than fit in one page returns a
+            # cursor. Stopping at the first page would drop topics silently, and a
+            # connector resolving a partial set looks indistinguishable from a complete one.
+            page_token = ((body.get("meta") or {}).get("pagination") or {}).get("next_page_token")
+            if not page_token:
+                break
+        else:
+            # Only when the full budget was asked for. A caller that deliberately reads one
+            # page has not lost anything it wanted, and warning there would report a problem
+            # during a test connection that ran exactly as intended.
+            if max_pages == telemetry.MAX_PAGES:
+                logger.warning(
+                    "Stopped reading Confluent telemetry after %s pages for cluster %s, topic resolution may be incomplete",
+                    max_pages,
+                    cluster_id,
+                )
+
+        return by_client
+
+    def _telemetry_topics_for_connector_ids(self, cluster_id: str) -> dict[str, set[str]]:
+        """
+        Topics each connector produced to, keyed by connector id, fetched once per run.
+
+        The telemetry response covers every producer on the cluster, most of which belong
+        to applications that are not connectors at all, and the window outlives the
+        connectors in it, so it also carries ones deleted since. Only clients belonging to
+        a connector that currently exists are kept: a deleted connector could never be
+        attributed anyway, and retaining it would grow this with churn rather than with the
+        number of connectors the cluster has.
+        """
+        if self._telemetry_topics_by_connector_id is not None:
+            return self._telemetry_topics_by_connector_id
+
+        live_connector_ids = set(self._connector_id_by_name().values())
+        by_connector: dict[str, set[str]] = {}
+        try:
+            for client_id, client_topics in self._query_dataflow_topics_by_client(cluster_id).items():
+                connector_id = telemetry.connector_id_from_client_id(client_id)
+                if connector_id in live_connector_ids:
+                    by_connector.setdefault(connector_id, set()).update(client_topics)
+        except Exception as exc:
+            # Recorded as empty rather than left unset, so one failure does not become one
+            # failed call per connector. The API is rate limited per hour, and a large
+            # estate would spend that budget retrying a call that already failed.
+            #
+            # The key id and whether Connect accepted the same credential are both stated,
+            # because neither can be recovered from the log afterwards and together they
+            # identify which credential to look at and which half of Confluent rejected it.
+            # The secret is never logged, only the key id, which is not a secret.
+            logger.warning(
+                "Confluent telemetry unavailable for cluster %s using key %s, topics not enriched: %s%s",
+                cluster_id,
+                self._telemetry_auth[0] if self._telemetry_auth else "none",
+                exc,
+                telemetry.failure_hint(exc, connect_authenticated=self._connect_authenticated),
+            )
+            logger.debug(traceback.format_exc())
+
+        self._telemetry_topics_by_connector_id = by_connector
+        return by_connector
+
+    def _list_topics_from_telemetry(
+        self, connector: str, connector_config: dict | None = None
+    ) -> list[KafkaConnectTopics] | None:
+        """
+        Topics this connector actually produced to, per Confluent's telemetry.
+
+        This is the only source that knows a name chosen from row data, so it is consulted
+        before the connector's declared configuration. It reports observed activity, so a
+        connector that produced nothing in the window resolves nothing here and the
+        declared names are still used.
+
+        Returns None rather than raising: telemetry is additive, and a connector that
+        cannot be attributed with confidence must contribute no edge at all.
+        """
+        if not self.is_confluent_cloud or not self._telemetry_auth:
+            return None
+
+        cluster_id = self._confluent_kafka_cluster_id()
+        if not cluster_id:
+            return None
+
+        try:
+            connector_id = self._connector_id_by_name().get(connector)
+            if not connector_id:
+                logger.debug("No Confluent connector id for '%s', skipping telemetry lookup", connector)
+                return None
+
+            topics = set(self._telemetry_topics_for_connector_ids(cluster_id).get(connector_id) or ())
+            topics -= extract_internal_topic_names(connector_config)
+            topics -= confluent_managed_internal_topic_names(connector_config, connector_id)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug("Confluent telemetry lookup failed for '%s': %s", connector, exc)
+            return None
+
+        if not topics:
+            return None
+
+        logger.info("Resolved %s topic(s) for '%s' from Confluent telemetry", len(topics), connector)
+        return [KafkaConnectTopics(name=topic) for topic in sorted(topics)]
 
     def _infer_cdc_topics_from_server_name(self, database_server_name: str) -> list[KafkaConnectTopics] | None:
         """
@@ -359,6 +620,29 @@ class KafkaConnectClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get connector plugins  {exc}")
+
+    def check_confluent_telemetry(self) -> bool:
+        """
+        Validate that the Telemetry API answers, for the test-connection step.
+
+        Self-hosted Connect serves the topics endpoint directly and never consults
+        telemetry, so there is nothing to validate and the step reports success rather than
+        a failure the operator cannot act on.
+
+        Unlike the resolution path this raises, because a test step reports failure by
+        raising and the operator is the one who can fix the credentials.
+
+        One page is read rather than all of them. Whether the API answers and accepts the
+        credentials is settled by the first response, while walking the rest would spend a
+        request per page against an endpoint that rate limits by the hour, and would leave
+        an operator waiting on a check that has already learned its answer.
+        """
+        cluster_id = self._confluent_kafka_cluster_id()
+        if not cluster_id or not self._telemetry_auth:
+            return True
+
+        self._query_dataflow_topics_by_client(cluster_id, max_pages=1)
+        return True
 
     def get_connector_config(self, connector: str) -> dict | None:
         """
@@ -574,6 +858,14 @@ class KafkaConnectClient:
             config = connector_config if connector_config is not None else self.get_connector_config(connector)
 
             topics = self._list_data_topics_from_api(connector, config)
+            if topics:
+                return topics
+
+            # Before the declared names, because both this and the runtime list describe
+            # what the connector actually did, whereas the config only describes what it
+            # was asked to do. On Confluent Cloud the runtime list is never available, so
+            # for a connector routing by row value this is the only source that can answer.
+            topics = self._list_topics_from_telemetry(connector, connector_config=config)
             if topics:
                 return topics
 

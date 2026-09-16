@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,9 +16,10 @@ import { Link01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
@@ -35,17 +36,20 @@ import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
+  HeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
   ProfileNavItem,
   PROFILE_NAV_GROUP_LABEL,
   PROFILE_NAV_ITEMS,
+  WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
   // Seed userData from the application store so the page chrome renders
   // immediately on tab switch. The getUserByName fetch below refreshes
@@ -60,6 +64,7 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     DEFAULT_PROFILE_NAV_ID
   );
+  const [headerOverride, setHeaderOverride] = useState<HeaderOverride>({});
 
   const fetchUser = useCallback(async () => {
     if (!currentUser?.name) {
@@ -92,6 +97,11 @@ const ProfilePage: React.FC = () => {
     fetchUser();
   }, [fetchUser]);
 
+  // Reset dynamic header overrides whenever the user switches to a different tab.
+  useEffect(() => {
+    setHeaderOverride({});
+  }, [selectedId]);
+
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
       if (!userData) {
@@ -104,12 +114,14 @@ const ProfilePage: React.FC = () => {
         if (!response) {
           return;
         }
+        const nonTeamKeyData =
+          key === 'roles'
+            ? { roles: response.roles, isAdmin: response.isAdmin }
+            : { [key]: response[key] };
         const updatedKeyData =
           key === 'teams'
             ? { teams: response.teams, domains: response.domains }
-            : key === 'roles'
-            ? { roles: response.roles, isAdmin: response.isAdmin }
-            : { [key]: response[key] };
+            : nonTeamKeyData;
         const newUserData = omitBy(
           { ...userData, ...updatedKeyData },
           isUndefined
@@ -151,16 +163,30 @@ const ProfilePage: React.FC = () => {
           group: 'credentials' as ProfileNavGroup,
           label: typeof tab.label === 'string' ? tab.label : tab.key,
           description: tab.description ?? '',
-          icon: tab.icon ?? Link01,
+          icon: (tab.icon ?? Link01) as FC<{ className?: string }>,
           render: () => <TabComponent {...context} />,
         };
       });
 
-    return [...PROFILE_NAV_ITEMS, ...contributed];
-  }, [extensionRegistry, userData]);
+    const workspaceItems = WORKSPACE_NAV_ITEMS.filter(
+      (item) => !item.isVisible || item.isVisible(permissions)
+    );
+
+    return [...PROFILE_NAV_ITEMS, ...workspaceItems, ...contributed];
+  }, [extensionRegistry, permissions, userData]);
 
   const activeItem =
     navItems.find((item) => item.id === selectedId) ?? navItems[0];
+
+  const baseHeaderProps = useMemo(
+    () => ({
+      title: t(activeItem.label),
+      description: t(activeItem.description),
+      icon: activeItem.icon,
+      breadcrumbRoot: t(PROFILE_NAV_GROUP_LABEL[activeItem.group]),
+    }),
+    [activeItem, t]
+  );
 
   return (
     <Box
@@ -179,21 +205,26 @@ const ProfilePage: React.FC = () => {
           <Box
             className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden"
             direction="col">
-            <ProfileContentHeader
-              breadcrumbRoot={t(PROFILE_NAV_GROUP_LABEL[activeItem.group])}
-              description={t(activeItem.description)}
-              icon={activeItem.icon}
-              title={t(activeItem.label)}
-            />
-            <div
-              className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0 "
-              data-testid="profile-content-body">
-              {activeItem.render({
+            <ProfileContentHeader {...baseHeaderProps} {...headerOverride} />
+            {activeItem.selfContainedLayout ? (
+              activeItem.render({
                 userData,
                 isProfileLoading,
                 updateUserDetails,
-              })}
-            </div>
+                onHeaderChange: setHeaderOverride,
+              })
+            ) : (
+              <div
+                className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"
+                data-testid="profile-content-body">
+                {activeItem.render({
+                  userData,
+                  isProfileLoading,
+                  updateUserDetails,
+                  onHeaderChange: setHeaderOverride,
+                })}
+              </div>
+            )}
           </Box>
         </>
       )}

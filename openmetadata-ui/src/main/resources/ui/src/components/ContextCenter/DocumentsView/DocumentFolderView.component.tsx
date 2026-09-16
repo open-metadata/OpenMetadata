@@ -39,6 +39,7 @@ import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/u
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
+import type { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { queryClient } from '../../../queryClient';
 import { deleteFolder, listContextFiles } from '../../../rest/assetAPI';
@@ -54,6 +55,300 @@ import {
 
 const FOLDERS_SCROLL_THRESHOLD = 100;
 const FOLDER_LABEL_KEY = 'label.folder';
+
+const deriveFolderFilesState = ({
+  folderState,
+  isExpanded,
+  isFolderLoading,
+}: {
+  folderState?: FolderFilesState;
+  isExpanded: boolean;
+  isFolderLoading: boolean;
+}) => {
+  const allFetchedFiles = isExpanded ? folderState?.files ?? [] : [];
+  const hasMore = Boolean(folderState?.after);
+  const isFolderFilesExpanded = Boolean(folderState?.isExpanded);
+  const visibleFiles = isFolderFilesExpanded
+    ? allFetchedFiles
+    : allFetchedFiles.slice(0, FOLDER_FILES_PAGE_SIZE);
+  const showToggle = hasMore || allFetchedFiles.length > FOLDER_FILES_PAGE_SIZE;
+  const isFolderEmpty =
+    isExpanded && !hasMore && !isFolderLoading && allFetchedFiles.length === 0;
+
+  return {
+    hasMore,
+    isFolderFilesExpanded,
+    isFolderEmpty,
+    showToggle,
+    visibleFiles,
+  };
+};
+
+const FolderRowContent = ({
+  folder,
+  canDelete,
+  onSelectFolderItem,
+  onRequestDelete,
+}: {
+  folder: Folder;
+  canDelete: boolean;
+  onSelectFolderItem: (folderId: string) => void;
+  onRequestDelete: (folder: Folder) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tree.ItemContent hasChildItems={(folder.childrenCount ?? 0) > 0}>
+      <div className="tw:group/folder-row tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
+        <Button
+          ellipsis
+          className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
+          color="tertiary"
+          iconLeading={
+            <FolderIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={14}
+              width={14}
+            />
+          }
+          size="sm"
+          onClick={(e: MouseEvent) => {
+            e.stopPropagation();
+            onSelectFolderItem(folder.id);
+          }}>
+          {getEntityName(folder)}
+        </Button>
+
+        <div className="tw:relative tw:shrink-0 tw:h-5 tw:w-8 tw:flex tw:items-center tw:justify-end">
+          <div
+            className={
+              canDelete
+                ? 'tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-0'
+                : 'tw:absolute tw:right-0'
+            }
+            data-testid={`folder-file-count-badge-${folder.id}`}>
+            <Badge size="sm" type="color">
+              {folder.childrenCount ?? 0}
+            </Badge>
+          </div>
+
+          {canDelete && (
+            <ButtonUtility
+              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100 tw:p-0.5"
+              color="tertiary"
+              data-testid={`delete-folder-btn-${folder.id}`}
+              icon={<TrashIcon height={18} width={18} />}
+              size="xs"
+              tooltip={t('label.delete')}
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onRequestDelete(folder);
+              }}
+            />
+          )}
+        </div>
+      </div>
+    </Tree.ItemContent>
+  );
+};
+
+const FolderLoadingRow = ({ folderId }: { folderId: string }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tree.Item id={`${folderId}-loading`} textValue={t('label.loading')}>
+      <Tree.ItemContent
+        className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
+        showExpandIcon={false}>
+        <div className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:py-1">
+          {/* Static-length skeleton placeholder, never reordered */}
+          {Array.from({ length: 2 }, (_, i) => `folder-item-skeleton-${i}`).map(
+            (skeletonKey) => (
+              <Skeleton
+                height="20px"
+                key={skeletonKey}
+                variant="rounded"
+                width="100%"
+              />
+            )
+          )}
+        </div>
+      </Tree.ItemContent>
+    </Tree.Item>
+  );
+};
+
+const FolderEmptyRow = ({
+  folder,
+  onUploadToFolder,
+}: {
+  folder: Folder;
+  onUploadToFolder?: (folderId: string) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Tree.Item
+      id={`${folder.id}-empty`}
+      textValue={t('label.folder-name-is-empty', {
+        folderName: getEntityName(folder),
+      })}>
+      <Tree.ItemContent
+        className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
+        showExpandIcon={false}>
+        <div className="tw:flex tw:flex-1 tw:items-center tw:gap-3 tw:py-2">
+          <div className="tw:p-2 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0 tw:shrink-0">
+            <UploadIcon className="tw:text-quaternary" height={14} width={14} />
+          </div>
+          <div className="tw:min-w-0 tw:flex-1">
+            <Typography ellipsis size="text-sm" weight="medium">
+              {t('label.folder-name-is-empty', {
+                folderName: getEntityName(folder),
+              })}
+            </Typography>
+            <Typography className="tw:text-quaternary" size="text-xs">
+              {t('message.context-center-folder-empty-subtitle')}
+            </Typography>
+          </div>
+          {onUploadToFolder && (
+            <Button
+              className="tw:shrink-0"
+              color="secondary"
+              data-testid={`folder-upload-btn-${folder.id}`}
+              size="sm"
+              onClick={(e: MouseEvent) => {
+                e.stopPropagation();
+                onUploadToFolder(folder.id);
+              }}>
+              {t('label.upload-file')}
+            </Button>
+          )}
+        </div>
+      </Tree.ItemContent>
+    </Tree.Item>
+  );
+};
+
+const FolderFileRow = ({ file }: { file: ContextFile }) => (
+  <Tree.Item id={file.id} textValue={getEntityName(file)}>
+    <Tree.ItemContent className="tw:ml-7!" showExpandIcon={false}>
+      <FileIcon
+        className="tw:size-5 tw:shrink-0"
+        theme="light"
+        type={file.fileExtension ?? ''}
+        variant="default"
+      />
+      <Typography
+        ellipsis
+        className="tw:truncate tw:text-secondary tw:max-w-[70%]"
+        size="text-sm"
+        weight="medium">
+        {getEntityName(file)}
+      </Typography>
+    </Tree.ItemContent>
+  </Tree.Item>
+);
+
+const FolderToggleRow = ({
+  folderId,
+  isLoadingMore,
+  toggleLabel,
+  onToggle,
+}: {
+  folderId: string;
+  isLoadingMore?: boolean;
+  toggleLabel: string;
+  onToggle: (folderId: string) => void;
+}) => (
+  <Tree.Item id={`${folderId}-view-more`} textValue={toggleLabel}>
+    <Tree.ItemContent
+      className="tw:cursor-default tw:hover:bg-transparent"
+      showExpandIcon={false}>
+      <Button
+        className="tw:font-normal tw:ml-3"
+        color="link-color"
+        data-testid={`folder-files-toggle-${folderId}`}
+        isDisabled={isLoadingMore}
+        type="button"
+        onClick={(e: MouseEvent) => {
+          e.stopPropagation();
+          onToggle(folderId);
+        }}>
+        {toggleLabel}
+      </Button>
+    </Tree.ItemContent>
+  </Tree.Item>
+);
+
+const FolderTreeItem = ({
+  folder,
+  folderState,
+  isSelected,
+  isExpanded,
+  isFolderLoading,
+  canDelete,
+  onSelectFolderItem,
+  onRequestDelete,
+  onUploadToFolder,
+  onFolderFilesToggle,
+}: {
+  folder: Folder;
+  folderState?: FolderFilesState;
+  isSelected: boolean;
+  isExpanded: boolean;
+  isFolderLoading: boolean;
+  canDelete: boolean;
+  onSelectFolderItem: (folderId: string) => void;
+  onRequestDelete: (folder: Folder) => void;
+  onUploadToFolder?: (folderId: string) => void;
+  onFolderFilesToggle: (folderId: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const {
+    hasMore,
+    isFolderFilesExpanded,
+    isFolderEmpty,
+    showToggle,
+    visibleFiles,
+  } = deriveFolderFilesState({ folderState, isExpanded, isFolderLoading });
+  const toggleLabel =
+    isFolderFilesExpanded && !hasMore
+      ? t('label.show-less')
+      : t('label.view-more');
+
+  return (
+    <Tree.Item
+      className={isSelected ? 'tw:bg-utility-blue-50 tw:rounded-lg' : ''}
+      id={folder.id}
+      textValue={folder.displayName ?? folder.name}>
+      <FolderRowContent
+        canDelete={canDelete}
+        folder={folder}
+        onRequestDelete={onRequestDelete}
+        onSelectFolderItem={onSelectFolderItem}
+      />
+
+      {isFolderLoading && <FolderLoadingRow folderId={folder.id} />}
+
+      {isFolderEmpty && (
+        <FolderEmptyRow folder={folder} onUploadToFolder={onUploadToFolder} />
+      )}
+
+      {visibleFiles.map((file) => (
+        <FolderFileRow file={file} key={file.id} />
+      ))}
+
+      {showToggle && (
+        <FolderToggleRow
+          folderId={folder.id}
+          isLoadingMore={folderState?.isLoadingMore}
+          toggleLabel={toggleLabel}
+          onToggle={onFolderFilesToggle}
+        />
+      )}
+    </Tree.Item>
+  );
+};
 
 const DocumentFolderView = (
   {
@@ -372,223 +667,24 @@ const DocumentFolderView = (
               className="tw:w-full"
               expandedKeys={expandedKeys}
               onExpandedChange={handleExpandedChange}>
-              {folders.map((folder) => {
-                const isSelected = selectedFolderId === folder.id;
-                const isExpanded = expandedKeys.has(folder.id);
-                const folderState = folderFilesState.get(folder.id);
-                const allFetchedFiles = isExpanded
-                  ? folderState?.files ?? []
-                  : [];
-                const hasMore = Boolean(folderState?.after);
-                const isFolderFilesExpanded = Boolean(folderState?.isExpanded);
-                const visibleFiles = isFolderFilesExpanded
-                  ? allFetchedFiles
-                  : allFetchedFiles.slice(0, FOLDER_FILES_PAGE_SIZE);
-                const showToggle =
-                  hasMore || allFetchedFiles.length > FOLDER_FILES_PAGE_SIZE;
-                const toggleLabel =
-                  isFolderFilesExpanded && !hasMore
-                    ? t('label.show-less')
-                    : t('label.view-more');
-                const isFolderLoading =
-                  isExpanded && fetchingFolderIds.has(folder.id);
-                const isFolderEmpty =
-                  isExpanded &&
-                  !hasMore &&
-                  !isFolderLoading &&
-                  allFetchedFiles.length === 0;
-
-                return (
-                  <Tree.Item
-                    className={
-                      isSelected ? 'tw:bg-utility-blue-50 tw:rounded-lg' : ''
-                    }
-                    id={folder.id}
-                    key={folder.id}
-                    textValue={folder.displayName ?? folder.name}>
-                    <Tree.ItemContent
-                      hasChildItems={(folder.childrenCount ?? 0) > 0}>
-                      <div className="tw:group/folder-row tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
-                        <Button
-                          ellipsis
-                          className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
-                          color="tertiary"
-                          iconLeading={
-                            <FolderIcon
-                              className="tw:text-quaternary tw:shrink-0"
-                              height={14}
-                              width={14}
-                            />
-                          }
-                          size="sm"
-                          onClick={(e: MouseEvent) => {
-                            e.stopPropagation();
-                            handleFolderItemSelect(folder.id);
-                          }}>
-                          {getEntityName(folder)}
-                        </Button>
-
-                        <div className="tw:relative tw:shrink-0 tw:h-5 tw:w-8 tw:flex tw:items-center tw:justify-end">
-                          <div
-                            className={
-                              canDelete
-                                ? 'tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-0'
-                                : 'tw:absolute tw:right-0'
-                            }
-                            data-testid={`folder-file-count-badge-${folder.id}`}>
-                            <Badge size="sm" type="color">
-                              {folder.childrenCount ?? 0}
-                            </Badge>
-                          </div>
-
-                          {canDelete && (
-                            <ButtonUtility
-                              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100 tw:p-0.5"
-                              color="tertiary"
-                              data-testid={`delete-folder-btn-${folder.id}`}
-                              icon={<TrashIcon height={18} width={18} />}
-                              size="xs"
-                              tooltip={t('label.delete')}
-                              onClick={(e: MouseEvent) => {
-                                e.stopPropagation();
-                                setFolderToDelete(folder);
-                              }}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </Tree.ItemContent>
-
-                    {isFolderLoading && (
-                      <Tree.Item
-                        id={`${folder.id}-loading`}
-                        key={`${folder.id}-loading`}
-                        textValue={t('label.loading')}>
-                        <Tree.ItemContent
-                          className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
-                          showExpandIcon={false}>
-                          <div className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:py-1">
-                            {/* Static-length skeleton placeholder, never reordered */}
-                            {Array.from(
-                              { length: 2 },
-                              (_, i) => `folder-item-skeleton-${i}`
-                            ).map((skeletonKey) => (
-                              <Skeleton
-                                height="20px"
-                                key={skeletonKey}
-                                variant="rounded"
-                                width="100%"
-                              />
-                            ))}
-                          </div>
-                        </Tree.ItemContent>
-                      </Tree.Item>
-                    )}
-
-                    {isFolderEmpty && (
-                      <Tree.Item
-                        id={`${folder.id}-empty`}
-                        key={`${folder.id}-empty`}
-                        textValue={t('label.folder-name-is-empty', {
-                          folderName: getEntityName(folder),
-                        })}>
-                        <Tree.ItemContent
-                          className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
-                          showExpandIcon={false}>
-                          <div className="tw:flex tw:flex-1 tw:items-center tw:gap-3 tw:py-2">
-                            <div className="tw:p-2 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0 tw:shrink-0">
-                              <UploadIcon
-                                className="tw:text-quaternary"
-                                height={14}
-                                width={14}
-                              />
-                            </div>
-                            <div className="tw:min-w-0 tw:flex-1">
-                              <Typography
-                                ellipsis
-                                size="text-sm"
-                                weight="medium">
-                                {t('label.folder-name-is-empty', {
-                                  folderName: getEntityName(folder),
-                                })}
-                              </Typography>
-                              <Typography
-                                className="tw:text-quaternary"
-                                size="text-xs">
-                                {t(
-                                  'message.context-center-folder-empty-subtitle'
-                                )}
-                              </Typography>
-                            </div>
-                            {onUploadToFolder && (
-                              <Button
-                                className="tw:shrink-0"
-                                color="secondary"
-                                data-testid={`folder-upload-btn-${folder.id}`}
-                                size="sm"
-                                onClick={(e: MouseEvent) => {
-                                  e.stopPropagation();
-                                  onUploadToFolder(folder.id);
-                                }}>
-                                {t('label.upload-file')}
-                              </Button>
-                            )}
-                          </div>
-                        </Tree.ItemContent>
-                      </Tree.Item>
-                    )}
-
-                    {visibleFiles.map((file) => (
-                      <Tree.Item
-                        id={file.id}
-                        key={file.id}
-                        textValue={getEntityName(file)}>
-                        <Tree.ItemContent
-                          className="tw:ml-7!"
-                          showExpandIcon={false}>
-                          <FileIcon
-                            className="tw:size-5 tw:shrink-0"
-                            theme="light"
-                            type={file.fileExtension ?? ''}
-                            variant="default"
-                          />
-                          <Typography
-                            ellipsis
-                            className="tw:truncate tw:text-secondary tw:max-w-[70%]"
-                            size="text-sm"
-                            weight="medium">
-                            {getEntityName(file)}
-                          </Typography>
-                        </Tree.ItemContent>
-                      </Tree.Item>
-                    ))}
-
-                    {showToggle && (
-                      <Tree.Item
-                        id={`${folder.id}-view-more`}
-                        key={`${folder.id}-view-more`}
-                        textValue={toggleLabel}>
-                        <Tree.ItemContent
-                          className="tw:cursor-default tw:hover:bg-transparent"
-                          showExpandIcon={false}>
-                          <Button
-                            className="tw:font-normal tw:ml-3"
-                            color="link-color"
-                            data-testid={`folder-files-toggle-${folder.id}`}
-                            isDisabled={folderState?.isLoadingMore}
-                            type="button"
-                            onClick={(e: MouseEvent) => {
-                              e.stopPropagation();
-                              handleFolderFilesToggle(folder.id);
-                            }}>
-                            {toggleLabel}
-                          </Button>
-                        </Tree.ItemContent>
-                      </Tree.Item>
-                    )}
-                  </Tree.Item>
-                );
-              })}
+              {folders.map((folder) => (
+                <FolderTreeItem
+                  canDelete={canDelete}
+                  folder={folder}
+                  folderState={folderFilesState.get(folder.id)}
+                  isExpanded={expandedKeys.has(folder.id)}
+                  isFolderLoading={
+                    expandedKeys.has(folder.id) &&
+                    fetchingFolderIds.has(folder.id)
+                  }
+                  isSelected={selectedFolderId === folder.id}
+                  key={folder.id}
+                  onFolderFilesToggle={handleFolderFilesToggle}
+                  onRequestDelete={setFolderToDelete}
+                  onSelectFolderItem={handleFolderItemSelect}
+                  onUploadToFolder={onUploadToFolder}
+                />
+              ))}
             </Tree>
           )}
           {!isLoading && isLoadingMoreFolders && (
