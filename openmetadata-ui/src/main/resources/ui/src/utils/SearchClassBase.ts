@@ -36,8 +36,8 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
-  COLUMN_INITIAL_SORT_FIELD,
   columnSortingFields,
+  COLUMN_INITIAL_SORT_FIELD,
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
