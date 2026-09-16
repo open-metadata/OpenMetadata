@@ -34,7 +34,6 @@ import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import type { Metric } from '../../../generated/entity/data/metric';
 import type { MetricGroup } from '../../../generated/entity/data/metricGroup';
-import { useMetricCreateDrawer } from '../AddMetric/useMetricCreateDrawer';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getMetricEnumLabel,
@@ -44,6 +43,7 @@ import {
 } from '../../../utils/MetricEntityUtils/MetricDisplayUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { useMetricCreateDrawer } from '../AddMetric/useMetricCreateDrawer';
 import { useMetricHierarchyCard } from './useMetricHierarchyCard';
 
 interface MetricHierarchyCardProps {
