@@ -13,6 +13,8 @@
 
 import {
   Autocomplete,
+  ClassificationTag,
+  GlossaryTag,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
@@ -36,7 +38,6 @@ import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
-import { ClassificationTag, GlossaryTag } from '../atoms/Tag';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
 
