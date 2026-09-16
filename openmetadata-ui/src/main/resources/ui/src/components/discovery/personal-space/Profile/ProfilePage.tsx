@@ -229,12 +229,14 @@ const ProfilePage: React.FC = () => {
               onBreadcrumbAction={headerBreadcrumbAction}
             />
             {activeItem.selfContainedLayout ? (
-              activeItem.render({
-                userData,
-                isProfileLoading,
-                updateUserDetails,
-                onHeaderChange: setHeaderOverride,
-              })
+              <React.Fragment key={`${selectedId}-${contentKey}`}>
+                {activeItem.render({
+                  userData,
+                  isProfileLoading,
+                  updateUserDetails,
+                  onHeaderChange: setHeaderOverride,
+                })}
+              </React.Fragment>
             ) : (
               <div
                 className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-8 tw:pt-0"

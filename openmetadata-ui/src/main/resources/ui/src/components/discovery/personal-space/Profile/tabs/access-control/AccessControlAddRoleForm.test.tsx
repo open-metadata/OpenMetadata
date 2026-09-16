@@ -115,8 +115,16 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: {
     children: (props: {
       field: { value: unknown; onChange: jest.Mock };
+      fieldState: { error?: { message?: string } };
     }) => React.ReactNode;
-  }) => <>{children({ field: { value: [], onChange: jest.fn() } })}</>,
+  }) => (
+    <>
+      {children({
+        field: { value: [], onChange: jest.fn() },
+        fieldState: { error: undefined },
+      })}
+    </>
+  ),
 }));
 
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';

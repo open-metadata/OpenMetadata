@@ -372,7 +372,7 @@ const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
   eventType,
   entityLink,
 }) => (
-  <div>
+  <div data-testid="description-content">
     {descriptionNodes.length > 0 ? (
       <div>
         {descriptionNodes.map((node, idx) => (

@@ -185,8 +185,15 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
             />
           </Box>
 
-          <FormField control={form.control} name="policies">
-            {({ field }) => (
+          <FormField
+            control={form.control}
+            name="policies"
+            rules={{
+              validate: (v) =>
+                (v as string[]).length > 0 ||
+                t('label.field-required', { field: t('label.policy') }),
+            }}>
+            {({ field, fieldState }) => (
               <Box direction="col" gap={1}>
                 <Typography
                   className="tw:text-secondary"
@@ -222,6 +229,13 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
                     </Autocomplete.Item>
                   )}
                 </Autocomplete>
+                {fieldState.error?.message && (
+                  <Typography
+                    className="tw:text-error-primary"
+                    size="text-xs">
+                    {fieldState.error.message}
+                  </Typography>
+                )}
               </Box>
             )}
           </FormField>

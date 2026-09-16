@@ -179,8 +179,8 @@ const AccessControlDebuggerPanel: FC = () => {
     }
 
     const allowedColor = evaluationInfo.allowed
-      ? 'tw:text-green-600'
-      : 'tw:text-red-600';
+      ? 'tw:text-success-primary'
+      : 'tw:text-error-primary';
 
     return (
       <>
@@ -190,8 +190,8 @@ const AccessControlDebuggerPanel: FC = () => {
           <Box
             className={`tw:px-6 tw:py-4 tw:border-b-2 ${
               evaluationInfo.allowed
-                ? 'tw:bg-green-50 tw:border-green-500'
-                : 'tw:bg-red-50 tw:border-red-500'
+                ? 'tw:bg-success-primary tw:border-success-subtle'
+                : 'tw:bg-error-primary tw:border-error-subtle'
             }`}>
             <Typography
               className="tw:text-primary"
@@ -277,8 +277,8 @@ const AccessControlDebuggerPanel: FC = () => {
               {evaluationInfo.evaluationSteps.map((step) => {
                 const stepEffectColor =
                   step.effect.toUpperCase() === 'ALLOW'
-                    ? 'tw:text-green-600'
-                    : 'tw:text-red-600';
+                    ? 'tw:text-success-primary'
+                    : 'tw:text-error-primary';
 
                 return (
                   <Card
@@ -465,7 +465,7 @@ const AccessControlDebuggerPanel: FC = () => {
                     )}
                   </Select>
                   {formErrors.resource && (
-                    <Typography className="tw:text-red-500" size="text-xs">
+                    <Typography className="tw:text-error-primary" size="text-xs">
                       {formErrors.resource}
                     </Typography>
                   )}
@@ -495,7 +495,7 @@ const AccessControlDebuggerPanel: FC = () => {
                     )}
                   </Select>
                   {formErrors.operation && (
-                    <Typography className="tw:text-red-500" size="text-xs">
+                    <Typography className="tw:text-error-primary" size="text-xs">
                       {formErrors.operation}
                     </Typography>
                   )}

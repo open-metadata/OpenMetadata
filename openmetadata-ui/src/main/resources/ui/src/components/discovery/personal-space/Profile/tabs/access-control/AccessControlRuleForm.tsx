@@ -479,7 +479,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({ form }) => {
           </Select.ComboBox>
           {validationError && (
             <Typography
-              className="tw:text-red-500"
+              className="tw:text-error-primary"
               data-testid="condition-error"
               size="text-xs">
               {`❌ ${t('label.invalid-condition')}: ${validationError}`}
@@ -492,7 +492,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({ form }) => {
           )}
           {isValidCondition && !isValidatingCondition && !validationError && (
             <Typography
-              className="tw:text-green-600"
+              className="tw:text-success-primary"
               data-testid="condition-success"
               size="text-xs">
               {`✅ ${t('label.valid-condition')}`}

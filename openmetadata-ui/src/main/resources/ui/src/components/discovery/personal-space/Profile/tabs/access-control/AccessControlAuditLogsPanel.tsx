@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import {
   Badge,
@@ -29,6 +28,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchLg, XClose } from '@untitledui/icons';
+import type { DateValue } from 'react-aria-components';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
@@ -95,6 +95,10 @@ const AccessControlAuditLogsPanel: React.FC<
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
+  // pageCursorsRef[N] = 'after' cursor returned when page N was fetched.
+  // pageCursorsRef[N] is used as the 'after' param to fetch page N+1.
+  const pageCursorsRef = useRef<Record<number, string>>({});
+
   const [searchTerm, setSearchTerm] = useState('');
   const searchTermRef = useRef('');
   const [activeFilters, setActiveFilters] = useState<AuditLogActiveFilter[]>(
@@ -118,7 +122,8 @@ const AccessControlAuditLogsPanel: React.FC<
   const fetchAuditLogs = useCallback(
     async (
       cursorParams?: { after?: string; before?: string },
-      explicitFilterParams?: Partial<AuditLogListParams>
+      explicitFilterParams?: Partial<AuditLogListParams>,
+      forPage?: number
     ) => {
       setIsLoading(true);
       try {
@@ -133,6 +138,10 @@ const AccessControlAuditLogsPanel: React.FC<
         const response: AuditLogListResponse = await getAuditLogs(queryParams);
         setLogs(response.data);
         setPaging(response.paging ?? INITIAL_PAGING);
+
+        if (forPage !== undefined && response.paging?.after) {
+          pageCursorsRef.current[forPage] = response.paging.after;
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -143,32 +152,36 @@ const AccessControlAuditLogsPanel: React.FC<
   );
 
   useEffect(() => {
+    pageCursorsRef.current = {};
     setCurrentPage(1);
-    fetchAuditLogs({ after: undefined, before: undefined });
+    fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
   }, [fetchAuditLogs]);
 
   const handlePageSizeChange = useCallback((size: number) => {
+    pageCursorsRef.current = {};
     setPageSize(size);
     setCurrentPage(1);
   }, []);
 
   const handleFiltersChange = useCallback(
     (filters: AuditLogActiveFilter[], params: Partial<AuditLogListParams>) => {
+      pageCursorsRef.current = {};
       setActiveFilters(filters);
       setFilterParams(params);
       filterParamsRef.current = params;
       setCurrentPage(1);
-      fetchAuditLogs({ after: undefined, before: undefined }, params);
+      fetchAuditLogs({ after: undefined, before: undefined }, params, 1);
     },
     [fetchAuditLogs]
   );
 
   const handleSearchChange = useCallback(
     (query: string) => {
+      pageCursorsRef.current = {};
       setSearchTerm(query);
       searchTermRef.current = query;
       setCurrentPage(1);
-      fetchAuditLogs({ after: undefined, before: undefined });
+      fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
     },
     [fetchAuditLogs]
   );
@@ -187,6 +200,7 @@ const AccessControlAuditLogsPanel: React.FC<
   }, [debouncedSearch]);
 
   const handleClearFilters = useCallback(() => {
+    pageCursorsRef.current = {};
     debouncedSearch.cancel();
     setActiveFilters([]);
     setFilterParams({});
@@ -195,20 +209,102 @@ const AccessControlAuditLogsPanel: React.FC<
     searchTermRef.current = '';
     setCurrentPage(1);
     setSearchInputValue('');
-    fetchAuditLogs({ after: undefined, before: undefined }, {});
+    fetchAuditLogs({ after: undefined, before: undefined }, {}, 1);
   }, [debouncedSearch, fetchAuditLogs]);
 
   const handleRemoveFilter = useCallback(
     (category: string) => {
+      pageCursorsRef.current = {};
       const remaining = activeFilters.filter((f) => f.category !== category);
       const params = buildParamsFromFilters(remaining);
       setActiveFilters(remaining);
       setFilterParams(params);
       filterParamsRef.current = params;
       setCurrentPage(1);
-      fetchAuditLogs({ after: undefined, before: undefined }, params);
+      fetchAuditLogs({ after: undefined, before: undefined }, params, 1);
     },
     [activeFilters, fetchAuditLogs]
+  );
+
+  const handlePageChange = useCallback(
+    async (newPage: number) => {
+      if (newPage === currentPage) {
+        return;
+      }
+
+      if (newPage === 1) {
+        pageCursorsRef.current = {};
+        setCurrentPage(1);
+        fetchAuditLogs({ after: undefined, before: undefined }, undefined, 1);
+
+        return;
+      }
+
+      // Direct jump: we already have the cursor for page newPage-1
+      const cachedCursor = pageCursorsRef.current[newPage - 1];
+      if (cachedCursor) {
+        setCurrentPage(newPage);
+        fetchAuditLogs({ after: cachedCursor }, undefined, newPage);
+
+        return;
+      }
+
+      // Sequential walk: find the furthest page we know about, then walk forward
+      const knownPages = Object.keys(pageCursorsRef.current)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .filter((p) => p < newPage);
+
+      const startPage =
+        knownPages.length > 0 ? knownPages[knownPages.length - 1] : currentPage;
+      const startCursor = pageCursorsRef.current[startPage];
+
+      if (!startCursor) {
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        let p = startPage;
+        let cursor: string | undefined = startCursor;
+
+        // Walk through intermediate pages without updating the UI
+        while (p < newPage - 1 && cursor) {
+          const response: AuditLogListResponse = await getAuditLogs({
+            limit: pageSize,
+            after: cursor,
+            q: searchTermRef.current || undefined,
+            ...filterParamsRef.current,
+          });
+          p++;
+          cursor = response.paging?.after;
+          if (cursor) {
+            pageCursorsRef.current[p] = cursor;
+          }
+        }
+
+        // Fetch and display the target page
+        if (cursor) {
+          const response: AuditLogListResponse = await getAuditLogs({
+            limit: pageSize,
+            after: cursor,
+            q: searchTermRef.current || undefined,
+            ...filterParamsRef.current,
+          });
+          setLogs(response.data);
+          setPaging(response.paging ?? INITIAL_PAGING);
+          setCurrentPage(newPage);
+          if (response.paging?.after) {
+            pageCursorsRef.current[newPage] = response.paging.after;
+          }
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [currentPage, pageSize, fetchAuditLogs]
   );
 
   const handleExportDownload = useCallback((data: string) => {
@@ -559,15 +655,7 @@ const AccessControlAuditLogsPanel: React.FC<
                 PAGE_SIZE_LARGE,
               ]}
               total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
-              onPageChange={(newPage) => {
-                if (newPage > currentPage && paging.after) {
-                  setCurrentPage(newPage);
-                  fetchAuditLogs({ after: paging.after });
-                } else if (newPage < currentPage && paging.before) {
-                  setCurrentPage(newPage);
-                  fetchAuditLogs({ before: paging.before });
-                }
-              }}
+              onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
             />
           </Box>
@@ -592,25 +680,28 @@ const AccessControlAuditLogsPanel: React.FC<
                 {t('message.export-audit-logs-description')}
               </Typography>
               <Box direction="col" gap={2}>
-                <Typography as="p" className="tw:text-gray-400" size="text-md">
+                <Typography as="p" className="tw:text-tertiary" size="text-md">
                   {`${t('label.date-range')} *`}
                 </Typography>
-                {/* maxValue/value/onChange bridge two separate instances of @internationalized/date
-                    (app vs. core-components bundled). Structurally identical but nominal mismatch. */}
                 <DateRangePicker
                   data-testid="export-date-range-picker"
                   isDisabled={isExporting}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  maxValue={today(getLocalTimeZone()) as any}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  value={exportDateRange as any}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  onChange={(range: any) =>
+                  maxValue={
+                    today(getLocalTimeZone()) as unknown as Parameters<
+                      typeof DateRangePicker
+                    >[0]['maxValue']
+                  }
+                  value={
+                    exportDateRange as unknown as Parameters<
+                      typeof DateRangePicker
+                    >[0]['value']
+                  }
+                  onChange={(range) =>
                     setExportDateRange(
                       range
                         ? {
-                            start: range.start as DateValue,
-                            end: range.end as DateValue,
+                            start: range.start as unknown as DateValue,
+                            end: range.end as unknown as DateValue,
                           }
                         : null
                     )
