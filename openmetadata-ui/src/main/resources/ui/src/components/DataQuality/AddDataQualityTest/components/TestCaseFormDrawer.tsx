@@ -270,6 +270,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         ),
         showOnlyParameter,
         isComputeRowCountFieldVisible,
+        // The dimension field is prefilled with the definition's dimension when
+        // the test case has none of its own, so the patch needs it to tell that
+        // prefill apart from a dimension the user actually picked.
+        inheritedDimension: resolvedDefinition?.dataQualityDimension,
       });
 
       if (!jsonPatch.length) {
