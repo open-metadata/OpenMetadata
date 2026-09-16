@@ -62,7 +62,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             data-testid={`tag-${tag.tagFQN}`}
             href={redirectLink}
             label={tagName}
-            maxWidth={maxWidth ?? 130}
+            maxWidth={maxWidth}
             size="sm"
           />
         );
@@ -114,7 +114,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                 href={redirectLink}
                 icon={tag.style?.iconURL}
                 label={tagName}
-                maxWidth={maxWidth ?? 130}
+                maxWidth={maxWidth}
                 size="sm"
               />
             </span>
