@@ -179,55 +179,49 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
 test('Searching the bundle suites list from a later page resets to the first page', async ({
   page,
 }) => {
-  test.slow();
-
   const { apiContext, afterAction } = await getApiContext(page);
-  const runId = uuid();
   // The list is sorted by last result, not relevance, so the target must be
   // the only suite the search matches for its row to be on the first page.
-  const targetSuite = `pwpagingtarget${runId}`;
-  const suiteNames = [
-    targetSuite,
-    ...Array.from(
-      { length: 15 },
-      (_, index) => `pw-paging-suite-${runId}-${index + 1}`
-    ),
-  ];
+  const targetSuite = `pwpagingtarget${uuid()}`;
+  const bundleSuiteListUrl = (query = '') =>
+    `/api/v1/dataQuality/testSuites/search/list?testSuiteType=logical&includeEmptyTestSuites=true${query}`;
   const isBundleSuiteList = (url: URL) =>
     url.pathname.endsWith('/api/v1/dataQuality/testSuites/search/list') &&
     url.searchParams.get('testSuiteType') === 'logical';
 
   try {
-    const createResponses = await Promise.all(
-      suiteNames.map((name) =>
-        apiContext.post('/api/v1/dataQuality/testSuites', { data: { name } })
-      )
+    const createResponse = await apiContext.post(
+      '/api/v1/dataQuality/testSuites',
+      { data: { name: targetSuite } }
     );
 
-    for (const response of createResponses) {
-      expect(response.status()).toBe(201);
-    }
+    expect(createResponse.status()).toBe(201);
 
+    // At one suite per page, page 2 only needs a second suite (beforeAll
+    // creates one), so wait until the list has two and the target is indexed.
     await expect
       .poll(
         async () => {
-          const response = await apiContext.get(
-            `/api/v1/dataQuality/testSuites/search/list?q=${encodeURIComponent(
-              targetSuite
-            )}&testSuiteType=logical&includeEmptyTestSuites=true`
-          );
+          const [targetResponse, listResponse] = await Promise.all([
+            apiContext.get(
+              bundleSuiteListUrl(`&q=${encodeURIComponent(targetSuite)}`)
+            ),
+            apiContext.get(bundleSuiteListUrl()),
+          ]);
+          const targetTotal = (await targetResponse.json())?.paging?.total;
+          const listTotal = (await listResponse.json())?.paging?.total;
 
-          return (await response.json())?.paging?.total ?? 0;
+          return targetTotal > 0 && listTotal > 1;
         },
-        { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+        { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
       )
-      .toBeGreaterThan(0);
+      .toBe(true);
 
     await test.step('Go to page 2 of the bundle suites list', async () => {
       const listResponse = page.waitForResponse((response) =>
         isBundleSuiteList(new URL(response.url()))
       );
-      await page.goto('/data-quality/test-suites/bundle-suites');
+      await page.goto('/data-quality/test-suites/bundle-suites?pageSize=1');
       await listResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -266,16 +260,10 @@ test('Searching the bundle suites list from a later page resets to the first pag
       await expect(page.getByTestId('page-indicator')).toContainText('1 of');
     });
   } finally {
-    // Delete in parallel: a timed-out test gets a short teardown window, and
-    // serial deletes left most of these suites behind when it ran out.
-    await Promise.all(
-      suiteNames.map((name) =>
-        apiContext.delete(
-          `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
-            name
-          )}?hardDelete=true&recursive=true`
-        )
-      )
+    await apiContext.delete(
+      `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+        targetSuite
+      )}?hardDelete=true&recursive=true`
     );
     await afterAction();
   }
