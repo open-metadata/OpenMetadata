@@ -21,7 +21,10 @@ import {
   YEAR_SECONDS,
 } from '../../constants/Date.constants';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
-import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import {
+  useCurrentUserPreferences,
+  usePersistentStorage,
+} from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
@@ -72,8 +75,7 @@ export const getActiveTimeFormat = (): '12h' | '24h' => {
   const { currentUser, timeFormat: globalTimeFormat } =
     useApplicationStore.getState();
   const userTimeFormat = currentUser?.name
-    ? useCurrentUserPreferences.getState().preferences[currentUser.name]
-        ?.timeFormat
+    ? usePersistentStorage.getState().preferences[currentUser.name]?.timeFormat
     : undefined;
 
   return userTimeFormat ?? globalTimeFormat ?? '12h';
