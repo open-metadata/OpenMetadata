@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
@@ -824,9 +825,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // Privileged fields are admin only whoever the target is. This has to be checked before the
     // ownership branch below, otherwise a principal holding EDIT on users would be able to grant
     // roles to somebody else through PUT while PATCH refuses the same change.
-    if (Boolean.TRUE.equals(create.getIsAdmin())
-        || Boolean.TRUE.equals(create.getIsBot())
-        || hasRoleElevation(existingUser, user)) {
+    if (grantsPrivileges(create, existingUser, user)) {
       authorizeAdminForPrivilegedFields(securityContext);
     } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
@@ -1145,6 +1144,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
   private static final String IS_BOT_PATCH_PATH = "/isBot";
   private static final String ROLES_FIELD = "roles";
+  private static final String TEAMS_FIELD = "teams";
+  private static final String PRIVILEGED_FIELDS = ROLES_FIELD + "," + TEAMS_FIELD;
   private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
 
   // A root-level operation (path "") replaces the whole user document, so it covers the same
@@ -1156,28 +1157,70 @@ public class UserResource extends EntityResource<User, UserRepository> {
         || path.contains(ROLES_PATCH_PATH_SEGMENT);
   }
 
-  // True when the request asks for a role the user does not already hold. A null existingUser
-  // means the user is being created, so every requested role is a new one.
-  private boolean hasRoleElevation(User existingUser, User updatedUser) {
-    Set<UUID> updatedRoleIds = roleIds(updatedUser.getRoles());
+  // Fields on an update that only an admin may set, whoever the user being changed is.
+  private boolean grantsPrivileges(CreateUser create, User existingUser, User updatedUser) {
+    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
+      return true;
+    }
+    Set<UUID> closedTeamIds = closedTeamIds(updatedUser.getTeams());
+    if (nullOrEmpty(updatedUser.getRoles()) && closedTeamIds.isEmpty()) {
+      return false;
+    }
+    // Reading back what the user already holds only pays off once the request names a role or a
+    // team that is not open to everyone - nothing else can be an elevation.
+    User currentUser = loadPrivilegedFields(existingUser);
+    return hasRoleElevation(currentUser, updatedUser)
+        || joinsClosedTeam(currentUser, closedTeamIds);
+  }
+
+  // findByNameOrNull() sets core fields only, so the roles and teams the user already holds have to
+  // be loaded before the request can be compared against them. A null existingUser means the user
+  // is being created, so everything the request asks for is new.
+  private User loadPrivilegedFields(User existingUser) {
+    if (existingUser == null) {
+      return null;
+    }
+    return repository.get(null, existingUser.getId(), getFields(PRIVILEGED_FIELDS), ALL, false);
+  }
+
+  // True when the request asks for a role the user does not already hold.
+  private boolean hasRoleElevation(User currentUser, User updatedUser) {
+    Set<UUID> updatedRoleIds = entityIds(updatedUser.getRoles());
     if (updatedRoleIds.isEmpty()) {
       return false;
     }
-    if (existingUser == null) {
+    if (currentUser == null) {
       return true;
     }
-    // existingUser comes from findByNameOrNull(), which sets core fields only, so its roles are
-    // always null - they have to be loaded before they can be compared against.
-    List<EntityReference> currentRoles =
-        repository.get(null, existingUser.getId(), getFields(ROLES_FIELD), ALL, false).getRoles();
-    return !roleIds(currentRoles).containsAll(updatedRoleIds);
+    return !entityIds(currentUser.getRoles()).containsAll(updatedRoleIds);
   }
 
-  // Fields on CreateUser that only an admin may set, whoever the user being created is.
+  // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
+  // policies, so joining a team that is not open to everyone grants privileges the same way naming
+  // a role does. PATCH has always required an admin for it.
+  private boolean joinsClosedTeam(User currentUser, Set<UUID> closedTeamIds) {
+    Set<UUID> currentTeamIds = currentUser == null ? Set.of() : entityIds(currentUser.getTeams());
+    return !currentTeamIds.containsAll(closedTeamIds);
+  }
+
+  private Set<UUID> closedTeamIds(List<EntityReference> teams) {
+    return listOrEmpty(teams).stream()
+        .map(EntityReference::getId)
+        .filter(this::isClosedTeam)
+        .collect(Collectors.toSet());
+  }
+
+  private boolean isClosedTeam(UUID teamId) {
+    return !repository.isTeamJoinable(teamId.toString());
+  }
+
+  // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
+  // named on a create request is one the user is not a member of yet.
   private boolean grantsPrivileges(CreateUser create) {
     return Boolean.TRUE.equals(create.getIsAdmin())
         || Boolean.TRUE.equals(create.getIsBot())
-        || grantsRolesFromRequestBody(create);
+        || grantsRolesFromRequestBody(create)
+        || listOrEmpty(create.getTeams()).stream().anyMatch(this::isClosedTeam);
   }
 
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
@@ -1198,11 +1241,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private static Set<UUID> roleIds(List<EntityReference> roles) {
-    if (nullOrEmpty(roles)) {
+  private static Set<UUID> entityIds(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
       return Set.of();
     }
-    return roles.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    return references.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   /** Preference {@code type} discriminator -> the concrete POJO it deserializes to. */
