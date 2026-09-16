@@ -870,7 +870,7 @@ describe('DataQualityUtils', () => {
         'originEntityFQN',
         'service.name.keyword',
         'testPlatforms',
-        'dataQualityDimension',
+        'dataQualityDimensionName',
         'testCaseResult.testCaseStatus',
         'entityLink',
         'testCaseResult.timestamp',
@@ -901,11 +901,11 @@ describe('DataQualityUtils', () => {
 
       expect(result).toContainEqual({
         bool: {
-          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+          must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
         },
       });
       expect(result).not.toContainEqual({
-        term: { dataQualityDimension: DataQualityDimensions.NoDimension },
+        term: { dataQualityDimensionName: DataQualityDimensions.NoDimension },
       });
     });
 
