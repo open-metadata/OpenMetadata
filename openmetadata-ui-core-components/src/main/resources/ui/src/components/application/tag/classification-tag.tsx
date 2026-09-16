@@ -18,7 +18,7 @@ import { TagChipContent } from './tag-chip-content';
 import {
   DEFAULT_TAG_COLOR,
   DEFAULT_TAG_MAX_WIDTH,
-  ICON_PX
+  ICON_PX,
 } from './tag.constants';
 import { EntityTagProps } from './tag.types';
 

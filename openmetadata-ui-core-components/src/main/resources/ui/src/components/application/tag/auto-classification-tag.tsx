@@ -15,10 +15,7 @@ import { FC, MouseEvent } from 'react';
 import { AutomatedTag } from '../../../icons/AutomatedTag';
 import { Badge, BadgeWithButton } from '../../base/badges/badges';
 import { TagChipContent } from './tag-chip-content';
-import {
-  DEFAULT_TAG_MAX_WIDTH,
-  ICON_PX
-} from './tag.constants';
+import { DEFAULT_TAG_MAX_WIDTH, ICON_PX } from './tag.constants';
 import { EntityTagProps } from './tag.types';
 
 /**

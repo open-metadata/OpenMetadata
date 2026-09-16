@@ -62,14 +62,12 @@ export const TagChipContent: FC<TagChipContentProps> = ({
 
   const labelNode = (
     <div style={{ maxWidth }}>
-      <span className={`tw:block tw:truncate ${labelClassName}`}>
-        {label}
-      </span>
+      <span className={`tw:block tw:truncate ${labelClassName}`}>{label}</span>
     </div>
   );
 
   return (
-    <div className='tw:flex tw:items-center tw:gap-1'>
+    <div className="tw:flex tw:items-center tw:gap-1">
       {iconNode && (
         <span
           aria-hidden
