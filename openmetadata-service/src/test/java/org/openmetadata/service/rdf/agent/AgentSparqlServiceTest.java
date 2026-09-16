@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -268,6 +269,25 @@ class AgentSparqlServiceTest {
     assertCode(
         AgentSparqlErrorCode.RESULT_OUTPUT_LIMIT_EXCEEDED,
         () -> readyService().execute("user", SELECT_ALL));
+  }
+
+  @Test
+  void guardKeysOnTheEffectiveUserRatherThanAnyServiceActor() {
+    SparqlQueryExecutionGuard guard = mock(SparqlQueryExecutionGuard.class);
+    when(guard.execute(eq("alice"), any()))
+        .thenAnswer(invocation -> invocation.getArgument(1, Supplier.class).get());
+    returnRows(1);
+    AgentSparqlService service =
+        new AgentSparqlService(
+            () -> new RdfSparqlService(repository, new SparqlFederationGuard(null)),
+            () -> RdfProjectionState.READY,
+            guard);
+
+    service.execute("alice", SELECT_ALL);
+
+    ArgumentCaptor<String> principal = ArgumentCaptor.forClass(String.class);
+    verify(guard).execute(principal.capture(), any());
+    assertEquals("alice", principal.getValue());
   }
 
   @Test
