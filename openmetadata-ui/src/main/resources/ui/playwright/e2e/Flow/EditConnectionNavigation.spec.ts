@@ -58,8 +58,6 @@ test.describe(
     test('discarding a back navigation leaves the form on the first attempt', async ({
       page,
     }) => {
-      test.slow();
-
       await openEditConnection(page);
 
       await test.step('Back on the connection step prompts', async () => {
