@@ -450,6 +450,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({ form }) => {
           <Select.ComboBox
             allowsEmptyCollection
             data-testid="condition"
+            inputValue={form.watch('condition') ?? ''}
             items={conditionOptions}
             placeholder={t('label.condition')}
             onInputChange={(value) => {

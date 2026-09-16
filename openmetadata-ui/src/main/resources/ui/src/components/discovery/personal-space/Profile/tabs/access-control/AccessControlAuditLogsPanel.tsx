@@ -515,7 +515,7 @@ const AccessControlAuditLogsPanel: React.FC<
                       </Box>
                     </Box>
                     <ButtonUtility
-                      aria-label="Remove filter"
+                      aria-label={t('label.remove-filter')}
                       color="tertiary"
                       data-testid={`remove-filter-${filter.category}`}
                       icon={<XClose size={14} />}

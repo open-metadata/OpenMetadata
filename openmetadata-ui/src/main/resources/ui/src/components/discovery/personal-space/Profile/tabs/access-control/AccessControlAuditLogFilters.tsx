@@ -45,14 +45,6 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const botDisplayNameMap = useMemo<Record<string, string>>(
-    () => ({
-      'autoclassification-bot': t('label.auto-classification-bot'),
-      automatorapplicationbot: t('label.automator-application-bot'),
-    }),
-    [t]
-  );
-
   const auditTimeFilterRange = useMemo(
     () =>
       Object.fromEntries(
@@ -230,10 +222,7 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
         setBotOptions(
           bots.map((bot) => ({
             key: bot.name,
-            label:
-              botDisplayNameMap[
-                (getEntityName(bot) || bot.name).toLowerCase()
-              ] ?? startCase(getEntityName(bot) || bot.name),
+            label: startCase(getEntityName(bot) || bot.name),
           }))
         );
       } catch {
@@ -242,7 +231,7 @@ const AccessControlAuditLogFilters: FC<AuditLogFiltersProps> = ({
         setIsLoadingBots(false);
       }
     },
-    [botDisplayNameMap]
+    []
   );
 
   const debouncedFetchUsers = useMemo(
