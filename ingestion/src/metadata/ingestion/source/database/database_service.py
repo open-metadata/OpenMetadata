@@ -295,7 +295,8 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                     name="Tags and Classifications",
                     error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
                     stackTrace=traceback.format_exc(),
-                )
+                ),
+                right=None,
             )
 
     @property
