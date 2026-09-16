@@ -678,7 +678,18 @@ export const FilterSelect = ({
         // stops taking clicks until it is dismissed. The component this
         // replaces let those clicks through.
         isNonModal
-        className={cx('tw:w-80', popoverClassName)}
+        // Close without an exit animation: the closing subtree otherwise
+        // stays visible (and hit-testable) for the animation's duration, so a
+        // fast sibling swap can read or type into the dying filter instead of
+        // the one just opened. animate-none makes react-aria unmount at once;
+        // hidden covers the same frame.
+        className={(state) =>
+          cx(
+            'tw:w-80',
+            state.isExiting && 'tw:hidden tw:animate-none',
+            popoverClassName
+          )
+        }
         data-testid="drop-down-menu"
         placement="bottom left"
         triggerRef={isChips ? chipsFieldRef : undefined}>

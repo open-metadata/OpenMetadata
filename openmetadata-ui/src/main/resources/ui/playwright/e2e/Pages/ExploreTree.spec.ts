@@ -168,7 +168,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Click on filter dropdown
       await page.getByTestId('search-dropdown-Data Assets').click();
       // assert on dropdown item visibility
-      await page.getByRole('menuitem', { name: 'tag' }).waitFor();
+      await page.getByRole('menuitemcheckbox', { name: 'tag' }).waitFor();
       // assert on checkbox state
       await expect(page.getByTestId('tag-checkbox')).toBeChecked();
     });
@@ -179,7 +179,7 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Click on filter dropdown
       await page.getByTestId('search-dropdown-Data Assets').click();
       // assert on dropdown item visibility
-      await page.getByRole('menuitem', { name: 'metric' }).waitFor();
+      await page.getByRole('menuitemcheckbox', { name: 'metric' }).waitFor();
       // assert on checkbox state
       await expect(page.getByTestId('metric-checkbox')).toBeChecked();
     });
