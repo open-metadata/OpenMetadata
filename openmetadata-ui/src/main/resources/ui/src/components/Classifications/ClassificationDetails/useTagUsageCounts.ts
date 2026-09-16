@@ -39,15 +39,15 @@ export const useTagUsageCounts = (
   tags: Tag[],
   enabled = true
 ): TagUsageCounts => {
-  const tagFQNs = useMemo(
-    () =>
+  const [tagFQNs, fieldName] = useMemo(
+    () => [
       tags
         .map(({ fullyQualifiedName }) => fullyQualifiedName)
         .filter(Boolean) as string[],
-    [tags]
+      getTagUsageAggregationField(classificationName ?? ''),
+    ],
+    [tags, classificationName]
   );
-
-  const fieldName = getTagUsageAggregationField(classificationName ?? '');
 
   const { data: usageCounts, isFetching } = useQuery({
     queryKey: [TAG_USAGE_COUNTS_QUERY_KEY, fieldName, tagFQNs],

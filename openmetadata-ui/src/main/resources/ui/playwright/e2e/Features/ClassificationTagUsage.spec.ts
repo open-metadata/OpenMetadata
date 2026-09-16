@@ -20,16 +20,10 @@ import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const classification = new ClassificationClass();
-const usedTag = new TagClass({
-  name: `pw-used-tag-${uuid()}`,
-  classification: classification.data.name,
-});
-const unusedTag = new TagClass({
-  name: `pw-unused-tag-${uuid()}`,
-  classification: classification.data.name,
-});
-const table = new TableClass();
+let classification: ClassificationClass;
+let usedTag: TagClass;
+let unusedTag: TagClass;
+let table: TableClass;
 
 // The fixture tags exactly one table, and only that table's own document
 // carries the tag, so the count is exact
@@ -37,9 +31,20 @@ const USED_TAG_ASSET_COUNT = '1';
 
 test.describe(
   'Classification tag usage counts',
-  { tag: ['@Features', '@Governance'] },
+  { tag: ['@Governance'] },
   () => {
     test.beforeAll(async ({ browser }) => {
+      classification = new ClassificationClass();
+      usedTag = new TagClass({
+        name: `pw-used-tag-${uuid()}`,
+        classification: classification.data.name,
+      });
+      unusedTag = new TagClass({
+        name: `pw-unused-tag-${uuid()}`,
+        classification: classification.data.name,
+      });
+      table = new TableClass();
+
       const { apiContext, afterAction } = await createNewPage(browser);
       await classification.create(apiContext);
       await usedTag.create(apiContext);
@@ -94,8 +99,6 @@ test.describe(
     test('shows how many assets carry each tag without opening them', async ({
       page,
     }) => {
-      test.slow();
-
       await classification.visitPage(page);
       await waitForAllLoadersToDisappear(page);
 
@@ -113,8 +116,6 @@ test.describe(
     });
 
     test('opens the tagged assets from the usage count', async ({ page }) => {
-      test.slow();
-
       await test.step('Open the classification', async () => {
         await classification.visitPage(page);
         await waitForAllLoadersToDisappear(page);
