@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,15 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { HTMLAttributes } from 'react';
 
 /**
- * xs — 10 px font / 16 px height
- * sm — 12 px font / 20 px height
- * md — 14 px font / 24 px height
+ * xs — 10 px font / 16 px badge padding
+ * sm — 12 px font / 20 px badge padding
+ * md — 14 px font / 24 px badge padding
  */
 export type TagSize = 'xs' | 'sm' | 'md';
 
-export interface BaseTagProps {
+export interface EntityTagProps extends HTMLAttributes<HTMLSpanElement> {
   label: string;
   /** Hex color from ENTITY_PALETTE_HEX. Omit to use DEFAULT_TAG_COLOR. */
   color?: string;
@@ -29,13 +30,16 @@ export interface BaseTagProps {
   icon?: string;
   size?: TagSize;
   onDelete?: (e: Event) => void;
-  /** When provided, wraps the label in a react-router Link. */
+  /**
+   * When provided (and `onDelete` is not), the entire badge renders as a
+   * link to this URL — the whole clickable/focusable surface, not just the
+   * label text.
+   */
   href?: string;
   maxWidth?: string | number;
+  /** Spans have no native `disabled` attribute, so `HTMLAttributes` doesn't carry it. */
   disabled?: boolean;
-  className?: string;
   tooltip?: string;
-  'data-testid'?: string;
   'data-tag-index'?: number;
   /** data-testid for the close/remove button when onDelete is provided. */
   closeButtonTestId?: string;
