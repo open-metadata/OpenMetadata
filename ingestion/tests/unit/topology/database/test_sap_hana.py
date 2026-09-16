@@ -37,6 +37,9 @@ from metadata.generated.schema.entity.services.connections.database.sapHanaConne
     SapHanaConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -49,6 +52,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.tableQuery import TableQuery
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage import sql_lineage
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
@@ -2080,11 +2084,12 @@ def test_a_non_database_failure_is_not_disguised_as_a_privilege_error() -> None:
         list(source.yield_query_lineage())
 
 
-def test_no_lineage_warning_is_silent_when_both_passes_are_off() -> None:
+def test_no_lineage_warning_names_the_disabled_passes() -> None:
     """Neither pass ran, so neither pass is worth diagnosing.
 
     Telling an operator to check CATALOG READ, or that only view definitions were read,
-    is wrong when the pipeline was configured to read nothing at all.
+    is wrong when the pipeline was configured to read nothing at all. The configuration
+    itself is the finding, so the warning says so.
     """
     source = _lineage_source_with(
         DatabaseServiceQueryLineagePipeline(processViewLineage=False, processQueryLineage=False)
@@ -2097,6 +2102,35 @@ def test_no_lineage_warning_is_silent_when_both_passes_are_off() -> None:
         list(source._iter())
 
     assert "both View Lineage and Query Lineage are turned off" in warning.call_args[0][0]
+
+
+def test_one_bad_statement_does_not_silence_the_diagnosis() -> None:
+    """A single unparseable statement is not a reason to withhold the advice.
+
+    Only a pass that failed outright has explained itself. One statement failing among
+    many says nothing about why the others produced no edges, and the tables being
+    uningested stays the likeliest cause, so the guidance still has to appear.
+    """
+    source = _lineage_source_with(DatabaseServiceQueryLineagePipeline(processViewLineage=False))
+
+    rows = [TableQuery(query="INSERT INTO A SELECT * FROM B", serviceName="test_sap_hana") for _ in range(3)]
+    failure = Either(left=StackTraceError(name="one statement", error="could not parse"))
+
+    def drain_producer(*_, **__):
+        list(source.query_lineage_producer())
+        return iter([failure])
+
+    with (
+        patch.object(LineageSource, "query_lineage_producer", return_value=iter(rows)),
+        patch.object(LineageSource, "_iter", side_effect=drain_producer),
+        patch.object(saphana_lineage.logger, "warning") as warning,
+    ):
+        list(source._iter())
+
+    message = warning.call_args[0][0] % warning.call_args[0][1:]
+    assert "No lineage was created from 3 analysed queries" in message
+    assert "1 of which reported an error above" in message
+    assert "run metadata ingestion for this service first" in message
 
 
 def test_a_reported_query_failure_is_not_talked_over() -> None:

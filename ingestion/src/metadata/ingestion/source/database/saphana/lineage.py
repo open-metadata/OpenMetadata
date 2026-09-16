@@ -165,10 +165,11 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
         if sql_edges or cdata_edges:
             return
 
-        # A pass that already reported the real cause, either by raising or by yielding a
-        # failure, has said more than the guesses below can. Adding to it would only
-        # point the reader somewhere less accurate.
-        if self.query_pass_failed or sql_failures:
+        # Only a pass that failed outright has already explained itself. A single
+        # unparseable statement has not: it says nothing about why the rest produced no
+        # edges, and staying quiet over it would withhold the one piece of advice that
+        # usually applies. Those failures are reported alongside the diagnosis instead.
+        if self.query_pass_failed:
             return
 
         view_lineage = self.source_config.processViewLineage  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
@@ -181,10 +182,11 @@ class SaphanaLineageSource(SapHanaQueryParserSource, LineageSource):
             )
         elif self.statements_read:
             logger.warning(
-                "No lineage was created from %d analysed queries. Most likely the tables they "
+                "No lineage was created from %d analysed queries%s. Most likely the tables they "
                 "reference have not been ingested yet, so run metadata ingestion for this service "
                 "first. If lineage has run before, the queries may simply have been processed already.",
                 self.statements_read,
+                f", {sql_failures} of which reported an error above" if sql_failures else "",
             )
         # CATALOG READ governs the plan cache and nothing else, so it is only raised when
         # the query pass ran and actually read from there. A view-only run, or one reading
