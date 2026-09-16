@@ -58,7 +58,6 @@ export const AutoClassificationTag: FC<
           width={ICON_PX[size]}
         />
       }
-      href={href}
       iconSize={ICON_PX[size]}
       label={label}
       maxWidth={maxWidth}
@@ -95,5 +94,9 @@ export const AutoClassificationTag: FC<
     );
   }
 
-  return <Badge {...sharedProps}>{content}</Badge>;
+  return (
+    <Badge {...sharedProps} href={href}>
+      {content}
+    </Badge>
+  );
 };

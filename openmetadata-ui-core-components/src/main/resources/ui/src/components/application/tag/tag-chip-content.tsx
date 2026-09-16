@@ -12,7 +12,6 @@
  */
 import { cx } from '@/utils/cx';
 import { FC, lazy, ReactNode, Suspense } from 'react';
-import { Link as AriaLink } from 'react-aria-components';
 
 // Lazy-loaded so the common case (no `icon` string prop — just a variant's
 // default icon) never pulls ICON_MAP's ~44 icon components into the eager
@@ -32,23 +31,21 @@ interface TagChipContentProps {
   icon?: string;
   /** Rendered when `icon` is not provided. */
   defaultIcon: ReactNode;
-  href?: string;
   labelClassName?: string;
   iconSize: number;
   iconTestId?: string;
 }
 
 /**
- * Pure inner content (icon + label + optional link) shared by every entity
- * tag chip variant (Classification/Glossary/Domain/DataProduct/AutoClassification).
- * Has no knowledge of Badge/Tooltip — those are composed by each variant.
+ * Pure inner content (icon + label) shared by every entity tag chip variant
+ * (Classification/Glossary/Domain/DataProduct/AutoClassification). Has no
+ * knowledge of Badge/Tooltip/Link — those are composed by each variant.
  */
 export const TagChipContent: FC<TagChipContentProps> = ({
   label,
   maxWidth,
   icon,
   defaultIcon,
-  href,
   labelClassName,
   iconSize,
   iconTestId,
@@ -79,16 +76,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
           {iconNode}
         </span>
       )}
-      {href ? (
-        <AriaLink
-          className="tw:no-underline tw:min-w-0"
-          data-testid="tag-redirect-link"
-          href={href}>
-          {labelNode}
-        </AriaLink>
-      ) : (
-        labelNode
-      )}
+      {labelNode}
     </div>
   );
 };

@@ -55,7 +55,6 @@ export const DomainTag: FC<EntityTagProps> = ({
           width={ICON_PX[size]}
         />
       }
-      href={href}
       icon={icon}
       iconSize={ICON_PX[size]}
       iconTestId="domain-icon"
@@ -96,7 +95,7 @@ export const DomainTag: FC<EntityTagProps> = ({
   }
 
   return (
-    <Badge {...sharedProps} style={tagColorStyle}>
+    <Badge {...sharedProps} href={href} style={tagColorStyle}>
       {content}
     </Badge>
   );

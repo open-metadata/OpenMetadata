@@ -62,6 +62,30 @@ describe('Badge tooltip', () => {
   });
 });
 
+describe('Badge href', () => {
+  it('renders a plain span when no href is passed', () => {
+    const { container } = render(<Badge>Active</Badge>);
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(container.firstChild).toHaveProperty('tagName', 'SPAN');
+  });
+
+  it('renders as a link covering the whole badge when href is passed', () => {
+    render(<Badge href="/classification/pii">Active</Badge>);
+
+    const badge = screen.getByRole('link');
+
+    expect(badge).toHaveAttribute('href', '/classification/pii');
+    expect(badge).toContainElement(screen.getByText('Active'));
+  });
+
+  it('does not apply visible link styling (underline) when href is passed', () => {
+    render(<Badge href="/classification/pii">Active</Badge>);
+
+    expect(screen.getByRole('link')).toHaveClass('tw:no-underline');
+  });
+});
+
 describe('BadgeWithButton tooltip', () => {
   it('renders both the tooltip trigger and the delete button without nesting a button in a button', () => {
     render(

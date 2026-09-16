@@ -30,7 +30,11 @@ export interface EntityTagProps extends HTMLAttributes<HTMLSpanElement> {
   icon?: string;
   size?: TagSize;
   onDelete?: (e: Event) => void;
-  /** When provided, wraps the label in a react-router Link. */
+  /**
+   * When provided (and `onDelete` is not), the entire badge renders as a
+   * link to this URL — the whole clickable/focusable surface, not just the
+   * label text.
+   */
   href?: string;
   maxWidth?: string | number;
   /** Spans have no native `disabled` attribute, so `HTMLAttributes` doesn't carry it. */

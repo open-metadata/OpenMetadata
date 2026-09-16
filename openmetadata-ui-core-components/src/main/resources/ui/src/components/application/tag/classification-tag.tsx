@@ -54,7 +54,6 @@ export const ClassificationTag: FC<EntityTagProps> = ({
           width={ICON_PX[size]}
         />
       }
-      href={href}
       icon={icon}
       iconSize={ICON_PX[size]}
       iconTestId="classification-icon"
@@ -95,7 +94,7 @@ export const ClassificationTag: FC<EntityTagProps> = ({
   }
 
   return (
-    <Badge {...sharedProps} style={tagColorStyle}>
+    <Badge {...sharedProps} href={href} style={tagColorStyle}>
       {content}
     </Badge>
   );

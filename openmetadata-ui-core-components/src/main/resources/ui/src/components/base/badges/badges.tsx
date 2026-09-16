@@ -10,6 +10,7 @@ import type {
   ReactNode,
 } from 'react';
 import type { Placement } from 'react-aria';
+import { Link as AriaLink } from 'react-aria-components';
 import type {
   BadgeColors,
   BadgeTypeToColorMap,
@@ -172,6 +173,12 @@ interface BadgeProps<T extends BadgeTypes>
   tooltip?: string;
   /** Placement of the tooltip relative to the badge */
   tooltipPlacement?: Placement;
+  /**
+   * When provided, the badge renders as a link to this URL instead of a
+   * `<span>` — the entire visible badge (including padding) becomes the
+   * clickable/focusable target, not just its children.
+   */
+  href?: string;
 }
 
 export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
@@ -185,10 +192,12 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     tooltipPlacement = 'top',
     className,
     style,
+    href,
     'data-testid': dataTestId,
     ...rest
   } = props;
   const colors = withPillTypes[type];
+  const Component = href ? AriaLink : 'span';
 
   const pillSizes = {
     xs: 'tw:py-0.5 tw:px-1.5 tw:text-[10px] tw:leading-4',
@@ -210,19 +219,27 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
   };
 
   const badge = (
-    <span
-      {...rest}
+    <Component
+      {...(rest as object)}
+      // `href` only exists on `AriaLink`'s props — `Component` is `'span' |
+      // typeof AriaLink`, so TS can't narrow which one applies here; safe
+      // since `href` is only ever set when `Component` is `AriaLink`.
       className={cx(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
+        // A linked badge must look identical to a non-linked one — no
+        // browser default underline/link color, and it must inherit the
+        // badge's own text color rather than react-aria-components' link styles.
+        href && 'tw:text-inherit tw:no-underline',
         className
       )}
       data-testid={dataTestId}
+      href={href as never}
       style={style}>
       {children}
-    </span>
+    </Component>
   );
 
   if (tooltip) {

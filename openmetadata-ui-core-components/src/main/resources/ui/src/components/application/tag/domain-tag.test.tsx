@@ -45,16 +45,29 @@ describe('DomainTag', () => {
   it('should not render a redirect link when no href is passed', () => {
     render(<DomainTag label="Engineering" />);
 
-    expect(screen.queryByTestId('tag-redirect-link')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('should render a redirect link when href is passed', () => {
     render(<DomainTag href="/domain/engineering" label="Engineering" />);
 
-    const link = screen.getByTestId('tag-redirect-link');
+    const link = screen.getByRole('link');
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/domain/engineering');
+  });
+
+  it('should make the entire badge the link, including the icon, not just the label', () => {
+    const { container } = render(
+      <DomainTag href="/domain/engineering" label="Engineering" />
+    );
+
+    const link = screen.getByRole('link');
+    const icon = screen.getByTestId('domain-icon');
+
+    expect(container.firstChild).toBe(link);
+    expect(link).toContainElement(icon);
+    expect(link).toContainElement(screen.getByText('Engineering'));
   });
 
   it('should not render a tooltip trigger when no tooltip is passed', () => {

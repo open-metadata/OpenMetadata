@@ -36,7 +36,7 @@ describe('AutoClassificationTag', () => {
   it('should not render a redirect link when no href is passed', () => {
     render(<AutoClassificationTag label="PII.Sensitive" />);
 
-    expect(screen.queryByTestId('tag-redirect-link')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('should render a redirect link when href is passed', () => {
@@ -44,10 +44,24 @@ describe('AutoClassificationTag', () => {
       <AutoClassificationTag href="/classification/pii" label="PII.Sensitive" />
     );
 
-    const link = screen.getByTestId('tag-redirect-link');
+    const link = screen.getByRole('link');
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/classification/pii');
+  });
+
+  it('should make the entire badge the link, including the icon, not just the label', () => {
+    const { container } = render(
+      <AutoClassificationTag href="/classification/pii" label="PII.Sensitive" />
+    );
+
+    const link = screen.getByRole('link');
+    const icon = container.querySelector('svg');
+
+    expect(container.firstChild).toBe(link);
+    expect(icon).toBeInTheDocument();
+    expect(link).toContainElement(icon);
+    expect(link).toContainElement(screen.getByText('PII.Sensitive'));
   });
 
   it('should not render a tooltip trigger when no tooltip is passed', () => {

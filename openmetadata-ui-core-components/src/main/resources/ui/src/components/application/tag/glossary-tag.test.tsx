@@ -43,16 +43,29 @@ describe('GlossaryTag', () => {
   it('should not render a redirect link when no href is passed', () => {
     render(<GlossaryTag label="Customer" />);
 
-    expect(screen.queryByTestId('tag-redirect-link')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('should render a redirect link when href is passed', () => {
     render(<GlossaryTag href="/glossary/customer" label="Customer" />);
 
-    const link = screen.getByTestId('tag-redirect-link');
+    const link = screen.getByRole('link');
 
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/glossary/customer');
+  });
+
+  it('should make the entire badge the link, including the icon, not just the label', () => {
+    const { container } = render(
+      <GlossaryTag href="/glossary/customer" label="Customer" />
+    );
+
+    const link = screen.getByRole('link');
+    const icon = screen.getByTestId('glossary-icon');
+
+    expect(container.firstChild).toBe(link);
+    expect(link).toContainElement(icon);
+    expect(link).toContainElement(screen.getByText('Customer'));
   });
 
   it('should not render a tooltip trigger when no tooltip is passed', () => {

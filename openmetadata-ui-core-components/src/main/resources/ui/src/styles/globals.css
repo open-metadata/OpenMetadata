@@ -1747,14 +1747,14 @@ Badge's own default neutral border/background instead of the tint. */
 
 .tag-tinted {
   outline: none;
-  border: 1px solid color-mix(in srgb, var(--tag-color) 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-color) 16%, transparent);
   background-color: color-mix(in srgb, var(--tag-color) 6%, transparent);
   color: var(--tag-color);
 }
 
 .tag-accent {
   outline: none;
-  border: 1px solid color-mix(in srgb, var(--tag-color) 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag-color) 16%, transparent);
   border-left: 4px solid var(--tag-color);
   /* !important: Badge's `type="modern"` root class always includes
   `tw:bg-primary`, which this variant must stay transparent under regardless

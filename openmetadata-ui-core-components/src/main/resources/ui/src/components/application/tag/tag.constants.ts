@@ -36,7 +36,7 @@ export const ICON_PX: Record<TagSize, number> = { xs: 10, sm: 12, md: 14 };
  * `var()` reference resolves automatically wherever the shared tag CSS reads
  * `var(--tag-color)`, so no runtime color resolution is needed here.
  */
-export const DEFAULT_TAG_COLOR = 'var(--tw-color-gray-cool-500)';
+export const DEFAULT_TAG_COLOR = 'var(--tw-color-gray-cool-600)';
 
 /**
  * Auto-classification brand identity — references the brand-900 design
