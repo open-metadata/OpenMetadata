@@ -16,31 +16,30 @@ import { Operation } from '../generated/entity/policies/policy';
 import { PERMISSION_POLICY } from './permissionPolicy';
 import { getOperationPermissions } from './PermissionsUtils';
 
-const resourcePermission = (access: Access) => ({
+const resourcePermission = (access: Access, op = Operation.ViewAll) => ({
   resource: 'databaseService',
-  permissions: [{ operation: Operation.ViewAll, access }],
+  permissions: [{ operation: op, access }],
 });
 
 describe('permissionPolicy — resourceLevelConditionalAllow seam', () => {
-  it('ships as "attempt" — fix for #31783 and #33356', () => {
-    // Locks the live default. This is the assertion that fails loudly if
-    // someone flips the switch without updating the surrounding documentation.
-    expect(PERMISSION_POLICY.resourceLevelConditionalAllow).toBe('attempt');
+  it('ships as "view-only" — targeted fix for #31783 and #33356', () => {
+    // Locks the live default. This assertion fails loudly if someone flips the
+    // switch without updating the surrounding documentation.
+    expect(PERMISSION_POLICY.resourceLevelConditionalAllow).toBe('view-only');
   });
 
-  // Exercises the translation the same way PermissionProvider.tsx derives
-  // `allowConditional` from the policy (`=== 'attempt'`), for BOTH policy
-  // values — so the 'attempt' path (the #31783 fix) is proven correct
-  // *before* anyone flips PERMISSION_POLICY.resourceLevelConditionalAllow.
-  // Uses local literal mode values rather than mutating the frozen policy
-  // object (its property is typed readonly via `as const`).
+  // Verifies the two raw modes independently (using local literals, not
+  // mutating the frozen policy object) so behavior is proven before any switch flip.
   describe.each([
     ['strict', false],
-    ['attempt', true],
-  ] as const)('mode = %s', (mode, expectAllowed) => {
-    const allowConditional = mode === 'attempt';
+    ['view-only', true],
+  ] as const)('mode = %s (ViewAll)', (mode, expectAllowed) => {
+    const allowConditional =
+      mode === 'view-only'
+        ? (op: Operation) => op === Operation.ViewAll
+        : false;
 
-    it(`translates a resource-level conditionalAllow to ${expectAllowed}`, () => {
+    it(`translates a resource-level conditionalAllow to ${expectAllowed} for ViewAll`, () => {
       const permissions = getOperationPermissions(
         resourcePermission(Access.ConditionalAllow),
         allowConditional
@@ -68,17 +67,38 @@ describe('permissionPolicy — resourceLevelConditionalAllow seam', () => {
     });
   });
 
-  it('the live policy setting reproduces the "attempt" row above end-to-end', () => {
-    const allowConditional =
-      PERMISSION_POLICY.resourceLevelConditionalAllow === 'attempt';
+  it('view-only mode keeps non-view operations (Trigger) strict even when CONDITIONAL_ALLOW', () => {
+    // OrganizationPolicy isOwner() grants All:CONDITIONAL_ALLOW to every user.
+    // In view-only mode only ViewBasic/ViewAll become true — action buttons must stay hidden.
+    const viewOnlyFn = (op: Operation) =>
+      op === Operation.ViewBasic || op === Operation.ViewAll;
     const permissions = getOperationPermissions(
-      resourcePermission(Access.ConditionalAllow),
-      allowConditional
+      resourcePermission(Access.ConditionalAllow, Operation.Trigger),
+      viewOnlyFn
     );
 
-    // Now that the policy is 'attempt', CONDITIONAL_ALLOW at resource level
-    // must be permitted — domain-scoped users can reach entity pages and the
-    // backend enforces per-entity access on every real read/write.
-    expect(permissions[Operation.ViewAll]).toBe(true);
+    expect(permissions[Operation.Trigger]).toBe(false);
+  });
+
+  it('the live policy setting allows ViewAll but denies Trigger for CONDITIONAL_ALLOW end-to-end', () => {
+    const viewOnlyFn =
+      PERMISSION_POLICY.resourceLevelConditionalAllow === 'view-only'
+        ? (op: Operation) =>
+            op === Operation.ViewBasic || op === Operation.ViewAll
+        : () => false;
+
+    const viewPerms = getOperationPermissions(
+      resourcePermission(Access.ConditionalAllow, Operation.ViewAll),
+      viewOnlyFn
+    );
+    const triggerPerms = getOperationPermissions(
+      resourcePermission(Access.ConditionalAllow, Operation.Trigger),
+      viewOnlyFn
+    );
+
+    // Domain-scoped users can reach entity pages (route guards use ViewAll).
+    expect(viewPerms[Operation.ViewAll]).toBe(true);
+    // Action buttons stay hidden — Trigger stays false even under CONDITIONAL_ALLOW.
+    expect(triggerPerms[Operation.Trigger]).toBe(false);
   });
 });

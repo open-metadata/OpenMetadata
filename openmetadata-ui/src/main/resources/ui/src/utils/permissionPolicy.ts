@@ -34,26 +34,25 @@
  */
 export const PERMISSION_POLICY = {
   /**
-   * How a backend `conditionalAllow` is read at RESOURCE level — lists, route
-   * guards, create buttons: places with no specific entity yet, so the backend
+   * How a backend `conditionalAllow` is read at RESOURCE level — route guards
+   * and action buttons: places with no specific entity yet, so the backend
    * could not evaluate `isOwner()` / `hasDomain()` conditions.
    *
-   * 'strict'  — conditionalAllow counts as DENIED.
-   * 'attempt' — conditionalAllow counts as PERMITTED ("can attempt"); the
-   *            backend still enforces per entity on every real read/write.
-   *            Fixes OpenMetadata#31783 and OpenMetadata#33356: domain-scoped
-   *            users were wrongly blocked by route guards before any entity-level
-   *            permission call was made, because the bulk /permissions response
-   *            returns CONDITIONAL_ALLOW (no entity context) which strict mode
-   *            maps to false.
-   *
-   * ServiceEntityPermissions.spec.ts:163 ("AutoPilot trigger button is hidden
-   * with view-only permission") is NOT affected: that test user holds a concrete
-   * ViewAll:ALLOW from VIEW_ALL_RULE, not a CONDITIONAL_ALLOW, so toAllowedBoolean
-   * is unchanged for it.
+   * 'strict'    — conditionalAllow counts as DENIED for all operations.
+   * 'view-only' — conditionalAllow counts as PERMITTED only for ViewBasic /
+   *               ViewAll; all other operations (Create, EditAll, Delete,
+   *               Trigger, …) remain DENIED. Fixes OpenMetadata#31783 and
+   *               OpenMetadata#33356: domain-scoped users were wrongly blocked
+   *               by route guards before any entity-level call was made, because
+   *               the bulk /permissions endpoint returns CONDITIONAL_ALLOW (no
+   *               entity context) for conditional policies (isOwner, hasDomain).
+   *               Restricting the permissive treatment to view operations avoids
+   *               showing action buttons to users whose write access depends on
+   *               entity-specific conditions (e.g. OrganizationPolicy isOwner()
+   *               rule grants All:CONDITIONAL_ALLOW to every user).
    *
    * ENTITY-level reads are always strict and deliberately NOT configurable:
    * there the backend has already evaluated the conditions for that entity.
    */
-  resourceLevelConditionalAllow: 'attempt' as 'strict' | 'attempt',
+  resourceLevelConditionalAllow: 'view-only' as 'strict' | 'view-only',
 } as const;

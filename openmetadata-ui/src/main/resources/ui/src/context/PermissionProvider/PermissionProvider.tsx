@@ -25,6 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
+import { Operation } from '../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   permissionQueryKeys,
@@ -60,12 +61,20 @@ export const PermissionContext = createContext<PermissionContextType>(
 );
 
 // Single seam for the resource-level conditionalAllow policy (see
-// permissionPolicy.ts for the full rationale and blast radius). Reads as
-// `false` while the policy stays 'strict', which is byte-for-byte the
-// pre-refactor (base commit 9cf866cd23) behavior — resource-level
-// conditionalAllow counts as denied, matching entity-level gating.
-const RESOURCE_ALLOW_CONDITIONAL =
-  PERMISSION_POLICY.resourceLevelConditionalAllow === 'attempt';
+// permissionPolicy.ts for the full rationale and blast radius).
+// 'view-only': allow CONDITIONAL_ALLOW only for ViewBasic/ViewAll so route
+// guards pass for domain-scoped / owner-conditional users, while action
+// buttons (Create, Delete, Trigger, EditAll…) remain hidden — those operations
+// carry OrganizationPolicy isOwner() CONDITIONAL_ALLOW for every user, so
+// treating them permissively would show buttons to users who cannot act.
+const VIEW_OPERATIONS: ReadonlySet<Operation> = new Set([
+  Operation.ViewBasic,
+  Operation.ViewAll,
+]);
+const RESOURCE_ALLOW_CONDITIONAL: (op: Operation) => boolean =
+  PERMISSION_POLICY.resourceLevelConditionalAllow === 'view-only'
+    ? (op) => VIEW_OPERATIONS.has(op)
+    : () => false;
 
 /**
  *

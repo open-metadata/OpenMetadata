@@ -113,22 +113,26 @@ const toAllowedBoolean = (
 /**
  *
  * @param permission ResourcePermission
- * @param allowConditional If true, treat ConditionalAllow as true. Default false (entity-level strict gating).
+ * @param allowConditional If true (or a function returning true for a given
+ *   operation), treat ConditionalAllow as true. Default false (entity-level
+ *   strict gating). Pass a per-operation function to enable permissive
+ *   treatment only for specific operations (e.g. ViewBasic/ViewAll at resource
+ *   level while keeping Create/Delete/Trigger strict).
  * @returns OperationPermission - {Operation:true/false}
  */
 export const getOperationPermissions = (
   permission: ResourcePermission,
-  allowConditional = false
+  allowConditional: boolean | ((op: Operation) => boolean) = false
 ): OperationPermission => {
   return permission.permissions.reduce(
     (acc: OperationPermission, curr: Permission) => {
-      return {
-        ...acc,
-        [curr.operation as Operation]: toAllowedBoolean(
-          curr.access,
-          allowConditional
-        ),
-      };
+      const op = curr.operation as Operation;
+      const allow =
+        typeof allowConditional === 'function'
+          ? allowConditional(op)
+          : allowConditional;
+
+      return { ...acc, [op]: toAllowedBoolean(curr.access, allow) };
     },
     {} as OperationPermission
   );
@@ -137,12 +141,13 @@ export const getOperationPermissions = (
 /**
  *
  * @param permissions Take ResourcePermission list
- * @param allowConditional If true, treat ConditionalAllow as true. Default false (entity-level strict gating).
+ * @param allowConditional If true (or a per-operation function), treat
+ *   ConditionalAllow as true. Default false (entity-level strict gating).
  * @returns UIPermission
  */
 export const getUIPermission = (
   permissions: ResourcePermission[],
-  allowConditional = false
+  allowConditional: boolean | ((op: Operation) => boolean) = false
 ): UIPermission => {
   return permissions.reduce((acc: UIPermission, curr: ResourcePermission) => {
     return {
