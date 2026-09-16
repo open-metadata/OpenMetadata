@@ -181,14 +181,6 @@ jest.mock('../../../components/common/TierCard/TierCard', () =>
     </div>
   ))
 );
-jest.mock('../../Metric/MetricHeaderInfo/MetricHeaderInfo', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ metricDetails }: { metricDetails: Metric }) => (
-      <div data-testid="metric-header-info">{metricDetails.name}</div>
-    )),
-}));
 
 // Captures the `editDisplayNamePermission` prop directly instead of rendering an opaque
 // div — needed to assert the rename affordance stays ungated on soft-deleted entities

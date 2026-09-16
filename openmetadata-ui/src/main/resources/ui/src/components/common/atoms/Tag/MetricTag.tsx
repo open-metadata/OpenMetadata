@@ -99,15 +99,21 @@ const MetricTag: FC<BaseTagProps> = ({
     </>
   );
 
-  const content = tooltip ? (
-    <Tooltip delay={500} title={tooltip}>
-      <TooltipTrigger className="tw:flex tw:items-center tw:gap-1">
+  // With an href the Link is the interactive element, so it must not be nested
+  // inside TooltipTrigger's button. Use the react-aria tooltip only for the
+  // label-only case and fall back to a native title when the tag links out.
+  const content =
+    tooltip && !href ? (
+      <Tooltip delay={500} title={tooltip}>
+        <TooltipTrigger className="tw:flex tw:items-center tw:gap-1">
+          {innerContent}
+        </TooltipTrigger>
+      </Tooltip>
+    ) : (
+      <div className="tw:flex tw:items-center tw:gap-1" title={tooltip}>
         {innerContent}
-      </TooltipTrigger>
-    </Tooltip>
-  ) : (
-    <div className="tw:flex tw:items-center tw:gap-1">{innerContent}</div>
-  );
+      </div>
+    );
 
   const sharedProps = {
     className: classNames(
