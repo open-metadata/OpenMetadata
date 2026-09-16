@@ -34,6 +34,9 @@ export interface OwnerAvatarStackProps {
   renderOwnerContent?: RenderOwnerContent;
   placement?: 'vertical' | 'horizontal';
   className?: string;
+  /** Show the "N Owners" title and per-group labels in the overflow popover
+   * (default true). Set false for a bare list of avatars + names. */
+  showOverflowHeadings?: boolean;
 }
 
 export interface OwnerProps {
@@ -67,5 +70,8 @@ export interface OwnerProps {
   selectorContent?: ReactNode;
   /** Called when the assignee edit button is clicked (isAssignee mode only). */
   onEditClick?: () => void;
+  /** Show the "N Owners" title and per-group labels in the overflow popover
+   * (default true). Set false for a bare list of avatars + names. */
+  showOverflowHeadings?: boolean;
   'data-testid'?: string;
 }

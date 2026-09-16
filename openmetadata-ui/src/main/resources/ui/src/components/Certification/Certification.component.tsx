@@ -25,6 +25,7 @@ import { AxiosError } from 'axios';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CertificationIcon } from '../../assets/svg/ic-certification.svg';
+import { CERTIFICATION_CATEGORY } from '../../constants/constants';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
@@ -67,7 +68,7 @@ const Certification = ({
 
     try {
       const response = await getTags({
-        parent: 'Certification',
+        parent: CERTIFICATION_CATEGORY,
         limit: 50,
         after: page > 1 ? paging.after : undefined,
         disabled: false,
