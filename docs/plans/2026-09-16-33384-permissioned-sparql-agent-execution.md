@@ -318,33 +318,79 @@ skips); target 90% changed-class coverage; record scale/latency evidence where a
 
 ## 7. Verification results (2026-09-16)
 
-Committed configuration only — `openmetadata-integration-tests/pom.xml` no longer pins an
+Proposed checked-in configuration — `openmetadata-integration-tests/pom.xml` no longer pins an
 image, so `postgres-rdf-tests` builds the supported `docker/rdf-store` image (Fuseki 6.2.0).
 All runs below use `-Ppostgres-rdf-tests` with no pom override.
+
+Executed commands (offline mode; `mvn -o` throughout):
+
+```bash
+# Unit lane (JaCoCo override disclosed: 0.8.10 pinned via jacoco-plugin.version is not
+# in the local repository, so every coverage run below adds -Djacoco-plugin.version=0.8.13)
+mvn -o -pl openmetadata-service test -P static-code-analysis -Djacoco-plugin.version=0.8.13 \
+  -Dtest='org.openmetadata.service.security.**.*Test, org.openmetadata.service.rdf.**.*Test, \
+  org.openmetadata.service.resources.rdf.**.*Test, org.openmetadata.service.exception.**.*Test' \
+  -Dsurefire.failIfNoSpecifiedTests=false -DfailIfNoTests=false
+# Contract IT (single lane; -DintegrationTests.skipIsolated=true avoids running the class
+# once per failsafe execution, since -Dit.test overrides both executions' includes)
+mvn -o -pl openmetadata-integration-tests verify -Ppostgres-rdf-tests \
+  -DintegrationTests.skipIsolated=true -Dit.test=AgentSparqlResourceIT \
+  -Dfailsafe.failIfNoSpecifiedTests=false -DfailIfNoTests=false
+# Regression lane, same profile (class list in -Dit.test, same skipIsolated flag)
+mvn -o -pl openmetadata-integration-tests verify -Ppostgres-rdf-tests \
+  -DintegrationTests.skipIsolated=true \
+  -Dit.test='RdfResourceIT,RdfGlossaryGraphIT,GlossaryTermRelationIT,GlossaryTermRelationFixesIT,GlossaryRdfImportIT' \
+  -Dfailsafe.failIfNoSpecifiedTests=false -DfailIfNoTests=false
+```
 
 - `AgentSparqlResourceIT`: **17/17 pass** (`BUILD SUCCESS`; failsafe report
   `TEST-org.openmetadata.it.tests.AgentSparqlResourceIT.xml`, 0 skipped). Covers the
   permitted/unauthorized matrix, bot-JWT + `X-Impersonate-User` attribution to the effective
   user, dual-identity audit (`serviceActor=<bot> effectiveUser=<user>` in
-  `AgentSparqlAudit`), pre-resource 401/403 mapping with the neighboring admin endpoint's
-  `ErrorMessage` shape unchanged, parsed-query rejections, fixture joins/aggregates/typed
-  bindings, LIMIT/OFFSET/completeness boundaries, and readiness transitions.
-- Unit lane `security.**`, `rdf.**`, `resources/rdf/**`, `exception.**`: **1606/1606 pass**.
+  `AgentSparqlAudit`), per-effective-user concurrency (guard quota keyed by effective user:
+  same user shares one quota across callers, distinct users are independent — unit-proven
+  in `SparqlQueryExecutionGuardTest` plus the forwarding assertion in
+  `AgentSparqlServiceTest`), pre-resource 401/403 mapping with the neighboring admin
+  endpoint's `ErrorMessage` shape unchanged, parsed-query rejections, fixture
+  joins/aggregates/typed bindings, LIMIT/OFFSET/completeness boundaries, and readiness
+  transitions.
+- Unit lane `security.**`, `rdf.**`, `resources/rdf/**`, `exception.**`: **1609/1609 pass**.
   New classes measure 94–100% line coverage; every touched shared-code line is covered by a
   unit test except the `JwtFilter`/`ImpersonationAuthorizer` throw-type swaps, which are
   covered by the impersonation IT cases instead.
 - Regression lane on the same profile: `GlossaryRdfImportIT` 33/33,
   `GlossaryTermRelationFixesIT` 14/14, `GlossaryTermRelationIT` 5/5,
-  `RdfGlossaryGraphIT` 11/11, `RdfResourceIT` 9/10. The single failure,
-  `RdfResourceIT.testForeignKeyReferencesInRdf` (15 s awaitility on the async FK triple),
-  **fails identically on clean main** with the repo image (separate worktree, same lane),
-  so it is pre-existing/environmental and unrelated to this branch. Note it could never
-  pass on the old stock-image pin, where every SPARQL update 405s.
+  `RdfGlossaryGraphIT` 11/11, `RdfResourceIT` 9/10 — i.e. **one baseline-reproduced error**,
+  not a green lane. `RdfResourceIT.testForeignKeyReferencesInRdf` (15 s awaitility on the
+  async FK triple) fails identically on clean main with the repo image (evidence below),
+  so it is pre-existing/environmental and unrelated to this branch. It could never pass
+  on the old stock-image pin, where every SPARQL update 405s.
 - `mvn spotless:check` clean for `openmetadata-service` and
-  `openmetadata-integration-tests`.
-- Offline note: JaCoCo 0.8.10 (pinned via `jacoco-plugin.version`) is not in the local
-  repository, so coverage runs used `-Djacoco-plugin.version=0.8.13`. The `SapBw4Hana`
-  javaEnum message during spec generation is pre-existing noise.
+  `openmetadata-integration-tests`. The `SapBw4Hana` javaEnum message during spec
+  generation is pre-existing noise.
+
+### Baseline failure evidence (`testForeignKeyReferencesInRdf` on clean main)
+
+- Main SHA: `cf3fd2871f` (`feat(alerts): let a consumer record its own deliveries (#33127)`),
+  checked out detached as a throwaway worktree (removed after verification).
+- Exact reproduction (workdir `/tmp/om-main`, since removed):
+  ```bash
+  git worktree add --detach /tmp/om-main main
+  sed -i "" "/<rdfContainerImage>secoresearch\/fuseki:5.5.0<\/rdfContainerImage>/d" \
+    openmetadata-integration-tests/pom.xml
+  mvn -o -q -pl openmetadata-service -am install -DskipTests
+  mvn -o -pl openmetadata-integration-tests verify -Ppostgres-rdf-tests \
+    -DintegrationTests.skipIsolated=true -Dit.test='RdfResourceIT#testForeignKeyReferencesInRdf' \
+    -Dfailsafe.failIfNoSpecifiedTests=false -DfailIfNoTests=false
+  ```
+  The `sed` line only mirrors this branch's committed profile fix inside the throwaway
+  worktree; main itself is untouched.
+- Observed: `Tests run: 1, Failures: 0, Errors: 1` — the same
+  `ConditionTimeoutException` (`FOREIGN_KEY constraint should produce direct om:references
+  triple ... within 15 seconds`, `RdfResourceIT.java:318`), `BUILD FAILURE`.
+- Surviving log: `/tmp/it-main-fk.log` (full Maven log: service install exit 0, IT exit 1,
+  stack trace included). The worktree-local failsafe XML went away with the removed
+  worktree; re-running the block above reproduces it.
 
 ## 6. Risks and open decisions (for the ADR, Step 1)
 
