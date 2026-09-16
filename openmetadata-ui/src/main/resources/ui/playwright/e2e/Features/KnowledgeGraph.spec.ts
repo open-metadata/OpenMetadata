@@ -403,11 +403,40 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
   test('renders every returned node and predicate from the live RDF endpoint', async ({
     page,
   }) => {
-    const response = page.waitForResponse(
-      (r) => r.url().includes('/rdf/graph/explore?') && r.status() === 200
-    );
-    await open(page);
-    const graph = (await (await response).json()) as GraphData;
+    // Opening the page and reading the explore payload it actually rendered
+    // from. Not a replayed `page.request.get(url)`: the endpoint authenticates
+    // with the bearer token the app holds in IndexedDB, and `page.request`
+    // carries only cookies, so a replay answers 401 — a body with no `edges` at
+    // all rather than an empty list.
+    const openAndReadGraph = async (): Promise<GraphData> => {
+      const response = page.waitForResponse(
+        (r) => r.url().includes('/rdf/graph/explore?') && r.status() === 200
+      );
+      await open(page);
+
+      return (await (await response).json()) as GraphData;
+    };
+
+    // The RDF store is written after the table is created, not as part of it, so
+    // the first load can answer with the bare root node and no edges. Re-open
+    // until the projection lands, which keeps `edges.length > 0` an assertion
+    // about the renderer rather than a race against ingestion.
+    let graph!: GraphData;
+    await expect
+      .poll(
+        async () => {
+          graph = await openAndReadGraph();
+
+          return graph.edges.length;
+        },
+        {
+          timeout: 60_000,
+          message:
+            'The live RDF endpoint never projected an edge for the table, so there was nothing for the graph to render.',
+        }
+      )
+      .toBeGreaterThan(0);
+
     await chooseView(page, 'Every entity');
     await expect(page.locator('[data-node-id]')).toHaveCount(
       graph.nodes.length
