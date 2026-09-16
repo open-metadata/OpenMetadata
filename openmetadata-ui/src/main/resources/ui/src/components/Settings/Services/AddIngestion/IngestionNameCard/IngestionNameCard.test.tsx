@@ -47,6 +47,7 @@ jest.mock(
 );
 
 const mockProps = {
+  canEditOwners: true,
   displayName: 'agent name',
   owners: mockOwners,
   onDisplayNameChange: jest.fn(),
@@ -64,6 +65,16 @@ describe('IngestionNameCard', () => {
     expect(screen.getByTestId('ingestion-display-name')).toBeInTheDocument();
     expect(screen.getByTestId('ingestion-owners-field')).toBeInTheDocument();
     expect(screen.getByTestId('mock-owner-selector')).toBeInTheDocument();
+  });
+
+  // `hasPermission` does not gate a consumer-supplied trigger, so the selector
+  // itself has to be withheld — otherwise the picker opens and the save 403s.
+  it('should withhold the owner selector without the edit-owners permission', () => {
+    render(<IngestionNameCard {...mockProps} canEditOwners={false} />);
+
+    expect(screen.getByTestId('ingestion-owners-field')).toBeInTheDocument();
+    expect(screen.getByTestId('ingestion-owners')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-owner-selector')).not.toBeInTheDocument();
   });
 
   it('should propagate an owner selection', () => {

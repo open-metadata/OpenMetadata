@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import {
@@ -36,6 +37,7 @@ import {
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   IngestionWorkflowData,
@@ -101,6 +103,12 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     const { config: limitConfig } = useLimitStore();
 
     const isEditMode = !isEmpty(ingestionFQN);
+
+    const { canEditOwners } = useEntityPermissions(
+      ResourceEntity.INGESTION_PIPELINE,
+      ingestionFQN,
+      { enabled: isEditMode }
+    );
 
     const { pipelineSchedules } =
       limitConfig?.limits?.config.featureLimits.find(
@@ -194,9 +202,28 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       [pipelineType]
     );
 
-    // Settings pipelines (Data Insight / Search Index) have no parent service to
-    // inherit owners from, so requiring owners there would block those flows.
-    const isOwnersRequired = !isSettingsPipeline;
+    const { canEditPipelineOwners, effectiveOwners, isOwnersRequired } =
+      useMemo(() => {
+        // Only the edit flow needs EditOwners: it saves through a JSON patch and
+        // the server authorizes an `/owners` op as EditOwners. Create carries
+        // owners in the POST body, which the Create permission already covers.
+        const canEdit = !isEditMode || canEditOwners;
+
+        return {
+          canEditPipelineOwners: canEdit,
+          // Without EditOwners the field is read-only, so it shows what is
+          // saved — the seeded service/current-user fallback would otherwise
+          // misreport an ownerless pipeline as owned by someone the user never
+          // chose.
+          effectiveOwners: canEdit ? owners : data?.owners ?? [],
+          // Settings pipelines (Data Insight / Search Index) have no parent
+          // service to inherit owners from, so requiring owners there would
+          // block those flows. A user who cannot edit owners cannot satisfy the
+          // gate either, so it is lifted for them rather than making the agent
+          // impossible to save.
+          isOwnersRequired: !isSettingsPipeline && canEdit,
+        };
+      }, [isEditMode, canEditOwners, isSettingsPipeline, owners, data]);
 
     const viewServiceText = useMemo(
       () =>
@@ -242,7 +269,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
     const handleSubmit = (data: IngestionWorkflowData) => {
       // The RJSF form validates only its own schema, and the name card sits
       // outside it, so the owners gate has to run here.
-      if (isOwnersRequired && isEmpty(owners)) {
+      if (isOwnersRequired && isEmpty(effectiveOwners)) {
         setIsOwnersInvalid(true);
 
         return;
@@ -281,7 +308,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
         loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
         name: ingestionName,
         displayName: displayName,
-        owners: owners,
+        owners: effectiveOwners,
         pipelineType: pipelineType,
         service: {
           id: serviceData.id as string,
@@ -327,7 +354,10 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           },
           raiseOnError: extraData.raiseOnError ?? true,
           displayName: workflowData?.displayName,
-          owners: owners,
+          // Omitted rather than echoed back when the user cannot edit owners:
+          // `compare` against the saved pipeline must not emit an `/owners` op
+          // at all, since the server authorizes one as EditOwners and 403s.
+          ...(canEditPipelineOwners ? { owners } : {}),
           loggerLevel: workflowData?.enableDebugLog
             ? LogLevels.Debug
             : LogLevels.Info,
@@ -416,10 +446,11 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           {activeIngestionStep === 1 && (
             <div className="tw:flex tw:flex-col tw:gap-4">
               <IngestionNameCard
+                canEditOwners={canEditPipelineOwners}
                 displayName={workflowData?.displayName ?? ''}
                 isOwnersInvalid={isOwnersInvalid}
                 isOwnersRequired={isOwnersRequired}
-                owners={owners}
+                owners={effectiveOwners}
                 onDisplayNameChange={(value) =>
                   handleDataChange({ ...workflowData, displayName: value })
                 }

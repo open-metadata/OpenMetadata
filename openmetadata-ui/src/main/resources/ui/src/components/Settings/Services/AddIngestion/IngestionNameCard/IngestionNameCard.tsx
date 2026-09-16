@@ -32,6 +32,7 @@ import {
 interface IngestionNameCardProps {
   displayName: string;
   owners: EntityReference[];
+  canEditOwners: boolean;
   isOwnersRequired?: boolean;
   isOwnersInvalid?: boolean;
   onDisplayNameChange: (value: string) => void;
@@ -42,6 +43,7 @@ interface IngestionNameCardProps {
 const IngestionNameCard = ({
   displayName,
   owners,
+  canEditOwners,
   isOwnersRequired = false,
   isOwnersInvalid = false,
   onDisplayNameChange,
@@ -83,31 +85,37 @@ const IngestionNameCard = ({
         data-testid="ingestion-owners-field">
         <div className="tw:flex tw:items-center tw:gap-2">
           <Label isRequired={isOwnersRequired}>{t('label.owner-plural')}</Label>
-          <UserTeamSelectableList
-            hasPermission
-            listHeight={200}
-            multiple={{
-              user: entityRules.canAddMultipleUserOwners,
-              team: entityRules.canAddMultipleTeamOwner,
-            }}
-            owner={owners}
-            onUpdate={onOwnersChange}>
-            {isEmpty(owners) ? (
-              <WidgetPlusButton
-                data-testid="add-owner"
-                title={t('label.add-entity', {
-                  entity: t('label.owner-plural'),
-                })}
-              />
-            ) : (
-              <WidgetEditButton
-                data-testid="edit-owner"
-                title={t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
-                })}
-              />
-            )}
-          </UserTeamSelectableList>
+          {/* `hasPermission` alone would not gate this: the picker only honours
+              it for its own default trigger, and a consumer-supplied trigger
+              (below) stays clickable. So the whole selector is withheld — the
+              same shape the Glossary/Classification owners widgets use. */}
+          {canEditOwners && (
+            <UserTeamSelectableList
+              hasPermission={canEditOwners}
+              listHeight={200}
+              multiple={{
+                user: entityRules.canAddMultipleUserOwners,
+                team: entityRules.canAddMultipleTeamOwner,
+              }}
+              owner={owners}
+              onUpdate={onOwnersChange}>
+              {isEmpty(owners) ? (
+                <WidgetPlusButton
+                  data-testid="add-owner"
+                  title={t('label.add-entity', {
+                    entity: t('label.owner-plural'),
+                  })}
+                />
+              ) : (
+                <WidgetEditButton
+                  data-testid="edit-owner"
+                  title={t('label.edit-entity', {
+                    entity: t('label.owner-plural'),
+                  })}
+                />
+              )}
+            </UserTeamSelectableList>
+          )}
         </div>
         <Owner
           className="tw:mt-2"

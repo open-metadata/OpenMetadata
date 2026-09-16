@@ -129,11 +129,9 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const createResult = await createResponse;
       // Read the body once and reuse it as the failure message, so a non-201
       // reports the server's actual error instead of just the status code.
-      // Truncated because the message prints above the status diff, and a full
-      // entity payload would bury it.
       const createBody = await createResult.text();
 
-      expect(createResult.status(), createBody.slice(0, 500)).toBe(201);
+      expect(createResult.status(), createBody).toBe(201);
 
       const created = JSON.parse(createBody);
 
@@ -172,7 +170,7 @@ test.describe('Service agents owners', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const updateResult = await updateResponse;
       const updateBody = await updateResult.text();
 
-      expect(updateResult.status(), updateBody.slice(0, 500)).toBe(200);
+      expect(updateResult.status(), updateBody).toBe(200);
 
       const updated = JSON.parse(updateBody);
 

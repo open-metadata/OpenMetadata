@@ -18,9 +18,14 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import AddIngestion from './AddIngestion.component';
 import { AddIngestionProps } from './IngestionWorkflow.interface';
 
@@ -120,7 +125,37 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   }),
 }));
 
+// Mock the hook but run the real derivation, so the flags the component reads
+// come from the same policy the app uses.
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: jest.fn(),
+  })
+);
+
+const mockUseEntityPermissions = useEntityPermissions as jest.Mock;
+
+const setPermissions = (overrides: Partial<OperationPermission>) => {
+  const permissions = {
+    ...DEFAULT_ENTITY_PERMISSION,
+    ...overrides,
+  } as OperationPermission;
+
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
 describe('Test AddIngestion component', () => {
+  beforeEach(() => {
+    setPermissions({ [Operation.EditOwners]: true });
+  });
+
   it('AddIngestion component should render', async () => {
     const { container } = render(<AddIngestion {...mockAddIngestionProps} />);
 
@@ -291,6 +326,55 @@ describe('Test AddIngestion component', () => {
 
     expect(setActiveIngestionStep).toHaveBeenCalledWith(2);
     expect(screen.queryByTestId('owners-error')).not.toBeInTheDocument();
+  });
+
+  it('should withhold the owners selector on edit without EditOwners', async () => {
+    setPermissions({ [Operation.EditDescription]: true });
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        data={
+          {
+            id: 'pipeline-id',
+            name: 'pipeline',
+            airflowConfig: {},
+            sourceConfig: { config: {} },
+          } as AddIngestionProps['data']
+        }
+        status={FormSubmitType.EDIT}
+      />
+    );
+
+    expect(await screen.findByTestId('ingestion-owners-field')).toBeVisible();
+    expect(screen.queryByTestId('mock-pick-owner')).not.toBeInTheDocument();
+  });
+
+  // The seeded fallback would otherwise put an `/owners` op in the patch that
+  // the server rejects with a 403 for a user who cannot edit owners.
+  it('should leave owners out of the edit payload without EditOwners', async () => {
+    setPermissions({ [Operation.EditDescription]: true });
+    const onUpdateIngestion = jest.fn().mockResolvedValue(undefined);
+    render(
+      <AddIngestion
+        {...mockAddIngestionProps}
+        activeIngestionStep={2}
+        data={
+          {
+            id: 'pipeline-id',
+            name: 'pipeline',
+            airflowConfig: {},
+            sourceConfig: { config: {} },
+          } as AddIngestionProps['data']
+        }
+        status={FormSubmitType.EDIT}
+        onUpdateIngestion={onUpdateIngestion}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('mock-deploy'));
+
+    expect(onUpdateIngestion).toHaveBeenCalled();
+    expect(onUpdateIngestion.mock.calls[0][0]).not.toHaveProperty('owners');
   });
 
   it('should not require owners for a settings pipeline', async () => {
